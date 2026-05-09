@@ -23,6 +23,7 @@ import {
   type VerdictValue,
   type VerdictSource,
 } from '@/lib/verdicts';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +85,7 @@ interface PostBody {
 export async function POST(request: NextRequest) {
   let body: PostBody;
   try {
-    body = await request.json();
+    body = await readBoundedJson<PostBody>(request, 8 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }

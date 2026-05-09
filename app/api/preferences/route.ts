@@ -9,6 +9,7 @@ import {
   setUserIntent,
 } from '../../../lib/preferences-server';
 import { INTENT_META, USER_INTENTS, isUserIntent } from '../../../lib/preferences';
+import { readBoundedJson } from '../../../lib/security';
 
 /**
  * Read the user's onboarding preferences. Currently just the `userIntent`
@@ -36,7 +37,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   let body: any;
   try {
-    body = await request.json();
+    body = await readBoundedJson(request, 4 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }

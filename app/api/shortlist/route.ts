@@ -35,7 +35,7 @@ function parseModesField(raw: unknown): ShortlistMode[] | undefined {
   return normalised.length > 0 ? normalised : undefined;
 }
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   readBoundedJson,
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'shortlist.create.unauthorised',
       actorIp,
@@ -176,7 +176,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'shortlist.delete.unauthorised',
       actorIp,

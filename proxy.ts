@@ -17,6 +17,14 @@ const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 // Same-site form-nav sends Origin automatically; legitimate no-Origin
 // mutations are tool-driven and must supply the admin token.
 const ALWAYS_REQUIRE_ORIGIN_PREFIX = '/api/';
+const NON_LOCAL_ADMIN_READ_PREFIXES = [
+  '/api/ai/debug-log',
+  '/api/backup/',
+  '/api/deployment/support-bundle',
+  '/api/diagnostics/',
+  '/api/export',
+  '/api/import/',
+];
 
 function attachSecurityHeaders(res: NextResponse): NextResponse {
   const csp = [
@@ -58,6 +66,29 @@ function isSameOrigin(request: NextRequest): boolean {
   }
 }
 
+function hostWithoutPort(host: string): string {
+  const trimmed = host.trim().toLowerCase();
+  if (trimmed.startsWith('[')) {
+    const end = trimmed.indexOf(']');
+    return end >= 0 ? trimmed.slice(1, end) : trimmed;
+  }
+  return trimmed.split(':')[0] ?? trimmed;
+}
+
+function isLocalRequestHost(request: NextRequest): boolean {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const host = forwardedHost || request.headers.get('host');
+  if (!host) return false;
+  const h = hostWithoutPort(host);
+  return (
+    h === 'localhost' ||
+    h.endsWith('.localhost') ||
+    h === '::1' ||
+    h === '0.0.0.0' ||
+    /^127(?:\.\d{1,3}){3}$/.test(h)
+  );
+}
+
 function requestHasValidAdminToken(request: NextRequest): boolean {
   const expected = process.env.AUDITOR_ADMIN_TOKEN;
   if (!expected) return false;
@@ -70,9 +101,29 @@ function requestHasValidAdminToken(request: NextRequest): boolean {
   return timingSafeEqual(a, b);
 }
 
+function nonLocalAdminApplies(method: string, pathname: string): boolean {
+  if (!pathname.startsWith('/api/')) return false;
+  if (MUTATING_METHODS.has(method)) return true;
+  return NON_LOCAL_ADMIN_READ_PREFIXES.some(prefix => pathname.startsWith(prefix));
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method.toUpperCase();
+
+  // Non-local installs must opt into the shared-secret gate for API writes
+  // and high-sensitivity reads. Without an authentication layer, a reverse
+  // proxy / LAN hostname should not be able to mutate or export user data
+  // just because it is same-origin to the browser.
+  if (!isLocalRequestHost(request) && nonLocalAdminApplies(method, pathname)) {
+    if (!requestHasValidAdminToken(request)) {
+      const res = NextResponse.json(
+        { error: 'Admin token required for non-local API access' },
+        { status: 401 },
+      );
+      return attachSecurityHeaders(res);
+    }
+  }
 
   // CSRF: reject mutating API calls that are neither same-origin nor
   // carry the admin token. Reads pass through.

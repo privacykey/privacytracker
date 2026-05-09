@@ -8,6 +8,7 @@ import {
   listImports,
   type ImportSource,
 } from '../../../lib/imports';
+import { readBoundedJson } from '../../../lib/security';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -21,8 +22,17 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let body: Record<string, unknown>;
   try {
-    const body = await request.json();
+    body = await readBoundedJson<Record<string, unknown>>(request, 8 * 1024);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
+      { status: 400 },
+    );
+  }
+
+  try {
     const source = typeof body?.source === 'string' ? body.source : '';
     if (!IMPORT_SOURCES.includes(source as ImportSource)) {
       return NextResponse.json(

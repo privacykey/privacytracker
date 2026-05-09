@@ -18,11 +18,13 @@ import {
   type AnnotationTag,
   type AnnotationVisibility,
 } from '@/lib/annotations';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 const VALID_TAGS = new Set<AnnotationTag>(['concern', 'positive', 'follow_up', 'other']);
 const VALID_VISIBILITIES = new Set<AnnotationVisibility>(['export', 'private']);
+const MAX_ANNOTATION_CONTENT_CHARS = 8_000;
 
 interface PatchBody {
   content?: string;
@@ -39,13 +41,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   let body: PatchBody;
   try {
-    body = await request.json();
+    body = await readBoundedJson<PatchBody>(request, 8 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
   if (body.tag !== undefined && body.tag !== null && !VALID_TAGS.has(body.tag)) {
     return NextResponse.json({ error: `tag must be one of: ${[...VALID_TAGS].join(', ')}` }, { status: 400 });
+  }
+  if (body.content !== undefined) {
+    if (typeof body.content !== 'string') {
+      return NextResponse.json({ error: 'content must be a string' }, { status: 400 });
+    }
+    if (body.content.length > MAX_ANNOTATION_CONTENT_CHARS) {
+      return NextResponse.json(
+        { error: `content must be ${MAX_ANNOTATION_CONTENT_CHARS} characters or fewer` },
+        { status: 413 },
+      );
+    }
   }
   if (body.visibility !== undefined && !VALID_VISIBILITIES.has(body.visibility)) {
     return NextResponse.json({ error: `visibility must be one of: ${[...VALID_VISIBILITIES].join(', ')}` }, { status: 400 });

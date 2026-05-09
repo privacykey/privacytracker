@@ -10,6 +10,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getActiveFocus, setActiveFocus } from '@/lib/feature-flag-storage';
 import type { Audience } from '@/lib/feature-flag-rules';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ const VALID_AUDIENCES: readonly Audience[] = ['self', 'loved_one', 'guardian'];
 export async function POST(request: NextRequest) {
   let body: Partial<FocusBody>;
   try {
-    body = await request.json();
+    body = await readBoundedJson<Partial<FocusBody>>(request, 4 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }

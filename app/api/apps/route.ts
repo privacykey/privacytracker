@@ -9,7 +9,7 @@ import {
   requestActorIp,
   checkRateLimit,
   rateLimitKeyForRequest,
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   requestHasValidAdminToken,
 } from '../../../lib/security';
 
@@ -53,7 +53,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'app.delete.unauthorised',
       actorIp,

@@ -20,6 +20,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { checkUninstallGate, recordUninstall } from '@/lib/device-actions';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ interface Body {
 export async function POST(request: NextRequest) {
   let body: Body;
   try {
-    body = await request.json();
+    body = await readBoundedJson<Body>(request, 8 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }

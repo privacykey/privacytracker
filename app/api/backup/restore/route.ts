@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { restoreBackup, BackupFormatError } from '../../../../lib/backup';
 import { getSetting } from '../../../../lib/scheduler';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'backup.restore.unauthorised',
       actorIp,

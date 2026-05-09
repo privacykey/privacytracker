@@ -46,6 +46,7 @@ export interface DeploymentDiagnostics {
   network: DeploymentNetworkDiagnostics;
   security: {
     adminTokenConfigured: boolean;
+    adminTokenRequired: boolean;
   };
   checks: DeploymentDiagnosticCheck[];
 }
@@ -258,10 +259,16 @@ function buildChecks(
     {
       id: 'admin-token',
       label: 'Destructive API guard',
-      status: security.adminTokenConfigured ? 'ok' : 'info',
+      status: security.adminTokenConfigured
+        ? 'ok'
+        : security.adminTokenRequired
+        ? 'bad'
+        : 'info',
       detail: security.adminTokenConfigured
-        ? 'AUDITOR_ADMIN_TOKEN is configured for destructive API calls.'
-        : 'AUDITOR_ADMIN_TOKEN is not configured; use proxy access control for browser-facing LAN installs.',
+        ? 'AUDITOR_ADMIN_TOKEN is configured for guarded API calls.'
+        : security.adminTokenRequired
+        ? 'This request looks LAN/domain reachable, so set AUDITOR_ADMIN_TOKEN before using guarded API actions.'
+        : 'AUDITOR_ADMIN_TOKEN is optional for localhost-only access.',
     },
   ];
 
@@ -273,7 +280,10 @@ export function buildDeploymentDiagnostics(headers: Headers): DeploymentDiagnost
   const health = readHealth();
   const database = readDatabase();
   const network = inferDeploymentNetwork(headers);
-  const security = { adminTokenConfigured: adminTokenConfigured() };
+  const security = {
+    adminTokenConfigured: adminTokenConfigured(),
+    adminTokenRequired: network.lanOrDomainHost,
+  };
 
   return {
     generatedAt: new Date().toISOString(),

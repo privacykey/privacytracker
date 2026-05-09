@@ -3,7 +3,7 @@
  *
  * Scope: URL validation (SSRF), safe-fetch wrapper (size + time caps),
  * per-IP rate limiting, CSRF origin-check helper, audit logging, and a
- * shared-secret admin gate for destructive endpoints.
+ * shared-secret admin gate for destructive and externally reachable endpoints.
  *
  * Design notes:
  * - The app is a local-first, single-user, self-hosted tool (SQLite file,
@@ -11,8 +11,9 @@
  *   we defend with (a) network binding to 127.0.0.1 by default, (b) a
  *   Origin/Referer CSRF check on mutating requests so malicious sites can't
  *   drive a user's browser against localhost:3000, and (c) an optional
- *   AUDITOR_ADMIN_TOKEN env var for destructive endpoints. If unset, the
- *   CSRF check alone is the gate — fine for localhost binding.
+ *   AUDITOR_ADMIN_TOKEN env var for guarded endpoints. If unset, the CSRF
+ *   check alone is the gate for localhost binding, while LAN/domain hosts
+ *   require the token before guarded API actions proceed.
  * - All outbound fetches that touch user-influenced URLs must go through
  *   `safeFetch` so response size and timeout are bounded and private IPs
  *   are rejected (defence against SSRF via DNS rebinding — see note below).
@@ -516,16 +517,43 @@ export function isSameOriginRequest(request: Request): boolean {
 
 /**
  * Admin-token gate: the user can set AUDITOR_ADMIN_TOKEN in the environment
- * to require a header on every mutating request. Default: no token — rely on
- * same-origin check + localhost binding.
+ * to require a header on every guarded request. Localhost-only installs may
+ * rely on same-origin checks; LAN/domain hosts require the shared-secret gate.
  */
 export function adminTokenConfigured(): boolean {
   return !!process.env.AUDITOR_ADMIN_TOKEN;
 }
 
+function stripHostPort(host: string): string {
+  const trimmed = host.trim().toLowerCase();
+  if (trimmed.startsWith('[')) {
+    const end = trimmed.indexOf(']');
+    return end >= 0 ? trimmed.slice(1, end) : trimmed;
+  }
+  return trimmed.split(':')[0] ?? trimmed;
+}
+
+export function requestLooksNonLocal(request: Request): boolean {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const host = forwardedHost || request.headers.get('host');
+  if (!host) return false;
+  const h = stripHostPort(host);
+  return !(
+    h === 'localhost' ||
+    h.endsWith('.localhost') ||
+    h === '::1' ||
+    h === '0.0.0.0' ||
+    /^127(?:\.\d{1,3}){3}$/.test(h)
+  );
+}
+
+export function adminTokenRequiredForRequest(request: Request): boolean {
+  return adminTokenConfigured() || requestLooksNonLocal(request);
+}
+
 export function requestHasValidAdminToken(request: Request): boolean {
   const expected = process.env.AUDITOR_ADMIN_TOKEN;
-  if (!expected) return true; // no token configured → gate is disabled
+  if (!expected) return false;
   const provided = request.headers.get('x-auditor-admin-token');
   if (!provided) return false;
   // Constant-time compare to avoid timing side-channels.
@@ -602,6 +630,33 @@ export async function readBoundedJson<T = unknown>(
   }
   try {
     return JSON.parse(buf.toString('utf8')) as T;
+  } catch {
+    throw new Error('Invalid JSON body');
+  }
+}
+
+/**
+ * Variant for endpoints where an empty body is valid. The same byte cap is
+ * enforced before parsing, but `''` / whitespace returns the supplied fallback.
+ */
+export async function readOptionalBoundedJson<T = unknown>(
+  request: Request,
+  maxBytes = 256 * 1024,
+  fallback: T,
+): Promise<T> {
+  const declared = Number(request.headers.get('content-length') ?? '');
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new Error(`Request body too large (${declared} > ${maxBytes} bytes)`);
+  }
+
+  const buf = Buffer.from(await request.arrayBuffer());
+  if (buf.byteLength > maxBytes) {
+    throw new Error(`Request body too large (${buf.byteLength} > ${maxBytes} bytes)`);
+  }
+  const text = buf.toString('utf8');
+  if (!text.trim()) return fallback;
+  try {
+    return JSON.parse(text) as T;
   } catch {
     throw new Error('Invalid JSON body');
   }

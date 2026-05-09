@@ -10,7 +10,7 @@
 import { NextResponse } from 'next/server';
 import { clearErrorLog, snapshotErrorLog } from '@/lib/error-log-ring';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
@@ -45,7 +45,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'diagnostics.errors.clear.unauthorised',
       actorIp,

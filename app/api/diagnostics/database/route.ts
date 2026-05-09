@@ -15,7 +15,7 @@
 import { NextResponse } from 'next/server';
 import { runIntegrityCheck, snapshotDatabaseHealth } from '@/lib/db-health';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'diagnostics.database.check.unauthorised',
       actorIp,

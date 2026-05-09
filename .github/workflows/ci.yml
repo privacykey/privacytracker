@@ -20,13 +20,11 @@ jobs:
 
       # pnpm needs to be installed before setup-node so that the latter's
       # cache: 'pnpm' resolver can locate the pnpm binary on PATH. Pinned
-      # to major v6 (Node 24 runtime + pnpm 11 support). `version: 10`
-      # picks the latest pnpm 10.x at action time, matching the
-      # lockfileVersion: '9.0' we ship.
+      # to an exact patch so CI and Docker use the same resolver behavior.
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 11
+          version: 11.0.6
 
       - name: Setup Node
         uses: actions/setup-node@v6

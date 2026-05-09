@@ -16,11 +16,13 @@ import {
   type AnnotationVisibility,
   type AnnotationSource,
 } from '@/lib/annotations';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 const VALID_TAGS = new Set<AnnotationTag>(['concern', 'positive', 'follow_up', 'other']);
 const VALID_VISIBILITIES = new Set<AnnotationVisibility>(['export', 'private']);
+const MAX_ANNOTATION_CONTENT_CHARS = 8_000;
 
 export async function GET(request: NextRequest) {
   const appId = request.nextUrl.searchParams.get('appId');
@@ -50,7 +52,7 @@ interface CreateBody {
 export async function POST(request: NextRequest) {
   let body: CreateBody;
   try {
-    body = await request.json();
+    body = await readBoundedJson<CreateBody>(request, 8 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
@@ -60,6 +62,12 @@ export async function POST(request: NextRequest) {
   }
   if (typeof body.content !== 'string' || body.content.trim().length === 0) {
     return NextResponse.json({ error: 'content is required' }, { status: 400 });
+  }
+  if (body.content.length > MAX_ANNOTATION_CONTENT_CHARS) {
+    return NextResponse.json(
+      { error: `content must be ${MAX_ANNOTATION_CONTENT_CHARS} characters or fewer` },
+      { status: 413 },
+    );
   }
   if (body.tag !== undefined && body.tag !== null && !VALID_TAGS.has(body.tag)) {
     return NextResponse.json({ error: `tag must be one of: ${[...VALID_TAGS].join(', ')}` }, { status: 400 });

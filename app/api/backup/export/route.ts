@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { exportBackup, CURRENT_BACKUP_VERSION } from '../../../../lib/backup';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'backup.export.unauthorised',
       actorIp,

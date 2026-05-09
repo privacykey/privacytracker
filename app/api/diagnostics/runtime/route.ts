@@ -21,7 +21,7 @@ import {
   snapshotRuntimeMetrics,
 } from '@/lib/runtime-diagnostics';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
@@ -58,7 +58,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'diagnostics.runtime.clear.unauthorised',
       actorIp,
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'diagnostics.runtime.config.unauthorised',
       actorIp,

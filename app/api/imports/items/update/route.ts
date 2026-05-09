@@ -5,10 +5,20 @@ import {
   updateImportItem,
   type ImportItemStatus,
 } from '../../../../../lib/imports';
+import { readBoundedJson } from '../../../../../lib/security';
 
 export async function POST(request: Request) {
+  let body: Record<string, unknown>;
   try {
-    const body = await request.json();
+    body = await readBoundedJson<Record<string, unknown>>(request, 32 * 1024);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
+      { status: 400 },
+    );
+  }
+
+  try {
     const itemId = typeof body?.itemId === 'string' ? body.itemId.trim() : '';
     if (!itemId) {
       return NextResponse.json({ error: 'itemId is required' }, { status: 400 });

@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import DOMPurify from 'dompurify';
 import { marked, Renderer } from 'marked';
 import { useTranslations } from 'next-intl';
 import type { Annotation, AnnotationTag, AnnotationVisibility } from '@/lib/annotations';
@@ -70,6 +71,17 @@ annotationRenderer.link = function annotationLinkRenderer({ href, title, tokens 
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
   return `<a href="${escapeHtml(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${inlineText}</a>`;
 };
+// Images are intentionally rendered as text. Notes are for short audit
+// comments, and allowing arbitrary image URLs adds both tracking pixels and
+// another URI-bearing token type to sanitize.
+annotationRenderer.image = function annotationImageRenderer({ href, text }) {
+  const label = typeof text === 'string' && text.trim()
+    ? text.trim()
+    : typeof href === 'string'
+    ? href.trim()
+    : 'image';
+  return `<span class="annotation-image-placeholder">${escapeHtml(label)}</span>`;
+};
 
 marked.setOptions({
   gfm: true,        // tables, strikethrough, autolinks, task lists
@@ -80,7 +92,13 @@ marked.setOptions({
 /** Render a single annotation's markdown to safe HTML. */
 function renderAnnotation(content: string): string {
   try {
-    return marked.parse(content, { async: false }) as string;
+    const html = marked.parse(content, { async: false }) as string;
+    return DOMPurify.sanitize(html, {
+      USE_PROFILES: { html: true },
+      ADD_ATTR: ['target', 'rel'],
+      ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|#)/i,
+      FORBID_TAGS: ['img', 'svg', 'math', 'iframe', 'object', 'embed', 'script', 'style', 'form'],
+    });
   } catch {
     // Last-resort fallback — escape so the raw text shows up readable
     // rather than as a parser stack trace.

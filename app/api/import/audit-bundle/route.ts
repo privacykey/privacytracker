@@ -34,6 +34,7 @@ import {
   findExistingImport,
 } from '@/lib/audit-bundle-import';
 import { recordActivity } from '@/lib/activity';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 // Bumped from the default 1 mb body cap — bundles can carry the per-app
@@ -41,6 +42,7 @@ export const dynamic = 'force-dynamic';
 // headroom for a few hundred apps without hitting the limit; clients
 // can always trim their export if they go bigger.
 export const maxDuration = 30;
+const MAX_AUDIT_BUNDLE_BYTES = 8 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const url = new URL(request.url);
@@ -52,6 +54,14 @@ export async function POST(request: NextRequest) {
   // and application/json (testing / programmatic clients).
   let parsed: unknown;
   try {
+    const declared = Number(request.headers.get('content-length') ?? '');
+    if (Number.isFinite(declared) && declared > MAX_AUDIT_BUNDLE_BYTES) {
+      return NextResponse.json(
+        { error: `Audit bundle is too large (${declared} > ${MAX_AUDIT_BUNDLE_BYTES} bytes).` },
+        { status: 413 },
+      );
+    }
+
     const contentType = request.headers.get('content-type') ?? '';
     if (contentType.startsWith('multipart/form-data')) {
       const form = await request.formData();
@@ -60,6 +70,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'No file uploaded. Attach a `.audit.json` file to the `file` form field.' },
           { status: 400 },
+        );
+      }
+      if (file.size > MAX_AUDIT_BUNDLE_BYTES) {
+        return NextResponse.json(
+          { error: `Audit bundle is too large (${file.size} > ${MAX_AUDIT_BUNDLE_BYTES} bytes).` },
+          { status: 413 },
         );
       }
       const text = await file.text();
@@ -74,7 +90,7 @@ export async function POST(request: NextRequest) {
     } else {
       // application/json — body is the parsed bundle directly.
       try {
-        parsed = await request.json();
+        parsed = await readBoundedJson(request, MAX_AUDIT_BUNDLE_BYTES);
       } catch {
         return NextResponse.json(
           { error: "This file isn't a valid audit bundle (couldn't parse JSON)." },

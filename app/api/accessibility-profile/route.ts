@@ -6,6 +6,7 @@ import {
   saveAccessibilityProfile,
 } from '../../../lib/accessibility-profile-server';
 import { sanitizeA11yProfile } from '../../../lib/accessibility-profile';
+import { readBoundedJson } from '../../../lib/security';
 
 /**
  * GET  → { profile: { [featureKey]: preference } | null }
@@ -23,7 +24,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
+    body = await readBoundedJson(request, 16 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }

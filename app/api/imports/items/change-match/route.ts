@@ -6,6 +6,7 @@ import {
 } from '../../../../../lib/imports';
 import { fetchAndParseApp } from '../../../../../lib/scraper';
 import db from '../../../../../lib/db';
+import { readBoundedJson } from '../../../../../lib/security';
 
 /**
  * Rewire a single import item to point at a different App Store listing.
@@ -17,8 +18,17 @@ import db from '../../../../../lib/db';
  * explicit re-add pathway and should only be POSTed on deliberate user action.
  */
 export async function POST(request: Request) {
+  let body: Record<string, unknown>;
   try {
-    const body = await request.json();
+    body = await readBoundedJson<Record<string, unknown>>(request, 16 * 1024);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
+      { status: 400 },
+    );
+  }
+
+  try {
     const itemId = typeof body?.itemId === 'string' ? body.itemId.trim() : '';
     const url = typeof body?.url === 'string' ? body.url.trim() : '';
     const editedQuery =

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import db from '../../../lib/db';
 import { getSetting } from '../../../lib/scheduler';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   requestHasValidAdminToken,
   recordAudit,
   requestActorIp,
@@ -16,7 +16,7 @@ import {
  * Reset wipes the entire DB. This is irreversible and the most destructive
  * action the app can perform. Defence-in-depth:
  *   - The global proxy already enforces same-origin for mutating requests.
- *   - If AUDITOR_ADMIN_TOKEN is configured, require it here too.
+ *   - Require the admin token when configured or when reached via LAN/domain.
  *   - Record every attempt (success and failure) in the audit log.
  *   - Rate limit so a same-origin bug can't be trivially looped.
  */
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'reset.unauthorised',
       actorIp,

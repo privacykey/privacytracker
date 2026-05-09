@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { listAiDebugLog, clearAiDebugLog } from '../../../../lib/privacy-policy';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   requestHasValidAdminToken,
   recordAudit,
   requestActorIp,
@@ -17,7 +17,7 @@ import {
 // deployment.
 
 function requireAdminIfConfigured(request: Request): NextResponse | null {
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'ai_debug_log.unauthorised',
       actorIp: requestActorIp(request),

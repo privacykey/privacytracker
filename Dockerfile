@@ -1,7 +1,7 @@
 # Stage 1 — Build
 #
-# Node version is pinned to the same major as `engines.node` in
-# package.json (`>=24.0.0 <26.0.0`). Two reasons not to drift:
+# Node version is pinned to the same exact image digest as `engines.node` in
+# package.json (`>=24.0.0 <26.0.0`) allows. Two reasons not to drift:
 #   1. Bumping past 25 means losing the bundled corepack (deprecated in
 #      Node 25, removed in Node 26).
 #   2. Node 26's arm64 binaries use newer CPU instructions (ARMv8.3-A
@@ -10,7 +10,12 @@
 #      `pnpm install` — multi-arch builds in CI use QEMU to cross-build
 #      arm64 from an amd64 runner. Sticking with Node 24 keeps the
 #      multi-arch image build green.
-FROM node:24-alpine AS builder
+ARG NODE_IMAGE=node:24.15.0-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f
+ARG PNPM_VERSION=11.0.6
+
+FROM ${NODE_IMAGE} AS builder
+
+ARG PNPM_VERSION
 
 WORKDIR /app
 
@@ -21,12 +26,9 @@ RUN apk add --no-cache python3 make g++
 # corepack stays gone for good. npm itself is bundled, so this adds no
 # extra layer.
 #
-# Pinned to pnpm 10 to match `pnpm/action-setup@v6` (`version: 10`) in
-# the GitHub Actions workflows and the `lockfileVersion: '9.0'` in
-# pnpm-lock.yaml. pnpm 11 would silently rewrite the lockfile to v10
-# and the next CI run would fail with a frozen-lockfile mismatch — do
-# not bump this without bumping the action-setup `version` field too.
-RUN npm install -g pnpm@10 --no-audit --no-fund
+# Pinned to an exact pnpm patch instead of a floating major so Docker builds
+# don't change resolver behaviour under the same commit.
+RUN npm install -g pnpm@${PNPM_VERSION} --no-audit --no-fund
 
 # Copy lockfile + manifest + workspace config in one layer so any change
 # to deps invalidates the install layer cleanly. pnpm-workspace.yaml
@@ -41,7 +43,7 @@ RUN pnpm build
 # Stage 2 — Runtime (no build tools needed). Stays on the same major
 # as the builder so the better-sqlite3 binding compiled above keeps
 # its NODE_MODULE_VERSION compatible at runtime.
-FROM node:24-alpine AS runner
+FROM ${NODE_IMAGE} AS runner
 
 WORKDIR /app
 

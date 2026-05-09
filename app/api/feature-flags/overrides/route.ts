@@ -22,6 +22,7 @@ import {
   clearSurfaceOverrides,
 } from '@/lib/feature-flag-storage';
 import { HARD_DEFAULTS, type FlagKey, type FlagValue } from '@/lib/feature-flag-rules';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ interface PostBody {
 export async function POST(request: NextRequest) {
   let body: PostBody;
   try {
-    body = (await request.json()) as PostBody;
+    body = await readBoundedJson<PostBody>(request, 64 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }

@@ -24,7 +24,7 @@ import {
   type ManualApp,
 } from '../../../../../lib/manual-apps';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   readBoundedJson,
@@ -50,7 +50,7 @@ export async function POST(request: Request, context: Ctx) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'manual-apps.restore.unauthorised',
       actorIp,

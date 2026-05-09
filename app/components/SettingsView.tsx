@@ -197,6 +197,7 @@ interface DeploymentDiagnostics {
   };
   security: {
     adminTokenConfigured: boolean;
+    adminTokenRequired: boolean;
   };
   checks: DeploymentDiagnosticCheck[];
 }

@@ -11,7 +11,7 @@ import {
 } from '../../../lib/ai-config';
 import { DEFAULT_COUNTRY, normalizeCountry } from '../../../lib/region';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   requestHasValidAdminToken,
   readBoundedJson,
   validateExternalUrl,
@@ -21,7 +21,7 @@ import {
   rateLimitKeyForRequest,
 } from '../../../lib/security';
 
-export async function GET() {
+export async function GET(request: Request) {
   // NOTE: ai_api_key is deliberately masked — the settings UI should treat
   // this as "set / not set" rather than a plaintext round-trip. The raw key
   // is still available via the `lib/scheduler` helpers on the server.
@@ -65,7 +65,7 @@ export async function GET() {
     // whether the app detail page, stats page, and grid filter surface the
     // captured data. Default on.
     track_accessibility_labels: getSetting('track_accessibility_labels', 'true') !== 'false',
-    admin_token_required: adminTokenConfigured(),
+    admin_token_required: adminTokenRequiredForRequest(request),
   });
 }
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'settings.write.unauthorised',
       actorIp,

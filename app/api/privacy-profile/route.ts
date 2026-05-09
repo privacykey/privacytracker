@@ -6,6 +6,7 @@ import {
   savePrivacyProfile,
 } from '../../../lib/privacy-profile-server';
 import { sanitizeProfile } from '../../../lib/privacy-profile';
+import { readBoundedJson } from '../../../lib/security';
 
 /**
  * GET  → { profile: { [categoryKey]: tier } | null }
@@ -22,7 +23,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
+    body = await readBoundedJson(request, 16 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
