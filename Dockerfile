@@ -10,7 +10,7 @@
 #      `pnpm install` — multi-arch builds in CI use QEMU to cross-build
 #      arm64 from an amd64 runner. Sticking with Node 24 keeps the
 #      multi-arch image build green.
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -41,7 +41,7 @@ RUN pnpm build
 # Stage 2 — Runtime (no build tools needed). Stays on the same major
 # as the builder so the better-sqlite3 binding compiled above keeps
 # its NODE_MODULE_VERSION compatible at runtime.
-FROM node:24-alpine AS runner
+FROM node:26-alpine AS runner
 
 WORKDIR /app
 
