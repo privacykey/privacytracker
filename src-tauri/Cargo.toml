@@ -1,0 +1,122 @@
+[package]
+name = "privacytracker"
+version = "0.1.0"
+description = "privacytracker — Apple App Store privacy-label tracker (desktop shell)"
+authors = ["privacykey <contact@privacykey.org>"]
+edition = "2021"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri v2. The `tray-icon` feature turns on tray support across mac/win/linux.
+# `devtools` keeps the webview's Web Inspector available in release builds so
+# we can debug the bundled app once it's installed — without it, the
+# `View > Toggle Developer Tools` menu item and the Cmd+Opt+I shortcut both
+# turn into no-ops because Tauri compiles out the `open_devtools()` /
+# `close_devtools()` methods entirely. Adds a few hundred KB to the bundle
+# but trades for a real diagnostic affordance for users who hit edge cases.
+tauri = { version = "2", features = ["tray-icon", "macos-private-api", "devtools"] }
+tauri-plugin-shell = "2"
+# Updater is wired up so we don't have to add it later. The release CI signs
+# update manifests with an ed25519 key whose public half ships in tauri.conf.json.
+tauri-plugin-updater = "2"
+# "Start at login" + "launch hidden in tray" both live behind this plugin. It
+# writes a LaunchAgent plist on macOS and a Run registry key on Windows. We
+# pass CLI args ("--hidden") that main.rs honours to know which boot path it's on.
+tauri-plugin-autostart = "2"
+# Native macOS Notification Center / Windows toast bridge. Only used when
+# desktop_native_notifications is on; otherwise we stay with the in-app bell.
+tauri-plugin-notification = "2"
+# Global keyboard shortcut (default ⌘⇧P, user-configurable). Summons the
+# main window regardless of focus state.
+tauri-plugin-global-shortcut = "2"
+# Deep-link / URL scheme handling. privacytracker://app/<id> routes to the
+# corresponding app detail page. Schemes are registered under plugins.deep-link
+# in tauri.conf.json; the plugin injects them into Info.plist at bundle time.
+tauri-plugin-deep-link = "2"
+# Remembers window size / position across launches. Writes to the app's
+# config dir, not our PRIVACYTRACKER_DATA_DIR — these are per-install
+# ergonomics, not user privacy data.
+tauri-plugin-window-state = "2"
+# Diagnostics: captures logs from println!/log::info! into a file in the
+# app's log dir, so the "Copy diagnostics report" button has something to
+# point at.
+tauri-plugin-log = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Blocking HTTP client, used only to poll http://127.0.0.1:<port>/api/apps
+# during boot so we don't open the webview until Next.js is actually ready to
+# serve. rustls-tls to avoid dragging in an OpenSSL build dep on every target.
+# `json` is required for `Response::into_json::<T>()` — it's an opt-in feature
+# in ureq 2.x because pulling serde_json bloats no-json users. We use it in
+# sidecar.rs / settings.rs / notifications.rs / diagnostics.rs.
+ureq = { version = "2", default-features = false, features = ["tls", "json"] }
+# std::sync::Mutex is fine for the tray state; no need for parking_lot here.
+once_cell = "1"
+# Cross-platform "what's the per-user app-data folder" resolver. We pass the
+# path we pick into the Node sidecar via PRIVACYTRACKER_DATA_DIR so lib/db.ts
+# writes privacy.db into ~/Library/Application Support/privacytracker/ (mac) or
+# %APPDATA%\privacytracker\ (win). Using dirs (not dirs_next, which is unmaintained).
+dirs = "6"
+log = "0.4"
+# env_logger removed — `tauri-plugin-log` is the single owner of the
+# `log` facade subscriber. See main.rs for the plugin's target setup
+# (stdout + ~/Library/Logs/<bundle-id>/ + the webview inspector).
+# Used by sidecar.rs to extract `standalone.tar` into the per-user data
+# dir on first run. We bundle the Next.js standalone tree as a single
+# tarball (rather than a directory with thousands of files) because
+# Tauri's resource-glob matcher silently drops files inside dotfile-
+# prefixed dirs like `.next/`. tar 0.4 is already a transitive dep
+# via tauri-plugin-updater so this declaration costs nothing extra.
+tar = "0.4"
+
+[target.'cfg(unix)'.dependencies]
+# Used by sidecar.rs's pre_exec hook to call setsid() on the spawned
+# Node sidecar — detaches it from our Cocoa app's WindowServer / Dock
+# session so it doesn't show up as a "node / exec" icon in the macOS
+# Dock. libc is already a transitive dep via every system-call-using
+# crate in the tree (tokio, tauri, etc.), so declaring it directly
+# costs nothing.
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Needed for the runtime Dock-visibility toggle and Touch ID / LAContext
+# bridge. `objc2-local-authentication` is a thin wrapper over Apple's
+# LocalAuthentication.framework — we use it to gate showing the main
+# window when desktop_require_unlock is on. Never used to derive keys for
+# backup encryption (that stays pure-JS + passphrase-driven so files
+# exported from the desktop app import cleanly on the web build and vice
+# versa).
+objc2 = "0.6"
+# objc2-app-kit is intentionally NOT a direct dep. We used to import
+# `NSApplication` and `NSDockTile` through it, but that crate's 0.x line
+# keeps moving its public re-exports between the crate root and private
+# submodules — every patch bump tends to break our import paths. The two
+# AppKit selectors we need (`-[NSApplication sharedApplication]` /
+# `setActivationPolicy:`, and `-[NSApplication dockTile]` /
+# `setBadgeLabel:`) are now sent through the obj-c runtime directly via
+# objc2's `class!` + `msg_send!` macros — see commands.rs and
+# notifications.rs. AppKit is dynamically loaded by macOS at app launch,
+# so we don't need a typed wrapper to call into it.
+objc2-foundation = "0.3"
+# Bumped 0.2 → 0.3 because 0.2 was built against objc2 0.5; once we
+# pin objc2 = "0.6" directly, having LAContext implement 0.5's
+# Message/Encode traits while our msg_send!/msg_send_id! macros expand
+# to call 0.6's traits produces "Message is not implemented" /
+# "Encode is not implemented" cascades — the trait names match but
+# they're different symbols across the major bump. 0.3 wraps the same
+# LocalAuthentication framework but uses objc2 0.6 internally, so the
+# trait identities line up.
+objc2-local-authentication = { version = "0.3", features = ["LAContext"] }
+# Block2 is pulled in transitively via objc2-local-authentication, but touch_id.rs
+# uses `block2::RcBlock` directly to bridge LAContext::evaluatePolicy's async
+# reply block into a blocking `mpsc::recv_timeout`, so declare it explicitly
+# to avoid relying on the transitive dependency staying visible.
+block2 = "0.6"
+
+[features]
+# Enable `tauri build` without devtools baked into the bundle.
+custom-protocol = ["tauri/custom-protocol"]

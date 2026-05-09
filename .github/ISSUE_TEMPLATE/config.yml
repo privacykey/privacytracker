@@ -1,0 +1,13 @@
+# Disable blank issues so every report starts from a template — makes triage
+# much faster because the structured fields (URLs, browser, repro steps) are
+# always present. Users who genuinely need a blank canvas can still open a
+# Discussion via the link below.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/privacykey/privacytracker/discussions
+    about: For open-ended questions, ideas, or "is this expected?" — use Discussions instead of an issue.
+  - name: Accessibility feedback
+    url: https://github.com/privacykey/privacytracker/issues/new?template=bug_report.yml&labels=bug,needs-triage,a11y&title=%5BA11y%5D%3A+
+    about: Filing an accessibility issue? Use the bug report template — it'll be auto-tagged a11y.

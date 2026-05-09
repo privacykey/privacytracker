@@ -1,0 +1,69 @@
+name: privacytracker-caddy
+
+services:
+  privacytracker:
+    image: ${PRIVACYTRACKER_IMAGE:-ghcr.io/privacykey/privacytracker:latest}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - privacytracker-data:/app/data
+    environment:
+      NODE_ENV: production
+      AUDITOR_ADMIN_TOKEN: ${AUDITOR_ADMIN_TOKEN:-}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /app/.next/cache:size=128m,mode=0755
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      privacytracker:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PRIVACYTRACKER_HOST: ${PRIVACYTRACKER_HOST:-privacytracker.localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  privacytracker-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,98 @@
+#
+# Crowdin sync.
+#
+# Two triggers:
+#   1. Push to main that touches locales/en.json
+#      → upload the fresh source bundle so translators see new strings
+#        (and any re-worded strings flagged as `unapproved` for review).
+#   2. Weekly schedule + manual dispatch
+#      → download translated bundles back from Crowdin and open a PR.
+#        Pulling on a schedule (rather than on every push) keeps the
+#        review queue manageable — translators have time to actually
+#        translate before a noisy churn-PR fires.
+#
+# Repo secrets required (Settings → Secrets and variables → Actions):
+#   CROWDIN_PROJECT_ID    — numeric project id from the Crowdin URL
+#   CROWDIN_PERSONAL_TOKEN — personal token with "Project" scope
+#
+# The default GITHUB_TOKEN is enough to open the translation PR (the
+# action uses contents:write + pull-requests:write below).
+#
+
+name: Crowdin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'locales/en.json'
+      - 'crowdin.yml'
+      - '.github/workflows/crowdin.yml'
+  schedule:
+    # Mondays at 08:00 UTC — gives translators a week-long window.
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  synchronize-with-crowdin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Crowdin push + pull
+        uses: crowdin/github-action@v2
+        with:
+          # Source-side: always upload en.json so Crowdin matches the
+          # working tree. Skip uploading translations (zh.json) — we
+          # treat Crowdin as the source of truth for everything except
+          # en.json, and uploading the existing zh would risk overwriting
+          # in-Crowdin edits with our local version.
+          upload_sources: true
+          upload_translations: false
+
+          # Pull-side: only on the scheduled / manual runs. The push
+          # event triggers an upload; downloads piggyback on the same
+          # workflow but no-op when there's nothing newer in Crowdin.
+          download_translations: true
+
+          # Crowdin opens a long-lived branch in the repo (l10n_main)
+          # and rebases its translation PR against main on each pull.
+          # Reviewers see one PR per cycle rather than a fresh one on
+          # every download, which is much less noisy.
+          localization_branch_name: l10n_main
+          create_pull_request: true
+          pull_request_title: 'i18n: new translations from Crowdin'
+          pull_request_body: |
+            Pulled fresh translations from Crowdin.
+
+            - Sources: `locales/en.json` was last synced on push to `main`.
+            - Targets: every locale registered in Crowdin is downloaded
+              under `locales/<lang>.json`.
+
+            Before merging:
+            - [ ] `pnpm lint` passes.
+            - [ ] `pnpm test` passes.
+            - [ ] `pnpm typecheck` passes.
+            - [ ] `pnpm lint:i18n` passes (checks locale key parity).
+            - [ ] Skim the diff for any unexpected English-language regressions.
+
+            See https://privacytracker-docs.privacykey.org/develop/translations for the full workflow.
+          pull_request_base_branch_name: main
+          pull_request_labels: |
+            i18n
+            crowdin
+
+          # Pin the CLI version so a Crowdin-side breaking change
+          # doesn't bloom mid-release. Bump deliberately when you
+          # want new features.
+          crowdin_branch_name: main
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}

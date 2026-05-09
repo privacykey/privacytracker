@@ -1,0 +1,72 @@
+{
+  "name": "privacytracker",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24.0.0 <26.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "lint:i18n": "node scripts/check-i18n-parity.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",
+    "test:coverage": "rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --experimental-test-coverage --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",
+    "test:e2e": "playwright test",
+    "test:ios-import-helper": "python3 -m unittest discover -s tools/ios-app-import/tests -p '*_test.py'",
+    "test:tauri": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "smoke:release": "node --import tsx --import ./tests/setup-env.ts --test tests/release-smoke.test.ts",
+    "audit:repo-settings": "node scripts/audit-github-settings.mjs",
+    "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
+    "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
+    "tauri": "tauri",
+    "tauri:dev": "node scripts/ensure-standalone-stub.mjs && tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "~2.11.0",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
+    "better-sqlite3": "^12.9.0",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.2",
+    "marked": "^18.0.3",
+    "next": "16.2.6",
+    "next-intl": "4.11.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-joyride": "3.1.0",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.1.0",
+    "@playwright/test": "^1.59.1",
+    "@tauri-apps/cli": "^2.11.1",
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/node": "^25.6.2",
+    "@types/react": "^19.2.3",
+    "@types/react-dom": "^19.2.3",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.3.0",
+    "eslint-config-next": "^16.2.6",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "pnpm": {
+    "//": "Install-script allow-list. pnpm v9+ blocks all install scripts by default; without this block the listed packages land in node_modules with their build steps skipped, breaking native bindings (better-sqlite3), platform binaries (esbuild, @swc/core, @tauri-apps/cli, unrs-resolver), libvips (sharp), language data (tesseract.js), and macOS fsevents (@parcel/watcher). Mirrored in pnpm-workspace.yaml for pnpm 10+, which reads `onlyBuiltDependencies` from the workspace file in preference to here. The `overrides` block lives in pnpm-workspace.yaml — keeping it in BOTH places caused [ERR_PNPM_LOCKFILE_CONFIG_MISMATCH] in CI because pnpm 10 reads overrides from the workspace file but writes them to the lockfile, and the comparison failed against package.json's stale copy.",
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@swc/core",
+      "@tauri-apps/cli",
+      "better-sqlite3",
+      "esbuild",
+      "sharp",
+      "tesseract.js",
+      "unrs-resolver"
+    ]
+  }
+}

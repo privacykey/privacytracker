@@ -1,0 +1,178 @@
+name: Release
+
+# Manual-trigger release workflow.
+# You pick patch / minor / major when you click "Run workflow" in the Actions tab.
+# Steps: quality sanity-gate → bump package.json → prepend CHANGELOG.md →
+# commit to main → create v-tag → create GitHub Release with auto-generated notes.
+#
+# The existing docker-publish.yml workflow listens on `push: tags: v*`, so the tag
+# push here will automatically rebuild and publish the image to GHCR.
+#
+# Note: we deliberately do NOT use [skip ci] in the release commit message.
+# GitHub's [skip ci] applies to the commit, not the push event, so adding it
+# would also suppress the tag-push build of docker-publish.yml. The cost of
+# letting docker-publish.yml run once on main-push and once on tag-push is
+# one extra cached build per release — cheap, and both runs produce distinct
+# image tags (`main` / `latest` vs. `0.1.1` / `0.1`).
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Which semver segment to bump"
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write   # push commit + tag, create GitHub Release
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Full history so we can diff against the previous tag for the changelog.
+          fetch-depth: 0
+          # Use the default GITHUB_TOKEN; sufficient because permissions.contents: write.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          # Node 24 LTS — matches the sidecar Node shipped with the desktop
+          # build and the engines.node constraint in package.json. Node 20
+          # reached EOL in April 2026.
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Sanity gate: never cut a release from broken code.
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Check locale parity
+        run: pnpm lint:i18n
+
+      - name: Test iOS import helper
+        run: pnpm test:ios-import-helper
+
+      - name: Install Tauri Linux test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Test Tauri Rust helpers
+        run: pnpm test:tauri
+
+      - name: Audit production dependency tree
+        run: pnpm audit --prod
+
+      - name: Build
+        run: pnpm build
+
+      - name: Release smoke test
+        run: pnpm smoke:release
+
+      - name: Configure git as github-actions[bot]
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Capture previous tag (for changelog)
+        id: prev
+        run: |
+          PREV_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1 || true)
+          echo "tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Previous tag: ${PREV_TAG:-<none>}"
+
+      - name: Bump version in package.json
+        id: bump
+        run: |
+          # pnpm version mirrors npm version: bumps package.json and prints
+          # the new version as "vX.Y.Z". `--no-git-tag-version` stops it
+          # from tagging — we tag manually below so we control exactly
+          # what gets pushed. pnpm also rewrites pnpm-lock.yaml's version
+          # entry to match.
+          NEW_VERSION=$(pnpm version "${{ inputs.bump }}" --no-git-tag-version)
+          echo "version=${NEW_VERSION}"      >> "$GITHUB_OUTPUT"
+          echo "Bumped to ${NEW_VERSION}"
+
+      - name: Prepend CHANGELOG.md
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.version }}"
+          PREV_TAG="${{ steps.prev.outputs.tag }}"
+          DATE=$(date -u +%Y-%m-%d)
+
+          if [ -n "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREV_TAG}..HEAD")
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)")
+          fi
+
+          # Rebuild CHANGELOG.md with the new section on top. If an existing
+          # CHANGELOG.md is present, keep everything below its "# Changelog" header.
+          {
+            echo "# Changelog"
+            echo ""
+            echo "## ${NEW_VERSION} — ${DATE}"
+            echo ""
+            if [ -n "$COMMITS" ]; then
+              echo "$COMMITS"
+            else
+              echo "- No commits since previous release"
+            fi
+            echo ""
+            if [ -f CHANGELOG.md ]; then
+              # Strip the old top-level header so we don't end up with two.
+              tail -n +2 CHANGELOG.md
+            fi
+          } > CHANGELOG.new
+          mv CHANGELOG.new CHANGELOG.md
+
+      - name: Commit, tag, and push
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.version }}"
+          git add package.json pnpm-lock.yaml CHANGELOG.md
+          git commit -m "chore(release): ${NEW_VERSION}"
+          git tag "${NEW_VERSION}"
+          # Push commit first, then the tag. If main has branch protection that
+          # blocks direct pushes, this step will fail — see note in the README.
+          git push origin HEAD:main
+          git push origin "${NEW_VERSION}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.version }}"
+          gh release create "${NEW_VERSION}" \
+            --title "${NEW_VERSION}" \
+            --generate-notes

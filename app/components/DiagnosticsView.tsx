@@ -1,0 +1,1315 @@
+'use client';
+
+/**
+ * DiagnosticsView — live runtime metrics dashboard.
+ *
+ * Layered design so one page serves three audiences:
+ *
+ *   1. End users — top status banner rolls every signal up to a single
+ *      green / yellow / red verdict ("Healthy" / "Some warnings" /
+ *      "Issues detected") with one-line plain-English summaries.
+ *   2. Developers debugging — dense numeric cards underneath. p50/p95/p99
+ *      event-loop, V8 heap, page faults, slow-query log, DB pragmas,
+ *      disk usage, background-job state, rate-limit cooldowns,
+ *      feature-flag drift, and a rolling error tail.
+ *   3. Support tickets — a Copy diagnostics button calls
+ *      /api/diagnostics/bundle and writes the full snapshot to the
+ *      clipboard so users can paste it into a GitHub issue without
+ *      hunting through the page.
+ *
+ * Polling cadence:
+ *   - Runtime metrics — every {@link RUNTIME_POLL_MS} (2 s); event-loop
+ *     lag is the headline "is this app stalling right now" signal.
+ *   - DB / disk / errors / jobs / rate limits / flags — every
+ *     {@link AUX_POLL_MS} (6 s); less time-critical, cheaper to skip a
+ *     beat.
+ *
+ * Sparklines are populated client-side from the rolling runtime polls
+ * — we keep up to {@link HISTORY_CAP} samples in component state. No
+ * server-side time series; the rolling window is enough for "is it
+ * trending the wrong way *right now*".
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import Sparkline from './Sparkline';
+
+const RUNTIME_POLL_MS = 2_000;
+const AUX_POLL_MS = 6_000;
+/** Approximately 60 s of runtime samples at the 2 s cadence. */
+const HISTORY_CAP = 30;
+
+// ── Type contracts (matching the API responses) ───────────────────────
+
+interface SlowQueryRecord {
+  sql: string;
+  durationMs: number;
+  method: 'all' | 'get' | 'run' | 'iterate';
+  paramCount: number;
+  at: number;
+  error?: string;
+}
+
+interface RuntimeMetrics {
+  generatedAt: string;
+  uptimeSeconds: number;
+  memory: {
+    rssMb: number;
+    heapTotalMb: number;
+    heapUsedMb: number;
+    externalMb: number;
+    arrayBuffersMb: number;
+  };
+  v8Heap: {
+    totalHeapSizeMb: number;
+    usedHeapSizeMb: number;
+    heapSizeLimitMb: number;
+    mallocedMemoryMb: number;
+    externalMemoryMb: number;
+    heapFractionUsed: number;
+  };
+  resourceUsage: {
+    userCpuSeconds: number;
+    systemCpuSeconds: number;
+    maxRssMb: number;
+    minorPageFaults: number;
+    majorPageFaults: number;
+    voluntaryContextSwitches: number;
+    involuntaryContextSwitches: number;
+  };
+  eventLoop: {
+    windowSeconds: number;
+    samples: number;
+    minMs: number;
+    meanMs: number;
+    maxMs: number;
+    stddevMs: number;
+    p50Ms: number;
+    p95Ms: number;
+    p99Ms: number;
+    severity: 'ok' | 'warn' | 'danger';
+  } | null;
+  slowQueries: {
+    thresholdMs: number;
+    totalSinceStart: number;
+    profilingEnabled: boolean;
+    recent: SlowQueryRecord[];
+  };
+}
+
+interface DatabaseHealth {
+  path: string;
+  fileBytes: number;
+  walBytes: number;
+  shmBytes: number;
+  pageCount: number;
+  pageSize: number;
+  freelistCount: number;
+  utilisationPct: number;
+  journalMode: string;
+  busyTimeoutMs: number;
+  foreignKeysEnabled: 0 | 1;
+  walAutocheckpoint: number;
+  integrityCheck: {
+    status: 'ok' | 'error';
+    detail?: string;
+    checkedAt: number;
+    durationMs: number;
+  } | null;
+}
+
+interface DiskSnapshot {
+  dataDir: string;
+  dataDirBytes: number;
+  freeBytes: number;
+  totalBytes: number;
+  freePct: number;
+  files: { db: number; wal: number; shm: number; backups: number };
+  lastBackupSnapshotAt: number | null;
+  backupSnapshotCount: number;
+}
+
+interface ErrorLogEntry {
+  at: number;
+  level: 'error' | 'warn';
+  message: string;
+  truncated: boolean;
+}
+
+interface ActiveJobs {
+  wayback: ActiveJobView;
+  sync: ActiveJobView;
+  policy: ActiveJobView;
+  serverNow?: number;
+}
+interface ActiveJobView {
+  running: boolean;
+  mutexHeld: boolean;
+  stale: boolean;
+  initiator: 'manual' | 'scheduled' | 'automatic' | 'resume' | null;
+  currentAppName: string | null;
+  summary: {
+    total: number;
+    pending: number;
+    inProgress: number;
+    done: number;
+    failed: number;
+    remaining: number;
+  } | null;
+}
+
+interface RateLimitCategoryState {
+  category: 'search' | 'scrape';
+  cooldownActive: boolean;
+  cooldownRemainingMs: number;
+  resumeAt: number | null;
+  reason: string | null;
+  bucketTokens?: number;
+  bucketCapacity?: number;
+}
+interface RateLimits {
+  search: RateLimitCategoryState;
+  scrape: RateLimitCategoryState;
+  serverNow: number;
+}
+
+interface FlagRow {
+  key: string;
+  surface: string;
+  hardDefault: string;
+  currentValue: string;
+  override: string | null;
+  wired: boolean;
+}
+
+// ── Formatting helpers ────────────────────────────────────────────────
+
+function formatUptime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins < 60) return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hours}h ${remMins.toString().padStart(2, '0')}m`;
+}
+
+function formatRelative(at: number): string {
+  const delta = Date.now() - at;
+  if (delta < 1000) return 'just now';
+  if (delta < 60_000) return `${Math.floor(delta / 1000)}s ago`;
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+  return `${Math.floor(delta / 3_600_000)}h ago`;
+}
+
+function formatMs(value: number): string {
+  if (value === 0) return '0';
+  if (value < 1) return value.toFixed(2);
+  if (value < 100) return value.toFixed(1);
+  return Math.round(value).toString();
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
+  return `${Math.round(ms / 60_000)} min`;
+}
+
+// ── Status rollup ─────────────────────────────────────────────────────
+
+type Severity = 'ok' | 'warn' | 'danger';
+
+/** Structured status note. Key is a translation key under
+ *  `diagnostics_page.banner`; `params` is the ICU placeholder map.
+ *  The banner component looks them up via t() so the rollup itself
+ *  stays pure logic + free of useTranslations boilerplate. */
+interface StatusNote {
+  key: string;
+  params?: Record<string, string | number>;
+}
+interface StatusSummary {
+  overall: Severity;
+  notes: StatusNote[];
+}
+
+/**
+ * Roll the available signals up into a single severity + a short list of
+ * note keys. Conservative: any one signal in `danger` makes the whole
+ * banner red; any one in `warn` makes it yellow.
+ */
+function rollupStatus(state: {
+  runtime: RuntimeMetrics | null;
+  database: DatabaseHealth | null;
+  disk: DiskSnapshot | null;
+  errors: ErrorLogEntry[];
+  jobs: ActiveJobs | null;
+  rateLimits: RateLimits | null;
+}): StatusSummary {
+  const notes: StatusNote[] = [];
+  let overall: Severity = 'ok';
+  const bump = (sev: Severity) => {
+    if (sev === 'danger' || (sev === 'warn' && overall === 'ok')) overall = sev;
+  };
+
+  if (state.runtime) {
+    if (state.runtime.eventLoop) {
+      if (state.runtime.eventLoop.severity !== 'ok') {
+        bump(state.runtime.eventLoop.severity);
+        notes.push({
+          key: state.runtime.eventLoop.severity === 'danger'
+            ? 'event_loop_danger'
+            : 'event_loop_warn',
+          params: { p99: formatMs(state.runtime.eventLoop.p99Ms) },
+        });
+      }
+    }
+    if (state.runtime.v8Heap.heapFractionUsed >= 0.85) {
+      bump('danger');
+      notes.push({
+        key: 'heap_full',
+        params: { pct: Math.round(state.runtime.v8Heap.heapFractionUsed * 100) },
+      });
+    } else if (state.runtime.v8Heap.heapFractionUsed >= 0.7) {
+      bump('warn');
+    }
+    if (state.runtime.resourceUsage.majorPageFaults >= 1000) {
+      bump('danger');
+      notes.push({ key: 'swapping' });
+    }
+  }
+
+  if (state.disk) {
+    if (state.disk.totalBytes > 0 && state.disk.freePct < 5) {
+      bump('danger');
+      notes.push({ key: 'disk_critical', params: { free: formatBytes(state.disk.freeBytes) } });
+    } else if (state.disk.totalBytes > 0 && state.disk.freePct < 10) {
+      bump('warn');
+      notes.push({ key: 'disk_low', params: { pct: state.disk.freePct } });
+    }
+  }
+
+  if (state.database?.integrityCheck?.status === 'error') {
+    bump('danger');
+    const detail = state.database.integrityCheck.detail;
+    notes.push(
+      detail
+        ? { key: 'integrity_failed_with_detail', params: { detail: detail.slice(0, 120) } }
+        : { key: 'integrity_failed_no_detail' },
+    );
+  }
+
+  if (state.rateLimits) {
+    const rl = state.rateLimits;
+    const stuck = (['search', 'scrape'] as const).filter(c => rl[c].cooldownActive);
+    if (stuck.length) {
+      bump('warn');
+      notes.push({
+        key: 'rate_limited',
+        params: {
+          cats: stuck.join(' + '),
+          remaining: stuck.map(c => formatDuration(rl[c].cooldownRemainingMs)).join(' / '),
+        },
+      });
+    }
+  }
+
+  if (state.errors.length > 0) {
+    const recentErrors = state.errors.filter(e => e.level === 'error' && Date.now() - e.at < 5 * 60_000);
+    if (recentErrors.length >= 5) {
+      bump('warn');
+      notes.push({ key: 'errors_recent', params: { count: recentErrors.length } });
+    }
+  }
+
+  if (notes.length === 0) {
+    notes.push({ key: 'no_issues' });
+  }
+
+  return { overall, notes };
+}
+
+// ── Top-level component ────────────────────────────────────────────────
+
+export default function DiagnosticsView() {
+  const t = useTranslations('diagnostics_page');
+  const tToolbar = useTranslations('diagnostics_page.toolbar');
+
+  const [metrics, setMetrics] = useState<RuntimeMetrics | null>(null);
+  const [database, setDatabase] = useState<DatabaseHealth | null>(null);
+  const [disk, setDisk] = useState<DiskSnapshot | null>(null);
+  const [errors, setErrors] = useState<ErrorLogEntry[]>([]);
+  const [jobs, setJobs] = useState<ActiveJobs | null>(null);
+  const [rateLimits, setRateLimits] = useState<RateLimits | null>(null);
+  const [flagOverrides, setFlagOverrides] = useState<FlagRow[]>([]);
+
+  const [error, setError] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [busy, setBusy] = useState<'clear' | 'profile' | 'integrity' | 'copy' | null>(null);
+  const [copyState, setCopyState] = useState<'idle' | 'ok' | 'err'>('idle');
+
+  // Rolling histories for sparklines. Each entry is one runtime poll.
+  const [history, setHistory] = useState<{
+    p99: number[];
+    rssMb: number[];
+    heapPct: number[];
+    cpuPct: number[];
+  }>({ p99: [], rssMb: [], heapPct: [], cpuPct: [] });
+
+  const inflightRuntimeRef = useRef(false);
+  const inflightAuxRef = useRef(false);
+
+  // ── Fetchers ────────────────────────────────────────────────────────
+
+  const fetchRuntime = useCallback(async () => {
+    if (inflightRuntimeRef.current) return;
+    inflightRuntimeRef.current = true;
+    try {
+      const r = await fetch('/api/diagnostics/runtime', { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const body = (await r.json()) as RuntimeMetrics;
+      setMetrics(body);
+      setError(null);
+
+      // Append to sparkline history. Cap to HISTORY_CAP so the buffer
+      // doesn't grow without bound during long sessions.
+      const cpuPct = body.uptimeSeconds > 0
+        ? Math.min(100, ((body.resourceUsage.userCpuSeconds + body.resourceUsage.systemCpuSeconds) / body.uptimeSeconds) * 100)
+        : 0;
+      setHistory(prev => ({
+        p99: [...prev.p99, body.eventLoop?.p99Ms ?? 0].slice(-HISTORY_CAP),
+        rssMb: [...prev.rssMb, body.memory.rssMb].slice(-HISTORY_CAP),
+        heapPct: [...prev.heapPct, Math.round(body.v8Heap.heapFractionUsed * 100)].slice(-HISTORY_CAP),
+        cpuPct: [...prev.cpuPct, cpuPct].slice(-HISTORY_CAP),
+      }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'fetch failed');
+    } finally {
+      inflightRuntimeRef.current = false;
+    }
+  }, []);
+
+  /** Fetch every "auxiliary" (slower-cadence) endpoint in parallel. We
+   *  catch each independently so a single broken subsystem doesn't blank
+   *  the rest of the dashboard. */
+  const fetchAuxiliary = useCallback(async () => {
+    if (inflightAuxRef.current) return;
+    inflightAuxRef.current = true;
+    try {
+      const settled = await Promise.allSettled([
+        fetch('/api/diagnostics/database', { cache: 'no-store' }).then(r => r.ok ? r.json() as Promise<DatabaseHealth> : Promise.reject(new Error(`db HTTP ${r.status}`))),
+        fetch('/api/diagnostics/disk', { cache: 'no-store' }).then(r => r.ok ? r.json() as Promise<DiskSnapshot> : Promise.reject(new Error(`disk HTTP ${r.status}`))),
+        fetch('/api/diagnostics/errors?limit=50', { cache: 'no-store' }).then(r => r.ok ? r.json() as Promise<{ entries: ErrorLogEntry[]; capacity: number }> : Promise.reject(new Error(`errors HTTP ${r.status}`))),
+        fetch('/api/tasks/active', { cache: 'no-store' }).then(r => r.ok ? r.json() as Promise<ActiveJobs> : Promise.reject(new Error(`jobs HTTP ${r.status}`))),
+        fetch('/api/rate-limit/status', { cache: 'no-store' }).then(r => r.ok ? r.json() as Promise<RateLimits> : Promise.reject(new Error(`rate HTTP ${r.status}`))),
+        fetch('/api/feature-flags', { cache: 'no-store' }).then(r => r.ok ? r.json() as Promise<{ flags: FlagRow[] }> : Promise.reject(new Error(`flags HTTP ${r.status}`))),
+      ]);
+      if (settled[0].status === 'fulfilled') setDatabase(settled[0].value);
+      if (settled[1].status === 'fulfilled') setDisk(settled[1].value);
+      if (settled[2].status === 'fulfilled') setErrors(settled[2].value.entries);
+      if (settled[3].status === 'fulfilled') setJobs(settled[3].value);
+      if (settled[4].status === 'fulfilled') setRateLimits(settled[4].value);
+      if (settled[5].status === 'fulfilled') {
+        // Only surface flags whose current value differs from the
+        // hard default — the full list is long and the diff is what
+        // matters for "why is feature X behaving oddly".
+        const diffs = settled[5].value.flags.filter(
+          (f) => f.currentValue !== f.hardDefault || f.override !== null,
+        );
+        setFlagOverrides(diffs);
+      }
+    } finally {
+      inflightAuxRef.current = false;
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    void fetchRuntime();
+    void fetchAuxiliary();
+  }, [fetchRuntime, fetchAuxiliary]);
+
+  // Runtime poll
+  useEffect(() => {
+    if (paused) return;
+    const id = window.setInterval(() => { void fetchRuntime(); }, RUNTIME_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [paused, fetchRuntime]);
+
+  // Auxiliary poll
+  useEffect(() => {
+    if (paused) return;
+    const id = window.setInterval(() => { void fetchAuxiliary(); }, AUX_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [paused, fetchAuxiliary]);
+
+  // ── Actions ─────────────────────────────────────────────────────────
+
+  const handleClear = useCallback(async () => {
+    setBusy('clear');
+    try {
+      const [runtimeRes, errorsRes] = await Promise.all([
+        fetch('/api/diagnostics/runtime', { method: 'DELETE' }),
+        fetch('/api/diagnostics/errors', { method: 'DELETE' }),
+      ]);
+      if (runtimeRes.ok) {
+        const body = (await runtimeRes.json()) as RuntimeMetrics;
+        setMetrics(body);
+        // Also reset client-side sparkline history so the line restarts
+        // from the moment the user clicked Clear.
+        setHistory({ p99: [], rssMb: [], heapPct: [], cpuPct: [] });
+        setError(null);
+      } else {
+        setError(`Clear failed: HTTP ${runtimeRes.status}`);
+      }
+      if (errorsRes.ok) {
+        const body = (await errorsRes.json()) as { entries: ErrorLogEntry[] };
+        setErrors(body.entries);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'clear failed');
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
+  const handleToggleProfiling = useCallback(async () => {
+    if (!metrics) return;
+    setBusy('profile');
+    try {
+      const r = await fetch('/api/diagnostics/runtime', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ profilingEnabled: !metrics.slowQueries.profilingEnabled }),
+      });
+      if (r.ok) {
+        const body = (await r.json()) as RuntimeMetrics;
+        setMetrics(body);
+      } else {
+        setError(`Toggle failed: HTTP ${r.status}`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'toggle failed');
+    } finally {
+      setBusy(null);
+    }
+  }, [metrics]);
+
+  const handleIntegrityCheck = useCallback(async () => {
+    setBusy('integrity');
+    try {
+      const r = await fetch('/api/diagnostics/database', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ runIntegrityCheck: true }),
+      });
+      if (r.ok) {
+        const body = (await r.json()) as DatabaseHealth;
+        setDatabase(body);
+      } else {
+        setError(`Integrity check failed: HTTP ${r.status}`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'integrity check failed');
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
+  /**
+   * Download the bundle as a `.json` file. Fetches the same blob the
+   * Copy button uses, wraps it in a Blob URL, and clicks a synthetic
+   * `<a download>`. More reliable than `window.open` because the
+   * server returns `application/json` (no Content-Disposition), which
+   * browsers render inline rather than save.
+   */
+  const handleDownloadBundle = useCallback(async () => {
+    try {
+      const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = await r.text();
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `privacytracker-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Revoke after a short delay so the download has time to start.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'download failed');
+    }
+  }, []);
+
+  const handleCopyBundle = useCallback(async () => {
+    setBusy('copy');
+    setCopyState('idle');
+    try {
+      const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = await r.text();
+      // navigator.clipboard requires HTTPS or localhost; both apply here.
+      // Fallback to a hidden textarea + execCommand only if the API is
+      // missing — Safari < 13 / very old browsers.
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(json);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = json;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopyState('ok');
+      window.setTimeout(() => setCopyState('idle'), 2500);
+    } catch (e) {
+      setCopyState('err');
+      setError(e instanceof Error ? e.message : 'copy failed');
+      window.setTimeout(() => setCopyState('idle'), 2500);
+    } finally {
+      setBusy(null);
+    }
+  }, []);
+
+  // ── Derived ─────────────────────────────────────────────────────────
+
+  const slowSorted = useMemo(() => {
+    if (!metrics) return [];
+    return [...metrics.slowQueries.recent].sort((a, b) => b.at - a.at);
+  }, [metrics]);
+
+  const status = useMemo(
+    () => rollupStatus({ runtime: metrics, database, disk, errors, jobs, rateLimits }),
+    [metrics, database, disk, errors, jobs, rateLimits],
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────
+
+  return (
+    <div className="page-container diagnostics-page">
+      <div className="page-header diagnostics-header">
+        <div>
+          <h1 className="page-title">{t('title')}</h1>
+          <p className="page-subtitle">
+            {t('subtitle', { seconds: Math.round(RUNTIME_POLL_MS / 1000) })}
+          </p>
+        </div>
+        <div className="diagnostics-toolbar">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => { void handleCopyBundle(); }}
+            disabled={busy === 'copy'}
+            title={tToolbar('copy_title')}
+          >
+            {copyState === 'ok'
+              ? tToolbar('copied')
+              : copyState === 'err'
+                ? tToolbar('copy_failed')
+                : busy === 'copy'
+                  ? tToolbar('copying')
+                  : tToolbar('copy')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => { void handleDownloadBundle(); }}
+            title={tToolbar('download_title')}
+          >
+            {tToolbar('download')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setPaused(p => !p)}
+            title={paused ? tToolbar('resume_title') : tToolbar('pause_title')}
+          >
+            {paused ? tToolbar('resume') : tToolbar('pause')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => { void handleClear(); }}
+            disabled={busy === 'clear'}
+            title={tToolbar('clear_title')}
+          >
+            {busy === 'clear' ? tToolbar('clearing') : tToolbar('clear')}
+          </button>
+        </div>
+      </div>
+
+      <StatusBanner summary={status} />
+
+      {error && (
+        <div className="diagnostics-error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {!metrics ? (
+        <div className="empty-state" style={{ padding: 32 }}>
+          {t('loading_runtime')}
+        </div>
+      ) : (
+        <div className="diagnostics-grid">
+          <EventLoopCard eventLoop={metrics.eventLoop} uptimeSeconds={metrics.uptimeSeconds} history={history.p99} />
+          <MemoryCard memory={metrics.memory} v8Heap={metrics.v8Heap} historyRss={history.rssMb} historyHeap={history.heapPct} />
+          <ResourceCard resourceUsage={metrics.resourceUsage} uptimeSeconds={metrics.uptimeSeconds} historyCpu={history.cpuPct} />
+          <DatabaseCard
+            database={database}
+            busy={busy === 'integrity'}
+            onRunIntegrityCheck={() => { void handleIntegrityCheck(); }}
+          />
+          <DiskCard disk={disk} />
+          <BackgroundJobsCard jobs={jobs} />
+          <RateLimitsCard rateLimits={rateLimits} />
+          <SlowQueryCard
+            slowQueries={metrics.slowQueries}
+            recent={slowSorted}
+            busy={busy === 'profile'}
+            onToggleProfiling={() => { void handleToggleProfiling(); }}
+          />
+          <ErrorLogCard entries={errors} />
+          <FlagsCard rows={flagOverrides} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────
+
+function StatusBanner({ summary }: { summary: StatusSummary }) {
+  const t = useTranslations('diagnostics_page.banner');
+  const heading =
+    summary.overall === 'danger' ? t('issues_detected') :
+    summary.overall === 'warn' ? t('some_warnings') : t('healthy');
+  return (
+    <section className={`diagnostics-status diagnostics-status--${summary.overall}`} role="status" aria-live="polite">
+      <div className="diagnostics-status-head">
+        <span className="diagnostics-status-dot" aria-hidden="true" />
+        <h2 className="diagnostics-status-title">{heading}</h2>
+      </div>
+      <ul className="diagnostics-status-notes">
+        {summary.notes.map((note, i) => (
+          // The cast is unfortunate but next-intl's `t()` types reject
+          // dynamic keys without it. The keys come from rollupStatus
+          // which is the only producer, so the runtime guarantee
+          // matches the type intent.
+          <li key={i}>{t(note.key as never, note.params as never)}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function EventLoopCard({
+  eventLoop,
+  uptimeSeconds,
+  history,
+}: {
+  eventLoop: RuntimeMetrics['eventLoop'];
+  uptimeSeconds: number;
+  history: number[];
+}) {
+  const t = useTranslations('diagnostics_page.card_event_loop');
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      {!eventLoop ? (
+        <div className="diagnostics-empty">{t('no_samples')}</div>
+      ) : (
+        <>
+          <div className="diagnostics-metric-row diagnostics-metric-row--hero">
+            <div className="diagnostics-metric">
+              <span className="diagnostics-metric-label">{t('p99')}</span>
+              <span className={`diagnostics-metric-value diagnostics-severity-${eventLoop.severity}`}>
+                {formatMs(eventLoop.p99Ms)}<small>ms</small>
+              </span>
+              <Sparkline
+                values={history}
+                severity={eventLoop.severity}
+                ariaLabel={t('spark_label', { seconds: HISTORY_CAP * RUNTIME_POLL_MS / 1000 })}
+              />
+            </div>
+            <SeverityBadge severity={eventLoop.severity} />
+          </div>
+          <dl className="diagnostics-kvs">
+            <KV label={t('p50')} value={`${formatMs(eventLoop.p50Ms)} ms`} />
+            <KV label={t('p95')} value={`${formatMs(eventLoop.p95Ms)} ms`} />
+            <KV label={t('mean')} value={`${formatMs(eventLoop.meanMs)} ms`} />
+            <KV label={t('max')} value={`${formatMs(eventLoop.maxMs)} ms`} />
+            <KV label={t('stddev')} value={`${formatMs(eventLoop.stddevMs)} ms`} />
+            <KV label={t('window')} value={`${formatUptime(eventLoop.windowSeconds)}`} />
+            <KV label={t('samples')} value={eventLoop.samples.toLocaleString()} />
+            <KV label={t('uptime')} value={formatUptime(uptimeSeconds)} />
+          </dl>
+        </>
+      )}
+    </section>
+  );
+}
+
+function MemoryCard({
+  memory,
+  v8Heap,
+  historyRss,
+  historyHeap,
+}: {
+  memory: RuntimeMetrics['memory'];
+  v8Heap: RuntimeMetrics['v8Heap'];
+  historyRss: number[];
+  historyHeap: number[];
+}) {
+  const t = useTranslations('diagnostics_page.card_memory');
+  const heapPct = Math.round(v8Heap.heapFractionUsed * 100);
+  const heapSeverity: Severity =
+    v8Heap.heapFractionUsed >= 0.85 ? 'danger' :
+    v8Heap.heapFractionUsed >= 0.7 ? 'warn' : 'ok';
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      <div className="diagnostics-metric-row diagnostics-metric-row--hero">
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('rss')}</span>
+          <span className="diagnostics-metric-value">{memory.rssMb}<small>MB</small></span>
+          <Sparkline values={historyRss} ariaLabel={t('spark_rss')} />
+        </div>
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('v8_heap')}</span>
+          <span className={`diagnostics-metric-value diagnostics-severity-${heapSeverity}`}>
+            {heapPct}<small>%</small>
+          </span>
+          <Sparkline values={historyHeap} severity={heapSeverity} ariaLabel={t('spark_heap')} />
+        </div>
+      </div>
+      <dl className="diagnostics-kvs">
+        <KV label={t('heap_used')} value={`${memory.heapUsedMb} MB`} />
+        <KV label={t('heap_total')} value={`${memory.heapTotalMb} MB`} />
+        <KV label={t('heap_limit')} value={`${v8Heap.heapSizeLimitMb} MB`} />
+        <KV label={t('external')} value={`${memory.externalMb} MB`} />
+        <KV label={t('array_buffers')} value={`${memory.arrayBuffersMb} MB`} />
+        <KV label={t('malloced')} value={`${v8Heap.mallocedMemoryMb} MB`} />
+      </dl>
+    </section>
+  );
+}
+
+function ResourceCard({
+  resourceUsage,
+  uptimeSeconds,
+  historyCpu,
+}: {
+  resourceUsage: RuntimeMetrics['resourceUsage'];
+  uptimeSeconds: number;
+  historyCpu: number[];
+}) {
+  const t = useTranslations('diagnostics_page.card_resource');
+  const cpuPct = uptimeSeconds > 0
+    ? Math.round(((resourceUsage.userCpuSeconds + resourceUsage.systemCpuSeconds) / uptimeSeconds) * 100)
+    : 0;
+  const majorFaultsSeverity: Severity =
+    resourceUsage.majorPageFaults >= 1000 ? 'danger' :
+    resourceUsage.majorPageFaults >= 100 ? 'warn' : 'ok';
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      <div className="diagnostics-metric-row diagnostics-metric-row--hero">
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('avg_cpu')}</span>
+          <span className="diagnostics-metric-value">{cpuPct}<small>%</small></span>
+          <Sparkline values={historyCpu} ariaLabel={t('spark_cpu')} />
+        </div>
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('major_faults')}</span>
+          <span className={`diagnostics-metric-value diagnostics-severity-${majorFaultsSeverity}`}>
+            {resourceUsage.majorPageFaults.toLocaleString()}
+          </span>
+        </div>
+      </div>
+      <dl className="diagnostics-kvs">
+        <KV label={t('user_cpu')} value={`${resourceUsage.userCpuSeconds.toFixed(1)} s`} />
+        <KV label={t('system_cpu')} value={`${resourceUsage.systemCpuSeconds.toFixed(1)} s`} />
+        <KV label={t('peak_rss')} value={`${resourceUsage.maxRssMb} MB`} />
+        <KV label={t('minor_faults')} value={resourceUsage.minorPageFaults.toLocaleString()} />
+        <KV label={t('vol_ctx_sw')} value={resourceUsage.voluntaryContextSwitches.toLocaleString()} />
+        <KV label={t('invol_ctx_sw')} value={resourceUsage.involuntaryContextSwitches.toLocaleString()} />
+      </dl>
+    </section>
+  );
+}
+
+function DatabaseCard({
+  database,
+  busy,
+  onRunIntegrityCheck,
+}: {
+  database: DatabaseHealth | null;
+  busy: boolean;
+  onRunIntegrityCheck: () => void;
+}) {
+  const t = useTranslations('diagnostics_page.card_database');
+  const tLoad = useTranslations('diagnostics_page');
+  if (!database) {
+    return (
+      <section className="diagnostics-card">
+        <header className="diagnostics-card-header">
+          <h2 className="diagnostics-card-title">{t('title')}</h2>
+          <p className="diagnostics-card-help">{t('subtitle_loading')}</p>
+        </header>
+        <div className="diagnostics-empty">{tLoad('loading')}</div>
+      </section>
+    );
+  }
+  const fragSeverity: Severity =
+    database.utilisationPct < 60 ? 'warn' : 'ok';
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      <div className="diagnostics-metric-row diagnostics-metric-row--hero">
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('file_size')}</span>
+          <span className="diagnostics-metric-value">{formatBytes(database.fileBytes)}</span>
+        </div>
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('utilisation')}</span>
+          <span className={`diagnostics-metric-value diagnostics-severity-${fragSeverity}`}>
+            {database.utilisationPct}<small>%</small>
+          </span>
+        </div>
+      </div>
+      <dl className="diagnostics-kvs">
+        <KV label={t('wal')} value={formatBytes(database.walBytes)} />
+        <KV label={t('shm')} value={formatBytes(database.shmBytes)} />
+        <KV label={t('pages')} value={database.pageCount.toLocaleString()} />
+        <KV label={t('page_size')} value={formatBytes(database.pageSize)} />
+        <KV label={t('free_pages')} value={database.freelistCount.toLocaleString()} />
+        <KV label={t('journal')} value={database.journalMode} />
+        <KV label={t('busy_timeout')} value={`${database.busyTimeoutMs} ms`} />
+        <KV label={t('fk_enforcement')} value={database.foreignKeysEnabled ? t('fk_on') : t('fk_off')} />
+      </dl>
+      <div className="diagnostics-card-actions">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={onRunIntegrityCheck}
+          disabled={busy}
+          title={t('integrity_check_title')}
+        >
+          {busy ? t('running') : t('run_integrity_check')}
+        </button>
+        {database.integrityCheck && (
+          <span
+            className={`diagnostics-pill diagnostics-severity-${database.integrityCheck.status === 'ok' ? 'ok' : 'danger'}`}
+            title={database.integrityCheck.detail ?? ''}
+          >
+            {database.integrityCheck.status === 'ok' ? '✓' : '✗'} {database.integrityCheck.status}
+            {' · '}{formatRelative(database.integrityCheck.checkedAt)}
+            {' · '}{formatDuration(database.integrityCheck.durationMs)}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DiskCard({ disk }: { disk: DiskSnapshot | null }) {
+  const t = useTranslations('diagnostics_page.card_disk');
+  const tLoad = useTranslations('diagnostics_page');
+  if (!disk) {
+    return (
+      <section className="diagnostics-card">
+        <header className="diagnostics-card-header">
+          <h2 className="diagnostics-card-title">{t('title')}</h2>
+          <p className="diagnostics-card-help">{t('subtitle_loading')}</p>
+        </header>
+        <div className="diagnostics-empty">{tLoad('loading')}</div>
+      </section>
+    );
+  }
+  const freeSeverity: Severity =
+    disk.totalBytes === 0 ? 'ok' :
+    disk.freePct < 5 ? 'danger' :
+    disk.freePct < 10 ? 'warn' : 'ok';
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      <div className="diagnostics-metric-row diagnostics-metric-row--hero">
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('free')}</span>
+          <span className={`diagnostics-metric-value diagnostics-severity-${freeSeverity}`}>
+            {disk.totalBytes > 0 ? `${disk.freePct}%` : tLoad('em_dash')}
+          </span>
+        </div>
+        <div className="diagnostics-metric">
+          <span className="diagnostics-metric-label">{t('data_dir')}</span>
+          <span className="diagnostics-metric-value">{formatBytes(disk.dataDirBytes)}</span>
+        </div>
+      </div>
+      <dl className="diagnostics-kvs">
+        <KV label={t('free_space')} value={formatBytes(disk.freeBytes)} />
+        <KV label={t('volume_total')} value={formatBytes(disk.totalBytes)} />
+        <KV label={t('db')} value={formatBytes(disk.files.db)} />
+        <KV label={t('wal')} value={formatBytes(disk.files.wal)} />
+        <KV label={t('shm')} value={formatBytes(disk.files.shm)} />
+        <KV label={t('backups_dir')} value={formatBytes(disk.files.backups)} />
+        <KV label={t('snapshots')} value={disk.backupSnapshotCount.toString()} />
+        <KV
+          label={t('last_backup')}
+          value={disk.lastBackupSnapshotAt ? formatRelative(disk.lastBackupSnapshotAt) : t('last_backup_none')}
+        />
+      </dl>
+    </section>
+  );
+}
+
+function BackgroundJobsCard({ jobs }: { jobs: ActiveJobs | null }) {
+  const t = useTranslations('diagnostics_page.card_jobs');
+  const tLoad = useTranslations('diagnostics_page');
+  if (!jobs) {
+    return (
+      <section className="diagnostics-card">
+        <header className="diagnostics-card-header">
+          <h2 className="diagnostics-card-title">{t('title')}</h2>
+          <p className="diagnostics-card-help">{t('subtitle_loading')}</p>
+        </header>
+        <div className="diagnostics-empty">{tLoad('loading')}</div>
+      </section>
+    );
+  }
+  const dash = tLoad('em_dash');
+  const rows: Array<{ name: string; view: ActiveJobView }> = [
+    { name: t('row_sync'), view: jobs.sync },
+    { name: t('row_wayback'), view: jobs.wayback },
+    { name: t('row_policy'), view: jobs.policy },
+  ];
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      <div className="diagnostics-table-wrap">
+        <table className="diagnostics-table">
+          <thead>
+            <tr>
+              <th>{t('col_job')}</th>
+              <th>{t('col_state')}</th>
+              <th>{t('col_initiator')}</th>
+              <th>{t('col_current')}</th>
+              <th>{t('col_progress')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ name, view }) => {
+              const stateLabel = view.running
+                ? t('state_running')
+                : view.stale
+                  ? t('state_stale')
+                  : t('state_idle');
+              const sevCls =
+                view.stale ? 'diagnostics-severity-danger' :
+                view.running ? 'diagnostics-severity-warn' : '';
+              const progress = view.summary
+                ? t('progress_format', {
+                    done: view.summary.done,
+                    total: view.summary.total,
+                    failed: view.summary.failed,
+                  })
+                : dash;
+              return (
+                <tr key={name}>
+                  <td>{name}</td>
+                  <td className={sevCls}><code>{stateLabel}</code></td>
+                  <td>{view.initiator ?? dash}</td>
+                  <td>{view.currentAppName ?? dash}</td>
+                  <td>{progress}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function RateLimitsCard({ rateLimits }: { rateLimits: RateLimits | null }) {
+  const t = useTranslations('diagnostics_page.card_rate_limits');
+  const tLoad = useTranslations('diagnostics_page');
+  if (!rateLimits) {
+    return (
+      <section className="diagnostics-card">
+        <header className="diagnostics-card-header">
+          <h2 className="diagnostics-card-title">{t('title')}</h2>
+          <p className="diagnostics-card-help">{t('subtitle_loading')}</p>
+        </header>
+        <div className="diagnostics-empty">{tLoad('loading')}</div>
+      </section>
+    );
+  }
+  const dash = tLoad('em_dash');
+  const cats: Array<{ label: string; v: RateLimitCategoryState }> = [
+    { label: t('row_search'), v: rateLimits.search },
+    { label: t('row_scrape'), v: rateLimits.scrape },
+  ];
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      <div className="diagnostics-table-wrap">
+        <table className="diagnostics-table">
+          <thead>
+            <tr>
+              <th>{t('col_category')}</th>
+              <th>{t('col_cooldown')}</th>
+              <th>{t('col_remaining')}</th>
+              <th>{t('col_bucket')}</th>
+              <th>{t('col_reason')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cats.map(({ label, v }) => (
+              <tr key={v.category}>
+                <td>{label}</td>
+                <td>
+                  <code className={v.cooldownActive ? 'diagnostics-severity-danger' : ''}>
+                    {v.cooldownActive ? t('cooldown_active') : t('cooldown_idle')}
+                  </code>
+                </td>
+                <td>{v.cooldownActive ? formatDuration(v.cooldownRemainingMs) : dash}</td>
+                <td>
+                  {typeof v.bucketTokens === 'number' && typeof v.bucketCapacity === 'number'
+                    ? `${v.bucketTokens.toFixed(1)} / ${v.bucketCapacity}`
+                    : dash}
+                </td>
+                <td className="diagnostics-sql">{v.reason ?? dash}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function SlowQueryCard({
+  slowQueries,
+  recent,
+  busy,
+  onToggleProfiling,
+}: {
+  slowQueries: RuntimeMetrics['slowQueries'];
+  recent: SlowQueryRecord[];
+  busy: boolean;
+  onToggleProfiling: () => void;
+}) {
+  const t = useTranslations('diagnostics_page.card_slow_query');
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <h2 className="diagnostics-card-title">
+              {t('title')}
+              <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
+                {t('threshold_pill', { ms: slowQueries.thresholdMs })}
+              </span>
+            </h2>
+            <p className="diagnostics-card-help">
+              {t('help', { total: slowQueries.totalSinceStart, recent: recent.length })}
+            </p>
+          </div>
+          <label className="diagnostics-toggle">
+            <input
+              type="checkbox"
+              checked={slowQueries.profilingEnabled}
+              onChange={onToggleProfiling}
+              disabled={busy}
+            />
+            <span>{t('toggle_label')}</span>
+          </label>
+        </div>
+      </header>
+      {recent.length === 0 ? (
+        <div className="diagnostics-empty">
+          {slowQueries.profilingEnabled ? t('no_slow') : t('profiling_off')}
+        </div>
+      ) : (
+        <div className="diagnostics-table-wrap">
+          <table className="diagnostics-table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>{t('col_time')}</th>
+                <th style={{ width: 90 }}>{t('col_duration')}</th>
+                <th style={{ width: 70 }}>{t('col_method')}</th>
+                <th style={{ width: 70 }}>{t('col_params')}</th>
+                <th>{t('col_sql')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((q, i) => {
+                const sevCls = q.durationMs >= 1000
+                  ? 'diagnostics-severity-danger'
+                  : q.durationMs >= 250
+                    ? 'diagnostics-severity-warn'
+                    : '';
+                return (
+                  <tr key={`${q.at}-${i}`}>
+                    <td title={new Date(q.at).toISOString()}>{formatRelative(q.at)}</td>
+                    <td className={sevCls}>{formatMs(q.durationMs)} ms</td>
+                    <td><code>{q.method}</code></td>
+                    <td>{q.paramCount}</td>
+                    <td className="diagnostics-sql">
+                      <code>{q.sql}</code>
+                      {q.error && (
+                        <div className="diagnostics-error-line" role="note">
+                          ✗ {q.error}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ErrorLogCard({ entries }: { entries: ErrorLogEntry[] }) {
+  const t = useTranslations('diagnostics_page.card_error_log');
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help', { count: entries.length })}</p>
+      </header>
+      {entries.length === 0 ? (
+        <div className="diagnostics-empty">{t('no_errors')}</div>
+      ) : (
+        <div className="diagnostics-table-wrap">
+          <table className="diagnostics-table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>{t('col_time')}</th>
+                <th style={{ width: 70 }}>{t('col_level')}</th>
+                <th>{t('col_message')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e, i) => (
+                <tr key={`${e.at}-${i}`}>
+                  <td title={new Date(e.at).toISOString()}>{formatRelative(e.at)}</td>
+                  <td>
+                    <code className={`diagnostics-severity-${e.level === 'error' ? 'danger' : 'warn'}`}>
+                      {e.level}
+                    </code>
+                  </td>
+                  <td className="diagnostics-sql">
+                    <code>{e.message}</code>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function FlagsCard({ rows }: { rows: FlagRow[] }) {
+  const t = useTranslations('diagnostics_page.card_flags');
+  const tLoad = useTranslations('diagnostics_page');
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t('title')}</h2>
+        <p className="diagnostics-card-help">{t('help')}</p>
+      </header>
+      {rows.length === 0 ? (
+        <div className="diagnostics-empty">{t('no_overrides')}</div>
+      ) : (
+        <div className="diagnostics-table-wrap">
+          <table className="diagnostics-table">
+            <thead>
+              <tr>
+                <th>{t('col_key')}</th>
+                <th>{t('col_default')}</th>
+                <th>{t('col_current')}</th>
+                <th>{t('col_override')}</th>
+                <th>{t('col_wired')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.key}>
+                  <td><code>{r.key}</code></td>
+                  <td><code>{r.hardDefault}</code></td>
+                  <td><code>{r.currentValue}</code></td>
+                  <td>{r.override === null ? tLoad('em_dash') : <code>{r.override}</code>}</td>
+                  <td>{r.wired ? t('wired_yes') : t('wired_no')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ── Bits ─────────────────────────────────────────────────────────────
+
+function KV({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="diagnostics-kv">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function SeverityBadge({ severity }: { severity: Severity }) {
+  const t = useTranslations('diagnostics_page.severity_pill');
+  const label =
+    severity === 'danger' ? t('beach_balling') :
+    severity === 'warn' ? t('jank') : t('healthy');
+  return (
+    <span className={`diagnostics-severity-pill diagnostics-severity-${severity}`}>
+      {label}
+    </span>
+  );
+}

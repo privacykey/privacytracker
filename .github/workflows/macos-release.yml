@@ -1,0 +1,442 @@
+# Signed + notarized macOS desktop release.
+#
+# Triggered on push of a v*.*.* tag (the normal path) or manually via the
+# Actions UI (handy for dry-runs and testing the pipeline without cutting a
+# real release).
+#
+# The signing job lives in the `macos-signing` GitHub Environment. That
+# environment is configured (via repo Settings → Environments) with:
+#
+#   • Required reviewer = @privacykey (the repo owner). Every run pauses
+#     for your approval before secrets are decrypted. Even a collaborator
+#     with write access can't sign without you green-lighting the run.
+#
+#   • Deployment branches and tags = "Selected branches and tags", limited
+#     to `v*`. A push to any branch that isn't a signed tag can't read the
+#     signing secrets.
+#
+#   • Secrets are scoped to the environment (not the repo). Pull requests
+#     from forks can't see them — GitHub strips environment secrets for
+#     untrusted PRs at the platform level.
+#
+# See https://privacytracker-docs.privacykey.org/develop/build-from-source for the one-time setup of certificates, the App
+# Store Connect API key, and the Tauri updater key.
+
+name: macOS desktop release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release as (e.g. v0.1.0). Created/used as a draft release.'
+        required: true
+        type: string
+      dry_run:
+        description: 'If true, build and sign but skip notarization + release upload.'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  # Node 24 LTS ("Krypton"), active-LTS channel through Apr 2028.
+  # Must match the sidecar Node version packaged into src-tauri/binaries/
+  # so better-sqlite3's native ABI lines up — see comments further down.
+  NODE_VERSION: '24.15.0'
+
+permissions:
+  # Needed so tauri-action can upload artifacts to the draft release.
+  contents: write
+
+jobs:
+  build-and-sign:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    # Environment-scoped secrets + required reviewer gate. Runs won't start
+    # the signing step until you approve in the Actions UI.
+    environment: macos-signing
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-15 is the current stable GitHub-hosted macOS image.
+          # Apple Silicon is the native architecture — arm64 builds are
+          # compiled on-host. macos-14 is mid-deprecation (fully unsupported
+          # by Nov 2, 2026) and macos-13 (the last native-Intel image) was
+          # retired on Dec 4, 2025, so Intel builds now have to cross-compile
+          # from an arm64 host — see the "Install Rust toolchain" step + the
+          # npm_config_* env on the x64 matrix leg.
+          #
+          # When you're ready to jump to the newest image, bump both `os:`
+          # lines below to `macos-26` (GA since Feb 2026). The rest of the
+          # pipeline is image-agnostic.
+          - os: macos-15
+            target: aarch64-apple-darwin
+            node_arch: arm64
+          - os: macos-15
+            target: x86_64-apple-darwin
+            node_arch: x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11
+
+      - name: Install Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install Rust toolchain (${{ matrix.target }})
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Installing the target triple is enough for `cargo build
+          # --target x86_64-apple-darwin` to cross-compile from an arm64
+          # runner. Apple ships the SDK for both slices in every recent
+          # Xcode, so no extra SDK juggling is needed here.
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ matrix.target }}-
+
+      # Install JS deps. For the x64 matrix leg we're on an arm64 runner but
+      # building an Intel app, so we set npm_config_* to coax node-gyp /
+      # prebuild-install into fetching x64 prebuilts for native modules
+      # (notably better-sqlite3). Without this, better-sqlite3 would pick
+      # its host-arch prebuild and the resulting .app would crash on any
+      # Intel Mac with a NODE_MODULE_VERSION / arch mismatch on first
+      # `require('better-sqlite3')`. pnpm honours the same `npm_config_*`
+      # env vars when invoking node-gyp / prebuild-install for transitive
+      # native deps.
+      - name: Install JS deps
+        env:
+          npm_config_target_arch: ${{ matrix.node_arch }}
+          npm_config_target_platform: darwin
+          npm_config_target_libc: unknown
+        run: pnpm install --frozen-lockfile
+
+      # Fetch the exact Node binary we ship as a sidecar. Must match the
+      # NODE_MODULE_VERSION that `better-sqlite3` was installed against in
+      # the step above — pinning NODE_VERSION at the top of this file
+      # guarantees the match.
+      - name: Download bundled Node ${{ env.NODE_VERSION }} (${{ matrix.node_arch }})
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-${{ matrix.node_arch }}.tar.gz" \
+            | tar xz -C /tmp
+          mkdir -p src-tauri/binaries
+          cp "/tmp/node-v${NODE_VERSION}-darwin-${{ matrix.node_arch }}/bin/node" \
+            "src-tauri/binaries/node-${{ matrix.target }}"
+          chmod +x "src-tauri/binaries/node-${{ matrix.target }}"
+          # An unsuffixed copy too, for any host-side build probes.
+          cp "src-tauri/binaries/node-${{ matrix.target }}" src-tauri/binaries/node
+
+      - name: Stage Next.js standalone bundle
+        # TAURI_BUILD_TARGET tells scripts/stage-standalone.mjs which
+        # Node binary to drop into the .node-helper.app bundle that
+        # ships inside standalone.tar. This matters for the x86_64 leg
+        # which runs on an arm64 runner — host arch != target arch, so
+        # without an explicit target the staging script would package
+        # the host's arm64 Node into the Intel .app and crash on
+        # launch on Intel Macs.
+        env:
+          TAURI_BUILD_TARGET: ${{ matrix.target }}
+        run: pnpm build:standalone
+
+      # Materialise the App Store Connect API key (.p8) to disk. The secret
+      # stores the file *contents*; notarytool needs a file path. We write
+      # it with mode 600 into $RUNNER_TEMP and delete it in the cleanup
+      # step regardless of outcome. The runner VM is destroyed at job end
+      # anyway, so this is belt-and-braces.
+      - name: Write App Store Connect API key
+        id: write-api-key
+        run: |
+          set -euo pipefail
+          p8_path="${RUNNER_TEMP}/appstoreconnect.p8"
+          umask 077
+          printf '%s' "${APPLE_API_KEY}" > "${p8_path}"
+          echo "p8_path=${p8_path}" >> "$GITHUB_OUTPUT"
+        env:
+          # The full .p8 file contents (multi-line PEM).
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+
+      # The Tauri action handles:
+      #   • Decoding APPLE_CERTIFICATE (base64 p12) into a temporary keychain
+      #   • Running `tauri build --target ${{ matrix.target }}`
+      #   • Invoking notarytool with the App Store Connect API key creds
+      #   • Stapling the notarization ticket onto the .app and .dmg
+      #   • Signing the .app.tar.gz updater payload with TAURI_SIGNING_*
+      #   • Uploading the resulting artifacts to a draft release when a tag
+      #     push fires this workflow (see `tagName` / `releaseName` below).
+      - name: Build, sign, notarize, and upload
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # --- Apple Developer ID (signing) ---
+          # APPLE_CERTIFICATE is the base64 of your Developer ID Application
+          # p12 export. APPLE_SIGNING_IDENTITY is the human string that
+          # appears in Keychain Access next to the cert, e.g.
+          #   "Developer ID Application: Your Name (ABCD123456)"
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+
+          # --- App Store Connect API key (notarization) ---
+          # Preferred path for CI — revocable from App Store Connect with
+          # one click and unaffected by Apple ID 2FA prompts. The legacy
+          # APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID vars are also honoured
+          # by notarytool if you'd rather use an app-specific password.
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY_PATH: ${{ steps.write-api-key.outputs.p8_path }}
+
+          # --- Tauri updater signing (ed25519) ---
+          # Generate with: npx @tauri-apps/cli signer generate -w <path>
+          # Put the PRIVATE key contents in TAURI_SIGNING_PRIVATE_KEY; put
+          # the public key (printed by the generator) in tauri.conf.json
+          # under plugins.updater.pubkey.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+          # Skip notarization on dry-runs so you can shake out build issues
+          # without burning notarytool quota. The Tauri bundler reads this
+          # flag via its own env-var shim, not a CLI arg.
+          TAURI_BUNDLE_SKIP_NOTARIZE: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+
+          # --- Cross-compile target awareness ---
+          # tauri-action runs `tauri build --target ${{ matrix.target }}`
+          # which invokes the beforeBuildCommand (pnpm build:standalone),
+          # which calls scripts/stage-standalone.mjs. The staging script
+          # picks the bundled Node binary based on TAURI_BUILD_TARGET
+          # rather than the host arch — see the comment in that script.
+          # This export keeps the explicit-stage step (above) and the
+          # tauri-action's implicit re-run consistent.
+          TAURI_BUILD_TARGET: ${{ matrix.target }}
+        with:
+          tauriScript: pnpm tauri --
+          args: --target ${{ matrix.target }}
+          # Draft release keyed on the git tag. On tag push, GITHUB_REF_NAME
+          # is the tag (e.g. v0.1.0). On workflow_dispatch, use the input.
+          tagName: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+          releaseName: "privacytracker ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+          # Don't upload a per-leg latest.json — each matrix leg would
+          # otherwise overwrite the previous one with a single-platform
+          # manifest, so whichever arch finishes second wins and the
+          # other platform's signature is dropped. The `assemble-latest-json`
+          # job below merges both legs' .sig payloads into one manifest
+          # that lists every platform we ship.
+          includeUpdaterJson: false
+
+      # Stage the per-arch bundle artefacts (.app.tar.gz + .sig) so the
+      # assemble job can read signatures without re-running the build.
+      # The .dmg / .app are already attached to the draft release by the
+      # tauri-action step above; we only need the updater payloads here.
+      - name: Stage updater payload for assemble job
+        if: success()
+        run: |
+          set -euo pipefail
+          BUNDLE=src-tauri/target/${{ matrix.target }}/release/bundle/macos
+          STAGE=updater-stage/${{ matrix.target }}
+          mkdir -p "$STAGE"
+          # Copy if present; tauri-action already uploaded these to the
+          # draft release, so a missing file here is the build silently
+          # skipping the updater payload — fail loud rather than ship a
+          # latest.json without this arch.
+          cp "$BUNDLE"/*.app.tar.gz     "$STAGE/"
+          cp "$BUNDLE"/*.app.tar.gz.sig "$STAGE/"
+          ls -la "$STAGE"
+
+      - name: Upload updater payload artefact
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: updater-${{ matrix.target }}
+          path: updater-stage/${{ matrix.target }}/
+          if-no-files-found: error
+          retention-days: 7
+
+      # Always runs — even if the signing step failed — so private key
+      # material doesn't survive one second longer than it has to. The
+      # runner VM is destroyed after the job completes anyway, but this
+      # protects against a mid-run `actions/upload-artifact` accidentally
+      # grabbing the file if a future edit adds one.
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -f "${{ steps.write-api-key.outputs.p8_path }}" 2>/dev/null || true
+          security delete-keychain build.keychain 2>/dev/null || true
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Assemble a single multi-platform latest.json from the per-arch
+  # signatures the build matrix produced, and attach it to the draft
+  # release. This is what `tauri-plugin-updater` polls — its endpoint in
+  # src-tauri/tauri.conf.json points at:
+  #
+  #   https://github.com/<owner>/<repo>/releases/latest/download/latest.json
+  #
+  # which redirects to whichever release is currently published. Until you
+  # promote the draft, the updater sees the *previous* release's manifest
+  # and stays put — so this job is safe to run before you've decided to
+  # ship.
+  #
+  # Manifest shape (Tauri v2 spec):
+  #
+  #   {
+  #     "version":   "0.1.0",
+  #     "notes":     "<release body, plain text>",
+  #     "pub_date":  "2026-04-26T10:00:00Z",
+  #     "platforms": {
+  #       "darwin-aarch64": { "signature": "<base64 .sig>", "url": "<.app.tar.gz URL>" },
+  #       "darwin-x86_64":  { "signature": "<base64 .sig>", "url": "<.app.tar.gz URL>" }
+  #     }
+  #   }
+  #
+  # Tauri compares `version` against the running build's package.json
+  # version using semver semantics (so 0.1.0-beta.1 < 0.1.0 — see
+  # lib/update-check.ts compareVersions for the matching client-side rule).
+  # ─────────────────────────────────────────────────────────────────────
+  assemble-latest-json:
+    name: Assemble + publish latest.json
+    needs: build-and-sign
+    runs-on: macos-15
+    # Skip on dry-runs — the .sig files won't have hit the draft release
+    # yet, and there's no point computing a manifest you're not going to
+    # publish.
+    if: ${{ !(github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true') }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve release context
+        id: ctx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG='${{ github.event.inputs.tag }}'
+          else
+            TAG='${{ github.ref_name }}'
+          fi
+          # Strip the leading 'v' for the manifest version field. Tauri
+          # compares semver values, not tag strings.
+          VERSION="${TAG#v}"
+          # Pull the release body for the `notes` field. The release was
+          # created (as a draft) by tauri-action in the build job.
+          gh release view "$TAG" --repo "${GITHUB_REPOSITORY}" --json body --jq '.body' > release_notes.txt || echo '' > release_notes.txt
+          echo "tag=$TAG"                                       >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION"                               >> "$GITHUB_OUTPUT"
+          echo "pub_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"        >> "$GITHUB_OUTPUT"
+
+      - name: Download per-arch updater artefacts
+        uses: actions/download-artifact@v7
+        with:
+          path: updater
+          pattern: updater-*
+          merge-multiple: false
+
+      - name: Generate latest.json
+        id: manifest
+        env:
+          TAG:      ${{ steps.ctx.outputs.tag }}
+          VERSION:  ${{ steps.ctx.outputs.version }}
+          PUB_DATE: ${{ steps.ctx.outputs.pub_date }}
+          REPO:     ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Map cargo target triples → Tauri platform keys.
+          declare -A PLATFORM_KEY=(
+            [aarch64-apple-darwin]=darwin-aarch64
+            [x86_64-apple-darwin]=darwin-x86_64
+          )
+
+          NOTES=$(cat release_notes.txt)
+          PLATFORMS='{}'
+
+          for ARCH_DIR in updater/updater-*/; do
+            TRIPLE=$(basename "$ARCH_DIR" | sed 's/^updater-//')
+            KEY=${PLATFORM_KEY[$TRIPLE]:-}
+            if [ -z "$KEY" ]; then
+              echo "::warning::Unknown target triple $TRIPLE — skipping"
+              continue
+            fi
+
+            SIG_FILE=$(ls "$ARCH_DIR"*.app.tar.gz.sig 2>/dev/null | head -n1 || true)
+            BIN_FILE=$(ls "$ARCH_DIR"*.app.tar.gz     2>/dev/null | head -n1 || true)
+            if [ -z "$SIG_FILE" ] || [ -z "$BIN_FILE" ]; then
+              echo "::warning::$KEY — missing .sig or .app.tar.gz; dropping from manifest"
+              continue
+            fi
+
+            BIN_NAME=$(basename "$BIN_FILE")
+            URL="https://github.com/${REPO}/releases/download/${TAG}/${BIN_NAME}"
+            SIG=$(cat "$SIG_FILE")
+
+            PLATFORMS=$(jq -n \
+              --argjson p "$PLATFORMS" \
+              --arg key "$KEY" \
+              --arg sig "$SIG" \
+              --arg url "$URL" \
+              '$p + {($key): {signature: $sig, url: $url}}')
+          done
+
+          # Sanity check — refuse to publish a manifest with no platforms.
+          # Better to fail the workflow loudly than ship an updater
+          # endpoint that says "no update available" forever.
+          PCOUNT=$(echo "$PLATFORMS" | jq 'length')
+          if [ "$PCOUNT" -lt 1 ]; then
+            echo "::error::latest.json would have zero platforms — failing"
+            exit 1
+          fi
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$PUB_DATE" \
+            --argjson platforms "$PLATFORMS" \
+            '{version: $version, notes: $notes, pub_date: $pub_date, platforms: $platforms}' \
+            > latest.json
+
+          echo '----- latest.json -----'
+          cat latest.json
+          echo '-----------------------'
+
+      - name: Upload latest.json to draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG:      ${{ steps.ctx.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" latest.json --clobber --repo "${GITHUB_REPOSITORY}"
+
+      # Mirrors the per-arch upload — keeps the assembled manifest visible
+      # on the workflow run page even if a future revert pulls it off the
+      # release. Useful when debugging "why does the updater think we're
+      # already on latest" reports.
+      - name: Upload latest.json as workflow artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: latest-json
+          path: latest.json
+          if-no-files-found: error
+          retention-days: 30

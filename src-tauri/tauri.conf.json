@@ -1,0 +1,85 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "privacytracker",
+  "version": "../package.json",
+  "identifier": "org.privacykey.privacytracker",
+  "build": {
+    "beforeDevCommand": "pnpm build:standalone:dev",
+    "beforeBuildCommand": "pnpm build:standalone",
+    "frontendDist": "../src-tauri/resources/frontend-placeholder",
+    "devUrl": null
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "privacytracker",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "visible": false,
+        "url": "about:blank"
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": ["main"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "resources/standalone.tar": "standalone.tar"
+    },
+    "externalBin": [],
+    "category": "DeveloperTool",
+    "shortDescription": "Apple App Store privacy-label tracker",
+    "longDescription": "privacytracker watches the privacy labels Apple publishes for the apps you install on your iPhone, diffs each one over time, summarises developer privacy policies with a local or cloud LLM, and back-fills history from the Internet Archive.",
+    "copyright": "© 2026 privacykey",
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "wix": {
+        "language": ["en-US"]
+      },
+      "nsis": {
+        "installMode": "perMachine",
+        "languages": ["English"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJGM0QyMDVBMDJGMzIwRTcKUldUbklQTUNXaUE5TCtjYzFFbmp5V0cvcm1tN1Y2QlNoeXFrcms4VThaMUI3WEQ2SExnOTNUV1EK",
+      "endpoints": [
+        "https://github.com/privacykey/privacytracker/releases/latest/download/latest.json"
+      ]
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["privacytracker"]
+      }
+    }
+  }
+}

@@ -1,0 +1,276 @@
+/**
+ * Main-thread client for the SQLite write worker.
+ *
+ * Lazily spawns a single `worker_threads` Worker on first use and forwards
+ * bulk-write batches via postMessage. The worker is a singleton — it holds a
+ * better-sqlite3 connection that's expensive to open, and re-spawning per
+ * request would also fight with the main thread on WAL rotation. Crashes
+ * trigger auto-respawn.
+ *
+ * The API is generic: callers build their own SQL + param arrays and post
+ * them through `runBulkWrite()`. Domain logic stays close to call sites.
+ *
+ * Both main thread and worker hold writer connections; they serialise on
+ * the WAL write lock with `busy_timeout=5000` handling contention.
+ *
+ * When `worker_threads` are unavailable or `WORKER_DISABLED=1`, falls back
+ * transparently to inline execution on the main thread.
+ */
+
+import path from 'path';
+import { dbPath } from './db';
+import type {
+  DbWorkerExecuteRequest,
+  DbWorkerResponse,
+  DbWorkerStatement,
+} from './db-worker-types';
+
+// Lazy `worker_threads` import — top-level import would fail in build
+// environments (e.g. edge runtime compile pass) that lack it.
+
+interface WorkerLike {
+  postMessage: (msg: DbWorkerExecuteRequest) => void;
+  on: (event: 'message' | 'error' | 'exit', listener: (...args: unknown[]) => void) => void;
+  unref?: () => void;
+  terminate: () => Promise<number>;
+}
+
+interface PendingRequest {
+  resolve: (response: DbWorkerResponse) => void;
+  reject: (err: Error) => void;
+}
+
+let cachedWorker: WorkerLike | null = null;
+const pending = new Map<string, PendingRequest>();
+let nextRequestId = 1;
+let workerDisabled = false;
+
+/**
+ * Reasons to skip the worker and run inline: WORKER_DISABLED=1,
+ * build-phase env (NEXT_PHASE=phase-production-build, BUILD_STANDALONE=1),
+ * or a previous spawn attempt failed (re-tried on next process restart).
+ */
+function isWorkerEnabled(): boolean {
+  if (workerDisabled) return false;
+  if (process.env.WORKER_DISABLED === '1') return false;
+  if (process.env.NEXT_PHASE === 'phase-production-build') return false;
+  if (process.env.BUILD_STANDALONE === '1') return false;
+  return true;
+}
+
+function spawnWorker(): WorkerLike | null {
+  let workerThreads: typeof import('node:worker_threads');
+  try {
+    // Node-only API; require keeps it out of bundler static analysis.
+    workerThreads = require('node:worker_threads');
+  } catch {
+    workerDisabled = true;
+    return null;
+  }
+  try {
+    // Resolve the worker file across dev (repo lib/) and standalone bundle
+    // (lib/db-worker.cjs copied into the bundle root). Webpack would
+    // rewrite a bare `require.resolve()`, so probe via fs instead.
+    const fs = require('node:fs');
+    const candidates = [
+      path.join(__dirname, 'db-worker.cjs'),
+      path.join(process.cwd(), 'lib', 'db-worker.cjs'),
+      path.join(process.cwd(), 'db-worker.cjs'),
+    ];
+    const workerPath = candidates.find((p) => {
+      try { return fs.existsSync(p); } catch { return false; }
+    });
+    if (!workerPath) {
+      throw new Error(
+        `db-worker.cjs not found. Looked in: ${candidates.join(', ')}. ` +
+        'In standalone builds, scripts/stage-standalone.mjs is responsible for ' +
+        'copying lib/db-worker.cjs into the bundle.',
+      );
+    }
+    const w = new workerThreads.Worker(workerPath, {
+      workerData: { dbPath },
+    }) as unknown as WorkerLike;
+    w.on('message', (raw: unknown) => {
+      const response = raw as DbWorkerResponse;
+      if (!response || typeof response !== 'object' || typeof response.requestId !== 'string') {
+        console.warn('[db-worker-client] received malformed worker message', response);
+        return;
+      }
+      const slot = pending.get(response.requestId);
+      if (!slot) {
+        // Stray response — request already rejected by an exit event. Drop.
+        return;
+      }
+      pending.delete(response.requestId);
+      slot.resolve(response);
+    });
+    w.on('error', (err: unknown) => {
+      // Worker-level error — reject every in-flight request, mark worker
+      // dead so the next call respawns.
+      console.error('[db-worker-client] worker error event:', err);
+      const error = err instanceof Error ? err : new Error(String(err));
+      for (const slot of pending.values()) slot.reject(error);
+      pending.clear();
+      cachedWorker = null;
+    });
+    w.on('exit', (code: unknown) => {
+      // Unexpected exit — same handling as `error`.
+      if (code !== 0) {
+        console.warn(`[db-worker-client] worker exited with code ${code}`);
+      }
+      const error = new Error(`db worker exited with code ${code}`);
+      for (const slot of pending.values()) slot.reject(error);
+      pending.clear();
+      cachedWorker = null;
+    });
+    w.unref?.();
+    return w;
+  } catch (err) {
+    console.error('[db-worker-client] spawn failed, falling back to inline execution:', err);
+    workerDisabled = true;
+    return null;
+  }
+}
+
+function getWorker(): WorkerLike | null {
+  if (!isWorkerEnabled()) return null;
+  if (cachedWorker !== null) return cachedWorker;
+  cachedWorker = spawnWorker();
+  return cachedWorker;
+}
+
+/**
+ * Inline fallback executor. Mirrors the worker's chunked-transaction
+ * model. Blocks the event loop — keep real bulk paths on the worker.
+ */
+function executeInline(
+  statements: DbWorkerStatement[],
+  chunkSize: number,
+): DbWorkerResponse {
+  // Lazy import so the db module (and migrations) only loads on inline path.
+  const db = require('./db').default as import('better-sqlite3').Database;
+  if (statements.length === 0) {
+    return { kind: 'execute-ok', requestId: 'inline', totalChanges: 0, durationMs: 0 };
+  }
+  const startedAt = Date.now();
+  let totalChanges = 0;
+  let cursor = 0;
+  while (cursor < statements.length) {
+    const end = Math.min(cursor + chunkSize, statements.length);
+    const start = cursor;
+    const runChunk = db.transaction(() => {
+      let chunkChanges = 0;
+      for (let i = start; i < end; i += 1) {
+        const s = statements[i];
+        try {
+          const stmt = db.prepare(s.sql);
+          const result = Array.isArray(s.params)
+            ? stmt.run(...(s.params as unknown[]))
+            : stmt.run(s.params as Record<string, unknown>);
+          chunkChanges += result.changes || 0;
+        } catch (e) {
+          const wrapped = new Error(e instanceof Error ? e.message : String(e));
+          (wrapped as Error & { failedAtIndex: number }).failedAtIndex = i;
+          throw wrapped;
+        }
+      }
+      return chunkChanges;
+    });
+    try {
+      totalChanges += runChunk();
+    } catch (e) {
+      return {
+        kind: 'execute-error',
+        requestId: 'inline',
+        error: e instanceof Error ? e.message : String(e),
+        failedAtIndex:
+          typeof (e as { failedAtIndex?: unknown })?.failedAtIndex === 'number'
+            ? (e as { failedAtIndex: number }).failedAtIndex
+            : start,
+      };
+    }
+    cursor = end;
+  }
+  return {
+    kind: 'execute-ok',
+    requestId: 'inline',
+    totalChanges,
+    durationMs: Date.now() - startedAt,
+  };
+}
+
+/**
+ * Run a batch of write statements off the main thread.
+ *
+ * Statements run in chunked transactions of `chunkSize` (default 200);
+ * each chunk is atomic and earlier chunks remain durable if a later
+ * chunk throws. Pass `chunkSize: Infinity` to force a single transaction
+ * (defeats lock-time mitigation — use sparingly).
+ *
+ * Resolves `{ totalChanges, durationMs }` on success; rejects with the
+ * first statement error (carrying `failedAtIndex`) on failure.
+ */
+export async function runBulkWrite(
+  statements: DbWorkerStatement[],
+  options: { chunkSize?: number } = {},
+): Promise<{ totalChanges: number; durationMs: number }> {
+  const chunkSize = options.chunkSize ?? 200;
+
+  const worker = getWorker();
+  if (!worker) {
+    // Inline path. Wrap in a Promise so the API shape stays consistent.
+    const response = executeInline(statements, chunkSize);
+    if (response.kind === 'execute-ok') {
+      return { totalChanges: response.totalChanges, durationMs: response.durationMs };
+    }
+    const err = new Error(response.error);
+    (err as Error & { failedAtIndex: number }).failedAtIndex = response.failedAtIndex;
+    throw err;
+  }
+
+  // Worker path. Mint a unique request id and await the matching response.
+  const requestId = `req-${nextRequestId++}-${Date.now().toString(36)}`;
+  return new Promise((resolve, reject) => {
+    pending.set(requestId, {
+      resolve: (response) => {
+        if (response.kind === 'execute-ok') {
+          resolve({ totalChanges: response.totalChanges, durationMs: response.durationMs });
+        } else {
+          const err = new Error(response.error);
+          (err as Error & { failedAtIndex: number }).failedAtIndex = response.failedAtIndex;
+          reject(err);
+        }
+      },
+      reject,
+    });
+    try {
+      worker.postMessage({
+        kind: 'execute',
+        requestId,
+        statements,
+        chunkSize,
+      });
+    } catch (err) {
+      // postMessage can throw on serialisation failures (e.g. BigInt).
+      pending.delete(requestId);
+      reject(err instanceof Error ? err : new Error(String(err)));
+    }
+  });
+}
+
+/** Test-only: tear down the cached worker so the next call respawns. */
+export async function _resetDbWorker(): Promise<void> {
+  if (cachedWorker !== null) {
+    try {
+      await cachedWorker.terminate();
+    } catch {
+      // ignore — best-effort cleanup
+    }
+    cachedWorker = null;
+  }
+  for (const slot of pending.values()) {
+    slot.reject(new Error('db worker reset'));
+  }
+  pending.clear();
+  workerDisabled = false;
+}

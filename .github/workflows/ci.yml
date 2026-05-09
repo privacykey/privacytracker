@@ -1,0 +1,252 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # pnpm needs to be installed before setup-node so that the latter's
+      # cache: 'pnpm' resolver can locate the pnpm binary on PATH. Pinned
+      # to major v6 (Node 24 runtime + pnpm 11 support). `version: 10`
+      # picks the latest pnpm 10.x at action time, matching the
+      # lockfileVersion: '9.0' we ship.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Coverage snapshot
+        run: pnpm test:coverage
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: node-v8-coverage
+          path: coverage
+          if-no-files-found: ignore
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Check locale parity
+        run: pnpm lint:i18n
+
+      - name: Test iOS import helper
+        run: pnpm test:ios-import-helper
+
+      - name: Install Tauri Linux test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Test Tauri Rust helpers
+        run: pnpm test:tauri
+
+      - name: Audit production dependency tree
+        # pnpm audit equivalent of `npm audit --omit=optional`.
+        run: pnpm audit --prod
+
+      - name: Validate Docker Compose files
+        run: |
+          docker compose -f docker-compose.yml config >/dev/null
+          docker compose -f deploy/caddy/compose.yaml config >/dev/null
+          docker compose -f deploy/traefik/compose.yaml config >/dev/null
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright browser
+        # pnpm exec replaces npx for resolving binaries from node_modules.
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Browser E2E
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright test results
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: playwright-test-results
+          path: test-results
+          if-no-files-found: ignore
+
+  rust-check:
+    # Compile-only sanity check for the Tauri desktop shell. CodeQL used
+    # to give us this signal indirectly while it ran in `build-mode:
+    # manual`, but the Rust extractor only supports `build-mode: none`
+    # now (see .github/workflows/codeql.yml), so a Rust compile error
+    # would otherwise reach a release build before anyone noticed.
+    # `cargo check` is much faster than a full `cargo build` (no codegen,
+    # no link) so this job adds well under a minute on the standard runner
+    # and catches the common regressions: missing imports, type-error
+    # changes after a tauri version bump, mismatched crate features.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Tauri Linux build dependencies
+        # Tauri's webview backend on Linux links against gtk + webkit2gtk;
+        # these packages are needed even for `cargo check` because the
+        # build script runs the linker's metadata pass over the system
+        # libraries to validate the tauri crate's link-search paths.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + target
+        # Saves the cargo download index, the compiled crate cache, and
+        # the target dir between runs. Keyed on the lockfile so a tauri
+        # bump invalidates cleanly. Without this each PR re-downloads
+        # ~600 transitive crates and the job takes ~3× longer.
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-check-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-check-
+
+      - name: Cargo check
+        # `--no-default-features` matches the BeforeDevCommand /
+        # macOS-release invocation. Defaults turn on `tauri/devtools`
+        # which we don't ship in release.
+        run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: docker build -t privacytracker-smoke .
+
+      - name: Run Docker container
+        run: |
+          docker run -d --rm \
+            --name privacytracker-smoke \
+            -p 127.0.0.1:3000:3000 \
+            privacytracker-smoke
+
+      - name: Wait for healthcheck
+        run: |
+          for attempt in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/api/ready; then
+              echo "Container is healthy"
+              exit 0
+            fi
+            echo "Waiting for container health (${attempt}/40)…"
+            docker logs --tail=50 privacytracker-smoke || true
+            sleep 3
+          done
+          docker logs privacytracker-smoke || true
+          exit 1
+
+      - name: Stop Docker container
+        if: always()
+        run: docker stop privacytracker-smoke || true
+
+      - name: Smoke Caddy reverse proxy
+        env:
+          PRIVACYTRACKER_IMAGE: privacytracker-smoke
+          PRIVACYTRACKER_HOST: privacytracker.localhost
+          AUDITOR_ADMIN_TOKEN: ci-smoke-token
+        run: |
+          docker compose -f deploy/caddy/compose.yaml up -d
+          for attempt in {1..40}; do
+            if curl -kfsS --resolve privacytracker.localhost:443:127.0.0.1 https://privacytracker.localhost/api/ready; then
+              echo "Caddy proxy is healthy"
+              exit 0
+            fi
+            echo "Waiting for Caddy proxy (${attempt}/40)…"
+            docker compose -f deploy/caddy/compose.yaml logs --tail=80 || true
+            sleep 3
+          done
+          docker compose -f deploy/caddy/compose.yaml logs || true
+          exit 1
+
+      - name: Stop Caddy reverse proxy
+        if: always()
+        run: docker compose -f deploy/caddy/compose.yaml down -v || true
+
+      - name: Smoke Traefik reverse proxy
+        env:
+          PRIVACYTRACKER_IMAGE: privacytracker-smoke
+          PRIVACYTRACKER_HOST: privacytracker.localhost
+          AUDITOR_ADMIN_TOKEN: ci-smoke-token
+        run: |
+          docker compose -f deploy/traefik/compose.yaml up -d
+          for attempt in {1..40}; do
+            if curl -fsS -H "Host: privacytracker.localhost" http://127.0.0.1/api/ready; then
+              echo "Traefik proxy is healthy"
+              exit 0
+            fi
+            echo "Waiting for Traefik proxy (${attempt}/40)…"
+            docker compose -f deploy/traefik/compose.yaml logs --tail=80 || true
+            sleep 3
+          done
+          docker compose -f deploy/traefik/compose.yaml logs || true
+          exit 1
+
+      - name: Stop Traefik reverse proxy
+        if: always()
+        run: docker compose -f deploy/traefik/compose.yaml down -v || true

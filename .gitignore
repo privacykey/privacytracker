@@ -1,0 +1,76 @@
+# ── Dependencies ─────────────────────────────────────────────────────
+/node_modules
+.pnpm-store/
+
+# ── Next.js build output ─────────────────────────────────────────────
+/.next
+/.next-build-check
+/out
+
+# ── TypeScript build cache ───────────────────────────────────────────
+# `tsc --incremental` writes these; they're per-machine and noisy in
+# diffs. Excluded everywhere, including the root and any subproject.
+*.tsbuildinfo
+
+# ── Test / coverage artifacts ────────────────────────────────────────
+# Playwright stores screenshots, traces, videos, HTML reports, and
+# throwaway SQLite data here during E2E runs. Keep the actual `e2e/`
+# specs tracked, but never commit run output.
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright-data/
+
+# Node/V8 coverage output from `npm run test:coverage`.
+/coverage/
+*.lcov
+
+# Rust build output from `npm run test:tauri`.
+/src-tauri/target/
+
+# ── Local runtime data ───────────────────────────────────────────────
+# /data is the SQLite location for `npm run dev` / Docker bind-mount.
+# Treat it like a user database — never commit.
+/data
+
+# ── Cowork / sandbox session metadata ────────────────────────────────
+/sessions
+/.claude
+
+# ── OS metadata ──────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE ─────────────────────────────────────────────────────
+# Block the most common per-machine workspace files but allow shared
+# `.vscode/extensions.json` etc. by listing the noisy ones explicitly.
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Environment / secrets ────────────────────────────────────────────
+# .env files routinely contain API keys. The `*.local` variants are the
+# Next.js convention for per-developer overrides.
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ── Logs ─────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Smoke / scratch ──────────────────────────────────────────────────
+__smoketest.ts
+/tools/__pycache__

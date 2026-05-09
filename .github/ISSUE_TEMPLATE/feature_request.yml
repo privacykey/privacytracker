@@ -1,0 +1,99 @@
+name: Feature request
+description: Suggest a new capability or improvement to privacytracker.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. The clearer the problem and
+        intended use-case, the more likely we are to pick this up quickly.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the user-facing pain point. A good framing is "As a user, I want X so that Y."
+      placeholder: |
+        When I re-sync 50 apps at once the notification bell fills up with
+        noise and I can't tell which changes matter. I want to be able to…
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: If you have an idea for how it could work, describe it here. Happy to iterate on the design together.
+      placeholder: |
+        Group notifications by app so the bell shows one unread per app
+        instead of one per changed label.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you already use, or other shapes the feature could take?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area of the app?
+      multiple: true
+      options:
+        - Dashboard / Apps list
+        - App detail / timeline
+        - Onboarding wizard
+        - Settings / scheduled sync
+        - Notifications
+        - Wayback / historical import
+        - AI policy summaries
+        - CLI / companion Python tool
+        - Accessibility
+        - Other
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: labels-area
+    attributes:
+      label: Does this feature relate to privacy or accessibility labels?
+      description: |
+        Pick whichever apply. Helps us scope whether the work touches
+        Apple's on-listing labels / categories or unrelated parts of the app.
+      options:
+        - label: Privacy labels / privacy categories
+          required: false
+        - label: Accessibility labels / accessibility features
+          required: false
+        - label: Neither — unrelated to Apple's on-listing labels
+          required: false
+
+  - type: dropdown
+    id: macos-desktop
+    attributes:
+      label: Are you requesting this for the macOS desktop build?
+      description: |
+        If this is primarily a platform-level request (e.g. a menu bar
+        integration, Touch ID, global shortcut), pick Yes. If it applies
+        to every deployment pick "No — web-first / cross-platform".
+      multiple: false
+      options:
+        - "No — web-first / cross-platform"
+        - "Yes — macOS desktop-specific"
+        - "Both — useful on both, but nice-to-have for macOS"
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true

@@ -1,0 +1,59 @@
+#
+# Crowdin project configuration.
+#
+# Source-of-truth file: locales/en.json. Crowdin treats this as the
+# canonical English bundle and round-trips it into one translated bundle
+# per target language under the same locales/ folder.
+#
+# Project + token are read from environment variables in CI; the GitHub
+# Action that wraps this config (see .github/workflows/crowdin.yml)
+# pulls them from repo secrets:
+#   - CROWDIN_PROJECT_ID    — numeric id from your Crowdin project's URL
+#   - CROWDIN_PERSONAL_TOKEN — a personal access token with "Project"
+#                              scope (Account Settings → API)
+# Local developers running the CLI manually can either export the
+# same env vars or replace the *_env keys with literal `project_id` /
+# `api_token` values (do NOT commit the token).
+#
+# `preserve_hierarchy: true` keeps the source path the same in
+# Crowdin's UI so the file tree there mirrors what's in this repo.
+#
+
+project_id_env: CROWDIN_PROJECT_ID
+api_token_env: CROWDIN_PERSONAL_TOKEN
+preserve_hierarchy: true
+
+#
+# Language mapping. We name our translated file `zh.json` (because
+# next-intl loads bundles by short locale code), but Crowdin's
+# canonical id for Simplified Chinese is `zh-CN`. The mapping below
+# tells Crowdin to substitute `zh` for the `%two_letters_code%`
+# placeholder when it generates / pulls the zh-CN translation.
+#
+# When you add a new target locale (Spanish, Japanese, etc.):
+#   1. Add it as a target language in the Crowdin project UI.
+#   2. Add another row here mapping its `<locale>` → short code your
+#      bundle expects, e.g. `es: es`, `ja: ja`.
+#   3. Drop a new `<lang>.json` placeholder into locales/ so next-intl
+#      can resolve it on first build (an empty {} works — Crowdin
+#      will fill it on the next pull).
+#
+languages_mapping:
+  two_letters_code:
+    zh-CN: zh
+
+files:
+  - source: /locales/en.json
+    translation: /locales/%two_letters_code%.json
+    #
+    # Crowdin's `json` parser handles nested objects natively (which is
+    # what next-intl expects). `update_strings: true` keeps existing
+    # translations on re-upload but flags any whose source text changed
+    # for re-review under the `update_as_unapproved` policy below.
+    # That's the safest setting for a project that's actively shipping —
+    # nothing silently switches back to English when we tweak an en
+    # string, and translators see what changed.
+    #
+    type: json
+    update_strings: true
+    update_option: update_as_unapproved

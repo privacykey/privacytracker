@@ -1,0 +1,76 @@
+name: PR preview image
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  preview-image:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build preview Docker image
+        run: docker build -t privacytracker-pr-preview .
+
+      - name: Run preview image smoke test
+        run: |
+          docker run -d --rm \
+            --name privacytracker-pr-preview \
+            -p 127.0.0.1:3000:3000 \
+            privacytracker-pr-preview
+          for attempt in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/api/ready; then
+              echo "Preview image is healthy"
+              exit 0
+            fi
+            docker logs --tail=50 privacytracker-pr-preview || true
+            sleep 3
+          done
+          docker logs privacytracker-pr-preview || true
+          exit 1
+
+      - name: Stop preview image
+        if: always()
+        run: docker stop privacytracker-pr-preview || true
+
+      - name: Log in to GHCR
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish same-repo preview tag
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}"
+          docker tag privacytracker-pr-preview "$IMAGE"
+          docker push "$IMAGE"
+          {
+            echo "### Preview image"
+            echo ""
+            echo "Published \`$IMAGE\` for this PR."
+            echo ""
+            echo "\`\`\`bash"
+            echo "docker run --rm -p 127.0.0.1:3000:3000 $IMAGE"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record fork preview instructions
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          {
+            echo "### Preview image"
+            echo ""
+            echo "Fork PRs are built and smoke-tested but not pushed to GHCR."
+            echo "Download the workflow logs or run \`docker build -t privacytracker-pr-preview .\` locally to inspect the image."
+          } >> "$GITHUB_STEP_SUMMARY"

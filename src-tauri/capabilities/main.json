@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/capability",
+  "identifier": "main",
+  "description": "Capabilities the main window needs.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-title",
+    "core:app:default",
+    "shell:allow-open",
+    "updater:default",
+    "autostart:default",
+    "notification:default",
+    "global-shortcut:default",
+    "deep-link:default",
+    "window-state:default",
+    "log:default"
+  ]
+}

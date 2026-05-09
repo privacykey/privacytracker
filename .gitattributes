@@ -1,0 +1,100 @@
+# ── Default: auto-detect text, force LF on commit ────────────────────
+# Stops CR/LF churn when Linux CI runners and macOS dev machines work
+# on the same files. Files git already considers text get normalised
+# to LF in the repo and checked out as LF on every platform (since
+# Tauri / Next.js / Node tooling all parse LF reliably, and macOS
+# Terminal handles either). Set per-extension overrides below for
+# anything that needs to deviate.
+* text=auto eol=lf
+
+# ── Explicit text formats (force LF, even on Windows checkouts) ──────
+# Belt-and-braces: list the file types we want guaranteed-LF so a dev
+# whose editor / git config has odd defaults can't accidentally commit
+# CRLF noise. Covers the codebase's actual extensions.
+*.js          text eol=lf
+*.jsx         text eol=lf
+*.mjs         text eol=lf
+*.cjs         text eol=lf
+*.ts          text eol=lf
+*.tsx         text eol=lf
+*.json        text eol=lf
+*.jsonc       text eol=lf
+*.md          text eol=lf
+*.mdx         text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.toml        text eol=lf
+*.html        text eol=lf
+*.css         text eol=lf
+*.scss        text eol=lf
+*.sh          text eol=lf
+*.bash        text eol=lf
+*.zsh         text eol=lf
+*.rs          text eol=lf
+*.sql         text eol=lf
+*.svg         text eol=lf
+*.gitignore   text eol=lf
+*.gitattributes text eol=lf
+Dockerfile    text eol=lf
+*.dockerignore text eol=lf
+
+# ── Windows-native scripts (force CRLF) ──────────────────────────────
+# PowerShell + batch parse poorly with LF endings on some Windows
+# shells; if we ever ship Windows-side helper scripts they need CRLF.
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+*.ps1         text eol=crlf
+
+# ── Binary formats (no diffing, no merging, no eol normalisation) ────
+# Anything that's not text. Listing them explicitly stops git from
+# trying to be clever — `text=auto` would otherwise occasionally
+# misclassify a binary that happens to start with ASCII bytes.
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.webp        binary
+*.ico         binary
+*.icns        binary
+*.pdf         binary
+*.woff        binary
+*.woff2       binary
+*.ttf         binary
+*.otf         binary
+*.eot         binary
+*.zip         binary
+*.gz          binary
+*.tar         binary
+*.tgz         binary
+*.bz2         binary
+*.7z          binary
+*.dmg         binary
+*.pkg         binary
+*.app         binary
+*.exe         binary
+*.dll         binary
+*.dylib       binary
+*.so          binary
+*.node        binary
+*.db          binary
+*.sqlite      binary
+*.sqlite3     binary
+*.wasm        binary
+
+# ── GitHub Linguist hints ────────────────────────────────────────────
+# Lockfiles and codegen output dominate language-stats and clutter
+# diff views; mark them as generated so GitHub collapses them by
+# default and excludes them from the repo's language breakdown.
+package-lock.json     linguist-generated=true
+yarn.lock             linguist-generated=true
+pnpm-lock.yaml        linguist-generated=true
+src-tauri/Cargo.lock  linguist-generated=true
+
+# Tauri-generated capability schemas (only relevant if not gitignored;
+# /src-tauri/gen IS gitignored so this rule is mostly defensive).
+src-tauri/gen/**      linguist-generated=true
+
+# Translation bundles aren't really "source" in the linguist sense —
+# they get hand-edited but they're mostly mechanical translations of
+# the en.json key set.
+locales/*.json        linguist-detectable=false

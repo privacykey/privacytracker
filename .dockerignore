@@ -1,0 +1,49 @@
+# Dependencies and build output — rebuilt inside the image
+node_modules
+.next
+tsconfig.tsbuildinfo
+
+# Local desktop/Tauri build output — huge, machine-specific, and not part of
+# the production web image.
+src-tauri/target
+src-tauri/gen
+src-tauri/resources/standalone
+src-tauri/resources/standalone.tar
+src-tauri/binaries/node
+src-tauri/binaries/node.exe
+src-tauri/binaries/node-*-apple-darwin
+src-tauri/binaries/node-*-pc-windows-msvc.exe
+
+# Local SQLite DB — do NOT bake user data into the image.
+# The compose file bind-mounts ./data:/app/data at runtime.
+data
+
+# Git / CI
+.git
+.gitignore
+.github
+
+# Editor / OS cruft
+.vscode
+.idea
+.DS_Store
+
+# Secrets
+.env
+.env.*
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Docs — not needed at runtime
+README.md
+CLAUDE.md
+docs
+
+# Python companion tool — not part of the Node app
+tools
+
+# Smoketest script — not part of the runtime
+__smoketest.ts

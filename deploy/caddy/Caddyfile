@@ -1,0 +1,16 @@
+{$PRIVACYTRACKER_HOST:privacytracker.localhost} {
+	encode zstd gzip
+
+	# For private LAN names that cannot receive public ACME certificates
+	# (for example .local or .home.arpa), uncomment this and trust Caddy's
+	# local CA on your client devices:
+	# tls internal
+
+	# Optional proxy-level basic auth. Generate a password hash with:
+	# docker run --rm caddy:2-alpine caddy hash-password --plaintext 'change-me'
+	# basicauth {
+	# 	auditor <paste-hash-here>
+	# }
+
+	reverse_proxy privacytracker:3000
+}

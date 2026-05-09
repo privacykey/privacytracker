@@ -1,0 +1,185 @@
+name: Bug report
+description: Report something in privacytracker that isn't working as expected, including privacy-policy or feature-flag concerns.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+# Tip: the `labels-area`, `macos-desktop`, and `report-type` fields below
+# surface quickly in the rendered issue so triagers can scan area/platform/
+# concern at a glance without reading the whole form.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. The more detail you
+        can give below, the faster we can reproduce and fix it.
+
+        **Tip:** if you arrived here from the in-app 404 page, the Current URL
+        and Previous URL fields are already filled in for you — please leave
+        them as-is. If you came from Developer Options → Feature flags using
+        the "Include in GitHub issue" button, the Current flag state field
+        below will already have your override snapshot.
+
+  - type: dropdown
+    id: report-type
+    attributes:
+      label: What kind of report is this?
+      description: |
+        Round 3: this template covers all bug + concern reports. Pick the
+        category that fits — leave it on "Feature bug" if unsure.
+      multiple: false
+      options:
+        - Feature bug
+        - Privacy policy concern or correction
+        - Onboarding issue
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. What did you expect, and what actually happened?
+      placeholder: |
+        I clicked "Import history" on the app detail page and got a 404.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step, starting from a fresh page load if possible.
+      placeholder: |
+        1. Go to /dashboard/apps
+        2. Click any app
+        3. Click "Import history"
+        4. See the 404
+    validations:
+      required: true
+
+  - type: input
+    id: current-url
+    attributes:
+      label: Current URL
+      description: The URL where the issue happened. Auto-filled from the 404 page if you clicked the link there.
+      placeholder: "https://privacytracker.example.com/..."
+    validations:
+      required: false
+
+  - type: input
+    id: previous-url
+    attributes:
+      label: Previous URL
+      description: Where you came from — auto-filled when arriving via the 404 link.
+      placeholder: "https://privacytracker.example.com/dashboard/apps"
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / OS
+      description: Browser name and version, plus operating system. The user-agent string is fine too.
+      placeholder: "Chrome 125 on macOS 14 · or paste User-Agent"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How are you running privacytracker?
+      multiple: false
+      options:
+        - Docker Compose (recommended)
+        - "`npm run dev` locally"
+        - "`npm run build` + `npm start` locally"
+        - macOS desktop app (Tauri build)
+        - Other (describe in the summary)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: macos-desktop
+    attributes:
+      label: Are you on the macOS desktop build?
+      description: |
+        If you're using the native macOS app (`.app` bundle built from the
+        Tauri shell), pick Yes. If you picked "macOS desktop app" above,
+        please still confirm here so we can scope platform-specific bugs
+        faster.
+      multiple: false
+      options:
+        - "No — web / Docker / local dev"
+        - "Yes — macOS desktop app"
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: labels-area
+    attributes:
+      label: Does this relate to privacy or accessibility labels?
+      description: |
+        Pick whichever apply. Leave everything unticked if this bug is
+        something else (settings, sync, notifications, etc.) so we can
+        route it correctly.
+      options:
+        - label: Privacy labels / privacy categories
+          required: false
+        - label: Accessibility labels / accessibility features
+          required: false
+        - label: Neither — unrelated to Apple's on-listing labels
+          required: false
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version / commit
+      description: |
+        Find this in Settings → About, or check your container image tag
+        (`docker compose images`) / git commit (`git rev-parse --short HEAD`).
+      placeholder: "v1.0.0 · or commit abc1234"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server logs or browser console output
+      description: |
+        Paste anything that looked relevant. For server logs:
+        `docker compose logs --tail 200 app`. For the browser, open DevTools →
+        Console and copy the red entries. Don't worry about scrubbing URLs —
+        we only need enough context to reproduce.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshots (optional)
+      description: Drag-and-drop images into this field. Annotated screenshots speed up triage enormously for visual bugs.
+    validations:
+      required: false
+
+  - type: textarea
+    id: current-flag-state
+    attributes:
+      label: Current flag state
+      description: |
+        Auto-filled when you arrived here from Developer Options → Feature flags
+        using the "Include in GitHub issue" button. Leave blank if not relevant.
+      render: json
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and didn't find a duplicate.
+          required: true
+        - label: I can reproduce this consistently (or I've described the conditions under which it happens).
+          required: false

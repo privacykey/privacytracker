@@ -1,0 +1,60 @@
+name: Nightly live integrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail the workflow when live upstream checks fail'
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    - cron: '37 17 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  app-store-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run live App Store import checks
+        id: live
+        continue-on-error: ${{ github.event_name == 'schedule' || inputs.strict != true }}
+        env:
+          RUN_LIVE_TESTS: '1'
+          RUN_NIGHTLY_LIVE_TESTS: '1'
+        run: |
+          node --import tsx --import ./tests/setup-env.ts --test \
+            tests/live-clock-app.test.ts \
+            tests/live-apps-nightly.test.ts
+
+      - name: Summarise live-check policy
+        if: always()
+        run: |
+          {
+            echo "### Live App Store checks"
+            echo ""
+            echo "- Result: \`${{ steps.live.outcome }}\`"
+            echo "- Scheduled runs are observational, because Apple HTML and rate limits are outside repo control."
+            echo "- Manual runs can be made release-blocking with the \`strict\` input."
+          } >> "$GITHUB_STEP_SUMMARY"
