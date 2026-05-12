@@ -30,6 +30,11 @@ import { NextResponse } from 'next/server';
 import db from '../../../lib/db';
 import { safeFetch } from '../../../lib/security';
 import { getSetting } from '../../../lib/scheduler';
+import { getMayAlsoLike } from '../../../lib/related-apps-observed';
+
+/** Modes supported by this endpoint. See the top-of-file docstring. */
+type RelatedMode = 'top_in_category' | 'may_also_like';
+const VALID_MODES: readonly RelatedMode[] = ['top_in_category', 'may_also_like'];
 
 const APPLE_HOSTS = ['apps.apple.com', 'itunes.apple.com', 'rss.applemarketingtools.com'];
 const DEFAULT_COUNTRY = 'us';
@@ -40,6 +45,9 @@ interface AppRow {
   genreId: number | null;
   genreName: string | null;
   priceAmount: number | null;
+  /** App Store listing URL — surfaced in the `may_also_like` response so
+   *  the UI can offer a one-click rescrape when the table is empty. */
+  url: string;
 }
 
 interface RelatedCandidate {
@@ -176,6 +184,10 @@ export async function GET(request: Request) {
     Math.max(1, Number.isFinite(Number(limitRaw)) ? Number(limitRaw) : 5),
     10,
   );
+  const modeRaw = searchParams.get('mode');
+  const mode: RelatedMode = (VALID_MODES as readonly string[]).includes(modeRaw ?? '')
+    ? (modeRaw as RelatedMode)
+    : 'top_in_category';
 
   if (!sourceAppId || !/^[A-Za-z0-9_-]+$/.test(sourceAppId)) {
     return NextResponse.json(
@@ -188,7 +200,7 @@ export async function GET(request: Request) {
   try {
     row = db
       .prepare(
-        'SELECT id, name, genreId, genreName, priceAmount FROM apps WHERE id = ?',
+        'SELECT id, name, genreId, genreName, priceAmount, url FROM apps WHERE id = ?',
       )
       .get(sourceAppId) as AppRow | undefined;
   } catch (e) {
@@ -203,6 +215,36 @@ export async function GET(request: Request) {
       { error: 'Source app not found.' },
       { status: 404 },
     );
+  }
+
+  // Mode dispatch — `may_also_like` reads from the local
+  // `related_apps_observed` table populated by the scraper at fetch
+  // time. No network calls; the response is empty + `reason` flagged
+  // when we've never scraped the source app's product page (or scraped
+  // it before the shelf-extraction code shipped).
+  if (mode === 'may_also_like') {
+    const rows = getMayAlsoLike(sourceAppId).slice(0, limit);
+    const candidates: RelatedCandidate[] = rows.map(r => ({
+      appleId:   r.relatedAppleId,
+      name:      r.relatedName,
+      developer: r.relatedDeveloper ?? '',
+      iconUrl:   r.relatedIconUrl ?? '',
+      url:       r.relatedStoreUrl,
+    }));
+    return NextResponse.json({
+      mode,
+      // Genre fields stay null in this mode — they're a "top in category"
+      // concept and the UI knows not to render them for other modes.
+      genreId:   null,
+      genreName: null,
+      free:      null,
+      candidates,
+      // `reason` is set when we have zero rows AND the source app
+      // hasn't been scraped since the shelf extractor shipped. The UI
+      // can offer a one-click rescrape in this state.
+      reason:    candidates.length === 0 ? 'not_scraped_yet' : undefined,
+      sourceAppUrl: row.url,
+    });
   }
 
   const country = normaliseCountry(getSetting('app_country', DEFAULT_COUNTRY));
@@ -226,10 +268,12 @@ export async function GET(request: Request) {
 
   if (genreId == null) {
     return NextResponse.json({
+      mode,
       genreId: null,
       genreName: null,
       free: null,
       candidates: [] as RelatedCandidate[],
+      sourceAppUrl: row.url,
     });
   }
 
@@ -243,9 +287,11 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json({
+    mode,
     genreId,
     genreName,
     free,
     candidates,
+    sourceAppUrl: row.url,
   });
 }

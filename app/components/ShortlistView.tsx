@@ -838,15 +838,17 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
       {totalCount === 0 ? (
         <div className="empty-state" style={{ padding: 32 }}>
           <div style={{ fontSize: 15, color: 'var(--text)', marginBottom: 6 }}>
-            Nothing shortlisted yet.
+            {tShortlist('empty_lead')}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            Open an app, switch to the{' '}
-            <Link href="/dashboard/compare" className="definitions-inline-link">
-              Compare
-            </Link>
-            {' '}view, and hit <strong>+ Shortlist</strong> on any App Store
-            candidate to save it as an alternative.
+            {tShortlist.rich('empty_body', {
+              compare: chunks => (
+                <Link href="/dashboard/compare" className="definitions-inline-link">
+                  {chunks}
+                </Link>
+              ),
+              shortlist: chunks => <strong>{chunks}</strong>,
+            })}
           </div>
         </div>
       ) : (
@@ -893,8 +895,10 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
           ) : (
             <div className="shortlist-reset-confirm" role="alertdialog" aria-live="polite">
               <span className="shortlist-reset-confirm-msg">
-                Delete all <strong>{totalCount}</strong> shortlisted app{totalCount !== 1 ? 's' : ''}?
-                This can&rsquo;t be undone.
+                {tShortlist.rich('reset_confirm_msg', {
+                  count: totalCount,
+                  strong: chunks => <strong>{chunks}</strong>,
+                })}
               </span>
               <div className="shortlist-reset-confirm-actions">
                 <button
@@ -903,7 +907,7 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
                   onClick={() => setConfirmingReset(false)}
                   disabled={resetting}
                 >
-                  Cancel
+                  {tShortlist('reset_cancel')}
                 </button>
                 <button
                   type="button"
@@ -1035,10 +1039,14 @@ function ShortlistGroupCard({
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="shortlist-group-title">
-            Alternatives to{' '}
-            <Link href={`/apps/${group.sourceApp.id}`} className="definitions-inline-link">
-              {group.sourceApp.name}
-            </Link>
+            {tShortlist.rich('group_title', {
+              name: group.sourceApp.name,
+              link: chunks => (
+                <Link href={`/apps/${group.sourceApp.id}`} className="definitions-inline-link">
+                  {chunks}
+                </Link>
+              ),
+            })}
           </div>
           <div className="shortlist-group-subtitle">
             {group.sourceApp.developer || '—'} · {group.entries.length} saved
@@ -1098,13 +1106,13 @@ function ShortlistGroupCard({
       {detailedView && (
         <div className="shortlist-source-snapshot">
           <div className="shortlist-source-snapshot-label">
-            {group.sourceApp.name} — currently in your library
+            {tShortlist('source_snapshot_label', { name: group.sourceApp.name })}
           </div>
           {group.sourceApp.privacyTypes && group.sourceApp.privacyTypes.length > 0 ? (
             <PrivacyLabelsStack privacyTypes={group.sourceApp.privacyTypes} />
           ) : (
             <div className="shortlist-source-snapshot-empty">
-              No privacy labels recorded for this app yet.
+              {tShortlist('source_snapshot_empty')}
             </div>
           )}
         </div>
@@ -1194,17 +1202,21 @@ function ShortlistEntryRow({
     <div
       className={`shortlist-entry${detailedView ? ' has-detailed' : ''}`}
     >
+      {/* Entry-row icon: 40px (mid step in the 32 / 40 / 48 ladder).
+          Group headers use 32 (small/inline-with-text), drawer previews
+          use 48 (hero-sized). Stepping by 8 keeps the visual hierarchy
+          obvious without micro-decisions per surface. */}
       {entry.candidateIconUrl ? (
         <Image
           src={entry.candidateIconUrl}
           alt=""
-          width={36}
-          height={36}
-          style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+          width={40}
+          height={40}
+          style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
           unoptimized
         />
       ) : (
-        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--bg-3)', flexShrink: 0 }} />
+        <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--bg-3)', flexShrink: 0 }} />
       )}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div className="shortlist-entry-name">
@@ -1565,17 +1577,19 @@ function PreviewDrawer({
       >
         <header className="shortlist-drawer-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+            {/* Drawer preview icon: 48px (the hero size in the 32 / 40 / 48
+                ladder — see ShortlistEntryRow above for the rationale). */}
             {entry.candidateIconUrl ? (
               <Image
                 src={entry.candidateIconUrl}
                 alt=""
-                width={40}
-                height={40}
-                style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+                width={48}
+                height={48}
+                style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
                 unoptimized
               />
             ) : (
-              <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--bg-3)', flexShrink: 0 }} />
+              <div style={{ width: 48, height: 48, borderRadius: 10, background: 'var(--bg-3)', flexShrink: 0 }} />
             )}
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

@@ -21,8 +21,11 @@
  */
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+// Co-located CSS for the slot card + modal — keeps Turbopack hot-reload
+// reliable, unlike appending to the 26k-line globals.css.
+import './compare-slot.css';
 import { CATEGORY_META, SEVERITY_CONFIG } from '../../lib/privacy-meta';
 import {
   type PrivacyProfile,
@@ -514,15 +517,13 @@ export default function CompareAppsView({
         {lockPinned && pinnedSlot === 'A' && specA ? (
           <PinnedSlot label="App A" slot={slotA} library={library} spec={specA} />
         ) : (
-          <SlotPicker
+          <SlotCard
             label="App A"
+            slot={slotA}
             library={library}
             spec={specA}
             onChange={setSpecA}
             otherSpec={specB}
-            // Slot A can only be shortlisted when slot B is tracked — slot A
-            // becomes the *candidate* in that configuration, against slot
-            // B as the source.
             enableShortlistOnResults={!!sourceIdForA}
             sourceAppId={sourceIdForA}
             isShortlisted={isShortlistedFor(sourceIdForA)}
@@ -532,15 +533,13 @@ export default function CompareAppsView({
         {lockPinned && pinnedSlot === 'B' && specB ? (
           <PinnedSlot label="App B" slot={slotB} library={library} spec={specB} />
         ) : (
-          <SlotPicker
+          <SlotCard
             label="App B"
+            slot={slotB}
             library={library}
             spec={specB}
             onChange={setSpecB}
             otherSpec={specA}
-            // Slot B is the classic candidate slot — enabled when slot A is
-            // tracked. When both slots are App Store previews, both pickers
-            // disable the inline + Shortlist buttons.
             enableShortlistOnResults={!!sourceIdForB}
             sourceAppId={sourceIdForB}
             isShortlisted={isShortlistedFor(sourceIdForB)}
@@ -756,7 +755,7 @@ export default function CompareAppsView({
         <div className="empty-state" style={{ padding: 24 }}>
           <div>{tCompare('pick_two')}</div>
           <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-            Each slot can pull from your library, or search the App Store to preview an app without tracking it.
+            {tCompare('pick_two_hint')}
           </div>
         </div>
       )}
@@ -814,10 +813,207 @@ function parseAppStoreUrlInput(raw: string): { url: string; appleId: string } | 
   return { url: parsed.toString(), appleId: idMatch[1] };
 }
 
+/**
+ * Big-card wrapper for a Compare slot — the primary affordance for
+ * picking App A / App B. Replaces the previous compact input-box
+ * picker. Two states:
+ *
+ *   - Empty:  dashed card, big "+" glyph, "Pick App A" CTA. Whole card
+ *             is a single button — click anywhere opens the picker modal.
+ *   - Picked: solid card with the app's icon, name, developer; small
+ *             "Change" + "✕" pill buttons in the top-right corner.
+ *             Clicking the card body (or "Change") reopens the picker
+ *             modal; the "✕" clears the slot in place.
+ *
+ * The picker UX itself stays in {@link SlotPicker} — we host it inside
+ * a `.modal-overlay` / `.modal-card` shell when the user opens it, and
+ * propagate `onChange` back through so picking inside the modal closes
+ * the modal automatically.
+ *
+ * `slot` is the resolved {@link SlotState} from the parent — we read
+ * the picked app's icon/name/developer from it; if the resolved data
+ * hasn't landed yet (kind === 'loading'), we fall back to the library
+ * row for an id:-spec'd slot so the card never shows blank flicker
+ * during the first fetch.
+ */
+function SlotCard(props: {
+  label: string;
+  slot: SlotState;
+  library: LibraryApp[];
+  spec: string | null;
+  onChange: (s: string | null) => void;
+  otherSpec: string | null;
+  enableShortlistOnResults: boolean;
+  // Match the SlotPicker types exactly so props flow through without
+  // narrow-vs-wide friction when we re-pass them inside the modal.
+  sourceAppId: string | null;
+  isShortlisted: (candidateId: string) => boolean;
+  onToggleShortlist: (c: { appleId: string; name: string; developer?: string; iconUrl?: string; url: string; bundleId?: string }) => void | Promise<void>;
+  initialMode?: PickerMode;
+}) {
+  const tCompare = useTranslations('compare');
+  const [modalOpen, setModalOpen] = useState(false);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // Esc + autofocus the modal's close button so keyboard users can
+  // tab through the picker without losing focus context.
+  useEffect(() => {
+    if (!modalOpen) return;
+    closeBtnRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen]);
+
+  // Resolve a best-guess preview of the picked app for the card body.
+  // Prefer the live SlotData (which has the freshest icon URL + name);
+  // fall back to the library row for `id:`-spec'd slots so the card
+  // never blanks on the initial fetch.
+  const isPicked = !!props.spec;
+  const liveData = props.slot.kind === 'ready' ? props.slot.data : null;
+  const fromLibrary = props.spec?.startsWith('id:')
+    ? props.library.find(a => a.id === props.spec!.slice(3))
+    : null;
+  const displayName = liveData?.name ?? fromLibrary?.name ?? '';
+  const displayDev  = liveData?.developer ?? fromLibrary?.developer ?? '';
+  const displayIcon = liveData?.iconUrl ?? fromLibrary?.iconUrl ?? '';
+
+  // Propagate picks from the inner picker and auto-close the modal so the
+  // user lands back on the now-picked slot card without an extra click.
+  const handleInnerChange = (next: string | null) => {
+    props.onChange(next);
+    if (next) setModalOpen(false);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`compare-slot-card ${isPicked ? 'is-picked' : 'is-empty'}`}
+        onClick={() => setModalOpen(true)}
+        aria-label={
+          isPicked
+            ? tCompare('slot_card_change_aria', { label: props.label, name: displayName || props.label })
+            : tCompare('slot_card_pick_aria', { label: props.label })
+        }
+      >
+        <span className="compare-slot-card-label">{props.label}</span>
+        {!isPicked ? (
+          <span className="compare-slot-card-empty-body">
+            <span className="compare-slot-card-plus" aria-hidden="true">+</span>
+            <span className="compare-slot-card-cta">
+              {tCompare('slot_card_pick_cta', { label: props.label })}
+            </span>
+            <span className="compare-slot-card-hint">{tCompare('slot_card_pick_hint')}</span>
+          </span>
+        ) : (
+          <span className="compare-slot-card-picked-body">
+            {displayIcon ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={displayIcon}
+                alt=""
+                className="compare-slot-card-icon"
+                width={56}
+                height={56}
+              />
+            ) : (
+              <span className="compare-slot-card-icon-placeholder" aria-hidden="true" />
+            )}
+            <span className="compare-slot-card-text">
+              <span className="compare-slot-card-name">{displayName || tCompare('slot_card_loading')}</span>
+              <span className="compare-slot-card-developer">{displayDev || '—'}</span>
+            </span>
+          </span>
+        )}
+        {isPicked && (
+          // Inline actions live above the card click target — stopPropagation
+          // so each acts on its own intent (Change reopens, Clear empties).
+          // Rendering them inside the parent <button> would nest interactive
+          // elements; instead they're absolutely positioned siblings of the
+          // card body. The parent <button> still handles "click anywhere
+          // else" to reopen the modal.
+          <span
+            className="compare-slot-card-actions"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="compare-slot-card-action"
+              onClick={() => setModalOpen(true)}
+              title={tCompare('slot_card_change_title')}
+            >
+              {tCompare('slot_card_change_label')}
+            </button>
+            <button
+              type="button"
+              className="compare-slot-card-action is-clear"
+              onClick={() => props.onChange(null)}
+              aria-label={tCompare('slot_clear_aria', { label: props.label })}
+              title={tCompare('slot_clear_title')}
+            >
+              ✕
+            </button>
+          </span>
+        )}
+      </button>
+
+      {modalOpen && (
+        <div
+          className="modal-overlay"
+          onClick={() => setModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={tCompare('slot_card_modal_aria', { label: props.label })}
+        >
+          <div
+            className="modal-card compare-slot-modal-card"
+            onClick={e => e.stopPropagation()}
+          >
+            <header className="compare-slot-modal-header">
+              <h2 className="compare-slot-modal-title">
+                {tCompare('slot_card_modal_title', { label: props.label })}
+              </h2>
+              <button
+                ref={closeBtnRef}
+                type="button"
+                className="compare-slot-modal-close"
+                onClick={() => setModalOpen(false)}
+                title={tCompare('slot_card_modal_close_title')}
+                aria-label={tCompare('slot_card_modal_close_aria')}
+              >
+                ✕
+              </button>
+            </header>
+            <SlotPicker
+              label={props.label}
+              library={props.library}
+              spec={props.spec}
+              onChange={handleInnerChange}
+              otherSpec={props.otherSpec}
+              enableShortlistOnResults={props.enableShortlistOnResults}
+              sourceAppId={props.sourceAppId}
+              isShortlisted={props.isShortlisted}
+              onToggleShortlist={props.onToggleShortlist}
+              initialMode={props.initialMode}
+              hideHeader
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function SlotPicker({
   label, library, spec, onChange, otherSpec,
   enableShortlistOnResults, sourceAppId, isShortlisted, onToggleShortlist,
-  initialMode,
+  initialMode, hideHeader,
 }: {
   label: string;
   library: LibraryApp[];
@@ -839,6 +1035,13 @@ function SlotPicker({
    * have.
    */
   initialMode?: PickerMode;
+  /**
+   * When true, the picker omits its own outer wrapper border + header
+   * (label, mode-toggle row, clear button). Used when SlotCard hosts
+   * the picker inside a modal whose `.modal-card` chrome + custom
+   * header already supply that framing.
+   */
+  hideHeader?: boolean;
 }) {
   // i18n — translations for chips/aria within this helper.
   const tCompare = useTranslations('compare');
@@ -915,45 +1118,52 @@ function SlotPicker({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, [spec, library]);
 
+  // When SlotCard hosts us inside a modal, drop the outer card chrome
+  // (border/padding) — the modal-card supplies it — and skip the
+  // label-and-clear header row since the modal header already shows
+  // the slot label + a close affordance. The mode toggle still needs
+  // to appear so the user can switch between Library and App Store
+  // search; we render it as a standalone row at the top.
+  const Wrapper: React.ElementType = hideHeader ? React.Fragment : 'div';
+  const wrapperProps = hideHeader
+    ? {}
+    : { style: { border: '1px solid var(--border)', borderRadius: 12, padding: 12 } };
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <strong style={{ fontSize: 13, color: 'var(--text)' }}>{label}</strong>
-        {currentLabel && (
-          <span style={{ fontSize: 12, color: 'var(--text-2)' }}>· {currentLabel}</span>
-        )}
-        {/* Deselect / clear the slot. Visible only when the slot is
-            populated; clicking calls `onChange(null)` which empties
-            both the spec and (downstream) the resolved SlotData. The
-            shortlist entry, if any, stays put — clearing the slot is
-            distinct from un-shortlisting the candidate. */}
-        {spec && (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            aria-label={tCompare('slot_clear_aria', { label })}
-            title={tCompare('slot_clear_title')}
-            style={{
-              appearance: 'none',
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              color: 'var(--text-2)',
-              borderRadius: 999,
-              fontFamily: 'inherit',
-              fontSize: 11,
-              padding: '2px 8px',
-              cursor: 'pointer',
-              lineHeight: 1.4,
-            }}
-          >
-            {tCompare('slot_clear_label')}
-          </button>
-        )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+    <Wrapper {...wrapperProps}>
+      {!hideHeader && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <strong style={{ fontSize: 13, color: 'var(--text)' }}>{label}</strong>
+          {currentLabel && (
+            <span style={{ fontSize: 12, color: 'var(--text-2)' }}>· {currentLabel}</span>
+          )}
+          {/* Deselect / clear the slot. Visible only when the slot is
+              populated; clicking calls `onChange(null)` which empties
+              both the spec and (downstream) the resolved SlotData. The
+              shortlist entry, if any, stays put — clearing the slot is
+              distinct from un-shortlisting the candidate. */}
+          {spec && (
+            <button
+              type="button"
+              className="compare-slot-clear-btn"
+              onClick={() => onChange(null)}
+              aria-label={tCompare('slot_clear_aria', { label })}
+              title={tCompare('slot_clear_title')}
+            >
+              {tCompare('slot_clear_label')}
+            </button>
+          )}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+            <ModeButton active={mode === 'library'} onClick={() => setMode('library')}>{tCompare('mode_library')}</ModeButton>
+            <ModeButton active={mode === 'search'} onClick={() => setMode('search')}>{tCompare('mode_appstore')}</ModeButton>
+          </div>
+        </div>
+      )}
+      {hideHeader && (
+        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: 4, marginBottom: 10 }}>
           <ModeButton active={mode === 'library'} onClick={() => setMode('library')}>{tCompare('mode_library')}</ModeButton>
           <ModeButton active={mode === 'search'} onClick={() => setMode('search')}>{tCompare('mode_appstore')}</ModeButton>
         </div>
-      </div>
+      )}
 
       {mode === 'library' && (
         <select
@@ -961,7 +1171,7 @@ function SlotPicker({
           onChange={e => onChange(e.target.value ? `id:${e.target.value}` : null)}
           style={selectStyle}
         >
-          <option value="">— pick an app —</option>
+          <option value="">{tCompare('library_select_placeholder')}</option>
           {library
             .filter(a => otherSpec !== `id:${a.id}`)
             .map(a => (
@@ -1170,7 +1380,7 @@ function SlotPicker({
           })()}
         </div>
       )}
-    </div>
+    </Wrapper>
   );
 }
 
@@ -1282,29 +1492,29 @@ function RelatedAppsPanel({
       iconUrl: string;
       url: string;
     }>;
+    /** Set on `may_also_like` when the source app has never been scraped
+     *  since the shelf-extraction code shipped. UI uses this to offer a
+     *  one-click rescrape instead of a generic empty state. */
+    reason?: 'not_scraped_yet';
+    /** Source app's App Store URL — used by the rescrape CTA. */
+    sourceAppUrl?: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rescraping, setRescraping] = useState(false);
 
   // Fetch lazily on first open + whenever the source app or the
   // selected mode changes. Closing the panel preserves the cached
   // data so re-opening is instant.
   useEffect(() => {
     if (!open) return;
-    if (mode !== 'top_in_category') {
-      // Other modes aren't wired yet — clear the panel state so the
-      // disabled hint shows cleanly without stale data.
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
     const ctrl = new AbortController();
     setLoading(true);
     setError(null);
-    fetch(`/api/related-apps?sourceAppId=${encodeURIComponent(sourceAppId)}&limit=5`, {
-      signal: ctrl.signal,
-    })
+    fetch(
+      `/api/related-apps?sourceAppId=${encodeURIComponent(sourceAppId)}&mode=${mode}&limit=5`,
+      { signal: ctrl.signal },
+    )
       .then(async r => {
         const body = await r.json();
         if (!r.ok) throw new Error(body?.error ?? `HTTP ${r.status}`);
@@ -1312,6 +1522,8 @@ function RelatedAppsPanel({
           genreName: string | null;
           free: boolean | null;
           candidates: typeof data extends { candidates: infer C } ? C : never;
+          reason?: 'not_scraped_yet';
+          sourceAppUrl?: string;
         };
       })
       .then(b => setData(b as never))
@@ -1322,6 +1534,40 @@ function RelatedAppsPanel({
       .finally(() => setLoading(false));
     return () => ctrl.abort();
   }, [open, sourceAppId, mode]);
+
+  /**
+   * Trigger a fresh scrape of the source app so the next response
+   * includes the now-extracted shelves. After the scrape lands we
+   * refetch the related-apps payload. Best-effort: if the scrape fails
+   * we fall through to the generic empty state on the next render.
+   */
+  const handleRescrape = async () => {
+    if (!data?.sourceAppUrl) return;
+    setRescraping(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          urls: [data.sourceAppUrl],
+          resync: true,
+          summarizePolicies: false,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Refetch the related-apps payload — same query, fresh result.
+      const r = await fetch(
+        `/api/related-apps?sourceAppId=${encodeURIComponent(sourceAppId)}&mode=${mode}&limit=5`,
+      );
+      if (r.ok) setData(await r.json());
+    } catch (e) {
+      console.warn('[RelatedAppsPanel] rescrape failed', e);
+      setError((e as Error).message);
+    } finally {
+      setRescraping(false);
+    }
+  };
 
   return (
     <section className="compare-related" aria-label={tCompare('related_aria')}>
@@ -1354,8 +1600,8 @@ function RelatedAppsPanel({
             <option value="top_in_category">
               {tCompare('related_mode_top_in_category')}
             </option>
-            <option value="may_also_like" disabled>
-              {tCompare('related_mode_may_also_like_disabled')}
+            <option value="may_also_like">
+              {tCompare('related_mode_may_also_like')}
             </option>
           </select>
         )}
@@ -1363,21 +1609,40 @@ function RelatedAppsPanel({
 
       {open && (
         <div className="compare-related-body">
-          {mode === 'may_also_like' && (
-            <p className="compare-related-empty">
-              {tCompare('related_mode_may_also_like_hint')}
-            </p>
-          )}
-          {mode === 'top_in_category' && loading && (
+          {loading && (
             <p className="compare-related-empty">{tCompare('related_loading')}</p>
           )}
-          {mode === 'top_in_category' && !loading && error && (
+          {!loading && error && (
             <p className="compare-related-empty">{tCompare('related_error')}</p>
           )}
-          {mode === 'top_in_category' && !loading && !error && data && data.candidates.length === 0 && (
-            <p className="compare-related-empty">{tCompare('related_empty')}</p>
-          )}
-          {mode === 'top_in_category' && !loading && !error && data && data.candidates.length > 0 && (
+          {/* "Not scraped yet" — surfaced only in may_also_like mode when
+              we have no rows for the source app. Offers a one-click
+              rescrape that re-pulls the product page with the new
+              shelf-extraction code, then refetches. */}
+          {!loading && !error && mode === 'may_also_like'
+            && data && data.candidates.length === 0
+            && data.reason === 'not_scraped_yet' && (
+              <div className="compare-related-empty compare-related-not-scraped">
+                <p>{tCompare('related_mode_may_also_like_empty')}</p>
+                {data.sourceAppUrl && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => void handleRescrape()}
+                    disabled={rescraping}
+                  >
+                    {rescraping
+                      ? tCompare('related_rescrape_busy')
+                      : tCompare('related_rescrape_cta')}
+                  </button>
+                )}
+              </div>
+            )}
+          {!loading && !error && data && data.candidates.length === 0
+            && !(mode === 'may_also_like' && data.reason === 'not_scraped_yet') && (
+              <p className="compare-related-empty">{tCompare('related_empty')}</p>
+            )}
+          {!loading && !error && data && data.candidates.length > 0 && (
             <ul className="compare-related-list">
               {data.candidates.map(c => {
                 const picked = currentSpecB === `url:${c.url}`;

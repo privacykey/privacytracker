@@ -13,6 +13,10 @@ export const APP_DATA_TABLES_TO_TRUNCATE = [
   'privacy_policy_analyses',
   'change_review_actions',
   'accessibility_features',
+  // Child of apps via FK cascade — listed here so test resets also
+  // explicitly truncate the table, matching the convention for every
+  // other apps-scoped child.
+  'related_apps_observed',
   'manual_app_events',
   'manual_app_policy_versions',
   'manual_apps',
