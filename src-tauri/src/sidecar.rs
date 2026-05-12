@@ -318,42 +318,76 @@ fn resolve_server_js(
 
     // Wait for BeforeDevCommand to finish writing a real tarball.
     //
-    // `pnpm tauri:dev` writes a 0-byte stub at `standalone.tar` BEFORE
-    // tauri starts (see scripts/ensure-standalone-stub.mjs). The stub
-    // exists so cargo's resource-path validator passes during the
-    // parallel cargo+BeforeDevCommand phase. But cargo is much faster
-    // than BeforeDevCommand (`next build --webpack` + tar = ~30-60s),
-    // so without this wait, the Rust binary boots, sees a 0-byte
-    // tarball, and tries to extract from emptiness — producing the
-    // "server.js still missing" error.
+    // `pnpm tauri:dev` runs cargo and BeforeDevCommand (`pnpm
+    // build:standalone:dev` — next build + stage-standalone.mjs) in
+    // parallel. Cargo finishes in ~7s and the Rust binary boots while
+    // BeforeDevCommand is still 20+ seconds from done. Worse, the
+    // tarball on disk at boot time can be one of:
     //
-    // Strategy: poll the file size up to 90s. As soon as we see a
-    // non-zero file (BeforeDevCommand finished its `tar` AND the
-    // atomic rename committed), we proceed. 90s matches the
-    // READY_TIMEOUT below — if BeforeDevCommand can't finish in 90s,
-    // something else is wrong and the user should see a clean error.
+    //   a) a 0-byte stub written by scripts/ensure-standalone-stub.mjs
+    //      (no prior tarball existed);
+    //   b) a STALE non-zero tarball from a prior session, an
+    //      interrupted build, or a different branch (the stub script
+    //      preserves real tarballs so a fresh dev run with a cached
+    //      tarball stays fast).
+    //
+    // Polling for `size > 0` handles (a) but races on (b) — the poll
+    // exits immediately, the binary extracts the stale tree, the
+    // sidecar crashes with `Cannot find module 'react'` (or similar)
+    // because the staged content isn't from the *current* code.
+    //
+    // Strategy: poll for a sibling `standalone.tar.ready` marker.
+    // stage-standalone.mjs writes the marker atomically AFTER the
+    // renameSync of the tarball; ensure-standalone-stub.mjs deletes
+    // the marker at the start of every `pnpm tauri:dev`. So:
+    //
+    //   - marker absent  → tarball (if any) is stale, keep waiting
+    //   - marker present → check its key matches the on-disk tarball
+    //     (defends against the rare rename-vs-marker-write reorder)
+    //
+    // The marker stores `${size}:${mtimeSeconds}`, the same shape as
+    // `freshness_key` below, so the comparison is direct.
+    //
+    // Release builds don't go through BeforeDevCommand at all (the
+    // tarball ships pre-baked inside the .app from `tauri build`) so
+    // skip the wait entirely there. `cfg!(debug_assertions)` is
+    // automatically correct for `tauri dev` (debug) vs `tauri build`
+    // (release) and costs no runtime branch.
+    #[cfg(debug_assertions)]
     {
+        let ready_marker = resource_dir.join("standalone.tar.ready");
         let wait_start = Instant::now();
         let wait_deadline = wait_start + Duration::from_secs(90);
         let mut last_log = wait_start;
         loop {
-            let size = fs::metadata(&bundled_tar).map(|m| m.len()).unwrap_or(0);
-            if size > 0 {
-                if wait_start.elapsed() > Duration::from_secs(2) {
-                    log::info!(
-                        "Bundled tarball ready ({} bytes) after waiting {}s",
-                        size,
-                        wait_start.elapsed().as_secs(),
-                    );
+            if let (Ok(meta), Ok(stored)) =
+                (fs::metadata(&bundled_tar), fs::read_to_string(&ready_marker))
+            {
+                let actual = freshness_key(&meta);
+                if stored.trim() == actual {
+                    if wait_start.elapsed() > Duration::from_secs(2) {
+                        log::info!(
+                            "Bundled tarball ready ({} bytes) after waiting {}s",
+                            meta.len(),
+                            wait_start.elapsed().as_secs(),
+                        );
+                    }
+                    break;
                 }
-                break;
+                // Marker exists but doesn't match the tarball — the
+                // atomic rename + marker write can land in this order
+                // on a busy machine. Treat as still-not-ready and
+                // retry on the next tick.
             }
             if Instant::now() >= wait_deadline {
                 return Err(format!(
-                    "Bundled tarball at {} stayed at 0 bytes for 90s. \
-                     `npm run build:standalone:dev` (BeforeDevCommand) appears stuck — \
-                     check its log output above for compile errors.",
+                    "Bundled tarball at {} did not become ready within 90s \
+                     (marker {} present: {}). `pnpm build:standalone:dev` \
+                     (BeforeDevCommand) appears stuck — check its log output \
+                     above for compile errors.",
                     bundled_tar.display(),
+                    ready_marker.display(),
+                    ready_marker.exists(),
                 ).into());
             }
             // Log every ~10s while we're still waiting so the dev

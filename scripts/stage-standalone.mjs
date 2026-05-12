@@ -14,6 +14,7 @@ import {
   mkdirSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -183,3 +184,26 @@ execFileSync(
 );
 renameSync(tauriTarballTmp, tauriTarball);
 console.log(`stage-standalone: tarball at ${tauriTarball} (atomic write)`);
+
+// Drop a freshness marker next to the tarball. The sidecar polls for
+// this file at boot (see src-tauri/src/sidecar.rs) to know the tarball
+// it's about to read was produced by the CURRENT BeforeDevCommand —
+// not a leftover from a prior session, an interrupted build, or a
+// different branch. The content is `${size}:${mtimeSeconds}` and
+// mirrors the freshness_key shape the sidecar already uses for its
+// extraction cache, so the sidecar can cross-check the marker against
+// the tarball on disk before extracting.
+//
+// Atomic write: .ready.tmp → .ready so a reader never sees a partially-
+// written marker. ensure-standalone-stub.mjs deletes this marker at
+// the start of every `pnpm tauri:dev`, so a non-existent .ready means
+// "stale, wait for me to rebuild".
+const readyMarker = `${tauriTarball}.ready`;
+const readyMarkerTmp = `${readyMarker}.tmp`;
+const tarballStat = statSync(tauriTarball);
+const tarballMtimeSeconds = Math.floor(tarballStat.mtimeMs / 1000);
+const readyKey = `${tarballStat.size}:${tarballMtimeSeconds}`;
+rmSync(readyMarkerTmp, { force: true });
+writeFileSync(readyMarkerTmp, readyKey);
+renameSync(readyMarkerTmp, readyMarker);
+console.log(`stage-standalone: wrote ${path.basename(readyMarker)} (key ${readyKey})`);
