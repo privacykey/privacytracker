@@ -456,7 +456,6 @@
       "row_queued_aria": "排队等待重试",
       "row_error_suffix": " · 将在后台重试",
       "row_queued_default": "已加入后台导入队列",
-      "row_queued_retry_in": " · 大约 {sec} 秒后重试",
       "row_changes_detected": "检测到变化",
       "skip_dashboard": "跳过 → 进入仪表板",
       "view_history": "查看导入历史",

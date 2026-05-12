@@ -629,12 +629,28 @@ export function claimQueuedBatch(limit = 5): ImportItemRow[] {
   const inFlightFence = now + 10 * 60 * 1000;
 
   const tx = db.transaction(() => {
+    // Order: untracked apps (app_id IS NULL) before already-tracked
+    // rescrapes (app_id NOT NULL). When a bulk import mixes new apps
+    // with apps the user is already tracking, the user wants the new
+    // ones to appear in the dashboard first — they're the reason they
+    // ran the import. The already-tracked rows are effectively just a
+    // sync; pushing them to the tail of every claim batch means a tick
+    // that hits Apple's rate limit gives up its budget on net-new
+    // apps, not on refreshing data that's already on screen.
+    //
+    // `app_id` is set by resolveSafeAppId at insert time: it's the
+    // candidate's appleId when the apps row already exists, NULL
+    // otherwise. So the SQL signal here is exactly the "already
+    // tracked vs. not" question without an extra join.
     const rows = db
       .prepare(
         `SELECT * FROM import_items
          WHERE status = 'queued'
            AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-         ORDER BY next_attempt_at ASC, rowid ASC
+         ORDER BY
+           CASE WHEN app_id IS NULL THEN 0 ELSE 1 END,
+           next_attempt_at ASC,
+           rowid ASC
          LIMIT ?`,
       )
       .all(now, limit) as ImportItemRecord[];

@@ -668,11 +668,12 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   /** Re-render tick so the step-4 banner can show a ticking seconds value
    *  even while `scrapeRateLimit` itself is stable. */
   const [scrapeRateTick, setScrapeRateTick] = useState(0);
+  const importDrainPausedUntil = importQueue.drainState?.pausedUntil ?? null;
   useEffect(() => {
-    if (!scrapeRateLimit) return;
+    if (!scrapeRateLimit && !(importDrainPausedUntil && importDrainPausedUntil > Date.now())) return;
     const id = setInterval(() => setScrapeRateTick(t => t + 1), 1000);
     return () => clearInterval(id);
-  }, [scrapeRateLimit]);
+  }, [importDrainPausedUntil, scrapeRateLimit]);
 
   // Import-history plumbing
   const [importId, setImportId] = useState<string | null>(null);
@@ -2874,24 +2875,19 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
         durationMs: Math.round(performance.now() - queueStartedAt),
       });
 
-      // Same path as Settings → Import History → Retry: refresh the shared
-      // queue snapshot so Task Center sees the full backlog, then kick an
-      // immediate server-side drain instead of waiting for the next ticker.
+      // Same path as Settings → Import History → Retry, but start the
+      // provider-owned foreground drain loop instead of kicking one server
+      // tick. The server still claims rows in 10-item chunks; the provider
+      // immediately asks for the next chunk until Apple 429s, the queue
+      // empties, or the user cancels.
       const kickStartedAt = performance.now();
       recordImportEvent('onboarding.queue.kick.start', { items: queuePayload.length });
-      await importQueue.refresh();
-      // retryNow() now throws on HTTP failure (so a foreground drain
-      // loop can react). Here we just want a fire-and-forget kick —
-      // the import row is already saved, and a missed first tick is
-      // recoverable via the next 30-min instrumentation tick or a
-      // manual retry from Settings → Import History.
-      try { await importQueue.retryNow(); } catch (err) {
-        console.warn('[wizard] queue kick failed (will recover on next tick):', err);
-        recordImportEvent('onboarding.queue.kick.error', {
-          durationMs: Math.round(performance.now() - kickStartedAt),
-          error: err instanceof Error ? err.message.slice(0, 120) : String(err).slice(0, 120),
-        });
-      }
+      const queueSnapshot = await importQueue.refresh();
+      recordImportEvent('onboarding.queue.drain.start', { queued: queuePayload.length });
+      importQueue.startDrain({
+        initialSnapshot: queueSnapshot,
+        forceRefresh: queueSnapshot === null,
+      });
       recordImportEvent('onboarding.queue.kick.complete', {
         durationMs: Math.round(performance.now() - kickStartedAt),
       });
@@ -4487,12 +4483,22 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             </p>
 
             {(() => {
+              void scrapeRateTick;
               const total = scrapeList.length;
               const successCount = scrapeList.filter(item => item.status === 'success').length;
               const errorCount = scrapeList.filter(item => item.status === 'error').length;
               const queuedCount = scrapeList.filter(item => item.status === 'queued' || item.status === 'pending').length;
               const completedCount = successCount + errorCount;
-              const progressPct = total > 0 ? Math.max(4, Math.round((completedCount / total) * 100)) : 0;
+              const drainState = importQueue.drainState;
+              const attemptedCount = drainState
+                ? Math.min(total, Math.max(completedCount, drainState.processed))
+                : completedCount;
+              const drainPausedUntil = drainState?.pausedUntil ?? null;
+              const drainPaused = Boolean(drainPausedUntil && drainPausedUntil > Date.now());
+              const drainPausedSec = drainPausedUntil
+                ? Math.max(1, Math.ceil((drainPausedUntil - Date.now()) / 1000))
+                : 0;
+              const progressPct = total > 0 ? Math.max(4, Math.round((attemptedCount / total) * 100)) : 0;
               return (
                 <div className="onboard-import-status-card" role="status" aria-live="polite">
                   <div className="onboard-import-status-topline">
@@ -4500,10 +4506,12 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                       <div className="onboard-import-status-title">
                         {done
                           ? tStep4('status_done', { done: completedCount, total })
-                          : tStep4('status_running', { done: completedCount, total })}
+                          : tStep4('status_running', { done: attemptedCount, total })}
                       </div>
                       <div className="onboard-import-status-sub">
-                        {queuedCount > 0
+                        {drainPaused
+                          ? tStep4('rate_limit_sub', { sec: drainPausedSec })
+                          : queuedCount > 0
                           ? tStep4('status_background_hint', { count: queuedCount })
                           : errorCount > 0
                             ? tStep4('status_done_with_errors', { count: errorCount })
@@ -4608,9 +4616,19 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                         {item.status === 'queued' && (
                           <div className="scrape-sub" style={{ color: 'var(--orange)' }}>
                             {item.error ?? tStep4('row_queued_default')}
-                            {item.retryAfterMs
-                              ? tStep4('row_queued_retry_in', { sec: Math.max(1, Math.round(item.retryAfterMs / 1000)) })
-                              : ''}
+                            {/*
+                              `row_queued_retry_in` (a "Next retry in NNNs"
+                              countdown) used to render here, derived from
+                              the row's next_attempt_at. It was misleading:
+                              once the server worker claims a row it pushes
+                              next_attempt_at out by 10 minutes as an
+                              in-flight fence (lib/imports.ts ::
+                              claimQueuedBatch), so the user saw a 600s
+                              countdown for a row that was actually about
+                              to finish scraping in seconds. We drop the
+                              timer entirely — the static "Queued / retrying"
+                              copy is the truthful signal.
+                            */}
                           </div>
                         )}
                         {item.status === 'success' && item.changesDetected && (

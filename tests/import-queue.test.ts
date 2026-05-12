@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   addImportItems,
+  claimQueuedBatch,
   createImport,
   getImport,
 } from '../lib/imports';
@@ -10,6 +11,7 @@ import {
   runImportQueueTick,
 } from '../lib/import-queue';
 import { getSetting, setSetting } from '../lib/scheduler';
+import db from '../lib/db';
 import { resetTestDb } from './test-db';
 
 const originalFetch = global.fetch;
@@ -72,6 +74,44 @@ test('import queue parks items and sets a pause fence when Apple rate-limits', a
   assert.equal(after?.items[0].status, 'queued');
   assert.equal(after?.items[0].attemptCount, 1);
   assert.match(after?.items[0].scrapeError ?? '', /rate-limited/i);
+});
+
+test('import queue claims untracked apps before already-tracked rescrapes', async () => {
+  // When a bulk import mixes net-new apps with apps the user is
+  // already tracking, the new ones should land in the dashboard first
+  // — they're the reason the user ran the import. Already-tracked
+  // rows are effectively just a sync; tail-of-batch is fine for them.
+  installQueueFetchMock({ appStatus: 200 });
+  const batch = createImport({ source: 'manual', total: 2 });
+  // Seed a tracked app so resolveSafeAppId keeps the appId.
+  db.prepare(
+    "INSERT INTO apps (id, name, url, lastSynced) VALUES ('3001', 'Already Tracked', 'https://apps.apple.com/us/app/already-tracked/id3001', 0)",
+  ).run();
+  // Insert in tracked-then-new order; the claim query should flip them.
+  addImportItems(batch.id, [
+    {
+      query: 'Already Tracked',
+      status: 'queued',
+      appId: '3001',
+      url: 'https://apps.apple.com/us/app/already-tracked/id3001',
+      appName: 'Already Tracked',
+      nextAttemptAt: 0,
+    },
+    {
+      query: 'Brand New',
+      status: 'queued',
+      // No appId — caller didn't have one yet, or resolveSafeAppId nulled
+      // it because the apps row doesn't exist. Either way: untracked.
+      url: 'https://apps.apple.com/us/app/brand-new/id4001',
+      appName: 'Brand New',
+      nextAttemptAt: 0,
+    },
+  ]);
+
+  const claimed = claimQueuedBatch(2);
+  assert.equal(claimed.length, 2);
+  assert.equal(claimed[0].query, 'Brand New', 'untracked row must be claimed first');
+  assert.equal(claimed[1].query, 'Already Tracked', 'tracked rescrape must come last');
 });
 
 test('import queue ignores pending_search rows even when they are past their next_attempt_at', async () => {
