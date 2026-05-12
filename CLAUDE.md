@@ -161,6 +161,55 @@ ICU placeholders (`{count, plural, one {# app} other {# apps}}`, `{name}`, etc.)
 
 The privacy-profile badge type carries a `kind: 'no_profile' | 'match' | 'mismatches'` discriminator alongside its English `label` / `description` fallbacks; client code resolves the localised label via `localiseBadgeLabel(tBadge, badge)` from `lib/i18n-meta.ts` rather than reading the English fields directly. `describeWorstMismatchLocalised` plays the same role for the worst-mismatch sentence on dashboard banners. The English-only `summariseBadge` / `describeWorstMismatch` helpers stay around for notification + audit-bundle exports that compose plain-text strings server-side.
 
+## Session continuity protocol
+
+Long sessions (audits, refactors, multi-PR work) often span context
+resets or multiple Claude Code invocations. To survive that and let
+`/resume` pick up cleanly, every session maintains a single state blob
+at `.claude/state/session.json` — gitignored, per-developer, written
+by the assistant via `Write` after every completed todo.
+
+**Schema** (one object, no top-level array):
+
+| Field | Type | Notes |
+|---|---|---|
+| `schema_version` | number | Bump on breaking shape changes. Current: `1`. |
+| `current_goal` | string | One-sentence statement of what we're working on. |
+| `started_at` / `updated_at` | ISO timestamp | UTC. |
+| `status` | `"in_progress" \| "blocked" \| "completed"` | Drives `/resume` behaviour. |
+| `branch` | string | Optional — the git branch the work targets. |
+| `completed[]` | `{ task, outcome, files, completed_at }` | Append-only audit trail. |
+| `pending[]` | `{ task, context }` | `/resume` continues from `pending[0]`. |
+| `open_questions[]` | `{ question, asked_at, answer }` | `answer` is `null` until the user replies. Never re-ask a question whose `answer` is non-null — apply the stored answer directly. |
+| `key_files[]` | string[] | Relevant paths touched this session, for quick re-priming. |
+| `decisions[]` | `{ decision, rationale, made_at }` | Non-obvious judgement calls worth keeping. |
+| `follow_ups_for_user[]` | string[] | Things the user needs to do outside this session (manual smoke tests, Crowdin reviews, etc.). |
+| `git_commits_in_session[]` | `{ sha, message }` | Commits the assistant created this session. |
+
+**Update cadence:**
+
+1. After completing any todo, move it from `pending[]` to `completed[]`,
+   record `outcome` + `files` + `completed_at`, and write the file.
+2. After a user answer, fill the matching `open_questions[].answer`.
+   Don't delete the question — the rationale stays useful for audit.
+3. After a non-obvious decision, append to `decisions[]`.
+4. When the user states a new goal, archive the current session (e.g.
+   rotate to `.claude/state/session-{timestamp}.json`) and start a
+   fresh blob — never silently overwrite history.
+
+**Resuming:** the user invokes `/resume` (slash command at
+`.claude/commands/resume.md`, which IS checked in). That reads
+`.claude/state/session.json`, prints a short status summary, and
+continues from the next pending todo without re-asking already-answered
+questions. If the file is missing or `status === "completed"`, the
+command reports that explicitly rather than fabricating work.
+
+**Why gitignored:** the state file is a personal scratch pad — committing
+it would create merge conflicts across developers. The shareable parts
+of the protocol (`.claude/commands/`, this section, the schema) are
+checked in so every clone behaves the same way. See `.gitignore` for
+the exact pattern.
+
 ## Things that commonly trip people up
 
 - The App Store page parser depends on Apple's HTML. If labels suddenly stop appearing, the first suspect is the shelf fallback chain in `saveToDb` (modern: `serialized-server-data` → `shelfMapping.privacyTypes.items`, fallback: `privacyHeader` flatten, fallback: `pageData.shelves`, fallback: `extractFromShoebox` for the historical Ember/FastBoot shape) or the privacy-policy link regex (which must handle both straight `'` and curly `’` apostrophes in the "Developer's Privacy Policy" aria-label). The shoebox extractor is also what lets the Wayback importer reach back to Q1 2021.
