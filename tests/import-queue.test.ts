@@ -74,6 +74,45 @@ test('import queue parks items and sets a pause fence when Apple rate-limits', a
   assert.match(after?.items[0].scrapeError ?? '', /rate-limited/i);
 });
 
+test('import queue ignores pending_search rows even when they are past their next_attempt_at', async () => {
+  // pending_search rows are URL-less; they're owned by the client-side
+  // QueuedSearchProvider (iTunes Search retries), not the server worker.
+  // The worker must not claim them, otherwise it would mass-error every
+  // URL-less row in the batch — the bug that motivated the status split.
+  installQueueFetchMock({ appStatus: 200 });
+  const batch = createImport({ source: 'manual', total: 2 });
+  addImportItems(batch.id, [
+    {
+      query: 'Pending Search Fixture',
+      status: 'pending_search',
+      // No URL — this is the whole point. nextAttemptAt is in the past so
+      // a non-status-aware claim query would scoop this up.
+      nextAttemptAt: 0,
+    },
+    {
+      query: 'Real Queued Fixture',
+      status: 'queued',
+      url: 'https://apps.apple.com/us/app/queued-fixture/id3001',
+      appName: 'Real Queued Fixture',
+      nextAttemptAt: 0,
+    },
+  ]);
+
+  const result = await runImportQueueTick();
+
+  // Only the real queued row should have been processed.
+  assert.equal(result.processed, 1);
+  assert.equal(result.succeeded, 1);
+  assert.equal(result.failed, 0);
+
+  const after = getImport(batch.id);
+  const pending = after?.items.find(i => i.query === 'Pending Search Fixture');
+  const queued = after?.items.find(i => i.query === 'Real Queued Fixture');
+  assert.equal(pending?.status, 'pending_search', 'pending_search row must not be flipped to error');
+  assert.equal(pending?.attemptCount, 0, 'pending_search row must not have its attempt counter bumped');
+  assert.equal(queued?.status, 'imported');
+});
+
 test('import queue clears stale running locks before checking for due work', async () => {
   setSetting('import_queue_running', 'true');
   setSetting('import_queue_running_since', String(Date.now() - 25 * 60 * 1000));

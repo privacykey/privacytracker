@@ -4,7 +4,8 @@ import path from 'node:path';
 import { existsSync, statSync } from 'node:fs';
 import { getSetting } from '@/lib/scheduler';
 import db from '@/lib/db';
-import { snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
+import { installRuntimeDiagnostics, snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
+import { snapshotDbWorkerTimings } from '@/lib/db-worker-client';
 
 /**
  * Node-side diagnostics payload.
@@ -77,6 +78,7 @@ export async function GET() {
   // payload ships to GitHub issues and we don't want a 200-row dump in
   // every bug report. The full ring is available via
   // /api/diagnostics/runtime for the live dashboard.
+  installRuntimeDiagnostics(db);
   const runtimeMetrics = snapshotRuntimeMetrics(20);
 
   const payload = {
@@ -100,6 +102,7 @@ export async function GET() {
     // requiring the user to open the live diagnostics dashboard. The
     // dashboard re-uses the same shape via /api/diagnostics/runtime.
     runtime_metrics: runtimeMetrics,
+    db_worker: snapshotDbWorkerTimings(20),
     scheduler: readLastSync(),
     bulk_runners: readBulkRunners(),
     db: readDbStats(),

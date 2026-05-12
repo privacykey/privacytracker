@@ -35,6 +35,7 @@ import LiveTextModal from './LiveTextModal';
 import LanguageSuggestionBanner from './LanguageSuggestionBanner';
 import RateLimitBanner from './RateLimitBanner';
 import { useFlag } from '../../lib/feature-flags-hooks';
+import { recordImportEvent } from '../../lib/client-diagnostics';
 
 interface AppCandidate {
   appleId: string;
@@ -1588,6 +1589,8 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
 
   const createImportRecord = useCallback(
     async (total: number): Promise<string | null> => {
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.import.create.start', { total, method });
       try {
         const res = await fetch('/api/imports', {
           method: 'POST',
@@ -1599,10 +1602,23 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           }),
         });
         const data = await res.json();
-        if (!res.ok || typeof data?.id !== 'string') return null;
+        if (!res.ok || typeof data?.id !== 'string') {
+          recordImportEvent('onboarding.import.create.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
+          });
+          return null;
+        }
+        recordImportEvent('onboarding.import.create.complete', {
+          durationMs: Math.round(performance.now() - startedAt),
+        });
         return data.id;
       } catch (error) {
         console.error('[wizard] Failed to create import record:', error);
+        recordImportEvent('onboarding.import.create.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
         return null;
       }
     },
@@ -1654,15 +1670,21 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       });
 
       // Persist names the search couldn't process yet because Apple 429'd us
-      // as `status='queued'` so they show up in Import History immediately.
-      // When the QueuedSearchProvider retries later, the same endpoint
-      // upserts by (importId, query), swapping the row to 'matched'.
-      // Without this, a rate-limited batch would leave the import with
-      // `itemCount === 0` and the user would see the "No per-app history"
-      // empty state even though the import genuinely has work in flight.
+      // as `status='pending_search'` so they show up in Import History
+      // immediately. When the QueuedSearchProvider retries later, the same
+      // endpoint upserts by (importId, query), swapping the row to 'matched'
+      // with the resolved `url` in place. Without this, a rate-limited batch
+      // would leave the import with `itemCount === 0` and the user would see
+      // the "No per-app history" empty state even though the import
+      // genuinely has work in flight.
+      //
+      // Crucially this is NOT `status='queued'`: the server-side import-queue
+      // worker only claims 'queued' rows (which always have a URL — they're
+      // scrape retries). Mixing the two would cause the worker to mass-error
+      // every URL-less row it claimed.
       const queuedPayload = (queuedRows ?? []).map(row => ({
         query: row.name,
-        status: 'queued' as const,
+        status: 'pending_search' as const,
         developer: row.developer ?? null,
         country,
         scrapeError: tStatus('scrape_error_rate_limited'),
@@ -1689,6 +1711,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       const itemsPayload = [...searchedPayload, ...queuedPayload, ...fallbackPayload];
       if (itemsPayload.length === 0) return new Map();
 
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.items.initial_bulk.start', {
+        items: itemsPayload.length,
+        matched: searchedPayload.filter(item => item.status === 'matched').length,
+        queued: queuedPayload.length,
+        fallback: fallbackPayload.length,
+      });
       try {
         const res = await fetch('/api/imports/items', {
           method: 'POST',
@@ -1702,6 +1731,10 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           console.error(
             `[wizard] /api/imports/items rejected (${res.status}): ${errBody.slice(0, 200)}`,
           );
+          recordImportEvent('onboarding.items.initial_bulk.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
+          });
           return new Map();
         }
         const data = await res.json();
@@ -1713,9 +1746,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             }
           }
         }
+        recordImportEvent('onboarding.items.initial_bulk.complete', {
+          items: idMap.size,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
         return idMap;
       } catch (error) {
         console.error('[wizard] Failed to write import items:', error);
+        recordImportEvent('onboarding.items.initial_bulk.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
         return new Map();
       }
     },
@@ -2136,35 +2177,77 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // in Import History that they deliberately opted not to re-import the
     // tracked app this time round.
     if (importId) {
-      await Promise.all(
-        searchResults.map(async result => {
-          const itemId = itemIdByQuery.get(result.query);
-          if (!itemId) return;
-          const chosen = workingSelected.get(result.query);
-          const wasFiltered =
-            selected.has(result.query) && !workingSelected.has(result.query);
-          const payload = chosen
-            ? {
-                itemId,
-                status: 'matched',
-                appId: chosen.appleId,
-                appName: chosen.name,
-                developer: chosen.developer,
-                url: chosen.url,
-              }
-            : wasFiltered
-              ? { itemId, status: 'skipped' }
-              : {
-                  itemId,
-                  status: result.candidates.length === 0 ? 'unmatched' : 'skipped',
-                };
-          await fetch('/api/imports/items/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+      const statusPayload = searchResults.map(result => {
+        const chosen = workingSelected.get(result.query);
+        const wasFiltered =
+          selected.has(result.query) && !workingSelected.has(result.query);
+        return chosen
+          ? {
+              query: result.query,
+              status: 'matched',
+              appId: chosen.appleId,
+              appName: chosen.name,
+              developer: chosen.developer,
+              url: chosen.url,
+              iconUrl: chosen.iconUrl,
+              country,
+              scrapeError: null,
+            }
+          : wasFiltered
+            ? { query: result.query, status: 'skipped', country }
+            : {
+                query: result.query,
+                status: result.candidates.length === 0 ? 'unmatched' : 'skipped',
+                country,
+                scrapeError: result.candidates.length === 0
+                  ? tStatus('scrape_error_no_result')
+                  : null,
+              };
+      });
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.confirm.bulk_status.start', {
+        items: statusPayload.length,
+        selected: entries.length,
+      });
+      try {
+        const res = await fetch('/api/imports/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ importId, items: statusPayload }),
+        });
+        if (!res.ok) {
+          recordImportEvent('onboarding.confirm.bulk_status.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
           });
-        }),
-      );
+          setSearchError(tStatus('background_import_start_failed'));
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data?.items)) {
+          setItemIdByQuery(prev => {
+            const next = new Map(prev);
+            for (const item of data.items) {
+              if (typeof item?.query === 'string' && typeof item?.id === 'string') {
+                next.set(item.query, item.id);
+              }
+            }
+            return next;
+          });
+        }
+        recordImportEvent('onboarding.confirm.bulk_status.complete', {
+          items: statusPayload.length,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
+      } catch (error) {
+        console.error('[wizard] Failed to persist final import selections:', error);
+        recordImportEvent('onboarding.confirm.bulk_status.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
+        setSearchError(tStatus('background_import_start_failed'));
+        return;
+      }
     }
 
     const list: ScrapeStatus[] = entries.map(([query, candidate]) => ({
@@ -2749,33 +2832,53 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       return;
     }
 
+    let queueStartedAt: number | null = null;
     try {
-      await Promise.all(entries.map(async ([query, candidate]) => {
-        const itemId = itemIdByQuery.get(query);
-        if (!itemId) return;
-        const res = await fetch('/api/imports/items/update', {
+      const queuePayload = entries.map(([query, candidate]) => ({
+        query,
+        status: 'queued' as const,
+        appId: candidate.appleId,
+        appName: candidate.name,
+        developer: candidate.developer,
+        url: candidate.url,
+        iconUrl: candidate.iconUrl,
+        country,
+        scrapeError: null,
+      }));
+      queueStartedAt = performance.now();
+      recordImportEvent('onboarding.queue.bulk.start', { items: queuePayload.length });
+      if (queuePayload.length > 0) {
+        const res = await fetch('/api/imports/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itemId,
-            status: 'queued',
-            appId: candidate.appleId,
-            appName: candidate.name,
-            developer: candidate.developer,
-            url: candidate.url,
-            iconUrl: candidate.iconUrl,
-            country,
-            scrapeError: null,
-          }),
+          body: JSON.stringify({ importId, items: queuePayload }),
         });
         if (!res.ok) {
-          throw new Error(`Queue update failed for ${candidate.name}`);
+          throw new Error(`Queue update failed with HTTP ${res.status}`);
         }
-      }));
+        const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data?.items)) {
+          setItemIdByQuery(prev => {
+            const next = new Map(prev);
+            for (const item of data.items) {
+              if (typeof item?.query === 'string' && typeof item?.id === 'string') {
+                next.set(item.query, item.id);
+              }
+            }
+            return next;
+          });
+        }
+      }
+      recordImportEvent('onboarding.queue.bulk.complete', {
+        items: queuePayload.length,
+        durationMs: Math.round(performance.now() - queueStartedAt),
+      });
 
       // Same path as Settings → Import History → Retry: refresh the shared
       // queue snapshot so Task Center sees the full backlog, then kick an
       // immediate server-side drain instead of waiting for the next ticker.
+      const kickStartedAt = performance.now();
+      recordImportEvent('onboarding.queue.kick.start', { items: queuePayload.length });
       await importQueue.refresh();
       // retryNow() now throws on HTTP failure (so a foreground drain
       // loop can react). Here we just want a fire-and-forget kick —
@@ -2784,10 +2887,24 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       // manual retry from Settings → Import History.
       try { await importQueue.retryNow(); } catch (err) {
         console.warn('[wizard] queue kick failed (will recover on next tick):', err);
+        recordImportEvent('onboarding.queue.kick.error', {
+          durationMs: Math.round(performance.now() - kickStartedAt),
+          error: err instanceof Error ? err.message.slice(0, 120) : String(err).slice(0, 120),
+        });
       }
+      recordImportEvent('onboarding.queue.kick.complete', {
+        durationMs: Math.round(performance.now() - kickStartedAt),
+      });
       await refreshBackgroundImportProgress();
     } catch (error) {
       console.error('[wizard] Failed to queue import batch:', error);
+      recordImportEvent('onboarding.queue.bulk.error', {
+        items: entries.length,
+        durationMs: queueStartedAt !== null
+          ? Math.round(performance.now() - queueStartedAt)
+          : undefined,
+        error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+      });
       setScrapeList(prev => {
         const failed = prev.map(item =>
           item.status === 'success'

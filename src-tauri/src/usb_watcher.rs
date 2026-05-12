@@ -34,12 +34,12 @@ use std::sync::Mutex;
 use std::thread;
 
 #[cfg(target_os = "macos")]
-use core_foundation::base::{kCFAllocatorDefault, TCFType};
+use core_foundation::base::TCFType;
 #[cfg(target_os = "macos")]
 use core_foundation::runloop::{kCFRunLoopDefaultMode, CFRunLoop, CFRunLoopSource};
 #[cfg(target_os = "macos")]
 use io_kit_sys::{
-    kIOMainPortDefault, IOIteratorNext, IONotificationPortCreate,
+    kIOMasterPortDefault, IOIteratorNext, IONotificationPortCreate,
     IONotificationPortGetRunLoopSource, IOObjectRelease, IOServiceAddMatchingNotification,
     IOServiceMatching,
 };
@@ -105,7 +105,7 @@ fn run_loop(app: AppHandle) -> Result<(), String> {
     })) as *mut WatcherContext as *mut c_void;
 
     unsafe {
-        let port = IONotificationPortCreate(kIOMainPortDefault);
+        let port = IONotificationPortCreate(kIOMasterPortDefault);
         if port.is_null() {
             return Err("IONotificationPortCreate returned null".to_string());
         }
@@ -123,9 +123,9 @@ fn run_loop(app: AppHandle) -> Result<(), String> {
         let mut iter: io_iterator_t = 0;
         let kr = IOServiceAddMatchingNotification(
             port,
-            kIOFirstMatchNotification,
+            kIOFirstMatchNotification as *mut _,
             matching,
-            Some(device_appeared),
+            device_appeared,
             ctx,
             &mut iter,
         );
@@ -160,7 +160,7 @@ fn run_loop(app: AppHandle) -> Result<(), String> {
 /// IOKit C callback. Drains the iterator + asks cfgutil for the current
 /// device set; for each ECID we haven't seen, emit a Tauri event.
 #[cfg(target_os = "macos")]
-extern "C" fn device_appeared(refcon: *mut c_void, iterator: io_iterator_t) {
+unsafe extern "C" fn device_appeared(refcon: *mut c_void, iterator: io_iterator_t) {
     // Safety: refcon points to a leaked `WatcherContext` — see `run_loop`.
     let ctx = unsafe { &*(refcon as *const WatcherContext) };
 

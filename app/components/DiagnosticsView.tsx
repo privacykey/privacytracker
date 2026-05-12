@@ -114,6 +114,7 @@ interface RuntimeMetrics {
     inProgress: InProgressScrape[];
     recent: ScrapeRecord[];
   };
+  dbWorker?: DbWorkerTimings;
 }
 
 interface ApiTimingRecord {
@@ -123,6 +124,30 @@ interface ApiTimingRecord {
   durationMs: number;
   status: number;
   error?: string;
+}
+
+interface DbWorkerTimingRecord {
+  at: number;
+  statementCount: number;
+  chunkSize: number | 'infinity';
+  durationMs: number;
+  workerDurationMs?: number;
+  totalChanges: number;
+  inline: boolean;
+  outcome: 'ok' | 'error';
+  failedAtIndex?: number;
+  error?: string;
+}
+
+interface DbWorkerTimings {
+  totalSinceStart: number;
+  failedSinceStart: number;
+  inlineSinceStart: number;
+  pendingRequests: number;
+  workerEnabled: boolean;
+  workerCached: boolean;
+  workerDisabled: boolean;
+  recent: DbWorkerTimingRecord[];
 }
 
 interface ScrapePhaseMark {
@@ -389,6 +414,22 @@ function rollupStatus(state: {
   return { overall, notes };
 }
 
+async function fetchMergedDiagnosticsBundle(): Promise<string> {
+  const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const serverBundle = (await r.json()) as Record<string, unknown>;
+  const clientSnapshot = snapshotClientDiagnostics();
+  const merged = {
+    ...serverBundle,
+    clientDiagnostics: {
+      ...clientSnapshot,
+      capturedFromPath: window.location.pathname,
+      browserGeneratedAt: new Date().toISOString(),
+    },
+  };
+  return JSON.stringify(merged, null, 2);
+}
+
 // ── Top-level component ────────────────────────────────────────────────
 
 export default function DiagnosticsView() {
@@ -623,9 +664,8 @@ export default function DiagnosticsView() {
    */
   const handleDownloadBundle = useCallback(async () => {
     try {
-      const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const json = await r.text();
+      const json = await fetchMergedDiagnosticsBundle();
+      setClientDiag(snapshotClientDiagnostics());
       const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -646,9 +686,8 @@ export default function DiagnosticsView() {
     setBusy('copy');
     setCopyState('idle');
     try {
-      const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const json = await r.text();
+      const json = await fetchMergedDiagnosticsBundle();
+      setClientDiag(snapshotClientDiagnostics());
       // navigator.clipboard requires HTTPS or localhost; both apply here.
       // Fallback to a hidden textarea + execCommand only if the API is
       // missing — Safari < 13 / very old browsers.
@@ -796,6 +835,9 @@ export default function DiagnosticsView() {
           )}
           {metrics.apiTimings && (
             <ApiTimingsCard timings={metrics.apiTimings} />
+          )}
+          {metrics.dbWorker && (
+            <DbWorkerCard timings={metrics.dbWorker} />
           )}
           {clientDiag && (
             <ClientActivityCard
@@ -1578,6 +1620,107 @@ function ApiTimingsCard({
                     <td className="diagnostics-sql"><code>{t.route}</code></td>
                     <td><code className={erroring ? 'diagnostics-severity-danger' : ''}>{t.status || (t.error ? 'ERR' : '—')}</code></td>
                     <td><code className={cls}>{formatMs(t.durationMs)} ms</code></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DbWorkerCard({
+  timings,
+}: {
+  timings: DbWorkerTimings;
+}) {
+  const sorted = useMemo(
+    () => [...timings.recent].sort((a, b) => b.at - a.at),
+    [timings.recent],
+  );
+  const inlinePct = timings.totalSinceStart > 0
+    ? Math.round((timings.inlineSinceStart / timings.totalSinceStart) * 100)
+    : 0;
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">
+          DB worker batches
+          {!timings.workerEnabled && (
+            <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
+              inline fallback
+            </span>
+          )}
+          {timings.pendingRequests > 0 && (
+            <span className="diagnostics-pill" style={{ marginLeft: 6 }}>
+              {timings.pendingRequests} pending
+            </span>
+          )}
+        </h2>
+        <p className="diagnostics-card-help">
+          {timings.totalSinceStart.toLocaleString()} batches since start ·{' '}
+          {timings.failedSinceStart.toLocaleString()} failed ·{' '}
+          {timings.inlineSinceStart.toLocaleString()} inline ({inlinePct}%) ·{' '}
+          showing latest {sorted.length}.
+        </p>
+      </header>
+      {sorted.length === 0 ? (
+        <div className="diagnostics-empty">
+          No DB worker batches captured yet. Bulk onboarding writes will appear here.
+        </div>
+      ) : (
+        <div className="diagnostics-table-wrap">
+          <table className="diagnostics-table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>Time</th>
+                <th style={{ width: 80 }}>Mode</th>
+                <th style={{ width: 90 }}>Outcome</th>
+                <th style={{ width: 90 }}>Statements</th>
+                <th style={{ width: 80 }}>Changes</th>
+                <th style={{ width: 90 }}>Duration</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((batch, i) => {
+                const erroring = batch.outcome === 'error';
+                const slow = batch.durationMs >= 1000;
+                return (
+                  <tr key={`${batch.at}-${i}`}>
+                    <td title={new Date(batch.at).toISOString()}>{formatRelative(batch.at)}</td>
+                    <td>
+                      <code className={batch.inline ? 'diagnostics-severity-warn' : ''}>
+                        {batch.inline ? 'inline' : 'worker'}
+                      </code>
+                    </td>
+                    <td>
+                      <code className={erroring ? 'diagnostics-severity-danger' : ''}>
+                        {batch.outcome}
+                      </code>
+                    </td>
+                    <td>
+                      <code>
+                        {batch.statementCount.toLocaleString()} / {batch.chunkSize}
+                      </code>
+                    </td>
+                    <td><code>{batch.totalChanges.toLocaleString()}</code></td>
+                    <td>
+                      <code className={erroring ? 'diagnostics-severity-danger' : slow ? 'diagnostics-severity-warn' : ''}>
+                        {formatMs(batch.durationMs)} ms
+                      </code>
+                    </td>
+                    <td className="diagnostics-sql">
+                      <code>
+                        {batch.error
+                          ? `${batch.error}${batch.failedAtIndex !== undefined ? ` @${batch.failedAtIndex}` : ''}`
+                          : batch.workerDurationMs !== undefined
+                            ? `worker ${formatMs(batch.workerDurationMs)} ms`
+                            : '—'}
+                      </code>
+                    </td>
                   </tr>
                 );
               })}

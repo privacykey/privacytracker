@@ -298,6 +298,7 @@ export interface AppImportProvenanceProp {
       | 'skipped'
       | 'imported'
       | 'error'
+      | 'pending_search'
       | 'queued'
       | 'removed';
   };
