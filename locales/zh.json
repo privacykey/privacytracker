@@ -7,9 +7,9 @@
     "replace_label": "寻找替代",
     "replace_short": "替代",
     "replace_desc": "你想找一个侵入性更小的替代品。使用对比视图找到候选并加入候选清单。",
-    "uninstall_label": "标记为卸载",
-    "uninstall_short": "卸载",
-    "uninstall_desc": "你已决定移除此应用。当来源是导入的推荐时，你自己的判断仍是决定最终卸载的依据。",
+    "uninstall_label": "标记为移除",
+    "uninstall_short": "移除",
+    "uninstall_desc": "你已决定移除此应用。当来源是导入的推荐时，你自己的判断仍是决定是否真的移除的依据。",
     "recommended_by_aria": "{label}，由 {sourceName} 推荐",
     "recommended_by_title": "{description}（由 {sourceName} 推荐）"
   },
@@ -30,6 +30,14 @@
     "clear": "清除我的决定",
     "saving": "保存中…",
     "saved": "已保存",
+    "summary_label": "已决定：",
+    "edit": "修改",
+    "edit_aria": "修改你对 {appName} 的决定",
+    "done": "完成",
+    "reason_title": "为什么？（可选）",
+    "reason_chosen_label": "你选择了 <strong>{verdict}</strong>",
+    "reason_change": "更改我的决定",
+    "reason_back": "取消",
     "error_load": "加载失败",
     "error_save": "保存失败",
     "error_clear": "清除失败",
@@ -471,6 +479,9 @@
       "rate_limit_cancel": "取消",
       "all_hidden": "所有结果都匹配到你已在跟踪的应用。",
       "show_all": "显示全部匹配项",
+      "unmatched_lead": "{count, plural, one {有 # 个应用没有匹配到 App Store。} other {有 # 个应用没有匹配到 App Store。}}",
+      "unmatched_body": " 你可以在下方逐个重试 / 编辑，也可以一键全部跳过，只导入匹配成功的应用。",
+      "unmatched_skip_all": "全部跳过",
       "back": "← 返回",
       "import_count": "{count, plural, one {导入 # 个应用 →} other {导入 # 个应用 →}}"
     },
@@ -592,6 +603,10 @@
       "device_picker_aria": "已连接设备",
       "device_refresh": "刷新设备",
       "device_refreshing": "正在刷新…",
+      "checking_status_title": "正在查找 cfgutil…",
+      "checking_status_body": "正在在你的 Mac 上查找 Apple Configurator 的命令行工具。通常需要几秒钟。",
+      "devices_refreshing_status": "正在查找已连接的设备…",
+      "device_skeleton_aria": "正在加载设备列表",
       "error_title": "Configurator 导入需要处理",
       "error_unknown_version": "这个 cfgutil 版本不支持旧的版本检查。请点击「重新检查」，我们会改用设备列表检查。",
       "error_trust": "设备尚未准备好。请解锁设备，在弹窗中点击「信任」，然后刷新设备。",
@@ -2447,12 +2462,15 @@
     "no_labels_body": "这个应用可能不收集数据，或者 App Store 页面格式发生了变化。",
     "remove_modal": {
       "badge": "移除应用",
-      "title": "停止跟踪 {name}？",
+      "title": "从 privacytracker 中移除 {name}？",
       "body": "此操作会从你的仪表板中移除该应用和已保存的隐私快照。之后可通过再次导入将其加回。",
       "cancel": "取消",
       "removing": "正在移除…",
       "confirm": "移除应用"
     },
+    "actions_menu_label": "{name} 的操作",
+    "actions_menu_resync": "从 App Store 重新同步",
+    "actions_menu_remove": "从 privacytracker 中移除",
     "snoozed_kicker": "提醒已暂缓",
     "snoozed_resume": "🔔 {count, plural, one {# 项变化等待中 — 提醒将于 {date} 恢复} other {# 项变化等待中 — 提醒将于 {date} 恢复}}",
     "snoozed_sub": "倒计时结束后会再次显示此审查面板。",
@@ -3340,7 +3358,28 @@
       "no_pref_label": "无偏好",
       "row_aria": "{category} 的最大允许数据使用程度",
       "footer_empty": "尚未设置任何偏好。档案为空，不会对任何应用标记为不匹配。",
-      "footer_with_set": "{set, plural, one {{total} 个类别中有 # 个已设偏好。其余不会计入不匹配。} other {{total} 个类别中有 # 个已设偏好。其余不会计入不匹配。}}"
+      "footer_with_set": "{set, plural, one {{total} 个类别中有 # 个已设偏好。其余不会计入不匹配。} other {{total} 个类别中有 # 个已设偏好。其余不会计入不匹配。}}",
+      "presets": {
+        "section_label": "从预设开始",
+        "section_hint": "先选一个基础预设，再逐项微调下方的设置。",
+        "aria_group": "隐私档案预设",
+        "confirm_aria": "替换当前设置",
+        "confirm_text": "用 {preset} 预设替换你当前的偏好？",
+        "confirm_apply": "替换",
+        "confirm_cancel": "取消",
+        "labels": {
+          "strict": "严格",
+          "balanced": "平衡",
+          "anti_tracking": "仅反追踪",
+          "permissive": "宽松"
+        },
+        "descriptions": {
+          "strict": "尽可能限制与身份关联的数据。许多主流应用将不匹配。",
+          "balanced": "合理的默认值。对健康、敏感和联系人严格；对使用情况和诊断宽松。",
+          "anti_tracking": "只标记与第三方追踪器共享数据的应用。其他都没问题。",
+          "permissive": "几乎接受所有数据使用，但仍会标记健康、财务、位置和敏感数据上的追踪行为。"
+        }
+      }
     },
     "a11y_profile_editor": {
       "quick_set_all": "全部快速设置：",
@@ -3446,6 +3485,7 @@
       "envelope_privacy_profile": "隐私档案",
       "envelope_profile_included": "已包含（保存为建议）",
       "envelope_profile_excluded": "未包含",
+      "envelope_profile_preset": "从 {preset} 预设开始",
       "modal_cancel": "取消",
       "modal_importing": "正在导入…",
       "modal_reimport_anyway": "仍要重新导入",
@@ -3456,10 +3496,25 @@
       "result_summary_notes": "{count, plural, one { · 来自 {name} 的 # 条备注} other { · 来自 {name} 的 # 条备注}}",
       "result_summary_period": "。",
       "result_profile_stashed": "{name} 的隐私档案已保存为建议，你可以在「隐私档案」中查看。",
+      "result_profile_preset": "{name} 使用了 {preset} 预设。",
       "result_view_dashboard": "查看仪表板 →",
       "result_dismiss_aria": "关闭",
       "error_could_not_read": "无法读取审计包。",
       "error_import_failed": "导入失败。"
+    },
+    "audit_bundle_export": {
+      "open_button": "⬇ 导出审计包",
+      "panel_title": "导出审计包",
+      "panel_description": "审计包包含你正在跟踪的应用、它们的隐私标签、你的 AI 摘要以及你写下的所有注释。私密笔记永远不会被包含。",
+      "recommender_label": "你的名字（可选）",
+      "recommender_placeholder": "例如：Sarah",
+      "recommender_hint": "用于收件人看到的导入横幅。留空则回落到 {fallback}。",
+      "include_profile_label": "包含我的隐私档案",
+      "include_profile_hint": "让收件人了解你为何标记某些应用。取消勾选以保持档案私密。",
+      "submit": "导出",
+      "submit_busy": "正在导出…",
+      "cancel": "取消",
+      "error_generic": "导出失败。"
     },
     "import_history": {
       "queue_banner": {

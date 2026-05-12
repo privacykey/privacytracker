@@ -20,6 +20,8 @@ import {
   setProfilingEnabled,
   snapshotRuntimeMetrics,
 } from '@/lib/runtime-diagnostics';
+import { clearApiTimings, snapshotApiTimings } from '@/lib/api-timing';
+import { clearScrapeActivity, snapshotScrapeActivity } from '@/lib/scrape-activity';
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -36,7 +38,12 @@ export async function GET() {
   // No rate limit on the read path — the dashboard polls this. The
   // snapshot helper does no DB I/O so cost is dominated by serialisation
   // of the slow-query ring (~200 rows max).
-  return NextResponse.json(snapshotRuntimeMetrics());
+  const runtime = snapshotRuntimeMetrics();
+  return NextResponse.json({
+    ...runtime,
+    apiTimings: snapshotApiTimings(),
+    scrapeActivity: snapshotScrapeActivity(),
+  });
 }
 
 export async function DELETE(request: Request) {
@@ -71,13 +78,20 @@ export async function DELETE(request: Request) {
 
   clearSlowQueryRing();
   resetEventLoopMonitor();
+  clearApiTimings();
+  clearScrapeActivity();
   recordAudit({
     action: 'diagnostics.runtime.clear.success',
     actorIp,
     userAgent,
     success: true,
   });
-  return NextResponse.json(snapshotRuntimeMetrics());
+  const runtime = snapshotRuntimeMetrics();
+  return NextResponse.json({
+    ...runtime,
+    apiTimings: snapshotApiTimings(),
+    scrapeActivity: snapshotScrapeActivity(),
+  });
 }
 
 /**

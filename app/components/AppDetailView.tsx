@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 // AnnotationsSidebar is loaded lazily — it pulls in `marked` (~30kb), so
@@ -19,8 +19,7 @@ import CompareAppsView from './CompareAppsView';
 import InfoTooltip from './InfoTooltip';
 import RateLimitBanner from './RateLimitBanner';
 import VerdictPicker from './VerdictPicker';
-import VerdictPill from './VerdictPill';
-import type { VerdictValue, AppVerdict } from '../../lib/verdict-types';
+import type { AppVerdict } from '../../lib/verdict-types';
 import { formatPriceLine, priceTooltip } from '../../lib/price-display';
 import { useTaskCenter } from './TaskCenter';
 import { getLastNonAppPath } from './NavigationHistoryTracker';
@@ -536,11 +535,10 @@ export default function AppDetailView({
       if (typeof cleanup === 'function') cleanup();
     };
   }, []);
-  // Live user-verdict state — fetched on mount, kept in sync with the
-  // VerdictPicker via its `onChange` callback so the header pill updates
-  // immediately when the user picks a new value. Imported recommendations
-  // live inside the picker (the header only shows the user's own decision).
-  const [userVerdict, setUserVerdict] = useState<VerdictValue | null>(null);
+  // Initial verdicts payload for the picker. We fetch once here so the
+  // server-rendered hero doesn't need to await the verdicts query; the
+  // picker also re-fetches on mount to catch any imports that landed
+  // between server render and client mount.
   const [verdictsInitial, setVerdictsInitial] = useState<AppVerdict[] | undefined>(undefined);
   useEffect(() => {
     let live = true;
@@ -549,11 +547,9 @@ export default function AppDetailView({
       .then(({ verdicts }: { verdicts: AppVerdict[] }) => {
         if (!live) return;
         setVerdictsInitial(verdicts);
-        const own = verdicts.find(v => v.source === 'user');
-        setUserVerdict(own?.verdict ?? null);
       })
       .catch(() => {
-        // Silent — picker re-fetches on mount, header just stays without a pill.
+        // Silent — the picker re-fetches on mount.
       });
     return () => {
       live = false;
@@ -583,6 +579,28 @@ export default function AppDetailView({
   // DELETE they thought they cancelled.
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Kebab actions menu — re-sync + remove-from-tracker live behind a ⋯
+  // trigger so the hero stays focused on content rather than maintenance.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   // Dynamic back-link: defaults to "Dashboard" so the first render matches
   // the SSR output. On mount we resolve the real previous page the user
@@ -1018,19 +1036,6 @@ export default function AppDetailView({
           </div>
         </div>
 
-        {/*
-          Verdict pill in the hero — surfaces the user's own decision
-          ("Marked safe" / "Looking for replacement" / "Marked to
-          uninstall") next to the action buttons so it's visible
-          regardless of which tab they're on. The full picker lives in
-          the panel below, so this pill is read-only here.
-        */}
-        {userVerdict && (
-          <div className="detail-hero-verdict">
-            <VerdictPill verdict={userVerdict} size="md" />
-          </div>
-        )}
-
         {/* Rate-limit banner — surfaces an active App Store HTML cooldown
             so a user clicking Re-sync sees *why* the button bounces
             instead of just watching it spin and fail. The auto-retry
@@ -1049,53 +1054,72 @@ export default function AppDetailView({
           }}
         />
 
-        {/* Hero actions — re-sync + stop-tracking live in the same group
-            so the destructive action is adjacent to (but visually distinct
-            from) its benign neighbour. The delete button uses `btn-danger`
-            so it reads unambiguously as destructive even with a short
-            label, and it's disabled while a sync or delete is in flight to
-            avoid concurrent mutations. */}
-        <div className="detail-hero-actions">
-          {f.actionsResyncButton && <button
-            className="btn btn-secondary"
-            data-tour="resync-button"
-            onClick={resync}
-            disabled={syncing || deleting}
-            // position: relative anchors the .icon-btn-badge pinned to
-            // the top-right corner. Mirrors the cumulative-sync-count
-            // badge on the AppGrid card's resync icon so the two
-            // surfaces read the same at a glance.
-            style={{ position: 'relative' }}
-            title={
-              app.syncCount > 1
-                ? `Re-sync ${app.name} (${app.syncCount} syncs so far)`
-                : `Re-sync ${app.name}`
-            }
-            aria-label={
-              syncing
-                ? `Syncing ${app.name}`
-                : app.syncCount > 1
-                  ? `Re-sync ${app.name}. ${app.syncCount} syncs so far.`
-                  : `Re-sync ${app.name}`
-            }
-          >
-            {syncing ? <><span className="spinner" /> {tDetail('syncing')}</> : tDetail('resync_button')}
-            {app.syncCount > 1 && !syncing && (
-              <span className="icon-btn-badge" aria-hidden="true">
-                {app.syncCount}
-              </span>
+        {/* Hero actions — re-sync and remove-from-tracker live behind a
+            kebab menu so the page chrome doesn't read as if maintenance
+            is the primary task. While a sync or delete is in flight,
+            menu items disable individually. */}
+        {(f.actionsResyncButton || f.actionsDeleteButton) && (
+          <div className="detail-hero-actions" ref={menuRef}>
+            <button
+              type="button"
+              className="btn btn-secondary detail-hero-actions-trigger"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label={tDetail('actions_menu_label', { name: app.name })}
+              onClick={() => setMenuOpen(o => !o)}
+              disabled={syncing || deleting}
+              data-tour="resync-button"
+              style={{ position: 'relative' }}
+              title={tDetail('actions_menu_label', { name: app.name })}
+            >
+              {syncing ? <><span className="spinner" /> {tDetail('syncing')}</> : <>⋯</>}
+              {app.syncCount > 1 && !syncing && (
+                <span className="icon-btn-badge" aria-hidden="true">
+                  {app.syncCount}
+                </span>
+              )}
+            </button>
+            {menuOpen && (
+              <div className="detail-hero-actions-menu" role="menu">
+                {f.actionsResyncButton && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="detail-hero-actions-item"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      resync();
+                    }}
+                    disabled={syncing || deleting}
+                  >
+                    <span className="detail-hero-actions-icon" aria-hidden="true">↻</span>
+                    {tDetail('actions_menu_resync')}
+                    {app.syncCount > 1 && (
+                      <span className="detail-hero-actions-count" aria-hidden="true">
+                        ({app.syncCount})
+                      </span>
+                    )}
+                  </button>
+                )}
+                {f.actionsDeleteButton && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="detail-hero-actions-item detail-hero-actions-item-danger"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setPendingDelete(true);
+                    }}
+                    disabled={syncing || deleting}
+                  >
+                    <span className="detail-hero-actions-icon" aria-hidden="true">🗑</span>
+                    {tDetail('actions_menu_remove')}
+                  </button>
+                )}
+              </div>
             )}
-          </button>}
-          {f.actionsDeleteButton && <button
-            type="button"
-            className="btn btn-danger"
-            onClick={() => setPendingDelete(true)}
-            disabled={syncing || deleting}
-            title={`Stop tracking ${app.name}`}
-          >
-            ✕ Stop tracking
-          </button>}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Apple / built-in app hint.
@@ -1139,16 +1163,13 @@ export default function AppDetailView({
         see after the title block. Imported recommendations (from any
         audit-bundle a recipient has accepted) surface inside the
         picker as advisory pills above the user's own three-button
-        choice, so a recipient can see "Mum says uninstall: …" before
-        making their own call. The picker handles its own loading +
-        save state; the parent only owns the header pill state via
-        the `onChange` callback.
+        choice, so a recipient can see "Mum says remove: …" before
+        making their own call.
       */}
       <VerdictPicker
         appId={String(app.id)}
         appName={app.name}
         initialVerdicts={verdictsInitial}
-        onChange={setUserVerdict}
       />
 
       {/* Change review panel — only shown when there are unacknowledged changes */}

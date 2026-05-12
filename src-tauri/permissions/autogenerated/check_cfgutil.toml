@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-check-cfgutil"
+description = "Enables the check_cfgutil command without any pre-configured scope."
+commands.allow = ["check_cfgutil"]
+
+[[permission]]
+identifier = "deny-check-cfgutil"
+description = "Denies the check_cfgutil command without any pre-configured scope."
+commands.deny = ["check_cfgutil"]

@@ -64,6 +64,7 @@ import type {
   BundleAnnotation,
 } from './audit-bundle';
 import { BUNDLE_VERSION } from './audit-bundle';
+import type { ProfilePresetKey } from './privacy-profile';
 import { getSetting, setSetting } from './scheduler';
 
 // ---------------------------------------------------------------------------
@@ -326,6 +327,12 @@ export interface ImportSummary {
   verdictsAdded: number;
   /** Whether the recommender's privacy profile suggestion was stashed. */
   recommenderProfileStashed: boolean;
+  /**
+   * The named preset key the recommender's profile matched at export
+   * time, when the bundle carries one. `null` for v1/v2 bundles (which
+   * predate the field) and for recommenders whose profile was custom.
+   */
+  recommenderProfilePreset: ProfilePresetKey | null;
   /** Recommender display name (for the provenance banner). */
   recommenderName: string;
 }
@@ -480,6 +487,12 @@ export function importAuditBundle(
       try {
         setSetting('recommender_profile_suggestion', JSON.stringify({
           profile: bundle.recommender_profile,
+          // Stash the preset key alongside the raw profile so the loved
+          // one's "preview + accept" UI can render "Recommender used the
+          // Strict preset" without recomputing matchPreset() every time.
+          // Falls through as undefined for v1/v2 bundles that predate
+          // the field; the consumer treats undefined the same as null.
+          preset: bundle.recommender_profile_preset ?? null,
           recommenderName,
           stashedAt: importedAt,
         }));
@@ -570,6 +583,9 @@ export function importAuditBundle(
     annotationsAdded,
     verdictsAdded,
     recommenderProfileStashed,
+    // Pass through whatever the bundle carried — null for v1/v2 bundles
+    // and for custom profiles. The caller decides whether to render it.
+    recommenderProfilePreset: bundle.recommender_profile_preset ?? null,
     recommenderName,
   };
 }

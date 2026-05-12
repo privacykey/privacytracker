@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-connected-devices"
+description = "Enables the list_connected_devices command without any pre-configured scope."
+commands.allow = ["list_connected_devices"]
+
+[[permission]]
+identifier = "deny-list-connected-devices"
+description = "Denies the list_connected_devices command without any pre-configured scope."
+commands.deny = ["list_connected_devices"]

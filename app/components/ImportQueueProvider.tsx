@@ -33,6 +33,7 @@ import {
   useState,
 } from 'react';
 import { useTaskCenter, type TaskHandle } from './TaskCenter';
+import { recordImportEvent } from '@/lib/client-diagnostics';
 
 export interface ImportQueueItemSnapshot {
   id: string;
@@ -243,9 +244,16 @@ export function ImportQueueProvider({ children }: { children: ReactNode }) {
   }, [fetchStatus, syncTaskHandle]);
 
   const retryNow = useCallback(async (signal?: AbortSignal): Promise<ImportQueueTickResult> => {
+    recordImportEvent('queue.tick.start');
     const res = await fetch('/api/imports/queue', { method: 'POST', signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    recordImportEvent('queue.tick.complete', {
+      processed: data?.processed ?? 0,
+      succeeded: data?.succeeded ?? 0,
+      failed: data?.failed ?? 0,
+      rateLimited: data?.rateLimited ?? 0,
+    });
     // The POST response includes the post-tick status for free — use it
     // instead of a follow-up GET so the UI updates in a single round trip.
     if (data?.status && typeof data.status === 'object' && !unmountedRef.current) {
@@ -314,6 +322,7 @@ useEffect(() => {
     if (state.queued === 0) return;  // nothing to drain
 
     const initialTotal = Math.max(1, state.queued);
+    recordImportEvent('drain.start', { initialTotal });
     drainCancelRef.current = false;
     drainAbortRef.current = new AbortController();
     setDrainState({
@@ -377,6 +386,7 @@ useEffect(() => {
           if (result.processed === 0) break;
         }
       } finally {
+        recordImportEvent('drain.end', { processedTotal: processed });
         if (!unmountedRef.current) setDrainState(null);
         drainAbortRef.current = null;
         drainCancelRef.current = false;

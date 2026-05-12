@@ -13,6 +13,7 @@ import LocaleSwitcher from './LocaleSwitcher';
 import DateFormatPicker from './DateFormatPicker';
 import LanguageSuggestionBanner from './LanguageSuggestionBanner';
 import AuditBundleImport from './AuditBundleImport';
+import AuditBundleExport from './AuditBundleExport';
 import RateLimitBanner from './RateLimitBanner';
 import { formatDate as formatDateWithMode, type DateFormatMode } from '../../lib/date-format';
 import { useDateFormat } from '../../lib/date-format-hook';
@@ -771,6 +772,13 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
   const settingsImportHistoryOn = useFlag('flag.settings.import.history') === 'on';
   const settingsAdminBackupOn = useFlag('flag.settings.admin.backup') === 'on';
   const settingsAdminExportOn = useFlag('flag.settings.admin.export') === 'on';
+  // The audit-bundle export gate (`flag.settings.admin.export.audit_bundle`)
+  // is resolved INSIDE AuditBundleExport itself rather than here. The
+  // client-side useFlag cache isn't bootstrapped from server state on
+  // fresh page loads — it returns the hard default until an override
+  // mutation fires — so flags whose default differs from their resolved
+  // value (this one is 'off' by default and 'on' for loved_one) need a
+  // client-side `/api/feature-flags` probe to read their real state.
   const settingsAdminResetOn = useFlag('flag.settings.admin.reset') === 'on';
   const settingsAdminStartOverOn = useFlag('flag.settings.admin.start_over') === 'on';
   // Wave I: top-level gate for the entire Developer Options section.
@@ -7310,8 +7318,11 @@ ollama serve`}
 
         {/* Round 3 PR 5: audit-bundle export. Gated by
             flag.settings.admin.export.audit_bundle (default off — on for
-            audience.loved_one). Server-side gate is the authoritative one;
-            this UI just hides the button when the resolver-driven prop says off. */}
+            audience.loved_one). The component does its own client-side
+            flag probe via /api/feature-flags because the client useFlag
+            cache returns hard defaults on fresh loads — see the comment
+            on settingsAdminExportOn above. The server enforces the same
+            gate authoritatively, so the UI gate is just for show. */}
         <AuditBundleExport />
         {/* Wave I — `flag.settings.admin.export.audit_pdf` placeholder.
             The flag is wired so users who flip it on see a "coming soon"
@@ -8487,171 +8498,8 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
   );
 }
 
-// ── Audit-bundle export ──────────────────────────────────────────────────
-//
-// Round 3 PR 5: lives inside the Export Data section. Calls /api/feature-flags
-// on mount to confirm the export gate (`flag.settings.admin.export.audit_bundle`)
-// is on for the user's current focus; renders nothing when off so loved-one
-// users see the button and others don't.
-//
-// Submitting POSTs to /api/export/audit-bundle. The endpoint returns a
-// pre-formatted JSON file with a Content-Disposition filename per §4.8.
-
-function AuditBundleExport() {
-  // i18n — only the recommender-name placeholder is wired so far in
-  // this nested helper. The rest of the export panel chrome is still
-  // English; tracked under the misc-extraction sweep.
-  const tPh = useTranslations('settings.placeholders');
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [open, setOpen] = useState(false);
-  const [recommenderName, setRecommenderName] = useState('');
-  const [includeProfile, setIncludeProfile] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Probe the gate on mount. Skip rendering if off.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/feature-flags');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as { flags: Array<{ key: string; currentValue: string }> };
-        const row = data.flags.find(f => f.key === 'flag.settings.admin.export.audit_bundle');
-        if (!cancelled) setEnabled(row?.currentValue === 'on');
-      } catch {
-        // On error, hide the button — fail closed.
-        if (!cancelled) setEnabled(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  if (enabled === null || enabled === false) return null;
-
-  async function handleExport() {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/export/audit-bundle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recommenderName: recommenderName.trim() || null,
-          includeRecommenderProfile: includeProfile,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null) as { error?: string } | null;
-        throw new Error(body?.error ?? `HTTP ${res.status}`);
-      }
-      // Trigger the download — read as blob, pull the filename out of the header.
-      const filenameHeader = res.headers.get('content-disposition') ?? '';
-      const filenameMatch = filenameHeader.match(/filename="([^"]+)"/);
-      const filename = filenameMatch?.[1] ?? 'audit.audit.json';
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      setOpen(false);
-      setRecommenderName('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div style={{ marginTop: 16 }}>
-      {!open ? (
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => setOpen(true)}
-        >
-          ⬇ Export audit bundle
-        </button>
-      ) : (
-        <div style={{ marginTop: 12, padding: 16, border: '1px solid var(--border)', borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0, fontSize: 16 }}>Export audit bundle</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 4 }}>
-            Your audit bundle includes the apps you&rsquo;re tracking, their privacy labels,
-            your AI summaries, and any annotations you&rsquo;ve written. Private notes
-            are never included.
-          </p>
-
-          <label style={{ display: 'block', marginTop: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Your name (optional)</span>
-            <input
-              type="text"
-              value={recommenderName}
-              onChange={(e) => setRecommenderName(e.target.value)}
-              placeholder={tPh('name_eg')}
-              disabled={submitting}
-              style={{
-                display: 'block',
-                marginTop: 4,
-                padding: '6px 10px',
-                width: '100%',
-                maxWidth: 280,
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-              }}
-            />
-            <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'block', marginTop: 4 }}>
-              Used in the import banner the recipient sees. Falls back to &ldquo;your friend&rdquo; if blank.
-            </span>
-          </label>
-
-          <label className="settings-checkbox-row" style={{ marginTop: 12 }}>
-            <input
-              className="settings-checkbox"
-              type="checkbox"
-              checked={includeProfile}
-              onChange={(e) => setIncludeProfile(e.target.checked)}
-              disabled={submitting}
-            />
-            <span>
-              Include my privacy profile
-              <span className="settings-field-help" style={{ display: 'block', marginTop: 4 }}>
-                Lets the recipient see why you flagged certain apps. Uncheck to keep your profile private.
-              </span>
-            </span>
-          </label>
-
-          {error && (
-            <div role="alert" style={{ marginTop: 12, color: 'var(--danger)', fontSize: 13 }}>
-              {error}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleExport()}
-              disabled={submitting}
-            >
-              {submitting ? 'Exporting…' : 'Export'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setOpen(false)}
-              disabled={submitting}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// AuditBundleExport extracted to ./AuditBundleExport.tsx — the inline
+// helper that used to live here is now imported at the top of the file.
 
 // ── Start Over button ─────────────────────────────────────────────────────
 //

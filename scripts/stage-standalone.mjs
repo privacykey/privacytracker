@@ -72,10 +72,15 @@ if (existsSync(workerSource)) {
   console.warn('stage-standalone: lib/db-worker.cjs missing — main thread will block on bulk writes');
 }
 
-// Stage the whole thing into the tauri resources tree.
+// Stage the whole thing into the tauri resources tree. We dereference
+// symlinks so the staged tree is portable — pnpm's `.next/standalone/
+// node_modules/next` is an absolute symlink into the repo's `.pnpm/`
+// store; without dereference, the symlink survives the copy + tar and
+// breaks the moment the user's repo path changes or `.next/standalone/`
+// is wiped (which `next build` does at the start of every build).
 rmSync(tauriTarget, { recursive: true, force: true });
 mkdirSync(path.dirname(tauriTarget), { recursive: true });
-cpSync(nextStandalone, tauriTarget, { recursive: true });
+cpSync(nextStandalone, tauriTarget, { recursive: true, dereference: true });
 console.log(`stage-standalone: staged to ${tauriTarget}`);
 
 // ── Wrap the bundled Node in a fake .app bundle (macOS only) ───────
@@ -158,6 +163,12 @@ if (process.platform === 'darwin') {
 // inside dotfile-prefixed directories. Uncompressed because the contents
 // don't compress well and the Rust extract path stays flate2-free.
 //
+// `-h` dereferences symlinks during tar — belt-and-braces alongside the
+// cpSync(dereference:true) above. If any symlinks slip past cpSync (or
+// the stage helper runs on a stale staged tree), tar still emits the
+// real files. Without this, the sidecar extracts an unusable tree on
+// any machine where the absolute symlink target doesn't exist.
+//
 // Atomic write via tmp + rename: `tauri dev` runs this script and the
 // sidecar boot in parallel, and a partial tarball would make the sidecar
 // fail to find `node_modules/next`. POSIX rename is atomic within a
@@ -167,7 +178,7 @@ const tauriTarballTmp = `${tauriTarball}.tmp`;
 rmSync(tauriTarballTmp, { force: true });
 execFileSync(
   'tar',
-  ['-cf', tauriTarballTmp, '-C', tauriTarget, '.'],
+  ['-cf', tauriTarballTmp, '-h', '-C', tauriTarget, '.'],
   { stdio: 'inherit' },
 );
 renameSync(tauriTarballTmp, tauriTarball);

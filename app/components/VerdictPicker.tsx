@@ -96,6 +96,24 @@ export default function VerdictPicker({
     rationale: split.user?.rationale ?? '',
   });
 
+  // Two-stage editing flow:
+  //   1. `picker` step — the three big verdict buttons. Used when no verdict
+  //      exists yet, or when the user hits "Change my decision" to switch.
+  //   2. `reason` step — entered automatically after a verdict is saved (and
+  //      via Edit from the summary). Compact chosen-verdict header + a
+  //      prominent "Why?" rationale textarea + Done. Done collapses to the
+  //      summary view.
+  // Falls back to the summary view (compact pill + Edit) when state.user is
+  // set and the picker isn't being edited.
+  type EditStep = 'picker' | 'reason';
+  const [editing, setEditing] = useState(false);
+  const [step, setStep] = useState<EditStep>('picker');
+
+  const showSummary = !!state.user && !editing;
+  const showReason = !!state.user && editing && step === 'reason';
+  // showPicker is implicit — falls through when neither summary nor reason
+  // matches (no verdict yet, or the user clicked "Change my decision").
+
   // Re-fetch on mount to catch any verdicts that landed via imports
   // since the page was rendered. The initial server-rendered list
   // covers the common case; this just keeps the panel honest after
@@ -181,6 +199,13 @@ export default function VerdictPicker({
           user: saved,
           rationale: saved.rationale ?? '',
         }));
+        // After a successful save, step into the rationale stage so the
+        // user can add a reason without losing focus. Done collapses the
+        // whole panel; users who don't want to write anything can click
+        // Done immediately. Avoids the prior auto-collapse that hid the
+        // rationale field as soon as a verdict was picked.
+        setEditing(true);
+        setStep('reason');
         pushVerdictUndo({ priorUser });
         onChange?.(saved.verdict);
         // Bust the Router Cache so a back-nav to /dashboard or
@@ -374,6 +399,216 @@ export default function VerdictPicker({
     );
   }
 
+  // Imported recommendations — shared between the expanded picker and
+  // the collapsed summary so advisory context stays visible after the
+  // user has decided.
+  const importedSection = state.imported.length > 0 ? (
+    <div
+      className="verdict-picker-imported"
+      role="region"
+      aria-label={tPicker('imported_aria')}
+    >
+      <p className="verdict-picker-imported-title">{tPicker('imported_title')}</p>
+      <ul className="verdict-picker-imported-list">
+        {state.imported.map(rec => {
+          const meta = VERDICT_META[rec.verdict];
+          const sourceLabel = rec.sourceName ?? tPicker('imported_friend_fallback');
+          const verdictShort = tVerdict(`${rec.verdict}_short`).toLowerCase();
+          return (
+            <li key={rec.id} className={`verdict-picker-imported-row verdict-pill-${meta.cls}`}>
+              <span className="verdict-pill-icon" aria-hidden="true">{meta.icon}</span>
+              <div className="verdict-picker-imported-body">
+                <div className="verdict-picker-imported-label">
+                  {tPicker.rich('imported_says', {
+                    name: sourceLabel,
+                    verdict: verdictShort,
+                    strong: chunks => <strong>{chunks}</strong>,
+                    em: chunks => <em>{chunks}</em>,
+                  })}
+                </div>
+                {rec.rationale && (
+                  <div className="verdict-picker-imported-reason">
+                    &ldquo;{rec.rationale}&rdquo;
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                className="verdict-picker-imported-dismiss"
+                onClick={() => rec.sourceName && dismissImported(rec.sourceName)}
+                aria-label={
+                  rec.sourceName
+                    ? tPicker('imported_dismiss_aria', { sourceName: rec.sourceName })
+                    : tPicker('imported_dismiss_aria_anon')
+                }
+                title={tPicker('imported_dismiss_title')}
+              >
+                ✕
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="verdict-picker-imported-hint">{tPicker('imported_hint')}</p>
+    </div>
+  ) : null;
+
+  // Wrap the parts that recur across all three views — the heading
+  // (always rendered, sr-only in collapsed mode), the undo flash, and
+  // the imported recommendations strip. Errors render after the body.
+  const errorBlock = state.error ? (
+    <p className="verdict-picker-error" role="alert">
+      {state.error}
+    </p>
+  ) : null;
+
+  // ── 1. Collapsed summary view ─────────────────────────────────────
+  if (showSummary && state.user) {
+    const rationale = state.user.rationale?.trim() ?? '';
+    const meta = VERDICT_META[state.user.verdict];
+    return (
+      <section className="verdict-picker verdict-picker-collapsed" aria-labelledby="verdict-picker-heading">
+        <h3 id="verdict-picker-heading" className="sr-only">
+          {tPicker('title', { appName })}
+        </h3>
+
+        {undoFlash && (
+          <div
+            className="verdict-picker-undo-flash"
+            role="status"
+            aria-live="polite"
+          >
+            {undoFlash}
+          </div>
+        )}
+
+        {importedSection}
+
+        <div className={`verdict-picker-summary verdict-picker-summary-${meta.cls}`}>
+          <span className="verdict-picker-summary-icon" aria-hidden="true">
+            {meta.icon}
+          </span>
+          <span className="verdict-picker-summary-label">
+            {tPicker('summary_label')}
+          </span>
+          <span className="verdict-picker-summary-value">
+            {tVerdict(`${state.user.verdict}_short`)}
+          </span>
+          {rationale && (
+            <span
+              className="verdict-picker-summary-rationale"
+              title={rationale}
+            >
+              &ldquo;{rationale}&rdquo;
+            </span>
+          )}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm verdict-picker-summary-edit"
+            onClick={() => {
+              setStep('reason');
+              setEditing(true);
+            }}
+            aria-label={tPicker('edit_aria', { appName })}
+          >
+            {tPicker('edit')}
+          </button>
+        </div>
+
+        {errorBlock}
+      </section>
+    );
+  }
+
+  // ── 2. Reason step — verdict already chosen, rationale takes focus ─
+  if (showReason && state.user) {
+    const meta = VERDICT_META[state.user.verdict];
+    return (
+      <section className="verdict-picker" aria-labelledby="verdict-picker-heading">
+        <header className="verdict-picker-header">
+          <h3 id="verdict-picker-heading" className="verdict-picker-title">
+            {tPicker('reason_title')}
+          </h3>
+        </header>
+
+        {undoFlash && (
+          <div
+            className="verdict-picker-undo-flash"
+            role="status"
+            aria-live="polite"
+          >
+            {undoFlash}
+          </div>
+        )}
+
+        {importedSection}
+
+        {/* Compact chosen-verdict header — paints with the verdict family
+            and offers a single "Change" link to swap back to the full
+            picker. The pill is read-only here; the verdict is already
+            saved on the server. */}
+        <div className={`verdict-picker-reason-chosen verdict-picker-reason-chosen-${meta.cls}`}>
+          <span className="verdict-picker-reason-chosen-icon" aria-hidden="true">{meta.icon}</span>
+          <span className="verdict-picker-reason-chosen-label">
+            {tPicker.rich('reason_chosen_label', {
+              verdict: tVerdict(`${state.user.verdict}_short`),
+              strong: chunks => <strong>{chunks}</strong>,
+            })}
+          </span>
+          <button
+            type="button"
+            className="verdict-picker-reason-change"
+            onClick={() => setStep('picker')}
+            disabled={state.saving}
+          >
+            {tPicker('reason_change')}
+          </button>
+        </div>
+
+        <div className="verdict-picker-rationale">
+          <label htmlFor="verdict-rationale" className="verdict-picker-rationale-label">
+            {tPicker('rationale_label')}
+          </label>
+          <textarea
+            id="verdict-rationale"
+            className="verdict-picker-rationale-input"
+            value={state.rationale}
+            onChange={e => onRationaleChange(e.target.value)}
+            placeholder={tPicker('rationale_placeholder')}
+            rows={3}
+            maxLength={400}
+            autoFocus
+          />
+          <div className="verdict-picker-rationale-meta">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm verdict-picker-clear"
+              onClick={clearVerdict}
+              disabled={state.saving}
+            >
+              {tPicker('clear')}
+            </button>
+            <div className="verdict-picker-rationale-spacer" />
+            <span className="verdict-picker-saved" aria-live="polite">
+              {state.saving ? tPicker('saving') : tPicker('saved')}
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm verdict-picker-done"
+              onClick={() => setEditing(false)}
+              disabled={state.saving}
+            >
+              {tPicker('done')}
+            </button>
+          </div>
+        </div>
+
+        {errorBlock}
+      </section>
+    );
+  }
+
+  // ── 3. Picker step — three big verdict buttons (no rationale yet) ──
   return (
     <section className="verdict-picker" aria-labelledby="verdict-picker-heading">
       <header className="verdict-picker-header">
@@ -383,11 +618,6 @@ export default function VerdictPicker({
         <p className="verdict-picker-sub">{tPicker('sub')}</p>
       </header>
 
-      {/* Cmd-Z undo flash. Tiny ephemeral banner that appears for ~2.5s
-          after the global undo handler restores a verdict. Live region
-          + role=status so screen readers announce "Restored Safe"
-          when the user hits the shortcut. The flash auto-clears itself
-          via setTimeout in flashUndoMessage; nothing here to dismiss. */}
       {undoFlash && (
         <div
           className="verdict-picker-undo-flash"
@@ -398,56 +628,7 @@ export default function VerdictPicker({
         </div>
       )}
 
-      {state.imported.length > 0 && (
-        <div
-          className="verdict-picker-imported"
-          role="region"
-          aria-label={tPicker('imported_aria')}
-        >
-          <p className="verdict-picker-imported-title">{tPicker('imported_title')}</p>
-          <ul className="verdict-picker-imported-list">
-            {state.imported.map(rec => {
-              const meta = VERDICT_META[rec.verdict];
-              const sourceLabel = rec.sourceName ?? tPicker('imported_friend_fallback');
-              const verdictShort = tVerdict(`${rec.verdict}_short`).toLowerCase();
-              return (
-                <li key={rec.id} className={`verdict-picker-imported-row verdict-pill-${meta.cls}`}>
-                  <span className="verdict-pill-icon" aria-hidden="true">{meta.icon}</span>
-                  <div className="verdict-picker-imported-body">
-                    <div className="verdict-picker-imported-label">
-                      {tPicker.rich('imported_says', {
-                        name: sourceLabel,
-                        verdict: verdictShort,
-                        strong: chunks => <strong>{chunks}</strong>,
-                        em: chunks => <em>{chunks}</em>,
-                      })}
-                    </div>
-                    {rec.rationale && (
-                      <div className="verdict-picker-imported-reason">
-                        &ldquo;{rec.rationale}&rdquo;
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="verdict-picker-imported-dismiss"
-                    onClick={() => rec.sourceName && dismissImported(rec.sourceName)}
-                    aria-label={
-                      rec.sourceName
-                        ? tPicker('imported_dismiss_aria', { sourceName: rec.sourceName })
-                        : tPicker('imported_dismiss_aria_anon')
-                    }
-                    title={tPicker('imported_dismiss_title')}
-                  >
-                    ✕
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="verdict-picker-imported-hint">{tPicker('imported_hint')}</p>
-        </div>
-      )}
+      {importedSection}
 
       <div
         className="verdict-picker-options"
@@ -478,41 +659,23 @@ export default function VerdictPicker({
         })}
       </div>
 
+      {/* When a verdict is already set and the user is in the picker step
+          via "Change my decision", offer a Cancel link to bail without
+          changing anything. */}
       {state.user && (
-        <div className="verdict-picker-rationale">
-          <label htmlFor="verdict-rationale" className="verdict-picker-rationale-label">
-            {tPicker('rationale_label')}
-          </label>
-          <textarea
-            id="verdict-rationale"
-            className="verdict-picker-rationale-input"
-            value={state.rationale}
-            onChange={e => onRationaleChange(e.target.value)}
-            placeholder={tPicker('rationale_placeholder')}
-            rows={2}
-            maxLength={400}
-          />
-          <div className="verdict-picker-rationale-meta">
-            <button
-              type="button"
-              className="verdict-picker-clear"
-              onClick={clearVerdict}
-              disabled={state.saving}
-            >
-              {tPicker('clear')}
-            </button>
-            <span className="verdict-picker-saved" aria-live="polite">
-              {state.saving ? tPicker('saving') : tPicker('saved')}
-            </span>
-          </div>
+        <div className="verdict-picker-picker-actions">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setStep('reason')}
+            disabled={state.saving}
+          >
+            {tPicker('reason_back')}
+          </button>
         </div>
       )}
 
-      {state.error && (
-        <p className="verdict-picker-error" role="alert">
-          {state.error}
-        </p>
-      )}
+      {errorBlock}
     </section>
   );
 }

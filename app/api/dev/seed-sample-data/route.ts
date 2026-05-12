@@ -31,6 +31,7 @@ import { getSetting } from '@/lib/scheduler';
 import { normalizeCountry } from '@/lib/region';
 import { recordAudit, safeFetch } from '@/lib/security';
 import { AppleRateLimitError, fetchAndParseApp } from '@/lib/scraper';
+import { CATEGORY_META } from '@/lib/privacy-meta';
 import {
   SAMPLE_APPS,
   type SampleApp,
@@ -203,12 +204,18 @@ function appUrlFor(sample: SampleApp): string {
 }
 
 function sampleStepToSnapshot(types: SampleAppPrivacyType[]): PrivacyTypeSnapshot[] {
+  // Each `t.categories` entry is a canonical CATEGORY_META key (e.g.
+  // 'CONTACT_INFO'), not a human title. Look up the human label from
+  // CATEGORY_META so the snapshot's `title` matches what the live
+  // scraper would produce; fall back to the key when an unknown
+  // category slips in (defensive — shouldn't happen with the typed
+  // fixture, but keeps the seeder running rather than throwing).
   return types.map(t => ({
     identifier: t.identifier,
     title: t.title,
-    categories: t.categories.map(title => ({
-      identifier: title.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
-      title,
+    categories: t.categories.map(key => ({
+      identifier: key,
+      title: CATEGORY_META[key]?.label ?? key,
     })),
   }));
 }
@@ -258,7 +265,14 @@ function seedFromCanned(): SeedAppResult[] {
           `INSERT INTO privacy_types (id, app_id, identifier, title)
            VALUES (?, ?, ?, ?)`,
         ).run(typeRowId, appId, type.identifier, type.title);
-        for (const categoryTitle of type.categories) {
+        // `type.categories` entries are canonical CATEGORY_META keys
+        // (e.g. 'CONTACT_INFO'). Use the key as the DB identifier so
+        // privacy-profile mismatch detection (which keys off these
+        // canonical strings) lights up correctly, and pull the human
+        // label from CATEGORY_META for the title column. Falls back
+        // to the key when an unknown category sneaks through.
+        for (const categoryKey of type.categories) {
+          const meta = CATEGORY_META[categoryKey];
           const catId = crypto.randomUUID();
           db.prepare(
             `INSERT INTO privacy_categories (id, type_id, identifier, title)
@@ -266,8 +280,8 @@ function seedFromCanned(): SeedAppResult[] {
           ).run(
             catId,
             typeRowId,
-            categoryTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
-            categoryTitle,
+            categoryKey,
+            meta?.label ?? categoryKey,
           );
         }
       }
@@ -328,7 +342,14 @@ export async function POST(request: Request) {
     action: 'dev.seed_sample_data',
     rateLimit: {
       keyPrefix: 'dev.seed_sample_data',
-      limit: 6,
+      // Limit lifted from 6 to 30 per 10 min for the same reason as
+      // /api/reset's: the E2E suite calls this from ~7 specs per run
+      // (see e2e/*.spec.ts), and the original cap was tight enough
+      // that adding a single new spec tipped the suite into cascade
+      // failures. Same-origin + the audit log are the actual
+      // guardrails; this limiter is just defence-in-depth against a
+      // runaway loop, and a runaway loop trips any threshold instantly.
+      limit: 30,
       windowMs: 10 * 60_000,
       message: 'Rate limit exceeded for dev sample seeding. Try again later.',
     },

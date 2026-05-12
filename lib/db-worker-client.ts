@@ -18,7 +18,7 @@
  */
 
 import path from 'path';
-import { dbPath } from './db';
+import db, { dbPath } from './db';
 import type {
   DbWorkerExecuteRequest,
   DbWorkerResponse,
@@ -147,8 +147,17 @@ function executeInline(
   statements: DbWorkerStatement[],
   chunkSize: number,
 ): DbWorkerResponse {
-  // Lazy import so the db module (and migrations) only loads on inline path.
-  const db = require('./db').default as import('better-sqlite3').Database;
+  // `db` is statically imported at the top of this file. We used to
+  // `require('./db').default` here under a "lazy load" rationale, but
+  // (a) the static import of `dbPath` above already triggers the
+  // module's side effects (better-sqlite3 connection, CREATE TABLE,
+  // migrations) at load time, so deferral was always cosmetic, and
+  // (b) the `.default` lookup occasionally yielded `undefined` under
+  // Next 16's webpack CJS/ESM interop, manifesting as the runtime
+  // error "Cannot read properties of undefined (reading 'prepare')"
+  // when the worker had been disabled and writes fell through to
+  // this inline path. Using the static import removes the
+  // interop variable from the failure mode.
   if (statements.length === 0) {
     return { kind: 'execute-ok', requestId: 'inline', totalChanges: 0, durationMs: 0 };
   }

@@ -70,7 +70,14 @@ export type ActivityType =
   // but for the recommender → loved-one workflow. One row per accepted
   // import; the detail blob carries the summary numbers + recommender
   // name for the dashboard provenance banner.
-  | 'bundle_imported';
+  | 'bundle_imported'
+  // Privacy-profile preset boundary transitions — rows surface when the
+  // user picks a preset, switches between presets, or clears a profile.
+  // Custom-to-custom edits inside a non-preset state don't fire (the
+  // activity log is for noteworthy transitions, not keystroke-level
+  // edits). The describePresetTransition helper in lib/privacy-profile.ts
+  // is the single source of truth for when to write one of these.
+  | 'profile_preset_applied';
 
 export type ActivityStatus = 'ok' | 'error' | 'partial' | 'cancelled';
 

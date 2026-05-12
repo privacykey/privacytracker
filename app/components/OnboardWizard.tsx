@@ -1121,6 +1121,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   const runCfgutilCheck = useCallback(async () => {
     setCfgutilChecking(true);
     setCfgutilError('');
+    // Yield a frame so React paints the "Checking…" button state BEFORE
+    // we hand control to the Tauri IPC bridge. Without this, the click
+    // handler chain is: setState → microtask scheduling → await
+    // checkCfgutil() → blocks for the lifetime of the Rust probe → set
+    // state back. The browser never gets a chance to render the
+    // spinner / disabled state, so users see a frozen button and assume
+    // the app is broken. requestAnimationFrame guarantees one paint
+    // frame happens between the state flip and the slow IPC.
+    // (Same pattern used by runCfgutilExportClick below — keep them
+    // in sync if either grows more complexity.)
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     try {
       const result = await checkCfgutil();
       setCfgutilCheck(result);
@@ -2678,6 +2689,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // happen and the activity log stays clean.
     if (isPreviewMode) {
       const updated = items.map((it) => ({ ...it, status: 'success' as const }));
+      // Mirror the real-import branch below: auto-open the per-app
+      // details for small batches so a developer running the preview
+      // flow sees the rendered scrape rows instead of a collapsed
+      // <details> summary. Without this, the rows are technically in
+      // the DOM but display:none — which Playwright reports as hidden
+      // and which doesn't match production UX.
+      setImportDetailsOpen(items.length <= 8);
       setScrapeList(updated);
       setDone(true);
       return;
@@ -3673,6 +3691,30 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                               </span>
                             )}
                           </div>
+                          {/* Larger, more visible "we're working on it"
+                              panel — the cfgutil probe shells out + checks
+                              the Automation Tools install, which can take
+                              5–30s on a cold call. The button's 16px
+                              spinner alone isn't enough signal. Renders
+                              only while cfgutilChecking is true; aria-live
+                              announces the title to screen readers. */}
+                          {cfgutilChecking && (
+                            <div
+                              className="cfgutil-checking-status"
+                              role="status"
+                              aria-live="polite"
+                            >
+                              <span className="spinner-lg" aria-hidden />
+                              <div className="cfgutil-checking-status-body">
+                                <div className="cfgutil-checking-status-title">
+                                  {tCfg('checking_status_title')}
+                                </div>
+                                <div className="cfgutil-checking-status-copy">
+                                  {tCfg('checking_status_body')}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </li>
 
@@ -3723,6 +3765,40 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                                 </button>
                               </div>
 
+                              {/* While refreshing, show skeleton rows in
+                                  the same slot as the real device list so
+                                  the panel itself reflects the loading
+                                  state — not just the pill button up top.
+                                  Once cfgutil returns and devices are
+                                  populated, the skeleton block is
+                                  replaced by the real radiogroup. */}
+                              {cfgutilDevicesLoading && cfgutilDevices.length === 0 && (
+                                <div
+                                  className="cfgutil-device-list cfgutil-device-list--loading"
+                                  role="status"
+                                  aria-label={tCfg('device_skeleton_aria')}
+                                  aria-live="polite"
+                                >
+                                  <div className="cfgutil-device-loading-banner">
+                                    <span className="spinner-sm" aria-hidden />
+                                    <span>{tCfg('devices_refreshing_status')}</span>
+                                  </div>
+                                  <div className="cfgutil-device-row cfgutil-device-row--skeleton" aria-hidden>
+                                    <span className="cfgutil-device-dot" />
+                                    <span className="cfgutil-device-text">
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--name" />
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--meta" />
+                                    </span>
+                                  </div>
+                                  <div className="cfgutil-device-row cfgutil-device-row--skeleton" aria-hidden>
+                                    <span className="cfgutil-device-dot" />
+                                    <span className="cfgutil-device-text">
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--name" />
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--meta" />
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                               {cfgutilDevices.length > 0 && (
                                 <div className="cfgutil-device-list" role="radiogroup" aria-label={tCfg('device_picker_aria')}>
                                   {cfgutilDevices.map(device => {
@@ -4031,6 +4107,25 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             : selected;
           const effectiveCount = effectiveSelected.size;
 
+          // List of query names that returned no App Store candidates,
+          // and the subset that the user hasn't already skipped /
+          // researched. Used for the bulk-action banner below the
+          // tracked-banner — on a large cfgutil batch (200+ apps),
+          // clicking "Skip this" per row is unworkable. The banner
+          // gives a single "skip all" affordance and a count so the
+          // user knows what they're collapsing.
+          const unmatchedQueries = searchResults
+            .filter(r => r.candidates.length === 0)
+            .map(r => r.query);
+          // Active = no candidate AND not already marked skipped. We
+          // approximate "marked skipped" by checking whether the item
+          // appears in itemIdByQuery (every block has an itemId; the
+          // skip handler hits /api/imports/items/update without
+          // removing the row, so this check is just a fuzz pass — the
+          // bulk action below is idempotent against already-skipped
+          // rows anyway, so a small over-count is harmless).
+          const unmatchedCount = unmatchedQueries.length;
+
           return (
           <>
             <h1 className="wizard-title">{tWiz('confirm_matches')}</h1>
@@ -4140,6 +4235,34 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                 </div>
               );
             })()}
+
+            {unmatchedCount > 0 && (
+              // Unmatched-apps banner. Big cfgutil imports routinely
+              // produce 50+ rows that didn't resolve to an App Store
+              // candidate (sideloaded apps, region-restricted apps,
+              // names too generic for the search to disambiguate).
+              // Clicking "Skip this" per block was unworkable. This
+              // banner gives a single skip-all affordance with a count
+              // so the user knows what they're collapsing, mirroring
+              // the tracked-banner pattern above for visual symmetry.
+              <div className="wizard-note wizard-note-info" style={{ marginTop: 12 }}>
+                <strong>{tStep3('unmatched_lead', { count: unmatchedCount })}</strong>
+                {tStep3('unmatched_body')}
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      for (const query of unmatchedQueries) {
+                        void handleBlockSkip(query);
+                      }
+                    }}
+                  >
+                    {tStep3('unmatched_skip_all', { count: unmatchedCount })}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="search-result-list">
               {visibleResults.map(result => (

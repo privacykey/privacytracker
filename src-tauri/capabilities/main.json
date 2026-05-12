@@ -3,6 +3,13 @@
   "identifier": "main",
   "description": "Capabilities the main window needs.",
   "windows": ["main"],
+  "local": true,
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:*",
+      "http://localhost:*"
+    ]
+  },
   "permissions": [
     "core:default",
     "core:window:allow-show",
@@ -18,6 +25,22 @@
     "global-shortcut:default",
     "deep-link:default",
     "window-state:default",
-    "log:default"
+    "log:default",
+    "allow-set-dock-visibility",
+    "allow-sidecar-base-url",
+    "allow-open-data-dir",
+    "allow-open-log-dir",
+    "allow-toggle-devtools",
+    "allow-register-global-shortcut",
+    "allow-get-diagnostics-report",
+    "allow-authenticate-touch-id",
+    "allow-set-dock-badge",
+    "allow-set-tray-visible",
+    "allow-reveal-main-window",
+    "allow-check-cfgutil",
+    "allow-run-cfgutil-export",
+    "allow-list-connected-devices",
+    "allow-run-cfgutil-backup",
+    "allow-run-cfgutil-remove-app"
   ]
 }

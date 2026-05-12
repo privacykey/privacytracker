@@ -649,6 +649,13 @@ export const GOAL_RULES: Record<PrimaryGoal, Partial<Record<FlagKey, FlagValue>>
     'flag.dashboard.callout.declutter':             'on',     // declutter-specific callout
     'flag.dashboard.callout.understand_only':       'off',    // suppress the understand-only callout when declutter is also on
     'flag.dashboard.callout.understand_declutter':  'on',     // combined-goals callout (the 'hygiene' case)
+    // Decluttering means deciding which apps to remove based on what
+    // they collect. Showing the privacy-profile setup step in onboarding
+    // gives the user a way to define their tolerances up-front, which
+    // then drives the mismatch flags the dashboard surfaces. The HARD_DEFAULTS
+    // comment for `flag.onboarding.privacy_profile_setup` has long
+    // promised this rule lives under declutter — it does now.
+    'flag.onboarding.privacy_profile_setup':        'on',     // see HARD_DEFAULTS comment
     'flag.appgrid.card.risk_pill':                  'on',     // risk visibility front-and-centre
     'flag.appgrid.card.profile_badge':              'on',     // mismatch visibility for delete decisions
     'flag.appgrid.card.risk_chips':                 'on',     // breakdown chips
