@@ -132,6 +132,11 @@ export async function POST(request: NextRequest) {
         apps_count: bundle.apps.length,
         annotations_count: bundle.annotations.length,
         has_recommender_profile: !!bundle.recommender_profile,
+        // Surface the matching preset key (or null) so the preview
+        // modal can show "Used the Strict preset" alongside the
+        // "includes recommender's profile" line. Falls through as
+        // null for v1/v2 bundles that predate the field.
+        recommender_profile_preset: bundle.recommender_profile_preset ?? null,
       },
       existingImport: existing,
     });

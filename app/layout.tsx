@@ -4,6 +4,7 @@ import './globals.css';
 import { TaskCenterProvider } from './components/TaskCenter';
 import { QueuedSearchProvider } from './components/QueuedSearchProvider';
 import { ImportQueueProvider } from './components/ImportQueueProvider';
+import ClientDiagnosticsBoot from './components/ClientDiagnosticsBoot';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import KeyboardHint from './components/KeyboardHint';
 import SiteInfoHint from './components/SiteInfoHint';
@@ -335,6 +336,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           <QueuedSearchProvider>
             <ImportQueueProvider>
+              {/* Boots the client diagnostics module (long-task observer,
+                  fetch wrapper, import-event ring). Renders nothing —
+                  surface is read from the Diagnostics page. */}
+              <ClientDiagnosticsBoot />
               {/* Path tracker. Writes pathname+search to sessionStorage on
                   every navigation so downstream pages can render a "← Back
                   to X" link (document.referrer alone is unreliable —

@@ -1,37 +1,32 @@
 'use client';
 
 /**
- * Device-connect toast. Polls the Tauri-side `list_connected_devices`
- * command every 5s and surfaces a toast when a new ECID appears. Click →
- * /onboard?source=cfgutil&ecid=… which OnboardWizard already handles.
+ * Device-connect toast — surfaces under /onboard when an iPhone or iPad
+ * is attached to the Mac, offering a one-click jump into the cfgutil
+ * import flow for that ECID.
  *
- * No-ops on the web build (Tauri shim returns null) and on platforms
- * without Configurator (`cfgutilUnavailable: true` on the first poll
- * stops the loop). Dedup keyed by ECID against the previous poll.
- * Mounted on the Apps page only.
+ * Now event-driven: subscribes to the Tauri `cfgutil:device-connected`
+ * event emitted by the Rust IOKit watcher. No polling. Gated on a
+ * "user has imported via cfgutil at least once" flag so a fresh install
+ * never pays the cost — users who never use cfgutil don't see the
+ * toast and the watcher stays idle.
+ *
+ * No-ops outside the Tauri shell.
  */
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  isDesktop,
-  listConnectedDevices,
-  type ConnectedDevice,
-} from '../../lib/desktop';
+import { isDesktop, type ConnectedDevice } from '../../lib/desktop';
 
-/** How often to ask the Rust side "what's plugged in right now?". */
-const POLL_INTERVAL_MS = 5_000;
+type ToastT = (key: string, values?: Record<string, string | number | Date>) => string;
 
-/** Map an Apple model identifier to a friendly emoji. Falls back to device
- *  class then a generic phone glyph. */
 function deviceGlyph(d: ConnectedDevice): string {
   const cls = (d.deviceClass ?? '').toLowerCase();
   if (cls.includes('ipad')) return '📱';
   if (cls.includes('iphone')) return '📱';
   if (cls.includes('ipod')) return '🎵';
   if (cls.includes('watch')) return '⌚';
-  // model-based fallback — some cfgutil revisions return lowercase model ids.
   const model = (d.model ?? '').toLowerCase();
   if (model.startsWith('ipad')) return '📱';
   if (model.startsWith('ipod')) return '🎵';
@@ -39,9 +34,6 @@ function deviceGlyph(d: ConnectedDevice): string {
   return '📱';
 }
 
-type ToastT = (key: string, values?: Record<string, string | number | Date>) => string;
-
-/** "Aria's iPhone" → use the device's name when present, friendly fallback otherwise. */
 function deviceDisplayName(t: ToastT, d: ConnectedDevice): string {
   if (d.name && d.name.trim()) return d.name.trim();
   if (d.model && d.model.trim()) return d.model.trim();
@@ -49,98 +41,109 @@ function deviceDisplayName(t: ToastT, d: ConnectedDevice): string {
   return t('no_name');
 }
 
+/**
+ * Shape of the Tauri-emitted payload. Mirrors src-tauri/src/usb_watcher.rs's
+ * serde::Serialize on the device row.
+ */
+interface DeviceEventPayload {
+  ecid: string;
+  name: string | null;
+  model: string | null;
+  iosVersion: string | null;
+  deviceClass: string | null;
+}
+
 export default function DeviceConnectedToast() {
   const tToast = useTranslations('device_connect_toast');
-  // At most one toast at a time even if multiple devices arrive in the
-  // same poll — the user can repeat the action for each.
   const [pending, setPending] = useState<ConnectedDevice | null>(null);
   const [dismissedEcids, setDismissedEcids] = useState<Set<string>>(new Set());
+  const [gateOpen, setGateOpen] = useState<boolean | null>(null);
 
-  // Refs hold cross-poll state so the polling effect doesn't recreate
-  // the timer on every change.
-  const previousEcidsRef = useRef<Set<string>>(new Set());
-  const stoppedRef = useRef<boolean>(false);
-
-  const poll = useCallback(async () => {
-    const result = await listConnectedDevices();
-    if (!result) {
-      // Not running in Tauri — bail out and never poll again.
-      stoppedRef.current = true;
-      return;
-    }
-    if (result.cfgutilUnavailable) {
-      // Configurator not installed — quietly stop polling.
-      stoppedRef.current = true;
-      return;
-    }
-
-    const currentEcids = new Set(result.devices.map(d => d.ecid));
-
-    // Drop the pending toast when its device disappears from the list.
-    setPending(prev => (prev && !currentEcids.has(prev.ecid) ? null : prev));
-
-    // Forget dismissals for devices that are no longer connected so a
-    // plug → dismiss → unplug → re-plug sequence re-shows the toast.
-    setDismissedEcids(prev => {
-      const next = new Set<string>();
-      for (const ecid of prev) {
-        if (currentEcids.has(ecid)) next.add(ecid);
-      }
-      return next;
-    });
-
-    // The first poll establishes a baseline so a device that was already
-    // plugged in when the app opened doesn't immediately fire a toast.
-    const previous = previousEcidsRef.current;
-    const isFirstPoll = previous.size === 0;
-    if (!isFirstPoll) {
-      for (const device of result.devices) {
-        if (previous.has(device.ecid)) continue;
-        if (dismissedEcids.has(device.ecid)) continue;
-        // First fresh device wins; the next one promotes after dismissal.
-        setPending(prev => prev ?? device);
-        break;
-      }
-    }
-
-    previousEcidsRef.current = currentEcids;
-  }, [dismissedEcids]);
-
+  // Read the cfgutil_imported_at gate once on mount. We only subscribe to
+  // the USB attach event when the gate is open — users who have never
+  // imported via cfgutil don't pay any cost.
   useEffect(() => {
-    if (!isDesktop()) return;
-
+    if (!isDesktop()) {
+      setGateOpen(false);
+      return;
+    }
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const tick = async () => {
-      if (cancelled || stoppedRef.current) return;
-      await poll();
-      if (cancelled || stoppedRef.current) return;
-      timer = setTimeout(tick, POLL_INTERVAL_MS);
-    };
-
-    // Kick off immediately so a device plugged in before navigating to
-    // the Apps page is detected on first render. The first-poll baseline
-    // suppresses toasts for already-connected ECIDs.
-    tick();
-
+    fetch('/api/settings', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(json => {
+        if (cancelled) return;
+        const raw = json?.cfgutil_imported_at;
+        setGateOpen(raw !== '' && raw !== null && raw !== undefined);
+      })
+      .catch(() => {
+        if (!cancelled) setGateOpen(false);
+      });
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
     };
-  }, [poll]);
+  }, []);
 
-  // Hidden in the web build so server-side renders match.
-  if (!isDesktop() || !pending) return null;
+  // Subscribe to the IOKit-driven device-connected event. Lazy-imports the
+  // Tauri event API so the web build doesn't ship the bridge.
+  useEffect(() => {
+    if (!gateOpen) return;
+    let unsubscribe: (() => void) | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event');
+        if (cancelled) return;
+        const off = await listen<DeviceEventPayload>(
+          'cfgutil:device-connected',
+          event => {
+            const payload = event.payload;
+            if (!payload || typeof payload.ecid !== 'string' || !payload.ecid) return;
+            setDismissedEcids(prev => {
+              if (prev.has(payload.ecid)) return prev;
+              return prev;
+            });
+            setPending(prev => {
+              // Don't replace an existing pending toast — the user can
+              // dismiss the current one and the next event will land.
+              if (prev) return prev;
+              return {
+                ecid: payload.ecid,
+                name: payload.name,
+                model: payload.model,
+                iosVersion: payload.iosVersion,
+                deviceClass: payload.deviceClass,
+              };
+            });
+          },
+        );
+        if (cancelled) {
+          off();
+          return;
+        }
+        unsubscribe = off;
+      } catch (err) {
+        console.warn('[device-toast] failed to subscribe to cfgutil:device-connected', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (unsubscribe) unsubscribe();
+    };
+  }, [gateOpen]);
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     setDismissedEcids(prev => {
+      if (!pending) return prev;
       const next = new Set(prev);
-      if (pending.ecid) next.add(pending.ecid);
+      next.add(pending.ecid);
       return next;
     });
     setPending(null);
-  };
+  }, [pending]);
+
+  // Hidden in the web build so server-side renders match.
+  if (!isDesktop() || !pending) return null;
+  if (dismissedEcids.has(pending.ecid)) return null;
 
   const displayName = deviceDisplayName(tToast, pending);
   const glyph = deviceGlyph(pending);

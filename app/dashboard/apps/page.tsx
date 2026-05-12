@@ -10,7 +10,6 @@ import { getUserVerdictsByAppId } from '../../../lib/verdicts';
 import type { VerdictValue } from '../../../lib/verdict-types';
 import AppGrid, { type AppGridFlagState } from '../../components/AppGrid';
 import Nav from '../../components/Nav';
-import DeviceConnectedToast from '../../components/DeviceConnectedToast';
 import { resolveFlagFromDb, getResolverContextFromDb } from '@/lib/feature-flags-server';
 
 export const dynamic = 'force-dynamic';
@@ -179,14 +178,12 @@ export default function AppsPage() {
   return (
     <>
       <Nav appCount={apps.length + manualApps.length} />
-      {/*
-        Phase 4 device-connect toast. Mounted only on the Apps page so
-        the polling loop lives where users naturally land when they
-        want to import — keeps the cfgutil subprocess overhead off
-        every other page. The component is a no-op outside the Tauri
-        shell and outside macOS, so the web build sees nothing.
-      */}
-      <DeviceConnectedToast />
+      {/* Device-connect toast intentionally NOT mounted here. Polling
+          cfgutil from the apps grid was misleading (this view is the
+          user's tracked-apps list, not a 1:1 of what's on a device)
+          and expensive. The toast now lives under /onboard, gated on
+          a "user has used cfgutil before" flag, driven by IOKit
+          device-attach events rather than polling. */}
       <AppGrid
         initialApps={apps}
         initialManualApps={manualApps}

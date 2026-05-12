@@ -22,7 +22,10 @@
 
 import { NextResponse } from 'next/server';
 import os from 'node:os';
-import { snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
+import db from '@/lib/db';
+import { installRuntimeDiagnostics, snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
+import { snapshotApiTimings } from '@/lib/api-timing';
+import { snapshotDbWorkerTimings } from '@/lib/db-worker-client';
 import { snapshotDatabaseHealth } from '@/lib/db-health';
 import { snapshotDisk } from '@/lib/disk-usage';
 import { snapshotErrorLog } from '@/lib/error-log-ring';
@@ -98,7 +101,12 @@ export async function GET(request: Request) {
       arch: process.arch,
     },
     host,
-    runtime: safe(() => snapshotRuntimeMetrics(), null),
+    runtime: safe(() => {
+      installRuntimeDiagnostics(db);
+      return snapshotRuntimeMetrics();
+    }, null),
+    apiTimings: safe(() => snapshotApiTimings(), null),
+    dbWorker: safe(() => snapshotDbWorkerTimings(), null),
     database: safe(() => snapshotDatabaseHealth(), null),
     disk: safe(() => snapshotDisk(), null),
     errorLog: safe(() => snapshotErrorLog({ limit: 50 }), { entries: [], capacity: 0 }),

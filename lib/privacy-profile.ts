@@ -110,6 +110,226 @@ export const DEFAULT_PROFILE: PrivacyProfile = {
   OTHER:               'linked',
 };
 
+// Named presets — picked from the onboarding profile screen and from
+// Settings → Privacy Profile. Each preset is COMPLETE (covers all 14
+// categories) so applying one always produces a deterministic profile;
+// matchPreset() can then round-trip the choice back to the active pill.
+//
+// The four presets walk the strictness axis from most → least restrictive:
+//   strict:        most categories not_collected / not_linked
+//   balanced:      mirrors DEFAULT_PROFILE (the historical default)
+//   anti_tracking: every category 'linked' — only third-party tracking flags
+//   permissive:    mostly 'tracking', but sensitive identity data pulled back
+
+export const PROFILE_PRESET_KEYS = [
+  'strict',
+  'balanced',
+  'anti_tracking',
+  'permissive',
+] as const;
+
+export type ProfilePresetKey = (typeof PROFILE_PRESET_KEYS)[number];
+
+export interface ProfilePresetMeta {
+  key:         ProfilePresetKey;
+  label:       string;
+  shortLabel:  string;
+  description: string;
+  /** Single-character emoji shown inside the preset pill. */
+  icon:        string;
+  /**
+   * Reused severity class for the active-pill accent colour. Walks the
+   * existing palette: green → yellow → orange → red, mirroring the per-row
+   * pill colours in the editor.
+   */
+  severityCls: string;
+}
+
+export const PROFILE_PRESET_META: Record<ProfilePresetKey, ProfilePresetMeta> = {
+  strict: {
+    key:         'strict',
+    label:       'Strict',
+    shortLabel:  'Strict',
+    description: 'Restrict identity-linked data wherever possible. Many mainstream apps will mismatch.',
+    icon:        '🛡️',
+    severityCls: 'severity-none',
+  },
+  balanced: {
+    key:         'balanced',
+    label:       'Balanced',
+    shortLabel:  'Balanced',
+    description: 'A sensible default. Strict on health, sensitive, and contacts; lenient on usage and diagnostics.',
+    icon:        '⚖️',
+    severityCls: 'severity-unlinked',
+  },
+  anti_tracking: {
+    key:         'anti_tracking',
+    label:       'Anti-tracking only',
+    shortLabel:  'Anti-tracking',
+    description: "Only flag apps that share data with third-party trackers. Everything else is fine.",
+    icon:        '🚫',
+    severityCls: 'severity-linked',
+  },
+  permissive: {
+    key:         'permissive',
+    label:       'Permissive',
+    shortLabel:  'Permissive',
+    description: 'Accept almost anything, but still flag tracking on health, financial, location, and sensitive data.',
+    icon:        '🌤️',
+    severityCls: 'severity-track',
+  },
+};
+
+/**
+ * Build a complete profile by mapping every category to a single tier.
+ * Used to generate the anti_tracking and permissive presets without
+ * repeating the 14 category keys inline.
+ */
+function fillAllCategories(tier: ProfileTier): PrivacyProfile {
+  const out: PrivacyProfile = {};
+  for (const key of PROFILE_CATEGORY_KEYS) out[key] = tier;
+  return out;
+}
+
+export const PROFILE_PRESETS: Record<ProfilePresetKey, PrivacyProfile> = {
+  strict: {
+    CONTACT_INFO:        'not_linked',
+    HEALTH_AND_FITNESS:  'not_collected',
+    FINANCIAL_INFO:      'not_linked',
+    LOCATION:            'not_collected',
+    SENSITIVE_INFO:      'not_collected',
+    CONTACTS:            'not_collected',
+    USER_CONTENT:        'not_linked',
+    BROWSING_HISTORY:    'not_collected',
+    SEARCH_HISTORY:      'not_linked',
+    IDENTIFIERS:         'not_linked',
+    PURCHASES:           'not_linked',
+    USAGE_DATA:          'not_linked',
+    DIAGNOSTICS:         'not_linked',
+    OTHER:               'not_collected',
+  },
+  balanced: { ...DEFAULT_PROFILE },
+  anti_tracking: fillAllCategories('linked'),
+  permissive: {
+    // Bulk of categories accept tracking; carve-outs for sensitive identity
+    // data so the user is still warned about third-party sharing of health,
+    // financial, location, and sensitive info.
+    CONTACT_INFO:        'tracking',
+    HEALTH_AND_FITNESS:  'linked',
+    FINANCIAL_INFO:      'linked',
+    LOCATION:            'linked',
+    SENSITIVE_INFO:      'not_linked',
+    CONTACTS:            'tracking',
+    USER_CONTENT:        'tracking',
+    BROWSING_HISTORY:    'tracking',
+    SEARCH_HISTORY:      'tracking',
+    IDENTIFIERS:         'tracking',
+    PURCHASES:           'tracking',
+    USAGE_DATA:          'tracking',
+    DIAGNOSTICS:         'tracking',
+    OTHER:               'tracking',
+  },
+};
+
+/**
+ * Describes a preset-boundary transition for the activity log. The
+ * server records one of these (via `recordActivity`) whenever a save
+ * crosses a preset boundary — picking a preset, switching presets, or
+ * clearing a previously-set profile. Custom-to-custom edits (single-row
+ * tweaks within a non-preset profile) intentionally don't surface here:
+ * the activity log is for "noteworthy state transitions", not every
+ * keystroke.
+ */
+export interface PresetTransitionDescription {
+  /** Plain-text summary suitable for the activity feed row title. */
+  summary: string;
+  /** Structured payload stashed in the activity row's `detail` blob. */
+  detail: {
+    /** Preset key the profile matched BEFORE the save (null when none). */
+    from: ProfilePresetKey | null;
+    /** Preset key the profile matches AFTER the save (null when none). */
+    to: ProfilePresetKey | null;
+    /** Marks "previous profile had preferences, new one is empty/null". */
+    cleared?: boolean;
+  };
+}
+
+/**
+ * Compare an old + new profile and return an activity-log-shaped
+ * description when the change crosses a preset boundary. Returns null
+ * for non-events (no profile before AND none after, or a custom edit
+ * that stayed inside a non-preset state, or an idempotent re-save).
+ *
+ * Decision rules, in order:
+ *   1. Old had preferences, new is empty → "Privacy profile cleared"
+ *   2. New matches a preset, and that preset differs from the old's
+ *      match (which may be null) → "Privacy profile changed to {Label}"
+ *   3. Anything else → null
+ */
+export function describePresetTransition(
+  oldProfile: PrivacyProfile | null | undefined,
+  newProfile: PrivacyProfile | null | undefined,
+): PresetTransitionDescription | null {
+  const oldHasAny =
+    !!oldProfile && Object.values(oldProfile).some(v => typeof v === 'string');
+  const newHasAny =
+    !!newProfile && Object.values(newProfile).some(v => typeof v === 'string');
+
+  // Rule 1: clearing.
+  if (oldHasAny && !newHasAny) {
+    return {
+      summary: 'Privacy profile cleared',
+      detail: { from: matchPreset(oldProfile ?? null), to: null, cleared: true },
+    };
+  }
+
+  // No-op cases: nothing-to-nothing, or new profile is empty (and old was too).
+  if (!newHasAny) return null;
+
+  const fromPreset = matchPreset(oldProfile ?? null);
+  const toPreset = matchPreset(newProfile ?? null);
+
+  // Rule 2: new state matches a preset that's different from the old.
+  if (toPreset && toPreset !== fromPreset) {
+    return {
+      summary: `Privacy profile changed to ${PROFILE_PRESET_META[toPreset].label}`,
+      detail: { from: fromPreset, to: toPreset },
+    };
+  }
+
+  // Rule 3: custom edit inside a non-preset state, or re-save of the
+  // same preset — nothing to log.
+  return null;
+}
+
+/**
+ * Returns the preset key whose tier mapping exactly matches `profile`,
+ * or null if the profile is empty / sparse / customised. Used by the
+ * editor to highlight the active preset pill — picking a preset and then
+ * editing a single category drops the highlight, which is the right
+ * affordance for "this is now custom".
+ */
+export function matchPreset(profile: PrivacyProfile | null | undefined): ProfilePresetKey | null {
+  if (!profile) return null;
+  // Bail early on empty / sparse profiles. A preset must cover all 14
+  // categories, so a profile with fewer entries can never match.
+  const profileKeys = Object.keys(profile).filter(k => typeof profile[k] === 'string');
+  if (profileKeys.length !== PROFILE_CATEGORY_KEYS.length) return null;
+
+  for (const presetKey of PROFILE_PRESET_KEYS) {
+    const preset = PROFILE_PRESETS[presetKey];
+    let allMatch = true;
+    for (const cat of PROFILE_CATEGORY_KEYS) {
+      if (profile[cat] !== preset[cat]) {
+        allMatch = false;
+        break;
+      }
+    }
+    if (allMatch) return presetKey;
+  }
+  return null;
+}
+
 // Pure comparison helpers — usable both client-side and server-side.
 
 export interface AppProfileFootprint {

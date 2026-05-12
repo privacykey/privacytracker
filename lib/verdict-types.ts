@@ -65,11 +65,11 @@ export const VERDICT_META: Record<VerdictValue, VerdictMeta> = {
   },
   uninstall: {
     value: 'uninstall',
-    label: 'Marked to uninstall',
-    shortLabel: 'Uninstall',
+    label: 'Marked to remove',
+    shortLabel: 'Remove',
     description:
-      "You've decided this app should be removed. When source = 'imported', this is a recommendation only — your own verdict still gates the actual uninstall.",
-    icon: '✕',
+      "You've decided this app should be removed. When source = 'imported', this is a recommendation only — your own decision still gates whether you actually remove it.",
+    icon: '🗑',
     cls: 'uninstall',
   },
 };

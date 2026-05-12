@@ -34,8 +34,16 @@
 /data
 
 # ── Cowork / sandbox session metadata ────────────────────────────────
+# Most of `.claude/` is per-developer scratch state (resume session blob,
+# settings.local.json, plans, transcripts). A few subdirectories are
+# checked in so the protocol travels with the repo:
+#   - .claude/commands/  → shared slash commands (e.g. /resume)
+#   - .claude/agents/    → shared sub-agent definitions (if any)
+# See CLAUDE.md → "Session continuity protocol" for details.
 /sessions
-/.claude
+/.claude/*
+!/.claude/commands/
+!/.claude/agents/
 
 # ── OS metadata ──────────────────────────────────────────────────────
 .DS_Store

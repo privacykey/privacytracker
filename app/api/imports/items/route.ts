@@ -6,6 +6,7 @@ import {
   type ImportItemStatus,
 } from '../../../../lib/imports';
 import { readBoundedJson } from '../../../../lib/security';
+import { withApiTiming } from '../../../../lib/api-timing';
 
 interface RawItem {
   query: unknown;
@@ -32,7 +33,7 @@ interface RawItem {
   nextAttemptAt?: unknown;
 }
 
-export async function POST(request: Request) {
+async function addImportItemsRoute(request: Request) {
   let body: Record<string, unknown>;
   try {
     body = await readBoundedJson<Record<string, unknown>>(request, 512 * 1024);
@@ -58,11 +59,14 @@ export async function POST(request: Request) {
         if (!IMPORT_ITEM_STATUSES.includes(status as ImportItemStatus)) return null;
 
         // Resolve the retry deadline from whichever field the caller sent.
-        // Only honoured when the row is actually going in as `queued` —
-        // otherwise `next_attempt_at` would be a meaningless number on a
-        // matched/imported row.
+        // Only honoured for the two retry-bearing statuses — anywhere else
+        // `next_attempt_at` would be a meaningless number on a matched /
+        // imported / etc. row.
+        //
+        //   'queued'         → scrape retry (server-side import-queue worker)
+        //   'pending_search' → iTunes-search retry (client-side QueuedSearchProvider)
         let nextAttemptAt: number | null = null;
-        if (status === 'queued') {
+        if (status === 'queued' || status === 'pending_search') {
           if (typeof item?.nextAttemptAt === 'number' && item.nextAttemptAt > 0) {
             nextAttemptAt = item.nextAttemptAt;
           } else if (typeof item?.retryAfterMs === 'number' && item.retryAfterMs > 0) {
@@ -106,3 +110,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export const POST = withApiTiming('/api/imports/items', addImportItemsRoute);

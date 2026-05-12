@@ -13,10 +13,26 @@
  * DB results when the sample-data flag is on (wiring lands in PR 3).
  */
 
+/**
+ * Canonical privacy-type identifiers — same strings the live App Store
+ * scraper produces (see `TYPE_IDENTIFIER_TO_TIER` in `lib/privacy-profile.ts`).
+ * Using the canonical form here means seeded sample apps go through the
+ * same mismatch-detection codepaths as scraped apps.
+ */
+export type SamplePrivacyTypeIdentifier =
+  | 'DATA_USED_TO_TRACK_YOU'
+  | 'DATA_LINKED_TO_YOU'
+  | 'DATA_NOT_LINKED_TO_YOU';
+
 export interface SampleAppPrivacyType {
-  identifier: string;
+  identifier: SamplePrivacyTypeIdentifier;
   title: string;
-  /** Categories under this type (e.g. "Contact Info", "Location") */
+  /**
+   * Categories under this type. Each entry is a canonical
+   * `CATEGORY_META` key from `lib/privacy-meta.ts` (e.g. `'CONTACT_INFO'`,
+   * `'HEALTH_AND_FITNESS'`). The seed route looks up the human label
+   * from `CATEGORY_META[key].label` when writing rows to the DB.
+   */
   categories: string[];
 }
 
@@ -89,9 +105,9 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Location', 'Purchase History', 'Search History', 'Contact Info', 'Other Data'] },
-      { identifier: 'linked', title: 'Data Linked to You', categories: ['Health & Fitness', 'Financial Info', 'Sensitive Info', 'User Content'] },
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics', 'Usage Data'] },
+      { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'LOCATION', 'PURCHASES', 'SEARCH_HISTORY', 'CONTACT_INFO', 'OTHER'] },
+      { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['HEALTH_AND_FITNESS', 'FINANCIAL_INFO', 'SENSITIVE_INFO', 'USER_CONTENT'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS', 'USAGE_DATA'] },
     ],
     aiSummary: {
       paragraph: 'Instagram collects an extensive range of personal data — identifiers, location, browsing and search history — and uses much of it to track users across other companies\u2019 apps and websites. The privacy policy permits sharing with Meta\u2019s ad partners and acknowledges that some data may be retained for years even after account deletion.',
@@ -118,9 +134,9 @@ export const SAMPLE_APPS: SampleApp[] = [
         waybackUrl: 'https://web.archive.org/web/20251028000000id_/https://apps.apple.com/us/app/instagram/id389801252',
         version: '329.0',
         privacyTypes: [
-          { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Location', 'Purchase History', 'Contact Info'] },
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Financial Info', 'User Content'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics', 'Usage Data'] },
+          { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'LOCATION', 'PURCHASES', 'CONTACT_INFO'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['FINANCIAL_INFO', 'USER_CONTENT'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS', 'USAGE_DATA'] },
         ],
       },
       {
@@ -128,9 +144,9 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'scheduled',
         version: '335.0',
         privacyTypes: [
-          { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Location', 'Purchase History', 'Search History', 'Contact Info'] },
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Financial Info', 'Sensitive Info', 'User Content'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics', 'Usage Data'] },
+          { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'LOCATION', 'PURCHASES', 'SEARCH_HISTORY', 'CONTACT_INFO'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['FINANCIAL_INFO', 'SENSITIVE_INFO', 'USER_CONTENT'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS', 'USAGE_DATA'] },
         ],
       },
       {
@@ -138,9 +154,9 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'scheduled',
         version: '341.2',
         privacyTypes: [
-          { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Location', 'Purchase History', 'Search History', 'Contact Info', 'Other Data'] },
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Health & Fitness', 'Financial Info', 'Sensitive Info', 'User Content'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics', 'Usage Data'] },
+          { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'LOCATION', 'PURCHASES', 'SEARCH_HISTORY', 'CONTACT_INFO', 'OTHER'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['HEALTH_AND_FITNESS', 'FINANCIAL_INFO', 'SENSITIVE_INFO', 'USER_CONTENT'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS', 'USAGE_DATA'] },
         ],
       },
     ],
@@ -154,9 +170,9 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: false,
     privacyTypes: [
-      { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Location', 'Usage Data', 'Browsing History'] },
-      { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'User Content', 'Identifiers', 'Location', 'Search History'] },
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics', 'Performance Data'] },
+      { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'LOCATION', 'USAGE_DATA', 'BROWSING_HISTORY'] },
+      { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'USER_CONTENT', 'IDENTIFIERS', 'LOCATION', 'SEARCH_HISTORY'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS', 'OTHER'] },
     ],
     aiSummary: {
       paragraph: 'TikTok\u2019s privacy practices are wide-ranging: it collects identifiers, location, viewing patterns, and content interactions, and uses much of this for cross-app tracking and ad targeting. The policy describes complex data flows including overseas transfers that some regulators have flagged.',
@@ -182,9 +198,9 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'manual',
         version: '32.5',
         privacyTypes: [
-          { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Usage Data'] },
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'User Content', 'Identifiers', 'Location'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'USAGE_DATA'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'USER_CONTENT', 'IDENTIFIERS', 'LOCATION'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
       {
@@ -192,9 +208,9 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'scheduled',
         version: '34.1',
         privacyTypes: [
-          { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Location', 'Usage Data', 'Browsing History'] },
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'User Content', 'Identifiers', 'Location', 'Search History'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics', 'Performance Data'] },
+          { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'LOCATION', 'USAGE_DATA', 'BROWSING_HISTORY'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'USER_CONTENT', 'IDENTIFIERS', 'LOCATION', 'SEARCH_HISTORY'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS', 'OTHER'] },
         ],
       },
     ],
@@ -208,9 +224,9 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Usage Data'] },
-      { identifier: 'linked', title: 'Data Linked to You', categories: ['Purchase History', 'Contact Info', 'Audio Data', 'Location'] },
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+      { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'USAGE_DATA'] },
+      { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['PURCHASES', 'CONTACT_INFO', 'USER_CONTENT', 'LOCATION'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'Spotify collects listening behaviour, identifiers, and contact info to personalise recommendations and serve advertising on the free tier. Premium users see less ad-related processing. The policy is clear about what\u2019s collected and why.',
@@ -236,9 +252,9 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '8.9.30',
         privacyTypes: [
-          { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Usage Data'] },
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Purchase History', 'Contact Info', 'Location'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'USAGE_DATA'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['PURCHASES', 'CONTACT_INFO', 'LOCATION'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
       {
@@ -246,9 +262,9 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'scheduled',
         version: '9.0.10',
         privacyTypes: [
-          { identifier: 'tracked', title: 'Data Used to Track You', categories: ['Identifiers', 'Usage Data'] },
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Purchase History', 'Contact Info', 'Audio Data', 'Location'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_USED_TO_TRACK_YOU', title: 'Data Used to Track You', categories: ['IDENTIFIERS', 'USAGE_DATA'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['PURCHASES', 'CONTACT_INFO', 'USER_CONTENT', 'LOCATION'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
     ],
@@ -262,8 +278,8 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'Identifiers', 'Usage Data', 'User Content'] },
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+      { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'IDENTIFIERS', 'USAGE_DATA', 'USER_CONTENT'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'WhatsApp uses end-to-end encryption for message content, but collects metadata — who you talk to, how often, from where. Phone number and contacts are linked to your identity and shared with Meta\u2019s broader infrastructure for ad personalisation outside the message stream itself.',
@@ -289,8 +305,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '24.4',
         privacyTypes: [
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'Identifiers', 'Usage Data'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'IDENTIFIERS', 'USAGE_DATA'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
       {
@@ -298,8 +314,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'scheduled',
         version: '24.18',
         privacyTypes: [
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'Identifiers', 'Usage Data', 'User Content'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'IDENTIFIERS', 'USAGE_DATA', 'USER_CONTENT'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
     ],
@@ -313,8 +329,8 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'User Content', 'Identifiers', 'Usage Data', 'Location'] },
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+      { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'USER_CONTENT', 'IDENTIFIERS', 'USAGE_DATA', 'LOCATION'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'Gmail processes email content for spam filtering, security threat detection, and feature suggestions like Smart Compose. Google has stated it does not use email content for advertising, though metadata around your account is part of the broader Google ad-targeting profile.',
@@ -340,8 +356,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '6.0.241201',
         privacyTypes: [
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Contact Info', 'User Content', 'Identifiers', 'Usage Data', 'Location'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['CONTACT_INFO', 'USER_CONTENT', 'IDENTIFIERS', 'USAGE_DATA', 'LOCATION'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
     ],
@@ -355,8 +371,8 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'linked', title: 'Data Linked to You', categories: ['Purchase History', 'Identifiers', 'Audio Data'] },
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+      { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['PURCHASES', 'IDENTIFIERS', 'USER_CONTENT'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'Apple Music collects only listening behaviour, library content, and identifiers needed for the service. No third-party tracking, no ad targeting. Standard Apple privacy posture.',
@@ -382,8 +398,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '4.6',
         privacyTypes: [
-          { identifier: 'linked', title: 'Data Linked to You', categories: ['Purchase History', 'Identifiers', 'Audio Data'] },
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_LINKED_TO_YOU', title: 'Data Linked to You', categories: ['PURCHASES', 'IDENTIFIERS', 'USER_CONTENT'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
     ],
@@ -397,7 +413,7 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Location', 'Search History', 'Diagnostics'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['LOCATION', 'SEARCH_HISTORY', 'DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'Apple Maps processes location and search queries with random rotating identifiers — your searches are not tied to your Apple ID and are stripped of identifiers within 24 hours. One of the more privacy-preserving mapping options.',
@@ -423,7 +439,7 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '7.0',
         privacyTypes: [
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Location', 'Search History', 'Diagnostics'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['LOCATION', 'SEARCH_HISTORY', 'DIAGNOSTICS'] },
         ],
       },
     ],
@@ -437,7 +453,7 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'Notes stores content on-device by default, with end-to-end encrypted iCloud sync as opt-in. No advertising data, no analytics on note content, no third-party processors.',
@@ -462,7 +478,7 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '4.10',
         privacyTypes: [
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
     ],
@@ -476,7 +492,7 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'Calendar stores events locally with optional iCloud sync. No event-content analysis, no advertising. Suggested events from email use on-device parsing only.',
@@ -501,7 +517,7 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '17.0',
         privacyTypes: [
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Diagnostics'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['DIAGNOSTICS'] },
         ],
       },
     ],
@@ -515,7 +531,7 @@ export const SAMPLE_APPS: SampleApp[] = [
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
     privacyTypes: [
-      { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Location', 'Diagnostics'] },
+      { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['LOCATION', 'DIAGNOSTICS'] },
     ],
     aiSummary: {
       paragraph: 'Weather requests current location for forecasts but does not link the location to your Apple ID. The forecast service uses rotating tokens to ensure your location queries are not traceable to you.',
@@ -540,7 +556,7 @@ export const SAMPLE_APPS: SampleApp[] = [
         triggeredBy: 'import',
         version: '5.0',
         privacyTypes: [
-          { identifier: 'unlinked', title: 'Data Not Linked to You', categories: ['Location', 'Diagnostics'] },
+          { identifier: 'DATA_NOT_LINKED_TO_YOU', title: 'Data Not Linked to You', categories: ['LOCATION', 'DIAGNOSTICS'] },
         ],
       },
     ],

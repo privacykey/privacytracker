@@ -6,8 +6,9 @@ import {
   type ImportItemStatus,
 } from '../../../../../lib/imports';
 import { readBoundedJson } from '../../../../../lib/security';
+import { withApiTiming } from '../../../../../lib/api-timing';
 
-export async function POST(request: Request) {
+async function updateImportItemRoute(request: Request) {
   let body: Record<string, unknown>;
   try {
     body = await readBoundedJson<Record<string, unknown>>(request, 32 * 1024);
@@ -67,3 +68,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export const POST = withApiTiming('/api/imports/items/update', updateImportItemRoute);

@@ -33,6 +33,7 @@ import {
   useState,
 } from 'react';
 import { useTaskCenter, type TaskHandle } from './TaskCenter';
+import { recordImportEvent } from '@/lib/client-diagnostics';
 
 export interface ImportQueueItemSnapshot {
   id: string;
@@ -107,6 +108,11 @@ export interface ImportQueueDrainState {
   startedAt: number;
 }
 
+export interface ImportQueueStartDrainOptions {
+  initialSnapshot?: ImportQueueSnapshot | null;
+  forceRefresh?: boolean;
+}
+
 interface ImportQueueApi {
   state: ImportQueueSnapshot;
   /**
@@ -123,7 +129,7 @@ interface ImportQueueApi {
    */
   retryNow(signal?: AbortSignal): Promise<ImportQueueTickResult>;
   /** Force a fresh poll (used when the user lands on Import History). */
-  refresh(): Promise<void>;
+  refresh(): Promise<ImportQueueSnapshot | null>;
   /** Currently-active drain state. `null` when no drain is running. */
   drainState: ImportQueueDrainState | null;
   /**
@@ -132,7 +138,7 @@ interface ImportQueueApi {
    * are stuck behind a non-clearable error. Auto-resumes after a 429
    * cooldown elapses. No-op if a drain is already running.
    */
-  startDrain(): void;
+  startDrain(options?: ImportQueueStartDrainOptions): void;
   /** Cancel the active drain (if any). Aborts the in-flight fetch. */
   cancelDrain(): void;
   /**
@@ -235,17 +241,25 @@ export function ImportQueueProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<ImportQueueSnapshot | null> => {
     const snap = await fetchStatus();
-    if (!snap || unmountedRef.current) return;
+    if (!snap || unmountedRef.current) return snap;
     setState(snap);
     syncTaskHandle(snap);
+    return snap;
   }, [fetchStatus, syncTaskHandle]);
 
   const retryNow = useCallback(async (signal?: AbortSignal): Promise<ImportQueueTickResult> => {
+    recordImportEvent('queue.tick.start');
     const res = await fetch('/api/imports/queue', { method: 'POST', signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    recordImportEvent('queue.tick.complete', {
+      processed: data?.processed ?? 0,
+      succeeded: data?.succeeded ?? 0,
+      failed: data?.failed ?? 0,
+      rateLimited: data?.rateLimited ?? 0,
+    });
     // The POST response includes the post-tick status for free — use it
     // instead of a follow-up GET so the UI updates in a single round trip.
     if (data?.status && typeof data.status === 'object' && !unmountedRef.current) {
@@ -268,7 +282,7 @@ export function ImportQueueProvider({ children }: { children: ReactNode }) {
     return { processed, succeeded, failed, rateLimited, pausedUntil, skipped };
   }, [syncTaskHandle]);
 
-useEffect(() => {
+  useEffect(() => {
     unmountedRef.current = false;
     // First poll shortly after mount, then on an interval.
     const first = setTimeout(() => { void refresh(); }, 2_000);
@@ -293,6 +307,7 @@ useEffect(() => {
   const [drainState, setDrainState] = useState<ImportQueueDrainState | null>(null);
   const drainAbortRef = useRef<AbortController | null>(null);
   const drainCancelRef = useRef<boolean>(false);
+  const drainRunningRef = useRef<boolean>(false);
   const tickSubscribersRef = useRef<Set<(tickResult: ImportQueueTickResult) => void>>(new Set());
 
   const onTickComplete = useCallback(
@@ -309,24 +324,40 @@ useEffect(() => {
     setDrainState(prev => (prev ? { ...prev, cancelled: true } : prev));
   }, []);
 
-  const startDrain = useCallback(() => {
-    if (drainState !== null) return; // already running
-    if (state.queued === 0) return;  // nothing to drain
+  const startDrain = useCallback((options: ImportQueueStartDrainOptions = {}) => {
+    if (drainRunningRef.current) return; // already running
 
-    const initialTotal = Math.max(1, state.queued);
+    drainRunningRef.current = true;
     drainCancelRef.current = false;
-    drainAbortRef.current = new AbortController();
-    setDrainState({
-      initialTotal,
-      processed: 0,
-      cancelled: false,
-      pausedUntil: state.pausedUntil,
-      startedAt: Date.now(),
-    });
 
     // Async loop. We don't await it — let it run in the background;
     // all updates flow through React state + the subscriber callback.
     void (async () => {
+      const initialSnapshot = options.initialSnapshot !== undefined
+        ? options.initialSnapshot
+        : options.forceRefresh || state.queued === 0
+          ? await fetchStatus()
+          : state;
+
+      if (!initialSnapshot || initialSnapshot.queued === 0 || unmountedRef.current || drainCancelRef.current) {
+        drainRunningRef.current = false;
+        return;
+      }
+
+      setState(initialSnapshot);
+      syncTaskHandle(initialSnapshot);
+
+      const initialTotal = Math.max(1, initialSnapshot.queued);
+      recordImportEvent('drain.start', { initialTotal });
+      drainAbortRef.current = new AbortController();
+      setDrainState({
+        initialTotal,
+        processed: 0,
+        cancelled: false,
+        pausedUntil: initialSnapshot.pausedUntil,
+        startedAt: Date.now(),
+      });
+
       let processed = 0;
       try {
         while (!drainCancelRef.current) {
@@ -377,12 +408,14 @@ useEffect(() => {
           if (result.processed === 0) break;
         }
       } finally {
+        recordImportEvent('drain.end', { processedTotal: processed });
         if (!unmountedRef.current) setDrainState(null);
         drainAbortRef.current = null;
         drainCancelRef.current = false;
+        drainRunningRef.current = false;
       }
     })();
-  }, [drainState, retryNow, state.pausedUntil, state.queued]);
+  }, [fetchStatus, retryNow, state, syncTaskHandle]);
 
   const api = useMemo<ImportQueueApi>(
     () => ({ state, retryNow, refresh, drainState, startDrain, cancelDrain, onTickComplete }),

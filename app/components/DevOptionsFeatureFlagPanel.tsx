@@ -263,31 +263,36 @@ export default function DevOptionsFeatureFlagPanel() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   const toggleFloatingOverlay = useCallback(() => {
-    setFloatingOverlayOn(prev => {
-      const next = !prev;
-      try {
-        if (next) localStorage.setItem(DEV_MENU_STORAGE_KEY, 'true');
-        else localStorage.removeItem(DEV_MENU_STORAGE_KEY);
-      } catch {
-        /* localStorage may be unavailable */
-      }
-      // Same-tab broadcast — DevMenu listens for this so toggling here
-      // updates the footer trigger immediately without a reload.
-      window.dispatchEvent(new CustomEvent('dev-menu:changed'));
-      // Persist server-side too so the next Tauri launch picks the
-      // flag back up — localStorage alone is per-origin and the
-      // sidecar port (and thus the origin) changes on every quit.
-      // Fire-and-forget; failures are logged but don't block the UI.
-      fetch('/api/dev-menu-state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: next }),
-      }).catch(err => {
-        console.warn('[dev-menu] failed to persist toggle:', err);
-      });
-      return next;
+    // Side effects MUST stay outside the setState updater. React invokes
+    // updater fns during reconciliation (and double-invokes under
+    // StrictMode), and a dispatchEvent in there can trigger a setState
+    // in another mounted component (DevMenu) — which trips the
+    // "Cannot update a component while rendering a different component"
+    // warning. Compute `next` from the closure, call setState with a
+    // plain value, then run the effects in event-handler scope.
+    const next = !floatingOverlayOn;
+    setFloatingOverlayOn(next);
+    try {
+      if (next) localStorage.setItem(DEV_MENU_STORAGE_KEY, 'true');
+      else localStorage.removeItem(DEV_MENU_STORAGE_KEY);
+    } catch {
+      /* localStorage may be unavailable */
+    }
+    // Same-tab broadcast — DevMenu listens for this so toggling here
+    // updates the footer trigger immediately without a reload.
+    window.dispatchEvent(new CustomEvent('dev-menu:changed'));
+    // Persist server-side too so the next Tauri launch picks the
+    // flag back up — localStorage alone is per-origin and the
+    // sidecar port (and thus the origin) changes on every quit.
+    // Fire-and-forget; failures are logged but don't block the UI.
+    fetch('/api/dev-menu-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: next }),
+    }).catch(err => {
+      console.warn('[dev-menu] failed to persist toggle:', err);
     });
-  }, []);
+  }, [floatingOverlayOn]);
 
   // Auto-dismiss toast after 4s. Cleared if a new toast lands first.
   useEffect(() => {
@@ -550,7 +555,11 @@ export default function DevOptionsFeatureFlagPanel() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'z' && event.key !== 'Z') return;
       if (!(event.metaKey || event.ctrlKey)) return;
-      if (event.shiftKey) return; // redo path; not implemented
+      // Shift+Cmd/Ctrl+Z is left to the browser / OS — we return before
+      // calling preventDefault so an editable element that holds focus
+      // can run its native redo. There is no panel-level redo stack to
+      // pair with this handler's single-step undo, by design.
+      if (event.shiftKey) return;
       const target = event.target as HTMLElement | null;
       if (target) {
         const tag = target.tagName;

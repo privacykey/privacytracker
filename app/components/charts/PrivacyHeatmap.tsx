@@ -216,16 +216,23 @@ export default function PrivacyHeatmap() {
         axisTick:  { show: false },
         splitArea: { show: false },
       },
-      // ECharts 6 strictly requires `visualMap` on every heatmap series
-      // ("Heatmap must use with visualMap"). On 5.6 we could omit it
-      // because each cell sets its own itemStyle.color. We still want
-      // per-cell colors (visualMap's auto-dimension picking was painting
-      // by severity-string on non-Chromium engines and silently falling
-      // back to the theme's default colour), so we add a hidden visualMap
-      // here purely to satisfy the validator — `show: false` keeps the
-      // legend out of the DOM, and per-cell itemStyle.color overrides
-      // any colour visualMap might try to assign.
-      visualMap: { show: false, min: 0, max: 3, seriesIndex: 0 },
+      // ECharts v6 requires every heatmap series to declare a visualMap, but
+      // we colour cells via per-item itemStyle.color (which still wins over
+      // the visualMap palette). The visualMap below is hidden and pinned to
+      // dimension 2 (the SEV_VALUE) so v6's auto-detect doesn't latch onto
+      // the severity string and silently fall back to the theme default on
+      // Safari/Firefox.
+      visualMap: {
+        show: false,
+        type: 'piecewise',
+        dimension: 2,
+        seriesIndex: 0,
+        pieces: [
+          { value: SEV_VALUE.DATA_USED_TO_TRACK_YOU, color: SEV_COLOR.DATA_USED_TO_TRACK_YOU },
+          { value: SEV_VALUE.DATA_LINKED_TO_YOU,      color: SEV_COLOR.DATA_LINKED_TO_YOU },
+          { value: SEV_VALUE.DATA_NOT_LINKED_TO_YOU,  color: SEV_COLOR.DATA_NOT_LINKED_TO_YOU },
+        ],
+      },
       series: [{
         type: 'heatmap',
         data: cells,

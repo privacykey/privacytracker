@@ -33,6 +33,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Sparkline from './Sparkline';
+import {
+  snapshotClientDiagnostics,
+  clearClientDiagnostics,
+  type ClientDiagnosticsSnapshot,
+} from '@/lib/client-diagnostics';
 
 const RUNTIME_POLL_MS = 2_000;
 const AUX_POLL_MS = 6_000;
@@ -95,6 +100,80 @@ interface RuntimeMetrics {
     profilingEnabled: boolean;
     recent: SlowQueryRecord[];
   };
+  /** Server-side ring of recent API request timings, surfaced alongside
+   *  slow queries so the user can see "the import-queue POST took 4s". */
+  apiTimings?: {
+    thresholdMs: number;
+    totalSinceStart: number;
+    slowSinceStart: number;
+    recent: ApiTimingRecord[];
+  };
+  /** Live + recent App Store scrape attempts with per-phase timings. */
+  scrapeActivity?: {
+    totalSinceStart: number;
+    inProgress: InProgressScrape[];
+    recent: ScrapeRecord[];
+  };
+  dbWorker?: DbWorkerTimings;
+}
+
+interface ApiTimingRecord {
+  at: number;
+  route: string;
+  method: string;
+  durationMs: number;
+  status: number;
+  error?: string;
+}
+
+interface DbWorkerTimingRecord {
+  at: number;
+  statementCount: number;
+  chunkSize: number | 'infinity';
+  durationMs: number;
+  workerDurationMs?: number;
+  totalChanges: number;
+  inline: boolean;
+  outcome: 'ok' | 'error';
+  failedAtIndex?: number;
+  error?: string;
+}
+
+interface DbWorkerTimings {
+  totalSinceStart: number;
+  failedSinceStart: number;
+  inlineSinceStart: number;
+  pendingRequests: number;
+  workerEnabled: boolean;
+  workerCached: boolean;
+  workerDisabled: boolean;
+  recent: DbWorkerTimingRecord[];
+}
+
+interface ScrapePhaseMark {
+  phase: string;
+  atOffsetMs: number;
+}
+
+interface InProgressScrape {
+  id: string;
+  url: string;
+  startedAt: number;
+  runningMs: number;
+  phases: ScrapePhaseMark[];
+  resync: boolean;
+}
+
+interface ScrapeRecord {
+  id: string;
+  startedAt: number;
+  url: string;
+  appName?: string;
+  totalMs: number;
+  phases: ScrapePhaseMark[];
+  outcome: 'success' | 'error' | 'rate_limited';
+  error?: string;
+  resync: boolean;
 }
 
 interface DatabaseHealth {
@@ -335,6 +414,22 @@ function rollupStatus(state: {
   return { overall, notes };
 }
 
+async function fetchMergedDiagnosticsBundle(): Promise<string> {
+  const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const serverBundle = (await r.json()) as Record<string, unknown>;
+  const clientSnapshot = snapshotClientDiagnostics();
+  const merged = {
+    ...serverBundle,
+    clientDiagnostics: {
+      ...clientSnapshot,
+      capturedFromPath: window.location.pathname,
+      browserGeneratedAt: new Date().toISOString(),
+    },
+  };
+  return JSON.stringify(merged, null, 2);
+}
+
 // ── Top-level component ────────────────────────────────────────────────
 
 export default function DiagnosticsView() {
@@ -348,6 +443,11 @@ export default function DiagnosticsView() {
   const [jobs, setJobs] = useState<ActiveJobs | null>(null);
   const [rateLimits, setRateLimits] = useState<RateLimits | null>(null);
   const [flagOverrides, setFlagOverrides] = useState<FlagRow[]>([]);
+
+  // Client-side diagnostics — read directly from the in-process module
+  // (no HTTP roundtrip needed since DiagnosticsView is itself a client
+  // component running in the same context that buffers the rings).
+  const [clientDiag, setClientDiag] = useState<ClientDiagnosticsSnapshot | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
@@ -364,18 +464,34 @@ export default function DiagnosticsView() {
 
   const inflightRuntimeRef = useRef(false);
   const inflightAuxRef = useRef(false);
+  // Last time a runtime poll completed successfully. When this gets stale
+  // (>15s), the page renders a "server unresponsive" banner — the most
+  // useful signal during an import-hang since the server can't answer
+  // /api/diagnostics/runtime while it's busy holding the DB lock.
+  const [lastRuntimeAt, setLastRuntimeAt] = useState<number | null>(null);
+  const [serverStallMs, setServerStallMs] = useState(0);
 
   // ── Fetchers ────────────────────────────────────────────────────────
 
   const fetchRuntime = useCallback(async () => {
     if (inflightRuntimeRef.current) return;
     inflightRuntimeRef.current = true;
+    // Short deadline so a hung server doesn't stall the polling loop
+    // forever — the inflight guard would otherwise lock subsequent ticks
+    // out. AbortController + a timer keeps the failure visible.
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), 10_000);
     try {
-      const r = await fetch('/api/diagnostics/runtime', { cache: 'no-store' });
+      const r = await fetch('/api/diagnostics/runtime', {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const body = (await r.json()) as RuntimeMetrics;
       setMetrics(body);
       setError(null);
+      setLastRuntimeAt(Date.now());
+      setServerStallMs(0);
 
       // Append to sparkline history. Cap to HISTORY_CAP so the buffer
       // doesn't grow without bound during long sessions.
@@ -389,11 +505,16 @@ export default function DiagnosticsView() {
         cpuPct: [...prev.cpuPct, cpuPct].slice(-HISTORY_CAP),
       }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'fetch failed');
+      const msg = e instanceof Error
+        ? (e.name === 'AbortError' ? 'runtime poll timed out after 10s' : e.message)
+        : 'fetch failed';
+      setError(msg);
+      if (lastRuntimeAt) setServerStallMs(Date.now() - lastRuntimeAt);
     } finally {
+      clearTimeout(deadline);
       inflightRuntimeRef.current = false;
     }
-  }, []);
+  }, [lastRuntimeAt]);
 
   /** Fetch every "auxiliary" (slower-cadence) endpoint in parallel. We
    *  catch each independently so a single broken subsystem doesn't blank
@@ -433,7 +554,19 @@ export default function DiagnosticsView() {
   useEffect(() => {
     void fetchRuntime();
     void fetchAuxiliary();
+    setClientDiag(snapshotClientDiagnostics());
   }, [fetchRuntime, fetchAuxiliary]);
+
+  // Client-diagnostics poll — same cadence as the runtime poll, but the
+  // snapshot is synchronous so we don't need an in-flight guard. Paused
+  // alongside the rest of the dashboard.
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(() => {
+      setClientDiag(snapshotClientDiagnostics());
+    }, RUNTIME_POLL_MS);
+    return () => clearInterval(id);
+  }, [paused]);
 
   // Runtime poll
   useEffect(() => {
@@ -531,9 +664,8 @@ export default function DiagnosticsView() {
    */
   const handleDownloadBundle = useCallback(async () => {
     try {
-      const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const json = await r.text();
+      const json = await fetchMergedDiagnosticsBundle();
+      setClientDiag(snapshotClientDiagnostics());
       const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -554,9 +686,8 @@ export default function DiagnosticsView() {
     setBusy('copy');
     setCopyState('idle');
     try {
-      const r = await fetch('/api/diagnostics/bundle', { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const json = await r.text();
+      const json = await fetchMergedDiagnosticsBundle();
+      setClientDiag(snapshotClientDiagnostics());
       // navigator.clipboard requires HTTPS or localhost; both apply here.
       // Fallback to a hidden textarea + execCommand only if the API is
       // missing — Safari < 13 / very old browsers.
@@ -652,6 +783,24 @@ export default function DiagnosticsView() {
 
       <StatusBanner summary={status} />
 
+      {/* Server-unresponsive banner. If runtime polls have stopped landing
+          for >15s, the Node sidecar is likely blocked on something (DB
+          lock during a scrape commit is the usual suspect). Banner stays
+          up until a fresh poll succeeds. */}
+      {serverStallMs > 15_000 && (
+        <div
+          className="diagnostics-error"
+          role="status"
+          aria-live="polite"
+          style={{ background: 'var(--orange-dim, color-mix(in srgb, var(--orange) 18%, transparent))', color: 'var(--orange)' }}
+        >
+          Server hasn&apos;t responded for {Math.round(serverStallMs / 1000)}s.
+          Below is the last snapshot from{' '}
+          {lastRuntimeAt ? formatRelative(lastRuntimeAt) : 'an earlier poll'}.
+          Client-side panels (long tasks, fetch activity) are still live.
+        </div>
+      )}
+
       {error && (
         <div className="diagnostics-error" role="alert">
           {error}
@@ -681,6 +830,24 @@ export default function DiagnosticsView() {
             busy={busy === 'profile'}
             onToggleProfiling={() => { void handleToggleProfiling(); }}
           />
+          {metrics.scrapeActivity && (
+            <ScrapeActivityCard activity={metrics.scrapeActivity} />
+          )}
+          {metrics.apiTimings && (
+            <ApiTimingsCard timings={metrics.apiTimings} />
+          )}
+          {metrics.dbWorker && (
+            <DbWorkerCard timings={metrics.dbWorker} />
+          )}
+          {clientDiag && (
+            <ClientActivityCard
+              snapshot={clientDiag}
+              onClear={() => {
+                clearClientDiagnostics();
+                setClientDiag(snapshotClientDiagnostics());
+              }}
+            />
+          )}
           <ErrorLogCard entries={errors} />
           <FlagsCard rows={flagOverrides} />
         </div>
@@ -1244,6 +1411,519 @@ function ErrorLogCard({ entries }: { entries: ErrorLogEntry[] }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Per-scrape activity from lib/scrape-activity.ts. Two sub-tables:
+ *   - In-progress scrapes (with their elapsed time + phase trail). If a
+ *     scrape is sitting on a single phase for many seconds, that's the
+ *     bottleneck.
+ *   - Completed scrapes (newest first) with per-phase wall-clock costs
+ *     so you can see which step is slow on average.
+ *
+ * Phase names emitted by fetchAndParseApp: apple_fetched, parsed,
+ * committed, policy_done. A scrape stuck before apple_fetched is on the
+ * network; before parsed is on HTML / iTunes Lookup; before committed is
+ * on the DB; before policy_done is on the developer privacy-policy fetch.
+ */
+function ScrapeActivityCard({
+  activity,
+}: {
+  activity: NonNullable<RuntimeMetrics['scrapeActivity']>;
+}) {
+  const { inProgress, recent } = activity;
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">
+          Scrape activity
+          {inProgress.length > 0 && (
+            <span className="diagnostics-pill diagnostics-severity-warn" style={{ marginLeft: 8 }}>
+              {inProgress.length} in flight
+            </span>
+          )}
+        </h2>
+        <p className="diagnostics-card-help">
+          {activity.totalSinceStart.toLocaleString()} scrapes since start.
+          Phases: apple_fetched → parsed → committed → policy_done. If a
+          scrape sits on a single phase for many seconds, that&apos;s the
+          bottleneck.
+        </p>
+      </header>
+
+      {inProgress.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-2)' }}>
+            In progress
+          </h3>
+          <div className="diagnostics-table-wrap">
+            <table className="diagnostics-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 80 }}>Running</th>
+                  <th>URL</th>
+                  <th>Last phase</th>
+                  <th style={{ width: 100 }}>Phase age</th>
+                  <th style={{ width: 70 }}>Resync</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inProgress.map(p => {
+                  const lastPhase = p.phases[p.phases.length - 1];
+                  const phaseAge = lastPhase
+                    ? p.runningMs - lastPhase.atOffsetMs
+                    : p.runningMs;
+                  const stuck = phaseAge >= 2000;
+                  return (
+                    <tr key={p.id}>
+                      <td>
+                        <code className={p.runningMs >= 5000 ? 'diagnostics-severity-danger' : p.runningMs >= 2000 ? 'diagnostics-severity-warn' : ''}>
+                          {formatMs(p.runningMs)} ms
+                        </code>
+                      </td>
+                      <td className="diagnostics-sql"><code>{p.url}</code></td>
+                      <td><code>{lastPhase?.phase ?? '(no marks yet)'}</code></td>
+                      <td><code className={stuck ? 'diagnostics-severity-warn' : ''}>{formatMs(phaseAge)} ms</code></td>
+                      <td>{p.resync ? 'yes' : 'no'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <h3 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-2)' }}>
+        Recent scrapes
+      </h3>
+      {recent.length === 0 ? (
+        <div className="diagnostics-empty">
+          No scrapes captured yet. Start an import or hit Re-sync on an app.
+        </div>
+      ) : (
+        <div className="diagnostics-table-wrap">
+          <table className="diagnostics-table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>Time</th>
+                <th>App</th>
+                <th style={{ width: 80 }}>Outcome</th>
+                <th style={{ width: 90 }}>Total</th>
+                <th>Per-phase ms</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map(s => {
+                const outcomeCls = s.outcome === 'success'
+                  ? ''
+                  : s.outcome === 'rate_limited'
+                    ? 'diagnostics-severity-warn'
+                    : 'diagnostics-severity-danger';
+                // Render the per-phase deltas. The first phase's offset
+                // is the time from scrape start; subsequent phases show
+                // delta-from-previous so the slow step is obvious.
+                const phaseDeltas: string[] = [];
+                let prevOffset = 0;
+                for (const ph of s.phases) {
+                  const delta = ph.atOffsetMs - prevOffset;
+                  phaseDeltas.push(`${ph.phase}=${formatMs(delta)}`);
+                  prevOffset = ph.atOffsetMs;
+                }
+                const tail = s.totalMs - prevOffset;
+                if (tail > 0) phaseDeltas.push(`tail=${formatMs(tail)}`);
+                return (
+                  <tr key={s.id}>
+                    <td title={new Date(s.startedAt).toISOString()}>{formatRelative(s.startedAt)}</td>
+                    <td className="diagnostics-sql">
+                      <code>{s.appName ?? s.url}</code>
+                      {s.error && <div style={{ marginTop: 2, fontSize: 11, color: 'var(--rose)' }}>{s.error}</div>}
+                    </td>
+                    <td><code className={outcomeCls}>{s.outcome}</code></td>
+                    <td><code className={s.totalMs >= 3000 ? 'diagnostics-severity-warn' : ''}>{formatMs(s.totalMs)} ms</code></td>
+                    <td className="diagnostics-sql"><code>{phaseDeltas.join(' · ') || '—'}</code></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Recent API requests captured by the server-side withApiTiming wrapper.
+ * Useful during import hangs to spot "POST /api/imports/queue took 4s".
+ * Currently only the import-queue route is wrapped; other routes can opt
+ * in by wrapping their handler with withApiTiming(route, handler).
+ */
+function ApiTimingsCard({
+  timings,
+}: {
+  timings: NonNullable<RuntimeMetrics['apiTimings']>;
+}) {
+  const sorted = useMemo(
+    () => [...timings.recent].sort((a, b) => b.at - a.at),
+    [timings.recent],
+  );
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">
+          Recent API calls
+          <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
+            slow ≥ {timings.thresholdMs}ms
+          </span>
+        </h2>
+        <p className="diagnostics-card-help">
+          {timings.totalSinceStart.toLocaleString()} requests since start ·{' '}
+          {timings.slowSinceStart.toLocaleString()} slow or errored ·{' '}
+          showing latest {sorted.length}.
+        </p>
+      </header>
+      {sorted.length === 0 ? (
+        <div className="diagnostics-empty">
+          No API calls captured yet. Slow + errored requests are always recorded;
+          fast ones are 1-in-5 sampled.
+        </div>
+      ) : (
+        <div className="diagnostics-table-wrap">
+          <table className="diagnostics-table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>Time</th>
+                <th style={{ width: 60 }}>Method</th>
+                <th>Route</th>
+                <th style={{ width: 80 }}>Status</th>
+                <th style={{ width: 90 }}>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((t, i) => {
+                const erroring = t.status === 0 || t.status >= 400;
+                const slow = t.durationMs >= timings.thresholdMs;
+                const cls = erroring
+                  ? 'diagnostics-severity-danger'
+                  : slow
+                    ? 'diagnostics-severity-warn'
+                    : '';
+                return (
+                  <tr key={`${t.at}-${i}`}>
+                    <td title={new Date(t.at).toISOString()}>{formatRelative(t.at)}</td>
+                    <td><code>{t.method}</code></td>
+                    <td className="diagnostics-sql"><code>{t.route}</code></td>
+                    <td><code className={erroring ? 'diagnostics-severity-danger' : ''}>{t.status || (t.error ? 'ERR' : '—')}</code></td>
+                    <td><code className={cls}>{formatMs(t.durationMs)} ms</code></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DbWorkerCard({
+  timings,
+}: {
+  timings: DbWorkerTimings;
+}) {
+  const sorted = useMemo(
+    () => [...timings.recent].sort((a, b) => b.at - a.at),
+    [timings.recent],
+  );
+  const inlinePct = timings.totalSinceStart > 0
+    ? Math.round((timings.inlineSinceStart / timings.totalSinceStart) * 100)
+    : 0;
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">
+          DB worker batches
+          {!timings.workerEnabled && (
+            <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
+              inline fallback
+            </span>
+          )}
+          {timings.pendingRequests > 0 && (
+            <span className="diagnostics-pill" style={{ marginLeft: 6 }}>
+              {timings.pendingRequests} pending
+            </span>
+          )}
+        </h2>
+        <p className="diagnostics-card-help">
+          {timings.totalSinceStart.toLocaleString()} batches since start ·{' '}
+          {timings.failedSinceStart.toLocaleString()} failed ·{' '}
+          {timings.inlineSinceStart.toLocaleString()} inline ({inlinePct}%) ·{' '}
+          showing latest {sorted.length}.
+        </p>
+      </header>
+      {sorted.length === 0 ? (
+        <div className="diagnostics-empty">
+          No DB worker batches captured yet. Bulk onboarding writes will appear here.
+        </div>
+      ) : (
+        <div className="diagnostics-table-wrap">
+          <table className="diagnostics-table">
+            <thead>
+              <tr>
+                <th style={{ width: 90 }}>Time</th>
+                <th style={{ width: 80 }}>Mode</th>
+                <th style={{ width: 90 }}>Outcome</th>
+                <th style={{ width: 90 }}>Statements</th>
+                <th style={{ width: 80 }}>Changes</th>
+                <th style={{ width: 90 }}>Duration</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((batch, i) => {
+                const erroring = batch.outcome === 'error';
+                const slow = batch.durationMs >= 1000;
+                return (
+                  <tr key={`${batch.at}-${i}`}>
+                    <td title={new Date(batch.at).toISOString()}>{formatRelative(batch.at)}</td>
+                    <td>
+                      <code className={batch.inline ? 'diagnostics-severity-warn' : ''}>
+                        {batch.inline ? 'inline' : 'worker'}
+                      </code>
+                    </td>
+                    <td>
+                      <code className={erroring ? 'diagnostics-severity-danger' : ''}>
+                        {batch.outcome}
+                      </code>
+                    </td>
+                    <td>
+                      <code>
+                        {batch.statementCount.toLocaleString()} / {batch.chunkSize}
+                      </code>
+                    </td>
+                    <td><code>{batch.totalChanges.toLocaleString()}</code></td>
+                    <td>
+                      <code className={erroring ? 'diagnostics-severity-danger' : slow ? 'diagnostics-severity-warn' : ''}>
+                        {formatMs(batch.durationMs)} ms
+                      </code>
+                    </td>
+                    <td className="diagnostics-sql">
+                      <code>
+                        {batch.error
+                          ? `${batch.error}${batch.failedAtIndex !== undefined ? ` @${batch.failedAtIndex}` : ''}`
+                          : batch.workerDurationMs !== undefined
+                            ? `worker ${formatMs(batch.workerDurationMs)} ms`
+                            : '—'}
+                      </code>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Client-side activity captured in the renderer process: long tasks
+ * (main-thread work that blocked the UI), in-flight fetches, and a
+ * timeline of import-flow milestones. Reads directly from the
+ * client-diagnostics module — no HTTP roundtrip.
+ */
+function ClientActivityCard({
+  snapshot,
+  onClear,
+}: {
+  snapshot: ClientDiagnosticsSnapshot;
+  onClear: () => void;
+}) {
+  const longTasksSorted = useMemo(
+    () => [...snapshot.longTasks.recent].sort((a, b) => b.at - a.at).slice(0, 30),
+    [snapshot.longTasks.recent],
+  );
+  const importEventsSorted = useMemo(
+    () => [...snapshot.importEvents].sort((a, b) => b.at - a.at).slice(0, 40),
+    [snapshot.importEvents],
+  );
+  const inflight = snapshot.fetches.inflight;
+  const recentFetches = useMemo(
+    () => [...snapshot.fetches.recent].sort((a, b) => b.startedAt - a.startedAt).slice(0, 20),
+    [snapshot.fetches.recent],
+  );
+  const longestInflight = inflight[0]?.durationMs ?? 0;
+  const installedAgo = snapshot.installedAt
+    ? Math.max(0, snapshot.generatedAt - snapshot.installedAt)
+    : 0;
+
+  return (
+    <section className="diagnostics-card diagnostics-card--wide">
+      <header className="diagnostics-card-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <h2 className="diagnostics-card-title">
+              Client activity (renderer)
+              <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
+                long task ≥ {snapshot.longTasks.thresholdMs}ms
+              </span>
+              {!snapshot.longTaskObserverActive && (
+                <span className="diagnostics-pill" style={{ marginLeft: 6 }}>
+                  rAF fallback
+                </span>
+              )}
+            </h2>
+            <p className="diagnostics-card-help">
+              {snapshot.longTasks.totalSinceStart.toLocaleString()} long tasks ·{' '}
+              {snapshot.fetches.slowCount.toLocaleString()} slow fetches ·{' '}
+              {snapshot.fetches.failedCount.toLocaleString()} failed ·{' '}
+              {inflight.length} in flight
+              {inflight.length > 0 && longestInflight > 1000 && (
+                <> · oldest pending {Math.round(longestInflight / 100) / 10}s</>
+              )}
+              {installedAgo > 0 && (
+                <> · capturing for {formatDuration(installedAgo)}</>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClear}
+          >
+            Clear client rings
+          </button>
+        </div>
+      </header>
+
+      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+        {/* Long tasks */}
+        <div>
+          <h3 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-2)' }}>
+            Long tasks {longTasksSorted.length > 0 && `(${longTasksSorted.length} most recent)`}
+          </h3>
+          {longTasksSorted.length === 0 ? (
+            <div className="diagnostics-empty" style={{ padding: 12, fontSize: 12 }}>
+              No long tasks captured. {snapshot.longTaskObserverActive
+                ? 'The main thread has been responsive.'
+                : 'On WebKit the PerformanceObserver fallback uses rAF gaps; only large stalls show up here.'}
+            </div>
+          ) : (
+            <div className="diagnostics-table-wrap">
+              <table className="diagnostics-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 90 }}>Time</th>
+                    <th style={{ width: 100 }}>Duration</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {longTasksSorted.map((lt, i) => (
+                    <tr key={`${lt.at}-${i}`}>
+                      <td title={new Date(lt.at).toISOString()}>{formatRelative(lt.at)}</td>
+                      <td>
+                        <code className={lt.durationMs >= 200 ? 'diagnostics-severity-danger' : 'diagnostics-severity-warn'}>
+                          {formatMs(lt.durationMs)} ms
+                        </code>
+                      </td>
+                      <td><code>{lt.source}</code></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Fetch activity */}
+        <div>
+          <h3 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-2)' }}>
+            Fetch activity (slow ≥ {snapshot.fetches.slowThresholdMs}ms)
+          </h3>
+          {inflight.length === 0 && recentFetches.length === 0 ? (
+            <div className="diagnostics-empty" style={{ padding: 12, fontSize: 12 }}>
+              No slow or in-flight fetches.
+            </div>
+          ) : (
+            <div className="diagnostics-table-wrap">
+              <table className="diagnostics-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 60 }}>Phase</th>
+                    <th style={{ width: 60 }}>Method</th>
+                    <th>URL</th>
+                    <th style={{ width: 80 }}>Status</th>
+                    <th style={{ width: 90 }}>Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inflight.map((f, i) => (
+                    <tr key={`if-${i}`}>
+                      <td><code className="diagnostics-severity-warn">inflight</code></td>
+                      <td><code>{f.method}</code></td>
+                      <td className="diagnostics-sql"><code>{f.url}</code></td>
+                      <td>—</td>
+                      <td><code>{formatMs(f.durationMs)} ms</code></td>
+                    </tr>
+                  ))}
+                  {recentFetches.map((f, i) => {
+                    const erroring = f.phase === 'failed' || (f.status !== undefined && f.status >= 400);
+                    return (
+                      <tr key={`f-${f.startedAt}-${i}`}>
+                        <td>
+                          <code className={erroring ? 'diagnostics-severity-danger' : ''}>
+                            {f.phase}
+                          </code>
+                        </td>
+                        <td><code>{f.method}</code></td>
+                        <td className="diagnostics-sql" title={f.error || undefined}>
+                          <code>{f.url}</code>
+                        </td>
+                        <td><code className={erroring ? 'diagnostics-severity-danger' : ''}>{f.status ?? '—'}</code></td>
+                        <td><code>{formatMs(f.durationMs)} ms</code></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Import events timeline */}
+      {importEventsSorted.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 6px', color: 'var(--text-2)' }}>
+            Import events (latest {importEventsSorted.length})
+          </h3>
+          <div className="diagnostics-table-wrap">
+            <table className="diagnostics-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 90 }}>Time</th>
+                  <th style={{ width: 200 }}>Event</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importEventsSorted.map((ev, i) => (
+                  <tr key={`${ev.at}-${i}`}>
+                    <td title={new Date(ev.at).toISOString()}>{formatRelative(ev.at)}</td>
+                    <td><code>{ev.name}</code></td>
+                    <td className="diagnostics-sql"><code>{ev.detail ?? '—'}</code></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>
