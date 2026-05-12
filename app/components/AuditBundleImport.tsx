@@ -28,6 +28,13 @@ import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
+// Mirrors the four named profile presets exposed by
+// `lib/privacy-profile.ts`. Kept as a string-literal union here (rather
+// than re-importing ProfilePresetKey) so this client component doesn't
+// pull in any server-leaning helpers — the API is the single source of
+// truth for the values we'll see at runtime.
+type RecommenderPresetKey = 'strict' | 'balanced' | 'anti_tracking' | 'permissive';
+
 interface PreviewPayload {
   bundle: {
     version: number;
@@ -38,6 +45,11 @@ interface PreviewPayload {
     apps_count: number;
     annotations_count: number;
     has_recommender_profile: boolean;
+    /**
+     * Present when the bundle (v2+) carries a recognised preset key.
+     * Older bundles or recommenders with custom profiles report null.
+     */
+    recommender_profile_preset: RecommenderPresetKey | null;
   };
   existingImport: {
     importedAt: number;
@@ -52,11 +64,15 @@ interface ImportSummary {
   appsSkipped: number;
   annotationsAdded: number;
   recommenderProfileStashed: boolean;
+  recommenderProfilePreset: RecommenderPresetKey | null;
   recommenderName: string;
 }
 
 export default function AuditBundleImport() {
   const t = useTranslations('settings.audit_bundle_import');
+  // Reuses the four preset labels already maintained under the privacy
+  // profile editor — no need for a parallel set of translations here.
+  const tPresets = useTranslations('settings.profile_editor.presets.labels');
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   // Three-state machine: idle (drop-zone visible) → preview (confirm
@@ -307,6 +323,16 @@ export default function AuditBundleImport() {
                     {preview.bundle.has_recommender_profile
                       ? t('envelope_profile_included')
                       : t('envelope_profile_excluded')}
+                    {preview.bundle.recommender_profile_preset && (
+                      <>
+                        {' '}
+                        <span className="audit-bundle-import__envelope-preset">
+                          {t('envelope_profile_preset', {
+                            preset: tPresets(preview.bundle.recommender_profile_preset),
+                          })}
+                        </span>
+                      </>
+                    )}
                   </strong>
                 </li>
               </ul>
@@ -357,6 +383,7 @@ function ResultBanner({
   onDismiss: () => void;
 }) {
   const t = useTranslations('settings.audit_bundle_import');
+  const tPresets = useTranslations('settings.profile_editor.presets.labels');
   return (
     <div role="status" aria-live="polite" className="audit-bundle-import__result">
       <span aria-hidden="true">✓</span>
@@ -373,6 +400,14 @@ function ResultBanner({
         {summary.recommenderProfileStashed && (
           <span className="audit-bundle-import__result-detail">
             {t('result_profile_stashed', { name: summary.recommenderName })}
+          </span>
+        )}
+        {summary.recommenderProfilePreset && (
+          <span className="audit-bundle-import__result-detail">
+            {t('result_profile_preset', {
+              name: summary.recommenderName,
+              preset: tPresets(summary.recommenderProfilePreset),
+            })}
           </span>
         )}
         <Link

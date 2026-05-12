@@ -3,6 +3,7 @@ import test from 'node:test';
 import { NextRequest } from 'next/server';
 import { proxy } from '../proxy';
 import {
+  readBoundedJson,
   sanitizePolicyUrl,
   validateExternalUrl,
 } from '../lib/security';
@@ -55,6 +56,42 @@ test('proxy allows same-origin mutations and admin-token scripted callers', () =
   }
 });
 
+test('proxy requires admin token for non-local API access', () => {
+  const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
+  delete process.env.AUDITOR_ADMIN_TOKEN;
+  try {
+    const blockedWrite = proxy(new NextRequest('https://privacytracker.example/api/reset', {
+      method: 'POST',
+      headers: {
+        origin: 'https://privacytracker.example',
+        host: 'privacytracker.example',
+      },
+    }));
+    assert.equal(blockedWrite.status, 401);
+
+    const blockedRead = proxy(new NextRequest('https://privacytracker.example/api/backup/export', {
+      method: 'GET',
+      headers: { host: 'privacytracker.example' },
+    }));
+    assert.equal(blockedRead.status, 401);
+
+    process.env.AUDITOR_ADMIN_TOKEN = 'ci-secret';
+    const allowed = proxy(new NextRequest('https://privacytracker.example/api/reset', {
+      method: 'POST',
+      headers: {
+        origin: 'https://privacytracker.example',
+        host: 'privacytracker.example',
+        'x-auditor-admin-token': 'ci-secret',
+      },
+    }));
+    assert.notEqual(allowed.status, 401);
+    assert.notEqual(allowed.status, 403);
+  } finally {
+    if (previousToken === undefined) delete process.env.AUDITOR_ADMIN_TOKEN;
+    else process.env.AUDITOR_ADMIN_TOKEN = previousToken;
+  }
+});
+
 test('destructive routes require admin token when configured', async () => {
   const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
   process.env.AUDITOR_ADMIN_TOKEN = 'reset-secret';
@@ -63,6 +100,26 @@ test('destructive routes require admin token when configured', async () => {
     const response = await route.POST(new Request('http://127.0.0.1/api/reset', {
       method: 'POST',
       headers: { 'x-forwarded-for': '203.0.113.10' },
+    }));
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: 'Admin token required' });
+  } finally {
+    if (previousToken === undefined) delete process.env.AUDITOR_ADMIN_TOKEN;
+    else process.env.AUDITOR_ADMIN_TOKEN = previousToken;
+  }
+});
+
+test('destructive routes require admin token on non-local hosts', async () => {
+  const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
+  delete process.env.AUDITOR_ADMIN_TOKEN;
+  try {
+    const route = await import('../app/api/reset/route');
+    const response = await route.POST(new Request('https://privacytracker.example/api/reset', {
+      method: 'POST',
+      headers: {
+        host: 'privacytracker.example',
+        'x-forwarded-for': '203.0.113.12',
+      },
     }));
     assert.equal(response.status, 401);
     assert.deepEqual(await response.json(), { error: 'Admin token required' });
@@ -86,6 +143,22 @@ test('backup restore rejects malformed JSON before mutating data', async () => {
   assert.equal(response.status, 400);
   const body = await response.json();
   assert.match(body.error, /not valid JSON/i);
+});
+
+test('bounded JSON reader rejects oversized bodies', async () => {
+  const body = JSON.stringify({ value: 'x'.repeat(64) });
+
+  await assert.rejects(
+    () => readBoundedJson(new Request('http://127.0.0.1/api/test', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'content-length': String(Buffer.byteLength(body)),
+      },
+      body,
+    }), 32),
+    /Request body too large/,
+  );
 });
 
 test('policy URL sanitiser keeps metadata endpoints blocked even for localhost-friendly callers', () => {

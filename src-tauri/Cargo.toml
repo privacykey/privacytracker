@@ -116,6 +116,14 @@ objc2-local-authentication = { version = "0.3", features = ["LAContext"] }
 # reply block into a blocking `mpsc::recv_timeout`, so declare it explicitly
 # to avoid relying on the transitive dependency staying visible.
 block2 = "0.6"
+# IOKit USB device-attach notifications, used by usb_watcher.rs to fire a
+# Tauri event when an iPhone/iPad is plugged in. Replaces the previous
+# poll-every-5s loop in the device-connect toast component. core-foundation
+# pulls in CFRunLoop + CFRunLoopSource, which IONotificationPortGetRunLoopSource
+# returns. Both crates are maintained by the rust-cocoa folks and stable.
+io-kit-sys = "0.4"
+core-foundation = "0.10"
+core-foundation-sys = "0.8"
 
 [features]
 # Enable `tauri build` without devtools baked into the bundle.

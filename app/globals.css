@@ -1456,6 +1456,77 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 8px;
   align-items: center;
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Kebab trigger — narrow button with the ⋯ glyph, doubles as the sync-
+   in-progress indicator while syncing is true. */
+.detail-hero-actions-trigger {
+  min-width: 40px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Popover menu anchored to the trigger's right edge. Uses the same
+   surface tokens as other menus in the app for consistency. */
+.detail-hero-actions-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-1, var(--surface));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-hero-actions-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  text-align: left;
+  width: 100%;
+}
+.detail-hero-actions-item:hover:not(:disabled) {
+  background: var(--surface-hover, color-mix(in srgb, var(--text) 6%, transparent));
+}
+.detail-hero-actions-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.detail-hero-actions-item-danger {
+  color: var(--rose);
+}
+.detail-hero-actions-item-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rose) 10%, transparent);
+}
+
+.detail-hero-actions-icon {
+  flex: 0 0 auto;
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+
+.detail-hero-actions-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .detail-hero-name {
@@ -3732,6 +3803,92 @@ html[data-theme-override="high-contrast"] .nav {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+
+/* Big "we're working on it" panel that appears below the Check button
+   while cfgutil is being probed. The button's 16px inline spinner alone
+   isn't enough signal during a 5–30s cold probe. */
+.cfgutil-checking-status {
+  margin-top: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--border));
+  background: color-mix(in srgb, var(--blue) 7%, var(--surface));
+}
+
+.cfgutil-checking-status-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cfgutil-checking-status-title {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.cfgutil-checking-status-copy {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+/* Device-list refresh state — skeleton rows replace the empty area so
+   the panel itself reflects the loading state, not just the tiny pill
+   button above. */
+.cfgutil-device-list--loading {
+  pointer-events: none;
+}
+
+.cfgutil-device-loading-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.cfgutil-device-row--skeleton {
+  cursor: default;
+  opacity: 0.85;
+}
+.cfgutil-device-row--skeleton .cfgutil-device-dot {
+  background: var(--border-strong, var(--border));
+  opacity: 0.6;
+}
+
+@keyframes cfgutil-skeleton-shimmer {
+  0%   { background-position: -160px 0; }
+  100% { background-position: 160px 0; }
+}
+
+.cfgutil-device-skeleton {
+  display: block;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text) 6%, transparent) 0%,
+    color-mix(in srgb, var(--text) 14%, transparent) 50%,
+    color-mix(in srgb, var(--text) 6%, transparent) 100%
+  );
+  background-size: 160px 100%;
+  animation: cfgutil-skeleton-shimmer 1.1s ease-in-out infinite;
+}
+.cfgutil-device-skeleton--name {
+  width: 60%;
+  margin-bottom: 6px;
+}
+.cfgutil-device-skeleton--meta {
+  width: 40%;
+  height: 8px;
 }
 
 .cfgutil-device-picker {
@@ -11190,6 +11347,83 @@ button.import-history-stat.is-active {
   background: var(--surface-1, var(--surface));
 }
 
+/* Collapsed picker — sits inline with the rest of the page chrome rather
+   than reading as a card, since the actionable buttons are hidden. The
+   inner summary row carries the visual weight + verdict tint. */
+.verdict-picker-collapsed {
+  padding: 12px 14px;
+  background: transparent;
+  border-color: var(--border);
+}
+
+/* Decided summary row — pill + rationale + Edit. Tints with the verdict
+   family so a glance reads "decided as safe/replace/uninstall". */
+.verdict-picker-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.verdict-picker-summary-safe {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--border));
+  background: color-mix(in srgb, var(--green) 6%, var(--surface));
+}
+.verdict-picker-summary-replace {
+  border-color: color-mix(in srgb, var(--orange) 35%, var(--border));
+  background: color-mix(in srgb, var(--orange) 6%, var(--surface));
+}
+.verdict-picker-summary-uninstall {
+  border-color: color-mix(in srgb, var(--rose) 35%, var(--border));
+  background: color-mix(in srgb, var(--rose) 6%, var(--surface));
+}
+
+.verdict-picker-summary-icon {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1;
+}
+.verdict-picker-summary-safe .verdict-picker-summary-icon { color: var(--green); }
+.verdict-picker-summary-replace .verdict-picker-summary-icon { color: var(--orange); }
+.verdict-picker-summary-uninstall .verdict-picker-summary-icon { color: var(--rose); }
+
+.verdict-picker-summary-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  flex: 0 0 auto;
+}
+
+.verdict-picker-summary-value {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.verdict-picker-summary-rationale {
+  flex: 1 1 auto;
+  min-width: 120px;
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--text-2);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The summary edit button is .btn .btn-secondary .btn-sm; this class
+   only adds the right-edge alignment and a touch of breathing room. */
+.verdict-picker-summary-edit {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .verdict-picker-header {
   margin-bottom: 14px;
 }
@@ -11398,33 +11632,88 @@ button.import-history-stat.is-active {
   border-color: var(--blue);
 }
 
+/* Action row at the bottom of the rationale step — Clear on the left,
+   "Saved" indicator + Done on the right. .btn .btn-* utility classes
+   carry the visual weight; this row only owns the layout. */
 .verdict-picker-rationale-meta {
-  margin-top: 8px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   font-size: 11px;
 }
 
-.verdict-picker-clear {
-  background: none;
-  border: 0;
-  color: var(--text-3);
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  font-family: inherit;
+.verdict-picker-rationale-spacer {
+  flex: 1 1 auto;
 }
-.verdict-picker-clear:hover { color: var(--text); }
-.verdict-picker-clear:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .verdict-picker-saved {
   color: var(--text-3);
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
+
+/* The picker step has a single Cancel link sitting under the three big
+   buttons when the user is changing an existing decision. */
+.verdict-picker-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* Compact "you chose X" header at the top of the rationale step. Tints
+   in the verdict family so the choice stays unambiguous while the
+   rationale field takes visual focus below. */
+.verdict-picker-reason-chosen {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.verdict-picker-reason-chosen-safe {
+  border-color: color-mix(in srgb, var(--green) 35%, var(--border));
+  background: color-mix(in srgb, var(--green) 6%, var(--surface));
+}
+.verdict-picker-reason-chosen-replace {
+  border-color: color-mix(in srgb, var(--orange) 35%, var(--border));
+  background: color-mix(in srgb, var(--orange) 6%, var(--surface));
+}
+.verdict-picker-reason-chosen-uninstall {
+  border-color: color-mix(in srgb, var(--rose) 35%, var(--border));
+  background: color-mix(in srgb, var(--rose) 6%, var(--surface));
+}
+.verdict-picker-reason-chosen-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.verdict-picker-reason-chosen-safe .verdict-picker-reason-chosen-icon { color: var(--green); }
+.verdict-picker-reason-chosen-replace .verdict-picker-reason-chosen-icon { color: var(--orange); }
+.verdict-picker-reason-chosen-uninstall .verdict-picker-reason-chosen-icon { color: var(--rose); }
+.verdict-picker-reason-chosen-label {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text);
+}
+.verdict-picker-reason-change {
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+.verdict-picker-reason-change:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.verdict-picker-reason-change:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .verdict-picker-error {
   margin-top: 10px;
@@ -16819,6 +17108,190 @@ button.import-history-stat.is-active {
   }
 }
 
+/* Preset row — sits above the "Quick set all" bulk row inside the
+   editor and offers four whole-profile shortcuts (Strict / Balanced /
+   Anti-tracking / Permissive). The active preset pill picks up an
+   accent border via the [data-severity] attribute so the colour walks
+   the same green→yellow→orange→red gradient the rest of the privacy
+   palette uses. */
+.privacy-profile-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.privacy-profile-presets-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.privacy-profile-presets-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.privacy-profile-presets-hint {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.privacy-profile-presets-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Each preset cell anchors its pill plus an inline confirm popover that
+   appears on overwrite. position: relative so the popover can absolutely
+   anchor to the cell. */
+.privacy-profile-preset-cell {
+  position: relative;
+  display: flex;
+}
+
+.privacy-profile-preset-pill {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease,
+              box-shadow 150ms ease, transform 150ms ease;
+}
+
+.privacy-profile-preset-pill:hover:not(:disabled),
+.privacy-profile-preset-pill:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-active);
+}
+
+.privacy-profile-preset-pill:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.privacy-profile-preset-pill.is-active {
+  border-width: 2px;
+  padding: 8px 9px; /* compensate for the wider border so layout doesn't shift */
+  background: var(--surface-active);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Severity-tinted accents on the active pill — green for strict, yellow
+   for balanced, orange for anti-tracking, red for permissive. Reuses
+   tokens already defined for severity badges so themes pick them up. */
+.privacy-profile-preset-pill.is-active[data-severity="severity-none"] {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 22%, transparent);
+}
+.privacy-profile-preset-pill.is-active[data-severity="severity-unlinked"] {
+  border-color: var(--yellow, var(--orange));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow, var(--orange)) 22%, transparent);
+}
+.privacy-profile-preset-pill.is-active[data-severity="severity-linked"] {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 22%, transparent);
+}
+.privacy-profile-preset-pill.is-active[data-severity="severity-track"] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 22%, transparent);
+}
+
+.privacy-profile-preset-icon {
+  font-size: 18px;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.privacy-profile-preset-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.privacy-profile-preset-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.privacy-profile-preset-desc {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-3);
+  /* Two-line clamp so descriptions stay tidy at the four-up grid width
+     while still being legible. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Inline confirm bubble — anchors below the pill when the user clicks
+   a preset that would overwrite their existing preferences. Stays inside
+   the editor card so there's no portal / z-index gymnastics. */
+.privacy-profile-preset-confirm {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.privacy-profile-preset-confirm-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-1);
+}
+
+.privacy-profile-preset-confirm-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  /* Two-by-two grid on tablets and smaller — four-across becomes too
+     cramped for the title + description text. */
+  .privacy-profile-presets-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  /* On phones, stack vertically so each preset gets full width and the
+     description can breathe. */
+  .privacy-profile-presets-row {
+    grid-template-columns: 1fr;
+  }
+  .privacy-profile-preset-desc {
+    -webkit-line-clamp: unset;
+    display: block;
+  }
+}
+
 .privacy-profile-bulk {
   display: flex;
   flex-wrap: wrap;
@@ -21329,6 +21802,126 @@ button.import-history-stat.is-active {
   .audit-bundle-import__error-dismiss,
   .audit-bundle-import__result-dismiss {
     transition: none;
+  }
+}
+
+/* AuditBundleExport — the recommender side of the symmetric
+   recommend → import flow. The closed state is just a button; once
+   open it expands into a small panel that mirrors the visual idiom
+   of `.audit-bundle-import__*` so the two surfaces sit comfortably
+   in the same Settings section. The button's `__open-btn` class is
+   only here in case future styling wants to differentiate it from
+   plain `.btn.btn-secondary` (currently a no-op tag). */
+.audit-bundle-export__open-btn {
+  margin-top: 16px;
+}
+
+.audit-bundle-export {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.audit-bundle-export__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audit-bundle-export__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.audit-bundle-export__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.audit-bundle-export__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.audit-bundle-export__field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.audit-bundle-export__field-input {
+  padding: 8px 10px;
+  max-width: 320px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.audit-bundle-export__field-input:focus-visible {
+  outline: none;
+  border-color: var(--blue, #0a84ff);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue, #0a84ff) 35%, transparent);
+}
+
+.audit-bundle-export__field-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.audit-bundle-export__checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.audit-bundle-export__checkbox-row .settings-checkbox {
+  margin-top: 2px;
+}
+
+.audit-bundle-export__checkbox-label {
+  display: block;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.audit-bundle-export__error {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--red, #ef4444);
+  background: color-mix(in srgb, var(--red, #ef4444) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red, #ef4444) 32%, transparent);
+  border-radius: 8px;
+}
+
+.audit-bundle-export__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 480px) {
+  .audit-bundle-export {
+    padding: 14px;
+  }
+  .audit-bundle-export__field-input {
+    max-width: none;
   }
 }
 

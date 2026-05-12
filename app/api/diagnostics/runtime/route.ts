@@ -16,12 +16,17 @@
 import { NextResponse } from 'next/server';
 import {
   clearSlowQueryRing,
+  installRuntimeDiagnostics,
   resetEventLoopMonitor,
   setProfilingEnabled,
   snapshotRuntimeMetrics,
 } from '@/lib/runtime-diagnostics';
+import { clearApiTimings, snapshotApiTimings } from '@/lib/api-timing';
+import { clearDbWorkerTimings, snapshotDbWorkerTimings } from '@/lib/db-worker-client';
+import { clearScrapeActivity, snapshotScrapeActivity } from '@/lib/scrape-activity';
+import db from '@/lib/db';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
@@ -32,11 +37,22 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+function runtimeDiagnosticsPayload() {
+  installRuntimeDiagnostics(db);
+  const runtime = snapshotRuntimeMetrics();
+  return {
+    ...runtime,
+    apiTimings: snapshotApiTimings(),
+    dbWorker: snapshotDbWorkerTimings(),
+    scrapeActivity: snapshotScrapeActivity(),
+  };
+}
+
 export async function GET() {
   // No rate limit on the read path — the dashboard polls this. The
   // snapshot helper does no DB I/O so cost is dominated by serialisation
   // of the slow-query ring (~200 rows max).
-  return NextResponse.json(snapshotRuntimeMetrics());
+  return NextResponse.json(runtimeDiagnosticsPayload());
 }
 
 export async function DELETE(request: Request) {
@@ -58,7 +74,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'diagnostics.runtime.clear.unauthorised',
       actorIp,
@@ -71,13 +87,16 @@ export async function DELETE(request: Request) {
 
   clearSlowQueryRing();
   resetEventLoopMonitor();
+  clearApiTimings();
+  clearDbWorkerTimings();
+  clearScrapeActivity();
   recordAudit({
     action: 'diagnostics.runtime.clear.success',
     actorIp,
     userAgent,
     success: true,
   });
-  return NextResponse.json(snapshotRuntimeMetrics());
+  return NextResponse.json(runtimeDiagnosticsPayload());
 }
 
 /**
@@ -103,7 +122,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'diagnostics.runtime.config.unauthorised',
       actorIp,
@@ -138,5 +157,5 @@ export async function POST(request: Request) {
     success: true,
     detail: `profilingEnabled=${body.profilingEnabled}`,
   });
-  return NextResponse.json(snapshotRuntimeMetrics());
+  return NextResponse.json(runtimeDiagnosticsPayload());
 }

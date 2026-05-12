@@ -5,7 +5,13 @@ import {
   getPrivacyProfile,
   savePrivacyProfile,
 } from '../../../lib/privacy-profile-server';
-import { sanitizeProfile } from '../../../lib/privacy-profile';
+import {
+  describePresetTransition,
+  sanitizeProfile,
+  type PrivacyProfile,
+} from '../../../lib/privacy-profile';
+import { recordActivity } from '../../../lib/activity';
+import { readBoundedJson } from '../../../lib/security';
 
 /**
  * GET  → { profile: { [categoryKey]: tier } | null }
@@ -14,15 +20,44 @@ import { sanitizeProfile } from '../../../lib/privacy-profile';
  * Sparse objects are fine — keys the user hasn't chosen a tier for are simply
  * absent. The server sanitises on save, so unknown category keys or unknown
  * tier strings get dropped before they reach the DB.
+ *
+ * The PUT path also records a `profile_preset_applied` activity row when a
+ * save crosses a preset boundary (picking a preset, switching presets, or
+ * clearing a profile that previously had preferences). Custom-to-custom
+ * edits — single-row tweaks that leave the profile in a non-preset state
+ * — intentionally don't surface; the activity log is for noteworthy
+ * transitions, not the editor's debounced keystrokes. See
+ * `describePresetTransition` for the exact rule set.
  */
 export async function GET() {
   return NextResponse.json({ profile: getPrivacyProfile() });
 }
 
+/**
+ * Save the profile, then record an activity row if the change crossed a
+ * preset boundary. We grab `getPrivacyProfile()` BEFORE the save so the
+ * helper can see the actual transition (matchPreset on old vs. new).
+ */
+function saveAndLog(next: PrivacyProfile | null): void {
+  const startedAt = Date.now();
+  const previous = getPrivacyProfile();
+  savePrivacyProfile(next);
+  const transition = describePresetTransition(previous, next);
+  if (transition) {
+    recordActivity({
+      type: 'profile_preset_applied',
+      status: 'ok',
+      summary: transition.summary,
+      detail: transition.detail,
+      startedAt,
+    });
+  }
+}
+
 export async function PUT(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
+    body = await readBoundedJson(request, 16 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
@@ -33,7 +68,7 @@ export async function PUT(request: Request) {
 
   const raw = (body as { profile?: unknown }).profile;
   if (raw === null) {
-    savePrivacyProfile(null);
+    saveAndLog(null);
     return NextResponse.json({ profile: null });
   }
   if (raw === undefined) {
@@ -44,6 +79,6 @@ export async function PUT(request: Request) {
   }
 
   const clean = sanitizeProfile(raw);
-  savePrivacyProfile(clean);
+  saveAndLog(clean);
   return NextResponse.json({ profile: getPrivacyProfile() });
 }

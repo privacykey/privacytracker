@@ -9,11 +9,12 @@ import {
   requestActorIp,
   checkRateLimit,
   rateLimitKeyForRequest,
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   requestHasValidAdminToken,
 } from '../../../lib/security';
+import { withApiTiming } from '../../../lib/api-timing';
 
-export async function GET(request: Request) {
+async function getAppsRoute(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   const view = searchParams.get('view');
@@ -37,6 +38,8 @@ export async function GET(request: Request) {
   return NextResponse.json(getAllApps());
 }
 
+export const GET = withApiTiming('/api/apps', getAppsRoute);
+
 export async function DELETE(request: Request) {
   const actorIp = requestActorIp(request);
   const userAgent = request.headers.get('user-agent');
@@ -53,7 +56,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'app.delete.unauthorised',
       actorIp,

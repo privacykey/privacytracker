@@ -35,6 +35,7 @@ import LiveTextModal from './LiveTextModal';
 import LanguageSuggestionBanner from './LanguageSuggestionBanner';
 import RateLimitBanner from './RateLimitBanner';
 import { useFlag } from '../../lib/feature-flags-hooks';
+import { recordImportEvent } from '../../lib/client-diagnostics';
 
 interface AppCandidate {
   appleId: string;
@@ -667,11 +668,12 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   /** Re-render tick so the step-4 banner can show a ticking seconds value
    *  even while `scrapeRateLimit` itself is stable. */
   const [scrapeRateTick, setScrapeRateTick] = useState(0);
+  const importDrainPausedUntil = importQueue.drainState?.pausedUntil ?? null;
   useEffect(() => {
-    if (!scrapeRateLimit) return;
+    if (!scrapeRateLimit && !(importDrainPausedUntil && importDrainPausedUntil > Date.now())) return;
     const id = setInterval(() => setScrapeRateTick(t => t + 1), 1000);
     return () => clearInterval(id);
-  }, [scrapeRateLimit]);
+  }, [importDrainPausedUntil, scrapeRateLimit]);
 
   // Import-history plumbing
   const [importId, setImportId] = useState<string | null>(null);
@@ -1121,6 +1123,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   const runCfgutilCheck = useCallback(async () => {
     setCfgutilChecking(true);
     setCfgutilError('');
+    // Yield a frame so React paints the "Checking…" button state BEFORE
+    // we hand control to the Tauri IPC bridge. Without this, the click
+    // handler chain is: setState → microtask scheduling → await
+    // checkCfgutil() → blocks for the lifetime of the Rust probe → set
+    // state back. The browser never gets a chance to render the
+    // spinner / disabled state, so users see a frozen button and assume
+    // the app is broken. requestAnimationFrame guarantees one paint
+    // frame happens between the state flip and the slow IPC.
+    // (Same pattern used by runCfgutilExportClick below — keep them
+    // in sync if either grows more complexity.)
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     try {
       const result = await checkCfgutil();
       setCfgutilCheck(result);
@@ -1188,6 +1201,20 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
 
       const selectedDevice = devices.find(device => device.ecid === targetEcid);
       const result = await runCfgutilExport(targetEcid);
+      // Record that cfgutil was successfully used at least once on this
+      // install. The device-connect toast on /onboard subscribes to USB
+      // attach events only when this flag is set — keeps the cost off
+      // users who never adopted the cfgutil workflow.
+      if (result.apps.length > 0) {
+        void fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cfgutil_imported_at: Date.now() }),
+        }).catch(() => {
+          // Non-fatal — the import succeeded; the gate just stays off
+          // until the next successful cfgutil run.
+        });
+      }
       if (result.apps.length === 0) {
         setCfgutilError(
           result.deviceCount === 0
@@ -1371,12 +1398,18 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // Diagnostics: the OCR path has a lot of async hops that can hang
     // silently (tesseract.js dynamic import, WASM download, traineddata
     // fetch, per-image recognize, worker terminate). The hang in the
-    // wild came with zero console output, so this function now narrates
-    // every step with timings. When the user reports "it just spun
-    // forever", the devtools console tells us exactly which phase
-    // stopped emitting — no guessing.
+    // wild came with zero console output, so this function narrates
+    // every step with timings. In dev builds the narration goes to the
+    // devtools console; in production we stay quiet by default but
+    // honour `localStorage.setItem('debug:ocr', '1')` for users who can
+    // be asked to enable it when reporting "it just spun forever".
+    const ocrDebug =
+      process.env.NODE_ENV !== 'production' ||
+      (typeof window !== 'undefined' &&
+        window.localStorage?.getItem('debug:ocr') === '1');
     const t0 = performance.now();
     const mark = (label: string, extra?: Record<string, unknown>) => {
+      if (!ocrDebug) return;
       const ms = Math.round(performance.now() - t0);
       if (extra) {
         console.log(`[ocr] +${ms}ms ${label}`, extra);
@@ -1410,11 +1443,15 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       // networks / strict CSPs / iOS WebKit.
       const worker = await createWorker('eng', 1, {
         logger: (msg: { status?: string; progress?: number; [k: string]: unknown }) => {
+          if (!ocrDebug) return;
           const pct =
             typeof msg.progress === 'number' ? `${Math.round(msg.progress * 100)}%` : '—';
           console.log(`[ocr] tesseract.logger status="${msg.status ?? '?'}" progress=${pct}`, msg);
         },
         errorHandler: (err: unknown) => {
+          // Errors still surface unconditionally — silent failure is
+          // exactly the diagnostic problem the rest of this gating was
+          // introduced to *not* reintroduce.
           console.error('[ocr] tesseract.errorHandler', err);
         },
       });
@@ -1553,6 +1590,8 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
 
   const createImportRecord = useCallback(
     async (total: number): Promise<string | null> => {
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.import.create.start', { total, method });
       try {
         const res = await fetch('/api/imports', {
           method: 'POST',
@@ -1564,10 +1603,23 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           }),
         });
         const data = await res.json();
-        if (!res.ok || typeof data?.id !== 'string') return null;
+        if (!res.ok || typeof data?.id !== 'string') {
+          recordImportEvent('onboarding.import.create.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
+          });
+          return null;
+        }
+        recordImportEvent('onboarding.import.create.complete', {
+          durationMs: Math.round(performance.now() - startedAt),
+        });
         return data.id;
       } catch (error) {
         console.error('[wizard] Failed to create import record:', error);
+        recordImportEvent('onboarding.import.create.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
         return null;
       }
     },
@@ -1619,15 +1671,21 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       });
 
       // Persist names the search couldn't process yet because Apple 429'd us
-      // as `status='queued'` so they show up in Import History immediately.
-      // When the QueuedSearchProvider retries later, the same endpoint
-      // upserts by (importId, query), swapping the row to 'matched'.
-      // Without this, a rate-limited batch would leave the import with
-      // `itemCount === 0` and the user would see the "No per-app history"
-      // empty state even though the import genuinely has work in flight.
+      // as `status='pending_search'` so they show up in Import History
+      // immediately. When the QueuedSearchProvider retries later, the same
+      // endpoint upserts by (importId, query), swapping the row to 'matched'
+      // with the resolved `url` in place. Without this, a rate-limited batch
+      // would leave the import with `itemCount === 0` and the user would see
+      // the "No per-app history" empty state even though the import
+      // genuinely has work in flight.
+      //
+      // Crucially this is NOT `status='queued'`: the server-side import-queue
+      // worker only claims 'queued' rows (which always have a URL — they're
+      // scrape retries). Mixing the two would cause the worker to mass-error
+      // every URL-less row it claimed.
       const queuedPayload = (queuedRows ?? []).map(row => ({
         query: row.name,
-        status: 'queued' as const,
+        status: 'pending_search' as const,
         developer: row.developer ?? null,
         country,
         scrapeError: tStatus('scrape_error_rate_limited'),
@@ -1654,6 +1712,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       const itemsPayload = [...searchedPayload, ...queuedPayload, ...fallbackPayload];
       if (itemsPayload.length === 0) return new Map();
 
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.items.initial_bulk.start', {
+        items: itemsPayload.length,
+        matched: searchedPayload.filter(item => item.status === 'matched').length,
+        queued: queuedPayload.length,
+        fallback: fallbackPayload.length,
+      });
       try {
         const res = await fetch('/api/imports/items', {
           method: 'POST',
@@ -1667,6 +1732,10 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           console.error(
             `[wizard] /api/imports/items rejected (${res.status}): ${errBody.slice(0, 200)}`,
           );
+          recordImportEvent('onboarding.items.initial_bulk.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
+          });
           return new Map();
         }
         const data = await res.json();
@@ -1678,9 +1747,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             }
           }
         }
+        recordImportEvent('onboarding.items.initial_bulk.complete', {
+          items: idMap.size,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
         return idMap;
       } catch (error) {
         console.error('[wizard] Failed to write import items:', error);
+        recordImportEvent('onboarding.items.initial_bulk.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
         return new Map();
       }
     },
@@ -2101,35 +2178,77 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // in Import History that they deliberately opted not to re-import the
     // tracked app this time round.
     if (importId) {
-      await Promise.all(
-        searchResults.map(async result => {
-          const itemId = itemIdByQuery.get(result.query);
-          if (!itemId) return;
-          const chosen = workingSelected.get(result.query);
-          const wasFiltered =
-            selected.has(result.query) && !workingSelected.has(result.query);
-          const payload = chosen
-            ? {
-                itemId,
-                status: 'matched',
-                appId: chosen.appleId,
-                appName: chosen.name,
-                developer: chosen.developer,
-                url: chosen.url,
-              }
-            : wasFiltered
-              ? { itemId, status: 'skipped' }
-              : {
-                  itemId,
-                  status: result.candidates.length === 0 ? 'unmatched' : 'skipped',
-                };
-          await fetch('/api/imports/items/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+      const statusPayload = searchResults.map(result => {
+        const chosen = workingSelected.get(result.query);
+        const wasFiltered =
+          selected.has(result.query) && !workingSelected.has(result.query);
+        return chosen
+          ? {
+              query: result.query,
+              status: 'matched',
+              appId: chosen.appleId,
+              appName: chosen.name,
+              developer: chosen.developer,
+              url: chosen.url,
+              iconUrl: chosen.iconUrl,
+              country,
+              scrapeError: null,
+            }
+          : wasFiltered
+            ? { query: result.query, status: 'skipped', country }
+            : {
+                query: result.query,
+                status: result.candidates.length === 0 ? 'unmatched' : 'skipped',
+                country,
+                scrapeError: result.candidates.length === 0
+                  ? tStatus('scrape_error_no_result')
+                  : null,
+              };
+      });
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.confirm.bulk_status.start', {
+        items: statusPayload.length,
+        selected: entries.length,
+      });
+      try {
+        const res = await fetch('/api/imports/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ importId, items: statusPayload }),
+        });
+        if (!res.ok) {
+          recordImportEvent('onboarding.confirm.bulk_status.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
           });
-        }),
-      );
+          setSearchError(tStatus('background_import_start_failed'));
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data?.items)) {
+          setItemIdByQuery(prev => {
+            const next = new Map(prev);
+            for (const item of data.items) {
+              if (typeof item?.query === 'string' && typeof item?.id === 'string') {
+                next.set(item.query, item.id);
+              }
+            }
+            return next;
+          });
+        }
+        recordImportEvent('onboarding.confirm.bulk_status.complete', {
+          items: statusPayload.length,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
+      } catch (error) {
+        console.error('[wizard] Failed to persist final import selections:', error);
+        recordImportEvent('onboarding.confirm.bulk_status.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
+        setSearchError(tStatus('background_import_start_failed'));
+        return;
+      }
     }
 
     const list: ScrapeStatus[] = entries.map(([query, candidate]) => ({
@@ -2678,6 +2797,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // happen and the activity log stays clean.
     if (isPreviewMode) {
       const updated = items.map((it) => ({ ...it, status: 'success' as const }));
+      // Mirror the real-import branch below: auto-open the per-app
+      // details for small batches so a developer running the preview
+      // flow sees the rendered scrape rows instead of a collapsed
+      // <details> summary. Without this, the rows are technically in
+      // the DOM but display:none — which Playwright reports as hidden
+      // and which doesn't match production UX.
+      setImportDetailsOpen(items.length <= 8);
       setScrapeList(updated);
       setDone(true);
       return;
@@ -2707,45 +2833,74 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       return;
     }
 
+    let queueStartedAt: number | null = null;
     try {
-      await Promise.all(entries.map(async ([query, candidate]) => {
-        const itemId = itemIdByQuery.get(query);
-        if (!itemId) return;
-        const res = await fetch('/api/imports/items/update', {
+      const queuePayload = entries.map(([query, candidate]) => ({
+        query,
+        status: 'queued' as const,
+        appId: candidate.appleId,
+        appName: candidate.name,
+        developer: candidate.developer,
+        url: candidate.url,
+        iconUrl: candidate.iconUrl,
+        country,
+        scrapeError: null,
+      }));
+      queueStartedAt = performance.now();
+      recordImportEvent('onboarding.queue.bulk.start', { items: queuePayload.length });
+      if (queuePayload.length > 0) {
+        const res = await fetch('/api/imports/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itemId,
-            status: 'queued',
-            appId: candidate.appleId,
-            appName: candidate.name,
-            developer: candidate.developer,
-            url: candidate.url,
-            iconUrl: candidate.iconUrl,
-            country,
-            scrapeError: null,
-          }),
+          body: JSON.stringify({ importId, items: queuePayload }),
         });
         if (!res.ok) {
-          throw new Error(`Queue update failed for ${candidate.name}`);
+          throw new Error(`Queue update failed with HTTP ${res.status}`);
         }
-      }));
-
-      // Same path as Settings → Import History → Retry: refresh the shared
-      // queue snapshot so Task Center sees the full backlog, then kick an
-      // immediate server-side drain instead of waiting for the next ticker.
-      await importQueue.refresh();
-      // retryNow() now throws on HTTP failure (so a foreground drain
-      // loop can react). Here we just want a fire-and-forget kick —
-      // the import row is already saved, and a missed first tick is
-      // recoverable via the next 30-min instrumentation tick or a
-      // manual retry from Settings → Import History.
-      try { await importQueue.retryNow(); } catch (err) {
-        console.warn('[wizard] queue kick failed (will recover on next tick):', err);
+        const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data?.items)) {
+          setItemIdByQuery(prev => {
+            const next = new Map(prev);
+            for (const item of data.items) {
+              if (typeof item?.query === 'string' && typeof item?.id === 'string') {
+                next.set(item.query, item.id);
+              }
+            }
+            return next;
+          });
+        }
       }
+      recordImportEvent('onboarding.queue.bulk.complete', {
+        items: queuePayload.length,
+        durationMs: Math.round(performance.now() - queueStartedAt),
+      });
+
+      // Same path as Settings → Import History → Retry, but start the
+      // provider-owned foreground drain loop instead of kicking one server
+      // tick. The server still claims rows in 10-item chunks; the provider
+      // immediately asks for the next chunk until Apple 429s, the queue
+      // empties, or the user cancels.
+      const kickStartedAt = performance.now();
+      recordImportEvent('onboarding.queue.kick.start', { items: queuePayload.length });
+      const queueSnapshot = await importQueue.refresh();
+      recordImportEvent('onboarding.queue.drain.start', { queued: queuePayload.length });
+      importQueue.startDrain({
+        initialSnapshot: queueSnapshot,
+        forceRefresh: queueSnapshot === null,
+      });
+      recordImportEvent('onboarding.queue.kick.complete', {
+        durationMs: Math.round(performance.now() - kickStartedAt),
+      });
       await refreshBackgroundImportProgress();
     } catch (error) {
       console.error('[wizard] Failed to queue import batch:', error);
+      recordImportEvent('onboarding.queue.bulk.error', {
+        items: entries.length,
+        durationMs: queueStartedAt !== null
+          ? Math.round(performance.now() - queueStartedAt)
+          : undefined,
+        error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+      });
       setScrapeList(prev => {
         const failed = prev.map(item =>
           item.status === 'success'
@@ -3673,6 +3828,30 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                               </span>
                             )}
                           </div>
+                          {/* Larger, more visible "we're working on it"
+                              panel — the cfgutil probe shells out + checks
+                              the Automation Tools install, which can take
+                              5–30s on a cold call. The button's 16px
+                              spinner alone isn't enough signal. Renders
+                              only while cfgutilChecking is true; aria-live
+                              announces the title to screen readers. */}
+                          {cfgutilChecking && (
+                            <div
+                              className="cfgutil-checking-status"
+                              role="status"
+                              aria-live="polite"
+                            >
+                              <span className="spinner-lg" aria-hidden />
+                              <div className="cfgutil-checking-status-body">
+                                <div className="cfgutil-checking-status-title">
+                                  {tCfg('checking_status_title')}
+                                </div>
+                                <div className="cfgutil-checking-status-copy">
+                                  {tCfg('checking_status_body')}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </li>
 
@@ -3723,6 +3902,40 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                                 </button>
                               </div>
 
+                              {/* While refreshing, show skeleton rows in
+                                  the same slot as the real device list so
+                                  the panel itself reflects the loading
+                                  state — not just the pill button up top.
+                                  Once cfgutil returns and devices are
+                                  populated, the skeleton block is
+                                  replaced by the real radiogroup. */}
+                              {cfgutilDevicesLoading && cfgutilDevices.length === 0 && (
+                                <div
+                                  className="cfgutil-device-list cfgutil-device-list--loading"
+                                  role="status"
+                                  aria-label={tCfg('device_skeleton_aria')}
+                                  aria-live="polite"
+                                >
+                                  <div className="cfgutil-device-loading-banner">
+                                    <span className="spinner-sm" aria-hidden />
+                                    <span>{tCfg('devices_refreshing_status')}</span>
+                                  </div>
+                                  <div className="cfgutil-device-row cfgutil-device-row--skeleton" aria-hidden>
+                                    <span className="cfgutil-device-dot" />
+                                    <span className="cfgutil-device-text">
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--name" />
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--meta" />
+                                    </span>
+                                  </div>
+                                  <div className="cfgutil-device-row cfgutil-device-row--skeleton" aria-hidden>
+                                    <span className="cfgutil-device-dot" />
+                                    <span className="cfgutil-device-text">
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--name" />
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--meta" />
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                               {cfgutilDevices.length > 0 && (
                                 <div className="cfgutil-device-list" role="radiogroup" aria-label={tCfg('device_picker_aria')}>
                                   {cfgutilDevices.map(device => {
@@ -4031,6 +4244,25 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             : selected;
           const effectiveCount = effectiveSelected.size;
 
+          // List of query names that returned no App Store candidates,
+          // and the subset that the user hasn't already skipped /
+          // researched. Used for the bulk-action banner below the
+          // tracked-banner — on a large cfgutil batch (200+ apps),
+          // clicking "Skip this" per row is unworkable. The banner
+          // gives a single "skip all" affordance and a count so the
+          // user knows what they're collapsing.
+          const unmatchedQueries = searchResults
+            .filter(r => r.candidates.length === 0)
+            .map(r => r.query);
+          // Active = no candidate AND not already marked skipped. We
+          // approximate "marked skipped" by checking whether the item
+          // appears in itemIdByQuery (every block has an itemId; the
+          // skip handler hits /api/imports/items/update without
+          // removing the row, so this check is just a fuzz pass — the
+          // bulk action below is idempotent against already-skipped
+          // rows anyway, so a small over-count is harmless).
+          const unmatchedCount = unmatchedQueries.length;
+
           return (
           <>
             <h1 className="wizard-title">{tWiz('confirm_matches')}</h1>
@@ -4141,6 +4373,34 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
               );
             })()}
 
+            {unmatchedCount > 0 && (
+              // Unmatched-apps banner. Big cfgutil imports routinely
+              // produce 50+ rows that didn't resolve to an App Store
+              // candidate (sideloaded apps, region-restricted apps,
+              // names too generic for the search to disambiguate).
+              // Clicking "Skip this" per block was unworkable. This
+              // banner gives a single skip-all affordance with a count
+              // so the user knows what they're collapsing, mirroring
+              // the tracked-banner pattern above for visual symmetry.
+              <div className="wizard-note wizard-note-info" style={{ marginTop: 12 }}>
+                <strong>{tStep3('unmatched_lead', { count: unmatchedCount })}</strong>
+                {tStep3('unmatched_body')}
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      for (const query of unmatchedQueries) {
+                        void handleBlockSkip(query);
+                      }
+                    }}
+                  >
+                    {tStep3('unmatched_skip_all', { count: unmatchedCount })}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="search-result-list">
               {visibleResults.map(result => (
                 <SearchResultBlock
@@ -4223,12 +4483,22 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             </p>
 
             {(() => {
+              void scrapeRateTick;
               const total = scrapeList.length;
               const successCount = scrapeList.filter(item => item.status === 'success').length;
               const errorCount = scrapeList.filter(item => item.status === 'error').length;
               const queuedCount = scrapeList.filter(item => item.status === 'queued' || item.status === 'pending').length;
               const completedCount = successCount + errorCount;
-              const progressPct = total > 0 ? Math.max(4, Math.round((completedCount / total) * 100)) : 0;
+              const drainState = importQueue.drainState;
+              const attemptedCount = drainState
+                ? Math.min(total, Math.max(completedCount, drainState.processed))
+                : completedCount;
+              const drainPausedUntil = drainState?.pausedUntil ?? null;
+              const drainPaused = Boolean(drainPausedUntil && drainPausedUntil > Date.now());
+              const drainPausedSec = drainPausedUntil
+                ? Math.max(1, Math.ceil((drainPausedUntil - Date.now()) / 1000))
+                : 0;
+              const progressPct = total > 0 ? Math.max(4, Math.round((attemptedCount / total) * 100)) : 0;
               return (
                 <div className="onboard-import-status-card" role="status" aria-live="polite">
                   <div className="onboard-import-status-topline">
@@ -4236,10 +4506,12 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                       <div className="onboard-import-status-title">
                         {done
                           ? tStep4('status_done', { done: completedCount, total })
-                          : tStep4('status_running', { done: completedCount, total })}
+                          : tStep4('status_running', { done: attemptedCount, total })}
                       </div>
                       <div className="onboard-import-status-sub">
-                        {queuedCount > 0
+                        {drainPaused
+                          ? tStep4('rate_limit_sub', { sec: drainPausedSec })
+                          : queuedCount > 0
                           ? tStep4('status_background_hint', { count: queuedCount })
                           : errorCount > 0
                             ? tStep4('status_done_with_errors', { count: errorCount })
@@ -4344,9 +4616,19 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                         {item.status === 'queued' && (
                           <div className="scrape-sub" style={{ color: 'var(--orange)' }}>
                             {item.error ?? tStep4('row_queued_default')}
-                            {item.retryAfterMs
-                              ? tStep4('row_queued_retry_in', { sec: Math.max(1, Math.round(item.retryAfterMs / 1000)) })
-                              : ''}
+                            {/*
+                              `row_queued_retry_in` (a "Next retry in NNNs"
+                              countdown) used to render here, derived from
+                              the row's next_attempt_at. It was misleading:
+                              once the server worker claims a row it pushes
+                              next_attempt_at out by 10 minutes as an
+                              in-flight fence (lib/imports.ts ::
+                              claimQueuedBatch), so the user saw a 600s
+                              countdown for a row that was actually about
+                              to finish scraping in seconds. We drop the
+                              timer entirely — the static "Queued / retrying"
+                              copy is the truthful signal.
+                            */}
                           </div>
                         )}
                         {item.status === 'success' && item.changesDetected && (

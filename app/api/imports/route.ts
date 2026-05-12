@@ -8,8 +8,10 @@ import {
   listImports,
   type ImportSource,
 } from '../../../lib/imports';
+import { readBoundedJson } from '../../../lib/security';
+import { withApiTiming } from '../../../lib/api-timing';
 
-export async function GET(request: Request) {
+async function getImports(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   if (id) {
@@ -20,9 +22,18 @@ export async function GET(request: Request) {
   return NextResponse.json(listImports());
 }
 
-export async function POST(request: Request) {
+async function createImportRoute(request: Request) {
+  let body: Record<string, unknown>;
   try {
-    const body = await request.json();
+    body = await readBoundedJson<Record<string, unknown>>(request, 8 * 1024);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
+      { status: 400 },
+    );
+  }
+
+  try {
     const source = typeof body?.source === 'string' ? body.source : '';
     if (!IMPORT_SOURCES.includes(source as ImportSource)) {
       return NextResponse.json(
@@ -43,6 +54,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+export const GET = withApiTiming('/api/imports', getImports);
+export const POST = withApiTiming('/api/imports', createImportRoute);
 
 export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);

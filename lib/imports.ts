@@ -18,9 +18,16 @@ export const IMPORT_ITEM_STATUSES = [
   'skipped',
   'imported',
   'error',
-  // Picked + ready to scrape, but Apple rate-limited us partway through the
-  // batch. The server-side import-queue worker drains these on a backoff;
-  // the user sees a "Queued" pill in Import History until each row flips to
+  // Name-only row: the iTunes Search API rate-limited the wizard before we
+  // could resolve this query into a URL. The client-side QueuedSearchProvider
+  // owns retries — when the search eventually lands, the row is upserted to
+  // 'matched' with `url` filled in. The server-side import-queue worker
+  // explicitly does NOT claim 'pending_search' rows (no URL to scrape), so
+  // these two retry paths don't compete.
+  'pending_search',
+  // Matched row whose App Store scrape Apple 429'd partway through. Has a
+  // URL; the server-side import-queue worker drains these on a backoff. The
+  // user sees a "Queued" pill in Import History until each row flips to
   // 'imported' or 'error'.
   'queued',
   // User imported the app, then later removed it from the dashboard. We keep
@@ -229,6 +236,15 @@ export async function addImportItemsAsync(
   type Statement = { sql: string; params: unknown[] };
   const statements: Statement[] = [];
   const results: ImportItemRow[] = [];
+  const safeAppIdCache = new Map<string, string | null>();
+  const cachedResolveSafeAppId = (appId: string | null | undefined): string | null => {
+    if (!appId) return null;
+    const cached = safeAppIdCache.get(appId);
+    if (cached !== undefined) return cached;
+    const safeAppId = resolveSafeAppId(appId);
+    safeAppIdCache.set(appId, safeAppId);
+    return safeAppId;
+  };
 
   const INSERT_SQL = `INSERT INTO import_items (
     id, import_id, query, edited_query, status, app_id, app_name, developer, url,
@@ -259,8 +275,11 @@ export async function addImportItemsAsync(
       // re-running the call is to flip status forward, e.g.
       // queued → matched).
       push('status', item.status);
+      const safeAppId = item.appId !== undefined
+        ? cachedResolveSafeAppId(item.appId)
+        : existing.app_id;
       if (item.editedQuery !== undefined) push('edited_query', item.editedQuery);
-      if (item.appId !== undefined) push('app_id', resolveSafeAppId(item.appId));
+      if (item.appId !== undefined) push('app_id', safeAppId);
       if (item.appName !== undefined) push('app_name', item.appName);
       if (item.developer !== undefined) push('developer', item.developer);
       if (item.url !== undefined) push('url', item.url);
@@ -290,7 +309,7 @@ export async function addImportItemsAsync(
         query: existing.query,
         editedQuery: item.editedQuery !== undefined ? item.editedQuery : existing.edited_query,
         status: item.status,
-        appId: item.appId !== undefined ? resolveSafeAppId(item.appId) : existing.app_id,
+        appId: safeAppId,
         appName: item.appName !== undefined ? item.appName : existing.app_name,
         developer: item.developer !== undefined ? item.developer : existing.developer,
         url: item.url !== undefined ? item.url : existing.url,
@@ -308,7 +327,7 @@ export async function addImportItemsAsync(
     // Fresh INSERT path.
     const id = newId('iti');
     const attemptCount = item.attemptCount ?? 0;
-    const safeAppId = resolveSafeAppId(item.appId);
+    const safeAppId = cachedResolveSafeAppId(item.appId);
     statements.push({
       sql: INSERT_SQL,
       params: [
@@ -610,12 +629,28 @@ export function claimQueuedBatch(limit = 5): ImportItemRow[] {
   const inFlightFence = now + 10 * 60 * 1000;
 
   const tx = db.transaction(() => {
+    // Order: untracked apps (app_id IS NULL) before already-tracked
+    // rescrapes (app_id NOT NULL). When a bulk import mixes new apps
+    // with apps the user is already tracking, the user wants the new
+    // ones to appear in the dashboard first — they're the reason they
+    // ran the import. The already-tracked rows are effectively just a
+    // sync; pushing them to the tail of every claim batch means a tick
+    // that hits Apple's rate limit gives up its budget on net-new
+    // apps, not on refreshing data that's already on screen.
+    //
+    // `app_id` is set by resolveSafeAppId at insert time: it's the
+    // candidate's appleId when the apps row already exists, NULL
+    // otherwise. So the SQL signal here is exactly the "already
+    // tracked vs. not" question without an extra join.
     const rows = db
       .prepare(
         `SELECT * FROM import_items
          WHERE status = 'queued'
            AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
-         ORDER BY next_attempt_at ASC, rowid ASC
+         ORDER BY
+           CASE WHEN app_id IS NULL THEN 0 ELSE 1 END,
+           next_attempt_at ASC,
+           rowid ASC
          LIMIT ?`,
       )
       .all(now, limit) as ImportItemRecord[];
@@ -896,7 +931,9 @@ export function listImports(): ImportRow[] {
   // Left-join an aggregate sub-select so each row carries live counters
   // for queued / errored / removed / total-items in a single query — no
   // N+1 follow-ups from the settings page. `queued_count` powers the
-  // "Resume matching" button on the collapsed summary row.
+  // "Resume matching" button on the collapsed summary row. It folds
+  // 'pending_search' rows in too: from the user's POV both statuses mean
+  // "still in flight, waiting on Apple".
   const rows = db
     .prepare(
       `SELECT i.*,
@@ -907,7 +944,7 @@ export function listImports(): ImportRow[] {
          FROM imports i
          LEFT JOIN (
            SELECT import_id,
-                  SUM(CASE WHEN status = 'queued'  THEN 1 ELSE 0 END) AS queued_count,
+                  SUM(CASE WHEN status IN ('queued', 'pending_search') THEN 1 ELSE 0 END) AS queued_count,
                   SUM(CASE WHEN status = 'error'   THEN 1 ELSE 0 END) AS errored_count,
                   SUM(CASE WHEN status = 'removed' THEN 1 ELSE 0 END) AS removed_count,
                   COUNT(*)                                            AS item_count
@@ -1215,6 +1252,7 @@ interface ImportItemRecord {
 function getImportRow(importId: string): ImportRow | null {
   // Same live-counter join as `listImports` — keeps the single-row read
   // surface-compatible with the list payload so the UI can use one shape.
+  // See listImports for why 'pending_search' folds into queued_count.
   const row = db
     .prepare(
       `SELECT i.*,
@@ -1225,7 +1263,7 @@ function getImportRow(importId: string): ImportRow | null {
          FROM imports i
          LEFT JOIN (
            SELECT import_id,
-                  SUM(CASE WHEN status = 'queued'  THEN 1 ELSE 0 END) AS queued_count,
+                  SUM(CASE WHEN status IN ('queued', 'pending_search') THEN 1 ELSE 0 END) AS queued_count,
                   SUM(CASE WHEN status = 'error'   THEN 1 ELSE 0 END) AS errored_count,
                   SUM(CASE WHEN status = 'removed' THEN 1 ELSE 0 END) AS removed_count,
                   COUNT(*)                                            AS item_count

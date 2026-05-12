@@ -6,6 +6,7 @@ import {
   markAllRead,
   markUnreadByIds,
 } from '../../../lib/notifications';
+import { readOptionalBoundedJson } from '../../../lib/security';
 
 export async function GET() {
   const notifications = getNotifications(30);
@@ -18,10 +19,12 @@ export async function POST(request: Request) {
   // accepted `{ action: 'mark_read' }` with no other fields, and we
   // want a typo on the new `mark_unread` shape to fall through to
   // the existing "Unknown action" error rather than silently 500.
-  const body = (await request.json().catch(() => ({}))) as {
-    action?: unknown;
-    ids?: unknown;
-  };
+  let body: { action?: unknown; ids?: unknown };
+  try {
+    body = await readOptionalBoundedJson(request, 32 * 1024, {});
+  } catch {
+    body = {};
+  }
 
   if (body.action === 'mark_read') {
     markAllRead();

@@ -9,6 +9,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { undoReviewAction } from '../../../../../../lib/changelog';
+import { readOptionalBoundedJson } from '../../../../../../lib/security';
 
 export async function POST(
   request: Request,
@@ -28,8 +29,7 @@ export async function POST(
     };
   };
   try {
-    const text = await request.text();
-    body = text.trim() ? JSON.parse(text) : {};
+    body = await readOptionalBoundedJson(request, 4 * 1024, {});
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }

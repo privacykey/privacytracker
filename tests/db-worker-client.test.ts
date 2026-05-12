@@ -23,9 +23,16 @@ process.env.WORKER_DISABLED = '1';
 // flag correctly. This isn't required because the function reads
 // each call — but stays defensive against future changes.
 import db from '../lib/db';
-import { runBulkWrite } from '../lib/db-worker-client';
+import {
+  clearDbWorkerTimings,
+  runBulkWrite,
+  snapshotDbWorkerTimings,
+} from '../lib/db-worker-client';
 
-test.beforeEach(resetTestDb);
+test.beforeEach(() => {
+  resetTestDb();
+  clearDbWorkerTimings();
+});
 
 test('runBulkWrite executes a single statement', async () => {
   // Prep: the apps table exists from migrations. We exercise it
@@ -74,6 +81,26 @@ test('runBulkWrite chunks transactions and commits earlier chunks before failure
 test('runBulkWrite handles empty input as a no-op', async () => {
   const result = await runBulkWrite([]);
   assert.equal(result.totalChanges, 0);
+});
+
+test('runBulkWrite records DB worker diagnostics for bulk batches', async () => {
+  const baseTs = Date.now();
+  await runBulkWrite([
+    {
+      sql: `INSERT INTO apps (id, name, url, lastSynced, firstSeen, changeCount)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      params: ['diag-1', 'Diagnostics App', 'https://apps.apple.com/us/app/x/id1', baseTs, baseTs, 0],
+    },
+  ]);
+
+  const snapshot = snapshotDbWorkerTimings();
+  assert.equal(snapshot.totalSinceStart, 1);
+  assert.equal(snapshot.failedSinceStart, 0);
+  assert.equal(snapshot.inlineSinceStart, 1);
+  assert.equal(snapshot.recent.length, 1);
+  assert.equal(snapshot.recent[0].statementCount, 1);
+  assert.equal(snapshot.recent[0].outcome, 'ok');
+  assert.equal(snapshot.recent[0].inline, true);
 });
 
 test('runBulkWrite supports object-style named parameters', async () => {

@@ -1,6 +1,12 @@
 import db from './db';
 import crypto from 'crypto';
 import {
+  beginScrape,
+  endScrape,
+  markScrapePhase,
+  newScrapeId,
+} from './scrape-activity';
+import {
   buildSnapshot,
   diffSnapshots,
   getLatestSnapshot,
@@ -709,6 +715,15 @@ export async function fetchAndParseApp(
   // before propagating to the caller.
   const __activityStart = Date.now();
   const __activityType = resync ? 'resync' : 'scrape';
+  // Live diagnostics handle — visible on the Diagnostics page while the
+  // scrape is still running. The phase marks below sit at the four
+  // boundaries that account for most of a scrape's wall-clock cost:
+  // Apple HTML fetch, HTML/JSON parse, DB commit, optional policy fetch.
+  const __scrapeId = newScrapeId();
+  let __scrapeAppName: string | undefined;
+  let __scrapeOutcome: 'success' | 'error' | 'rate_limited' = 'error';
+  let __scrapeError: string | undefined;
+  beginScrape(__scrapeId, verdict.url.toString(), resync);
   try {
 
   // Hard-cooldown short-circuit. If a previous request already triggered
@@ -771,6 +786,7 @@ export async function fetchAndParseApp(
 
   if (!req.ok) throw new Error(`HTTP ${req.status} fetching App Store page`);
   const html = htmlBuf.toString('utf8');
+  markScrapePhase(__scrapeId, 'apple_fetched');
 
   // ── Name ──
   let name = 'Unknown App';
@@ -890,6 +906,8 @@ export async function fetchAndParseApp(
   const previousVersionUpdatedAt = existingApp?.versionUpdatedAt ?? null;
   const writePlan = prepareScrapeWritePlan(data, html);
   const newSnapshot = writePlan.snapshot;
+  __scrapeAppName = name;
+  markScrapePhase(__scrapeId, 'parsed');
 
   // ── Parser-fallthrough alert ────────────────────────────────────
   // Three states for `hasPrivacyDetails`:
@@ -961,6 +979,7 @@ export async function fetchAndParseApp(
     activityType: __activityType,
     activityStartedAt: __activityStart,
   });
+  markScrapePhase(__scrapeId, 'committed');
 
   // Version-update notification. Only fires when:
   //   - The app already existed (first-ever scrapes don't count as an update).
@@ -1039,8 +1058,10 @@ export async function fetchAndParseApp(
     } catch (error) {
       console.error('Privacy policy analysis failed for', name, error);
     }
+    markScrapePhase(__scrapeId, 'policy_done');
   }
 
+  __scrapeOutcome = 'success';
   return {
     id: appleId,
     name,
@@ -1092,7 +1113,17 @@ export async function fetchAndParseApp(
       detail: { url, errorMessage: message, fetchDiagnostics },
       startedAt: __activityStart,
     });
+    // A typed AppleRateLimitError lands here too; we want it categorised
+    // separately so the diagnostics panel can show "1 rate-limited" vs
+    // "1 error" rather than collapsing them together.
+    __scrapeOutcome = isAppleRateLimitError(error) ? 'rate_limited' : 'error';
+    __scrapeError = message.slice(0, 200);
     throw error;
+  } finally {
+    endScrape(__scrapeId, __scrapeOutcome, {
+      appName: __scrapeAppName,
+      error: __scrapeError,
+    });
   }
 }
 

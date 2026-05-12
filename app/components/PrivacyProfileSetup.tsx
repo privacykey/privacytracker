@@ -121,6 +121,11 @@ export default function PrivacyProfileSetup({ initialProfile }: Props) {
             value={profile}
             onChange={setProfile}
             disabled={saving}
+            // First-time users land here with the editor's local state
+            // pre-loaded from DEFAULT_PROFILE — clicking a preset shouldn't
+            // require a confirm. Returning users (with a saved profile)
+            // get the confirm so they don't lose customisations.
+            confirmOnPresetApply={hasExistingProfile}
           />
         )}
 

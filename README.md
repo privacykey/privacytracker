@@ -53,8 +53,7 @@ for setup.
        4. Wayback historical import view
 -->
 
-> 📸 *Screenshots coming soon. In the meantime,
-> [the user guide](https://privacytracker-docs.privacykey.org/quickstart)
+> 📸 *[The user guide](https://privacytracker-docs.privacykey.org/quickstart)
 > walks through every screen.*
 
 ## Learn more

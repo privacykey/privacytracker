@@ -6,6 +6,7 @@ import {
   type ReviewAction,
   type SnoozeDays,
 } from '../../../../../lib/changelog';
+import { readOptionalBoundedJson } from '../../../../../lib/security';
 
 /**
  * POST /api/apps/[id]/acknowledge
@@ -39,10 +40,7 @@ export async function POST(
   // the old caller (fetch without a body) working without a version bump.
   let body: { action?: unknown; snoozeDays?: unknown } = {};
   try {
-    const text = await request.text();
-    if (text.trim()) {
-      body = JSON.parse(text);
-    }
+    body = await readOptionalBoundedJson(request, 2 * 1024, {});
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }

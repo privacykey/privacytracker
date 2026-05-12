@@ -14,6 +14,7 @@ import {
   type NotificationPrefs,
 } from '../../../lib/notification-prefs';
 import type { FlagKey } from '../../../lib/feature-flag-rules';
+import { readBoundedJson } from '../../../lib/security';
 
 /**
  * The flag system tracks four notification types — see the
@@ -104,7 +105,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
+    body = await readBoundedJson(request, 8 * 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }

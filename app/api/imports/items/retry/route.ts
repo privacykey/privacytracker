@@ -6,8 +6,13 @@ import {
   recordItemError,
   recordItemRetry,
   completeImportIfSettled,
+  updateImportItem,
 } from '../../../../../lib/imports';
-import { fetchAndParseApp, AppleRateLimitError } from '../../../../../lib/scraper';
+import {
+  fetchAndParseApp,
+  AppleRateLimitError,
+  searchAppsByName,
+} from '../../../../../lib/scraper';
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
@@ -67,9 +72,68 @@ export async function POST(request: Request) {
   if (!item) {
     return NextResponse.json({ error: `Unknown import item ${itemId}` }, { status: 404 });
   }
+
+  // pending_search rows don't have a URL yet — they're waiting on an
+  // iTunes Search retry. Run the search inline so the user's "Retry"
+  // click does something useful even when their browser tab (with the
+  // client-side QueuedSearchProvider) is closed.
+  if (item.status === 'pending_search') {
+    const queryName = (item.editedQuery && item.editedQuery.trim().length > 0
+      ? item.editedQuery
+      : item.query).trim();
+    console.info(`[ImportRetryItem] search retry — item ${itemId} ← "${queryName}"`);
+    const batch = await searchAppsByName(
+      [{ name: queryName, developer: item.developer ?? undefined }],
+      { country: item.country ?? undefined },
+    );
+    if (batch.rateLimited && batch.rateLimited.queued.length > 0) {
+      // Apple 429'd the lookup again. Keep the row at pending_search with
+      // a fresh backoff so the next retry waits out the cooldown.
+      const retryAfterMs = batch.rateLimited.retryAfterMs;
+      const updated = updateImportItem(item.id, {
+        status: 'pending_search',
+        nextAttemptAt: Date.now() + retryAfterMs,
+        scrapeError: 'iTunes Search rate-limited; will retry later',
+      });
+      console.warn(
+        `[ImportRetryItem] search rate-limit — item ${itemId} got iTunes 429; ` +
+          `next attempt in ${Math.round(retryAfterMs / 1000)}s`,
+      );
+      return NextResponse.json({
+        item: updated,
+        status: 'pending_search',
+        rateLimited: { retryAfterMs },
+      });
+    }
+    const top = batch.results[0]?.candidates[0];
+    if (!top) {
+      console.info(`[ImportRetryItem] search no-match — item ${itemId}`);
+      const updated = updateImportItem(item.id, {
+        status: 'unmatched',
+        scrapeError: 'No match found in iTunes Search',
+        nextAttemptAt: null,
+      });
+      completeImportIfSettled(item.importId);
+      return NextResponse.json({ item: updated, status: 'unmatched' });
+    }
+    console.info(`[ImportRetryItem] search ok — item ${itemId} → "${top.name}"`);
+    const updated = updateImportItem(item.id, {
+      status: 'matched',
+      appId: top.appleId,
+      appName: top.name,
+      developer: top.developer,
+      url: top.url,
+      iconUrl: top.iconUrl,
+      scrapeError: null,
+      nextAttemptAt: null,
+    });
+    return NextResponse.json({ item: updated, status: 'matched' });
+  }
+
   if (!item.url) {
-    // Defensive: a queued row without a URL is unfetchable. Flip it to
-    // error so the row stops re-claiming on every queue tick.
+    // Any other URL-less status (legacy `queued` that pre-dates the
+    // pending_search split, or a malformed row from a broken caller) is
+    // genuinely unfetchable — flip to error so it stops sitting in the queue.
     console.warn(`[ImportRetryItem] item ${itemId} has no URL — flipping to error`);
     const errored = recordItemError(item.id, 'Queued item has no URL to scrape');
     completeImportIfSettled(item.importId);

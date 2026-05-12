@@ -18,7 +18,7 @@
  */
 
 import path from 'path';
-import { dbPath } from './db';
+import db, { dbPath } from './db';
 import type {
   DbWorkerExecuteRequest,
   DbWorkerResponse,
@@ -40,10 +40,88 @@ interface PendingRequest {
   reject: (err: Error) => void;
 }
 
+export interface DbWorkerTimingRecord {
+  /** Epoch ms when the batch finished or failed. */
+  at: number;
+  statementCount: number;
+  chunkSize: number | 'infinity';
+  /** Wall-clock duration observed by the caller, including message passing. */
+  durationMs: number;
+  /** Duration reported by the worker itself; absent for postMessage/spawn failures. */
+  workerDurationMs?: number;
+  totalChanges: number;
+  inline: boolean;
+  outcome: 'ok' | 'error';
+  failedAtIndex?: number;
+  error?: string;
+}
+
+const DIAGNOSTIC_RING_SIZE = 200;
+const diagnosticRing: Array<DbWorkerTimingRecord | undefined> = new Array(DIAGNOSTIC_RING_SIZE);
+let diagnosticWriteIndex = 0;
+let diagnosticTotalCount = 0;
+let diagnosticFailedCount = 0;
+let diagnosticInlineCount = 0;
+
 let cachedWorker: WorkerLike | null = null;
 const pending = new Map<string, PendingRequest>();
 let nextRequestId = 1;
 let workerDisabled = false;
+
+function normaliseChunkSize(chunkSize: number): number | 'infinity' {
+  return Number.isFinite(chunkSize) ? chunkSize : 'infinity';
+}
+
+function recordDbWorkerTiming(record: DbWorkerTimingRecord): void {
+  diagnosticRing[diagnosticWriteIndex % DIAGNOSTIC_RING_SIZE] = record;
+  diagnosticWriteIndex += 1;
+  diagnosticTotalCount += 1;
+  if (record.outcome === 'error') diagnosticFailedCount += 1;
+  if (record.inline) diagnosticInlineCount += 1;
+}
+
+function getRecentDbWorkerTimings(limit = DIAGNOSTIC_RING_SIZE): DbWorkerTimingRecord[] {
+  const wrapped = diagnosticWriteIndex >= DIAGNOSTIC_RING_SIZE;
+  const start = wrapped ? diagnosticWriteIndex % DIAGNOSTIC_RING_SIZE : 0;
+  const liveCount = wrapped ? DIAGNOSTIC_RING_SIZE : diagnosticWriteIndex;
+  const want = Math.min(limit, liveCount);
+  const out: DbWorkerTimingRecord[] = [];
+  for (let i = liveCount - want; i < liveCount; i += 1) {
+    const slot = diagnosticRing[(start + i) % DIAGNOSTIC_RING_SIZE];
+    if (slot) out.push(slot);
+  }
+  return out;
+}
+
+export function snapshotDbWorkerTimings(limit = DIAGNOSTIC_RING_SIZE): {
+  totalSinceStart: number;
+  failedSinceStart: number;
+  inlineSinceStart: number;
+  pendingRequests: number;
+  workerEnabled: boolean;
+  workerCached: boolean;
+  workerDisabled: boolean;
+  recent: DbWorkerTimingRecord[];
+} {
+  return {
+    totalSinceStart: diagnosticTotalCount,
+    failedSinceStart: diagnosticFailedCount,
+    inlineSinceStart: diagnosticInlineCount,
+    pendingRequests: pending.size,
+    workerEnabled: isWorkerEnabled(),
+    workerCached: cachedWorker !== null,
+    workerDisabled,
+    recent: getRecentDbWorkerTimings(limit),
+  };
+}
+
+export function clearDbWorkerTimings(): void {
+  diagnosticRing.fill(undefined);
+  diagnosticWriteIndex = 0;
+  diagnosticTotalCount = 0;
+  diagnosticFailedCount = 0;
+  diagnosticInlineCount = 0;
+}
 
 /**
  * Reasons to skip the worker and run inline: WORKER_DISABLED=1,
@@ -147,8 +225,17 @@ function executeInline(
   statements: DbWorkerStatement[],
   chunkSize: number,
 ): DbWorkerResponse {
-  // Lazy import so the db module (and migrations) only loads on inline path.
-  const db = require('./db').default as import('better-sqlite3').Database;
+  // `db` is statically imported at the top of this file. We used to
+  // `require('./db').default` here under a "lazy load" rationale, but
+  // (a) the static import of `dbPath` above already triggers the
+  // module's side effects (better-sqlite3 connection, CREATE TABLE,
+  // migrations) at load time, so deferral was always cosmetic, and
+  // (b) the `.default` lookup occasionally yielded `undefined` under
+  // Next 16's webpack CJS/ESM interop, manifesting as the runtime
+  // error "Cannot read properties of undefined (reading 'prepare')"
+  // when the worker had been disabled and writes fell through to
+  // this inline path. Using the static import removes the
+  // interop variable from the failure mode.
   if (statements.length === 0) {
     return { kind: 'execute-ok', requestId: 'inline', totalChanges: 0, durationMs: 0 };
   }
@@ -215,14 +302,38 @@ export async function runBulkWrite(
   options: { chunkSize?: number } = {},
 ): Promise<{ totalChanges: number; durationMs: number }> {
   const chunkSize = options.chunkSize ?? 200;
+  const startedAt = performance.now();
+  const statementCount = statements.length;
 
   const worker = getWorker();
   if (!worker) {
     // Inline path. Wrap in a Promise so the API shape stays consistent.
     const response = executeInline(statements, chunkSize);
+    const durationMs = Math.round(performance.now() - startedAt);
     if (response.kind === 'execute-ok') {
+      recordDbWorkerTiming({
+        at: Date.now(),
+        statementCount,
+        chunkSize: normaliseChunkSize(chunkSize),
+        durationMs,
+        workerDurationMs: response.durationMs,
+        totalChanges: response.totalChanges,
+        inline: true,
+        outcome: 'ok',
+      });
       return { totalChanges: response.totalChanges, durationMs: response.durationMs };
     }
+    recordDbWorkerTiming({
+      at: Date.now(),
+      statementCount,
+      chunkSize: normaliseChunkSize(chunkSize),
+      durationMs,
+      totalChanges: 0,
+      inline: true,
+      outcome: 'error',
+      failedAtIndex: response.failedAtIndex,
+      error: response.error.slice(0, 240),
+    });
     const err = new Error(response.error);
     (err as Error & { failedAtIndex: number }).failedAtIndex = response.failedAtIndex;
     throw err;
@@ -231,17 +342,52 @@ export async function runBulkWrite(
   // Worker path. Mint a unique request id and await the matching response.
   const requestId = `req-${nextRequestId++}-${Date.now().toString(36)}`;
   return new Promise((resolve, reject) => {
+    const rejectWithTiming = (err: Error) => {
+      recordDbWorkerTiming({
+        at: Date.now(),
+        statementCount,
+        chunkSize: normaliseChunkSize(chunkSize),
+        durationMs: Math.round(performance.now() - startedAt),
+        totalChanges: 0,
+        inline: false,
+        outcome: 'error',
+        error: err.message.slice(0, 240),
+      });
+      reject(err);
+    };
     pending.set(requestId, {
       resolve: (response) => {
+        const durationMs = Math.round(performance.now() - startedAt);
         if (response.kind === 'execute-ok') {
+          recordDbWorkerTiming({
+            at: Date.now(),
+            statementCount,
+            chunkSize: normaliseChunkSize(chunkSize),
+            durationMs,
+            workerDurationMs: response.durationMs,
+            totalChanges: response.totalChanges,
+            inline: false,
+            outcome: 'ok',
+          });
           resolve({ totalChanges: response.totalChanges, durationMs: response.durationMs });
         } else {
+          recordDbWorkerTiming({
+            at: Date.now(),
+            statementCount,
+            chunkSize: normaliseChunkSize(chunkSize),
+            durationMs,
+            totalChanges: 0,
+            inline: false,
+            outcome: 'error',
+            failedAtIndex: response.failedAtIndex,
+            error: response.error.slice(0, 240),
+          });
           const err = new Error(response.error);
           (err as Error & { failedAtIndex: number }).failedAtIndex = response.failedAtIndex;
           reject(err);
         }
       },
-      reject,
+      reject: rejectWithTiming,
     });
     try {
       worker.postMessage({
@@ -253,7 +399,7 @@ export async function runBulkWrite(
     } catch (err) {
       // postMessage can throw on serialisation failures (e.g. BigInt).
       pending.delete(requestId);
-      reject(err instanceof Error ? err : new Error(String(err)));
+      rejectWithTiming(err instanceof Error ? err : new Error(String(err)));
     }
   });
 }
@@ -273,4 +419,5 @@ export async function _resetDbWorker(): Promise<void> {
   }
   pending.clear();
   workerDisabled = false;
+  clearDbWorkerTimings();
 }

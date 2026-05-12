@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
@@ -70,7 +70,7 @@ export function requireMutationGuard(
     };
   }
 
-  if (requireAdminToken && adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (requireAdminToken && adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: `${options.action}.unauthorised`,
       actorIp,

@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { buildAuditBundle, buildBundleFilename } from '@/lib/audit-bundle';
 import { resolveFlagFromDb } from '@/lib/feature-flags-server';
 import { getActiveFocus } from '@/lib/feature-flag-storage';
+import { readOptionalBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,9 +33,12 @@ interface ExportBody {
 export async function POST(request: NextRequest) {
   let body: ExportBody = {};
   try {
-    body = (await request.json()) as ExportBody;
-  } catch {
-    // Empty body is fine — defaults apply.
+    body = await readOptionalBoundedJson<ExportBody>(request, 4 * 1024, {});
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
+      { status: 400 },
+    );
   }
 
   // Gate: only callable when the bundle export flag is on. Client surfaces

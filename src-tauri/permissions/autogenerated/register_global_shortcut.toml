@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-register-global-shortcut"
+description = "Enables the register_global_shortcut command without any pre-configured scope."
+commands.allow = ["register_global_shortcut"]
+
+[[permission]]
+identifier = "deny-register-global-shortcut"
+description = "Denies the register_global_shortcut command without any pre-configured scope."
+commands.deny = ["register_global_shortcut"]

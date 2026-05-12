@@ -18,6 +18,7 @@ import {
   isSupportedLocale,
   type SupportedLocale,
 } from '@/i18n';
+import { readBoundedJson } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ interface LocaleBody {
 export async function POST(request: NextRequest) {
   let body: Partial<LocaleBody>;
   try {
-    body = await request.json();
+    body = await readBoundedJson<Partial<LocaleBody>>(request, 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }

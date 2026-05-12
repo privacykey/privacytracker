@@ -2,10 +2,20 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { completeImport } from '../../../../lib/imports';
 import { createManualAppsPromptNotification } from '../../../../lib/notifications';
+import { readBoundedJson } from '../../../../lib/security';
 
 export async function POST(request: Request) {
+  let body: Record<string, unknown>;
   try {
-    const body = await request.json();
+    body = await readBoundedJson<Record<string, unknown>>(request, 4 * 1024);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
+      { status: 400 },
+    );
+  }
+
+  try {
     const importId = typeof body?.importId === 'string' ? body.importId.trim() : '';
     if (!importId) {
       return NextResponse.json({ error: 'importId is required' }, { status: 400 });

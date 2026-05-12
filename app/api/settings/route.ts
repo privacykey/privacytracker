@@ -11,7 +11,7 @@ import {
 } from '../../../lib/ai-config';
 import { DEFAULT_COUNTRY, normalizeCountry } from '../../../lib/region';
 import {
-  adminTokenConfigured,
+  adminTokenRequiredForRequest,
   requestHasValidAdminToken,
   readBoundedJson,
   validateExternalUrl,
@@ -21,7 +21,7 @@ import {
   rateLimitKeyForRequest,
 } from '../../../lib/security';
 
-export async function GET() {
+export async function GET(request: Request) {
   // NOTE: ai_api_key is deliberately masked — the settings UI should treat
   // this as "set / not set" rather than a plaintext round-trip. The raw key
   // is still available via the `lib/scheduler` helpers on the server.
@@ -65,7 +65,13 @@ export async function GET() {
     // whether the app detail page, stats page, and grid filter surface the
     // captured data. Default on.
     track_accessibility_labels: getSetting('track_accessibility_labels', 'true') !== 'false',
-    admin_token_required: adminTokenConfigured(),
+    // Epoch ms of the last successful cfgutil-based import. Empty string
+    // means "user has never imported via cfgutil on this machine". The
+    // /onboard device-connect toast is gated on this — without a prior
+    // success we don't subscribe to USB attach events at all, so users
+    // who never use cfgutil don't pay any of its cost.
+    cfgutil_imported_at: getSetting('cfgutil_imported_at', ''),
+    admin_token_required: adminTokenRequiredForRequest(request),
   });
 }
 
@@ -82,7 +88,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  if (adminTokenConfigured() && !requestHasValidAdminToken(request)) {
+  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
     recordAudit({
       action: 'settings.write.unauthorised',
       actorIp,
@@ -230,6 +236,25 @@ export async function POST(request: Request) {
       'track_accessibility_labels',
       body.track_accessibility_labels ? 'true' : 'false',
     );
+  }
+
+  if (body.cfgutil_imported_at !== undefined) {
+    // Accept either a number (epoch ms) or '' to clear. Reject anything
+    // implausibly old or in the future — the value is informational so
+    // we don't need to be strict, but we want to catch obvious junk.
+    const raw = body.cfgutil_imported_at;
+    if (raw === '' || raw === null) {
+      setSetting('cfgutil_imported_at', '');
+    } else {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > Date.now() + 60_000) {
+        return NextResponse.json(
+          { error: 'cfgutil_imported_at must be a recent epoch ms timestamp or empty' },
+          { status: 400 },
+        );
+      }
+      setSetting('cfgutil_imported_at', String(Math.floor(parsed)));
+    }
   }
 
   if (body.policy_scrape_throttle_minutes !== undefined) {

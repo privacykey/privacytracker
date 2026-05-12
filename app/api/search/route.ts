@@ -73,6 +73,27 @@ export async function POST(request: Request) {
         return NextResponse.json({ results: [] });
       }
       const batch = await lookupAppsByBundleId(ids, options);
+
+      // Server-side console log of bundle-IDs that returned nothing.
+      // This is the cfgutil import's primary failure mode: a phone has
+      // sideloaded / region-restricted apps whose bundle IDs don't
+      // resolve against the US App Store iTunes Lookup endpoint, so
+      // the wizard sees them fall through to phase-2 (name search) and
+      // — when names are generic enough — fail there too. Logging here
+      // gives operators a server-side breadcrumb that explains a low
+      // overall match rate without needing the Tauri webview console.
+      // `BundleIdLookupResult` has shape { bundleId, match: AppCandidate | null },
+      // so "unmatched" = match === null.
+      const unmatchedIds = batch.results
+        .filter(r => r.match === null)
+        .map(r => r.bundleId);
+      if (unmatchedIds.length > 0) {
+        console.warn(
+          `[search] bundle-ID lookup found nothing for ${unmatchedIds.length} / ${batch.results.length} ids:`,
+          unmatchedIds,
+        );
+      }
+
       // Mirror the searchAppsByName envelope so the client adapter
       // logic can flow through the same rate-limited handling.
       if (batch.rateLimited) {
@@ -109,6 +130,23 @@ export async function POST(request: Request) {
     }
 
     const batch = await searchAppsByName(queries, options);
+
+    // Server-side console log of unmatched names — mirrors the client
+    // `console.warn` in OnboardWizard's search handler. Important for
+    // headless / Docker deployments where there's no Tauri webview
+    // capturing browser-side logs, so the import history's "57/220
+    // matched" only makes sense if the server log explains which
+    // names dropped out. Logs at warn level; the array is bounded by
+    // the same MAX_IMPORT_ROWS guard the input is.
+    const unmatchedNames = batch.results
+      .filter(r => r.candidates.length === 0)
+      .map(r => r.query);
+    if (unmatchedNames.length > 0) {
+      console.warn(
+        `[search] ${unmatchedNames.length} / ${batch.results.length} names returned no App Store matches:`,
+        unmatchedNames,
+      );
+    }
 
     // If iTunes rate-limited us mid-batch, pass the full picture back so the
     // client can schedule a retry for the queued tail. `results` always

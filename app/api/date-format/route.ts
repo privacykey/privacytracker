@@ -16,6 +16,7 @@ import {
   normaliseDateFormat,
   type DateFormatMode,
 } from '../../../lib/date-format';
+import { readBoundedJson } from '../../../lib/security';
 
 export async function GET() {
   let raw = '';
@@ -31,7 +32,7 @@ export async function GET() {
 export async function POST(request: Request) {
   let body: { mode?: unknown } = {};
   try {
-    body = (await request.json()) as { mode?: unknown };
+    body = await readBoundedJson<{ mode?: unknown }>(request, 1024);
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
   }
