@@ -5,19 +5,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm install            # requires Node 24 LTS (see `engines` in package.json)
-npm run dev            # http://localhost:3000
-npm run build          # production build
-npm start              # serve the production build
-npm run lint           # ESLint flat config for Next 16
-npm run typecheck      # TypeScript without emitting files
-npm test               # focused node:test suite
-npm run lint:i18n      # check locales/*.json key parity against en.json
+pnpm install           # requires Node 24 LTS (see `engines` in package.json) and pnpm 11 (see `packageManager`)
+pnpm dev               # http://localhost:3000
+pnpm build             # production build
+pnpm start             # serve the production build
+pnpm lint              # ESLint flat config for Next 16
+pnpm typecheck         # TypeScript without emitting files
+pnpm test              # focused node:test suite
+pnpm lint:i18n         # check locales/*.json key parity against en.json
 ```
+
+The repo enforces pnpm via `"packageManager": "pnpm@11.0.6"` in
+`package.json` and ships a `pnpm-lock.yaml` / `pnpm-workspace.yaml`. All
+six GitHub workflows run `pnpm install --frozen-lockfile`. Using `npm`
+locally will mostly work against the pnpm lockfile but is unsupported
+and risks drift.
 
 Docker (production): `docker compose up --build -d`. The SQLite DB is bind-mounted at `./data/privacy.db`, so data survives container rebuilds.
 
-The test suite is intentionally small and focused (`npm test`). Container healthchecks hit `GET /api/ready` (DB reachable + data directory writable). `GET /api/health` stays as the simpler liveness probe for uptime checks.
+The test suite is intentionally small and focused (`pnpm test`). Container healthchecks hit `GET /api/ready` (DB reachable + data directory writable). `GET /api/health` stays as the simpler liveness probe for uptime checks.
 
 Separate Python companion tool in `tools/ios-app-import/` (stdlib-only, Python 3.9+): `python3 tools/ios-app-import/export_ios_apps.py --mode backup|device`. It is *not* wired into the Node app — it produces a `.txt`/`.csv` that the user feeds back into the web onboarding flow.
 
@@ -141,7 +147,7 @@ Both pages are server components sharing the `.legal-layout` / `.legal-sidebar` 
 
 **Fonts are self-hosted.** Inter v4.1 (SIL OFL-1.1) ships as two woff2 files in `public/fonts/` — `InterVariable.woff2` + `InterVariable-Italic.woff2`, with `Inter-LICENSE.txt` alongside. `app/globals.css` declares them via `@font-face`; `app/layout.tsx` preloads the upright woff2. No Google Fonts, no CDN round-trip. When you upgrade Inter, download the new release from https://github.com/rsms/inter/releases/latest (or from the mirror at https://registry.npmjs.org/inter-ui — same files, published by rsms), drop the woff2s into `public/fonts/`, refresh `Inter-LICENSE.txt`, and bump the `'Inter typeface'` entry's `version` string in `app/legal/page.tsx`. That entry is the one manual version string on the page — see below.
 
-**Legal page versions are read from `package.json` at build time.** `app/legal/page.tsx` imports `../../package.json` and every dependency entry calls `pkgVersion('pkg-name')` instead of hard-coding a string. The helper pulls from either `dependencies` or `devDependencies`, strips the `^`/`~`/`>=`/etc. range prefix, and throws if the name isn't present — better a failed build than rendering `undefined` on a legal disclosure. So bumping a dep (`npm install next@latest`, etc.) is a one-file change and `/legal` picks up the new version on the next build automatically; **do not** re-edit `app/legal/page.tsx` to change a version string unless you're adding / removing / renaming the entry itself. The one exception is the `'Inter typeface'` entry — Inter isn't an npm dep so its version is still hard-coded; bump it when you refresh the woff2s.
+**Legal page versions are read from `package.json` at build time.** `app/legal/page.tsx` imports `../../package.json` and every dependency entry calls `pkgVersion('pkg-name')` instead of hard-coding a string. The helper pulls from either `dependencies` or `devDependencies`, strips the `^`/`~`/`>=`/etc. range prefix, and throws if the name isn't present — better a failed build than rendering `undefined` on a legal disclosure. So bumping a dep (`pnpm add next@latest`, etc.) is a one-file change and `/legal` picks up the new version on the next build automatically; **do not** re-edit `app/legal/page.tsx` to change a version string unless you're adding / removing / renaming the entry itself. The one exception is the `'Inter typeface'` entry — Inter isn't an npm dep so its version is still hard-coded; bump it when you refresh the woff2s.
 
 **Cross-page deep-link pulse.** `/privacy-policy` links to `/dashboard/settings#ai-summaries` to send users to the AI provider card. `SettingsView`'s hash `useEffect` listens for `#ai-summaries` (alongside the existing `#ai-timeouts` handler) and toggles `.settings-section-pulse` on the target for 1.6 s — reusing the `pmap-card-target-pulse` keyframes so the flash matches Privacy Map and timeline deep-links. If you add another pulse-worthy settings target, extend that single `useEffect` (don't add a parallel one) and add the id to the scroll-margin rule.
 
@@ -149,7 +155,7 @@ Both pages are server components sharing the `.legal-layout` / `.legal-sidebar` 
 
 ## Translations
 
-Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://privacytracker-docs.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `npm run lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
+Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://privacytracker-docs.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
 
 ICU placeholders (`{count, plural, one {# app} other {# apps}}`, `{name}`, etc.) are validated by Crowdin on upload and by `next-intl` at render. Don't strip braces or rename placeholders without coordinating across both bundles. Brand names (privacytracker, App Store, Apple Configurator, ToS;DR, PrivacySpy) stay in English in every locale; they're proper nouns. Module-level English fallback maps in components (e.g. `RISK_LABEL` in HomeView, `CATEGORY_META` in lib/privacy-meta) are intentionally kept after the JSX swapped to translator lookups — they document what the keys mean for future contributors and serve as the safety net when a translator key is missing.
 

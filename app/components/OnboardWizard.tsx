@@ -1382,12 +1382,18 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // Diagnostics: the OCR path has a lot of async hops that can hang
     // silently (tesseract.js dynamic import, WASM download, traineddata
     // fetch, per-image recognize, worker terminate). The hang in the
-    // wild came with zero console output, so this function now narrates
-    // every step with timings. When the user reports "it just spun
-    // forever", the devtools console tells us exactly which phase
-    // stopped emitting — no guessing.
+    // wild came with zero console output, so this function narrates
+    // every step with timings. In dev builds the narration goes to the
+    // devtools console; in production we stay quiet by default but
+    // honour `localStorage.setItem('debug:ocr', '1')` for users who can
+    // be asked to enable it when reporting "it just spun forever".
+    const ocrDebug =
+      process.env.NODE_ENV !== 'production' ||
+      (typeof window !== 'undefined' &&
+        window.localStorage?.getItem('debug:ocr') === '1');
     const t0 = performance.now();
     const mark = (label: string, extra?: Record<string, unknown>) => {
+      if (!ocrDebug) return;
       const ms = Math.round(performance.now() - t0);
       if (extra) {
         console.log(`[ocr] +${ms}ms ${label}`, extra);
@@ -1421,11 +1427,15 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       // networks / strict CSPs / iOS WebKit.
       const worker = await createWorker('eng', 1, {
         logger: (msg: { status?: string; progress?: number; [k: string]: unknown }) => {
+          if (!ocrDebug) return;
           const pct =
             typeof msg.progress === 'number' ? `${Math.round(msg.progress * 100)}%` : '—';
           console.log(`[ocr] tesseract.logger status="${msg.status ?? '?'}" progress=${pct}`, msg);
         },
         errorHandler: (err: unknown) => {
+          // Errors still surface unconditionally — silent failure is
+          // exactly the diagnostic problem the rest of this gating was
+          // introduced to *not* reintroduce.
           console.error('[ocr] tesseract.errorHandler', err);
         },
       });

@@ -550,7 +550,11 @@ export default function DevOptionsFeatureFlagPanel() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'z' && event.key !== 'Z') return;
       if (!(event.metaKey || event.ctrlKey)) return;
-      if (event.shiftKey) return; // redo path; not implemented
+      // Shift+Cmd/Ctrl+Z is left to the browser / OS — we return before
+      // calling preventDefault so an editable element that holds focus
+      // can run its native redo. There is no panel-level redo stack to
+      // pair with this handler's single-step undo, by design.
+      if (event.shiftKey) return;
       const target = event.target as HTMLElement | null;
       if (target) {
         const tag = target.tagName;
