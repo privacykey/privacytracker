@@ -1199,6 +1199,20 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
 
       const selectedDevice = devices.find(device => device.ecid === targetEcid);
       const result = await runCfgutilExport(targetEcid);
+      // Record that cfgutil was successfully used at least once on this
+      // install. The device-connect toast on /onboard subscribes to USB
+      // attach events only when this flag is set — keeps the cost off
+      // users who never adopted the cfgutil workflow.
+      if (result.apps.length > 0) {
+        void fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cfgutil_imported_at: Date.now() }),
+        }).catch(() => {
+          // Non-fatal — the import succeeded; the gate just stays off
+          // until the next successful cfgutil run.
+        });
+      }
       if (result.apps.length === 0) {
         setCfgutilError(
           result.deviceCount === 0

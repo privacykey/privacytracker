@@ -35,6 +35,7 @@ mod shortcuts;
 mod deep_link;
 mod diagnostics;
 mod cfgutil;
+mod usb_watcher;
 mod app_menu;
 #[cfg(target_os = "macos")]
 mod touch_id;
@@ -290,6 +291,15 @@ fn main() {
             // 9. Wire up the deep-link handler so privacytracker://app/<id>
             //    routes to the right detail page inside the webview.
             deep_link::install(app.handle(), boot.base_url.clone());
+
+            // 10. Start the IOKit USB watcher. Emits `cfgutil:device-connected`
+            //     events whenever an iPhone/iPad attaches. The toast on
+            //     /onboard subscribes and is gated behind the
+            //     `cfgutil_imported_at` flag so users who never used cfgutil
+            //     never see it. Replaces the previous 5s-poll loop in
+            //     DeviceConnectedToast that was blocking the apps-page
+            //     navigation. No-op outside macOS.
+            usb_watcher::start(app.handle().clone());
 
             // Restore persisted Dock visibility choice. Read from the same
             // /api/settings endpoint the UI uses, so the source of truth
