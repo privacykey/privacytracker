@@ -26,11 +26,13 @@ export async function GET(request: Request) {
   // this as "set / not set" rather than a plaintext round-trip. The raw key
   // is still available via the `lib/scheduler` helpers on the server.
   const storedKey = getSetting('ai_api_key', '');
+  const storedCountry = getSetting('app_country', '');
   return NextResponse.json({
     sync_schedule:   getSetting('sync_schedule', 'manual'),
     last_auto_sync:  getSetting('last_auto_sync', '0'),
     sync_running:    getSetting('sync_running',   'false'),
-    app_country:     getSetting('app_country', DEFAULT_COUNTRY),
+    app_country:     storedCountry || DEFAULT_COUNTRY,
+    app_country_explicit: !!storedCountry,
     ai_provider:     normalizeAiProvider(getSetting('ai_provider', 'disabled')),
     ai_api_key:      storedKey ? '__SET__' : '',
     ai_api_key_set:  !!storedKey,
@@ -65,6 +67,9 @@ export async function GET(request: Request) {
     // whether the app detail page, stats page, and grid filter surface the
     // captured data. Default on.
     track_accessibility_labels: getSetting('track_accessibility_labels', 'true') !== 'false',
+    // Review-queue progress bar visibility. Read by the Apps page server
+    // route to thread into AppGrid → ReviewQueue. Default on.
+    queue_show_progress_bar: getSetting('queue_show_progress_bar', 'true') !== 'false',
     // Epoch ms of the last successful cfgutil-based import. Empty string
     // means "user has never imported via cfgutil on this machine". The
     // /onboard device-connect toast is gated on this — without a prior
@@ -235,6 +240,13 @@ export async function POST(request: Request) {
     setSetting(
       'track_accessibility_labels',
       body.track_accessibility_labels ? 'true' : 'false',
+    );
+  }
+
+  if (body.queue_show_progress_bar !== undefined) {
+    setSetting(
+      'queue_show_progress_bar',
+      body.queue_show_progress_bar ? 'true' : 'false',
     );
   }
 

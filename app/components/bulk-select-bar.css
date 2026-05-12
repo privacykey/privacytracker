@@ -1,0 +1,207 @@
+/* Bulk-select bar styles — co-located with BulkSelectBar.tsx for the
+ * same Turbopack-hot-reload reason as review-queue.css. Tokens match
+ * the codebase's actual variables (--blue, --text, --surface, …) so
+ * dark mode inherits cleanly; hex values are fallbacks only.
+ *
+ * Includes:
+ *   - .bulk-select-bar*       — the sticky toolbar
+ *   - .bulk-select-action*    — the three verdict CTAs
+ *   - .bulk-select-undo-toast — the post-apply Undo toast
+ *   - .app-card-bulk-*        — the per-card chrome AppGrid renders
+ *                                when in Select mode (these globally
+ *                                apply once this file loads, which is
+ *                                exactly when the user enters Select).
+ */
+
+.bulk-select-bar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  margin: 16px 0;
+  border-radius: 14px;
+  background: var(--blue-dim, #eff6ff);
+  border: 1px solid var(--blue, #2563eb);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+}
+.bulk-select-bar.is-empty {
+  /* Muted treatment until the user actually picks something — keeps the
+     headline obvious but doesn't shout that bulk actions are ready. */
+  background: var(--surface, #f9fafb);
+  border-color: var(--border-strong, #c7cdd6);
+}
+
+.bulk-select-bar-headline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bulk-select-bar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue, #2563eb);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.bulk-select-bar.is-empty .bulk-select-bar-icon {
+  background: var(--border-strong, #9ca3af);
+  color: var(--surface, #fff);
+}
+.bulk-select-bar-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1f2937);
+}
+.bulk-select-bar-exit {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  color: var(--text, #1f2937);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 120ms, border-color 120ms;
+}
+.bulk-select-bar-exit:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.bulk-select-bar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.bulk-select-action {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1.5px solid currentColor;
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms, background 120ms, opacity 120ms;
+}
+.bulk-select-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.bulk-select-action:disabled {
+  /* Heavier muting than browser default so the buttons read clearly as
+     "not yet" when nothing is selected. */
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: transparent;
+  border-style: dashed;
+}
+.bulk-select-action-icon { font-size: 14px; }
+.bulk-select-action-safe { color: #15803d; }
+.bulk-select-action-safe:hover:not(:disabled) { background: #f0fdf4; }
+.bulk-select-action-replace { color: #c2410c; }
+.bulk-select-action-replace:hover:not(:disabled) { background: #fff7ed; }
+.bulk-select-action-uninstall { color: #b91c1c; }
+.bulk-select-action-uninstall:hover:not(:disabled) { background: #fef2f2; }
+
+.bulk-select-bar-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.85;
+}
+.bulk-select-bar-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--blue, #2563eb);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.bulk-select-bar-hint { font-style: italic; }
+.bulk-select-visible-hint { display: none; }
+
+/* Undo toast — appears for 30s after a bulk apply. */
+.bulk-select-undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 60;
+}
+.bulk-select-undo-toast-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #93c5fd;
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+/* App-card chrome — applies to AppGrid's cards while Select mode is on.
+   The styles only matter when BulkSelectBar is mounted (i.e. mode === 'select'),
+   so co-locating here is fine. */
+.app-card-bulk-selectable { cursor: pointer; }
+.app-card-bulk-selectable .app-card-link { cursor: pointer; }
+.app-card-bulk-selected {
+  outline: 3px solid var(--blue, #2563eb);
+  outline-offset: -2px;
+}
+.app-card-bulk-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface, #fff);
+  border: 2px solid var(--blue, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue, #2563eb);
+  z-index: 5;
+}
+.app-card-bulk-check.is-checked {
+  background: var(--blue, #2563eb);
+  color: #fff;
+}

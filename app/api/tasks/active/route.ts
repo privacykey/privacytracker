@@ -35,6 +35,7 @@ interface ActiveJobView {
   running: boolean;
   mutexHeld: boolean;
   stale: boolean;
+  status?: string;
   initiator: 'manual' | 'scheduled' | 'automatic' | 'resume' | null;
   currentAppName: string | null;
   /** Same shape as each runner's per-status counts. */
@@ -69,6 +70,7 @@ function viewWayback(): ActiveJobView {
     running: info.running,
     mutexHeld: info.mutexHeld,
     stale: info.stale,
+    status: info.status,
     initiator: info.state?.initiator ?? null,
     currentAppName: info.currentAppName,
     summary: info.summary,

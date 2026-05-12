@@ -1,0 +1,690 @@
+/* Review-queue styles — co-located with ReviewQueue.tsx so Turbopack
+ * reliably tracks CSS changes alongside the component. The 26k-line
+ * globals.css was getting stale hot-reload bundles in Next 16's
+ * Turbopack, leaving newly-added rules unbundled until a full restart.
+ * Splitting these out fixes that. Class names are global (no module
+ * hashing) so AppGrid.tsx + BulkSelectBar.tsx selectors still match.
+ *
+ * NOTE: kept the SAME class names as the original globals.css versions
+ * so the JSX doesn't change. We just removed the duplicates from
+ * globals.css.
+ */
+
+/* ── Preflight modal ────────────────────────── */
+.review-queue-preflight-overlay {
+  z-index: 50;
+}
+.review-queue-preflight-card {
+  max-width: 460px;
+  width: min(460px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+}
+.review-queue-preflight-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.review-queue-preflight-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+.review-queue-preflight-guardian-note {
+  margin: 4px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface, #f3f4f6);
+  font-size: 13px;
+  color: var(--text, #1f2937);
+}
+.review-queue-preflight-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.review-queue-scope-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.review-queue-scope-card {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 14px 12px;
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  font: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text, #1f2937);
+  transition: border-color 120ms, background 120ms, color 120ms;
+}
+.review-queue-scope-card:hover:not(:disabled) {
+  border-color: var(--border-strong, #9ca3af);
+}
+.review-queue-scope-card.is-active {
+  border-color: var(--blue, #2563eb);
+  background: var(--blue-dim, #eff6ff);
+  color: var(--blue, #1d4ed8);
+  font-weight: 600;
+}
+.review-queue-scope-card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.review-queue-scope-description {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface, #f9fafb);
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  min-height: 32px;
+  line-height: 1.45;
+  opacity: 0.85;
+}
+
+.review-queue-preflight-advanced {
+  border-top: 1px solid var(--border, #e5e7eb);
+  padding-top: 12px;
+}
+.review-queue-preflight-advanced > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #6b7280);
+  padding: 4px 0;
+  list-style: none;
+  user-select: none;
+  opacity: 0.75;
+}
+.review-queue-preflight-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+.review-queue-preflight-advanced > summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  transition: transform 120ms;
+}
+.review-queue-preflight-advanced[open] > summary::before {
+  transform: rotate(90deg);
+}
+.review-queue-preflight-advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+}
+.review-queue-preflight-advanced-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.review-queue-preflight-advanced-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text, #6b7280);
+  min-width: 60px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.review-queue-preflight-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+.review-queue-preflight-pill {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 5px 11px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text, #1f2937);
+  transition: border-color 120ms, background 120ms, color 120ms;
+}
+.review-queue-preflight-pill:hover:not(:disabled) {
+  border-color: var(--border-strong, #9ca3af);
+}
+.review-queue-preflight-pill.is-active {
+  border-color: var(--blue, #2563eb);
+  background: var(--blue-dim, #eff6ff);
+  color: var(--blue, #1d4ed8);
+  font-weight: 600;
+}
+.review-queue-preflight-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.review-queue-preflight-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text, #6b7280);
+  font-style: italic;
+  opacity: 0.7;
+}
+.review-queue-preflight-count {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #1f2937);
+}
+.review-queue-preflight-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ── Full-screen takeover wrapper ──────────── */
+.review-queue-fullscreen {
+  position: fixed;
+  /* Sit BELOW the global Nav so the user keeps their site-wide chrome
+     (back-to-dashboard, notifications, etc.). --nav-h is defined in
+     globals.css :root; fallback matches the Nav's compiled height. */
+  top: var(--nav-h, 60px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Above modal-overlay (50) and compare-dock so nothing the user might
+     have left open behind the queue can swallow clicks. Still below
+     any layer >= 200 (we have none today). */
+  z-index: 100;
+  background: var(--bg, #f9fafb);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+}
+.review-queue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+}
+.review-queue-header-left,
+.review-queue-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.review-queue-progress {
+  font-weight: 600;
+  font-size: 14px;
+}
+.review-queue-batch-progress {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.75;
+}
+.review-queue-progress-bar {
+  flex: 1;
+  max-width: 320px;
+  height: 6px;
+  margin: 0 16px;
+  background: var(--surface-hover, #e5e7eb);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.review-queue-progress-bar-fill {
+  height: 100%;
+  background: var(--blue, #2563eb);
+  border-radius: 999px;
+  transition: width 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.review-queue-header-btn {
+  background: transparent;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: inherit;
+}
+.review-queue-header-btn:hover {
+  background: var(--surface-hover, #f3f4f6);
+}
+
+/* Close pill — sits inside the header's right group, next to Undo.
+   Labeled `✕ Close` so it doesn't depend on icon recognition. */
+.review-queue-close {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong, #c7cdd6);
+  background: var(--surface, #fff);
+  color: var(--text, #1f2937);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.review-queue-close-icon { font-size: 14px; font-weight: 700; }
+.review-queue-close:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+.review-queue-close:focus-visible {
+  outline: 2px solid var(--blue, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Prominent close pill — icon + visible "Close" label so it doesn't
+   rely on iconography alone. Sized large enough to read at a glance
+   from anywhere in the takeover view. */
+.review-queue-close {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px 9px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong, #c7cdd6);
+  background: var(--surface, #fff);
+  color: var(--text, #1f2937);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 120ms, border-color 120ms, color 120ms, transform 120ms;
+}
+.review-queue-close-icon {
+  font-size: 16px;
+  font-weight: 700;
+}
+.review-queue-close-label {
+  font-size: 13px;
+}
+.review-queue-close:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+  transform: scale(1.03);
+}
+.review-queue-close:focus-visible {
+  outline: 2px solid var(--blue, #2563eb);
+  outline-offset: 2px;
+}
+
+/* ── Card stage + card ─────────────────────── */
+.review-queue-card-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 24px;
+  position: relative;
+}
+.review-queue-card {
+  width: min(420px, calc(100vw - 48px));
+  background: var(--surface, #fff);
+  border-radius: 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  box-shadow: var(--shadow-md, 0 10px 30px rgba(0, 0, 0, 0.08));
+  padding: 24px;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transform-origin: center bottom;
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.review-queue-card-stage.is-dragging .review-queue-card {
+  cursor: grabbing;
+  transition: none;
+}
+.review-queue-card-stage.is-exiting .review-queue-card {
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.6, 1);
+}
+.review-queue-card-stage.is-reduced-motion .review-queue-card {
+  transition: none !important;
+}
+.review-queue-card-icon-wrap {
+  display: flex;
+  justify-content: center;
+}
+.review-queue-card-icon {
+  border-radius: 18px;
+  object-fit: cover;
+}
+.review-queue-card-icon-placeholder {
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+  background: var(--surface-hover, #f3f4f6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+.review-queue-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  position: relative;
+}
+.review-queue-card-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.review-queue-card-developer {
+  font-size: 13px;
+  opacity: 0.7;
+}
+.review-queue-card-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.review-queue-card-mismatch {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.review-queue-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.review-queue-card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--surface-hover, #f3f4f6);
+  border: 1px solid var(--border, #e5e7eb);
+}
+.review-queue-card-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.review-queue-card-chip-track { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+.review-queue-card-chip-linked { color: #c2410c; background: #fff7ed; border-color: #fed7aa; }
+.review-queue-card-chip-unlinked { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }
+.review-queue-card-categories-empty {
+  font-size: 12px;
+  opacity: 0.6;
+  font-style: italic;
+}
+.review-queue-card-detail-link {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.6;
+}
+.review-queue-card-detail-link:hover {
+  color: var(--blue, #2563eb);
+  border-color: var(--blue, #2563eb);
+  opacity: 1;
+}
+
+/* Direction overlays — fade in as the card drags. */
+.review-queue-card-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  border: 4px solid currentColor;
+  padding: 12px 24px;
+  border-radius: 12px;
+}
+.overlay-left  { color: #b91c1c; }
+.overlay-right { color: #15803d; }
+.overlay-up    { color: #c2410c; }
+.overlay-down  { color: #4b5563; }
+.review-queue-card-stage.is-left  .overlay-left  { opacity: 1; }
+.review-queue-card-stage.is-right .overlay-right { opacity: 1; }
+.review-queue-card-stage.is-up    .overlay-up    { opacity: 1; }
+.review-queue-card-stage.is-down  .overlay-down  { opacity: 1; }
+
+/* ── Note overlay ──────────────────────────── */
+.review-queue-note-overlay {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--surface-hover, #f3f4f6);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.review-queue-note-textarea {
+  width: 100%;
+  min-height: 60px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  background: var(--surface, #fff);
+  color: inherit;
+}
+.review-queue-note-hint {
+  margin: 0;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ── Action bar ────────────────────────────── */
+.review-queue-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.review-queue-action {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 18px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+  min-width: 90px;
+  font: inherit;
+  font-weight: 500;
+  font-size: 13px;
+  color: inherit;
+  transition: transform 120ms, border-color 120ms, background 120ms;
+}
+.review-queue-action:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong, #9ca3af);
+}
+.review-queue-action[aria-pressed="true"] {
+  background: var(--blue-dim, #eff6ff);
+  border-color: var(--blue, #2563eb);
+}
+.review-queue-action kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  padding: 2px 5px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--surface-hover, #f3f4f6);
+  opacity: 0.7;
+}
+.review-queue-action-uninstall { color: #b91c1c; }
+.review-queue-action-uninstall:hover { background: #fef2f2; border-color: #fecaca; }
+.review-queue-action-safe { color: #15803d; }
+.review-queue-action-safe:hover { background: #f0fdf4; border-color: #bbf7d0; }
+.review-queue-action-replace { color: #c2410c; }
+.review-queue-action-replace:hover { background: #fff7ed; border-color: #fed7aa; }
+.review-queue-action-note { color: #4b5563; }
+
+/* Skip — de-emphasised secondary action below the four primaries.
+   Stays one click/key away but doesn't compete for visual attention. */
+.review-queue-skip {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text, #6b7280);
+  opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  margin-top: 4px;
+  transition: opacity 120ms, border-color 120ms;
+}
+.review-queue-skip:hover {
+  opacity: 1;
+  border-color: var(--border-strong, #9ca3af);
+}
+.review-queue-skip kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--surface-hover, #f3f4f6);
+}
+
+/* ── Toast inside the queue ────────────────── */
+.review-queue-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  z-index: 60;
+}
+
+/* ── Summary screen ────────────────────────── */
+.review-queue-summary-wrap {
+  align-items: center;
+  justify-content: center;
+}
+.review-queue-summary {
+  max-width: 480px;
+  width: min(480px, calc(100vw - 32px));
+  background: var(--surface, #fff);
+  border-radius: 16px;
+  border: 1px solid var(--border, #e5e7eb);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: center;
+}
+.review-queue-summary-title {
+  margin: 0;
+  font-size: 24px;
+}
+.review-queue-summary-counts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.review-queue-summary-count {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.review-queue-summary-count.count-safe { background: #f0fdf4; color: #15803d; }
+.review-queue-summary-count.count-replace { background: #fff7ed; color: #c2410c; }
+.review-queue-summary-count.count-uninstall { background: #fef2f2; color: #b91c1c; }
+.review-queue-summary-count.count-notes { background: #f3f4f6; color: #1f2937; }
+.review-queue-summary-count.count-skipped { background: #f9fafb; color: #6b7280; font-style: italic; }
+.review-queue-summary-cfgutil {
+  border: 1px dashed var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.review-queue-summary-cfgutil-title {
+  margin: 0;
+  font-size: 16px;
+}
+.review-queue-summary-cfgutil-body {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+.review-queue-summary-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

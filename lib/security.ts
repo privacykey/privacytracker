@@ -264,6 +264,8 @@ export interface SafeFetchOptions {
   resolveAndCheck?: boolean;
   /** Headers to add. Note: fetch already supplies the defaults. */
   headers?: Record<string, string>;
+  /** Optional caller-controlled abort signal, composed with the timeout. */
+  signal?: AbortSignal;
   /** 'follow' (default) | 'error' | 'manual'. */
   redirect?: RequestRedirect;
   /** Hard cap on the number of redirects when redirect is 'follow'. */
@@ -309,6 +311,7 @@ export async function safeFetch(
   const timeoutMs = options.timeoutMs ?? 15_000;
   const maxRedirects = options.maxRedirects ?? 5;
   const redirect: RequestRedirect = options.redirect ?? 'manual';
+  const signal = withTimeoutSignal(timeoutMs, options.signal);
 
   let currentUrl = url.toString();
   let redirectsUsed = 0;
@@ -316,12 +319,12 @@ export async function safeFetch(
   // We follow redirects manually so we can re-validate every hop's hostname.
   // This defends against an initial allowlisted URL 302-ing to an internal IP.
   while (true) {
-    const res = await fetch(currentUrl, {
-      method: 'GET',
-      headers: options.headers,
-      redirect: 'manual',
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+	    const res = await fetch(currentUrl, {
+	      method: 'GET',
+	      headers: options.headers,
+	      redirect: 'manual',
+	      signal,
+	    });
 
     if (redirect === 'follow' && res.status >= 300 && res.status < 400) {
       const location = res.headers.get('location');
@@ -357,6 +360,11 @@ export async function safeFetch(
 
     return readBounded(res, currentUrl, maxBytes);
   }
+}
+
+function withTimeoutSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 }
 
 async function readBounded(

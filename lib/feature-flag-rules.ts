@@ -101,7 +101,15 @@ export type FlagKey =
   | 'flag.appgrid.card.risk_chips'
   | 'flag.appgrid.card.resync_button'
   | 'flag.appgrid.card.delete_button'
+  | 'flag.appgrid.card.verdict_pill'
   | 'flag.appgrid.empty_state'
+  // Review-queue mode (Tinder-style sequential verdict picker over the
+  // currently-filtered grid). Master flag gates the [Queue] mode toggle and
+  // the carousel + preflight UI; sub-flags gate bulk select and the
+  // end-of-session cfgutil offer independently.
+  | 'flag.appgrid.review_queue.enabled'
+  | 'flag.appgrid.review_queue.bulk_select'
+  | 'flag.appgrid.review_queue.cfgutil_uninstall'
 
   // ----- App Detail — privacy labels
   | 'flag.detail.labels.cards'
@@ -367,7 +375,11 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   'flag.appgrid.card.risk_chips':                'on',         // track/linked/unlinked mini-chips
   'flag.appgrid.card.resync_button':             'on',         // per-card refresh
   'flag.appgrid.card.delete_button':             'on',         // per-card delete
+  'flag.appgrid.card.verdict_pill':              'on',         // per-card user verdict pill (Safe/Replace/Uninstall)
   'flag.appgrid.empty_state':                    'on',         // empty/filter-miss CTA
+  'flag.appgrid.review_queue.enabled':           'on',         // master — Tinder-style verdict carousel
+  'flag.appgrid.review_queue.bulk_select':       'on',         // bulk-mark mode toggle
+  'flag.appgrid.review_queue.cfgutil_uninstall': 'off',        // Tauri-only end-of-session offer; opt-in
 
   // App Detail — privacy labels
   'flag.detail.labels.cards':                    'on',         // expandable label-type cards
@@ -725,6 +737,8 @@ export const GOAL_RULES: Record<PrimaryGoal, Partial<Record<FlagKey, FlagValue>>
     'flag.dashboard.annotation_banner':       'off',     // ditto
     'flag.appgrid.card.annotation_highlight': 'off',     // ditto
     'flag.devopts.feature_flag_presets':      'off',     // simpler surface — no preset workflow
+    'flag.appgrid.review_queue.enabled':      'off',     // simpler grid; bulk verdict UI hidden
+    'flag.appgrid.review_queue.bulk_select':  'off',
   },
 };
 
@@ -798,6 +812,10 @@ export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
 
   // Notification bell sub-flags
   'flag.notifications.bell.polling':               'flag.notifications.bell',
+
+  // Review queue sub-flags chain off the master
+  'flag.appgrid.review_queue.bulk_select':         'flag.appgrid.review_queue.enabled',
+  'flag.appgrid.review_queue.cfgutil_uninstall':   'flag.appgrid.review_queue.enabled',
 
   // Stats viz depend on the page
   'flag.stats.viz.heatmap':                        'flag.page.stats',

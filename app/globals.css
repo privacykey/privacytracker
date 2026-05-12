@@ -4337,6 +4337,126 @@ html[data-theme-override="high-contrast"] .nav {
 /* Search result confirm list */
 .search-result-list { display: flex; flex-direction: column; gap: 12px; }
 
+.onboard-match-toolbar,
+.onboard-match-summary,
+.onboard-match-section {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.onboard-match-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  margin: 16px 0 12px;
+}
+
+.onboard-match-toolbar-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.onboard-match-toolbar-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.onboard-match-region-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.onboard-match-region-controls .settings-select {
+  min-width: 210px;
+}
+
+.onboard-match-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.onboard-match-summary span {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: var(--r-full);
+  background: var(--surface-active);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.onboard-match-section {
+  padding: 12px;
+}
+
+.onboard-match-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.onboard-match-section-header h2 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.onboard-match-section-header p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.onboard-match-section-header > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: var(--r-full);
+  background: var(--blue-dim);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onboard-match-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 700px) {
+  .onboard-match-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .onboard-match-region-controls {
+    justify-content: flex-start;
+  }
+  .onboard-match-region-controls .settings-select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 .search-result-item {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
@@ -4470,6 +4590,36 @@ html[data-theme-override="high-contrast"] .nav {
   white-space: nowrap;
 }
 
+.search-result-method,
+.search-result-pending,
+.candidate-bundle-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.search-result-method {
+  background: var(--surface-active);
+  color: var(--text-2);
+}
+
+.search-result-pending {
+  background: var(--orange-dim);
+  color: var(--orange);
+}
+
+.search-result-pending-body {
+  border-left: 3px solid var(--orange);
+  padding-left: 10px;
+}
+
 /* Inline "Seller: X" chip shown on unselected blocks whose CSV row carried
  * a developer hint. Low-key styling so it doesn't compete with the query. */
 .search-result-hint {
@@ -4583,6 +4733,15 @@ html[data-theme-override="high-contrast"] .nav {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.candidate-bundle-warning {
+  margin-left: 8px;
+  padding: 1px 7px;
+  background: var(--orange-dim);
+  color: var(--orange);
+  font-size: 10px;
   vertical-align: middle;
 }
 
@@ -5688,15 +5847,45 @@ html[data-theme-override="high-contrast"] .nav {
   border-radius: 999px;
   background: color-mix(in srgb, var(--blue, #3b82f6) 12%, transparent);
 }
+/* Suggestion-mode dropdown. Styled to read clearly as a control —
+   tighter padding hid that it was selectable, especially on dark
+   backgrounds where the border melted into the surface. Now sized
+   like a real .btn-secondary, with an explicit chevron and visible
+   hover/focus states. */
 .compare-related-mode-select {
   margin-left: auto;
-  background: var(--surface);
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--surface);
+  /* Inline chevron so the dropdown looks selectable even with native
+     appearance stripped. Two-line SVG keeps stroke crisp on retina. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%23a0a0b0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: 7px 32px 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
   font-family: inherit;
+  cursor: pointer;
+  line-height: 1.3;
+  min-height: 32px;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+.compare-related-mode-select:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--blue) 50%, var(--border));
+  background-color: color-mix(in srgb, var(--blue) 4%, var(--surface));
+}
+.compare-related-mode-select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-color: var(--blue);
+}
+.compare-related-mode-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .compare-related-body {
   margin-top: 10px;
@@ -26289,3 +26478,6 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   font-size: 12px;
   color: var(--red);
 }
+
+
+
