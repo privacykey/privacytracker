@@ -216,10 +216,16 @@ export default function PrivacyHeatmap() {
         axisTick:  { show: false },
         splitArea: { show: false },
       },
-      // No visualMap — cells carry their own itemStyle.color, which renders
-      // reliably across Chrome/Safari/Firefox. visualMap's default dimension
-      // picking was colouring-by-severity-string on non-Chromium engines and
-      // silently falling back to the theme's default colour.
+      // ECharts 6 strictly requires `visualMap` on every heatmap series
+      // ("Heatmap must use with visualMap"). On 5.6 we could omit it
+      // because each cell sets its own itemStyle.color. We still want
+      // per-cell colors (visualMap's auto-dimension picking was painting
+      // by severity-string on non-Chromium engines and silently falling
+      // back to the theme's default colour), so we add a hidden visualMap
+      // here purely to satisfy the validator — `show: false` keeps the
+      // legend out of the DOM, and per-cell itemStyle.color overrides
+      // any colour visualMap might try to assign.
+      visualMap: { show: false, min: 0, max: 3, seriesIndex: 0 },
       series: [{
         type: 'heatmap',
         data: cells,

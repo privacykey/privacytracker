@@ -90,3 +90,41 @@ export function normalizeCountry(input: unknown): string {
 export function countryLabel(code: string): string {
   return COUNTRY_OPTIONS.find(o => o.code === code)?.label ?? code.toUpperCase();
 }
+
+/**
+ * Best-effort client-side storefront inference for first-run onboarding.
+ * Locale wins when it includes a supported region subtag; timezone fills in
+ * common cases where browsers report a generic language such as "en".
+ */
+export function inferCountryFromLocale(locale?: string | null, timeZone?: string | null): string | null {
+  const localeRegion = typeof locale === 'string'
+    ? locale.trim().split(/[-_]/).at(1)?.toLowerCase()
+    : null;
+  if (localeRegion && VALID_CODES.has(localeRegion)) return localeRegion;
+
+  const tz = typeof timeZone === 'string' ? timeZone : '';
+  const timeZoneHints: Array<[RegExp, string]> = [
+    [/^Australia\//, 'au'],
+    [/^Pacific\/Auckland$/, 'nz'],
+    [/^Europe\/London$/, 'gb'],
+    [/^Europe\/Dublin$/, 'ie'],
+    [/^Europe\/Berlin$/, 'de'],
+    [/^Europe\/Paris$/, 'fr'],
+    [/^Europe\/Rome$/, 'it'],
+    [/^Europe\/Madrid$/, 'es'],
+    [/^Europe\/Amsterdam$/, 'nl'],
+    [/^America\/Toronto$|^America\/Vancouver$|^America\/Montreal$/, 'ca'],
+    [/^America\/Mexico_City$/, 'mx'],
+    [/^America\/Sao_Paulo$/, 'br'],
+    [/^Asia\/Tokyo$/, 'jp'],
+    [/^Asia\/Seoul$/, 'kr'],
+    [/^Asia\/Singapore$/, 'sg'],
+    [/^Asia\/Shanghai$/, 'cn'],
+    [/^Asia\/Hong_Kong$/, 'hk'],
+    [/^Asia\/Taipei$/, 'tw'],
+  ];
+  for (const [pattern, code] of timeZoneHints) {
+    if (pattern.test(tz) && VALID_CODES.has(code)) return code;
+  }
+  return null;
+}

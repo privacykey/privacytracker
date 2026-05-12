@@ -627,22 +627,28 @@ export default function CompareAppsView({
         if (!hasContext) return null;
 
         const sourceName = sourceApp?.name ?? '';
+        // State-aware header: when the shortlist is empty, the
+        // "Already shortlisted for X" copy is misleading (nothing has
+        // been shortlisted yet). Swap to the empty-state phrasing so
+        // the panel header matches its body.
+        const isEmpty = entriesForSource.length === 0;
+        const headerLabel = isEmpty
+          ? sourceName
+            ? tCompare('source_shortlist_label_empty', { name: sourceName })
+            : tCompare('source_shortlist_label_empty_unknown')
+          : sourceName
+            ? tCompare('source_shortlist_label', { name: sourceName })
+            : tCompare('source_shortlist_label_unknown');
 
         return (
           <section
             className="compare-source-shortlist"
-            aria-label={
-              sourceName
-                ? tCompare('source_shortlist_label', { name: sourceName })
-                : tCompare('source_shortlist_label_unknown')
-            }
+            aria-label={headerLabel}
           >
             <div className="compare-source-shortlist-head">
               <span className="compare-source-shortlist-icon" aria-hidden="true">★</span>
               <span className="compare-source-shortlist-label">
-                {sourceName
-                  ? tCompare('source_shortlist_label', { name: sourceName })
-                  : tCompare('source_shortlist_label_unknown')}
+                {headerLabel}
               </span>
               {entriesForSource.length > 0 && (
                 <span
@@ -1288,23 +1294,18 @@ function RelatedAppsPanel({
 
   // Fetch lazily on first open + whenever the source app or the
   // selected mode changes. Closing the panel preserves the cached
-  // data so re-opening is instant.
+  // data so re-opening is instant. Both modes hit the same endpoint;
+  // the `mode` query string controls which Apple feed gets queried
+  // server-side.
   useEffect(() => {
     if (!open) return;
-    if (mode !== 'top_in_category') {
-      // Other modes aren't wired yet — clear the panel state so the
-      // disabled hint shows cleanly without stale data.
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
     const ctrl = new AbortController();
     setLoading(true);
     setError(null);
-    fetch(`/api/related-apps?sourceAppId=${encodeURIComponent(sourceAppId)}&limit=5`, {
-      signal: ctrl.signal,
-    })
+    fetch(
+      `/api/related-apps?sourceAppId=${encodeURIComponent(sourceAppId)}&mode=${mode}&limit=5`,
+      { signal: ctrl.signal },
+    )
       .then(async r => {
         const body = await r.json();
         if (!r.ok) throw new Error(body?.error ?? `HTTP ${r.status}`);
@@ -1354,8 +1355,8 @@ function RelatedAppsPanel({
             <option value="top_in_category">
               {tCompare('related_mode_top_in_category')}
             </option>
-            <option value="may_also_like" disabled>
-              {tCompare('related_mode_may_also_like_disabled')}
+            <option value="may_also_like">
+              {tCompare('related_mode_may_also_like')}
             </option>
           </select>
         )}
@@ -1363,21 +1364,24 @@ function RelatedAppsPanel({
 
       {open && (
         <div className="compare-related-body">
-          {mode === 'may_also_like' && (
+          {loading && (
             <p className="compare-related-empty">
-              {tCompare('related_mode_may_also_like_hint')}
+              {mode === 'may_also_like'
+                ? tCompare('related_loading_may_also_like')
+                : tCompare('related_loading')}
             </p>
           )}
-          {mode === 'top_in_category' && loading && (
-            <p className="compare-related-empty">{tCompare('related_loading')}</p>
-          )}
-          {mode === 'top_in_category' && !loading && error && (
+          {!loading && error && (
             <p className="compare-related-empty">{tCompare('related_error')}</p>
           )}
-          {mode === 'top_in_category' && !loading && !error && data && data.candidates.length === 0 && (
-            <p className="compare-related-empty">{tCompare('related_empty')}</p>
+          {!loading && !error && data && data.candidates.length === 0 && (
+            <p className="compare-related-empty">
+              {mode === 'may_also_like'
+                ? tCompare('related_empty_may_also_like')
+                : tCompare('related_empty')}
+            </p>
           )}
-          {mode === 'top_in_category' && !loading && !error && data && data.candidates.length > 0 && (
+          {!loading && !error && data && data.candidates.length > 0 && (
             <ul className="compare-related-list">
               {data.candidates.map(c => {
                 const picked = currentSpecB === `url:${c.url}`;
