@@ -1365,8 +1365,6 @@
     "related_mode_aria": "选择推荐来源",
     "related_mode_top_in_category": "同类别前 5 名（按免费/付费匹配）",
     "related_mode_may_also_like": "你可能也喜欢（App Store 推荐栏）",
-    "related_mode_may_also_like_disabled": "「你可能也喜欢」 — 即将推出",
-    "related_mode_may_also_like_hint": "Apple 的「你可能也喜欢」尚未通过公共 API 暴露。等到有稳定来源时我们会接入。",
     "related_mode_may_also_like_empty": "此应用尚未捕获「你可能也喜欢」数据。重新抓取可刷新其产品页推荐栏 — Apple 每周更新名单。",
     "related_rescrape_cta": "重新抓取此应用",
     "related_rescrape_busy": "重新抓取中…",

@@ -1365,8 +1365,6 @@
     "related_mode_aria": "Pick how suggestions are sourced",
     "related_mode_top_in_category": "Top 5 in same category (free/paid match)",
     "related_mode_may_also_like": "You may also like (App Store shelf)",
-    "related_mode_may_also_like_disabled": "“You may also like” — coming soon",
-    "related_mode_may_also_like_hint": "Apple's “you may also like” shelf isn't exposed in their public APIs yet. We'll wire this up once a stable source lands.",
     "related_mode_may_also_like_empty": "No “you may also like” data captured yet for this app. Rescraping refreshes its product-page shelf — Apple updates the lineup weekly.",
     "related_rescrape_cta": "Rescrape this app",
     "related_rescrape_busy": "Rescraping…",

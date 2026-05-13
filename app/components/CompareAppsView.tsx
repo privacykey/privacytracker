@@ -836,6 +836,36 @@ function parseAppStoreUrlInput(raw: string): { url: string; appleId: string } | 
  * row for an id:-spec'd slot so the card never shows blank flicker
  * during the first fetch.
  */
+
+type RiskLevel = 'high' | 'moderate' | 'low' | 'minimal';
+
+/**
+ * Mirror of AppGrid's `computeRiskLevel`, but counting categories
+ * straight off SlotData.privacyTypes instead of the pre-aggregated
+ * track/linked/unlinked columns that the grid passes through. Returns
+ * `null` when there's no privacy data to assess (e.g. an app the
+ * developer never filled labels for).
+ */
+function deriveRiskLevelFromPrivacyTypes(
+  privacyTypes: SlotData['privacyTypes'],
+): RiskLevel | null {
+  if (!privacyTypes || privacyTypes.length === 0) return null;
+  let trackCount = 0;
+  let linkedCount = 0;
+  let unlinkedCount = 0;
+  for (const type of privacyTypes) {
+    const cats = type.categories?.length ?? 0;
+    if (type.identifier === 'DATA_USED_TO_TRACK_YOU') trackCount += cats;
+    else if (type.identifier === 'DATA_LINKED_TO_YOU') linkedCount += cats;
+    else if (type.identifier === 'DATA_NOT_LINKED_TO_YOU') unlinkedCount += cats;
+  }
+  if (trackCount === 0 && linkedCount === 0 && unlinkedCount === 0) return null;
+  if (trackCount >= 1) return 'high';
+  if (linkedCount >= 3) return 'moderate';
+  if (linkedCount >= 1 || unlinkedCount >= 1) return 'low';
+  return 'minimal';
+}
+
 function SlotCard(props: {
   label: string;
   slot: SlotState;
@@ -852,6 +882,7 @@ function SlotCard(props: {
   initialMode?: PickerMode;
 }) {
   const tCompare = useTranslations('compare');
+  const tRisk = useTranslations('risk');
   const [modalOpen, setModalOpen] = useState(false);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -882,6 +913,11 @@ function SlotCard(props: {
   const displayName = liveData?.name ?? fromLibrary?.name ?? '';
   const displayDev  = liveData?.developer ?? fromLibrary?.developer ?? '';
   const displayIcon = liveData?.iconUrl ?? fromLibrary?.iconUrl ?? '';
+
+  // Risk pill — derived from the resolved SlotData (only available
+  // when the picked app is fully loaded). Mirrors AppGrid's pill so
+  // the same colour/copy reads consistently across the app.
+  const riskLevel = liveData ? deriveRiskLevelFromPrivacyTypes(liveData.privacyTypes) : null;
 
   // Propagate picks from the inner picker and auto-close the modal so the
   // user lands back on the now-picked slot card without an extra click.
@@ -928,6 +964,13 @@ function SlotCard(props: {
             <span className="compare-slot-card-text">
               <span className="compare-slot-card-name">{displayName || tCompare('slot_card_loading')}</span>
               <span className="compare-slot-card-developer">{displayDev || '—'}</span>
+              {riskLevel && (
+                <span className="compare-slot-card-meta">
+                  <span className={`risk-pill risk-pill-${riskLevel}`}>
+                    {tRisk(`${riskLevel}_label`)}
+                  </span>
+                </span>
+              )}
             </span>
           </span>
         )}

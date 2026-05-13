@@ -244,6 +244,24 @@
   color: #b91c1c;
 }
 
+/* ── "Not scraped yet" empty state for the may-also-like panel ─ */
+/* Replaces the generic empty paragraph with a stacked layout: copy on
+   top, "Rescrape this app" CTA underneath. Sits alongside the rest of
+   the compare-related-* chrome already in globals.css. */
+.compare-related-not-scraped {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+}
+.compare-related-not-scraped p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text, #6b7280);
+}
+
 /* ── Mobile breakpoint ─────────────────────── */
 @media (max-width: 640px) {
   /* Result lists inside the SlotPicker have a fixed maxHeight that
