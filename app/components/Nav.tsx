@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import NotificationBell from './NotificationBell';
 import { TaskCenterTrigger } from './TaskCenter';
+import TaskListIcon from './TaskListIcon';
 import BrandWordmark from './BrandWordmark';
 // DevMenu used to mount inside `.nav-right` between the bell and the
 // "+ Add Apps" CTA. It moved to the global footer cluster (bottom-right,
@@ -25,6 +26,7 @@ interface NavProps {
     notificationBell?: boolean;
     notificationBellPolling?: boolean;
     taskCenterTrigger?: boolean;
+    taskListIcon?: boolean;
     mobileDrawer?: boolean;
     pagePrivacyMap?: boolean;
     pageStats?: boolean;
@@ -60,6 +62,18 @@ const NAV_LINKS: NavLink[] = [
   { href: '/dashboard/settings',  labelKey: 'settings' },
 ];
 
+// Sibling routes that should also light up a nav link. Today only
+// `/dashboard/review-recommendations` aliases to `/dashboard/apps` —
+// users treat the review queue as a dialog over the apps grid, so the
+// Apps tab stays highlighted while they're inside it and clicking it
+// acts as a "close-and-return" affordance. Module-scope const (not a
+// component-body literal) so it doesn't trigger the
+// `react-hooks/exhaustive-deps` warning on the `isActive` useCallback
+// — the table is static across renders.
+const NAV_ALIASES: Record<string, string[]> = {
+  '/dashboard/apps': ['/dashboard/review-recommendations'],
+};
+
 export default function Nav({ appCount, flags }: NavProps) {
   // i18n: nav-link labels, brand name, button copy, and ARIA text all
   // pull from the `nav` namespace. The translation function is stable
@@ -75,6 +89,7 @@ export default function Nav({ appCount, flags }: NavProps) {
     notificationBell: flags?.notificationBell ?? true,
     notificationBellPolling: flags?.notificationBellPolling ?? true,
     taskCenterTrigger: flags?.taskCenterTrigger ?? true,
+    taskListIcon: flags?.taskListIcon ?? true,
     mobileDrawer: flags?.mobileDrawer ?? true,
     pagePrivacyMap: flags?.pagePrivacyMap ?? true,
     pageStats: flags?.pageStats ?? true,
@@ -91,16 +106,6 @@ export default function Nav({ appCount, flags }: NavProps) {
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
-  // Sibling routes that should also light up a nav link. Today only
-  // `/dashboard/review-recommendations` aliases to `/dashboard/apps`
-  // — users treat the review queue as a dialog over the apps grid,
-  // so the Apps tab stays highlighted while they're inside it and
-  // clicking it acts as a "close-and-return" affordance. Plain
-  // object lookup so future aliases (e.g. shortlist drawer aliasing
-  // to apps) drop in with one line.
-  const NAV_ALIASES: Record<string, string[]> = {
-    '/dashboard/apps': ['/dashboard/review-recommendations'],
-  };
   const isActive = useCallback(
     (href: string, exact = false) => {
       if (pathname === href) return true;
@@ -190,6 +195,7 @@ export default function Nav({ appCount, flags }: NavProps) {
 
       <div className="nav-right" data-tour="notification-bell">
         {f.taskCenterTrigger && <TaskCenterTrigger />}
+        {f.taskListIcon && <TaskListIcon />}
         {f.notificationBell && <NotificationBell pollingEnabled={f.notificationBellPolling} />}
         {/* Dev menu used to render here. It now lives in the global
             footer landmark (app/layout.tsx) so it's reachable from

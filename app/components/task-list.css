@@ -1,0 +1,395 @@
+/*
+ * Co-located styles for the user-tasks feature. Imported by TaskListIcon
+ * and TaskList. We co-locate (instead of bolting onto globals.css)
+ * because Turbopack's hot-reload on globals.css is unreliable past
+ * ~20k lines — every recent panel/wizard in the repo follows the same
+ * convention.
+ */
+
+/* ─────────────────────────────────────────────
+ * Nav icon
+ * ───────────────────────────────────────────── */
+.task-list-icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.task-list-icon-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md, 12px);
+  cursor: pointer;
+  color: var(--text-primary, currentColor);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.task-list-icon-btn:hover,
+.task-list-icon-btn:focus-visible {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+  border-color: var(--border-subtle, rgba(127, 127, 127, 0.15));
+  outline: none;
+}
+.task-list-icon-btn.is-all-done .task-list-icon-glyph {
+  opacity: 0.55;
+}
+.task-list-icon-glyph {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+  /* Mac/iOS render the checkmark glyph a hair below the optical centre. */
+  transform: translateY(-1px);
+}
+.task-list-icon-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent, #0a84ff);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────
+ * Dropdown (desktop)
+ * ───────────────────────────────────────────── */
+.task-list-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1500;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
+  background: var(--popover-bg, var(--surface, #1c1c22));
+  border: 1px solid var(--popover-border, rgba(127, 127, 127, 0.18));
+  border-radius: var(--r-lg, 14px);
+  box-shadow: var(--popover-shadow, 0 12px 36px rgba(0, 0, 0, 0.35));
+  backdrop-filter: var(--popover-blur, blur(12px));
+  padding: 6px;
+}
+
+/* ─────────────────────────────────────────────
+ * Bottom sheet (mobile, ≤640px)
+ * ───────────────────────────────────────────── */
+.task-list-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: stretch;
+}
+.task-list-sheet {
+  width: 100%;
+  max-height: 80vh;
+  background: var(--surface, #1c1c22);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  padding: 8px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  animation: tl-sheet-up 220ms ease-out;
+}
+.task-list-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border-strong, rgba(127, 127, 127, 0.35));
+  border-radius: 999px;
+  margin: 6px auto 12px;
+}
+.task-list-sheet-footer {
+  padding: 12px 4px 0;
+  display: flex;
+  justify-content: flex-end;
+}
+@keyframes tl-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0%); }
+}
+
+/* ─────────────────────────────────────────────
+ * Task rows (shared between dropdown, sheet, inline panel)
+ * ───────────────────────────────────────────── */
+.task-list-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.task-list-row {
+  margin: 0;
+  padding: 0;
+}
+.task-list-row-btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md, 10px);
+  cursor: pointer;
+  color: var(--text-primary, currentColor);
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.task-list-row-btn:hover,
+.task-list-row-btn:focus-visible {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+  border-color: var(--border-subtle, rgba(127, 127, 127, 0.15));
+  outline: none;
+}
+.task-list-row-glyph {
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  text-align: center;
+}
+.task-list-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.task-list-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.task-list-row-body {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.task-list-row-arrow {
+  font-size: 16px;
+  color: var(--text-tertiary, rgba(127, 127, 127, 0.55));
+  transition: transform 120ms ease;
+}
+.task-list-row-btn:hover .task-list-row-arrow,
+.task-list-row-btn:focus-visible .task-list-row-arrow {
+  transform: translateX(2px);
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.task-list-row-completed .task-list-row-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.7));
+}
+.task-list-row-completed .task-list-row-body {
+  display: none; /* collapsed once done — title alone reads as a strike-through */
+}
+.task-list-row-completed .task-list-row-glyph {
+  color: var(--success, #34c759);
+}
+.task-list-row-completed .task-list-row-arrow {
+  opacity: 0.4;
+}
+.task-list-row-blocked .task-list-row-btn {
+  opacity: 0.82;
+}
+.task-list-row-blocked .task-list-row-glyph {
+  filter: grayscale(1);
+}
+.task-list-row-dismissed {
+  display: none; /* dismissed rows are filtered before render in v1 */
+}
+
+.task-list-empty {
+  padding: 18px 14px;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* ─────────────────────────────────────────────
+ * Inline panel on the dashboard
+ * ───────────────────────────────────────────── */
+.task-list-card {
+  margin: 0 0 20px;
+  padding: 14px 14px 12px;
+  background: var(--card-bg, var(--surface, rgba(127, 127, 127, 0.06)));
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.15));
+  border-radius: var(--r-lg, 14px);
+}
+.task-list-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.task-list-card-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.task-list-card-heading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.task-list-card-attribution {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.task-list-card-attribution-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.task-list-row-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary, rgba(127, 127, 127, 0.55));
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 120ms ease, background 120ms ease;
+  opacity: 0;
+  pointer-events: none;
+}
+.task-list-row:hover .task-list-row-dismiss,
+.task-list-row:focus-within .task-list-row-dismiss {
+  opacity: 1;
+  pointer-events: auto;
+}
+.task-list-row-dismiss:hover,
+.task-list-row-dismiss:focus-visible {
+  color: var(--text-primary, currentColor);
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+  outline: none;
+}
+
+/* The dismiss button sits inside the row but visually outside the
+ * tap target — push it past the arrow column. */
+.task-list-row {
+  position: relative;
+}
+.task-list-row-dismiss {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+/* Collapsed-chip variant — rendered in place of the inline card when
+ * every visible task is completed or dismissed. */
+.task-list-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.15));
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.task-list-chip:hover,
+.task-list-chip:focus-visible {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+  color: var(--text-primary, currentColor);
+  border-color: var(--border-strong, rgba(127, 127, 127, 0.35));
+  outline: none;
+}
+.task-list-chip-glyph {
+  color: var(--accent, #0a84ff);
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────────
+ * "Add a task" chip tray — at the bottom of the inline panel
+ * ───────────────────────────────────────────── */
+.task-list-add-tray {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-subtle, rgba(127, 127, 127, 0.18));
+}
+.task-list-add-tray-heading {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.task-list-add-tray-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.task-list-add-tray-chip-li {
+  margin: 0;
+  padding: 0;
+}
+.task-list-add-tray-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.22));
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary, currentColor);
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.task-list-add-tray-chip:hover,
+.task-list-add-tray-chip:focus-visible {
+  background: var(--surface-hover, rgba(10, 132, 255, 0.08));
+  border-color: var(--accent, #0a84ff);
+  outline: none;
+  transform: translateY(-1px);
+}
+.task-list-add-tray-chip-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--accent, #0a84ff);
+}
+
+/* ─────────────────────────────────────────────
+ * Gate modal — minimal additions on top of .modal-overlay/.modal-card
+ * ───────────────────────────────────────────── */
+.task-gate-modal {
+  max-width: 440px;
+}
+.task-gate-modal .modal-card-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

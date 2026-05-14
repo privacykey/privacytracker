@@ -3,6 +3,7 @@ import Script from 'next/script';
 import { headers } from 'next/headers';
 import './globals.css';
 import { TaskCenterProvider } from './components/TaskCenter';
+import { UserTasksProvider } from './components/UserTasksProvider';
 import { QueuedSearchProvider } from './components/QueuedSearchProvider';
 import { ImportQueueProvider } from './components/ImportQueueProvider';
 import ClientDiagnosticsBoot from './components/ClientDiagnosticsBoot';
@@ -344,6 +345,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           autoDismissEnabled={flags.taskCenterAutoDismiss}
           resumeCardsEnabled={flags.taskCenterResumeCards}
         >
+          <UserTasksProvider>
           <QueuedSearchProvider>
             <ImportQueueProvider>
               {/* Boots the client diagnostics module (long-task observer,
@@ -390,6 +392,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </footer>
             </ImportQueueProvider>
           </QueuedSearchProvider>
+          </UserTasksProvider>
         </TaskCenterProvider>
         {/* Global overlay portals — dialogs that render outside the main
             landmark when open. The region wrapper keeps axe happy even

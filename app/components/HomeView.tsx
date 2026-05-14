@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -124,6 +124,9 @@ export interface DashboardFlagState {
    *  strip area. Runtime-gated on `isDesktop()` so the web build never
    *  renders it even when the flag is on. */
   backgroundModeWizard: boolean;
+  /** Audience-aware "tasks worth trying" panel at the very top. Off
+   *  hides the inline panel only; the nav icon has a separate flag. */
+  taskList: boolean;
 }
 
 export default function HomeView({
@@ -134,6 +137,7 @@ export default function HomeView({
   mismatchedApps = [],
   flags,
   backgroundCalloutVisible = false,
+  taskListSlot,
 }: {
   triage: TriageData;
   /**
@@ -179,6 +183,11 @@ export default function HomeView({
    *  completed or dismissed the wizard. The component still
    *  runtime-checks `isDesktop()` so the web build never renders it. */
   backgroundCalloutVisible?: boolean;
+  /** Pre-resolved tasks panel from the server. Passed as a React node so
+   *  the server component renders inside the client component's tree
+   *  without HomeView depending on next-intl's server runtime. Render in
+   *  place at the top of the page — gated on `flags.taskList`. */
+  taskListSlot?: ReactNode;
 }) {
   const taskCenter = useTaskCenter();
   const [syncingAll, setSyncingAll] = useState(false);
@@ -321,9 +330,11 @@ export default function HomeView({
   const showStale = flags?.staleSection ?? true;
   const showActivity = flags?.activitySection ?? true;
   const showRiskTierLegend = flags?.riskTierLegend ?? true;
+  const showTaskList = flags?.taskList ?? true;
 
   return (
     <div className="page-container home-page">
+      {showTaskList && taskListSlot}
       {showFocusStrip && userIntent && <FocusStrip intent={userIntent} />}
       {/* Tauri-only callout. The component itself runtime-gates on
           `isDesktop()` (the web build's window.__TAURI_INTERNALS__

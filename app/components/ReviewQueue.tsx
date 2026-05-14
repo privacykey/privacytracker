@@ -317,7 +317,7 @@ export default function ReviewQueue({
         };
       });
     },
-    [saveDecision, showToast, userVerdicts, writeSessionActivity],
+    [saveDecision, showToast, t, userVerdicts, writeSessionActivity],
   );
 
   const skipCurrent = useCallback(() => {

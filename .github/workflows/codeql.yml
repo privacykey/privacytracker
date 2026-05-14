@@ -1,12 +1,33 @@
 name: CodeQL
 
+# Run CodeQL only against `main` + on a weekly schedule. PR triggers
+# are intentionally OFF — we're on the free GitHub Actions tier and a
+# 2-job matrix (JS/TS + Rust) on every PR push was eating the bulk of
+# our Action minutes for marginal additional coverage. Trade-off:
+# CodeQL findings now surface post-merge rather than pre-merge.
+#
+# - main: every merged push runs CodeQL so the latest tip is always
+#   scanned and the weekly cron has a fresh baseline.
+# - schedule: weekly (Sun 18:24 UTC). CodeQL's upstream rule database
+#   updates regularly; a re-scan catches new findings even when the
+#   code hasn't changed.
+#
+# To re-enable PR scanning later, add a `pull_request:` block with the
+# `paths:` filter that was here previously (see git blame on this
+# file). Or drop the filter for full coverage at higher cost.
 on:
-  pull_request:
   push:
     branches:
       - main
   schedule:
     - cron: '24 18 * * 0'
+
+# Cancel an in-flight CodeQL run when a newer commit lands on the same
+# ref. With only `push: main` + cron there's less collision risk than
+# the previous PR-heavy setup, but back-to-back merges still benefit.
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   actions: read

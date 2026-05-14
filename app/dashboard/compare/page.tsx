@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server';
 import Nav from '../../components/Nav';
 import CompareAppsView from '../../components/CompareAppsView';
 import { resolveFlagFromDb } from '@/lib/feature-flags-server';
+import { setSettingIfUnset } from '@/lib/scheduler';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,15 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
   // because users hitting this URL deliberately should see "this isn't here"
   // rather than a silent bounce to the dashboard.
   if (resolveFlagFromDb('flag.page.compare') !== 'on') notFound();
+
+  // First-visit marker for the user-tasks `compare_two_apps` completion
+  // check. Idempotent: once set, every subsequent render is a single
+  // SELECT no-op.
+  try {
+    setSettingIfUnset('task_visit.compare_at', String(Date.now()));
+  } catch (e) {
+    console.warn('[compare] task visit marker failed:', e);
+  }
 
   const params = (await searchParams) ?? {};
   const specA = sanitizeSpec(params.a);
