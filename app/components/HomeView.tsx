@@ -1,9 +1,26 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTaskCenter } from './TaskCenter';
 import BackgroundModeCallout from './BackgroundModeCallout';
 import type {
@@ -23,6 +40,19 @@ import {
   type AppMismatchSummary,
 } from '../../lib/privacy-profile';
 import { categoryLabel as i18nCategoryLabel } from '../../lib/i18n-meta';
+import {
+  CALLOUT_CARDS,
+  DASHBOARD_PRESET_KEYS,
+  DASHBOARD_PRESET_META,
+  DEFAULT_LAYOUT,
+  FIRST_CLASS_CARDS,
+  type DashboardCardId,
+  type DashboardLayout,
+} from '../../lib/dashboard-layout';
+import {
+  useDashboardLayoutSaver,
+  type UseDashboardLayoutSaverResult,
+} from '../../lib/use-dashboard-layout-saver';
 
 // ─────────────────────────────────────────────
 // Small helpers
@@ -127,6 +157,10 @@ export interface DashboardFlagState {
   /** Audience-aware "tasks worth trying" panel at the very top. Off
    *  hides the inline panel only; the nav icon has a separate flag. */
   taskList: boolean;
+  /** "Customise dashboard…" footer link + editor route gate. Off hides
+   *  the link only; users with existing custom layouts keep them — the
+   *  flag gates the editor surface, not the consumer. */
+  layoutEditorVisible: boolean;
 }
 
 export default function HomeView({
@@ -138,6 +172,9 @@ export default function HomeView({
   flags,
   backgroundCalloutVisible = false,
   taskListSlot,
+  reviewCtaSlot = null,
+  layout = DEFAULT_LAYOUT,
+  editMode = false,
 }: {
   triage: TriageData;
   /**
@@ -188,6 +225,30 @@ export default function HomeView({
    *  without HomeView depending on next-intl's server runtime. Render in
    *  place at the top of the page — gated on `flags.taskList`. */
   taskListSlot?: ReactNode;
+  /**
+   * Pre-rendered "N apps need a decision" CTA from the server, or null
+   * when there's no review backlog. Lives in the customisable layout
+   * (card id `review_cta`) so users can reorder or hide it; the server
+   * component handles the data fetch + server-side i18n.
+   */
+  reviewCtaSlot?: ReactNode;
+  /**
+   * User's saved dashboard layout — drives card order + which first-class
+   * cards are hidden. Defaults to `DEFAULT_LAYOUT` (canonical order, nothing
+   * hidden) so callers that haven't been wired through the server-side
+   * read still render correctly. The server route does pass it via
+   * `getDashboardLayout()` so users see their preset on first paint.
+   */
+  layout?: DashboardLayout;
+  /**
+   * Inline edit-in-place mode. When true, the dashboard wraps every card
+   * in a sortable overlay (drag handle + hide button) and renders ghost
+   * placeholders for hidden / zero-data-predicate cards so users can
+   * still reorder + restore them. A sticky toolbar at the top exposes
+   * presets, reset, and an "Open list editor" exit to the structured
+   * settings page. Triggered by `?edit=layout` server-side.
+   */
+  editMode?: boolean;
 }) {
   const taskCenter = useTaskCenter();
   const [syncingAll, setSyncingAll] = useState(false);
@@ -300,16 +361,17 @@ export default function HomeView({
     }
   };
 
-  // Intent-driven tailoring. We never *hide* sections — we only reorder and
-  // sprinkle in archetype-specific callouts so the dashboard feels relevant
-  // to what the user told us on the welcome splash. The switch intentionally
-  // falls through to a neutral default when `userIntent` is null so the page
-  // still renders fine for people who skipped onboarding on an older build.
-  // Round 3 PR 3: callout visibility is flag-driven when `flags` is supplied
-  // (the server pre-resolves the four callout flags from the rule engine).
-  // Falls back to the legacy intent check when `flags` is missing — keeps
-  // older render paths working until PR 5 makes the prop required.
-  const statsFirst = userIntent === 'curious';
+  // Intent-driven tailoring. The user's saved layout drives order +
+  // visibility now (see `layout` prop + CARD_RENDERERS below). Intent still
+  // feeds the few cases where it affects an individual section's variant
+  // rather than its position: hero/risk variant choice + StaleSection's
+  // "elevated" treatment for the hygiene archetype. The old `statsFirst`
+  // top/bottom flip is gone — users who want stats first pick the
+  // `at_a_glance` preset.
+  //
+  // Callout visibility stays driven by flags (the server pre-resolves the
+  // four callout flags from the rule engine), falling back to the legacy
+  // intent check when `flags` is missing.
   const showThirdPartyCallout = flags?.callout.understand_declutter ?? (userIntent === 'hygiene');
   const showCleanupCallout = flags?.callout.declutter ?? (userIntent === 'cleanup');
   const showFamilyCallout = flags?.callout.guardian ?? (userIntent === 'family');
@@ -331,75 +393,498 @@ export default function HomeView({
   const showActivity = flags?.activitySection ?? true;
   const showRiskTierLegend = flags?.riskTierLegend ?? true;
   const showTaskList = flags?.taskList ?? true;
+  const showBackgroundModeWizard = flags?.backgroundModeWizard ?? false;
+  const showLayoutEditorLink = flags?.layoutEditorVisible ?? true;
 
-  return (
-    <div className="page-container home-page">
-      {showTaskList && taskListSlot}
-      {showFocusStrip && userIntent && <FocusStrip intent={userIntent} />}
-      {/* Tauri-only callout. The component itself runtime-gates on
-          `isDesktop()` (the web build's window.__TAURI_INTERNALS__
-          is undefined), and the parent passes
-          `backgroundCalloutVisible=true` only when the flag is on AND
-          the user hasn't already completed / dismissed the wizard.
-          Lives in the focus-strip area so it shares visual weight with
-          the audience/goals chips rather than dominating the page. */}
-      {(flags?.backgroundModeWizard ?? false) && backgroundCalloutVisible && (
+  // In edit mode, the live layout comes from `useDashboardLayoutSaver`
+  // (which seeds from the `layout` prop and diverges as the user edits).
+  // In normal mode the saver still runs but its state is unused — the
+  // hook is unconditional so React doesn't warn about a changing hook
+  // order. No API calls fire unless a reorder / toggle / preset actually
+  // runs, all of which only happen in edit mode.
+  const saver = useDashboardLayoutSaver(layout);
+  const effectiveLayout = editMode ? saver.layout : layout;
+
+  // First-class cards in the user's hidden set are dropped before the
+  // renderer even runs — keeps the renderers focused on data-driven
+  // predicates and the flag axis.
+  const hiddenSet = useMemo(
+    () => (editMode ? saver.hiddenSet : new Set(layout.hidden)),
+    [editMode, saver.hiddenSet, layout.hidden],
+  );
+
+  // Renderer map — one closure per card id, returning the JSX or null when
+  // the card's data predicate / flag gate is unsatisfied. Iteration order
+  // comes from `layout.order` below, so users can reorder freely. Each
+  // closure is keyed on its DashboardCardId; missing renderers (e.g. a
+  // stored layout that references a deprecated id) just drop out — the
+  // server-side `reconcileLayout` strips unknowns on read anyway.
+  const renderers: Record<DashboardCardId, () => ReactNode> = {
+    task_list: () => (showTaskList ? taskListSlot : null),
+    // The server passes `reviewCtaSlot` only when there's actually a
+    // review backlog (reviewableCount > 0). When the slot is null the
+    // renderer returns null and the card drops out of the rendered list
+    // — in edit mode it becomes a "no data right now" ghost so users
+    // can still see + reorder it.
+    review_cta: () => reviewCtaSlot ?? null,
+    focus_strip: () =>
+      showFocusStrip && userIntent ? <FocusStrip intent={userIntent} /> : null,
+    // Tauri-only — the component itself runtime-gates on `isDesktop()`,
+    // and the parent only passes `backgroundCalloutVisible=true` when
+    // the user hasn't already completed/dismissed the wizard.
+    background_mode_wizard: () =>
+      showBackgroundModeWizard && backgroundCalloutVisible ? (
         <BackgroundModeCallout initiallyVisible={true} />
-      )}
-
-      {showManualAppsBanner && showManualBannerFlag && <ManualAppsBanner
-        onDismiss={dismissManualAppsBanner}
-        dismissing={dismissingBanner}
-      />}
-
-      {/* Risk section — at the top for cleanup / family. Hero variant
-          chooses the visual treatment based on the active callout. */}
-      {showRiskFlag && triage.higherRisk.length > 0 && (
+      ) : null,
+    manual_apps_banner: () =>
+      showManualAppsBanner && showManualBannerFlag ? (
+        <ManualAppsBanner
+          onDismiss={dismissManualAppsBanner}
+          dismissing={dismissingBanner}
+        />
+      ) : null,
+    risk_section: () =>
+      showRiskFlag && triage.higherRisk.length > 0 ? (
         <RiskSection
           id="higher-risk"
           apps={triage.higherRisk}
-          variant={showCleanupCallout ? 'cleanup' : showFamilyCallout ? 'family' : 'default'}
+          variant={
+            showCleanupCallout ? 'cleanup' : showFamilyCallout ? 'family' : 'default'
+          }
         />
-      )}
-
-      {/* Hero — quiet vs attention variants are picked by the component
-          based on triage data; the flags gate the whole hero. Either-or
-          rather than both, so we render the hero block when at least one
-          variant is enabled. */}
-      {(showHeroQuiet || showHeroAttention) && (
-        <Hero triage={triage} headsUps={headsUps} onSyncAll={syncAllStale} syncing={syncingAll} />
-      )}
-
-      {showCleanupCallout && <CleanupCallout count={triage.highRiskCount} />}
-      {showFamilyCallout && <FamilyCallout count={triage.highRiskCount} />}
-      {showThirdPartyCallout && <ThirdPartyCallout triage={triage} />}
-
-      {/* 'curious' mode surfaces the at-a-glance stats block up here. */}
-      {statsFirst && showGlance && <GlanceSection triage={triage} />}
-
-      {showDefinitionsCallout && <DefinitionsCallout />}
-
-      {showReview && triage.reviewable.length > 0 && (
+      ) : null,
+    // Hero — quiet vs attention variants are picked by the component
+    // based on triage data; the flag pair gates the whole hero. Either-or
+    // rather than both, so we render the hero when at least one variant
+    // is enabled.
+    hero: () =>
+      showHeroQuiet || showHeroAttention ? (
+        <Hero
+          triage={triage}
+          headsUps={headsUps}
+          onSyncAll={syncAllStale}
+          syncing={syncingAll}
+        />
+      ) : null,
+    cleanup_callout: () =>
+      showCleanupCallout ? <CleanupCallout count={triage.highRiskCount} /> : null,
+    family_callout: () =>
+      showFamilyCallout ? <FamilyCallout count={triage.highRiskCount} /> : null,
+    third_party_callout: () =>
+      showThirdPartyCallout ? <ThirdPartyCallout triage={triage} /> : null,
+    glance_section: () => (showGlance ? <GlanceSection triage={triage} /> : null),
+    definitions_callout: () => (showDefinitionsCallout ? <DefinitionsCallout /> : null),
+    review_section: () =>
+      showReview && triage.reviewable.length > 0 ? (
         <ReviewSection id="changes-to-review" reviewable={triage.reviewable} />
-      )}
-
-      {showProfileMismatch && mismatchedApps.length > 0 && (
+      ) : null,
+    profile_mismatch_section: () =>
+      showProfileMismatch && mismatchedApps.length > 0 ? (
         <ConsiderReplacingSection id="consider-replacing" apps={mismatchedApps} />
-      )}
-
-      {showStale && triage.stale.length > 0 && (
+      ) : null,
+    stale_section: () =>
+      showStale && triage.stale.length > 0 ? (
         <StaleSection id="stale-apps" apps={triage.stale} elevated={elevateStale} />
-      )}
-
-      {showActivity && triage.recentActivity.length > 0 && (
+      ) : null,
+    activity_section: () =>
+      showActivity && triage.recentActivity.length > 0 ? (
         <ActivitySection activity={triage.recentActivity} />
-      )}
+      ) : null,
+    risk_tier_legend: () => (showRiskTierLegend ? <RiskTierLegend id="risk-tiers" /> : null),
+  };
 
-      {showRiskTierLegend && <RiskTierLegend id="risk-tiers" />}
+  return editMode ? (
+    <EditModeShell
+      effectiveLayout={effectiveLayout}
+      hiddenSet={hiddenSet}
+      renderers={renderers}
+      saver={saver}
+      toast={toast}
+    />
+  ) : (
+    <div className="page-container home-page">
+      {layout.order.map(id => {
+        if (hiddenSet.has(id)) return null;
+        const node = renderers[id]?.();
+        if (!node) return null;
+        return <Fragment key={id}>{node}</Fragment>;
+      })}
+      {showLayoutEditorLink && <LayoutEditorFooterLink />}
+      {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
 
-      {!statsFirst && showGlance && <GlanceSection triage={triage} />}
+// ─────────────────────────────────────────────
+// Edit-in-place shell
+// ─────────────────────────────────────────────
+
+/**
+ * Wraps the dashboard in DndContext + SortableContext, adds the sticky
+ * toolbar, and renders each card inside a SortableEditCard. Hidden +
+ * zero-data-predicate cards render as compact ghost rows so users can
+ * still see them, restore them, and reorder them.
+ *
+ * Kept inline as a sub-component (not a separate file) because it
+ * closures over the renderer map + the rest of HomeView's state, and
+ * the renderer map is the load-bearing piece — extracting it would
+ * mean threading every triage/flag/handler prop through.
+ */
+function EditModeShell({
+  effectiveLayout,
+  hiddenSet,
+  renderers,
+  saver,
+  toast,
+}: {
+  effectiveLayout: DashboardLayout;
+  hiddenSet: ReadonlySet<DashboardCardId>;
+  renderers: Record<DashboardCardId, () => ReactNode>;
+  saver: UseDashboardLayoutSaverResult;
+  toast: string;
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      saver.reorder(
+        active.id as DashboardCardId,
+        over.id as DashboardCardId,
+      );
+    },
+    [saver],
+  );
+
+  return (
+    <div className="page-container home-page home-page-edit">
+      <EditModeToolbar saver={saver} />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={effectiveLayout.order as string[]}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="home-edit-cards" aria-label="Editable dashboard cards">
+            {effectiveLayout.order.map(id => {
+              const realNode = !hiddenSet.has(id) ? renderers[id]?.() : null;
+              const hidden = hiddenSet.has(id);
+              return (
+                <SortableEditCard
+                  key={id}
+                  id={id}
+                  hidden={hidden}
+                  isCallout={CALLOUT_CARDS.has(id)}
+                  hasData={realNode != null}
+                  onToggleVisibility={() => saver.toggleVisibility(id)}
+                >
+                  {realNode}
+                </SortableEditCard>
+              );
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
+
+      {/* Live region for keyboard drag + post-save announcements. */}
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {saver.liveMessage}
+      </div>
 
       {toast && <div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Sticky toolbar — preset pills + reset + open simple editor + done
+// ─────────────────────────────────────────────
+
+function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
+  const router = useRouter();
+  const t = useTranslations('dashboard.layout_editor');
+  const tPresetLabel = useTranslations('dashboard.layout_editor.presets.labels');
+  const tPresetDesc = useTranslations('dashboard.layout_editor.presets.descriptions');
+
+  const exitEditMode = useCallback(() => {
+    // Drop ?edit=layout from the URL and trigger a server-side re-fetch
+    // so the dashboard rerenders with the freshly-saved layout. Saves
+    // are already persisted via the debounced PUT, so a refresh is the
+    // simplest way to ensure derived data (triage / flags / etc.) is
+    // consistent with the new shape.
+    router.push('/dashboard');
+    router.refresh();
+  }, [router]);
+
+  return (
+    <div className="home-edit-toolbar" role="region" aria-label={t('toolbar_aria')}>
+      <div className="home-edit-toolbar-status">
+        <span className="home-edit-toolbar-title">{t('toolbar_title')}</span>
+        {saver.savingState === 'saving' && (
+          <span className="layout-editor-saving">{t('saving')}</span>
+        )}
+        {saver.savingState === 'saved' && (
+          <span className="layout-editor-saved">{t('saved')}</span>
+        )}
+        {saver.savingState === 'error' && saver.errorMsg && (
+          <span className="layout-editor-error" role="alert">
+            {t('save_error', { message: saver.errorMsg })}
+          </span>
+        )}
+      </div>
+
+      <div
+        className="home-edit-toolbar-presets"
+        role="radiogroup"
+        aria-label={t('preset_aria_group')}
+      >
+        {DASHBOARD_PRESET_KEYS.map(presetKey => {
+          const meta = DASHBOARD_PRESET_META[presetKey];
+          const isActive = saver.activePreset === presetKey;
+          const isPending = saver.pendingPreset === presetKey;
+          return (
+            <div
+              key={presetKey}
+              className={`home-edit-toolbar-preset-cell${
+                isPending ? ' has-pending-confirm' : ''
+              }`}
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                className={`home-edit-toolbar-preset-pill${
+                  isActive ? ' is-active' : ''
+                }`}
+                data-preset={presetKey}
+                data-severity={meta.severityCls}
+                onClick={() => saver.applyPreset(presetKey)}
+                title={tPresetDesc(presetKey)}
+              >
+                <span aria-hidden="true">{meta.icon}</span>
+                <span>{tPresetLabel(presetKey)}</span>
+              </button>
+              {isPending && (
+                <div
+                  className="layout-editor-preset-confirm"
+                  role="dialog"
+                  aria-label={t('confirm_aria')}
+                >
+                  <p className="layout-editor-preset-confirm-text">
+                    {t('confirm_text', { preset: tPresetLabel(presetKey) })}
+                  </p>
+                  <div className="layout-editor-preset-confirm-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => saver.applyPreset(presetKey, true)}
+                    >
+                      {t('confirm_apply')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={saver.cancelPendingPreset}
+                    >
+                      {t('confirm_cancel')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="home-edit-toolbar-actions">
+        <Link
+          href="/dashboard/settings/layout"
+          className="btn btn-ghost btn-sm"
+        >
+          {t('open_simple_editor')}
+        </Link>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={saver.resetLayout}
+          disabled={saver.savingState === 'saving'}
+        >
+          {t('reset_button')}
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={exitEditMode}
+        >
+          {t('done_button')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Sortable wrapper around a single card in edit mode
+// ─────────────────────────────────────────────
+
+function SortableEditCard({
+  id,
+  hidden,
+  isCallout,
+  hasData,
+  onToggleVisibility,
+  children,
+}: {
+  id: DashboardCardId;
+  hidden: boolean;
+  isCallout: boolean;
+  hasData: boolean;
+  onToggleVisibility: () => void;
+  children: ReactNode;
+}) {
+  const t = useTranslations('dashboard.layout_editor');
+  const tCardLabel = useTranslations('dashboard.layout_editor.cards.labels');
+  const tCardDesc = useTranslations('dashboard.layout_editor.cards.descriptions');
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  const label = tCardLabel(id);
+  const description = tCardDesc(id);
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.7 : 1,
+  };
+
+  // Ghost variant — used for hidden first-class cards AND for callouts /
+  // sections whose data predicate isn't met. Both still get a row so the
+  // user can reorder them; first-class hidden rows get a "Show" button
+  // so they can be restored, callouts/empties get an "Auto-managed"
+  // pill instead.
+  const showAsGhost = hidden || !hasData;
+  const isFirstClassHidden = hidden && FIRST_CLASS_CARDS.has(id);
+  const dragHandleAria = t('drag_handle_aria', { name: label });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`home-edit-card${isDragging ? ' is-dragging' : ''}${
+        showAsGhost ? ' is-ghost' : ''
+      }${hidden ? ' is-hidden' : ''}${isCallout ? ' is-callout' : ''}`}
+      data-card-id={id}
+    >
+      <div className="home-edit-card-bar">
+        <button
+          type="button"
+          className="home-edit-card-handle"
+          aria-label={dragHandleAria}
+          {...attributes}
+          {...listeners}
+        >
+          <span aria-hidden="true">⋮⋮</span>
+        </button>
+        <span className="home-edit-card-label">{label}</span>
+        <div className="home-edit-card-bar-actions">
+          {isFirstClassHidden && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onToggleVisibility}
+            >
+              {t('restore_button')}
+            </button>
+          )}
+          {/* First-class cards always expose Hide while unhidden, even
+              when their data predicate isn't currently met — users can
+              preemptively mute a card so it stays hidden once it
+              acquires data later (e.g. a stale section that's empty
+              right now but will populate after the next sync drift). */}
+          {!hidden && FIRST_CLASS_CARDS.has(id) && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onToggleVisibility}
+              aria-label={t('hide_card_aria', { name: label })}
+              title={t('hide_card_aria', { name: label })}
+            >
+              {t('hide_button')}
+            </button>
+          )}
+          {isCallout && (
+            <span
+              className="layout-editor-auto-managed"
+              title={t('auto_managed_title')}
+            >
+              {t('auto_managed_label')}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Real card content (when present + visible). pointer-events: none
+          so clicks inside don't fire the underlying interactive bits —
+          users can read but not interact during edit mode. */}
+      {!showAsGhost && (
+        <div className="home-edit-card-content">{children}</div>
+      )}
+
+      {/* Ghost row — shown when the card is hidden OR its data predicate
+          doesn't hold. Compact, with a short description so users know
+          what they're reordering even when no actual content renders. */}
+      {showAsGhost && (
+        <div className="home-edit-card-ghost">
+          <span className="home-edit-card-ghost-desc">{description}</span>
+          {hidden && (
+            <span className="home-edit-card-ghost-status">
+              {t('ghost_hidden')}
+            </span>
+          )}
+          {!hidden && !hasData && (
+            <span className="home-edit-card-ghost-status">
+              {isCallout ? t('ghost_auto_managed') : t('ghost_no_data')}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Footer link — opens the editable-layout settings page
+// ─────────────────────────────────────────────
+
+function LayoutEditorFooterLink() {
+  const t = useTranslations('dashboard.layout_footer');
+  return (
+    <div className="home-layout-footer">
+      <Link
+        href="/dashboard?edit=layout"
+        className="home-layout-footer-link"
+        aria-label={t('customize_aria')}
+      >
+        {t('customize')}
+      </Link>
+      <span className="home-layout-footer-sep" aria-hidden="true">·</span>
+      <Link
+        href="/dashboard/settings/layout"
+        className="home-layout-footer-link home-layout-footer-secondary"
+      >
+        {t('simple_editor')}
+      </Link>
     </div>
   );
 }

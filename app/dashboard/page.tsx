@@ -27,6 +27,8 @@ import {
   consumeMigrationFlowMarker,
   getMostRecentImport,
 } from '../../lib/audit-bundle-import';
+import { getDashboardLayout } from '../../lib/dashboard-layout-server';
+import { DEFAULT_LAYOUT, type DashboardLayout } from '../../lib/dashboard-layout';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 interface DashboardPageProps {
-  searchParams?: Promise<{ sample?: string }>;
+  searchParams?: Promise<{ sample?: string; edit?: string }>;
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -44,6 +46,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   // pick up the sessionStorage seed and render the demo apps inline.
   const params = (await searchParams) ?? {};
   const sampleMode = params.sample === '1';
+  // ?edit=layout — opens the inline edit-in-place mode for the dashboard
+  // layout. Only honoured when `flag.dashboard.layout_editor.visible` is
+  // on (the resolver below ignores the param if the flag is off).
+  const editLayoutRequested = params.edit === 'layout';
 
   if (sampleMode) {
     return (
@@ -177,6 +183,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         riskTierLegend: resolve('flag.dashboard.risk_tier_legend'),
         backgroundModeWizard: resolve('flag.dashboard.background_mode_wizard'),
         taskList: resolve('flag.dashboard.task_list'),
+        layoutEditorVisible: resolve('flag.dashboard.layout_editor.visible'),
       };
     } catch (error) {
       console.warn('[dashboard] flag resolution failed:', error);
@@ -277,6 +284,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     }
   })();
 
+  // Saved dashboard layout (preset or custom). Always reconciled against
+  // the current canonical card set on read so older shapes upgrade
+  // automatically when new cards ship. Swallowed DB errors fall back to
+  // the canonical default — same defensive pattern as the other reads on
+  // this page.
+  const dashboardLayout: DashboardLayout = (() => {
+    try {
+      return getDashboardLayout();
+    } catch (error) {
+      console.warn('[dashboard] getDashboardLayout failed:', error);
+      return DEFAULT_LAYOUT;
+    }
+  })();
+
   // Count of distinct apps that need a decision — either the user
   // has set their own verdict OR an imported recommendation has
   // landed. Drives the "N apps need a decision" CTA banner that
@@ -305,16 +326,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           annotationsAdded={recentBundleImport.annotationsAdded}
         />
       )}
-      {/* "N apps need a decision" banner. Renders only when the user
-          has at least one verdict set or an imported recommendation
-          waiting — there's actually somewhere to go. Click routes
-          into the review-and-act wizard, which decides whether the
-          destructive Backup/Act addon steps unlock. Wrapped in a
-          .review-cta-wrap so the existing AppGrid styling carries
-          over without touching the layout. */}
-      {reviewableCount > 0 && (
-        <ReviewCtaBanner count={reviewableCount} />
-      )}
       <HomeView
         triage={triage}
         userIntent={userIntent}
@@ -324,6 +335,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         flags={flags}
         backgroundCalloutVisible={backgroundCalloutVisible}
         taskListSlot={<TaskList tasks={userTasks} candidates={userTaskCandidates} />}
+        // The "N apps need a decision" CTA is now part of the
+        // customisable layout (card id `review_cta`). The server
+        // renders the banner here so server-side `getTranslations`
+        // resolves the ICU plural; HomeView slots it into the layout
+        // order in place of the standalone render above HomeView.
+        reviewCtaSlot={
+          reviewableCount > 0 ? <ReviewCtaBanner count={reviewableCount} /> : null
+        }
+        layout={dashboardLayout}
+        editMode={editLayoutRequested && (flags?.layoutEditorVisible ?? true)}
       />
       {tourEnabled && tourFocus && (
         <CoachmarkTour

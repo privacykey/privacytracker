@@ -841,7 +841,9 @@
     "import_history_title": "Import History — privacytracker",
     "import_history_description": "Review, retry, and roll back previous app imports.",
     "focus_edit_title": "Adjust focus — privacytracker",
-    "focus_edit_description": "Change who you are auditing for and what you want from the app."
+    "focus_edit_description": "Change who you are auditing for and what you want from the app.",
+    "layout_edit_title": "Customise dashboard — privacytracker",
+    "layout_edit_description": "Pick a preset or fine-tune the order and visibility of cards on your home dashboard."
   },
   "ai_disclosure_page": {
     "metadata_title": "AI Disclosure — privacytracker",
@@ -2204,6 +2206,105 @@
       "minimal_rule": "The developer declares no data collection at all.",
       "minimal_meaning": "Apple's privacy labels show an empty sheet. Nothing the app says it collects, linked or otherwise.",
       "minimal_example": "Typical of single-player offline games, simple reference tools, and some privacy-focused utilities."
+    },
+    "layout_footer": {
+      "customize": "Customise dashboard…",
+      "customize_aria": "Customise the order and visibility of dashboard cards",
+      "simple_editor": "Use simple editor"
+    },
+    "layout_editor": {
+      "page_title": "Customise dashboard",
+      "page_subtitle": "Pick a preset or drag rows to reorder. Hide first-class cards you don't need — auto-managed callouts stay rule-driven and only paint when relevant.",
+      "back_to_dashboard": "← Back to dashboard",
+      "preset_section_label": "Start from a preset",
+      "preset_section_hint": "Pick a baseline, then fine-tune any row below.",
+      "preset_aria_group": "Dashboard layout presets",
+      "confirm_aria": "Replace your current layout",
+      "confirm_text": "Replace your current layout with the {preset} preset?",
+      "confirm_apply": "Replace",
+      "confirm_cancel": "Cancel",
+      "list_title": "Cards",
+      "list_aria": "Dashboard cards, drag to reorder",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "save_error": "Couldn't save: {message}",
+      "reset_button": "Reset to default",
+      "show_hide_label": "Show",
+      "auto_managed_label": "Auto-managed",
+      "auto_managed_title": "This card paints automatically when its data condition is met. Reorder freely; visibility is rule-driven.",
+      "drag_handle_aria": "Drag handle for {name}. Press Space to pick up, arrow keys to move, Space again to drop.",
+      "moved_live": "Moved {name} to position {position} of {total}.",
+      "shown_live": "{name} now visible.",
+      "hidden_live": "{name} now hidden.",
+      "saved_live": "Layout saved.",
+      "reset_live": "Layout reset to default.",
+      "preset_applied_live": "Applied {name} preset.",
+      "toolbar_aria": "Dashboard layout edit toolbar",
+      "toolbar_title": "Customising dashboard",
+      "open_simple_editor": "Open simple editor",
+      "done_button": "Done",
+      "hide_button": "Hide",
+      "restore_button": "Show",
+      "hide_card_aria": "Hide {name}",
+      "ghost_hidden": "Hidden — click Show to restore",
+      "ghost_auto_managed": "Will appear when relevant",
+      "ghost_no_data": "No data right now",
+      "presets": {
+        "labels": {
+          "default": "Default",
+          "minimal": "Minimal",
+          "caretaker": "Caretaker",
+          "watchdog": "Watchdog",
+          "at_a_glance": "At a glance"
+        },
+        "descriptions": {
+          "default": "Canonical order with every card visible. A safe baseline.",
+          "minimal": "Just the essentials — hero, risk, review, and at-a-glance stats.",
+          "caretaker": "Family-focused. Surface privacy concerns and the review queue first.",
+          "watchdog": "Risk-first. Quickly spot the apps you might want to replace or sync.",
+          "at_a_glance": "Stats up top. For users who want the high-level picture first."
+        }
+      },
+      "cards": {
+        "labels": {
+          "task_list": "Tasks",
+          "review_cta": "Review queue CTA",
+          "focus_strip": "Focus strip",
+          "background_mode_wizard": "Background mode wizard",
+          "manual_apps_banner": "Manual apps banner",
+          "risk_section": "Risk watchlist",
+          "hero": "Hero",
+          "cleanup_callout": "Cleanup callout",
+          "family_callout": "Family callout",
+          "third_party_callout": "Third-party callout",
+          "glance_section": "At a glance",
+          "definitions_callout": "Privacy-label definitions",
+          "review_section": "Changes to review",
+          "profile_mismatch_section": "Consider replacing",
+          "stale_section": "Stale apps",
+          "activity_section": "This week's activity",
+          "risk_tier_legend": "Risk-tier legend"
+        },
+        "descriptions": {
+          "task_list": "The audience-aware tasks panel at the very top.",
+          "review_cta": "\"N apps need a decision\" banner linking into the review wizard.",
+          "focus_strip": "Compact \"who you're auditing for\" header with a link to Settings.",
+          "background_mode_wizard": "macOS desktop app only — walks you through enabling background sync.",
+          "manual_apps_banner": "Reminder that web clips, TestFlight betas, and sideloaded apps can be tracked too.",
+          "risk_section": "Apps Apple labels as Linked or Tracking — your high-risk watchlist.",
+          "hero": "The big quiet/attention card at the top of the page.",
+          "cleanup_callout": "\"Things to clean up\" message for the declutter goal.",
+          "family_callout": "\"Looking out for your family\" message for the guardian audience.",
+          "third_party_callout": "\"Security hygiene\" message about third-party data sharing.",
+          "glance_section": "Stat grid — apps tracked, categories, high-risk, changes.",
+          "definitions_callout": "Plain-English explanation of Apple's privacy-label categories.",
+          "review_section": "Apps with privacy-label changes since you last reviewed.",
+          "profile_mismatch_section": "Apps that exceed the thresholds in your privacy profile.",
+          "stale_section": "Apps not refreshed in 30+ days.",
+          "activity_section": "Recent scrapes, imports, and edits across your library.",
+          "risk_tier_legend": "Collapsible reference for how each risk tier is defined."
+        }
+      }
     }
   },
   "app_grid": {

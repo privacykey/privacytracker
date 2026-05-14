@@ -92,6 +92,11 @@ export type FlagKey =
   // this off is a global kill-switch for the inline surface only; the nav icon
   // has its own flag.
   | 'flag.dashboard.task_list'
+  // Editable home-dashboard layout. Flipping off hides the "Customise
+  // dashboard…" footer link AND short-circuits the editor route. The
+  // dashboard still renders whatever layout the user saved last — the
+  // flag gates the editor surface, not the consumer.
+  | 'flag.dashboard.layout_editor.visible'
 
   // ----- App Grid
   | 'flag.appgrid.filter.search'
@@ -369,6 +374,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   'flag.dashboard.sample_data_banner':           'off',        // only on while sample apps present
   'flag.dashboard.background_mode_wizard':       'on',         // Tauri-only callout — runtime-gated on isDesktop()
   'flag.dashboard.task_list':                    'on',         // audience-aware tasks panel at the top of HomeView
+  'flag.dashboard.layout_editor.visible':        'on',         // "Customise dashboard…" footer link + editor route gate
 
   // App Grid
   'flag.appgrid.filter.search':                  'on',         // text filter
