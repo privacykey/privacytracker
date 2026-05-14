@@ -990,6 +990,10 @@ export default function AppGrid({
             value={filter}
             onChange={e => setFilter(e.target.value)}
             aria-label={tGrid('filter_input_aria')}
+            // Marks this as the primary search target for the menu-bar
+            // Edit → Find (Cmd+F) action. MenuActionsBridge listens for
+            // the `search:focus` event and focuses+selects this input.
+            data-search-focus="true"
           />
         </div>}
         {/* Sort mode — exposed as a radiogroup (single-select) so screen
@@ -1552,9 +1556,12 @@ export default function AppGrid({
 
           {/* Custom apps — user-authored entries with no App Store listing.
               They share the grid so users discover them alongside the rest,
-              but opt out of risk chips, sync, and per-app navigation to
-              /apps/[id] (which doesn't exist for them). Deletion is inline
-              via the /api/manual-apps DELETE endpoint. */}
+              but opt out of risk chips and sync. The card link points at
+              the manual-app detail page (`/manual-apps/[id]`) which mirrors
+              the App Store apps' `/apps/[id]` shape — the user's mental
+              model is "click an app card, see that app", whether it came
+              from cfgutil or was hand-added. Deletion is inline via the
+              /api/manual-apps DELETE endpoint. */}
           {filteredManualApps.map(m => {
             const meta = manualSourceMeta.get(m.source);
             const icon = meta?.icon ?? '📦';
@@ -1566,7 +1573,7 @@ export default function AppGrid({
             return (
               <div key={`manual-${m.id}`} className="app-card app-card-custom">
                 <Link
-                  href="/dashboard/manual-apps"
+                  href={`/manual-apps/${encodeURIComponent(m.id)}`}
                   className="app-card-link"
                   aria-label={tGrid('open_custom_aria', { name: m.name })}
                 >

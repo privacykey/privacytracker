@@ -312,20 +312,22 @@ export async function importAppHistory(
           };
         }
       }
-      // Append a synthetic changelog row so the attempt is visible on the
-      // per-app Change History timeline, not buried in the activity log.
-      appendWaybackAttemptEntry(app.id, {
-        event:
-          info.outcome === 'requested_snapshot'
-            ? 'requested_snapshot'
-            : info.outcome === 'skipped_save_now_failed'
-              ? 'save_now_failed'
-              : 'no_capture',
-        description: describeWaybackAttempt(info),
-        details: info.errorMessage ? [info.errorMessage] : undefined,
-        saveNowUrl: info.saveNowUrl,
-        targetDate: info.targetDate,
-      });
+      // Only surface successful Save Page Now requests on the per-app
+      // Change History timeline. Earlier versions also wrote rows for
+      // `save_now_failed` and `no_capture` outcomes, but those turned
+      // routine quarters-with-no-archive into a noisy stream of
+      // "⚠ Wayback snapshot request failed" entries on every run.
+      // Failures still surface in the bulk-import activity log and on
+      // `ImportTargetResult.errorMessage` for the API caller.
+      if (info.outcome === 'requested_snapshot') {
+        appendWaybackAttemptEntry(app.id, {
+          event: 'requested_snapshot',
+          description: describeWaybackAttempt(info),
+          details: info.errorMessage ? [info.errorMessage] : undefined,
+          saveNowUrl: info.saveNowUrl,
+          targetDate: info.targetDate,
+        });
+      }
       result.targets.push(info);
       if (info.outcome === 'skipped_no_capture') result.skipped++;
       else if (info.outcome === 'skipped_save_now_failed') result.skipped++;

@@ -11,13 +11,13 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # Tauri v2. The `tray-icon` feature turns on tray support across mac/win/linux.
-# `devtools` keeps the webview's Web Inspector available in release builds so
-# we can debug the bundled app once it's installed — without it, the
-# `View > Toggle Developer Tools` menu item and the Cmd+Opt+I shortcut both
-# turn into no-ops because Tauri compiles out the `open_devtools()` /
-# `close_devtools()` methods entirely. Adds a few hundred KB to the bundle
-# but trades for a real diagnostic affordance for users who hit edge cases.
-tauri = { version = "2", features = ["tray-icon", "macos-private-api", "devtools"] }
+# `devtools` is no longer compiled in by default — it's an opt-in cargo
+# feature on this crate (`--features devtools`). Production release builds
+# omit it so a local attacker can't attach the Web Inspector to the running
+# webview and dump in-memory app state. Dev builds (`pnpm tauri:dev`) pass
+# `--features devtools` via the tauri CLI to preserve the diagnostic
+# affordance.
+tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-shell = "2"
 # Updater is wired up so we don't have to add it later. The release CI signs
 # update manifests with an ed25519 key whose public half ships in tauri.conf.json.
@@ -128,3 +128,7 @@ core-foundation-sys = "0.8"
 [features]
 # Enable `tauri build` without devtools baked into the bundle.
 custom-protocol = ["tauri/custom-protocol"]
+# Opt-in devtools. CI release jobs leave this off; `pnpm tauri:dev`
+# passes `--features devtools` so contributors keep the Web Inspector
+# during local development.
+devtools = ["tauri/devtools"]

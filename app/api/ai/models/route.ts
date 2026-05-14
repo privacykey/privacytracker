@@ -134,6 +134,7 @@ async function fetchOpenAiCompatibleModels({
   const res = await fetch(`${baseUrl}/models`, {
     method: 'GET',
     headers,
+    redirect: 'error',
     signal: AbortSignal.timeout(10_000),
   });
 
@@ -163,6 +164,7 @@ async function fetchOllamaTags({ baseUrl }: { baseUrl: string }): Promise<Discov
   const res = await fetch(`${root}/api/tags`, {
     method: 'GET',
     headers: { Accept: 'application/json' },
+    redirect: 'error',
     signal: AbortSignal.timeout(10_000),
   });
 
@@ -205,6 +207,7 @@ async function fetchAnthropicModels({
         'anthropic-version': '2023-06-01',
         Accept: 'application/json',
       },
+      redirect: 'error',
       signal: AbortSignal.timeout(10_000),
     });
 

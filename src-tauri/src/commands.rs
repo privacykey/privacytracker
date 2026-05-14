@@ -74,12 +74,11 @@ fn open_path(dir: &std::path::Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Toggle the webview devtools. The tauri crate's `devtools` Cargo feature
-/// is enabled (see src-tauri/Cargo.toml), which keeps the inspector
-/// available in release builds — same affordance as `View > Toggle
-/// Developer Tools` in the menu bar. Without that feature flag the
-/// `is_devtools_open()` / `open_devtools()` / `close_devtools()` methods
-/// would compile out and this command would silently do nothing.
+/// Toggle the webview devtools. The `devtools` Cargo feature is opt-in
+/// (see src-tauri/Cargo.toml) — dev builds pass `--features devtools`
+/// to the tauri CLI, production release builds omit it so a local
+/// attacker can't attach the Web Inspector to a running release
+/// webview and dump app state.
 ///
 /// After flipping the state we POST the new value to /api/settings/desktop
 /// so it survives a quit/relaunch — main.rs::setup re-opens devtools on
@@ -87,6 +86,7 @@ fn open_path(dir: &std::path::Path) -> Result<(), String> {
 /// would have to re-open the inspector every launch.
 #[tauri::command]
 pub fn toggle_devtools(app: AppHandle) -> Result<(), String> {
+    #[cfg(feature = "devtools")]
     if let Some(window) = app.get_webview_window("main") {
         let next_open = !window.is_devtools_open();
         if next_open {
@@ -95,6 +95,10 @@ pub fn toggle_devtools(app: AppHandle) -> Result<(), String> {
             window.close_devtools();
         }
         persist_devtools_open(next_open);
+    }
+    #[cfg(not(feature = "devtools"))]
+    {
+        let _ = app;
     }
     Ok(())
 }
@@ -124,6 +128,7 @@ pub fn set_tray_visible(app: AppHandle, visible: bool) -> Result<(), String> {
 /// handler can't delegate to the `#[tauri::command]` `toggle_devtools`
 /// directly because the menu is generic over `Runtime` while the
 /// command takes the default Wry-typed AppHandle).
+#[cfg(feature = "devtools")]
 pub(crate) fn persist_devtools_open(open: bool) {
     let base_url = crate::state().sidecar_base_url.clone();
     std::thread::spawn(move || {
@@ -187,9 +192,16 @@ pub fn authenticate_touch_id(reason: String) -> Result<bool, String> {
 /// updates this every 15s — this command exists so the webview can force
 /// an immediate refresh after the user clears notifications in the bell
 /// UI (otherwise the badge would stick around until the next poll).
+///
+/// The count is capped at 999 so a compromised webview can't spam a
+/// six-digit fake "alerts pending" badge on the user's Dock to make
+/// the app look like an attention-grabbing emergency. Real notification
+/// counts in this app are tens at the absolute upper bound; anything
+/// past 999 is a UX overflow indicator at best.
 #[tauri::command]
 pub fn set_dock_badge(count: u32) -> Result<(), String> {
-    crate::notifications::set_dock_badge(count as usize);
+    let capped = count.min(999) as usize;
+    crate::notifications::set_dock_badge(capped);
     Ok(())
 }
 

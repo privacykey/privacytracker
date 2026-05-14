@@ -28,10 +28,7 @@ import { useSettingsAutoSave } from '../../lib/use-settings-auto-save';
  * toggle.
  */
 const AUTOSAVE_LOG_KEY = 'settings-autosave-log-to-taskcenter';
-import {
-  ADMIN_TOKEN_CHANGED_EVENT,
-  ADMIN_TOKEN_SESSION_KEY,
-} from './AdminTokenBridge';
+import { ADMIN_TOKEN_CHANGED_EVENT } from './AdminTokenBridge';
 import {
   AI_PROVIDER_OPTIONS,
   getAiModelOptions,
@@ -1241,19 +1238,33 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     }
   };
 
-  const refreshAdminUnlockState = () => {
+  const refreshAdminUnlockState = async () => {
     try {
-      setAdminTokenUnlocked(Boolean(sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY)?.trim()));
+      const res = await fetch('/api/auth/admin-token/status', { cache: 'no-store' });
+      if (!res.ok) {
+        setAdminTokenUnlocked(false);
+        return;
+      }
+      const data = (await res.json()) as { unlocked?: boolean };
+      setAdminTokenUnlocked(Boolean(data.unlocked));
     } catch {
       setAdminTokenUnlocked(false);
     }
   };
 
-  const saveSessionAdminToken = () => {
+  const saveSessionAdminToken = async () => {
     const token = adminTokenInput.trim();
     if (!token) return;
     try {
-      sessionStorage.setItem(ADMIN_TOKEN_SESSION_KEY, token);
+      const res = await fetch('/api/auth/admin-token/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      if (!res.ok) {
+        showToast(tDeploy('admin_unlock_failed'));
+        return;
+      }
       window.dispatchEvent(new Event(ADMIN_TOKEN_CHANGED_EVENT));
       setAdminTokenInput('');
       setAdminTokenUnlocked(true);
@@ -1263,9 +1274,9 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     }
   };
 
-  const clearSessionAdminToken = () => {
+  const clearSessionAdminToken = async () => {
     try {
-      sessionStorage.removeItem(ADMIN_TOKEN_SESSION_KEY);
+      await fetch('/api/auth/admin-token/logout', { method: 'POST' });
       window.dispatchEvent(new Event(ADMIN_TOKEN_CHANGED_EVENT));
     } catch {
       /* no-op */
@@ -3467,8 +3478,24 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
       if (hash === '#ai-timeouts') {
         setAdvancedAiOpen(true);
       }
-      if (hash === '#ai-summaries') {
-        const el = document.getElementById('ai-summaries');
+      // Each hash that targets a section by id — scroll + flash. Apply
+      // the same pulse animation the Privacy Map deep-links use so the
+      // user can see WHERE on the page they landed.
+      //
+      // - #ai-summaries — flagged from /privacy-policy and the AI debug
+      //   menu item.
+      // - #developer / #dev-options — the Dev menu (Tauri shell) and
+      //   the in-app `g f` shortcut both deep-link here. The DOM id is
+      //   `#developer`; `#dev-options` is accepted as an alias so the
+      //   menu entry and any older bookmarks still work.
+      const sectionHashTargets: Record<string, string> = {
+        '#ai-summaries': 'ai-summaries',
+        '#developer': 'developer',
+        '#dev-options': 'developer',
+      };
+      const targetId = sectionHashTargets[hash];
+      if (targetId) {
+        const el = document.getElementById(targetId);
         if (!el) return;
         // Smooth-scroll via rAF so the pulse starts after the scroll
         // begins, not in the middle of the initial paint. Without this

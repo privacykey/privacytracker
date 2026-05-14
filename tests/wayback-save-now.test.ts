@@ -106,13 +106,19 @@ test('historical import attempts Save Page Now once per app when multiple quarte
   assert.equal(result.targets[1].outcome, 'skipped_no_capture');
   assert.equal(result.targets[2].outcome, 'skipped_no_capture');
 
+  // We deliberately suppress synthetic changelog rows for the
+  // `save_now_failed` and `no_capture` outcomes — they were turning
+  // routine quarters-with-no-archive into a wall of "⚠ Wayback snapshot
+  // request failed" entries. Only `requested_snapshot` (a success)
+  // writes a row. Failures still surface in the bulk activity log and
+  // on `ImportTargetResult.errorMessage` for the API caller.
   const attempts = db.prepare(`
     SELECT changes_summary
       FROM privacy_snapshots
      WHERE app_id = ? AND triggered_by = 'wayback'
      ORDER BY scraped_at ASC
   `).all('835599320') as Array<{ changes_summary: string }>;
-  assert.equal(attempts.length, 3);
+  assert.equal(attempts.length, 0);
 });
 
 test('bulk Wayback cancel aborts the active archive request immediately', async () => {

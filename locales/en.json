@@ -430,7 +430,42 @@
       "list_empty_manual": "Add names here and we will match them for you.",
       "back": "← Back",
       "search_busy": "Searching App Store…",
-      "search": "Search App Store →"
+      "search_busy_count": "Searching App Store — {matched} of {total} matched…",
+      "search": "Search App Store →",
+      "table": {
+        "empty_header": "No apps yet",
+        "count_header": "{count, plural, one {# app ready to search} other {# apps ready to search}}",
+        "empty_hint": "Drop a Configurator CSV above, paste screenshots, or type names below to get started.",
+        "add_placeholder": "Add more apps — one per line, then ⌘/Ctrl-Enter to add",
+        "add_label": "+ Add to list",
+        "remove_title": "Remove {name} from the list",
+        "remove_aria": "Remove {name}",
+        "chip_bundle_label": "Bundle ID",
+        "chip_bundle_title": "Apple bundle ID captured: {bundleId}. Removing this row drops the exact-match lookup advantage.",
+        "chip_webclip_label": "Web app",
+        "chip_webclip_title": "Looks like a home-screen web clip rather than an App Store app. Search may not find a match — you can still add it as a manual / custom app later.",
+        "source_label": {
+          "manual": "Typed",
+          "cfgutil": "Configurator",
+          "file": "File",
+          "ocr": "Screenshot"
+        },
+        "source_title": {
+          "manual": "Typed in by hand",
+          "cfgutil": "Imported via Apple Configurator (bundle ID preserved)",
+          "file": "Imported from a CSV / text file",
+          "ocr": "Extracted from screenshot OCR"
+        }
+      },
+      "search_progress": {
+        "title": "Searching the App Store",
+        "matched_of_total": "{matched} of {total} matched",
+        "batch_of": "Batch {current} of {total}",
+        "preparing": "Looking up bundle IDs first…",
+        "cancel": "Cancel",
+        "cancel_title": "Stop the search after the current batch (partial matches are kept)",
+        "hint": "Apple rate-limits large batches — bigger imports may take a minute. Anything not matched lands in the next step where you can retry."
+      }
     },
     "step4": {
       "subtitle_running": "Fetching privacy labels from the App Store and saving your first snapshot. The next step looks at each app's privacy policy.",
@@ -4154,6 +4189,75 @@
       "col_wired": "Wired",
       "wired_yes": "✓",
       "wired_no": "·"
+    }
+  },
+  "background_mode_callout": {
+    "region_aria": "Background mode setup",
+    "title": "Keep privacytracker running in the background",
+    "body": "Set sync frequency, notification channels, and quiet hours in a quick four-step wizard.",
+    "cta": "Set up",
+    "dismiss_aria": "Dismiss the background-mode setup prompt",
+    "dismiss_title": "Hide this prompt — you can revisit setup from Settings later"
+  },
+  "background_mode_wizard": {
+    "title": "Keep privacytracker running in the background",
+    "close_aria": "Close the wizard without saving",
+    "stepper_aria": "Wizard steps",
+    "back": "Back",
+    "next": "Next",
+    "cancel": "Cancel",
+    "done": "Done",
+    "saving": "Saving…",
+    "submit_error_generic": "Couldn't save your choices — try again or open Settings to set them one at a time.",
+    "step_sync": {
+      "title": "How often should we sync?",
+      "body": "We check the App Store for label changes, privacy-policy updates, and version bumps. Privacy-policy scrapes piggyback on this cadence.",
+      "option_daily": "Once a day (recommended)",
+      "option_daily_hint": "Catches almost everything within 24 hours. Easy on Apple's rate limits.",
+      "option_weekly": "Once a week",
+      "option_weekly_hint": "Lightweight — best when you mostly track stable, slow-moving apps.",
+      "option_manual": "Manual only",
+      "option_manual_hint": "Nothing runs in the background. You'll trigger syncs yourself from Settings."
+    },
+    "step_notifications": {
+      "title": "How should we let you know?",
+      "body": "In-app bell is always on. Pick any additional channels you want for change summaries.",
+      "bell_label": "In-app notification bell",
+      "bell_hint": "Already on. Shows unread changes next to the search bar.",
+      "native_label": "Native macOS / Windows notifications",
+      "native_hint": "Shows a system toast and updates the Dock badge when new changes land. Requires the desktop build.",
+      "webhook_label": "Webhook (Slack / Discord / Teams / generic)",
+      "webhook_hint": "Paste an incoming-webhook URL from your chat workspace. We POST summaries directly — no email, no SMTP.",
+      "webhook_placeholder": "https://hooks.slack.com/services/...",
+      "webhook_format_aria": "Webhook payload format",
+      "format_slack": "Slack",
+      "format_discord": "Discord",
+      "format_teams": "Microsoft Teams",
+      "format_generic": "Generic JSON",
+      "frequency_label": "Frequency",
+      "frequency_immediate": "Each change",
+      "frequency_daily_summary": "Daily summary",
+      "frequency_weekly_summary": "Weekly summary",
+      "test_button": "Test webhook",
+      "testing": "Testing…",
+      "test_success": "Webhook responded with HTTP {status}.",
+      "test_failure_generic": "Webhook test failed — check the URL and try again."
+    },
+    "step_defaults": {
+      "title": "Recommended background defaults",
+      "body": "These are configurable any time from Settings. Toggle off anything you'd rather skip.",
+      "autostart_label": "Launch privacytracker at login",
+      "autostart_hint": "macOS LaunchAgent — the app starts when you sign in.",
+      "launch_hidden_label": "Start in the background (no window)",
+      "launch_hidden_hint": "Only the menu-bar icon appears at login. Open the dashboard from there when you need it."
+    },
+    "step_quiet": {
+      "title": "Quiet hours",
+      "body": "Optional: pause notifications during a set window. In-app bell rows still get created — they just hold until the window ends.",
+      "enable_label": "Enable quiet hours",
+      "enable_hint": "Notifications between these times are suppressed and delivered when the window ends.",
+      "start_label": "Start",
+      "end_label": "End"
     }
   }
 }

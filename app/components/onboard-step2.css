@@ -1,0 +1,262 @@
+/* Step-2 onboarding chrome: imported-apps table + search progress card.
+ * Co-located with the components for the same Turbopack-reliability
+ * reason as compare-slot.css and review-queue.css — appending to the
+ * 26k-line globals.css has burned us before on incremental dev rebuilds.
+ */
+
+/* ── Imported-apps table ───────────────────── */
+.imported-apps-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+  padding: 14px;
+}
+
+.imported-apps-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+.imported-apps-table-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #1f2937);
+}
+
+.imported-apps-table-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: var(--bg, #fafafa);
+  padding: 4px;
+  min-height: 80px;
+}
+.imported-apps-table-rows.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 28px 16px;
+}
+.imported-apps-table-empty-hint {
+  font-size: 13px;
+  color: var(--text, #6b7280);
+  opacity: 0.7;
+  max-width: 340px;
+}
+
+.imported-apps-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+}
+.imported-apps-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.imported-apps-row-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text, #1f2937);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.imported-apps-row-developer {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.imported-apps-row-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.imported-apps-row-chip,
+.imported-apps-row-source {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.imported-apps-row-chip-bundle {
+  background: #ecfdf5;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.imported-apps-row-chip-webclip {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+.imported-apps-row-source {
+  background: var(--surface-hover, #f3f4f6);
+  color: var(--text, #6b7280);
+  border: 1px solid var(--border, #e5e7eb);
+}
+.imported-apps-row-source-cfgutil { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+.imported-apps-row-source-file    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.imported-apps-row-source-ocr     { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+.imported-apps-row-source-manual  { background: var(--surface-hover, #f3f4f6); color: var(--text, #6b7280); }
+
+.imported-apps-row-remove {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  color: var(--text, #6b7280);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.imported-apps-row-remove:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* Inline add input — the textarea replacement, but scoped to "add MORE
+   apps" so existing rows can't be silently mutated by retyping. */
+.imported-apps-table-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.imported-apps-table-add-input {
+  min-height: 76px;
+}
+.imported-apps-table-add-btn {
+  align-self: flex-end;
+}
+
+/* Mobile: tighter padding, rows wrap naturally. */
+@media (max-width: 640px) {
+  .imported-apps-table { padding: 10px; }
+  .imported-apps-row {
+    grid-template-columns: 1fr auto;
+  }
+  .imported-apps-row-chips {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    margin-top: 2px;
+  }
+}
+
+/* ── Search progress card ──────────────────── */
+.search-progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--blue-dim, #eff6ff);
+  border: 1px solid var(--blue, #2563eb);
+}
+.search-progress-card-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.search-progress-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1f2937);
+}
+.search-progress-card-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue, #1d4ed8);
+}
+.search-progress-bar {
+  height: 8px;
+  background: var(--surface, #fff);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border, #e5e7eb);
+  position: relative;
+}
+.search-progress-bar-fill {
+  height: 100%;
+  background: var(--blue, #2563eb);
+  border-radius: 999px;
+  transition: width 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Pre-first-batch shimmer — gives a feeling of activity while phase-1
+   bundle lookup is in flight before phase-2's first chunk lands. */
+.search-progress-bar.is-indeterminate .search-progress-bar-fill {
+  width: 30% !important;
+  animation: search-progress-shimmer 1400ms linear infinite;
+}
+@keyframes search-progress-shimmer {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(120%); }
+  100% { transform: translateX(120%); }
+}
+.search-progress-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.search-progress-card-batch {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.85;
+}
+.search-progress-cancel-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text, #1f2937);
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.search-progress-cancel-btn:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+.search-progress-card-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text, #6b7280);
+  opacity: 0.7;
+  font-style: italic;
+}

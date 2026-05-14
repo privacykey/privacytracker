@@ -121,9 +121,13 @@ async function pingOpenAiCompatible({
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
+  // `redirect: 'error'` so an attacker-controlled custom baseUrl can't
+  // 302 us to http://169.254.169.254/ (IMDS) on a cloud-hosted deploy.
+  // Legitimate AI providers don't redirect their /models endpoint.
   const res = await fetch(`${baseUrl}/models`, {
     method: 'GET',
     headers,
+    redirect: 'error',
     signal: AbortSignal.timeout(10_000),
   });
 
@@ -169,6 +173,7 @@ async function pingAnthropic({
       'anthropic-version': '2023-06-01',
       Accept: 'application/json',
     },
+    redirect: 'error',
     signal: AbortSignal.timeout(10_000),
   });
 

@@ -6,7 +6,7 @@ import {
 } from '../../../../../lib/imports';
 import { fetchAndParseApp } from '../../../../../lib/scraper';
 import db from '../../../../../lib/db';
-import { readBoundedJson } from '../../../../../lib/security';
+import { readBoundedJson, validateAppStoreUrl } from '../../../../../lib/security';
 
 /**
  * Rewire a single import item to point at a different App Store listing.
@@ -39,8 +39,16 @@ export async function POST(request: Request) {
     if (!itemId) {
       return NextResponse.json({ error: 'itemId is required' }, { status: 400 });
     }
-    if (!url || !/^https?:\/\//i.test(url)) {
-      return NextResponse.json({ error: 'url must be a valid http(s) URL' }, { status: 400 });
+    // Match the App-Store-only host allowlist at the route boundary
+    // instead of waiting for fetchAndParseApp to re-validate. Cheaper
+    // and means a malicious payload can't even trigger the scrape
+    // workflow before being rejected.
+    const validated = validateAppStoreUrl(url);
+    if (!validated.ok) {
+      return NextResponse.json(
+        { error: 'url must be a canonical apps.apple.com URL with an /id<digits> segment' },
+        { status: 400 },
+      );
     }
 
     const existing = getImportItemById(itemId);

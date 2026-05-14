@@ -8996,12 +8996,46 @@ body.review-rec-print-active .review-rec-print a {
   background: var(--surface-active);
 }
 
+/* Custom-drawn checkbox. The native control's user-agent border is
+   nearly invisible against the pure-white --surface-active row in
+   light mode (and the manually-overridden html[data-theme-override
+   ="light"] state has the same problem). `accent-color` only paints
+   the checked state, so styling the unchecked frame ourselves is the
+   only portable fix. The :checked / :indeterminate visuals match
+   Apple's checkbox shape — filled square with a stroke-rendered tick. */
 .settings-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
   width: 18px;
   height: 18px;
-  margin-top: 2px;
-  accent-color: var(--blue);
+  margin: 2px 0 0;
   flex-shrink: 0;
+  background-color: var(--bg-2);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+  /* Centre the SVG checkmark we draw via background-image when :checked. */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px 12px;
+  transition: background-color 80ms ease, border-color 80ms ease;
+}
+.settings-checkbox:hover {
+  border-color: var(--blue);
+}
+.settings-checkbox:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.settings-checkbox:checked {
+  background-color: var(--blue);
+  border-color: var(--blue);
+  /* White tick. Inlined SVG so the asset can't 404. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6.5'/></svg>");
+}
+.settings-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .settings-code-block {
@@ -17432,7 +17466,16 @@ button.import-history-stat.is-active {
 
 /* Inline confirm bubble — anchors below the pill when the user clicks
    a preset that would overwrite their existing preferences. Stays inside
-   the editor card so there's no portal / z-index gymnastics. */
+   the editor card so there's no portal / z-index gymnastics.
+
+   Uses --bg-2 (the solid surface token) on purpose: the earlier
+   --surface-1 reference is a token that doesn't exist in this codebase
+   (see the same-named lesson at the snooze-menu comment near line
+   5030), so it fell back to `initial` and the bubble rendered as a
+   transparent overlay with the table rows bleeding through underneath.
+   --bg-2 is solid in light/dark/HC themes AND is the target that the
+   data-a11y-solid="on" rule collapses translucent surfaces onto, so
+   this also satisfies "Reduce Transparency" automatically. */
 .privacy-profile-preset-confirm {
   position: absolute;
   top: calc(100% + 6px);
@@ -17443,7 +17486,7 @@ button.import-history-stat.is-active {
   flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
-  background: var(--surface-1);
+  background: var(--bg-2);
   border: 1px solid var(--accent);
   border-radius: 8px;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 14%, transparent);

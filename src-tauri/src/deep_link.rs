@@ -65,7 +65,16 @@ fn handle(app: &AppHandle, base_url: &str, url: &Url) {
     if let Some(nav) = nav_path {
         if let Some(window) = app.get_webview_window("main") {
             let target = format!("{base_url}{nav}");
-            let _ = window.eval(&format!("window.location.assign('{target}')"));
+            // Pass the URL via serde_json::to_string so the JS string
+            // literal is structurally safe regardless of what `nav`
+            // contains. The current input validation already constrains
+            // `nav` to a small set of safe shapes, but doing the
+            // escaping here means a future caller that loosens the
+            // input shape can't accidentally re-open a string-template
+            // injection by quoting the URL into a single-quoted JS
+            // literal.
+            let encoded = serde_json::to_string(&target).unwrap_or_else(|_| "\"/\"".into());
+            let _ = window.eval(&format!("window.location.assign({encoded})"));
         }
     }
 }

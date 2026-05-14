@@ -58,6 +58,7 @@
 import crypto from 'crypto';
 import packageJson from '../package.json';
 import db from './db';
+import { sanitizePolicyUrl, validateAppStoreUrl, validateExternalUrl } from './security';
 import type {
   AuditBundle,
   BundleApp,
@@ -611,6 +612,36 @@ function guessIncomingLastSynced(app: BundleApp, exportedAt: string): number {
   return Number.isFinite(ms) ? ms : Date.now();
 }
 
+/**
+ * Sanitise URLs that arrived inside an untrusted .audit.json. A malicious
+ * recommender bundle could otherwise embed `javascript:`, `data:`, or
+ * `http://169.254.169.254/…` URLs that end up rendered as `<a href={…}>`
+ * in the review UI or fetched server-side during the next policy sync.
+ * Each helper returns `null` (or `''` for the App-Store URL field) so
+ * the row still inserts cleanly — we drop the URL rather than abort
+ * the whole import for one bad field.
+ */
+function safeAppStoreUrl(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw) return '';
+  const v = validateAppStoreUrl(raw);
+  return v.ok && v.url ? v.url.toString() : '';
+}
+
+function safeIconUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw) return null;
+  // Apple's icon CDN is *.mzstatic.com but we don't require a host
+  // allowlist here — any public http(s) icon URL is acceptable in
+  // principle. The validateExternalUrl call blocks `javascript:`,
+  // `data:`, private IPs, and metadata hosts, which is the threat.
+  const v = validateExternalUrl(raw, { maxLength: 2048 });
+  return v.ok && v.url ? v.url.toString() : null;
+}
+
+function safePolicyUrl(raw: unknown): string | null {
+  const cleaned = sanitizePolicyUrl(raw);
+  return cleaned || null;
+}
+
 function upsertApp(app: BundleApp, lastSynced: number): void {
   // Pricing fields are COALESCE'd on update so a v1 bundle (which
   // doesn't carry price columns) doesn't blow away a recipient's
@@ -642,8 +673,8 @@ function upsertApp(app: BundleApp, lastSynced: number): void {
   ).run(
     app.id,
     app.name,
-    app.url ?? '',
-    app.icon_url,
+    safeAppStoreUrl(app.url),
+    safeIconUrl(app.icon_url),
     app.bundle_id,
     app.developer,
     lastSynced,
@@ -651,7 +682,7 @@ function upsertApp(app: BundleApp, lastSynced: number): void {
     app.current_version,
     app.has_privacy_details,
     app.has_accessibility_labels,
-    app.privacy_policy_url,
+    safePolicyUrl(app.privacy_policy_url),
     app.price_amount ?? null,
     app.price_currency ?? null,
     app.price_formatted ?? null,
@@ -694,7 +725,11 @@ function replaceAppLabels(app: BundleApp): void {
 function upsertPolicySummary(app: BundleApp): void {
   const summary = app.policy_summary;
   if (!summary || (!summary.summary_json && !summary.source_text_excerpt)) return;
-  if (!app.privacy_policy_url) return;
+  // Drop the row entirely if the bundle's policy URL doesn't pass
+  // sanitisation — without a safe URL there's no legitimate place to
+  // navigate to from the summary card.
+  const policyUrl = safePolicyUrl(app.privacy_policy_url);
+  if (!policyUrl) return;
 
   // The bundle ships an excerpt of the source text rather than the full
   // doc (see lib/audit-bundle.ts); we store the excerpt as-is so the
@@ -719,7 +754,7 @@ function upsertPolicySummary(app: BundleApp): void {
        generated_at      = COALESCE(excluded.generated_at, privacy_policy_analyses.generated_at)`,
   ).run(
     app.id,
-    app.privacy_policy_url,
+    policyUrl,
     summary.source_text_excerpt ?? null,
     summary.source_text_excerpt ? summary.source_text_excerpt.split(/\s+/).length : 0,
     summary.summary_json ?? null,

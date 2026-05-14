@@ -100,7 +100,11 @@ export async function submitToWaybackSaveNow(
 ): Promise<WaybackSaveResult> {
   if (!targetUrl) return { ok: false, error: 'missing target url' };
 
-  const endpoint = `https://web.archive.org/save/${targetUrl.replace(/^https?:\/\//, (m) => m)}`;
+  // Save Page Now accepts the full URL with scheme. The earlier
+  // `.replace(/^https?:\/\//, (m) => m)` was a no-op left over from a
+  // half-finished refactor (the callback returned the matched protocol
+  // unchanged) — dropping it.
+  const endpoint = `https://web.archive.org/save/${targetUrl}`;
 
   try {
     const validation = validateExternalUrl(endpoint, { allowedHosts: WAYBACK_HOSTS });

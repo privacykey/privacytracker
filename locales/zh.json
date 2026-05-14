@@ -430,7 +430,42 @@
       "list_empty_manual": "在这里输入名称，我们会自动匹配。",
       "back": "← 返回",
       "search_busy": "正在搜索 App Store…",
-      "search": "搜索 App Store →"
+      "search_busy_count": "正在搜索 App Store —— 已匹配 {matched} / {total}…",
+      "search": "搜索 App Store →",
+      "table": {
+        "empty_header": "暂无应用",
+        "count_header": "{count, plural, other {# 个应用待搜索}}",
+        "empty_hint": "在上方拖入 Apple Configurator 的 CSV、粘贴截图，或在下方输入名称开始。",
+        "add_placeholder": "添加更多应用 —— 每行一个，按 ⌘/Ctrl-Enter 添加",
+        "add_label": "+ 加入列表",
+        "remove_title": "从列表中移除 {name}",
+        "remove_aria": "移除 {name}",
+        "chip_bundle_label": "Bundle ID",
+        "chip_bundle_title": "已捕获 Apple Bundle ID：{bundleId}。移除此行将放弃精确匹配优势。",
+        "chip_webclip_label": "网页应用",
+        "chip_webclip_title": "看起来像主屏幕网页快捷方式，而非 App Store 应用。搜索可能无法匹配 —— 之后可手动作为自定义应用添加。",
+        "source_label": {
+          "manual": "手动输入",
+          "cfgutil": "Configurator",
+          "file": "文件",
+          "ocr": "截图"
+        },
+        "source_title": {
+          "manual": "手动输入",
+          "cfgutil": "通过 Apple Configurator 导入（已保留 Bundle ID）",
+          "file": "从 CSV / 文本文件导入",
+          "ocr": "从截图 OCR 提取"
+        }
+      },
+      "search_progress": {
+        "title": "正在搜索 App Store",
+        "matched_of_total": "已匹配 {matched} / {total}",
+        "batch_of": "第 {current} / {total} 批",
+        "preparing": "正在先查找 Bundle ID…",
+        "cancel": "取消",
+        "cancel_title": "在当前批次完成后停止（已匹配的结果会保留）",
+        "hint": "Apple 对大批量进行限速 —— 较大导入可能需要一分钟。未匹配项会进入下一步供你重试。"
+      }
     },
     "step4": {
       "subtitle_running": "正在从 App Store 获取隐私标签并保存第一份快照。下一步将查看每个应用的隐私政策。",
@@ -4153,6 +4188,75 @@
       "col_wired": "Wired",
       "wired_yes": "✓",
       "wired_no": "·"
+    }
+  },
+  "background_mode_callout": {
+    "region_aria": "后台模式设置",
+    "title": "让 privacytracker 在后台持续运行",
+    "body": "通过四步快速向导设置同步频率、通知渠道和勿扰时段。",
+    "cta": "立即设置",
+    "dismiss_aria": "关闭后台模式设置提示",
+    "dismiss_title": "隐藏此提示 —— 之后可在「设置」中重新打开"
+  },
+  "background_mode_wizard": {
+    "title": "让 privacytracker 在后台持续运行",
+    "close_aria": "关闭向导且不保存",
+    "stepper_aria": "向导步骤",
+    "back": "返回",
+    "next": "下一步",
+    "cancel": "取消",
+    "done": "完成",
+    "saving": "正在保存…",
+    "submit_error_generic": "无法保存选项 —— 请重试，或前往「设置」逐项配置。",
+    "step_sync": {
+      "title": "多久同步一次？",
+      "body": "我们会检查 App Store 的标签变更、隐私政策更新和版本升级。隐私政策抓取沿用此节奏。",
+      "option_daily": "每天一次（推荐）",
+      "option_daily_hint": "24 小时内捕获几乎所有变化。对 Apple 的速率限制较友好。",
+      "option_weekly": "每周一次",
+      "option_weekly_hint": "轻量 —— 适合主要追踪稳定、变更少的应用。",
+      "option_manual": "仅手动",
+      "option_manual_hint": "后台不运行。需在「设置」中手动触发同步。"
+    },
+    "step_notifications": {
+      "title": "如何通知你？",
+      "body": "应用内通知铃始终开启。可勾选其他渠道接收变更摘要。",
+      "bell_label": "应用内通知铃",
+      "bell_hint": "已开启。会在搜索栏旁显示未读变更。",
+      "native_label": "macOS / Windows 系统通知",
+      "native_hint": "新变更到来时弹出系统通知，并更新 Dock 角标。需要桌面版。",
+      "webhook_label": "Webhook（Slack / Discord / Teams / 通用）",
+      "webhook_hint": "粘贴聊天工作区的 incoming webhook URL，我们会直接 POST 摘要 —— 无需邮件、无需 SMTP。",
+      "webhook_placeholder": "https://hooks.slack.com/services/...",
+      "webhook_format_aria": "Webhook 载荷格式",
+      "format_slack": "Slack",
+      "format_discord": "Discord",
+      "format_teams": "Microsoft Teams",
+      "format_generic": "通用 JSON",
+      "frequency_label": "频率",
+      "frequency_immediate": "每次变更",
+      "frequency_daily_summary": "每日摘要",
+      "frequency_weekly_summary": "每周摘要",
+      "test_button": "测试 webhook",
+      "testing": "测试中…",
+      "test_success": "Webhook 回复 HTTP {status}。",
+      "test_failure_generic": "Webhook 测试失败 —— 请检查 URL 后重试。"
+    },
+    "step_defaults": {
+      "title": "推荐的后台默认值",
+      "body": "这些可随时在「设置」中修改。关闭不需要的项即可。",
+      "autostart_label": "登录时启动 privacytracker",
+      "autostart_hint": "macOS LaunchAgent —— 登录时自动启动应用。",
+      "launch_hidden_label": "在后台启动（无窗口）",
+      "launch_hidden_hint": "登录时仅显示菜单栏图标。需要时再从那里打开仪表板。"
+    },
+    "step_quiet": {
+      "title": "勿扰时段",
+      "body": "可选：在指定时间窗内暂停通知。应用内铃声仍会创建条目，仅延迟到窗口结束后投递。",
+      "enable_label": "启用勿扰时段",
+      "enable_hint": "此时间段内的通知会被暂停，并在窗口结束后投递。",
+      "start_label": "开始",
+      "end_label": "结束"
     }
   }
 }

@@ -91,9 +91,26 @@ export default function Nav({ appCount, flags }: NavProps) {
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
+  // Sibling routes that should also light up a nav link. Today only
+  // `/dashboard/review-recommendations` aliases to `/dashboard/apps`
+  // — users treat the review queue as a dialog over the apps grid,
+  // so the Apps tab stays highlighted while they're inside it and
+  // clicking it acts as a "close-and-return" affordance. Plain
+  // object lookup so future aliases (e.g. shortlist drawer aliasing
+  // to apps) drop in with one line.
+  const NAV_ALIASES: Record<string, string[]> = {
+    '/dashboard/apps': ['/dashboard/review-recommendations'],
+  };
   const isActive = useCallback(
-    (href: string, exact = false) =>
-      exact ? pathname === href : (pathname === href || pathname.startsWith(href + '/')),
+    (href: string, exact = false) => {
+      if (pathname === href) return true;
+      if (!exact && pathname.startsWith(href + '/')) return true;
+      const aliases = NAV_ALIASES[href];
+      if (aliases && aliases.some(a => pathname === a || pathname.startsWith(a + '/'))) {
+        return true;
+      }
+      return false;
+    },
     [pathname],
   );
 

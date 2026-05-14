@@ -6,26 +6,30 @@
  * and any future utility can import without pulling Tauri's types when
  * rendered in the Docker/web deployment.
  *
- * Works against Tauri v2. The global is `window.__TAURI__` when the app is
- * served from the Tauri webview; `window.__TAURI_INTERNALS__` was the v1
- * shape and isn't checked here.
+ * Works against Tauri v2. Detection uses `window.__TAURI_INTERNALS__`
+ * (set unconditionally by Tauri v2's IPC bootstrap) so it remains
+ * accurate when `withGlobalTauri` is disabled in tauri.conf.json.
+ * Invocation goes through a dynamic import of `@tauri-apps/api/core`,
+ * which Next splits into a chunk only the Tauri build loads.
  */
 
 declare global {
   interface Window {
-    __TAURI__?: {
-      core?: {
-        invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
-      };
-    };
+    __TAURI_INTERNALS__?: unknown;
   }
 }
 
 type InvokeFn = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 
+let cachedInvoke: InvokeFn | null | undefined;
+
 function getInvoke(): InvokeFn | null {
   if (typeof window === 'undefined') return null;
-  return window.__TAURI__?.core?.invoke ?? null;
+  if (!window.__TAURI_INTERNALS__) return null;
+  if (cachedInvoke !== undefined) return cachedInvoke;
+  cachedInvoke = (cmd, args) =>
+    import('@tauri-apps/api/core').then(m => m.invoke(cmd, args ?? {}));
+  return cachedInvoke;
 }
 
 /** `true` when the page is running inside the Tauri webview. */

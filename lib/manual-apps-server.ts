@@ -19,6 +19,7 @@ import {
   deleteManualAppHistory,
   type ManualAppFieldChangeDetail,
 } from './manual-app-history';
+import { validateExternalUrl } from './security';
 
 interface ManualAppRow {
   id: string;
@@ -58,22 +59,23 @@ function normaliseString(value: unknown): string | null {
 }
 
 /**
- * Lightweight URL sanity check. We only accept http(s) to avoid persisting
- * things like `javascript:` or `file:` into a UI that renders user-provided
- * links. Throws on anything else — callers should catch and map to a 400.
+ * Sanity-check + sanitise a user-provided URL before persisting it.
+ * Delegates to `validateExternalUrl` so the policy is the same one the
+ * scraper/SSRF guard already enforces: http(s) only, max 2 KiB, and
+ * private/loopback IPs and cloud-metadata hostnames are rejected. That
+ * matters here because these URLs end up rendered as `<a href={…}>` —
+ * a clickable `http://localhost:3000/api/reset?confirm=1` would issue
+ * a same-origin GET against the local API with the user's session.
+ * Throws on anything else; callers map to a 400.
  */
 function normaliseUrl(value: unknown, field: string): string | null {
   const str = normaliseString(value);
   if (str === null) return null;
-  try {
-    const parsed = new URL(str);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error(`${field} must be http(s)`);
-    }
-    return parsed.toString();
-  } catch {
+  const result = validateExternalUrl(str, { maxLength: 2048 });
+  if (!result.ok || !result.url) {
     throw new Error(`${field} is not a valid URL`);
   }
+  return result.url.toString();
 }
 
 export function listManualApps(): ManualApp[] {

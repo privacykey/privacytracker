@@ -1,61 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
+/**
+ * Admin-token UI signal bus.
+ *
+ * The token itself is now stored in an HttpOnly cookie (set by
+ * `/api/auth/admin-token/login` and cleared by `/api/auth/admin-token/logout`),
+ * so JS — including any XSS payload — cannot read it from `sessionStorage`
+ * any more. The browser auto-attaches the cookie to same-origin /api/*
+ * requests, so this component no longer needs to install a fetch shim.
+ *
+ * Two exports remain:
+ *   - `ADMIN_TOKEN_CHANGED_EVENT`: components can listen for this to
+ *     refresh their "locked / unlocked" pills after a successful login/
+ *     logout in another tab or panel.
+ *   - The default export is a no-op marker component, kept so the layout
+ *     tree doesn't need to be re-shuffled.
+ */
 
-export const ADMIN_TOKEN_SESSION_KEY = 'pt:admin-token';
 export const ADMIN_TOKEN_CHANGED_EVENT = 'pt:admin-token-changed';
 
-function readAdminToken(): string {
-  try {
-    return sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY)?.trim() ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function isSameOriginApiRequest(input: RequestInfo | URL): boolean {
-  try {
-    const raw =
-      input instanceof Request
-        ? input.url
-        : input instanceof URL
-          ? input.toString()
-          : String(input);
-    const url = new URL(raw, window.location.href);
-    return url.origin === window.location.origin && url.pathname.startsWith('/api/');
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Installs a tiny same-origin fetch shim that attaches the session-scoped
- * admin token to same-origin `/api/*` calls. This keeps LAN installs
- * ergonomic: users can unlock once in Settings, then reads and writes that
- * are guarded server-side work without every component manually plumbing a
- * token.
- */
 export default function AdminTokenBridge() {
-  useEffect(() => {
-    const originalFetch = window.fetch.bind(window);
-    const patchedFetch: typeof window.fetch = (input, init) => {
-      const token = readAdminToken();
-      if (token && isSameOriginApiRequest(input)) {
-        const requestHeaders = input instanceof Request ? input.headers : undefined;
-        const headers = new Headers(init?.headers ?? requestHeaders);
-        headers.set('x-auditor-admin-token', token);
-        return originalFetch(input, { ...init, headers });
-      }
-      return originalFetch(input, init);
-    };
-
-    window.fetch = patchedFetch;
-    return () => {
-      if (window.fetch === patchedFetch) {
-        window.fetch = originalFetch;
-      }
-    };
-  }, []);
-
   return null;
 }

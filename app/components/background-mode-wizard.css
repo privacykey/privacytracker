@@ -1,0 +1,363 @@
+/* Background-mode callout + 4-step wizard.
+ * Co-located CSS for the BackgroundModeCallout (in the dashboard
+ * focus strip) and the BackgroundModeWizard modal. Keeps Turbopack's
+ * hot-reload reliable — appending these to globals.css has burned us
+ * on incremental builds before.
+ */
+
+/* ── Dashboard callout ─────────────────────── */
+.bg-mode-callout {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border-radius: 12px;
+  background: var(--blue-dim, #eff6ff);
+  border: 1px solid var(--blue, #2563eb);
+  font-size: 13px;
+  color: var(--text, #1f2937);
+  max-width: 100%;
+  position: relative;
+}
+.bg-mode-callout-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.bg-mode-callout-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.bg-mode-callout-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text, #1f2937);
+}
+.bg-mode-callout-body {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.85;
+}
+.bg-mode-callout-dismiss {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text, #6b7280);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  transition: background 120ms, color 120ms;
+}
+.bg-mode-callout-dismiss:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* ── Wizard modal ──────────────────────────── */
+.bg-wizard-overlay {
+  z-index: 60;
+}
+.bg-wizard-card {
+  max-width: 580px;
+  width: min(580px, calc(100vw - 32px));
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 64px);
+  overflow: hidden;
+}
+.bg-wizard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px 12px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.bg-wizard-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+.bg-wizard-close {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  color: var(--text, #1f2937);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bg-wizard-close:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* Stepper — four dots showing current step / completed steps. */
+.bg-wizard-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.bg-wizard-stepper-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong, #c7cdd6);
+  transition: background 160ms, transform 160ms;
+}
+.bg-wizard-stepper-dot.is-done {
+  background: var(--blue, #2563eb);
+}
+.bg-wizard-stepper-dot.is-current {
+  background: var(--blue, #2563eb);
+  transform: scale(1.4);
+}
+
+.bg-wizard-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.bg-wizard-step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bg-wizard-step-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text, #1f2937);
+}
+.bg-wizard-step-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text, #6b7280);
+}
+
+/* Radio option rows (sync schedule, webhook frequency). */
+.bg-wizard-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bg-wizard-option {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--surface, #fff);
+  transition: border-color 120ms, background 120ms;
+}
+.bg-wizard-option:hover {
+  border-color: var(--border-strong, #9ca3af);
+}
+.bg-wizard-option.is-active {
+  border-color: var(--blue, #2563eb);
+  background: var(--blue-dim, #eff6ff);
+}
+.bg-wizard-option input[type="radio"] {
+  margin-top: 2px;
+  accent-color: var(--blue, #2563eb);
+}
+.bg-wizard-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.bg-wizard-option-hint {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.8;
+}
+
+/* Toggle rows (boolean switches with description). */
+.bg-wizard-toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bg-wizard-toggle {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--surface, #fff);
+}
+.bg-wizard-toggle input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: var(--blue, #2563eb);
+}
+.bg-wizard-toggle input[type="checkbox"]:disabled {
+  opacity: 0.6;
+}
+.bg-wizard-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+}
+.bg-wizard-toggle-hint {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.8;
+}
+
+/* Webhook block. */
+.bg-wizard-webhook {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--surface, #f9fafb);
+}
+.bg-wizard-webhook-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.bg-wizard-webhook-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.85;
+}
+.bg-wizard-webhook-row {
+  display: flex;
+  gap: 6px;
+}
+.bg-wizard-input,
+.bg-wizard-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 7px 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text, #1f2937);
+}
+.bg-wizard-input { flex: 1; min-width: 0; }
+.bg-wizard-select { flex: 0 0 130px; }
+
+.bg-wizard-webhook-frequency {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bg-wizard-webhook-frequency-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bg-wizard-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.bg-wizard-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  font-size: 12px;
+  cursor: pointer;
+}
+.bg-wizard-pill.is-active {
+  border-color: var(--blue, #2563eb);
+  background: var(--blue-dim, #eff6ff);
+  color: var(--blue, #1d4ed8);
+  font-weight: 600;
+}
+.bg-wizard-pill input[type="radio"] {
+  display: none;
+}
+
+.bg-wizard-webhook-test {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bg-wizard-test-result {
+  font-size: 12px;
+}
+.bg-wizard-test-result.is-success { color: #15803d; }
+.bg-wizard-test-result.is-failure { color: #b91c1c; }
+
+/* Quiet-hours time fields. */
+.bg-wizard-time-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+.bg-wizard-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text, #6b7280);
+}
+
+.bg-wizard-error {
+  margin: 0 22px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.bg-wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 22px 18px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+@media (max-width: 640px) {
+  .bg-wizard-card {
+    max-height: calc(100vh - 24px);
+    width: calc(100vw - 16px);
+  }
+  .bg-wizard-webhook-row { flex-direction: column; }
+  .bg-wizard-select { flex: none; width: 100%; }
+}

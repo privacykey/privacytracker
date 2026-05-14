@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import { headers } from 'next/headers';
 import './globals.css';
 import { TaskCenterProvider } from './components/TaskCenter';
 import { QueuedSearchProvider } from './components/QueuedSearchProvider';
@@ -14,6 +15,7 @@ import DevMenu from './components/DevMenu';
 import NextDevIndicatorRepositioner from './components/NextDevIndicatorRepositioner';
 import NavigationHistoryTracker from './components/NavigationHistoryTracker';
 import AdminTokenBridge from './components/AdminTokenBridge';
+import MenuActionsBridge from './components/MenuActionsBridge';
 import FocusPreviewBanner from './components/FocusPreviewBanner';
 import UpdateBanner from './components/UpdateBanner';
 import FlagHighlightHandler from './components/FlagHighlightHandler';
@@ -49,6 +51,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale();
   const messages = await getMessages();
   const tFooter = await getTranslations('footer');
+
+  // Per-request CSP nonce, minted by proxy.ts and forwarded via the
+  // `x-nonce` request header. Read here and threaded into every inline
+  // <Script> we render so the nonce is identical between server-rendered
+  // HTML and client hydration — otherwise React 19's hydration check
+  // sees `nonce=""` vs `nonce={undefined}` and warns.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   // Resolve global-surface flags once per request. Each is wrapped in
   // try/catch so a fresh-install DB or resolver mishap doesn't take down
@@ -103,6 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Script
           id="a11y-prefs-bootstrap"
           strategy="beforeInteractive"
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var h=document.documentElement;var f=localStorage.getItem('a11y-quick-font');if(f==='dyslexic')h.setAttribute('data-a11y-font','dyslexic');var s=localStorage.getItem('a11y-quick-scale');if(s==='large'||s==='x-large')h.setAttribute('data-a11y-scale',s);var t=localStorage.getItem('a11y-quick-theme');if(t==='light'||t==='dark'||t==='high-contrast')h.setAttribute('data-theme-override',t);var sh=localStorage.getItem('a11y-quick-shapes');if(sh==='on')h.setAttribute('data-a11y-shapes','on');var sd=localStorage.getItem('a11y-quick-solid');if(sd==='on')h.setAttribute('data-a11y-solid','on');}catch(e){}})();`,
           }}
@@ -346,6 +356,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   Next's soft navigations don't update it). */}
               <NavigationHistoryTracker />
               <AdminTokenBridge />
+              {/* Listens for menu-bar-driven events (Cmd+F search focus,
+                  Help → Copy Diagnostics). The actual menu items live
+                  in src-tauri/src/app_menu.rs; this component is the
+                  webview-side counterpart. */}
+              <MenuActionsBridge />
               {/* Focus preview banner — only renders when a preview is staged. */}
               <FocusPreviewBanner />
               {/* Update banner — polls /api/update-status; self-gated on

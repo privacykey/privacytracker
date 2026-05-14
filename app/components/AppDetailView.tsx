@@ -67,24 +67,9 @@ import {
   type AccessibilityPreference,
   type AccessibilityProfile,
 } from '../../lib/accessibility-profile';
+import { isSafeExternalHref } from '../../lib/safe-href';
 
 // ── Helpers ───────────────────────────────────────────────────────────
-
-/**
- * Guard: only let http(s) URLs through to an <a href>. The scraper already
- * sanitizes privacyPolicyUrl on ingest, but a future bug that routes a
- * different field here (or old data in an unmigrated DB) would render
- * javascript:/data:/file: URIs as clickable links. Defence-in-depth.
- */
-function isSafeExternalHref(href: string | undefined | null): boolean {
-  if (typeof href !== 'string' || !href.trim()) return false;
-  try {
-    const u = new URL(href);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Heuristic: is this app authored by Apple (i.e. a built-in / first-party
@@ -1196,6 +1181,15 @@ export default function AppDetailView({
           }
           onRefreshHistory={() => router.refresh()}
           onShowToast={showToast}
+          // Privacy-policy change entries inside the panel render a
+          // "View policy change →" link that flips the tab to the
+          // changelog/history view, where the diff button on the
+          // matching row reveals the full text. Same pattern as
+          // PolicySummaryPanel's onViewDiff. Without this, the only
+          // visible action on a policy change is "Mark as reviewed",
+          // which feels wrong because the user hasn't actually
+          // *seen* what changed.
+          onViewChange={() => setTab('changelog')}
           showMarkReviewed={f.reviewMarkReviewed}
           showDismiss={f.reviewDismiss}
           showSnoozeMenu={f.reviewSnoozeMenu}
@@ -1717,6 +1711,7 @@ function ChangeReviewPanel({
   onUnsnoozed,
   onRefreshHistory,
   onShowToast,
+  onViewChange,
   showMarkReviewed = true,
   showDismiss = true,
   showSnoozeMenu = true,
@@ -1729,6 +1724,12 @@ function ChangeReviewPanel({
   onUnsnoozed: () => void;
   onRefreshHistory: () => void;
   onShowToast: (msg: string) => void;
+  /**
+   * Fired when the user clicks "View policy change →" on a
+   * privacy-policy entry. Parent flips its tab state to 'changelog'
+   * so the diff button on the timeline row can reveal the full text.
+   */
+  onViewChange?: () => void;
   /**
    * Wave I — per-action gates. Each button stays in the layout when its
    * flag resolves on; flipping any of them off removes only that button
@@ -2037,20 +2038,31 @@ function ChangeReviewPanel({
 
       <div className="change-review-events">
         {events.map(event => (
-          <ChangeReviewEvent key={event.id} event={event} />
+          <ChangeReviewEvent
+            key={event.id}
+            event={event}
+            onViewChange={onViewChange}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function ChangeReviewEvent({ event }: { event: UnacknowledgedChangeEvent }) {
+function ChangeReviewEvent({
+  event,
+  onViewChange,
+}: {
+  event: UnacknowledgedChangeEvent;
+  onViewChange?: () => void;
+}) {
   return (
     <div className="change-review-event">
       <div className="change-review-event-date">{formatEventDate(event.scraped_at)}</div>
       <ul className="change-review-list">
         {event.changes.map((entry, idx) => {
           const cls = classifyChange(entry);
+          const isPolicyChange = entry.category === 'privacy-policy';
           return (
             <li key={idx} className={`change-review-item change-review-item-${entry.type} change-review-sev-${cls.severity}`}>
               <span className="change-review-icon" aria-hidden="true">
@@ -2068,6 +2080,23 @@ function ChangeReviewEvent({ event }: { event: UnacknowledgedChangeEvent }) {
                 )}
                 {entry.details && entry.details.length > 0 && (
                   <div className="change-review-details">{entry.details.join(', ')}</div>
+                )}
+                {/* Privacy-policy entries get a "view change" link.
+                    Marking as reviewed without seeing what changed
+                    isn't really reviewing — the link flips the parent
+                    tab to the changelog/history view where the diff
+                    is rendered. Hidden when the parent didn't supply
+                    a navigation handler (e.g. shared usage outside
+                    AppDetailView). */}
+                {isPolicyChange && onViewChange && (
+                  <button
+                    type="button"
+                    className="link-button-inline"
+                    onClick={onViewChange}
+                    style={{ marginTop: 6, fontSize: 13 }}
+                  >
+                    View policy change →
+                  </button>
                 )}
               </div>
             </li>

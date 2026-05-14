@@ -1,6 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { restoreBackup, BackupFormatError } from '../../../../lib/backup';
+import {
+  BackupFormatError,
+  BackupUntrustedError,
+  restoreBackup,
+} from '../../../../lib/backup';
 import { getSetting } from '../../../../lib/scheduler';
 import {
   adminTokenRequiredForRequest,
@@ -80,13 +84,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
+  // Explicit opt-in for restoring a backup that didn't originate on this
+  // install. The UI prompts the user with a "this backup was produced
+  // elsewhere — proceed?" dialog and includes the flag on the second
+  // attempt. Cross-device restore is a real use case; sleepwalking
+  // through it would land an attacker-supplied envelope without the
+  // user noticing.
+  const url = new URL(request.url);
+  const allowUntrustedParam = url.searchParams.get('allowUntrusted');
+  const allowUntrustedHeader = request.headers.get('x-allow-untrusted-backup');
+  const allowUntrusted =
+    allowUntrustedParam === '1' ||
+    allowUntrustedParam === 'true' ||
+    allowUntrustedHeader === '1' ||
+    allowUntrustedHeader === 'true';
+
   try {
     const result = restoreBackup(payload, {
       actorIp,
       userAgent: userAgent ?? undefined,
+      allowUntrusted,
     });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
+    if (error instanceof BackupUntrustedError) {
+      recordAudit({
+        action: 'backup.restore.untrusted_rejected',
+        actorIp,
+        userAgent,
+        success: false,
+        detail: error.message.slice(0, 256),
+      });
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: 'untrusted_backup',
+          signaturePresent: error.signaturePresent,
+        },
+        { status: 409 },
+      );
+    }
     if (error instanceof BackupFormatError) {
       recordAudit({
         action: 'backup.restore.format_error',

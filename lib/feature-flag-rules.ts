@@ -81,6 +81,10 @@ export type FlagKey =
   | 'flag.dashboard.activity_section'
   | 'flag.dashboard.risk_tier_legend'
   | 'flag.dashboard.sample_data_banner'
+  // Tauri desktop "keep running in background" wizard. Off on the web
+  // build by default — the callout component also runtime-gates on
+  // `isDesktop()` so the flag-on web case still renders nothing.
+  | 'flag.dashboard.background_mode_wizard'
 
   // ----- App Grid
   | 'flag.appgrid.filter.search'
@@ -355,6 +359,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   'flag.dashboard.activity_section':             'on',         // 'this week's activity'
   'flag.dashboard.risk_tier_legend':             'collapsed',  // reference details, expandable
   'flag.dashboard.sample_data_banner':           'off',        // only on while sample apps present
+  'flag.dashboard.background_mode_wizard':       'on',         // Tauri-only callout — runtime-gated on isDesktop()
 
   // App Grid
   'flag.appgrid.filter.search':                  'on',         // text filter

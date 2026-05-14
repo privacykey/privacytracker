@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useTaskCenter } from './TaskCenter';
+import BackgroundModeCallout from './BackgroundModeCallout';
 import type {
   TriageApp,
   TriageData,
@@ -119,6 +120,10 @@ export interface DashboardFlagState {
   activitySection: boolean;
   /** Collapsible risk-tier reference legend. */
   riskTierLegend: boolean;
+  /** Tauri-only "Set up background mode" callout, sits in the focus
+   *  strip area. Runtime-gated on `isDesktop()` so the web build never
+   *  renders it even when the flag is on. */
+  backgroundModeWizard: boolean;
 }
 
 export default function HomeView({
@@ -128,6 +133,7 @@ export default function HomeView({
   manualAppsBannerDismissed,
   mismatchedApps = [],
   flags,
+  backgroundCalloutVisible = false,
 }: {
   triage: TriageData;
   /**
@@ -168,6 +174,11 @@ export default function HomeView({
    * surface. See `DashboardFlagState` above for the shape.
    */
   flags?: DashboardFlagState;
+  /** Server-side gate for the Tauri "Set up background mode" callout —
+   *  `true` only when the flag is on AND the user hasn't already
+   *  completed or dismissed the wizard. The component still
+   *  runtime-checks `isDesktop()` so the web build never renders it. */
+  backgroundCalloutVisible?: boolean;
 }) {
   const taskCenter = useTaskCenter();
   const [syncingAll, setSyncingAll] = useState(false);
@@ -314,6 +325,16 @@ export default function HomeView({
   return (
     <div className="page-container home-page">
       {showFocusStrip && userIntent && <FocusStrip intent={userIntent} />}
+      {/* Tauri-only callout. The component itself runtime-gates on
+          `isDesktop()` (the web build's window.__TAURI_INTERNALS__
+          is undefined), and the parent passes
+          `backgroundCalloutVisible=true` only when the flag is on AND
+          the user hasn't already completed / dismissed the wizard.
+          Lives in the focus-strip area so it shares visual weight with
+          the audience/goals chips rather than dominating the page. */}
+      {(flags?.backgroundModeWizard ?? false) && backgroundCalloutVisible && (
+        <BackgroundModeCallout initiallyVisible={true} />
+      )}
 
       {showManualAppsBanner && showManualBannerFlag && <ManualAppsBanner
         onDismiss={dismissManualAppsBanner}

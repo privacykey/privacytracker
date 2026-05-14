@@ -74,10 +74,42 @@ export function computeNotBefore(now: Date = new Date()): number | null {
 export function createNotification(appId: string, appName: string, changes: ChangeEntry[]): void {
   if (changes.length === 0) return;
   const notBefore = computeNotBefore();
+  const createdAt = Date.now();
   db.prepare(`
     INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)
     VALUES (?, ?, ?, ?, ?, 0, ?)
-  `).run(crypto.randomUUID(), appId, appName, JSON.stringify(changes), Date.now(), notBefore);
+  `).run(crypto.randomUUID(), appId, appName, JSON.stringify(changes), createdAt, notBefore);
+
+  // Webhook fan-out (Slack / Discord / Teams / generic). Fire-and-forget
+  // so a slow / broken webhook can't block the in-app notification
+  // write. Only fires when the user has configured an `immediate`
+  // frequency — daily / weekly summaries are batched by the scheduler
+  // tick in `instrumentation.ts`.
+  void fireWebhookIfConfigured(appName, changes);
+}
+
+// Dynamic import so the webhook lib (which pulls `validateExternalUrl`
+// + DB helpers) doesn't get loaded into bundles that just want to
+// write a row. Errors are swallowed — the webhook is not on the
+// critical path for notification persistence.
+async function fireWebhookIfConfigured(
+  appName: string,
+  changes: ChangeEntry[],
+): Promise<void> {
+  try {
+    const { postImmediateWebhook } = await import('./notification-webhooks');
+    // Pick the first change's description as the headline — the in-app
+    // bell renders all of them, but a chat post wants a single line.
+    // Falls back to a generic phrasing when the description is missing.
+    const headline = changes[0]?.description || `${changes.length} change${changes.length === 1 ? '' : 's'}`;
+    await postImmediateWebhook({
+      appName,
+      summary: headline,
+      createdAt: Date.now(),
+    });
+  } catch (err) {
+    console.warn('[notifications] webhook fan-out failed:', err);
+  }
 }
 
 // Synthetic app_ids used by non-app notifications. Double-underscore

@@ -122,6 +122,11 @@ pub struct Boot {
 pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     // Dev escape hatch: point at an already-running `npm run dev` so the
     // developer keeps hot reload. Nothing to spawn, nothing to kill.
+    // Gated behind debug_assertions so release builds ignore the env
+    // var — otherwise a pre-login attacker who can drop a line into
+    // ~/.zshenv could redirect the Tauri webview to an attacker-
+    // controlled origin on next launch.
+    #[cfg(debug_assertions)]
     if let Ok(url) = std::env::var("PRIVACYTRACKER_DEV_URL") {
         log::info!("Using PRIVACYTRACKER_DEV_URL={url} — skipping sidecar spawn");
         let port = url
@@ -147,6 +152,22 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     log::info!("  PORT={port} PRIVACYTRACKER_DATA_DIR={}", data_dir.display());
 
     let mut cmd = Command::new(&node);
+    // Start from an empty environment, then re-add only what Node + the
+    // sidecar genuinely need. Without env_clear() the child inherits
+    // everything in the parent shell, including AWS_*, OPENAI_API_KEY,
+    // GITHUB_TOKEN, etc. that the user happens to have exported — those
+    // never need to reach the Node sidecar, and any of them leaking via
+    // /proc/<pid>/environ, support-bundle export, or an error trace is
+    // strictly avoidable.
+    cmd.env_clear();
+    for (k, v) in std::env::vars() {
+        if matches!(
+            k.as_str(),
+            "PATH" | "HOME" | "USER" | "LOGNAME" | "LANG" | "LC_ALL" | "LC_CTYPE" | "TMPDIR" | "TZ"
+        ) {
+            cmd.env(k, v);
+        }
+    }
     cmd.arg(&server_js)
         .env("PORT", port.to_string())
         .env("HOSTNAME", "127.0.0.1")
@@ -226,7 +247,11 @@ fn pick_free_port() -> io::Result<u16> {
 
 fn resolve_data_dir(_app: &AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Dev override: let developers point at a dedicated sandbox dir without
-    // mucking about with their real profile.
+    // mucking about with their real profile. Gated behind debug_assertions
+    // so release builds ignore the env var — same threat as the
+    // PRIVACYTRACKER_DEV_URL override above (pre-login attacker writes
+    // env, app reads on launch, attacker controls where data lives).
+    #[cfg(debug_assertions)]
     if let Ok(dir) = std::env::var("PRIVACYTRACKER_DATA_DIR") {
         return Ok(PathBuf::from(dir));
     }
@@ -260,7 +285,10 @@ fn resolve_server_js(
     // Explicit dev override. Power users / CI can point at a specific
     // standalone tree (e.g. a sibling worktree) without relying on the
     // cwd-based discovery below. When set, we trust it and never fall
-    // through to the production tarball path.
+    // through to the production tarball path. Debug-only — release
+    // builds must not honour this env var, or a pre-login attacker
+    // could point us at an arbitrary server.js they wrote.
+    #[cfg(debug_assertions)]
     if let Ok(explicit) = std::env::var("PRIVACYTRACKER_DEV_STANDALONE") {
         let p = PathBuf::from(&explicit);
         if p.exists() {

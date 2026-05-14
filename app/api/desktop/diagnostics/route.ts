@@ -53,6 +53,16 @@ function readBulkRunners(): Record<string, unknown> {
   };
 }
 
+function redactHomeDir(p: string): string {
+  const home = os.homedir();
+  if (!home || home === '/' || home === '\\') return p;
+  if (p === home) return '~';
+  if (p.startsWith(home + '/') || p.startsWith(home + '\\')) {
+    return '~' + p.slice(home.length);
+  }
+  return p;
+}
+
 function readDbStats(): Record<string, unknown> {
   try {
     const apps = (db.prepare('SELECT COUNT(*) AS c FROM apps').get() as { c: number }).c;
@@ -66,7 +76,15 @@ function readDbStats(): Record<string, unknown> {
       'privacy.db',
     );
     const dbSize = existsSync(dbPath) ? statSync(dbPath).size : null;
-    return { apps, snapshots, unread_notifications: unread, db_path: dbPath, db_size_bytes: dbSize };
+    return {
+      apps,
+      snapshots,
+      unread_notifications: unread,
+      // Pasted into GitHub issues — strip the user's home dir so the
+      // OS username doesn't ride along.
+      db_path: redactHomeDir(dbPath),
+      db_size_bytes: dbSize,
+    };
   } catch (err) {
     return { error: String(err) };
   }

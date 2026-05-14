@@ -1301,6 +1301,21 @@ function isAiDebugLoggingEnabled(): boolean {
   return raw === 'true' || raw === '1';
 }
 
+/**
+ * Whether the AI debug capture should also `console.log` the prompt
+ * preview. Off by default so the prompt text (which can include
+ * scraped privacy-policy content, in-flight verdicts, and any
+ * attacker-controlled text the user happens to be summarising) doesn't
+ * land in the in-memory error-log ring buffer — which itself is read
+ * by /api/diagnostics/* and the support-bundle export. Operators that
+ * want the legacy "tail docker compose logs" workflow can flip
+ * `ai_debug_console_mirror` to 'true' explicitly.
+ */
+function isAiDebugConsoleMirrorEnabled(): boolean {
+  const raw = getSetting('ai_debug_console_mirror', 'false');
+  return raw === 'true' || raw === '1';
+}
+
 function truncateForLog(value: string | undefined | null): string | null {
   if (typeof value !== 'string') return null;
   if (value.length <= AI_DEBUG_FIELD_MAX) return value;
@@ -1318,16 +1333,21 @@ function beginAiDebugCapture(input: {
   if (!isAiDebugLoggingEnabled()) return { enabled: false };
 
   const createdAt = Date.now();
-  // Mirror to the server console so `docker compose logs -f app` surfaces
-  // the same payload the in-app panel stores. We never log the API key.
-  try {
-    const preview = (input.prompt ?? '').slice(0, 2_000);
-    console.log(
-      `[AI debug] ${input.provider ?? 'unknown'}/${input.model ?? 'unknown'} phase=${input.phase ?? '?'} app=${input.appName ?? input.appId ?? '?'}\n` +
-        `${preview}${(input.prompt ?? '').length > preview.length ? '… [truncated]' : ''}`,
-    );
-  } catch {
-    // Swallow logging errors — debug mirror is best-effort.
+  // Optional mirror to the server console for operators who want the
+  // legacy "tail docker compose logs" workflow. Off by default —
+  // captured prompt text would otherwise land in the in-memory ring
+  // buffer that powers the support-bundle export. Operators flip
+  // `ai_debug_console_mirror` to 'true' to opt in.
+  if (isAiDebugConsoleMirrorEnabled()) {
+    try {
+      const preview = (input.prompt ?? '').slice(0, 2_000);
+      console.log(
+        `[AI debug] ${input.provider ?? 'unknown'}/${input.model ?? 'unknown'} phase=${input.phase ?? '?'} app=${input.appName ?? input.appId ?? '?'}\n` +
+          `${preview}${(input.prompt ?? '').length > preview.length ? '… [truncated]' : ''}`,
+      );
+    } catch {
+      // Swallow logging errors — debug mirror is best-effort.
+    }
   }
 
   return {
@@ -1379,7 +1399,7 @@ function finishAiDebugCapture(
     console.warn('[AI debug] failed to persist row:', getErrorMessage(error));
   }
 
-  if (input.error) {
+  if (input.error && isAiDebugConsoleMirrorEnabled()) {
     try {
       console.log(
         `[AI debug] error ${capture.provider ?? 'unknown'}/${capture.model ?? 'unknown'} phase=${capture.phase ?? '?'}: ${input.error}`,
@@ -3076,6 +3096,11 @@ async function callChatCompletionsJson<T>({
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
+      // No legitimate AI provider 302s their inference endpoint. Reject
+      // any redirect so an attacker-controlled custom base URL can't
+      // bounce the request (with the user's API key in the
+      // Authorization header) to an arbitrary internal target.
+      redirect: 'error',
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
@@ -3208,6 +3233,9 @@ async function callAnthropicJson<T>({
         'x-api-key': aiConfig.apiKey,
         'anthropic-version': '2023-06-01',
       },
+      // No redirects on inference endpoints — see comment on the
+      // OpenAI-compatible path above.
+      redirect: 'error',
       body: JSON.stringify({
         model: aiConfig.model,
         max_tokens: 2_400,
