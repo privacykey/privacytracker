@@ -26522,5 +26522,642 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   color: var(--red);
 }
 
+/* ─────────────────────────────────────────────────────
+   Dashboard layout editor (/dashboard/settings/layout)
+   ───────────────────────────────────────────────────── */
+
+.layout-editor-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 18px;
+}
+
+.layout-editor-back-link {
+  font-size: 13px;
+  color: var(--text-3);
+  text-decoration: none;
+  margin-bottom: 4px;
+}
+.layout-editor-back-link:hover,
+.layout-editor-back-link:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.layout-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Reuses the same DOM shape as PrivacyProfileEditor's preset row so the
+   visual treatment matches without copying every rule. */
+.layout-editor-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--surface-1, var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.layout-editor-presets-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.layout-editor-presets-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.layout-editor-presets-hint {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.layout-editor-presets-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.layout-editor-preset-cell {
+  position: relative;
+  display: flex;
+}
+
+.layout-editor-preset-pill {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  background: var(--surface-1, var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease,
+              box-shadow 150ms ease, transform 150ms ease;
+}
+
+.layout-editor-preset-pill:hover:not(:disabled),
+.layout-editor-preset-pill:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-active);
+}
+
+.layout-editor-preset-pill.is-active {
+  border-width: 2px;
+  padding: 8px 9px;
+  background: var(--surface-active);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.layout-editor-preset-pill.is-active[data-severity="severity-none"] {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 22%, transparent);
+}
+.layout-editor-preset-pill.is-active[data-severity="severity-unlinked"] {
+  border-color: var(--yellow, var(--orange));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow, var(--orange)) 22%, transparent);
+}
+.layout-editor-preset-pill.is-active[data-severity="severity-linked"] {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 22%, transparent);
+}
+.layout-editor-preset-pill.is-active[data-severity="severity-track"] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 22%, transparent);
+}
+
+.layout-editor-preset-icon {
+  font-size: 18px;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.layout-editor-preset-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.layout-editor-preset-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.layout-editor-preset-desc {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.layout-editor-preset-confirm {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.layout-editor-preset-confirm-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-1);
+}
+
+.layout-editor-preset-confirm-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 920px) {
+  .layout-editor-presets-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .layout-editor-presets-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .layout-editor-presets-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* List header — title + saving/saved/error pill + reset button. */
+.layout-editor-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--surface-1, var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.layout-editor-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.layout-editor-list-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.layout-editor-list-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layout-editor-saving,
+.layout-editor-saved,
+.layout-editor-error {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-3);
+}
+.layout-editor-saved {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 35%, var(--border));
+}
+.layout-editor-error {
+  color: var(--red);
+  border-color: color-mix(in srgb, var(--red) 35%, var(--border));
+}
+
+.layout-editor-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layout-editor-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  touch-action: none; /* dnd-kit pointer sensor prefers this on the row */
+}
+
+/* Tiny wireframe sketch column — hints at the visual shape of the card. */
+.layout-editor-row-thumb {
+  width: 80px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.layout-editor-row.is-hidden .layout-editor-row-thumb {
+  opacity: 0.55;
+}
+
+@media (max-width: 560px) {
+  /* On phones, drop the thumbnail column so the row text + control
+     have enough room. Text labels + descriptions still identify the
+     card; the sketch was always a complement, never the only signal. */
+  .layout-editor-row {
+    grid-template-columns: auto 1fr auto;
+  }
+  .layout-editor-row-thumb {
+    display: none;
+  }
+}
+
+.layout-editor-row.is-dragging {
+  border-color: var(--accent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.layout-editor-row.is-hidden {
+  opacity: 0.6;
+}
+
+.layout-editor-row.is-callout {
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg-2));
+}
+
+.layout-editor-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-3);
+  cursor: grab;
+}
+.layout-editor-drag-handle:hover,
+.layout-editor-drag-handle:focus-visible {
+  background: var(--surface-active);
+  border-color: var(--border);
+  color: var(--text-1);
+}
+.layout-editor-drag-handle:active {
+  cursor: grabbing;
+}
+
+.layout-editor-row-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.layout-editor-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.layout-editor-row-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.35;
+}
+
+.layout-editor-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.layout-editor-visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.layout-editor-visibility-text {
+  white-space: nowrap;
+}
+
+.layout-editor-auto-managed {
+  font-size: 11.5px;
+  color: var(--text-3);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px dashed var(--border);
+  background: transparent;
+}
+
+/* "Customise dashboard…" link sits at the bottom of HomeView, below the
+   last card. Quiet by default — not a primary CTA, just a discoverable
+   path to the editor for users who think to look for it. */
+.home-layout-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.home-layout-footer-link {
+  font-size: 13px;
+  color: var(--text-3);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+.home-layout-footer-link:hover,
+.home-layout-footer-link:focus-visible {
+  color: var(--accent);
+  background: var(--surface-active);
+}
+
+.home-layout-footer-secondary {
+  font-size: 12px;
+  color: var(--text-3);
+  opacity: 0.85;
+}
+
+.home-layout-footer-sep {
+  color: var(--text-3);
+  opacity: 0.4;
+}
+
+/* ─────────────────────────────────────────────────────
+   Edit-in-place mode on /dashboard
+   ───────────────────────────────────────────────────── */
+
+.home-page-edit {
+  padding-top: 14px; /* breathing room above the sticky toolbar */
+}
+
+/* Sticky toolbar: title + status, preset pills, actions. Backdrop blur
+   so cards scrolling underneath stay legible without bleeding through. */
+.home-edit-toolbar {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--bg-1) 88%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--shadow, #0008) 12%, transparent);
+  backdrop-filter: saturate(160%) blur(8px);
+}
+[data-a11y-solid="on"] .home-edit-toolbar {
+  background: var(--bg-2);
+  backdrop-filter: none;
+}
+
+.home-edit-toolbar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-edit-toolbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.home-edit-toolbar-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.home-edit-toolbar-preset-cell {
+  position: relative;
+}
+
+.home-edit-toolbar-preset-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-1);
+  background: var(--surface-1, var(--bg-2));
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease,
+              box-shadow 120ms ease;
+}
+.home-edit-toolbar-preset-pill:hover,
+.home-edit-toolbar-preset-pill:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-active);
+}
+.home-edit-toolbar-preset-pill.is-active {
+  border-width: 2px;
+  padding: 5px 9px;
+  background: var(--surface-active);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.home-edit-toolbar-preset-pill.is-active[data-severity="severity-none"] {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 22%, transparent);
+}
+.home-edit-toolbar-preset-pill.is-active[data-severity="severity-unlinked"] {
+  border-color: var(--yellow, var(--orange));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--yellow, var(--orange)) 22%, transparent);
+}
+.home-edit-toolbar-preset-pill.is-active[data-severity="severity-linked"] {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--orange) 22%, transparent);
+}
+.home-edit-toolbar-preset-pill.is-active[data-severity="severity-track"] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 22%, transparent);
+}
+
+.home-edit-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.home-edit-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Each card wrapper: a thin "bar" with the drag handle + label + actions
+   sitting above the actual card content (or a ghost row when the card
+   has nothing to render). */
+.home-edit-card {
+  position: relative;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--bg-2);
+  padding: 8px;
+  touch-action: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.home-edit-card:hover {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.home-edit-card.is-dragging {
+  border-color: var(--accent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.home-edit-card.is-ghost {
+  background: color-mix(in srgb, var(--text-3) 4%, var(--bg-2));
+}
+.home-edit-card.is-hidden {
+  opacity: 0.7;
+}
+.home-edit-card.is-callout {
+  border-style: dotted;
+}
+
+.home-edit-card-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  margin-bottom: 8px;
+}
+.home-edit-card.is-ghost .home-edit-card-bar {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 2px;
+}
+
+.home-edit-card-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-3);
+  cursor: grab;
+}
+.home-edit-card-handle:hover,
+.home-edit-card-handle:focus-visible {
+  background: var(--surface-active);
+  border-color: var(--border);
+  color: var(--text-1);
+}
+.home-edit-card-handle:active {
+  cursor: grabbing;
+}
+
+.home-edit-card-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.home-edit-card-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Real card content rendered inside an inert wrapper so links + buttons
+   don't fire while the user is rearranging. They can still read the
+   content, just not click into it. */
+.home-edit-card-content {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Ghost row for hidden / zero-data-predicate cards — compact, no
+   pseudo-content. The bar already shows the label, so this is a short
+   description + status pill. */
+.home-edit-card-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px 4px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.home-edit-card-ghost-desc {
+  flex: 1;
+  line-height: 1.35;
+}
+
+.home-edit-card-ghost-status {
+  font-size: 11.5px;
+  color: var(--text-3);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  white-space: nowrap;
+}
 
 

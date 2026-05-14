@@ -85,7 +85,14 @@ export type ActivityType =
   // activity log is for noteworthy transitions, not keystroke-level
   // edits). The describePresetTransition helper in lib/privacy-profile.ts
   // is the single source of truth for when to write one of these.
-  | 'profile_preset_applied';
+  | 'profile_preset_applied'
+  // Dashboard layout preset boundary transitions — mirrors
+  // `profile_preset_applied`. Surfaces only when the change crosses a
+  // named preset (default/minimal/caretaker/watchdog/at_a_glance). The
+  // editor saves at every keystroke, so custom-to-custom edits never
+  // fire — `describeLayoutTransition` in lib/dashboard-layout.ts is the
+  // gate.
+  | 'dashboard_layout_applied';
 
 export type ActivityStatus = 'ok' | 'error' | 'partial' | 'cancelled';
 

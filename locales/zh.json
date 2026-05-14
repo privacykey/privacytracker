@@ -841,7 +841,9 @@
     "import_history_title": "导入历史 — privacytracker",
     "import_history_description": "查看、重试并回滚以往的应用导入。",
     "focus_edit_title": "调整关注重点 — privacytracker",
-    "focus_edit_description": "更改你正在为谁审查应用，以及你希望从应用中获得什么。"
+    "focus_edit_description": "更改你正在为谁审查应用，以及你希望从应用中获得什么。",
+    "layout_edit_title": "自定义仪表板 — privacytracker",
+    "layout_edit_description": "选择预设或微调主页仪表板上各卡片的顺序和可见性。"
   },
   "ai_disclosure_page": {
     "metadata_title": "AI 披露 — privacytracker",
@@ -2204,6 +2206,105 @@
       "minimal_rule": "开发者声明完全不收集任何数据。",
       "minimal_meaning": "Apple 的隐私标签显示为空。应用未声明收集任何内容，无论是关联的还是未关联的。",
       "minimal_example": "常见于单机离线游戏、简单参考工具以及部分注重隐私的实用程序。"
+    },
+    "layout_footer": {
+      "customize": "自定义仪表板…",
+      "customize_aria": "自定义仪表板卡片的顺序和可见性",
+      "simple_editor": "使用简易编辑器"
+    },
+    "layout_editor": {
+      "page_title": "自定义仪表板",
+      "page_subtitle": "选择预设或拖动行重新排序。隐藏你不需要的一级卡片 — 自动管理的提示项仍由规则驱动，仅在相关时显示。",
+      "back_to_dashboard": "← 返回仪表板",
+      "preset_section_label": "从预设开始",
+      "preset_section_hint": "选择一个基线，然后微调下方任意行。",
+      "preset_aria_group": "仪表板布局预设",
+      "confirm_aria": "替换你当前的布局",
+      "confirm_text": "用 {preset} 预设替换你当前的布局？",
+      "confirm_apply": "替换",
+      "confirm_cancel": "取消",
+      "list_title": "卡片",
+      "list_aria": "仪表板卡片，拖动以重新排序",
+      "saving": "保存中…",
+      "saved": "已保存",
+      "save_error": "无法保存：{message}",
+      "reset_button": "恢复默认",
+      "show_hide_label": "显示",
+      "auto_managed_label": "自动管理",
+      "auto_managed_title": "此卡片在满足数据条件时自动显示。可以自由重新排序；可见性由规则决定。",
+      "drag_handle_aria": "{name} 的拖动手柄。按空格键拾起，箭头键移动，再次按空格键放下。",
+      "moved_live": "已将 {name} 移到 {total} 项中的第 {position} 位。",
+      "shown_live": "{name} 现在可见。",
+      "hidden_live": "{name} 现已隐藏。",
+      "saved_live": "布局已保存。",
+      "reset_live": "布局已重置为默认。",
+      "preset_applied_live": "已应用 {name} 预设。",
+      "toolbar_aria": "仪表板布局编辑工具栏",
+      "toolbar_title": "正在自定义仪表板",
+      "open_simple_editor": "打开简易编辑器",
+      "done_button": "完成",
+      "hide_button": "隐藏",
+      "restore_button": "显示",
+      "hide_card_aria": "隐藏 {name}",
+      "ghost_hidden": "已隐藏 — 点击“显示”恢复",
+      "ghost_auto_managed": "在相关时显示",
+      "ghost_no_data": "目前没有数据",
+      "presets": {
+        "labels": {
+          "default": "默认",
+          "minimal": "极简",
+          "caretaker": "看护者",
+          "watchdog": "监督",
+          "at_a_glance": "一目了然"
+        },
+        "descriptions": {
+          "default": "规范顺序，所有卡片可见。安全的基线。",
+          "minimal": "仅保留核心内容 — 主页卡片、风险、需复核以及一览统计。",
+          "caretaker": "以家人为重。首先呈现隐私关切和复核队列。",
+          "watchdog": "风险优先。快速发现可能想替换或同步的应用。",
+          "at_a_glance": "统计放在顶部。适合希望先看到整体情况的用户。"
+        }
+      },
+      "cards": {
+        "labels": {
+          "task_list": "任务",
+          "review_cta": "待审核队列入口",
+          "focus_strip": "关注重点条",
+          "background_mode_wizard": "后台模式向导",
+          "manual_apps_banner": "手动应用横幅",
+          "risk_section": "风险关注列表",
+          "hero": "主页卡片",
+          "cleanup_callout": "清理提示",
+          "family_callout": "家人提示",
+          "third_party_callout": "第三方提示",
+          "glance_section": "一览",
+          "definitions_callout": "隐私标签定义",
+          "review_section": "待复核的变更",
+          "profile_mismatch_section": "建议替换",
+          "stale_section": "陈旧应用",
+          "activity_section": "本周活动",
+          "risk_tier_legend": "风险等级图例"
+        },
+        "descriptions": {
+          "task_list": "顶部根据受众显示的任务面板。",
+          "review_cta": "“N 个应用需要决定”入口横幅，直接进入审核向导。",
+          "focus_strip": "紧凑的“你在为谁审查”标题，附带设置链接。",
+          "background_mode_wizard": "仅 macOS 桌面应用 — 引导你启用后台同步。",
+          "manual_apps_banner": "提醒你也可以追踪网页应用、TestFlight 测试版和侧载应用。",
+          "risk_section": "Apple 标记为已关联或追踪的应用 — 高风险关注列表。",
+          "hero": "页面顶部的大型“安静/需注意”卡片。",
+          "cleanup_callout": "针对“整理”目标的“可清理项”提示。",
+          "family_callout": "针对监护人受众的“照顾家人”提示。",
+          "third_party_callout": "关于第三方数据共享的“安全卫生”提示。",
+          "glance_section": "统计网格 — 已跟踪应用、类别、高风险、变更。",
+          "definitions_callout": "用通俗语言解释 Apple 隐私标签类别。",
+          "review_section": "自上次复核以来出现隐私标签变更的应用。",
+          "profile_mismatch_section": "超出你隐私档案阈值的应用。",
+          "stale_section": "超过 30 天未刷新的应用。",
+          "activity_section": "你的应用库最近的抓取、导入和编辑活动。",
+          "risk_tier_legend": "可折叠的风险等级定义参考。"
+        }
+      }
     }
   },
   "app_grid": {
