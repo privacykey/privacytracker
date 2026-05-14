@@ -19,6 +19,7 @@ import { formatDate as formatDateWithMode, type DateFormatMode } from '../../lib
 import { useDateFormat } from '../../lib/date-format-hook';
 import SettingsAutoSaveToast, { pushSettingsToast } from './SettingsAutoSaveToast';
 import { useSettingsAutoSave } from '../../lib/use-settings-auto-save';
+import TasksResetRow from './TasksResetRow';
 
 /**
  * localStorage key for the "Also log save events to Task Center"
@@ -7654,6 +7655,8 @@ ollama serve`}
       {devOptsVisible && <div id="developer" className="settings-section">
         <h2 className="settings-section-title">{tSections('developer_options')}</h2>
         <p className="settings-section-subtitle">{tSub('developer_options')}</p>
+
+        <TasksResetRow />
 
         {/* Wave I: the whole AI debug-logging surface — toggle, load/clear
             buttons, and the rolling log list — is gated behind two flags:

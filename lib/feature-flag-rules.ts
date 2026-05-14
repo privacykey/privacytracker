@@ -62,6 +62,7 @@ export type FlagKey =
   | 'flag.nav.app_count_badge'
   | 'flag.nav.notification_bell'
   | 'flag.nav.task_center_trigger'
+  | 'flag.nav.task_list_icon'
   | 'flag.nav.mobile_drawer'
 
   // ----- Dashboard (HomeView)
@@ -85,6 +86,12 @@ export type FlagKey =
   // build by default — the callout component also runtime-gates on
   // `isDesktop()` so the flag-on web case still renders nothing.
   | 'flag.dashboard.background_mode_wizard'
+  // User-facing task list (inline panel + nav icon — see flag.nav.task_list_icon).
+  // Audience-aware "things worth trying" panel rendered at the top of HomeView.
+  // Per-task `includedWhen` predicates handle the audience tailoring — flipping
+  // this off is a global kill-switch for the inline surface only; the nav icon
+  // has its own flag.
+  | 'flag.dashboard.task_list'
 
   // ----- App Grid
   | 'flag.appgrid.filter.search'
@@ -340,6 +347,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   'flag.nav.app_count_badge':                    'on',         // count of tracked apps next to nav link
   'flag.nav.notification_bell':                  'on',         // bell is core
   'flag.nav.task_center_trigger':                'on',         // task widget trigger
+  'flag.nav.task_list_icon':                     'on',         // user-facing task list nav icon
   'flag.nav.mobile_drawer':                      'on',         // mobile-only menu drawer
 
   // Dashboard
@@ -360,6 +368,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   'flag.dashboard.risk_tier_legend':             'collapsed',  // reference details, expandable
   'flag.dashboard.sample_data_banner':           'off',        // only on while sample apps present
   'flag.dashboard.background_mode_wizard':       'on',         // Tauri-only callout — runtime-gated on isDesktop()
+  'flag.dashboard.task_list':                    'on',         // audience-aware tasks panel at the top of HomeView
 
   // App Grid
   'flag.appgrid.filter.search':                  'on',         // text filter
@@ -899,6 +908,12 @@ export interface TourState {
 const has = (state: TourState, goal: PrimaryGoal | Modifier) => state.goals.has(goal);
 
 export const TOUR_STEPS: TourStepDef[] = [
+  {
+    id: 'task_list',
+    target: '[data-tour="task-list"]',
+    i18nKey: 'tour.task_list',
+    includedWhen: () => true,                                            // tasks panel is the new entry point
+  },
   {
     id: 'focus_card',
     target: '[data-tour="focus-card"]',

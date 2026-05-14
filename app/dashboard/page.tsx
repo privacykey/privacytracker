@@ -21,6 +21,8 @@ import Nav from '../components/Nav';
 import CoachmarkTour from '../components/CoachmarkTour';
 import SampleModeView from '../components/SampleModeView';
 import BundleImportProvenanceBanner from '../components/BundleImportProvenanceBanner';
+import TaskList from '../components/TaskList';
+import { resolveAllTasks, resolveOptInCandidates } from '../../lib/tasks-server';
 import {
   consumeMigrationFlowMarker,
   getMostRecentImport,
@@ -174,10 +176,37 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         activitySection: resolve('flag.dashboard.activity_section'),
         riskTierLegend: resolve('flag.dashboard.risk_tier_legend'),
         backgroundModeWizard: resolve('flag.dashboard.background_mode_wizard'),
+        taskList: resolve('flag.dashboard.task_list'),
       };
     } catch (error) {
       console.warn('[dashboard] flag resolution failed:', error);
       return undefined;
+    }
+  })();
+
+  // Server-side resolve of the audience-aware user-tasks panel. Errors
+  // swallow to an empty array so a fresh DB or resolver mishap doesn't
+  // take down the dashboard — the panel simply won't render. Desktop
+  // tasks are filtered out here (isDesktop=false); the client provider
+  // includes them back in once it knows the runtime.
+  const userTasks = (() => {
+    try {
+      return resolveAllTasks(undefined, false);
+    } catch (error) {
+      console.warn('[dashboard] resolveAllTasks failed:', error);
+      return [];
+    }
+  })();
+
+  // Opt-in chip candidates for the "Add a task" tray. Resolved here so
+  // the panel can render the chip tray on first paint (no client-fetch
+  // latency before the tray appears).
+  const userTaskCandidates = (() => {
+    try {
+      return resolveOptInCandidates(undefined, false);
+    } catch (error) {
+      console.warn('[dashboard] resolveOptInCandidates failed:', error);
+      return [];
     }
   })();
 
@@ -224,6 +253,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         notificationBell: resolveFlagFromDb('flag.nav.notification_bell') === 'on',
         notificationBellPolling: resolveFlagFromDb('flag.notifications.bell.polling') === 'on',
         taskCenterTrigger: resolveFlagFromDb('flag.nav.task_center_trigger') === 'on',
+        taskListIcon: resolveFlagFromDb('flag.nav.task_list_icon') === 'on',
         mobileDrawer: resolveFlagFromDb('flag.nav.mobile_drawer') === 'on',
         pagePrivacyMap: resolveFlagFromDb('flag.page.privacy_map') === 'on',
         pageStats: resolveFlagFromDb('flag.page.stats') === 'on',
@@ -293,6 +323,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         mismatchedApps={mismatchedApps}
         flags={flags}
         backgroundCalloutVisible={backgroundCalloutVisible}
+        taskListSlot={<TaskList tasks={userTasks} candidates={userTaskCandidates} />}
       />
       {tourEnabled && tourFocus && (
         <CoachmarkTour

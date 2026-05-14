@@ -945,6 +945,10 @@
   },
   "tour": {
     "_comment": "ICU `{possessive}` is computed from audience: self → 'your', loved_one → 'their', guardian → 'your child's'.",
+    "task_list": {
+      "title": "Things worth trying",
+      "body": "Tailored next steps for your focus. Tap one to start; the icon up here keeps it within reach from anywhere."
+    },
     "focus_card": {
       "title": "Your focus",
       "body": "This shows who you're auditing apps for, and what you want out of it. You can change it any time."
@@ -992,6 +996,62 @@
     "progress": "{current} of {total}",
     "close_aria": "Close tour",
     "dialog_aria": "App tour"
+  },
+  "tasks": {
+    "heading": "Things to try, tailored for you",
+    "region_aria": "Suggested tasks tailored for you",
+    "attribution": "For you, the {audience}",
+    "attribution_change_aria": "Change your focus",
+    "attribution_change_label": "Change",
+    "collapsed_chip_label": "Tasks ✓ · Show all",
+    "collapsed_chip_aria": "Expand the tasks panel",
+    "empty_all_dismissed": "Nothing pending right now.",
+    "all_done_short": "You're all set — nothing pending.",
+    "dismiss_action": "Dismiss",
+    "dismiss_aria": "Dismiss {task}",
+    "sheet_done": "Done",
+    "add_tray_heading": "What else do you want to do?",
+    "add_tray_chip_aria": "Add task: {title}",
+    "audiences": {
+      "self": "self-auditor",
+      "loved_one": "recommender",
+      "guardian": "guardian"
+    },
+    "view_privacy_map": {
+      "title": "Explore the privacy map",
+      "body": "See, at a glance, what data your apps are gathering — grouped by category."
+    },
+    "open_any_app_detail": {
+      "title": "Open an app's privacy page",
+      "body": "Dig into one app: labels, policy, timeline, and AI summary."
+    },
+    "create_privacy_profile": {
+      "title": "Create your privacy profile",
+      "body": "Tell us what you're comfortable with so we can flag apps that exceed it."
+    },
+    "review_mismatches": {
+      "title": "Review apps that exceed your profile",
+      "body": "Mark each as safe, replace, or uninstall — we'll keep track of your decisions."
+    },
+    "compare_two_apps": {
+      "title": "Compare two apps side by side",
+      "body": "Pick alternatives and see which one collects less of what you care about."
+    },
+    "setup_background_mode": {
+      "title": "Keep track of apps in the background",
+      "body": "Switch on auto-sync (or, on desktop, finish the Background Mode wizard) so the app keeps watching for changes on its own."
+    },
+    "remove_apps_from_phone": {
+      "title": "Remove apps from your phone",
+      "body": "Mark which apps to uninstall and we'll guide you through removing them — needs a privacy profile so we know what you're filtering out."
+    },
+    "gate": {
+      "title": "Try this first?",
+      "body": "{prerequisite} is recommended before {task}. Want to do that first?",
+      "primary": "Take me to {prerequisite}",
+      "secondary": "Continue anyway",
+      "close_aria": "Close"
+    }
   },
   "legal": {
     "audit_bundle_note": "When you export an audit bundle, it includes the apps you're tracking, their privacy labels, your AI-generated summaries, and any annotations you've written. It also includes your privacy profile so the recipient can see why you flagged certain apps. Nothing leaves your device until you explicitly share the file."
@@ -1943,7 +2003,8 @@
     "apps_tracked_aria": "{count} apps tracked",
     "menu_open_aria": "Open navigation menu",
     "menu_close_aria": "Close navigation menu",
-    "drawer_aria": "Main navigation"
+    "drawer_aria": "Main navigation",
+    "tasks_icon_aria": "{count, plural, =0 {Tasks (none pending)} one {Tasks ({count} pending)} other {Tasks ({count} pending)}}"
   },
   "a11y_quick": {
     "trigger_aria_active": "Accessibility quick-toggles (some preferences are active)",
@@ -3078,6 +3139,15 @@
     "page_subtitle": "Configure auto-sync, exports, and AI privacy-policy summaries",
     "back_to_settings": "← Back to Settings",
     "fmt_never": "Never",
+    "dev": {
+      "reset_tasks": {
+        "title": "Show all tasks again",
+        "description": "Resurfaces completed and dismissed tasks in the dashboard panel. Useful when you want to re-engage with the suggested workflow.",
+        "cta": "Reset",
+        "busy": "Resetting…",
+        "done": "Tasks reset"
+      }
+    },
     "bulk_phase": {
       "working": "Working…",
       "fetching": "Fetching policy",

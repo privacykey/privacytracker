@@ -5,6 +5,7 @@ import { getAllApps, getGroupedPrivacyView } from '../../../lib/scraper';
 import PrivacyGroupedView from '../../components/PrivacyGroupedView';
 import Nav from '../../components/Nav';
 import { resolveFlagFromDb } from '@/lib/feature-flags-server';
+import { setSettingIfUnset } from '@/lib/scheduler';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,15 @@ export default function PrivacyPage() {
 
   if (apps.length === 0) {
     redirect('/onboard');
+  }
+
+  // First-visit marker for the user-tasks `view_privacy_map` completion
+  // check. Idempotent: once set, every subsequent render is a single
+  // SELECT no-op. Swallows DB errors — the page must render.
+  try {
+    setSettingIfUnset('task_visit.privacy_map_at', String(Date.now()));
+  } catch (e) {
+    console.warn('[privacy] task visit marker failed:', e);
   }
 
   return (

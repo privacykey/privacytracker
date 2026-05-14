@@ -36,6 +36,21 @@ const config = [
       '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-this-alias': 'warn',
+      // Honour the `_`-prefix convention everywhere — for function args
+      // (already the rule's default) AND for vars, destructured names,
+      // and caught error bindings. Matches what every other Next/TS
+      // project we cross-reference uses; without it, the common
+      // `const { foo: _foo, ...rest }` "discard via destructure"
+      // pattern lights up as a false-positive unused-var warning.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
 
       // React Compiler / Hooks v6 advisory rules. This codebase doesn't use
       // the React Compiler, so the compiler-hint rules are turned off as

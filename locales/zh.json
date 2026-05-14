@@ -945,6 +945,10 @@
   },
   "tour": {
     "_comment": "ICU `{possessive}` is computed from audience: self → '你的', loved_one → '他们的', guardian → '你孩子的'.",
+    "task_list": {
+      "title": "值得尝试的事",
+      "body": "为你的关注重点量身定制的下一步。点击任意项开始；右上角的图标让你随时随地都能回到这里。"
+    },
     "focus_card": {
       "title": "你的关注重点",
       "body": "这显示你在为谁审查应用，以及你希望获得什么。可以随时更改。"
@@ -992,6 +996,62 @@
     "progress": "第 {current} / {total} 步",
     "close_aria": "关闭引导",
     "dialog_aria": "应用引导"
+  },
+  "tasks": {
+    "heading": "为你量身定制的尝试事项",
+    "region_aria": "为你量身定制的建议任务",
+    "attribution": "为你这位{audience}",
+    "attribution_change_aria": "更改你的关注重点",
+    "attribution_change_label": "更改",
+    "collapsed_chip_label": "任务 ✓ · 查看全部",
+    "collapsed_chip_aria": "展开任务面板",
+    "empty_all_dismissed": "目前没有待办事项。",
+    "all_done_short": "全部完成 — 暂无待办。",
+    "dismiss_action": "忽略",
+    "dismiss_aria": "忽略 {task}",
+    "sheet_done": "完成",
+    "add_tray_heading": "你还想做点什么？",
+    "add_tray_chip_aria": "添加任务：{title}",
+    "audiences": {
+      "self": "自我审查者",
+      "loved_one": "推荐者",
+      "guardian": "监护人"
+    },
+    "view_privacy_map": {
+      "title": "浏览隐私地图",
+      "body": "一眼看清你的应用在收集什么数据 — 按类别分组。"
+    },
+    "open_any_app_detail": {
+      "title": "打开某个应用的隐私页面",
+      "body": "深入查看一个应用：标签、政策、时间线和 AI 摘要。"
+    },
+    "create_privacy_profile": {
+      "title": "创建你的隐私档案",
+      "body": "告诉我们你能接受什么，我们好标记出超出你容忍范围的应用。"
+    },
+    "review_mismatches": {
+      "title": "审阅超出档案的应用",
+      "body": "为每个应用标记安全、替换或卸载 — 我们会记住你的决定。"
+    },
+    "compare_two_apps": {
+      "title": "并排对比两个应用",
+      "body": "挑选替代方案，看看哪一个更少收集你在意的数据。"
+    },
+    "setup_background_mode": {
+      "title": "让应用在后台持续追踪",
+      "body": "打开自动同步（桌面端可完成「后台模式」向导），让应用自动监测变化。"
+    },
+    "remove_apps_from_phone": {
+      "title": "从手机上移除应用",
+      "body": "标记需要卸载的应用，我们会引导你完成移除 — 需要先有隐私档案，这样我们才知道你想筛掉什么。"
+    },
+    "gate": {
+      "title": "要不要先做这个？",
+      "body": "建议先完成 {prerequisite}，再去做 {task}。要先做吗？",
+      "primary": "去做 {prerequisite}",
+      "secondary": "仍然继续",
+      "close_aria": "关闭"
+    }
   },
   "legal": {
     "audit_bundle_note": "导出审查捆绑包时，包括你正在跟踪的应用、它们的隐私标签、你的 AI 生成摘要以及你撰写的任何注释。还包括你的隐私档案，让接收者了解你为何标记某些应用。除非你主动分享文件，否则不会有任何数据离开你的设备。"
@@ -1943,7 +2003,8 @@
     "apps_tracked_aria": "已追踪 {count} 个应用",
     "menu_open_aria": "打开导航菜单",
     "menu_close_aria": "关闭导航菜单",
-    "drawer_aria": "主导航"
+    "drawer_aria": "主导航",
+    "tasks_icon_aria": "{count, plural, =0 {任务（无待办）} one {任务（{count} 项待办）} other {任务（{count} 项待办）}}"
   },
   "a11y_quick": {
     "trigger_aria_active": "无障碍快捷开关（部分偏好已启用）",
@@ -3074,6 +3135,15 @@
     "copyright": "© {year} privacykey。在开源许可下发布。"
   },
   "settings": {
+    "dev": {
+      "reset_tasks": {
+        "title": "再次显示所有任务",
+        "description": "在仪表板面板中重新显示已完成和已忽略的任务。当你想重新参与建议的工作流时很有用。",
+        "cta": "重置",
+        "busy": "重置中…",
+        "done": "任务已重置"
+      }
+    },
     "page_title": "设置",
     "page_subtitle": "配置自动同步、导出，以及 AI 隐私政策摘要",
     "back_to_settings": "← 返回设置",

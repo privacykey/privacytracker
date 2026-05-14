@@ -21,6 +21,18 @@ export function setSetting(key: string, value: string): void {
   db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)').run(key, value);
 }
 
+/**
+ * Write `value` to `key` only if no row exists yet. Used for first-visit
+ * markers (e.g. `task_visit.privacy_map_at`) where we want the very first
+ * page render to stamp the time and every subsequent render to be a cheap
+ * no-op — one SELECT, no write.
+ */
+export function setSettingIfUnset(key: string, value: string): void {
+  const existing = (db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key) as { value?: string } | undefined)?.value;
+  if (existing !== undefined && existing !== '') return;
+  db.prepare('INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)').run(key, value);
+}
+
 export function getSchedulerStatus() {
   const schedule   = getSetting('sync_schedule', 'manual') as SyncSchedule;
   const lastRun    = parseInt(getSetting('last_auto_sync', '0')) || 0;

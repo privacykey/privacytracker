@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { getAppWithPrivacy } from '../../../lib/scraper';
 import { getChangelog, getUnacknowledgedChanges, type UnacknowledgedChanges } from '../../../lib/changelog';
-import { getSetting } from '../../../lib/scheduler';
+import { getSetting, setSettingIfUnset } from '../../../lib/scheduler';
 import { normalizeAiProvider } from '../../../lib/ai-config';
 import { getRecentPolicyChange, type RecentPolicyChange } from '../../../lib/policy-versions';
 import { getPrivacyProfile } from '../../../lib/privacy-profile-server';
@@ -123,6 +123,16 @@ export default async function AppDetailPage({ params }: { params: Promise<{ id: 
   }
 
   if (!app) notFound();
+
+  // First-visit marker for the user-tasks `open_any_app_detail`
+  // completion check. Idempotent: once set, every subsequent render is a
+  // single SELECT no-op. We only stamp after the `notFound()` check so a
+  // bogus url doesn't count as "visited an app detail."
+  try {
+    setSettingIfUnset('task_visit.app_detail_at', String(Date.now()));
+  } catch (e) {
+    console.warn('[app-detail] task visit marker failed:', e);
+  }
 
   // Round 3 wave F: pre-resolve every flag.detail.* server-side so the
   // first paint is correct. Errors fall back to a sensible all-on default
