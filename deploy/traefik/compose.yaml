@@ -46,6 +46,11 @@ services:
         max-file: "3"
 
   traefik:
+    # Floating tag — pin to a digest before going to production:
+    #   docker buildx imagetools inspect traefik:v3
+    # then replace with: traefik:v3@sha256:<digest>
+    # A digest pin protects against a Docker Hub tag-takeover / maintainer
+    # compromise pushing a tampered image at the same `:v3` ref.
     image: traefik:v3
     restart: unless-stopped
     depends_on:

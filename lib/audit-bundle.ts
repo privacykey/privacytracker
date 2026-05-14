@@ -10,7 +10,10 @@
  *   - annotations (only those with visibility = 'export'; private notes
  *     are unconditionally excluded by the SQL filter, no escape hatch)
  *   - the recommender's privacy profile (optional; controlled by the
- *     `includeRecommenderProfile` flag at export time)
+ *     `includeRecommenderProfile` flag at export time), plus the
+ *     matching preset key (Strict / Balanced / Anti-tracking only /
+ *     Permissive) when the profile happens to match one of the named
+ *     shortcuts — surfaced as `recommender_profile_preset`
  *
  * Excluded by design:
  *
@@ -28,6 +31,7 @@
 import packageJson from '../package.json';
 import db from './db';
 import { getPrivacyProfile } from './privacy-profile-server';
+import { matchPreset, type ProfilePresetKey } from './privacy-profile';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +54,17 @@ export interface AuditBundle {
   recommender_name: string | null;
   apps: BundleApp[];
   recommender_profile: ReturnType<typeof getPrivacyProfile> | null;
+  /**
+   * The named preset key (`strict` / `balanced` / `anti_tracking` /
+   * `permissive`) the recommender's profile exactly matches at export
+   * time, or `null` when their profile is custom or absent. Optional in
+   * the type for forward/back compat — older bundles simply omit the
+   * field, and importers that don't know about it just ignore the value.
+   *
+   * Only meaningful when `recommender_profile` is non-null; if the
+   * profile is excluded from the export, this field is null too.
+   */
+  recommender_profile_preset?: ProfilePresetKey | null;
   annotations: BundleAnnotation[];
   /**
    * Per-app verdicts the recommender has set. Only 'user' source rows
@@ -188,6 +203,14 @@ export function buildAuditBundle(opts: BuildOptions = {}): AuditBundle {
   const annotations = buildAnnotationList();
   const verdicts = buildVerdictList();
   const recommenderProfile = includeRecommenderProfile ? getPrivacyProfile() : null;
+  // Compute the matching preset key only when the profile is being
+  // included. matchPreset() returns null for sparse / customised
+  // profiles, which is the value we want to surface either way —
+  // recipients can render "exported with the Strict preset" only when
+  // the field carries a real key.
+  const recommenderProfilePreset = recommenderProfile
+    ? matchPreset(recommenderProfile)
+    : null;
 
   return {
     version: BUNDLE_VERSION,
@@ -197,6 +220,7 @@ export function buildAuditBundle(opts: BuildOptions = {}): AuditBundle {
     recommender_name: recommenderName,
     apps,
     recommender_profile: recommenderProfile,
+    recommender_profile_preset: recommenderProfilePreset,
     annotations,
     verdicts,
     // Only emit the field when the caller explicitly opted in — older

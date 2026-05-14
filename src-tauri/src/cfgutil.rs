@@ -28,11 +28,45 @@ use std::path::PathBuf;
 #[cfg(target_os = "macos")]
 use std::process::Command;
 #[cfg(target_os = "macos")]
-use std::time::Duration;
+use std::sync::Mutex;
+#[cfg(target_os = "macos")]
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 #[cfg(target_os = "macos")]
 use serde_json::Value;
+
+/// Cached result of `detect_cfgutil_impl`. The PATH probe + Automation Tools
+/// check + version probe shells out 2–4 times and can take 5–30s on a cold
+/// call. Internal callers (`list_connected_devices`, `run_cfgutil_export`)
+/// fire many times per session and don't need a fresh probe each time —
+/// nothing about the cfgutil install changes between calls.
+///
+/// The cache TTL is generous (5 min); the user-facing "Re-check" button in
+/// the onboarding wizard always calls `detect_cfgutil_impl` directly via
+/// `check_cfgutil`, so a fresh install or PATH edit is reflected the next
+/// time the user clicks Re-check.
+#[cfg(target_os = "macos")]
+const CFGUTIL_DETECT_TTL: Duration = Duration::from_secs(300);
+#[cfg(target_os = "macos")]
+static CFGUTIL_DETECT_CACHE: Mutex<Option<(Instant, CfgutilCheck)>> = Mutex::new(None);
+
+/// Return the cached `CfgutilCheck` if it's fresh, otherwise re-probe and
+/// store the result. Internal helper for the cfgutil shell paths so they
+/// don't pay the 5-30s detection cost on every poll.
+#[cfg(target_os = "macos")]
+fn cached_detect_cfgutil() -> CfgutilCheck {
+    if let Some((at, value)) = CFGUTIL_DETECT_CACHE.lock().ok().and_then(|g| g.clone()) {
+        if at.elapsed() < CFGUTIL_DETECT_TTL {
+            return value;
+        }
+    }
+    let fresh = detect_cfgutil_impl();
+    if let Ok(mut guard) = CFGUTIL_DETECT_CACHE.lock() {
+        *guard = Some((Instant::now(), fresh.clone()));
+    }
+    fresh
+}
 
 /// Fixed locations `cfgutil` is known to show up at on a stock macOS install.
 ///
@@ -52,7 +86,7 @@ const FALLBACK_CFGUTIL_PATHS: &[&str] = &[
 /// Result shape returned by `check_cfgutil`. All fields are optional so the
 /// UI can render helpful messages no matter which rung of the detection
 /// ladder succeeded (or failed).
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Default, Clone)]
 pub struct CfgutilCheck {
     /// True iff we managed to run a harmless `cfgutil list` capability probe.
     /// Some cfgutil builds do not support `--version`, so availability must
@@ -187,8 +221,36 @@ pub struct ConnectedDeviceList {
 /// work inside `detect_cfgutil_impl` and mock it without a `#[cfg]` inside
 /// the Tauri command body.
 #[tauri::command]
-pub fn check_cfgutil() -> CfgutilCheck {
-    detect_cfgutil_impl()
+pub async fn check_cfgutil() -> CfgutilCheck {
+    // cfgutil shell-outs can take 5–30s on cold call (PATH probe +
+    // Automation Tools check + version probe). Running them on the
+    // Tauri runtime thread blocks IPC dispatch — including the
+    // eval_script calls that deliver responses back to the webview,
+    // freezing the UI. spawn_blocking moves the work to a worker
+    // thread so the runtime stays responsive.
+    //
+    // The user-facing Re-check button calls this directly, so we always
+    // invalidate the internal cache first — a fresh install or PATH
+    // edit should be reflected immediately, not on the next 5-minute
+    // expiry.
+    tauri::async_runtime::spawn_blocking(|| {
+        #[cfg(target_os = "macos")]
+        {
+            if let Ok(mut guard) = CFGUTIL_DETECT_CACHE.lock() {
+                *guard = None;
+            }
+        }
+        let fresh = detect_cfgutil_impl();
+        #[cfg(target_os = "macos")]
+        {
+            if let Ok(mut guard) = CFGUTIL_DETECT_CACHE.lock() {
+                *guard = Some((Instant::now(), fresh.clone()));
+            }
+        }
+        fresh
+    })
+    .await
+    .unwrap_or_default()
 }
 
 #[cfg(target_os = "macos")]
@@ -344,13 +406,15 @@ fn which_cfgutil() -> Option<String> {
 /// through so a user with two phones plugged in imports from the one they
 /// actually chose.
 #[tauri::command]
-pub fn run_cfgutil_export(ecid: Option<String>) -> Result<CfgutilExport, String> {
-    run_cfgutil_export_impl(ecid)
+pub async fn run_cfgutil_export(ecid: Option<String>) -> Result<CfgutilExport, String> {
+    tauri::async_runtime::spawn_blocking(move || run_cfgutil_export_impl(ecid))
+        .await
+        .map_err(|e| format!("cfgutil export task failed to start: {e}"))?
 }
 
 #[cfg(target_os = "macos")]
 fn run_cfgutil_export_impl(ecid: Option<String>) -> Result<CfgutilExport, String> {
-    let check = detect_cfgutil_impl();
+    let check = cached_detect_cfgutil();
     if !check.available {
         return Err(check
             .error
@@ -474,13 +538,41 @@ fn run_cfgutil_export_impl(_ecid: Option<String>) -> Result<CfgutilExport, Strin
 /// it likes (page unmount, user dismisses) without having to tear down
 /// any background task.
 #[tauri::command]
-pub fn list_connected_devices() -> ConnectedDeviceList {
+pub async fn list_connected_devices() -> ConnectedDeviceList {
+    // The hottest cfgutil entry by far — DeviceConnectedToast polls this
+    // every few seconds while the user is on /dashboard/apps. Two
+    // sequential cfgutil shell-outs (`list` + `get name model ...`)
+    // dominate. Off-loading them keeps the IPC thread free to deliver
+    // responses to whatever else the webview is doing.
+    tauri::async_runtime::spawn_blocking(list_connected_devices_impl)
+        .await
+        .unwrap_or_else(|_| ConnectedDeviceList {
+            devices: Vec::new(),
+            cfgutil_unavailable: true,
+        })
+}
+
+/// Synchronous wrapper for the IOKit USB watcher. The watcher already
+/// runs on a dedicated background thread (see `usb_watcher.rs`), so we
+/// don't need to off-load to spawn_blocking — calling the impl directly
+/// is fine. Kept as a separate function so the only public entry points
+/// outside cfgutil.rs are this + the async `#[tauri::command]` wrappers.
+#[cfg(target_os = "macos")]
+pub fn list_connected_devices_for_watcher() -> ConnectedDeviceList {
     list_connected_devices_impl()
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn list_connected_devices_for_watcher() -> ConnectedDeviceList {
+    ConnectedDeviceList {
+        devices: Vec::new(),
+        cfgutil_unavailable: true,
+    }
 }
 
 #[cfg(target_os = "macos")]
 fn list_connected_devices_impl() -> ConnectedDeviceList {
-    let check = detect_cfgutil_impl();
+    let check = cached_detect_cfgutil();
     if !check.available {
         return ConnectedDeviceList {
             devices: Vec::new(),
@@ -600,6 +692,56 @@ pub struct CfgutilBackupResult {
     pub error: Option<String>,
 }
 
+/// Canonicalise and validate the destination directory for a cfgutil
+/// backup. The webview is only ever supposed to ask for paths under
+/// `~/Documents/privacytracker-Backups/`; this function enforces that
+/// at the Rust boundary so a compromised webview can't pre-stage
+/// directories in security-sensitive locations like `~/Library/
+/// LaunchAgents`. Expands a leading `~/`, rejects relative paths and
+/// any path containing `..` components, and verifies the result still
+/// sits inside the allowed base.
+#[cfg(target_os = "macos")]
+fn resolve_backup_dest(dest_dir: &str) -> Result<PathBuf, String> {
+    if dest_dir.is_empty() {
+        return Err("dest_dir is empty".to_string());
+    }
+
+    let home = dirs::home_dir().ok_or_else(|| "could not resolve user home dir".to_string())?;
+    let allowed_base = home.join("Documents").join("privacytracker-Backups");
+
+    // Expand a leading `~/`. We deliberately do NOT support `~user/`
+    // (other-user expansion) — only the running user's home is allowed.
+    let candidate: PathBuf = if let Some(rest) = dest_dir.strip_prefix("~/") {
+        home.join(rest)
+    } else if dest_dir == "~" {
+        home.clone()
+    } else {
+        PathBuf::from(dest_dir)
+    };
+
+    if !candidate.is_absolute() {
+        return Err("dest_dir must be absolute (or start with ~/)".to_string());
+    }
+
+    // Reject any traversal sequences before we touch the filesystem.
+    use std::path::Component;
+    for c in candidate.components() {
+        if matches!(c, Component::ParentDir) {
+            return Err("dest_dir contains `..` components".to_string());
+        }
+    }
+
+    if !candidate.starts_with(&allowed_base) {
+        return Err(format!(
+            "dest_dir must be under {} (got {})",
+            allowed_base.display(),
+            candidate.display()
+        ));
+    }
+
+    Ok(candidate)
+}
+
 /// Result of `run_cfgutil_remove_app`. Bundles command output so the
 /// review-and-act wizard can render per-row success/failure without
 /// re-running cfgutil to check.
@@ -627,8 +769,16 @@ pub struct CfgutilRemoveResult {
 /// flipped `flag.devopts.cfgutil_uninstall` on. The Rust command
 /// trusts its caller.
 #[tauri::command]
-pub fn run_cfgutil_backup(ecid: String, dest_dir: String) -> CfgutilBackupResult {
-    run_cfgutil_backup_impl(ecid, dest_dir)
+pub async fn run_cfgutil_backup(ecid: String, dest_dir: String) -> CfgutilBackupResult {
+    let ecid_for_err = ecid.clone();
+    tauri::async_runtime::spawn_blocking(move || run_cfgutil_backup_impl(ecid, dest_dir))
+        .await
+        .unwrap_or_else(|e| CfgutilBackupResult {
+            ok: false,
+            ecid: ecid_for_err,
+            error: Some(format!("backup task failed to start: {e}")),
+            ..Default::default()
+        })
 }
 
 #[cfg(target_os = "macos")]
@@ -638,12 +788,36 @@ fn run_cfgutil_backup_impl(ecid: String, dest_dir: String) -> CfgutilBackupResul
         ..Default::default()
     };
 
-    let check = detect_cfgutil_impl();
+    // Refuse anything that isn't a plain ECID. Same allowlist as
+    // run_cfgutil_remove_app — defence in depth against a compromised
+    // webview trying to smuggle cfgutil flags via --ecid's value.
+    if !ecid.chars().all(|c| c.is_ascii_alphanumeric()) {
+        out.error = Some(format!(
+            "Refusing to back up — ECID contains unexpected characters: {ecid}"
+        ));
+        return out;
+    }
+
+    // Constrain dest_dir to ~/Documents/privacytracker-Backups/<...>.
+    // Canonicalise the parent (the leaf typically doesn't exist yet) and
+    // confirm the result still sits under the allowed base, so symlink
+    // games or "../" components can't escape.
+    let resolved_dest = match resolve_backup_dest(&dest_dir) {
+        Ok(p) => p,
+        Err(e) => {
+            out.error = Some(format!("Refusing to back up — bad dest_dir: {e}"));
+            return out;
+        }
+    };
+
+    let check = cached_detect_cfgutil();
     if !check.available {
         out.error = Some(check.error.unwrap_or_else(|| "cfgutil not available".to_string()));
         return out;
     }
     let cfgutil_path = check.path.unwrap_or_else(|| "cfgutil".to_string());
+
+    let dest_dir = resolved_dest.to_string_lossy().into_owned();
 
     // Make sure dest_dir exists — cfgutil's behaviour is undefined if
     // the parent doesn't exist. Best-effort create; permission errors
@@ -743,8 +917,18 @@ fn run_cfgutil_backup_impl(ecid: String, _dest_dir: String) -> CfgutilBackupResu
 /// interaction. There is no batch path; callers wanting to remove N
 /// apps loop and call N times.
 #[tauri::command]
-pub fn run_cfgutil_remove_app(ecid: String, bundle_id: String) -> CfgutilRemoveResult {
-    run_cfgutil_remove_app_impl(ecid, bundle_id)
+pub async fn run_cfgutil_remove_app(ecid: String, bundle_id: String) -> CfgutilRemoveResult {
+    let ecid_for_err = ecid.clone();
+    let bundle_id_for_err = bundle_id.clone();
+    tauri::async_runtime::spawn_blocking(move || run_cfgutil_remove_app_impl(ecid, bundle_id))
+        .await
+        .unwrap_or_else(|e| CfgutilRemoveResult {
+            ok: false,
+            ecid: ecid_for_err,
+            bundle_id: bundle_id_for_err,
+            error: Some(format!("remove task failed to start: {e}")),
+            ..Default::default()
+        })
 }
 
 #[cfg(target_os = "macos")]
@@ -775,7 +959,29 @@ fn run_cfgutil_remove_app_impl(ecid: String, bundle_id: String) -> CfgutilRemove
         return out;
     }
 
-    let check = detect_cfgutil_impl();
+    // Defence-in-depth: require a fresh Touch ID / device-password
+    // confirmation before the destructive cfgutil command runs. The
+    // wizard's "type DELETE" prompt is a webview-side check, so a
+    // compromised webview could call this command directly to skip it.
+    // LAContext is the only confirmation step that a JS payload can't
+    // bypass: it's a native modal whose result depends on hardware
+    // (the user's finger) or the macOS login password.
+    match crate::touch_id::prompt(
+        &format!("Confirm removing {bundle_id} from this iPhone"),
+        std::time::Duration::from_secs(120),
+    ) {
+        Ok(true) => {}
+        Ok(false) => {
+            out.error = Some("Authentication cancelled".to_string());
+            return out;
+        }
+        Err(e) => {
+            out.error = Some(format!("Authentication required: {e}"));
+            return out;
+        }
+    }
+
+    let check = cached_detect_cfgutil();
     if !check.available {
         out.error = Some(check.error.unwrap_or_else(|| "cfgutil not available".to_string()));
         return out;

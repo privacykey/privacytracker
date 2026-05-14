@@ -248,7 +248,11 @@ function stepNotificationPrefsAbsorb(): void {
   const now = Date.now();
   const transaction = db.transaction(() => {
     for (const [legacyKey, flagKey] of Object.entries(NOTIFICATION_TYPE_KEYS)) {
-      if (!(legacyKey in parsed)) continue;
+      // `Object.prototype.hasOwnProperty.call` rather than `in` so a
+      // forged `notification_prefs` blob (planted via a restore from
+      // an untrusted backup) can't introduce keys via prototype-chain
+      // pollution and cause us to write the wrong flag default.
+      if (!Object.prototype.hasOwnProperty.call(parsed, legacyKey)) continue;
       const raw = parsed[legacyKey];
       const value = (raw === true || raw === 'on' || raw === 'true') ? 'on' : 'off';
       db.prepare(

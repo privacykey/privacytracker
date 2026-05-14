@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-run-cfgutil-remove-app"
+description = "Enables the run_cfgutil_remove_app command without any pre-configured scope."
+commands.allow = ["run_cfgutil_remove_app"]
+
+[[permission]]
+identifier = "deny-run-cfgutil-remove-app"
+description = "Denies the run_cfgutil_remove_app command without any pre-configured scope."
+commands.deny = ["run_cfgutil_remove_app"]

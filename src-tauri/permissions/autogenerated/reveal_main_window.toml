@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-reveal-main-window"
+description = "Enables the reveal_main_window command without any pre-configured scope."
+commands.allow = ["reveal_main_window"]
+
+[[permission]]
+identifier = "deny-reveal-main-window"
+description = "Denies the reveal_main_window command without any pre-configured scope."
+commands.deny = ["reveal_main_window"]

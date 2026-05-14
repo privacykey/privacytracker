@@ -4,7 +4,9 @@ import { setSetting } from '../lib/scheduler';
 import {
   BULK_MUTEX_KEY,
   hasPendingWork,
+  isBulkStatePaused,
   readBulkState,
+  shouldAutoResumeBulkState,
   writeBulkState,
   zeroTotals,
 } from '../lib/wayback-bulk-state';
@@ -63,9 +65,32 @@ test('bulk state helpers preserve pending and in-progress work for startup resum
     streamRequested: true,
   });
 
-  assert.equal(hasPendingWork(readBulkState()), true);
-  assert.equal(hasSyncPendingWork(readSyncBulkState()), true);
-  assert.equal(hasPolicyPendingWork(readPolicyBulkState()), true);
+	  assert.equal(hasPendingWork(readBulkState()), true);
+	  assert.equal(shouldAutoResumeBulkState(readBulkState()), true);
+	  assert.equal(hasSyncPendingWork(readSyncBulkState()), true);
+	  assert.equal(hasPolicyPendingWork(readPolicyBulkState()), true);
+	});
+
+test('paused Wayback bulk state keeps pending work but does not auto-resume', () => {
+  writeBulkState({
+    runId: 'wayback-paused-run',
+    startedAt: 10,
+    initiator: 'manual',
+    status: 'paused',
+    pausedAt: 20,
+    currentAppId: null,
+    queue: [
+      { appId: 'paused-app', appName: 'Paused App', status: 'pending' },
+      { appId: 'done-app', appName: 'Done App', status: 'done' },
+    ],
+    totals: zeroTotals(),
+    streamRequested: false,
+  });
+
+  const state = readBulkState();
+  assert.equal(hasPendingWork(state), true);
+  assert.equal(isBulkStatePaused(state), true);
+  assert.equal(shouldAutoResumeBulkState(state), false);
 });
 
 test('tasks active route reports resumed bulk jobs and stale mutexes', async () => {

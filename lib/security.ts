@@ -258,12 +258,28 @@ export interface SafeFetchOptions {
   allowedHosts?: string[];
   /** Max response body size in bytes. Default 5 MiB. */
   maxBytes?: number;
+  /**
+   * Max URL length in characters. Default 2048 — covers every UI-driven
+   * scrape we do but isn't enough for the iTunes bulk-lookup endpoint
+   * where 200 comma-joined bundle IDs blow past it. Callers that need
+   * a longer cap pass it through explicitly.
+   */
+  maxUrlLength?: number;
   /** Timeout in ms. Default 15 000. */
   timeoutMs?: number;
-  /** Strictly verify the hostname doesn't resolve to a private IP. */
+  /**
+   * Strictly verify the hostname doesn't resolve to a private IP.
+   * Defaults to **true** — callers that hit `allowPrivateHosts: true`
+   * targets (Ollama, etc.) get bypassed automatically; callers
+   * targeting a public allowlist (Apple, Wayback) want this on by
+   * default to close the DNS-rebinding window. Opt out by passing
+   * `resolveAndCheck: false` explicitly.
+   */
   resolveAndCheck?: boolean;
   /** Headers to add. Note: fetch already supplies the defaults. */
   headers?: Record<string, string>;
+  /** Optional caller-controlled abort signal, composed with the timeout. */
+  signal?: AbortSignal;
   /** 'follow' (default) | 'error' | 'manual'. */
   redirect?: RequestRedirect;
   /** Hard cap on the number of redirects when redirect is 'follow'. */
@@ -289,6 +305,7 @@ export async function safeFetch(
   const validation = validateExternalUrl(rawUrl, {
     allowedHosts: options.allowedHosts,
     allowPrivateHosts: options.allowPrivateHosts,
+    maxLength: options.maxUrlLength,
   });
   if (!validation.ok || !validation.url) {
     throw new Error(`Blocked URL: ${validation.error ?? 'invalid_url'} — ${validation.detail ?? rawUrl}`);
@@ -296,9 +313,12 @@ export async function safeFetch(
 
   const url = validation.url;
 
-  // DNS-rebinding guard: skipped when the caller has opted into private hosts,
-  // because the whole point of that mode is to allow private resolutions.
-  if (options.resolveAndCheck && !options.allowPrivateHosts) {
+  // DNS-rebinding guard. Default-on. Skipped when the caller has opted
+  // into private hosts (Ollama et al), because the whole point of that
+  // mode is to allow private resolutions. Callers that want the lookup
+  // off for any other reason can pass `resolveAndCheck: false`.
+  const resolveAndCheck = options.resolveAndCheck ?? true;
+  if (resolveAndCheck && !options.allowPrivateHosts) {
     const ok = await hostResolvesToPublic(url.hostname);
     if (!ok) {
       throw new Error(`Blocked URL: host ${url.hostname} did not resolve to a public address`);
@@ -309,6 +329,7 @@ export async function safeFetch(
   const timeoutMs = options.timeoutMs ?? 15_000;
   const maxRedirects = options.maxRedirects ?? 5;
   const redirect: RequestRedirect = options.redirect ?? 'manual';
+  const signal = withTimeoutSignal(timeoutMs, options.signal);
 
   let currentUrl = url.toString();
   let redirectsUsed = 0;
@@ -316,12 +337,12 @@ export async function safeFetch(
   // We follow redirects manually so we can re-validate every hop's hostname.
   // This defends against an initial allowlisted URL 302-ing to an internal IP.
   while (true) {
-    const res = await fetch(currentUrl, {
-      method: 'GET',
-      headers: options.headers,
-      redirect: 'manual',
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+	    const res = await fetch(currentUrl, {
+	      method: 'GET',
+	      headers: options.headers,
+	      redirect: 'manual',
+	      signal,
+	    });
 
     if (redirect === 'follow' && res.status >= 300 && res.status < 400) {
       const location = res.headers.get('location');
@@ -341,13 +362,14 @@ export async function safeFetch(
       const nextValidation = validateExternalUrl(nextUrl, {
         allowedHosts: options.allowedHosts,
         allowPrivateHosts: options.allowPrivateHosts,
+        maxLength: options.maxUrlLength,
       });
       if (!nextValidation.ok) {
         throw new Error(
           `safeFetch: redirect rejected — ${nextValidation.error}: ${nextValidation.detail}`,
         );
       }
-      if (options.resolveAndCheck && !options.allowPrivateHosts) {
+      if (resolveAndCheck && !options.allowPrivateHosts) {
         const ok = await hostResolvesToPublic(nextValidation.url!.hostname);
         if (!ok) throw new Error(`safeFetch: redirect host ${nextValidation.url!.hostname} is private`);
       }
@@ -357,6 +379,11 @@ export async function safeFetch(
 
     return readBounded(res, currentUrl, maxBytes);
   }
+}
+
+function withTimeoutSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 }
 
 async function readBounded(
@@ -551,16 +578,46 @@ export function adminTokenRequiredForRequest(request: Request): boolean {
   return adminTokenConfigured() || requestLooksNonLocal(request);
 }
 
-export function requestHasValidAdminToken(request: Request): boolean {
-  const expected = process.env.AUDITOR_ADMIN_TOKEN;
-  if (!expected) return false;
-  const provided = request.headers.get('x-auditor-admin-token');
-  if (!provided) return false;
-  // Constant-time compare to avoid timing side-channels.
+/**
+ * Name of the HttpOnly cookie that carries the admin token for browser
+ * callers. The corresponding `x-auditor-admin-token` header path remains
+ * for scripted callers (curl, the audit-bundle test harness, etc.).
+ */
+export const ADMIN_TOKEN_COOKIE = 'pt_admin_token';
+
+function readAdminTokenCookie(request: Request): string | null {
+  const cookieHeader = request.headers.get('cookie');
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const name = part.slice(0, eq).trim();
+    if (name === ADMIN_TOKEN_COOKIE) {
+      return decodeURIComponent(part.slice(eq + 1).trim());
+    }
+  }
+  return null;
+}
+
+function constantTimeMatch(provided: string, expected: string): boolean {
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(a, b);
+}
+
+export function requestHasValidAdminToken(request: Request): boolean {
+  const expected = process.env.AUDITOR_ADMIN_TOKEN;
+  if (!expected) return false;
+  // Prefer the cookie path (HttpOnly, set via /api/auth/admin-token/login).
+  // Fall back to the explicit header for scripted callers that don't run
+  // through a cookie jar. Either source has to match the env var via a
+  // constant-time compare.
+  const cookieVal = readAdminTokenCookie(request);
+  if (cookieVal && constantTimeMatch(cookieVal, expected)) return true;
+  const provided = request.headers.get('x-auditor-admin-token');
+  if (provided && constantTimeMatch(provided, expected)) return true;
+  return false;
 }
 
 // ─────────────────────────────────────────────

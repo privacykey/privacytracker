@@ -1,6 +1,12 @@
 import db from './db';
 import crypto from 'crypto';
 import {
+  beginScrape,
+  endScrape,
+  markScrapePhase,
+  newScrapeId,
+} from './scrape-activity';
+import {
   buildSnapshot,
   diffSnapshots,
   getLatestSnapshot,
@@ -430,12 +436,19 @@ export async function searchAppsByName(
 // queried country=US first).
 
 /**
- * Apple's lookup endpoint caps the IDs-per-request at a documented 200.
- * We split larger inputs into chunks of this size and stitch the
- * responses together. The cap is high enough that most cfgutil imports
- * fit in a single request.
+ * Apple's lookup endpoint documents a 200-ID cap, but in practice the
+ * upstream returns HTTP 502 ("Bad Gateway") well before that threshold
+ * when the response payload is large — empirically ~150+ real-app
+ * records produces a 1.5+ MB response that Apple's edge times out
+ * marshalling. 100 is a conservative sweet spot that:
+ *   - always fits in one HTTP request with response time < 2s,
+ *   - keeps the per-call rate-bucket token spend small, and
+ *   - leaves headroom if Apple lowers their own cap further.
+ * On a 502, the chunk is split in half and retried (see `runChunk`),
+ * so even a transient bad-gateway response doesn't drop every ID in
+ * the chunk.
  */
-const ITUNES_LOOKUP_BATCH_SIZE = 200;
+const ITUNES_LOOKUP_BATCH_SIZE = 100;
 
 /**
  * Result for one input bundleId. `match` is `null` when Apple returned
@@ -540,6 +553,11 @@ export async function lookupAppsByBundleId(
         // Lookup with 200 IDs comes back larger than a search response;
         // bump the cap to 4MB to be safe (search caps at 1MB).
         maxBytes: 4 * 1024 * 1024,
+        // 200 comma-joined bundle IDs (~25 chars each, URL-encoded
+        // commas = `%2C`) push the query string past the default 2 KiB
+        // URL cap. Bump just for this endpoint — every other safeFetch
+        // call keeps the default to retain the SSRF surface check.
+        maxUrlLength: 16 * 1024,
         redirect: 'follow',
       });
 
@@ -567,9 +585,44 @@ export async function lookupAppsByBundleId(
       }
 
       if (!res.ok) {
-        // Non-429 error — log and skip this chunk. The IDs in this
-        // chunk all surface as `null` matches; the caller will fall
-        // back to name search for them.
+        // 502 / 503 / 504 are Apple's edge timing out marshalling a
+        // large response — empirically every chunk of ~150+ real-app
+        // records hits this. Retry once with the chunk split in half;
+        // smaller responses round-trip cleanly. We only do this for
+        // upstream-gateway-class errors, and we only split once (each
+        // half is processed by the same `runChunk` path which, if
+        // somehow still 502s, falls through to "null for the chunk").
+        if ((res.status === 502 || res.status === 503 || res.status === 504) && chunk.length > 1) {
+          console.warn(
+            `iTunes lookup returned HTTP ${res.status} for chunk of ${chunk.length} bundle IDs — splitting and retrying`,
+          );
+          const half = Math.ceil(chunk.length / 2);
+          const partA = chunk.slice(0, half);
+          const partB = chunk.slice(half);
+          // Recurse via the public API so both halves go through the
+          // same rate-limit and URL-cap machinery. `country` is
+          // preserved across the recursion. If either half ALSO
+          // 502s, that half's IDs land as null — caller's
+          // name-search fallback handles them.
+          try {
+            const a = await lookupAppsByBundleId(partA, { country });
+            const b = await lookupAppsByBundleId(partB, { country });
+            results.push(...a.results, ...b.results);
+            // If either half hit a real 429 mid-recovery, surface it
+            // so the queued tail can resume after the cooldown.
+            const rateLimited = a.rateLimited ?? b.rateLimited;
+            if (rateLimited) {
+              return { results, rateLimited };
+            }
+          } catch (splitErr) {
+            console.error('iTunes lookup split-retry failed', splitErr);
+            for (const id of chunk) results.push({ bundleId: id, match: null });
+          }
+          continue;
+        }
+        // Non-recoverable error — log and skip this chunk. The IDs in
+        // this chunk all surface as `null` matches; the caller will
+        // fall back to name search for them.
         console.warn(`iTunes lookup returned HTTP ${res.status} for chunk of ${chunk.length} bundle IDs`);
         for (const id of chunk) results.push({ bundleId: id, match: null });
         continue;
@@ -587,18 +640,32 @@ export async function lookupAppsByBundleId(
       // Index Apple's response by bundle ID so we can map each input ID
       // to its match (if any). Apple returns matches in `data.results`
       // but doesn't preserve input ordering when bundleIDs are
-      // comma-separated, so we have to look each one up by hand. A
-      // bundle ID that wasn't found just won't appear in `results`.
+      // comma-separated, so we have to look each one up by hand.
+      //
+      // Key by **lowercase** bundle ID. Apple's Lookup endpoint matches
+      // case-insensitively but always returns the canonical casing in
+      // the `bundleId` field — verified empirically:
+      //   GET ?bundleId=com.apple.maps  →  returns "com.apple.Maps"
+      // So when cfgutil emits `com.apple.maps` (the device's Info.plist
+      // value, which can differ in case from what the App Store has
+      // stored) and Apple returns `com.apple.Maps`, a case-sensitive
+      // key→key match drops the row. Most real-world bundle IDs are
+      // mixed case (com.apple.Maps, com.apple.AppStore, com.google.PhotosiOS,
+      // com.microsoft.Office.Outlook, …), so this used to bottom-out
+      // the bundle-lookup match rate.
       const byBundle = new Map<string, AppCandidate>();
       for (const r of (data.results || []) as any[]) {
         const bundle = typeof r.bundleId === 'string' ? r.bundleId : null;
         if (!bundle) continue;
-        byBundle.set(bundle, {
+        byBundle.set(bundle.toLowerCase(), {
           appleId: String(r.trackId),
           name: r.trackName,
           developer: r.artistName,
           iconUrl: r.artworkUrl100?.replace('100x100bb', '200x200bb') ?? '',
           url: r.trackViewUrl?.split('?')[0] ?? '',
+          // Use Apple's canonical casing in the persisted record so
+          // downstream comparisons (audit-bundle import, manual-apps
+          // import) always agree with what the App Store has stored.
           bundleId: bundle,
           // We use the bundle ID as the search-query identifier so the
           // wizard can key its results map by either name OR bundle ID
@@ -609,7 +676,7 @@ export async function lookupAppsByBundleId(
       }
 
       for (const id of chunk) {
-        results.push({ bundleId: id, match: byBundle.get(id) ?? null });
+        results.push({ bundleId: id, match: byBundle.get(id.toLowerCase()) ?? null });
       }
     } catch (e) {
       console.error('iTunes lookup failed for chunk', e);
@@ -709,6 +776,15 @@ export async function fetchAndParseApp(
   // before propagating to the caller.
   const __activityStart = Date.now();
   const __activityType = resync ? 'resync' : 'scrape';
+  // Live diagnostics handle — visible on the Diagnostics page while the
+  // scrape is still running. The phase marks below sit at the four
+  // boundaries that account for most of a scrape's wall-clock cost:
+  // Apple HTML fetch, HTML/JSON parse, DB commit, optional policy fetch.
+  const __scrapeId = newScrapeId();
+  let __scrapeAppName: string | undefined;
+  let __scrapeOutcome: 'success' | 'error' | 'rate_limited' = 'error';
+  let __scrapeError: string | undefined;
+  beginScrape(__scrapeId, verdict.url.toString(), resync);
   try {
 
   // Hard-cooldown short-circuit. If a previous request already triggered
@@ -771,6 +847,7 @@ export async function fetchAndParseApp(
 
   if (!req.ok) throw new Error(`HTTP ${req.status} fetching App Store page`);
   const html = htmlBuf.toString('utf8');
+  markScrapePhase(__scrapeId, 'apple_fetched');
 
   // ── Name ──
   let name = 'Unknown App';
@@ -796,9 +873,21 @@ export async function fetchAndParseApp(
   let privacyPolicyUrl = '';
   
   // 1. Target by ARIA label (most specific)
-  // Supports both ' (straight) and ’ (curly) apostrophes
-  const ariaMatch = html.match(/<a\s+[^>]*?aria-label="Developer[’']s Privacy Policy"[^]*?href="([^"]+)"/i) 
-                 || html.match(/<a\s+[^]*?href="([^"]+)"[^]*?aria-label="Developer[’']s Privacy Policy"/i);
+  // Supports both ' (straight) and ’ (curly) apostrophes.
+  //
+  // Bounded `{0,2048}?` repetition rather than `[^]*?` so this regex can't
+  // catastrophically backtrack on a crafted/Wayback page. The match window
+  // is well above Apple's actual `<a>` attribute span (~200 chars) yet
+  // small enough to keep worst-case runtime in milliseconds even on a
+  // 4 MiB body. `[^<>]` instead of `[^>]` blocks the prefix from leaking
+  // across tag boundaries.
+  const ariaMatch =
+    html.match(
+      /<a\s+[^<>]{0,2048}?aria-label="Developer[’']s Privacy Policy"[\s\S]{0,2048}?href="([^"]+)"/i,
+    ) ||
+    html.match(
+      /<a\s+[\s\S]{0,2048}?href="([^"]+)"[\s\S]{0,2048}?aria-label="Developer[’']s Privacy Policy"/i,
+    );
   
   if (ariaMatch) {
     privacyPolicyUrl = ariaMatch[1];
@@ -890,6 +979,8 @@ export async function fetchAndParseApp(
   const previousVersionUpdatedAt = existingApp?.versionUpdatedAt ?? null;
   const writePlan = prepareScrapeWritePlan(data, html);
   const newSnapshot = writePlan.snapshot;
+  __scrapeAppName = name;
+  markScrapePhase(__scrapeId, 'parsed');
 
   // ── Parser-fallthrough alert ────────────────────────────────────
   // Three states for `hasPrivacyDetails`:
@@ -961,6 +1052,7 @@ export async function fetchAndParseApp(
     activityType: __activityType,
     activityStartedAt: __activityStart,
   });
+  markScrapePhase(__scrapeId, 'committed');
 
   // Version-update notification. Only fires when:
   //   - The app already existed (first-ever scrapes don't count as an update).
@@ -1039,8 +1131,10 @@ export async function fetchAndParseApp(
     } catch (error) {
       console.error('Privacy policy analysis failed for', name, error);
     }
+    markScrapePhase(__scrapeId, 'policy_done');
   }
 
+  __scrapeOutcome = 'success';
   return {
     id: appleId,
     name,
@@ -1092,7 +1186,17 @@ export async function fetchAndParseApp(
       detail: { url, errorMessage: message, fetchDiagnostics },
       startedAt: __activityStart,
     });
+    // A typed AppleRateLimitError lands here too; we want it categorised
+    // separately so the diagnostics panel can show "1 rate-limited" vs
+    // "1 error" rather than collapsing them together.
+    __scrapeOutcome = isAppleRateLimitError(error) ? 'rate_limited' : 'error';
+    __scrapeError = message.slice(0, 200);
     throw error;
+  } finally {
+    endScrape(__scrapeId, __scrapeOutcome, {
+      appName: __scrapeAppName,
+      error: __scrapeError,
+    });
   }
 }
 

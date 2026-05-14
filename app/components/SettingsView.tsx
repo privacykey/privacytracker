@@ -13,6 +13,7 @@ import LocaleSwitcher from './LocaleSwitcher';
 import DateFormatPicker from './DateFormatPicker';
 import LanguageSuggestionBanner from './LanguageSuggestionBanner';
 import AuditBundleImport from './AuditBundleImport';
+import AuditBundleExport from './AuditBundleExport';
 import RateLimitBanner from './RateLimitBanner';
 import { formatDate as formatDateWithMode, type DateFormatMode } from '../../lib/date-format';
 import { useDateFormat } from '../../lib/date-format-hook';
@@ -27,10 +28,7 @@ import { useSettingsAutoSave } from '../../lib/use-settings-auto-save';
  * toggle.
  */
 const AUTOSAVE_LOG_KEY = 'settings-autosave-log-to-taskcenter';
-import {
-  ADMIN_TOKEN_CHANGED_EVENT,
-  ADMIN_TOKEN_SESSION_KEY,
-} from './AdminTokenBridge';
+import { ADMIN_TOKEN_CHANGED_EVENT } from './AdminTokenBridge';
 import {
   AI_PROVIDER_OPTIONS,
   getAiModelOptions,
@@ -73,6 +71,13 @@ import type {
 } from '../../lib/policy-summary-meta';
 
 type Schedule = 'manual' | 'daily' | 'weekly';
+type WaybackRunStatus =
+  | 'idle'
+  | 'running'
+  | 'pause_requested'
+  | 'paused'
+  | 'cancel_requested'
+  | 'stale';
 
 interface StoredAiSettings {
   provider: AIProvider;
@@ -673,6 +678,7 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
   const tSub = useTranslations('settings.subtitles');
   const tRegion = useTranslations('settings.region');
   const tA11yLabels = useTranslations('settings.accessibility_labels_card');
+  const tReviewQueueSettings = useTranslations('settings.review_queue_card');
   const tSyncStatus = useTranslations('settings.sync_status');
   const tDeploy = useTranslations('settings.deployment_diagnostics_card');
   const tPolicyCard = useTranslations('settings.privacy_policies_card');
@@ -771,6 +777,13 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
   const settingsImportHistoryOn = useFlag('flag.settings.import.history') === 'on';
   const settingsAdminBackupOn = useFlag('flag.settings.admin.backup') === 'on';
   const settingsAdminExportOn = useFlag('flag.settings.admin.export') === 'on';
+  // The audit-bundle export gate (`flag.settings.admin.export.audit_bundle`)
+  // is resolved INSIDE AuditBundleExport itself rather than here. The
+  // client-side useFlag cache isn't bootstrapped from server state on
+  // fresh page loads — it returns the hard default until an override
+  // mutation fires — so flags whose default differs from their resolved
+  // value (this one is 'off' by default and 'on' for loved_one) need a
+  // client-side `/api/feature-flags` probe to read their real state.
   const settingsAdminResetOn = useFlag('flag.settings.admin.reset') === 'on';
   const settingsAdminStartOverOn = useFlag('flag.settings.admin.start_over') === 'on';
   // Wave I: top-level gate for the entire Developer Options section.
@@ -927,6 +940,8 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
   // through to the per-app ChangelogTimeline as a visibility filter — when
   // off, the imported rows stay in the DB but the timeline hides them.
   const [waybackRunning, setWaybackRunning] = useState(false);
+  const [waybackRunStatus, setWaybackRunStatus] = useState<WaybackRunStatus>('idle');
+  const [waybackControlBusy, setWaybackControlBusy] = useState<null | 'pause' | 'resume' | 'cancel' | 'force'>(null);
   const [waybackRemoving, setWaybackRemoving] = useState(false);
   // Controls the in-app confirm modal for "Remove all imported history".
   // We avoid `window.confirm` so the UX matches the rest of the app — the
@@ -950,6 +965,13 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
   // stopping data collection, so re-enabling later brings history back.
   const [trackAccessibility, setTrackAccessibility] = useState(true);
   const [savedTrackAccessibility, setSavedTrackAccessibility] = useState(true);
+
+  // Review-queue progress bar toggle. Defaults true; users can mute the
+  // bar if they prefer the carousel chrome stripped back. Persisted in
+  // app_settings under `queue_show_progress_bar` and read server-side
+  // by /dashboard/apps/page.tsx.
+  const [queueShowProgressBar, setQueueShowProgressBar] = useState(true);
+  const [savedQueueShowProgressBar, setSavedQueueShowProgressBar] = useState(true);
   // The "is this toggle saving" flag now lives on `trackAccessibilityAutoSave.saving`.
   // Live-progress tracker, populated from the NDJSON stream so the status
   // block can show "12/34 · Netflix" while the run is in flight. `null`
@@ -1216,19 +1238,33 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     }
   };
 
-  const refreshAdminUnlockState = () => {
+  const refreshAdminUnlockState = async () => {
     try {
-      setAdminTokenUnlocked(Boolean(sessionStorage.getItem(ADMIN_TOKEN_SESSION_KEY)?.trim()));
+      const res = await fetch('/api/auth/admin-token/status', { cache: 'no-store' });
+      if (!res.ok) {
+        setAdminTokenUnlocked(false);
+        return;
+      }
+      const data = (await res.json()) as { unlocked?: boolean };
+      setAdminTokenUnlocked(Boolean(data.unlocked));
     } catch {
       setAdminTokenUnlocked(false);
     }
   };
 
-  const saveSessionAdminToken = () => {
+  const saveSessionAdminToken = async () => {
     const token = adminTokenInput.trim();
     if (!token) return;
     try {
-      sessionStorage.setItem(ADMIN_TOKEN_SESSION_KEY, token);
+      const res = await fetch('/api/auth/admin-token/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      if (!res.ok) {
+        showToast(tDeploy('admin_unlock_failed'));
+        return;
+      }
       window.dispatchEvent(new Event(ADMIN_TOKEN_CHANGED_EVENT));
       setAdminTokenInput('');
       setAdminTokenUnlocked(true);
@@ -1238,9 +1274,9 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     }
   };
 
-  const clearSessionAdminToken = () => {
+  const clearSessionAdminToken = async () => {
     try {
-      sessionStorage.removeItem(ADMIN_TOKEN_SESSION_KEY);
+      await fetch('/api/auth/admin-token/logout', { method: 'POST' });
       window.dispatchEvent(new Event(ADMIN_TOKEN_CHANGED_EVENT));
     } catch {
       /* no-op */
@@ -1405,6 +1441,12 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     const nextAccess = rawAccess === undefined ? true : !!rawAccess;
     setTrackAccessibility(nextAccess);
     setSavedTrackAccessibility(nextAccess);
+
+    // Review-queue progress bar toggle.
+    const rawQueueBar = data.queue_show_progress_bar;
+    const nextQueueBar = rawQueueBar === undefined ? true : !!rawQueueBar;
+    setQueueShowProgressBar(nextQueueBar);
+    setSavedQueueShowProgressBar(nextQueueBar);
   };
 
   /**
@@ -3203,10 +3245,11 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
    * `loadWaybackLastRun()` so the card flips from "in progress" to the
    * final summary without a reload.
    */
-  const loadWaybackProgress = async (): Promise<{
-    running: boolean;
-    initiator: 'manual' | 'resume' | null;
-    progress: {
+	  const loadWaybackProgress = async (): Promise<{
+	    running: boolean;
+	    status: WaybackRunStatus;
+	    initiator: 'manual' | 'resume' | null;
+	    progress: {
       index: number;
       total: number;
       currentAppName: string | null;
@@ -3219,8 +3262,19 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     try {
       const res = await fetch('/api/wayback/import-all');
       if (!res.ok) return null;
-      const data = await res.json();
-      const running = !!data?.running;
+	      const data = await res.json();
+	      const running = !!data?.running;
+	      const rawStatus = typeof data?.status === 'string' ? data.status : '';
+	      const status: WaybackRunStatus =
+	        rawStatus === 'running' ||
+	        rawStatus === 'pause_requested' ||
+	        rawStatus === 'paused' ||
+	        rawStatus === 'cancel_requested' ||
+	        rawStatus === 'stale'
+	          ? rawStatus
+	          : running
+	            ? 'running'
+	            : 'idle';
       // Derive initiator from the state blob. When no blob exists (e.g. a
       // stale mutex mid-heal) we fall back to null so the UI doesn't claim
       // "resumed" for a run we can't characterise.
@@ -3261,7 +3315,7 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
           failed: Number(totals.failed ?? 0),
         };
       }
-      return { running, initiator, progress };
+	      return { running, status, initiator, progress };
     } catch (error) {
       console.warn('[settings] loadWaybackProgress failed:', error);
       return null;
@@ -3342,13 +3396,12 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     // to its final-summary state.
     let cancelled = false;
     (async () => {
-      const snap = await loadWaybackProgress();
-      if (!snap || cancelled) return;
-      if (snap.running) {
-        setWaybackRunning(true);
-        setWaybackInitiator(snap.initiator);
-        if (snap.progress) setWaybackProgress(snap.progress);
-      }
+	      const snap = await loadWaybackProgress();
+	      if (!snap || cancelled) return;
+	      setWaybackRunStatus(snap.status);
+	      setWaybackRunning(snap.running);
+	      setWaybackInitiator(snap.initiator);
+	      if (snap.progress) setWaybackProgress(snap.progress);
     })();
     return () => {
       cancelled = true;
@@ -3380,6 +3433,7 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
       if (waybackLocalStreamRef.current) return;
       const snap = await loadWaybackProgress();
       if (cancelled || !snap) return;
+      setWaybackRunStatus(snap.status);
       if (snap.running) {
         setWaybackInitiator(snap.initiator);
         if (snap.progress) setWaybackProgress(snap.progress);
@@ -3387,9 +3441,13 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
         // Run finished on the server (or was aborted). Release our local
         // "running" flag and pull the final summary into the card.
         setWaybackRunning(false);
-        setWaybackProgress(null);
+        if (snap.status !== 'paused' && snap.status !== 'pause_requested') {
+          setWaybackProgress(null);
+        }
         setWaybackInitiator(null);
-        void loadWaybackLastRun();
+        if (snap.status !== 'paused' && snap.status !== 'pause_requested') {
+          void loadWaybackLastRun();
+        }
       }
     };
     const id = window.setInterval(() => {
@@ -3420,8 +3478,24 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
       if (hash === '#ai-timeouts') {
         setAdvancedAiOpen(true);
       }
-      if (hash === '#ai-summaries') {
-        const el = document.getElementById('ai-summaries');
+      // Each hash that targets a section by id — scroll + flash. Apply
+      // the same pulse animation the Privacy Map deep-links use so the
+      // user can see WHERE on the page they landed.
+      //
+      // - #ai-summaries — flagged from /privacy-policy and the AI debug
+      //   menu item.
+      // - #developer / #dev-options — the Dev menu (Tauri shell) and
+      //   the in-app `g f` shortcut both deep-link here. The DOM id is
+      //   `#developer`; `#dev-options` is accepted as an alias so the
+      //   menu entry and any older bookmarks still work.
+      const sectionHashTargets: Record<string, string> = {
+        '#ai-summaries': 'ai-summaries',
+        '#developer': 'developer',
+        '#dev-options': 'developer',
+      };
+      const targetId = sectionHashTargets[hash];
+      if (targetId) {
+        const el = document.getElementById(targetId);
         if (!el) return;
         // Smooth-scroll via rAF so the pulse starts after the scroll
         // begins, not in the middle of the initial paint. Without this
@@ -3996,14 +4070,16 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
    * stream closes; anything that arrives on the wire mid-run is relayed
    * into the task subtitle as "n/N · AppName".
    */
-  const runBulkWaybackImport = async () => {
-    if (waybackRunning) return;
-    // Mark this tab as the owner of the active stream so the cross-tab
+	  const runBulkWaybackImport = async (options: { force?: boolean } = {}) => {
+	    if (waybackRunning && !options.force) return;
+	    if (options.force) setWaybackControlBusy('force');
+	    // Mark this tab as the owner of the active stream so the cross-tab
     // rehydration poller gets out of the way. Cleared in `finally`.
-    waybackLocalStreamRef.current = true;
-    setWaybackRunning(true);
-    setWaybackInitiator('manual');
-    setWaybackSummary(null);
+	    waybackLocalStreamRef.current = true;
+	    setWaybackRunning(true);
+	    setWaybackRunStatus('running');
+	    setWaybackInitiator('manual');
+	    setWaybackSummary(null);
     // Reset any stale live state from a prior run. Note we deliberately
     // don't clear `waybackLastRun` here — keeping the previous summary
     // visible alongside "in progress…" helps users confirm a new run is
@@ -4018,14 +4094,16 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
       failed: 0,
     });
 
-    const controller = new AbortController();
-    const handle = taskCenter.startTask({
-      title: 'Importing privacy-label history',
-      subtitle: 'Preparing…',
-      kind: 'sync',
-      href: '/dashboard/settings#wayback-import',
-      onCancel: () => controller.abort(),
-    });
+	    const controller = new AbortController();
+	    const handle = taskCenter.startTask({
+	      title: 'Importing privacy-label history',
+	      subtitle: 'Preparing…',
+	      kind: 'sync',
+	      href: '/dashboard/settings#wayback-import',
+	      onCancel: () => {
+	        void controlWaybackImport('cancel');
+	      },
+	    });
 
     let totals: {
       appsAttempted: number;
@@ -4035,12 +4113,15 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
       unchanged: number;
       skipped: number;
       failed: number;
-    } | null = null;
+	    } | null = null;
+	    let terminalStatus: WaybackRunStatus | null = null;
 
-    try {
-      const res = await fetch('/api/wayback/import-all?stream=1', {
-        method: 'POST',
-        signal: controller.signal,
+	    try {
+	      const params = new URLSearchParams({ stream: '1' });
+	      if (options.force) params.set('force', '1');
+	      const res = await fetch(`/api/wayback/import-all?${params.toString()}`, {
+	        method: 'POST',
+	        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -4068,8 +4149,9 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
           let event: any;
           try { event = JSON.parse(trimmed); } catch { continue; }
 
-          if (event.type === 'batch-start') {
-            handle.update({ subtitle: `Queued ${event.total} app${event.total === 1 ? '' : 's'}…` });
+	          if (event.type === 'batch-start') {
+	            setWaybackRunStatus('running');
+	            handle.update({ subtitle: `Queued ${event.total} app${event.total === 1 ? '' : 's'}…` });
             setWaybackProgress(prev => ({
               ...(prev ?? {
                 imported: 0,
@@ -4130,10 +4212,26 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
                   }
                 : prev,
             );
-          } else if (event.type === 'summary') {
-            totals = event.totals;
-          } else if (event.type === 'error') {
-            throw new Error(event.error ?? 'Wayback import failed');
+	          } else if (event.type === 'summary') {
+	            totals = event.totals;
+	          } else if (event.type === 'paused') {
+	            terminalStatus = 'paused';
+	            const remaining = Number(event.summary?.remaining ?? 0);
+	            const total = Number(event.summary?.total ?? 0);
+	            const line = `Wayback import paused — ${remaining} of ${total} app${total === 1 ? '' : 's'} remaining`;
+	            setWaybackSummary(line);
+	            handle.complete('cancelled', line);
+	            showToast(line);
+	          } else if (event.type === 'cancelled') {
+	            terminalStatus = 'idle';
+	            const remaining = Number(event.summary?.remaining ?? 0);
+	            const total = Number(event.summary?.total ?? 0);
+	            const line = `Wayback import cancelled — ${remaining} of ${total} app${total === 1 ? '' : 's'} not processed`;
+	            setWaybackSummary(line);
+	            handle.complete('cancelled', line);
+	            showToast(line);
+	          } else if (event.type === 'error') {
+	            throw new Error(event.error ?? 'Wayback import failed');
           }
         }
       }
@@ -4146,14 +4244,20 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
         if (totals.failed) parts.push(`${totals.failed} failed`);
         const line = `Wayback import across ${totals.appsAttempted} app${totals.appsAttempted === 1 ? '' : 's'}: ${parts.join(', ')}`;
         setWaybackSummary(line);
+        terminalStatus = 'idle';
         handle.complete(totals.failed > 0 ? 'error' : 'done', line);
         showToast(totals.failed > 0 ? `⚠ ${line}` : `✓ ${line}`);
       } else {
-        handle.complete('done', 'Finished');
+        if (!terminalStatus) {
+          terminalStatus = 'idle';
+          handle.complete('done', 'Finished');
+        }
       }
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') {
-        handle.complete('error', 'Cancelled');
+        terminalStatus = 'cancel_requested';
+        setWaybackRunStatus('cancel_requested');
+        handle.complete('cancelled', 'Cancelling Wayback import…');
       } else {
         console.error('[settings] Wayback import failed:', err);
         const message = (err as Error)?.message ?? 'Wayback import failed';
@@ -4164,15 +4268,64 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     } finally {
       waybackLocalStreamRef.current = false;
       setWaybackRunning(false);
+      setWaybackControlBusy(null);
       // Clear the in-flight progress tracker and re-hydrate the last-run
       // summary from the activity log so the status card transitions from
       // "12/34 · Netflix" to "Last run: 3 imported, 1 failed — just now"
       // without needing a page reload. The activity row is written by the
       // server before the stream closes, so by the time we land here the
       // new summary should be queryable.
-      setWaybackProgress(null);
+      if (terminalStatus !== 'paused') {
+        setWaybackProgress(null);
+      }
+      setWaybackRunStatus(terminalStatus ?? 'idle');
       setWaybackInitiator(null);
-      void loadWaybackLastRun();
+      if (terminalStatus !== 'paused') {
+        void loadWaybackLastRun();
+      }
+    }
+  };
+
+  const controlWaybackImport = async (action: 'pause' | 'resume' | 'cancel') => {
+    if (waybackControlBusy) return;
+    setWaybackControlBusy(action);
+    try {
+      const res = await fetch('/api/wayback/import-all', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = data?.error ?? `Wayback ${action} failed (${res.status})`;
+        showToast(tToast('save_failed_with_message', { message }));
+        return;
+      }
+      const nextStatus = typeof data?.status === 'string' ? data.status as WaybackRunStatus : null;
+      if (nextStatus) setWaybackRunStatus(nextStatus);
+      if (action === 'pause') {
+        showToast(tWayback(nextStatus === 'paused' ? 'toast_paused' : 'toast_pause_requested'));
+      } else if (action === 'resume') {
+        setWaybackRunning(true);
+        setWaybackRunStatus('running');
+        setWaybackInitiator('manual');
+        showToast(tWayback('toast_resumed'));
+        const snap = await loadWaybackProgress();
+        if (snap?.progress) setWaybackProgress(snap.progress);
+      } else {
+        setWaybackRunStatus(nextStatus === 'cancel_requested' ? 'cancel_requested' : 'idle');
+        if (nextStatus !== 'cancel_requested') {
+          setWaybackRunning(false);
+          setWaybackProgress(null);
+          void loadWaybackLastRun();
+        }
+        showToast(tWayback(nextStatus === 'cancel_requested' ? 'toast_cancel_requested' : 'toast_cancelled'));
+      }
+    } catch (err) {
+      const message = (err as Error)?.message ?? `Wayback ${action} failed`;
+      showToast(tToast('save_failed_with_message', { message }));
+    } finally {
+      setWaybackControlBusy(null);
     }
   };
 
@@ -4277,6 +4430,23 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
     const result = await trackAccessibilityAutoSave.save(next);
     if (result !== 'ok') {
       setTrackAccessibility(savedTrackAccessibility);
+    }
+  };
+
+  const queueShowProgressBarAutoSave = useSettingsAutoSave<boolean>({
+    endpoint: '/api/settings',
+    buildBody: (value) => ({ queue_show_progress_bar: value }),
+    successMessage: (value) =>
+      tReviewQueueSettings(value ? 'toast_visible' : 'toast_hidden'),
+    taskLabel: (value) =>
+      tReviewQueueSettings(value ? 'task_label_visible' : 'task_label_hidden'),
+    onSaved: (value) => setSavedQueueShowProgressBar(value),
+  });
+  const saveQueueShowProgressBar = async (next: boolean) => {
+    setQueueShowProgressBar(next);
+    const result = await queueShowProgressBarAutoSave.save(next);
+    if (result !== 'ok') {
+      setQueueShowProgressBar(savedQueueShowProgressBar);
     }
   };
 
@@ -4889,6 +5059,30 @@ export default function SettingsView({ viewMode = 'all', focusCard }: SettingsVi
             {tA11yLabels('checkbox_lead')}
             <span className="settings-field-help" style={{ display: 'block', marginTop: 4 }}>
               {tA11yLabels('checkbox_help')}
+            </span>
+          </span>
+        </label>
+      </div>
+
+      {/* Review-queue preferences — single toggle for the progress bar
+          shown in the Tinder-style review carousel. Tiny standalone
+          section so users can find it via "queue" search; expand later
+          if more queue prefs land. */}
+      <div id="review-queue-preferences" className="settings-section">
+        <h2 className="settings-section-title">{tSections('review_queue')}</h2>
+        <p className="settings-section-subtitle">{tSub('review_queue')}</p>
+        <label className="settings-checkbox-row">
+          <input
+            className="settings-checkbox"
+            type="checkbox"
+            checked={queueShowProgressBar}
+            onChange={event => void saveQueueShowProgressBar(event.target.checked)}
+            disabled={queueShowProgressBarAutoSave.saving}
+          />
+          <span>
+            {tReviewQueueSettings('progress_bar_label')}
+            <span className="settings-field-help" style={{ display: 'block', marginTop: 4 }}>
+              {tReviewQueueSettings('progress_bar_help')}
             </span>
           </span>
         </label>
@@ -7065,17 +7259,75 @@ ollama serve`}
           <button
             className="btn btn-secondary"
             onClick={() => void runBulkWaybackImport()}
-            disabled={waybackRunning || waybackRemoving}
+            disabled={
+              waybackRunning ||
+              waybackRemoving ||
+              waybackControlBusy !== null ||
+              waybackRunStatus === 'paused' ||
+              waybackRunStatus === 'pause_requested' ||
+              waybackRunStatus === 'cancel_requested'
+            }
             title={tWayback('import_title')}
           >
             {waybackRunning
               ? <><span className="spinner" /> {tWayback('import_busy')}</>
               : tWayback('import_button')}
           </button>
+          {(waybackRunStatus === 'running' || waybackRunStatus === 'pause_requested') && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => void controlWaybackImport('pause')}
+              disabled={waybackControlBusy !== null || waybackRunStatus === 'pause_requested'}
+              title={tWayback('pause_title')}
+            >
+              {waybackControlBusy === 'pause' || waybackRunStatus === 'pause_requested'
+                ? <><span className="spinner" /> {tWayback('pause_busy')}</>
+                : tWayback('pause_button')}
+            </button>
+          )}
+          {waybackRunStatus === 'paused' && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => void controlWaybackImport('resume')}
+              disabled={waybackControlBusy !== null}
+              title={tWayback('resume_title')}
+            >
+              {waybackControlBusy === 'resume'
+                ? <><span className="spinner" /> {tWayback('resume_busy')}</>
+                : tWayback('resume_button')}
+            </button>
+          )}
+          {(waybackRunStatus === 'running' ||
+            waybackRunStatus === 'pause_requested' ||
+            waybackRunStatus === 'paused' ||
+            waybackRunStatus === 'cancel_requested') && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => void controlWaybackImport('cancel')}
+              disabled={waybackControlBusy !== null || waybackRunStatus === 'cancel_requested'}
+              title={tWayback('cancel_title')}
+            >
+              {waybackControlBusy === 'cancel' || waybackRunStatus === 'cancel_requested'
+                ? <><span className="spinner" /> {tWayback('cancel_busy')}</>
+                : tWayback('cancel_button')}
+            </button>
+          )}
+          {(waybackRunStatus === 'paused' || waybackRunStatus === 'stale') && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => void runBulkWaybackImport({ force: true })}
+              disabled={waybackControlBusy !== null || waybackRemoving}
+              title={tWayback('force_title')}
+            >
+              {waybackControlBusy === 'force'
+                ? <><span className="spinner" /> {tWayback('force_busy')}</>
+                : tWayback('force_button')}
+            </button>
+          )}
           <button
             className="btn btn-secondary"
             onClick={() => setWaybackRemoveOpen(true)}
-            disabled={waybackRunning || waybackRemoving}
+            disabled={waybackRunning || waybackRemoving || waybackControlBusy !== null}
             title={tWayback('remove_title')}
           >
             {waybackRemoving
@@ -7140,7 +7392,7 @@ ollama serve`}
                   for Wayback-sourced rows in the changelog timeline so the
                   visual language is consistent.
                 */}
-                {waybackInitiator === 'resume' ? (
+	                {waybackInitiator === 'resume' ? (
                   <div
                     role="status"
                     style={{
@@ -7162,17 +7414,44 @@ ollama serve`}
                       {tWayback('resume_body')}
                     </span>
                   </div>
-                ) : null}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span className="spinner" aria-hidden="true" />
-                  <strong style={{ color: 'var(--text-1)' }}>
-                    {waybackProgress.total > 0
-                      ? tWayback('progress_lead', {
-                          current: Math.min(waybackProgress.index, waybackProgress.total),
-                          total: waybackProgress.total,
-                        })
-                      : tWayback('starting')}
-                  </strong>
+	                ) : null}
+	                {waybackRunStatus === 'paused' ? (
+	                  <div
+	                    role="status"
+	                    style={{
+	                      padding: '6px 10px',
+	                      marginBottom: 8,
+	                      borderRadius: 6,
+	                      background: 'rgba(217, 119, 6, 0.12)',
+	                      color: 'var(--warning, #b45309)',
+	                      fontSize: 12,
+	                      lineHeight: 1.35,
+	                    }}
+	                  >
+	                    <strong style={{ marginRight: 4 }}>{tWayback('paused_label')}</strong>
+	                    {tWayback('paused_body')}
+	                  </div>
+	                ) : null}
+	                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+	                  {waybackRunStatus === 'paused' ? (
+	                    <span aria-hidden="true">Ⅱ</span>
+	                  ) : (
+	                    <span className="spinner" aria-hidden="true" />
+	                  )}
+	                  <strong style={{ color: 'var(--text-1)' }}>
+	                    {waybackRunStatus === 'pause_requested'
+	                      ? tWayback('pause_requested')
+	                      : waybackRunStatus === 'cancel_requested'
+	                        ? tWayback('cancel_requested')
+	                        : waybackRunStatus === 'paused'
+	                          ? tWayback('paused_progress')
+	                          : waybackProgress.total > 0
+	                            ? tWayback('progress_lead', {
+	                                current: Math.min(waybackProgress.index, waybackProgress.total),
+	                                total: waybackProgress.total,
+	                              })
+	                            : tWayback('starting')}
+	                  </strong>
                   {waybackProgress.currentAppName ? (
                     <span style={{ color: 'var(--text-2)' }}>
                       · {waybackProgress.currentAppName}
@@ -7310,8 +7589,11 @@ ollama serve`}
 
         {/* Round 3 PR 5: audit-bundle export. Gated by
             flag.settings.admin.export.audit_bundle (default off — on for
-            audience.loved_one). Server-side gate is the authoritative one;
-            this UI just hides the button when the resolver-driven prop says off. */}
+            audience.loved_one). The component does its own client-side
+            flag probe via /api/feature-flags because the client useFlag
+            cache returns hard defaults on fresh loads — see the comment
+            on settingsAdminExportOn above. The server enforces the same
+            gate authoritatively, so the UI gate is just for show. */}
         <AuditBundleExport />
         {/* Wave I — `flag.settings.admin.export.audit_pdf` placeholder.
             The flag is wired so users who flip it on see a "coming soon"
@@ -8487,171 +8769,8 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
   );
 }
 
-// ── Audit-bundle export ──────────────────────────────────────────────────
-//
-// Round 3 PR 5: lives inside the Export Data section. Calls /api/feature-flags
-// on mount to confirm the export gate (`flag.settings.admin.export.audit_bundle`)
-// is on for the user's current focus; renders nothing when off so loved-one
-// users see the button and others don't.
-//
-// Submitting POSTs to /api/export/audit-bundle. The endpoint returns a
-// pre-formatted JSON file with a Content-Disposition filename per §4.8.
-
-function AuditBundleExport() {
-  // i18n — only the recommender-name placeholder is wired so far in
-  // this nested helper. The rest of the export panel chrome is still
-  // English; tracked under the misc-extraction sweep.
-  const tPh = useTranslations('settings.placeholders');
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [open, setOpen] = useState(false);
-  const [recommenderName, setRecommenderName] = useState('');
-  const [includeProfile, setIncludeProfile] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Probe the gate on mount. Skip rendering if off.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/feature-flags');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as { flags: Array<{ key: string; currentValue: string }> };
-        const row = data.flags.find(f => f.key === 'flag.settings.admin.export.audit_bundle');
-        if (!cancelled) setEnabled(row?.currentValue === 'on');
-      } catch {
-        // On error, hide the button — fail closed.
-        if (!cancelled) setEnabled(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  if (enabled === null || enabled === false) return null;
-
-  async function handleExport() {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/export/audit-bundle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recommenderName: recommenderName.trim() || null,
-          includeRecommenderProfile: includeProfile,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null) as { error?: string } | null;
-        throw new Error(body?.error ?? `HTTP ${res.status}`);
-      }
-      // Trigger the download — read as blob, pull the filename out of the header.
-      const filenameHeader = res.headers.get('content-disposition') ?? '';
-      const filenameMatch = filenameHeader.match(/filename="([^"]+)"/);
-      const filename = filenameMatch?.[1] ?? 'audit.audit.json';
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      setOpen(false);
-      setRecommenderName('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div style={{ marginTop: 16 }}>
-      {!open ? (
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => setOpen(true)}
-        >
-          ⬇ Export audit bundle
-        </button>
-      ) : (
-        <div style={{ marginTop: 12, padding: 16, border: '1px solid var(--border)', borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0, fontSize: 16 }}>Export audit bundle</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 4 }}>
-            Your audit bundle includes the apps you&rsquo;re tracking, their privacy labels,
-            your AI summaries, and any annotations you&rsquo;ve written. Private notes
-            are never included.
-          </p>
-
-          <label style={{ display: 'block', marginTop: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Your name (optional)</span>
-            <input
-              type="text"
-              value={recommenderName}
-              onChange={(e) => setRecommenderName(e.target.value)}
-              placeholder={tPh('name_eg')}
-              disabled={submitting}
-              style={{
-                display: 'block',
-                marginTop: 4,
-                padding: '6px 10px',
-                width: '100%',
-                maxWidth: 280,
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-              }}
-            />
-            <span style={{ fontSize: 12, color: 'var(--text-3)', display: 'block', marginTop: 4 }}>
-              Used in the import banner the recipient sees. Falls back to &ldquo;your friend&rdquo; if blank.
-            </span>
-          </label>
-
-          <label className="settings-checkbox-row" style={{ marginTop: 12 }}>
-            <input
-              className="settings-checkbox"
-              type="checkbox"
-              checked={includeProfile}
-              onChange={(e) => setIncludeProfile(e.target.checked)}
-              disabled={submitting}
-            />
-            <span>
-              Include my privacy profile
-              <span className="settings-field-help" style={{ display: 'block', marginTop: 4 }}>
-                Lets the recipient see why you flagged certain apps. Uncheck to keep your profile private.
-              </span>
-            </span>
-          </label>
-
-          {error && (
-            <div role="alert" style={{ marginTop: 12, color: 'var(--danger)', fontSize: 13 }}>
-              {error}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void handleExport()}
-              disabled={submitting}
-            >
-              {submitting ? 'Exporting…' : 'Export'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setOpen(false)}
-              disabled={submitting}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+// AuditBundleExport extracted to ./AuditBundleExport.tsx — the inline
+// helper that used to live here is now imported at the top of the file.
 
 // ── Start Over button ─────────────────────────────────────────────────────
 //

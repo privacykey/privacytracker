@@ -81,6 +81,10 @@ export type FlagKey =
   | 'flag.dashboard.activity_section'
   | 'flag.dashboard.risk_tier_legend'
   | 'flag.dashboard.sample_data_banner'
+  // Tauri desktop "keep running in background" wizard. Off on the web
+  // build by default — the callout component also runtime-gates on
+  // `isDesktop()` so the flag-on web case still renders nothing.
+  | 'flag.dashboard.background_mode_wizard'
 
   // ----- App Grid
   | 'flag.appgrid.filter.search'
@@ -101,7 +105,15 @@ export type FlagKey =
   | 'flag.appgrid.card.risk_chips'
   | 'flag.appgrid.card.resync_button'
   | 'flag.appgrid.card.delete_button'
+  | 'flag.appgrid.card.verdict_pill'
   | 'flag.appgrid.empty_state'
+  // Review-queue mode (Tinder-style sequential verdict picker over the
+  // currently-filtered grid). Master flag gates the [Queue] mode toggle and
+  // the carousel + preflight UI; sub-flags gate bulk select and the
+  // end-of-session cfgutil offer independently.
+  | 'flag.appgrid.review_queue.enabled'
+  | 'flag.appgrid.review_queue.bulk_select'
+  | 'flag.appgrid.review_queue.cfgutil_uninstall'
 
   // ----- App Detail — privacy labels
   | 'flag.detail.labels.cards'
@@ -347,6 +359,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   'flag.dashboard.activity_section':             'on',         // 'this week's activity'
   'flag.dashboard.risk_tier_legend':             'collapsed',  // reference details, expandable
   'flag.dashboard.sample_data_banner':           'off',        // only on while sample apps present
+  'flag.dashboard.background_mode_wizard':       'on',         // Tauri-only callout — runtime-gated on isDesktop()
 
   // App Grid
   'flag.appgrid.filter.search':                  'on',         // text filter
@@ -367,7 +380,11 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   'flag.appgrid.card.risk_chips':                'on',         // track/linked/unlinked mini-chips
   'flag.appgrid.card.resync_button':             'on',         // per-card refresh
   'flag.appgrid.card.delete_button':             'on',         // per-card delete
+  'flag.appgrid.card.verdict_pill':              'on',         // per-card user verdict pill (Safe/Replace/Uninstall)
   'flag.appgrid.empty_state':                    'on',         // empty/filter-miss CTA
+  'flag.appgrid.review_queue.enabled':           'on',         // master — Tinder-style verdict carousel
+  'flag.appgrid.review_queue.bulk_select':       'on',         // bulk-mark mode toggle
+  'flag.appgrid.review_queue.cfgutil_uninstall': 'off',        // Tauri-only end-of-session offer; opt-in
 
   // App Detail — privacy labels
   'flag.detail.labels.cards':                    'on',         // expandable label-type cards
@@ -649,6 +666,13 @@ export const GOAL_RULES: Record<PrimaryGoal, Partial<Record<FlagKey, FlagValue>>
     'flag.dashboard.callout.declutter':             'on',     // declutter-specific callout
     'flag.dashboard.callout.understand_only':       'off',    // suppress the understand-only callout when declutter is also on
     'flag.dashboard.callout.understand_declutter':  'on',     // combined-goals callout (the 'hygiene' case)
+    // Decluttering means deciding which apps to remove based on what
+    // they collect. Showing the privacy-profile setup step in onboarding
+    // gives the user a way to define their tolerances up-front, which
+    // then drives the mismatch flags the dashboard surfaces. The HARD_DEFAULTS
+    // comment for `flag.onboarding.privacy_profile_setup` has long
+    // promised this rule lives under declutter — it does now.
+    'flag.onboarding.privacy_profile_setup':        'on',     // see HARD_DEFAULTS comment
     'flag.appgrid.card.risk_pill':                  'on',     // risk visibility front-and-centre
     'flag.appgrid.card.profile_badge':              'on',     // mismatch visibility for delete decisions
     'flag.appgrid.card.risk_chips':                 'on',     // breakdown chips
@@ -718,6 +742,8 @@ export const GOAL_RULES: Record<PrimaryGoal, Partial<Record<FlagKey, FlagValue>>
     'flag.dashboard.annotation_banner':       'off',     // ditto
     'flag.appgrid.card.annotation_highlight': 'off',     // ditto
     'flag.devopts.feature_flag_presets':      'off',     // simpler surface — no preset workflow
+    'flag.appgrid.review_queue.enabled':      'off',     // simpler grid; bulk verdict UI hidden
+    'flag.appgrid.review_queue.bulk_select':  'off',
   },
 };
 
@@ -791,6 +817,10 @@ export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
 
   // Notification bell sub-flags
   'flag.notifications.bell.polling':               'flag.notifications.bell',
+
+  // Review queue sub-flags chain off the master
+  'flag.appgrid.review_queue.bulk_select':         'flag.appgrid.review_queue.enabled',
+  'flag.appgrid.review_queue.cfgutil_uninstall':   'flag.appgrid.review_queue.enabled',
 
   // Stats viz depend on the page
   'flag.stats.viz.heatmap':                        'flag.page.stats',

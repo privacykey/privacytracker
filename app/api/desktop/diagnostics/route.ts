@@ -4,7 +4,8 @@ import path from 'node:path';
 import { existsSync, statSync } from 'node:fs';
 import { getSetting } from '@/lib/scheduler';
 import db from '@/lib/db';
-import { snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
+import { installRuntimeDiagnostics, snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
+import { snapshotDbWorkerTimings } from '@/lib/db-worker-client';
 
 /**
  * Node-side diagnostics payload.
@@ -52,6 +53,16 @@ function readBulkRunners(): Record<string, unknown> {
   };
 }
 
+function redactHomeDir(p: string): string {
+  const home = os.homedir();
+  if (!home || home === '/' || home === '\\') return p;
+  if (p === home) return '~';
+  if (p.startsWith(home + '/') || p.startsWith(home + '\\')) {
+    return '~' + p.slice(home.length);
+  }
+  return p;
+}
+
 function readDbStats(): Record<string, unknown> {
   try {
     const apps = (db.prepare('SELECT COUNT(*) AS c FROM apps').get() as { c: number }).c;
@@ -65,7 +76,15 @@ function readDbStats(): Record<string, unknown> {
       'privacy.db',
     );
     const dbSize = existsSync(dbPath) ? statSync(dbPath).size : null;
-    return { apps, snapshots, unread_notifications: unread, db_path: dbPath, db_size_bytes: dbSize };
+    return {
+      apps,
+      snapshots,
+      unread_notifications: unread,
+      // Pasted into GitHub issues — strip the user's home dir so the
+      // OS username doesn't ride along.
+      db_path: redactHomeDir(dbPath),
+      db_size_bytes: dbSize,
+    };
   } catch (err) {
     return { error: String(err) };
   }
@@ -77,6 +96,7 @@ export async function GET() {
   // payload ships to GitHub issues and we don't want a 200-row dump in
   // every bug report. The full ring is available via
   // /api/diagnostics/runtime for the live dashboard.
+  installRuntimeDiagnostics(db);
   const runtimeMetrics = snapshotRuntimeMetrics(20);
 
   const payload = {
@@ -100,6 +120,7 @@ export async function GET() {
     // requiring the user to open the live diagnostics dashboard. The
     // dashboard re-uses the same shape via /api/diagnostics/runtime.
     runtime_metrics: runtimeMetrics,
+    db_worker: snapshotDbWorkerTimings(20),
     scheduler: readLastSync(),
     bulk_runners: readBulkRunners(),
     db: readDbStats(),

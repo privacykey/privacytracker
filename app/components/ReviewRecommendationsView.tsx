@@ -43,7 +43,7 @@
  */
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
@@ -58,6 +58,7 @@ import type { AppVerdict, VerdictValue } from '../../lib/verdict-types';
 import type { AppProfileBadge } from '../../lib/privacy-profile';
 import type { ShortlistEntry } from '../../lib/shortlist-types';
 import type { Annotation } from '../../lib/annotations';
+import { isSafeExternalHref } from '../../lib/safe-href';
 
 interface Row {
   id: string;
@@ -150,7 +151,31 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   // of rebooting the wizard at Step 1. Defaults to 'review' for fresh
   // visits. Validate against the union so a malformed URL falls through
   // to the safe default rather than breaking the stepper render.
+  const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Escape-to-close. The review queue lives at its own route
+  // (/dashboard/review-recommendations) but visually feels like a
+  // dialog stacked on top of the Apps grid — users routinely try to
+  // dismiss it with Escape or by clicking the Apps nav link. Wire the
+  // keystroke so both paths land on /dashboard/apps and the queue
+  // "closes" the way they expect. Skipped while the user is typing
+  // in an input/textarea so Escape doesn't fight in-page autocomplete
+  // dismissals (line 2111).
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (target.isContentEditable) return;
+      }
+      router.push('/dashboard/apps');
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [router]);
   const initialStep: Step = (() => {
     const raw = searchParams?.get('step');
     if (raw === 'review' || raw === 'compare' || raw === 'action' ||
@@ -1691,10 +1716,10 @@ function PrintRow({
             {' '}→ <strong>{swap}</strong>
           </>
         )}
-        {row.url && (
+        {isSafeExternalHref(row.url) && (
           <>
             {' · '}
-            <a href={row.url}>{appStoreLinkLabel}</a>
+            <a href={row.url!}>{appStoreLinkLabel}</a>
           </>
         )}
         {row.userVerdict?.rationale && (
@@ -1805,9 +1830,9 @@ function SummaryGroup({
                   {row.developer && (
                     <span className="review-rec-summary-dev"> · {row.developer}</span>
                   )}
-                  {row.url && (
+                  {isSafeExternalHref(row.url) && (
                     <a
-                      href={row.url}
+                      href={row.url!}
                       className="review-rec-summary-link"
                       target="_blank"
                       rel="noopener"

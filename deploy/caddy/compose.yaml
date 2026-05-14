@@ -37,6 +37,11 @@ services:
         max-file: "3"
 
   caddy:
+    # Floating tag — pin to a digest before going to production:
+    #   docker buildx imagetools inspect caddy:2-alpine
+    # then replace with: caddy:2-alpine@sha256:<digest>
+    # A digest pin protects against a Docker Hub tag-takeover / maintainer
+    # compromise pushing a tampered image at the same `:2-alpine` ref.
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:

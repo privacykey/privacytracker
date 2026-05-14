@@ -80,7 +80,9 @@ browserFlow('mocked Clock onboarding flow reaches import complete in the browser
   await page.getByTestId('onboard-search').click();
 
   await expect(page.getByText('Clock')).toBeVisible();
-  await expect(page.getByText('Apple')).toBeVisible();
+  // exact:true so we don't strict-mode-collide with the wizard's
+  // "Apple label Definitions" help link that lives in the layout.
+  await expect(page.getByText('Apple', { exact: true })).toBeVisible();
 
   await page.getByTestId('onboard-confirm-import').click();
   await expect(page.getByRole('heading', { name: 'Import complete' })).toBeVisible();

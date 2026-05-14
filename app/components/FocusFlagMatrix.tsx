@@ -222,6 +222,15 @@ export interface FocusFlagMatrixProps {
   rows: Array<{ key: FlagKey; surface: string; hardDefault: FlagValue }>;
 }
 
+// Modal-staged destructive actions. Mirrors the `.modal-overlay` /
+// `.modal-card` pattern used in SettingsView's wayback-remove + reset
+// dialogs so the dev-options matrix doesn't fall back to native
+// `window.confirm()` boxes that don't match the rest of the app.
+type PendingConfirm =
+  | { kind: 'clear' }
+  | { kind: 'seed' }
+  | { kind: 'apply'; combo: ComboDef; cellCount: number };
+
 export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
   // Hydrate-once snapshot of the local spec. We deliberately don't
   // sync across tabs — this is a single-author drafting tool.
@@ -229,6 +238,8 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
   const [filter, setFilter] = useState('');
   const [showOnlyDeltas, setShowOnlyDeltas] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [applying, setApplying] = useState(false);
 
   const flashToast = useCallback((message: string) => {
     setToast(message);
@@ -264,37 +275,15 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
     [],
   );
 
+  // Stage-1: open the confirm modal. The actual mutation happens in
+  // `runPendingConfirm` once the user clicks the Confirm button.
   const clearAll = useCallback(() => {
-    if (!window.confirm('Clear every authored cell? This wipes your draft spec.')) return;
-    const fresh: SpecBlob = { accessibility: false, desired: {} };
-    setSpec(fresh);
-    writeSpec(fresh);
-    flashToast('Cleared');
-  }, [flashToast]);
+    setPendingConfirm({ kind: 'clear' });
+  }, []);
 
   const seedFromCurrentRules = useCallback(() => {
-    if (
-      !window.confirm(
-        'Seed every cell with the value the resolver currently produces? This overwrites your draft.',
-      )
-    ) {
-      return;
-    }
-    const desired: SpecBlob['desired'] = {};
-    for (const combo of COMBOS) {
-      const id = comboId(combo);
-      const goals = goalsFor(combo.goalSet, spec.accessibility);
-      const cells: Partial<Record<FlagKey, FlagValue>> = {};
-      for (const r of rows) {
-        cells[r.key] = resolveFor(r.key, combo.audience, goals);
-      }
-      desired[id] = cells;
-    }
-    const next: SpecBlob = { ...spec, desired };
-    setSpec(next);
-    writeSpec(next);
-    flashToast('Seeded with resolver values');
-  }, [rows, spec, flashToast]);
+    setPendingConfirm({ kind: 'seed' });
+  }, []);
 
   // Filter + only-deltas. We compute resolver values lazily inside the
   // memoised list because changing accessibility changes every row.
@@ -448,34 +437,70 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
   }, [spec, copyToClipboard]);
 
   const applyComboAsOverrides = useCallback(
-    async (combo: ComboDef) => {
+    (combo: ComboDef) => {
       const cells = spec.desired[comboId(combo)] ?? {};
-      const flags = Object.entries(cells).map(([key, override]) => ({ key, override }));
-      if (flags.length === 0) {
+      const cellCount = Object.keys(cells).length;
+      if (cellCount === 0) {
         flashToast('No cells authored for this combo');
         return;
       }
-      const ok = window.confirm(
-        `Wipe current overrides and apply ${flags.length} authored cells from ${combo.longHeader}?`,
-      );
-      if (!ok) return;
-      try {
-        const res = await fetch('/api/feature-flags/overrides', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ flags }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = (await res.json()) as { applied?: number; skipped?: number };
-        flashToast(
-          `Applied ${body.applied ?? 0} overrides (${body.skipped ?? 0} skipped)`,
-        );
-      } catch (e) {
-        flashToast(`Failed: ${e instanceof Error ? e.message : 'unknown error'}`);
-      }
+      setPendingConfirm({ kind: 'apply', combo, cellCount });
     },
     [spec, flashToast],
   );
+
+  // Stage-2: dispatched by the modal's Confirm button.
+  const runPendingConfirm = useCallback(async () => {
+    if (!pendingConfirm) return;
+    if (pendingConfirm.kind === 'clear') {
+      const fresh: SpecBlob = { accessibility: false, desired: {} };
+      setSpec(fresh);
+      writeSpec(fresh);
+      flashToast('Cleared');
+      setPendingConfirm(null);
+      return;
+    }
+    if (pendingConfirm.kind === 'seed') {
+      const desired: SpecBlob['desired'] = {};
+      for (const combo of COMBOS) {
+        const id = comboId(combo);
+        const goals = goalsFor(combo.goalSet, spec.accessibility);
+        const cells: Partial<Record<FlagKey, FlagValue>> = {};
+        for (const r of rows) {
+          cells[r.key] = resolveFor(r.key, combo.audience, goals);
+        }
+        desired[id] = cells;
+      }
+      const next: SpecBlob = { ...spec, desired };
+      setSpec(next);
+      writeSpec(next);
+      flashToast('Seeded with resolver values');
+      setPendingConfirm(null);
+      return;
+    }
+    // kind === 'apply' — network call, so guard against double-submit.
+    const { combo } = pendingConfirm;
+    const cells = spec.desired[comboId(combo)] ?? {};
+    const flags = Object.entries(cells).map(([key, override]) => ({ key, override }));
+    setApplying(true);
+    try {
+      const res = await fetch('/api/feature-flags/overrides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flags }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { applied?: number; skipped?: number };
+      flashToast(
+        `Applied ${body.applied ?? 0} overrides (${body.skipped ?? 0} skipped)`,
+      );
+      setPendingConfirm(null);
+    } catch (e) {
+      flashToast(`Failed: ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      setApplying(false);
+    }
+  }, [pendingConfirm, spec, rows, flashToast]);
 
   // ── Render ────────────────────────────────────────────────────────
 
@@ -579,6 +604,71 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
           {toast}
         </div>
       )}
+
+      {pendingConfirm && (() => {
+        const closing = applying;
+        const cancel = () => { if (!closing) setPendingConfirm(null); };
+        const titleId = 'focus-matrix-confirm-title';
+        const copyId = 'focus-matrix-confirm-copy';
+        const { title, body, confirmLabel } = (() => {
+          if (pendingConfirm.kind === 'clear') {
+            return {
+              title: 'Clear every authored cell?',
+              body: 'This wipes your draft spec. The action only touches local storage — live overrides aren’t affected.',
+              confirmLabel: 'Clear draft',
+            };
+          }
+          if (pendingConfirm.kind === 'seed') {
+            return {
+              title: 'Seed from current resolver values?',
+              body: 'Every cell will be overwritten with the value the resolver currently produces for that combo. Any work in your draft is lost.',
+              confirmLabel: 'Seed',
+            };
+          }
+          return {
+            title: `Apply ${pendingConfirm.cellCount} cells as live overrides?`,
+            body: `Wipes current overrides and replaces them with the ${pendingConfirm.cellCount} authored cells from ${pendingConfirm.combo.longHeader}.`,
+            confirmLabel: 'Apply overrides',
+          };
+        })();
+        return (
+          <div className="modal-overlay" onClick={cancel}>
+            <div
+              className="modal-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              aria-describedby={copyId}
+              onClick={event => event.stopPropagation()}
+              onKeyDown={event => { if (event.key === 'Escape') cancel(); }}
+            >
+              <h2 id={titleId} className="modal-title">{title}</h2>
+              <p id={copyId} className="modal-copy">{body}</p>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={cancel}
+                  disabled={closing}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => void runPendingConfirm()}
+                  disabled={closing}
+                  autoFocus
+                >
+                  {closing
+                    ? <><span className="spinner-sm" aria-hidden="true" /> Applying…</>
+                    : confirmLabel}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -35,6 +35,7 @@ mod shortcuts;
 mod deep_link;
 mod diagnostics;
 mod cfgutil;
+mod usb_watcher;
 mod app_menu;
 #[cfg(target_os = "macos")]
 mod touch_id;
@@ -249,19 +250,38 @@ fn main() {
             //     pulls above; commands::toggle_devtools persists the
             //     new state every time the user flips the inspector.
             //     Without this, devs lose their inspector state every
-            //     launch.
+            //     launch. No-op in release builds — the `devtools`
+            //     cargo feature is off, so `open_devtools()` compiles out.
+            #[cfg(feature = "devtools")]
             if desktop_settings.devtools_open {
                 window.open_devtools();
             }
 
-            // 5b. Install the native menu bar (App / Edit / View /
-            //     Window / Help). Must run after the window is created
-            //     because the predefined menu items take an &AppHandle
-            //     and the OS attaches them to the responder chain on
-            //     focus, but it doesn't have to wait on the sidecar —
-            //     putting it here keeps the boot ordering readable
-            //     (window first, then chrome that decorates it).
-            let menu = app_menu::build(app.handle())?;
+            // 5b. Install the native menu bar (App / File / Edit /
+            //     View / Go / [Dev] / Window / Help). Must run after
+            //     the window is created because the predefined menu
+            //     items take an &AppHandle and the OS attaches them to
+            //     the responder chain on focus, but it doesn't have to
+            //     wait on the sidecar — putting it here keeps the boot
+            //     ordering readable (window first, then chrome that
+            //     decorates it).
+            //
+            //     The Dev submenu is gated on the `dev_menu_enabled`
+            //     persisted setting. Read it via ureq up front (one
+            //     tiny GET to the loopback sidecar) so the menu tree
+            //     reflects the user's choice from launch. Flipping
+            //     the flag at runtime requires an app restart.
+            let dev_menu_enabled = {
+                let url = format!("{}/api/dev-menu-state", boot.base_url);
+                ureq::get(&url)
+                    .timeout(std::time::Duration::from_secs(2))
+                    .call()
+                    .ok()
+                    .and_then(|r| r.into_json::<serde_json::Value>().ok())
+                    .and_then(|v| v.get("enabled").and_then(|x| x.as_bool()))
+                    .unwrap_or(false)
+            };
+            let menu = app_menu::build(app.handle(), dev_menu_enabled)?;
             app.set_menu(menu)?;
 
             // 6. Install the tray. We pass the user's persisted
@@ -290,6 +310,15 @@ fn main() {
             // 9. Wire up the deep-link handler so privacytracker://app/<id>
             //    routes to the right detail page inside the webview.
             deep_link::install(app.handle(), boot.base_url.clone());
+
+            // 10. Start the IOKit USB watcher. Emits `cfgutil:device-connected`
+            //     events whenever an iPhone/iPad attaches. The toast on
+            //     /onboard subscribes and is gated behind the
+            //     `cfgutil_imported_at` flag so users who never used cfgutil
+            //     never see it. Replaces the previous 5s-poll loop in
+            //     DeviceConnectedToast that was blocking the apps-page
+            //     navigation. No-op outside macOS.
+            usb_watcher::start(app.handle().clone());
 
             // Restore persisted Dock visibility choice. Read from the same
             // /api/settings endpoint the UI uses, so the source of truth

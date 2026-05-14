@@ -36,6 +36,7 @@ import type {
 import {
   lookupWaybackSnapshotNear,
   parseWaybackTimestampMs,
+  isAbortError,
   submitToWaybackSaveNow,
   type WaybackSnapshot,
 } from './wayback';
@@ -132,6 +133,8 @@ export interface ImportAppHistoryOptions {
   dedupeWindowMs?: number;
   /** Optional progress hook — called once per target. */
   onProgress?: (event: ImportProgressEvent) => void;
+  /** Optional cancellation signal for bulk runs. */
+  signal?: AbortSignal;
 }
 
 export type ImportTargetOutcome =
@@ -203,6 +206,7 @@ export async function importAppHistory(
   const today = options.today ?? new Date();
   const dedupeWindowMs = options.dedupeWindowMs ?? 45 * 24 * 60 * 60 * 1000;
   const onProgress = options.onProgress;
+  const signal = options.signal;
 
   const targets = computeQuarterlyTargets(today);
 
@@ -225,11 +229,13 @@ export async function importAppHistory(
     targets: [],
   };
 
-  // Save Page Now is idempotent-ish but slow; track URLs we've already
-  // asked to archive so multiple empty quarters don't multi-submit.
-  const saveNowSubmitted = new Set<string>();
+  // Save Page Now archives the current page, not the historical target date.
+  // One request per app per run is enough; retrying for every empty quarter
+  // only amplifies transient archive.org failures.
+  const saveNowAttempted = new Set<string>();
 
   for (const target of targets) {
+    throwIfAborted(signal);
     result.attempted++;
     const targetMs = target.getTime();
 
@@ -251,12 +257,14 @@ export async function importAppHistory(
     let walk: WaybackProbeResult;
     try {
       walk = await findCaptureWithinTolerance(
-        app.url,
-        target,
-        CAPTURE_DRIFT_TOLERANCE_MS,
-      );
-    } catch (error) {
-      const info: ImportTargetResult = {
+	        app.url,
+	        target,
+	        CAPTURE_DRIFT_TOLERANCE_MS,
+	        signal,
+	      );
+	    } catch (error) {
+	      if (isAbortError(error)) throw error;
+	      const info: ImportTargetResult = {
         targetDate: targetMs,
         outcome: 'skipped_fetch_failure',
         errorMessage: error instanceof Error ? error.message : 'lookup failed',
@@ -270,13 +278,13 @@ export async function importAppHistory(
     if (walk.kind === 'none') {
       // No archive.org capture near this quarter. Fire Save Page Now to
       // archive the live page for the next import run; submit at most
-      // once per app per run on success (failures don't burn the attempt).
+      // once per app per run.
       let info: ImportTargetResult = { targetDate: targetMs, outcome: 'skipped_no_capture' };
-      if (!saveNowSubmitted.has(app.url)) {
-        try {
-          const saved = await submitToWaybackSaveNow(app.url);
-          if (saved.ok) {
-            saveNowSubmitted.add(app.url);
+      if (!saveNowAttempted.has(app.url)) {
+        saveNowAttempted.add(app.url);
+	        try {
+	          const saved = await submitToWaybackSaveNow(app.url, { signal });
+	          if (saved.ok) {
             info = {
               targetDate: targetMs,
               outcome: 'requested_snapshot',
@@ -293,8 +301,9 @@ export async function importAppHistory(
               errorMessage: saved.error,
             };
           }
-        } catch (error) {
-          // submitToWaybackSaveNow returns a discriminated union and
+	        } catch (error) {
+	          if (isAbortError(error)) throw error;
+	          // submitToWaybackSaveNow returns a discriminated union and
           // shouldn't throw, but guard so a future refactor can't break us.
           info = {
             targetDate: targetMs,
@@ -303,20 +312,22 @@ export async function importAppHistory(
           };
         }
       }
-      // Append a synthetic changelog row so the attempt is visible on the
-      // per-app Change History timeline, not buried in the activity log.
-      appendWaybackAttemptEntry(app.id, {
-        event:
-          info.outcome === 'requested_snapshot'
-            ? 'requested_snapshot'
-            : info.outcome === 'skipped_save_now_failed'
-              ? 'save_now_failed'
-              : 'no_capture',
-        description: describeWaybackAttempt(info),
-        details: info.errorMessage ? [info.errorMessage] : undefined,
-        saveNowUrl: info.saveNowUrl,
-        targetDate: info.targetDate,
-      });
+      // Only surface successful Save Page Now requests on the per-app
+      // Change History timeline. Earlier versions also wrote rows for
+      // `save_now_failed` and `no_capture` outcomes, but those turned
+      // routine quarters-with-no-archive into a noisy stream of
+      // "⚠ Wayback snapshot request failed" entries on every run.
+      // Failures still surface in the bulk-import activity log and on
+      // `ImportTargetResult.errorMessage` for the API caller.
+      if (info.outcome === 'requested_snapshot') {
+        appendWaybackAttemptEntry(app.id, {
+          event: 'requested_snapshot',
+          description: describeWaybackAttempt(info),
+          details: info.errorMessage ? [info.errorMessage] : undefined,
+          saveNowUrl: info.saveNowUrl,
+          targetDate: info.targetDate,
+        });
+      }
       result.targets.push(info);
       if (info.outcome === 'skipped_no_capture') result.skipped++;
       else if (info.outcome === 'skipped_save_now_failed') result.skipped++;
@@ -357,11 +368,12 @@ export async function importAppHistory(
 
     const replayUrl = buildReplayUrl(lookup.url, lookup.timestamp, app.url);
 
-    let html: string;
-    try {
-      html = await fetchArchivedHtml(replayUrl);
-    } catch (error) {
-      const info: ImportTargetResult = {
+	    let html: string;
+	    try {
+	      html = await fetchArchivedHtml(replayUrl, signal);
+	    } catch (error) {
+	      if (isAbortError(error)) throw error;
+	      const info: ImportTargetResult = {
         targetDate: targetMs,
         outcome: 'skipped_fetch_failure',
         captureDate: captureMs,
@@ -637,18 +649,21 @@ async function findCaptureWithinTolerance(
   targetUrl: string,
   target: Date,
   toleranceMs: number,
+  signal?: AbortSignal,
 ): Promise<WaybackProbeResult> {
   const targetMs = target.getTime();
   const seen = new Set<string>();
   let bestMiss: { snapshot: WaybackSnapshot; captureMs: number; drift: number } | null = null;
 
   for (const offsetDays of WAYBACK_FALLBACK_OFFSET_DAYS) {
+    throwIfAborted(signal);
     const probeDate = new Date(targetMs + offsetDays * ONE_DAY_MS);
 
     let lookup: WaybackSnapshot | null = null;
     try {
-      lookup = await lookupWaybackSnapshotNear(targetUrl, probeDate);
-    } catch {
+      lookup = await lookupWaybackSnapshotNear(targetUrl, probeDate, { signal });
+    } catch (error) {
+      if (isAbortError(error)) throw error;
       continue;
     }
     if (!lookup) continue;
@@ -720,11 +735,12 @@ function buildReplayUrl(
   return `https://web.archive.org/web/${ts}id_/${originalUrl}`;
 }
 
-async function fetchArchivedHtml(replayUrl: string): Promise<string> {
+async function fetchArchivedHtml(replayUrl: string, signal?: AbortSignal): Promise<string> {
   const { body } = await safeFetch(replayUrl, {
     allowedHosts: WAYBACK_HOSTS,
     maxBytes: ARCHIVE_HTML_MAX_BYTES,
     timeoutMs: ARCHIVE_HTML_TIMEOUT_MS,
+    signal,
     redirect: 'follow',
     headers: {
       'User-Agent':
@@ -734,6 +750,11 @@ async function fetchArchivedHtml(replayUrl: string): Promise<string> {
     },
   });
   return body.toString('utf8');
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  throw new DOMException('Wayback import cancelled', 'AbortError');
 }
 
 /**

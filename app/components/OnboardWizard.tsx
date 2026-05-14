@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
-import { extractAppNamesFromOcr, parseImportedAppRows, parseManualAppText, MAX_IMPORT_ROWS } from '../../lib/app-import';
+import { extractAppNamesFromOcr, isLikelyWebClipBundle, parseImportedAppRows, parseManualAppText, MAX_IMPORT_ROWS } from '../../lib/app-import';
 import { useTaskCenter, type TaskHandle } from './TaskCenter';
 import { useQueuedSearch, type SearchResultLike } from './QueuedSearchProvider';
 import { useImportQueue } from './ImportQueueProvider';
@@ -19,7 +19,7 @@ import {
   resolveDefaultModel,
   type AIProvider,
 } from '../../lib/ai-config';
-import { COUNTRY_OPTIONS, DEFAULT_COUNTRY, normalizeCountry } from '../../lib/region';
+import { COUNTRY_OPTIONS, DEFAULT_COUNTRY, countryLabel, inferCountryFromLocale, normalizeCountry } from '../../lib/region';
 import { refineDeviceOnClient, type DeviceClass } from '../../lib/device';
 import {
   APPLE_CONFIGURATOR_HTTPS_URL,
@@ -34,7 +34,10 @@ import {
 import LiveTextModal from './LiveTextModal';
 import LanguageSuggestionBanner from './LanguageSuggestionBanner';
 import RateLimitBanner from './RateLimitBanner';
+import ImportedAppsTable from './ImportedAppsTable';
+import SearchProgressCard from './SearchProgressCard';
 import { useFlag } from '../../lib/feature-flags-hooks';
+import { recordImportEvent } from '../../lib/client-diagnostics';
 
 interface AppCandidate {
   appleId: string;
@@ -58,9 +61,55 @@ interface TrackedApp {
   developer: string;
 }
 
+/**
+ * One row in the step-2 imported-apps table. Replaces the old
+ * `namesText: string` + `bundleIdHints: Map` + `developerHints: Map`
+ * trio with a single structured array so bundle IDs and developer
+ * hints can't silently drift away from their names when the user
+ * edits the list. Each row gets a stable client-side `id` so React
+ * keys stay stable across renders even with duplicate names.
+ *
+ * `source` is a UX-facing pill: which import path produced this row.
+ * Used to colour the source chip and to drive the "+ developer hint
+ * present" / "+ bundle ID present" badges in the table.
+ *
+ * `likelyWebClip` propagates from the CSV parser so the search
+ * fallback can suggest the manual-apps editor for rows that look like
+ * home-screen web clips rather than App Store apps.
+ */
+interface ImportedAppEntry {
+  /** Stable client-side id (`uuid-or-fallback()`); not persisted. */
+  id: string;
+  name: string;
+  developer?: string;
+  bundleId?: string;
+  likelyWebClip?: boolean;
+  source: 'manual' | 'cfgutil' | 'file' | 'ocr';
+}
+
+/**
+ * Build an {@link ImportedAppEntry} with a stable client-side id.
+ * Falls back to a non-crypto id when `crypto.randomUUID` is missing
+ * (older browsers / non-secure contexts) — the id only needs to be
+ * stable within the current render tree so React keys don't churn.
+ */
+function makeImportedAppEntry(input: Omit<ImportedAppEntry, 'id'>): ImportedAppEntry {
+  const id =
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `ie_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  return { id, ...input };
+}
+
 interface SearchResult {
   query: string;
   candidates: AppCandidate[];
+  status?: 'pending' | 'matched' | 'unmatched' | 'skipped';
+  matchSource?: 'bundle' | 'name' | 'manual';
+  searchedCountry?: string;
+  sourceBundleId?: string | null;
+  sourceDeveloper?: string | null;
+  note?: string | null;
 }
 
 interface ScrapeStatus {
@@ -119,6 +168,8 @@ type PolicyStopMode = 'none' | 'now' | 'after-current';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 type ImportMethod = 'screenshots' | 'file' | 'configurator' | 'manual';
+
+const ONBOARDING_DRAFT_STORAGE_KEY = 'privacytracker.onboarding.draft.v1';
 
 /**
  * Imports backed by a CSV/TXT drop (including Apple Configurator exports) all
@@ -440,6 +491,7 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
    */
   const [country, setCountry] = useState<string>(DEFAULT_COUNTRY);
   const [countryLoaded, setCountryLoaded] = useState(false);
+  const [countryInferred, setCountryInferred] = useState(false);
   /**
    * Region → language suggestion. Same logic as the Settings page:
    * when the picked storefront's expected language differs from the
@@ -494,8 +546,11 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   const [savingAi, setSavingAi] = useState(false);
   const [aiError, setAiError] = useState('');
 
-  const [namesText, setNamesText] = useState('');
+  // `namesText` (the old plain-string textarea state) is gone — the
+  // table component below owns the imported-apps list, and the
+  // bulk-paste textarea inside it carries its own local input buffer.
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
 
   /**
    * Tauri desktop auto-import via Apple Configurator's `cfgutil`. We don't
@@ -586,27 +641,120 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     const looksLikeMobileWebKit = isIosDevice && /WebKit/i.test(ua);
     setIsIosSafari(Boolean(looksLikeMobileWebKit));
   }, []);
-  /** Optional developer hint per name, sourced from a CSV seller/vendor column.
-   *  Keyed by the lowercased name so edits in the textarea still line up. */
-  const [developerHints, setDeveloperHints] = useState<Map<string, string>>(new Map());
   /**
-   * Optional bundle-ID hint per name, sourced from a cfgutil import only.
-   * Keyed by the lowercased name (mirrors `developerHints`). Populated when
-   * the wizard knows the user came in via Apple Configurator and we have
-   * Apple's canonical bundle identifier for each app. Used by `handleSearch`
-   * to issue an iTunes `lookup?bundleId=…` call (exact match per ID, no
-   * fuzzy ranking) BEFORE falling back to name search for any unmatched
-   * residual. CSV / OCR / manual paths leave this empty, so they continue
-   * to take the name-search path as before.
+   * Unified imported-app state. Replaces the previous three-state setup
+   * (`namesText: string` + `bundleIdHints: Map` + `developerHints: Map`)
+   * where bundle IDs and developer hints were keyed by lowercased name —
+   * fragile because retyping a name in the textarea silently dropped the
+   * hint. Each row now keeps its name, optional bundle ID, optional
+   * developer, and import source together; edits are explicit row
+   * operations (remove a row) so hints can't go silently missing.
+   *
+   * Order is preserved (insertion order). Duplicate names get separate
+   * entries — the table renders them all and the user can remove the
+   * one they didn't intend. /api/search dedupes on the server anyway.
+   *
+   * The view layer renders this as the `ImportedAppsTable`; the legacy
+   * `namesText` state is gone, and a separate `bulkPasteInput` state
+   * captures whatever the user is currently typing/pasting in the
+   * table's "+ Add" input (committed to `importedApps` on submit).
    */
-  const [bundleIdHints, setBundleIdHints] = useState<Map<string, string>>(new Map());
+  const [importedApps, setImportedApps] = useState<ImportedAppEntry[]>([]);
+  // Derived adapter maps so the rest of the wizard (developerHint lookups,
+  // existing test expectations) can keep calling `.get(name.toLowerCase())`
+  // until the call sites get refactored. The arrays still live in
+  // `importedApps` — these are just read views.
+  const developerHints = useMemo<Map<string, string>>(() => {
+    const m = new Map<string, string>();
+    for (const e of importedApps) {
+      if (e.developer) m.set(e.name.toLowerCase(), e.developer);
+    }
+    return m;
+  }, [importedApps]);
+  const bundleIdHints = useMemo<Map<string, string>>(() => {
+    const m = new Map<string, string>();
+    for (const e of importedApps) {
+      // Skip web clips — Safari home-screen shortcuts (bundle IDs like
+      // `com.apple.WebKit.PushBundle.<UUID>`) have no App Store record,
+      // so a bundle-Lookup round-trip for them always fails and pushes
+      // the row into the name-search fallback (which also fails, since
+      // the name is whatever the site title was). They're routed
+      // directly into the manual-apps web-clip pile on Step 3 below.
+      if (e.likelyWebClip) continue;
+      if (e.bundleId) m.set(e.name.toLowerCase(), e.bundleId);
+    }
+    return m;
+  }, [importedApps]);
+
+  /**
+   * Apps imported from cfgutil whose bundle ID matches the Safari web-clip
+   * pattern. Surfaced as a separate Step-3 section with a one-click
+   * "Save as manual web apps" CTA — they bypass the App Store search
+   * pipeline entirely because they have no App Store record.
+   */
+  const webClipEntries = useMemo<ImportedAppEntry[]>(() => {
+    return importedApps.filter(e => e.likelyWebClip === true);
+  }, [importedApps]);
   /** Informational message about the imported file — e.g. "capped at 500 of 812 rows". */
   const [importInfo, setImportInfo] = useState('');
 
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState<Map<string, AppCandidate>>(new Map());
+
+  /**
+   * Web-clip bulk-save state. Tracks the lifecycle of the Step-3
+   * "Save Safari shortcuts as manual apps" CTA:
+   *   - 'idle'   : the banner with a Save button is visible
+   *   - 'saving' : Save button is spinning; CTA disabled
+   *   - 'saved'  : success confirmation replaces the list
+   *   - 'error'  : error message + retry option
+   */
+  const [webClipSaveState, setWebClipSaveState] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [webClipSavedCount, setWebClipSavedCount] = useState(0);
+  const [webClipSaveError, setWebClipSaveError] = useState('');
+
+  /**
+   * Triage choice for each "Not in the App Store" row. Keys are the
+   * original search query (which equals the app name). Values:
+   *   - one of the four ManualAppSource values to save as manual_apps
+   *   - 'skip' to keep the row out of the bulk save entirely
+   *   - undefined (not in map) means "use the default" — `sideloaded`
+   *     is applied as the safe fallback when the bulk Save runs.
+   */
+  type TriageChoice = 'web_clip' | 'testflight' | 'own_build' | 'sideloaded' | 'skip';
+  const [triageChoices, setTriageChoices] = useState<Map<string, TriageChoice>>(new Map());
+  const [unmatchedSaveState, setUnmatchedSaveState] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const [unmatchedSavedCount, setUnmatchedSavedCount] = useState(0);
+  const [unmatchedSaveError, setUnmatchedSaveError] = useState('');
+  const [manuallyChosenQueries, setManuallyChosenQueries] = useState<Set<string>>(new Set());
+  const [skippedQueries, setSkippedQueries] = useState<Set<string>>(new Set());
+  const [rematchingRegion, setRematchingRegion] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
+  /**
+   * Live progress for the chunked name-search loop. `null` whenever a
+   * search isn't in flight; populated batch-by-batch so the user sees
+   * "Searched N of M" instead of an endless spinner on large imports
+   * (the user's 212-app case prompted this — at ~200ms/name iTunes
+   * Search would otherwise sit silent for the better part of a minute).
+   *
+   * Phase 1 (bundle-ID lookup) finishes near-instantly and contributes
+   * its matches to `matched` before phase 2 begins, so the count
+   * tracks total apps confirmed across both phases.
+   */
+  const [searchProgress, setSearchProgress] = useState<{
+    matched: number;
+    total: number;
+    currentBatch: number;
+    totalBatches: number;
+  } | null>(null);
+  /** Active AbortController for the in-flight search; lets the cancel
+   *  button stop the chunk loop after the current batch returns. */
+  const searchAbortRef = useRef<AbortController | null>(null);
   /**
    * Step 3 toggle: when true, blocks whose chosen candidate is already
    * being tracked are hidden from view AND excluded from the import
@@ -667,11 +815,12 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   /** Re-render tick so the step-4 banner can show a ticking seconds value
    *  even while `scrapeRateLimit` itself is stable. */
   const [scrapeRateTick, setScrapeRateTick] = useState(0);
+  const importDrainPausedUntil = importQueue.drainState?.pausedUntil ?? null;
   useEffect(() => {
-    if (!scrapeRateLimit) return;
+    if (!scrapeRateLimit && !(importDrainPausedUntil && importDrainPausedUntil > Date.now())) return;
     const id = setInterval(() => setScrapeRateTick(t => t + 1), 1000);
     return () => clearInterval(id);
-  }, [scrapeRateLimit]);
+  }, [importDrainPausedUntil, scrapeRateLimit]);
 
   // Import-history plumbing
   const [importId, setImportId] = useState<string | null>(null);
@@ -889,8 +1038,27 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
         setAiModel(nextAi.model);
         setSummarizeOnImport(nextAi.summarizeOnImport);
         // Hydrate country last so the picker defaults to whatever the user
-        // saved previously (e.g. 'au') instead of hard-coding 'us'.
-        setCountry(normalizeCountry(data.app_country ?? DEFAULT_COUNTRY));
+        // saved previously. On true first run, infer a better storefront from
+        // browser locale/time zone so AU/NZ/etc. users don't silently search
+        // the US App Store first.
+        const explicitCountry = data.app_country_explicit === true;
+        let nextCountry = normalizeCountry(data.app_country ?? DEFAULT_COUNTRY);
+        let inferred = false;
+        if (!explicitCountry && typeof window !== 'undefined') {
+          const locale = navigator.language;
+          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const inferredCountry = inferCountryFromLocale(locale, timeZone);
+          if (inferredCountry) {
+            nextCountry = inferredCountry;
+            inferred = inferredCountry !== normalizeCountry(data.app_country ?? DEFAULT_COUNTRY);
+          }
+        }
+        const draftHasCountry = typeof window !== 'undefined' &&
+          window.localStorage.getItem(ONBOARDING_DRAFT_STORAGE_KEY) !== null;
+        if (!draftHasCountry) {
+          setCountry(nextCountry);
+          setCountryInferred(inferred);
+        }
         setCountryLoaded(true);
         // Accessibility toggle: respect whatever is saved, defaulting to true
         // for first-run since the feature is opt-out rather than opt-in.
@@ -918,6 +1086,7 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   const updateCountry = useCallback(async (next: string) => {
     const normalised = normalizeCountry(next);
     setCountry(normalised);
+    setCountryInferred(false);
     try {
       await fetch('/api/settings', {
         method: 'POST',
@@ -1001,7 +1170,15 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     void loadTracked();
   }, []);
 
-  const getNames = useCallback(() => parseManualAppText(namesText), [namesText]);
+  // Names we hand to the App Store search pipeline. Web clips never
+  // resolve there (no App Store record), so we route them out of the
+  // search at the source and surface them in their own Step-3 section
+  // instead. Without this filter they'd waste a bundle-Lookup round-
+  // trip and then a name-search call before landing in "Not found".
+  const getNames = useCallback(
+    () => importedApps.filter(e => !e.likelyWebClip).map(e => e.name),
+    [importedApps],
+  );
 
   const parseTextFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -1010,15 +1187,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       const parsed = parseImportedAppRows(text);
       const names = parsed.rows.map(r => r.name);
 
-      // Store developer hints keyed by lowercased name so they survive
-      // whitespace / casing differences when we look them up at search time.
-      const hints = new Map<string, string>();
-      for (const row of parsed.rows) {
-        if (row.developer) hints.set(row.name.toLowerCase(), row.developer);
-      }
-      setDeveloperHints(hints);
-
-      setNamesText(names.join('\n'));
+      // Replace `importedApps` with one entry per parsed row. Developer
+      // hints from CSV columns ride along on the entry rather than
+      // living in a parallel map; `likelyWebClip` propagates so the
+      // search fallback can recommend the manual-apps editor for rows
+      // that look like home-screen web clips.
+      setImportedApps(parsed.rows.map(row => makeImportedAppEntry({
+        name: row.name,
+        developer: row.developer,
+        likelyWebClip: row.likelyWebClip,
+        source: 'file',
+      })));
       setUploadedFileName(file.name);
       setOcrError('');
       setSearchError('');
@@ -1121,6 +1300,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
   const runCfgutilCheck = useCallback(async () => {
     setCfgutilChecking(true);
     setCfgutilError('');
+    // Yield a frame so React paints the "Checking…" button state BEFORE
+    // we hand control to the Tauri IPC bridge. Without this, the click
+    // handler chain is: setState → microtask scheduling → await
+    // checkCfgutil() → blocks for the lifetime of the Rust probe → set
+    // state back. The browser never gets a chance to render the
+    // spinner / disabled state, so users see a frozen button and assume
+    // the app is broken. requestAnimationFrame guarantees one paint
+    // frame happens between the state flip and the slow IPC.
+    // (Same pattern used by runCfgutilExportClick below — keep them
+    // in sync if either grows more complexity.)
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     try {
       const result = await checkCfgutil();
       setCfgutilCheck(result);
@@ -1188,6 +1378,20 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
 
       const selectedDevice = devices.find(device => device.ecid === targetEcid);
       const result = await runCfgutilExport(targetEcid);
+      // Record that cfgutil was successfully used at least once on this
+      // install. The device-connect toast on /onboard subscribes to USB
+      // attach events only when this flag is set — keeps the cost off
+      // users who never adopted the cfgutil workflow.
+      if (result.apps.length > 0) {
+        void fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cfgutil_imported_at: Date.now() }),
+        }).catch(() => {
+          // Non-fatal — the import succeeded; the gate just stays off
+          // until the next successful cfgutil run.
+        });
+      }
       if (result.apps.length === 0) {
         setCfgutilError(
           result.deviceCount === 0
@@ -1225,37 +1429,44 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       // the difference so the summary can explicitly call it out
       // ("2 duplicate names merged for matching") rather than
       // silently shrinking the count.
-      const rawNames = result.apps.map(app => app.name).filter(n => n.trim().length > 0);
-      const names: string[] = [];
+      // Dedupe by lowercased name so the "X apps ready to match"
+      // count matches the user's "Imported N apps" expectation —
+      // collapsing duplicates that crept in from cfgutil's per-device
+      // listing.
       const seenLower = new Set<string>();
-      for (const candidate of rawNames) {
-        const key = candidate.toLocaleLowerCase();
+      const dedupedApps: typeof result.apps = [];
+      for (const app of result.apps) {
+        const trimmed = app.name?.trim() ?? '';
+        if (!trimmed) continue;
+        const key = trimmed.toLocaleLowerCase();
         if (seenLower.has(key)) continue;
         seenLower.add(key);
-        names.push(candidate);
+        dedupedApps.push(app);
       }
-      const mergedDuplicates = rawNames.length - names.length;
-      const hints = new Map<string, string>();
-      // Capture bundleId-by-name so handleSearch can issue an iTunes
-      // lookup-by-bundleId for cfgutil imports (exact match per ID, no
-      // fuzzy ranking) before falling back to name search for any
-      // residual. We key by lowercased name to match how
-      // `developerHints` works — that lets a user who edits the
-      // textarea name still hit the same hint, and lets handleSearch
-      // do `bundleIdHints.get(name.toLowerCase())` without an extra
-      // normalisation step.
-      const bundles = new Map<string, string>();
-      for (const app of result.apps) {
-        if (app.developer && app.name) {
-          hints.set(app.name.toLowerCase(), app.developer);
-        }
-        if (app.bundleId && app.name) {
-          bundles.set(app.name.toLowerCase(), app.bundleId);
-        }
-      }
-      setDeveloperHints(hints);
-      setBundleIdHints(bundles);
-      setNamesText(names.join('\n'));
+      const mergedDuplicates = result.apps.length - dedupedApps.length;
+
+      // Replace `importedApps` with one structured entry per cfgutil
+      // app. Bundle IDs and developer hints both ride on the entry, so
+      // editing the list later (removing rows) can't silently drop the
+      // bundle-lookup advantage that cfgutil imports get to enjoy in
+      // handleSearch.
+      setImportedApps(dedupedApps.map(app => {
+        const bundleId = app.bundleId?.trim() || undefined;
+        // Safari web clips (`com.apple.WebKit.PushBundle.<UUID>` and the
+        // older `com.apple.webapp.*` variant) sit on the device's
+        // installed-apps list but have no App Store record. Mark them
+        // here so the wizard can divert them into the manual-apps
+        // pipeline instead of wasting a Lookup round-trip + name
+        // search and then leaving them in "Not in App Store" limbo.
+        const isWebClip = isLikelyWebClipBundle(bundleId);
+        return makeImportedAppEntry({
+          name: app.name.trim(),
+          developer: app.developer?.trim() || undefined,
+          bundleId,
+          source: 'cfgutil',
+          likelyWebClip: isWebClip || undefined,
+        });
+      }));
       // Encode the device class as a structured " · "-delimited segment
       // ahead of the friendly name so the import-history renderer
       // (SettingsView) can pick out an icon for the entry. Format:
@@ -1281,9 +1492,9 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       setSearchError('');
       // Use the *deduped* count so this number agrees with the
       // "X apps ready to match" header that the wizard list renders
-      // below — both come from the same `names` array now.
+      // below — both come from the same set now.
       const importedSummary = tCfg('step3_imported_count', {
-        count: names.length,
+        count: dedupedApps.length,
         device: selectedDevice ? describeCfgutilDevice(selectedDevice) : tCfg('device_fallback'),
       });
       // When cfgutil reported more raw entries than we kept after the
@@ -1335,6 +1546,135 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
    */
   const isPreviewMode = searchParams?.get('preview') === 'fresh';
 
+  useEffect(() => {
+    if (draftRestored) return;
+    if (isPreviewMode || searchParams?.get('source') === 'cfgutil') {
+      setDraftRestored(true);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(ONBOARDING_DRAFT_STORAGE_KEY);
+      if (!raw) {
+        setDraftRestored(true);
+        return;
+      }
+      const draft = JSON.parse(raw) as {
+        step?: Step;
+        method?: ImportMethod;
+        country?: string;
+        // Newer drafts persist the full structured list; older drafts
+        // (pre-table refactor) only have `namesText`. Both shapes are
+        // accepted so existing in-flight drafts don't silently fail to
+        // restore.
+        importedApps?: ImportedAppEntry[];
+        namesText?: string;
+        uploadedFileName?: string;
+        importId?: string | null;
+        searchResults?: SearchResult[];
+        selected?: Array<[string, string]>;
+        skipped?: string[];
+        manual?: string[];
+      };
+      if (draft.method && ['screenshots', 'file', 'configurator', 'manual'].includes(draft.method)) {
+        setMethod(draft.method);
+      }
+      if (typeof draft.country === 'string') setCountry(normalizeCountry(draft.country));
+      if (Array.isArray(draft.importedApps) && draft.importedApps.length > 0) {
+        // Re-generate ids so they're stable for the current render tree
+        // (and so old non-UUID ids from a different session don't clash
+        // with anything new). Other fields pass through unchanged.
+        setImportedApps(draft.importedApps.map(entry => makeImportedAppEntry({
+          name: typeof entry.name === 'string' ? entry.name : '',
+          developer: entry.developer,
+          bundleId: entry.bundleId,
+          likelyWebClip: entry.likelyWebClip,
+          source: (['manual', 'cfgutil', 'file', 'ocr'] as const).includes(entry.source as never)
+            ? entry.source
+            : 'manual',
+        })).filter(entry => entry.name.trim().length > 0));
+      } else if (typeof draft.namesText === 'string' && draft.namesText.length > 0) {
+        // Back-compat: old draft with raw text; reconstitute as manual
+        // entries. Names-only — any bundle ID / developer hints stored
+        // separately on the old draft are lost on this read path, which
+        // matches the existing fragility (the old maps were keyed by
+        // lowercased name and didn't survive the textarea edits either).
+        const names = parseManualAppText(draft.namesText);
+        setImportedApps(names.map(name => makeImportedAppEntry({ name, source: 'manual' })));
+      }
+      if (typeof draft.uploadedFileName === 'string') setUploadedFileName(draft.uploadedFileName);
+      if (typeof draft.importId === 'string') setImportId(draft.importId);
+      const restoredResults = Array.isArray(draft.searchResults)
+        ? draft.searchResults.filter(result =>
+            result && typeof result.query === 'string' && Array.isArray(result.candidates),
+          )
+        : [];
+      if (restoredResults.length > 0) {
+        setSearchResults(restoredResults);
+        const selectedIds = new Map(Array.isArray(draft.selected) ? draft.selected : []);
+        const nextSelected = new Map<string, AppCandidate>();
+        for (const result of restoredResults) {
+          const selectedId = selectedIds.get(result.query);
+          const candidate = selectedId
+            ? result.candidates.find(c => c.appleId === selectedId)
+            : result.candidates[0];
+          if (candidate && result.status !== 'skipped' && result.status !== 'pending') {
+            nextSelected.set(result.query, candidate);
+          }
+        }
+        setSelected(nextSelected);
+        setSkippedQueries(new Set(Array.isArray(draft.skipped) ? draft.skipped : []));
+        setManuallyChosenQueries(new Set(Array.isArray(draft.manual) ? draft.manual : []));
+      }
+      if (draft.step === 2 || draft.step === 3) setStep(draft.step);
+    } catch (error) {
+      console.warn('[wizard] Failed to restore onboarding draft:', error);
+      window.localStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+    } finally {
+      setDraftRestored(true);
+    }
+  }, [draftRestored, isPreviewMode, searchParams]);
+
+  useEffect(() => {
+    if (!draftRestored || isPreviewMode) return;
+    try {
+      const hasUsefulDraft = importedApps.length > 0 || searchResults.length > 0;
+      if (!hasUsefulDraft || step >= 4) {
+        window.localStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+        return;
+      }
+      window.localStorage.setItem(ONBOARDING_DRAFT_STORAGE_KEY, JSON.stringify({
+        step,
+        method,
+        country,
+        // Persist the structured array directly so bundle IDs +
+        // developer hints survive a reload. Drop the runtime `id`
+        // field — it's regenerated on restore.
+        importedApps: importedApps.map(({ id: _id, ...rest }) => rest),
+        uploadedFileName,
+        importId,
+        searchResults,
+        selected: Array.from(selected.entries()).map(([query, candidate]) => [query, candidate.appleId]),
+        skipped: Array.from(skippedQueries),
+        manual: Array.from(manuallyChosenQueries),
+      }));
+    } catch (error) {
+      console.warn('[wizard] Failed to persist onboarding draft:', error);
+    }
+  }, [
+    country,
+    draftRestored,
+    importId,
+    importedApps,
+    isPreviewMode,
+    manuallyChosenQueries,
+    method,
+    searchResults,
+    selected,
+    skippedQueries,
+    step,
+    uploadedFileName,
+  ]);
+
   const cfgutilAutoArmedRef = useRef(false);
   useEffect(() => {
     if (cfgutilAutoArmedRef.current) return;
@@ -1343,6 +1683,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     cfgutilAutoArmedRef.current = true;
     userSelectedMethodRef.current = false;
     setMethod('configurator');
+    // Land on Step 2 directly. The device-connect toast's "Import
+    // apps" CTA is the user already saying "yes, configurator, this
+    // device" — there's no value in showing them the method picker
+    // again. Before this, the user clicked through from the toast and
+    // saw the Step 1 "Continue with Apple Configurator" prompt as if
+    // they hadn't already picked, which is the bug they reported.
+    setStep(2);
     // ECID flows through as a query param on the toast's deep-link
     // so the export can scope to the specific device the user
     // clicked. Falling through to undefined when the param is absent
@@ -1371,12 +1718,18 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // Diagnostics: the OCR path has a lot of async hops that can hang
     // silently (tesseract.js dynamic import, WASM download, traineddata
     // fetch, per-image recognize, worker terminate). The hang in the
-    // wild came with zero console output, so this function now narrates
-    // every step with timings. When the user reports "it just spun
-    // forever", the devtools console tells us exactly which phase
-    // stopped emitting — no guessing.
+    // wild came with zero console output, so this function narrates
+    // every step with timings. In dev builds the narration goes to the
+    // devtools console; in production we stay quiet by default but
+    // honour `localStorage.setItem('debug:ocr', '1')` for users who can
+    // be asked to enable it when reporting "it just spun forever".
+    const ocrDebug =
+      process.env.NODE_ENV !== 'production' ||
+      (typeof window !== 'undefined' &&
+        window.localStorage?.getItem('debug:ocr') === '1');
     const t0 = performance.now();
     const mark = (label: string, extra?: Record<string, unknown>) => {
+      if (!ocrDebug) return;
       const ms = Math.round(performance.now() - t0);
       if (extra) {
         console.log(`[ocr] +${ms}ms ${label}`, extra);
@@ -1410,11 +1763,15 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       // networks / strict CSPs / iOS WebKit.
       const worker = await createWorker('eng', 1, {
         logger: (msg: { status?: string; progress?: number; [k: string]: unknown }) => {
+          if (!ocrDebug) return;
           const pct =
             typeof msg.progress === 'number' ? `${Math.round(msg.progress * 100)}%` : '—';
           console.log(`[ocr] tesseract.logger status="${msg.status ?? '?'}" progress=${pct}`, msg);
         },
         errorHandler: (err: unknown) => {
+          // Errors still surface unconditionally — silent failure is
+          // exactly the diagnostic problem the rest of this gating was
+          // introduced to *not* reintroduce.
           console.error('[ocr] tesseract.errorHandler', err);
         },
       });
@@ -1463,11 +1820,11 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           return;
         }
 
-        setNamesText(names.join('\n'));
+        setImportedApps(names.map(name => makeImportedAppEntry({ name, source: 'ocr' })));
         // Heuristic: fewer than ~3 names per image usually means the user
         // screenshotted a Home Screen with icon-only folders. Nudge them to
         // try a flat list like iPhone Storage. We don't *block* — the names
-        // we did find still go into the textarea for review.
+        // we did find still go into the table for review.
         const namesPerImage = names.length / Math.max(1, files.length);
         if (namesPerImage < 3) {
           setOcrMessage(
@@ -1553,6 +1910,8 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
 
   const createImportRecord = useCallback(
     async (total: number): Promise<string | null> => {
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.import.create.start', { total, method });
       try {
         const res = await fetch('/api/imports', {
           method: 'POST',
@@ -1564,10 +1923,23 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           }),
         });
         const data = await res.json();
-        if (!res.ok || typeof data?.id !== 'string') return null;
+        if (!res.ok || typeof data?.id !== 'string') {
+          recordImportEvent('onboarding.import.create.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
+          });
+          return null;
+        }
+        recordImportEvent('onboarding.import.create.complete', {
+          durationMs: Math.round(performance.now() - startedAt),
+        });
         return data.id;
       } catch (error) {
         console.error('[wizard] Failed to create import record:', error);
+        recordImportEvent('onboarding.import.create.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
         return null;
       }
     },
@@ -1596,15 +1968,29 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
        */
       allNames?: string[],
     ): Promise<Map<string, string>> => {
-      const searchedPayload = results.map(result => {
+      type ImportItemsPayloadEntry = {
+        query: string;
+        status: 'matched' | 'unmatched' | 'skipped' | 'pending_search';
+        appId?: string;
+        appName?: string;
+        developer?: string | null;
+        url?: string;
+        iconUrl?: string;
+        country?: string;
+        scrapeError?: string | null;
+        retryAfterMs?: number | null;
+      };
+      const searchedPayload: ImportItemsPayloadEntry[] = results.flatMap<ImportItemsPayloadEntry>(result => {
+        if (result.status === 'pending') return [];
         const chosen = autoSelected.get(result.query);
         if (!chosen) {
-          return {
+          return [{
             query: result.query,
-            status: 'unmatched' as const,
-          };
+            status: result.status === 'skipped' ? 'skipped' as const : 'unmatched' as const,
+            country,
+          }];
         }
-        return {
+        return [{
           query: result.query,
           status: 'matched' as const,
           appId: chosen.appleId,
@@ -1615,19 +2001,25 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           // to render in Import History even if the scrape never succeeds.
           iconUrl: chosen.iconUrl,
           country,
-        };
+        }];
       });
 
       // Persist names the search couldn't process yet because Apple 429'd us
-      // as `status='queued'` so they show up in Import History immediately.
-      // When the QueuedSearchProvider retries later, the same endpoint
-      // upserts by (importId, query), swapping the row to 'matched'.
-      // Without this, a rate-limited batch would leave the import with
-      // `itemCount === 0` and the user would see the "No per-app history"
-      // empty state even though the import genuinely has work in flight.
+      // as `status='pending_search'` so they show up in Import History
+      // immediately. When the QueuedSearchProvider retries later, the same
+      // endpoint upserts by (importId, query), swapping the row to 'matched'
+      // with the resolved `url` in place. Without this, a rate-limited batch
+      // would leave the import with `itemCount === 0` and the user would see
+      // the "No per-app history" empty state even though the import
+      // genuinely has work in flight.
+      //
+      // Crucially this is NOT `status='queued'`: the server-side import-queue
+      // worker only claims 'queued' rows (which always have a URL — they're
+      // scrape retries). Mixing the two would cause the worker to mass-error
+      // every URL-less row it claimed.
       const queuedPayload = (queuedRows ?? []).map(row => ({
         query: row.name,
-        status: 'queued' as const,
+        status: 'pending_search' as const,
         developer: row.developer ?? null,
         country,
         scrapeError: tStatus('scrape_error_rate_limited'),
@@ -1654,6 +2046,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       const itemsPayload = [...searchedPayload, ...queuedPayload, ...fallbackPayload];
       if (itemsPayload.length === 0) return new Map();
 
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.items.initial_bulk.start', {
+        items: itemsPayload.length,
+        matched: searchedPayload.filter(item => item.status === 'matched').length,
+        queued: queuedPayload.length,
+        fallback: fallbackPayload.length,
+      });
       try {
         const res = await fetch('/api/imports/items', {
           method: 'POST',
@@ -1667,6 +2066,10 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           console.error(
             `[wizard] /api/imports/items rejected (${res.status}): ${errBody.slice(0, 200)}`,
           );
+          recordImportEvent('onboarding.items.initial_bulk.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
+          });
           return new Map();
         }
         const data = await res.json();
@@ -1678,9 +2081,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             }
           }
         }
+        recordImportEvent('onboarding.items.initial_bulk.complete', {
+          items: idMap.size,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
         return idMap;
       } catch (error) {
         console.error('[wizard] Failed to write import items:', error);
+        recordImportEvent('onboarding.items.initial_bulk.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
         return new Map();
       }
     },
@@ -1688,151 +2099,318 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     [country],
   );
 
-  const handleSearch = async () => {
-    const names = getNames();
-    if (names.length === 0) return;
+  const runMatchSearch = useCallback(async (
+    names: string[],
+    searchCountry: string,
+  ): Promise<{
+    results: SearchResult[];
+    autoSelected: Map<string, AppCandidate>;
+    queuedRows: Array<{ name: string; developer?: string }>;
+    queuedRetryAfterMs?: number;
+    bundleMatched: number;
+    bundleLookupTotal: number;
+  }> => {
+    const phase1Matches = new Map<string, AppCandidate>();
+    const phase1NamesWithBundle: string[] = [];
+    const bundleByLowerName = new Map<string, string>();
+    const developerByLowerName = new Map<string, string>();
+    const queuedByName = new Map<string, { name: string; developer?: string }>();
+    const queuedRetryWindows: number[] = [];
+    const holdForQueuedLookup = new Set<string>();
 
-    setSearching(true);
-    setSearchError('');
-
-    try {
-      // ── Phase 1: bundle-ID lookup (cfgutil-only path) ──────────────
-      //
-      // If we have bundleId hints from cfgutil, try the iTunes
-      // lookup-by-bundleId endpoint first. It returns canonical App
-      // Store records keyed by bundle ID — no name-collision
-      // ambiguity, no developer-hint guessing, no per-name search
-      // call. A single lookup request can resolve up to ~200 apps,
-      // so a typical cfgutil import burns 1-2 requests instead of N.
-      //
-      // Names without a bundleId hint (because cfgutil's row had an
-      // empty bundleId, or the name has been edited in the textarea
-      // and no longer matches any hint) flow straight to phase 2.
-      // Names whose lookup returned no record (delisted, sideloaded,
-      // wrong storefront) also fall through to phase 2.
-      const phase1Matches = new Map<string, AppCandidate>();
-      const phase1NamesWithBundle: string[] = [];
-      const bundleByLowerName = new Map<string, string>();
-      for (const name of names) {
-        const bundleId = bundleIdHints.get(name.toLowerCase());
-        if (bundleId) {
-          phase1NamesWithBundle.push(name);
-          bundleByLowerName.set(name.toLowerCase(), bundleId);
-        }
+    for (const name of names) {
+      const lower = name.toLowerCase();
+      const developer = developerHints.get(lower);
+      if (developer) developerByLowerName.set(lower, developer);
+      const bundleId = bundleIdHints.get(lower);
+      if (bundleId) {
+        phase1NamesWithBundle.push(name);
+        bundleByLowerName.set(lower, bundleId);
       }
+    }
 
-      if (phase1NamesWithBundle.length > 0) {
-        try {
-          const lookupRes = await fetch('/api/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              bundleIds: phase1NamesWithBundle.map(
-                name => bundleByLowerName.get(name.toLowerCase()),
-              ),
-              country,
-            }),
-          });
-          if (lookupRes.ok) {
-            const lookupData = await lookupRes.json().catch(() => ({}));
-            // Lookup returns { results: [{ bundleId, match: AppCandidate | null }] }
-            // — invert into a Map<bundleId, AppCandidate> for cheap join.
-            const byBundle = new Map<string, AppCandidate>();
-            for (const r of (lookupData.results ?? []) as Array<{
-              bundleId: string;
-              match: AppCandidate | null;
-            }>) {
-              if (r.match) byBundle.set(r.bundleId, r.match);
-            }
-            for (const name of phase1NamesWithBundle) {
-              const bundleId = bundleByLowerName.get(name.toLowerCase());
-              if (!bundleId) continue;
-              const match = byBundle.get(bundleId);
-              if (match) {
-                // Use the user-facing name as the result key (not the
-                // bundle ID) so the existing `results.query` →
-                // `selected` → import-item map keeps working with one
-                // string identifier across both code paths.
-                phase1Matches.set(name, { ...match, searchQuery: name });
-              }
-            }
-          } else {
-            console.warn(`[wizard] bundle-ID lookup returned HTTP ${lookupRes.status}; falling back to name search`);
+    if (phase1NamesWithBundle.length > 0) {
+      try {
+        const lookupIds = phase1NamesWithBundle
+          .map(name => bundleByLowerName.get(name.toLowerCase()))
+          .filter((id): id is string => typeof id === 'string' && id.length > 0);
+        const lookupRes = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bundleIds: lookupIds, country: searchCountry }),
+        });
+        if (lookupRes.ok) {
+          const lookupData = await lookupRes.json().catch(() => ({}));
+          const byBundle = new Map<string, AppCandidate>();
+          for (const r of (lookupData.results ?? []) as Array<{
+            bundleId: string;
+            match: AppCandidate | null;
+          }>) {
+            if (r.match) byBundle.set(r.bundleId, r.match);
           }
-        } catch (err) {
-          // Network or transport error — fall through to phase 2.
-          // Phase 2 will try every name (including those that had
-          // bundle IDs) so nothing is silently dropped.
-          console.warn('[wizard] bundle-ID lookup failed, falling back to name search:', err);
+
+          for (const name of phase1NamesWithBundle) {
+            const lower = name.toLowerCase();
+            const bundleId = bundleByLowerName.get(lower);
+            if (!bundleId) continue;
+            const match = byBundle.get(bundleId);
+            if (match) phase1Matches.set(name, { ...match, searchQuery: name });
+          }
+
+          const rateLimited = lookupData.rateLimited as
+            | { retryAfterMs: number; queuedBundleIds?: string[] }
+            | undefined;
+          if (rateLimited && Array.isArray(rateLimited.queuedBundleIds)) {
+            const queuedIds = new Set(rateLimited.queuedBundleIds);
+            queuedRetryWindows.push(rateLimited.retryAfterMs);
+            for (const name of phase1NamesWithBundle) {
+              const lower = name.toLowerCase();
+              const bundleId = bundleByLowerName.get(lower);
+              if (!bundleId || !queuedIds.has(bundleId)) continue;
+              holdForQueuedLookup.add(name);
+              queuedByName.set(name, {
+                name,
+                developer: developerByLowerName.get(lower),
+              });
+            }
+          }
+        } else {
+          console.warn(`[wizard] bundle-ID lookup returned HTTP ${lookupRes.status}; falling back to name search`);
         }
+      } catch (err) {
+        console.warn('[wizard] bundle-ID lookup failed, falling back to name search:', err);
       }
+    }
 
-      // ── Phase 2: name search for everything bundle-ID lookup missed ─
-      //
-      // Names that still need a match — either because they had no
-      // bundle ID hint, or because lookup returned no record. We send
-      // these through the existing rows-payload path, which fans out
-      // through iTunes Search and respects the developerHints
-      // re-ranking.
-      const phase2Names = names.filter(name => !phase1Matches.has(name));
-      const rowsPayload = phase2Names.map(name => {
-        const developer = developerHints.get(name.toLowerCase());
-        return developer ? { name, developer } : { name };
+    const phase2Names = names.filter(name => !phase1Matches.has(name) && !holdForQueuedLookup.has(name));
+    const rowsPayload = phase2Names.map(name => {
+      const developer = developerByLowerName.get(name.toLowerCase());
+      return developer ? { name, developer } : { name };
+    });
+
+    // Chunk phase 2 into batches so the user sees progress instead of
+    // an endless spinner on large imports. /api/search itself is happy
+    // up to 500 rows but Apple rate-limits aggressively past ~50; this
+    // size also gives us 4-5 progress ticks for a typical 200-app
+    // batch, which keeps the bar visibly moving.
+    //
+    // Phase 1 (bundle-ID lookup) already contributed its matches to
+    // `phase1Matches`; we seed the running `matched` counter with that
+    // count so the progress UI starts at the right place rather than
+    // jumping when the first chunk lands.
+    const SEARCH_CHUNK_SIZE = 50;
+    const phase2Chunks: typeof rowsPayload[] = [];
+    for (let i = 0; i < rowsPayload.length; i += SEARCH_CHUNK_SIZE) {
+      phase2Chunks.push(rowsPayload.slice(i, i + SEARCH_CHUNK_SIZE));
+    }
+    const totalBatches = Math.max(1, phase2Chunks.length);
+    let matchedRunning = phase1Matches.size;
+    setSearchProgress({
+      matched: matchedRunning,
+      total: names.length,
+      currentBatch: 0,
+      totalBatches,
+    });
+
+    const phase2Results: SearchResult[] = [];
+    let aborted = false;
+
+    for (let i = 0; i < phase2Chunks.length; i++) {
+      if (searchAbortRef.current?.signal.aborted) {
+        aborted = true;
+        break;
+      }
+      const chunk = phase2Chunks[i];
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: chunk, country: searchCountry }),
+        signal: searchAbortRef.current?.signal,
+      }).catch((err: unknown) => {
+        if ((err as Error)?.name === 'AbortError') {
+          aborted = true;
+          return null;
+        }
+        throw err;
       });
-
-      // Avoid issuing an empty search request when phase 1 already
-      // matched everything — common path for clean cfgutil imports.
-      // We synthesise an empty results envelope so the rest of the
-      // function can flow through unchanged.
-      const res = phase2Names.length === 0
-        ? new Response(JSON.stringify({ results: [] }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        : await fetch('/api/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rows: rowsPayload, country }),
-          });
-      // A 500 from /api/search used to silently fall through to an empty
-      // `results` + empty `queued`, and we'd create an import row with 0
-      // items — hence the "total=210 but 0 everywhere else" dev-log symptom.
-      // Surface it, and still continue into writeImportItems so the batch
-      // gets persisted as unmatched placeholders the user can retry.
+      if (aborted || !res) break;
       if (!res.ok) {
         console.error(`[wizard] /api/search failed with ${res.status}`);
         setSearchError(
           tStatus('search_endpoint_error_prefix') +
           '"unmatched" in Import History — open Settings → Import history to retry.',
         );
+        // Continue to the next chunk anyway — partial progress is
+        // better than throwing away the entire batch on a single 5xx.
+        setSearchProgress(prev => prev
+          ? { ...prev, currentBatch: i + 1 }
+          : prev);
+        continue;
       }
       const data = await res.json().catch(() => ({}));
-      const phase2Results: SearchResult[] = data.results ?? [];
-      const rateLimited = data.rateLimited as
+      const chunkResults: SearchResult[] = data.results ?? [];
+      phase2Results.push(...chunkResults);
+      // Tally matched apps from THIS chunk so the running total stays
+      // accurate even if Apple rate-limits mid-loop.
+      matchedRunning += chunkResults.filter(r => r.candidates.length > 0).length;
+
+      const chunkRateLimited = data.rateLimited as
         | { retryAfterMs: number; queued: Array<{ name: string; developer?: string }> }
         | undefined;
-
-      // Merge phase-1 (bundle-ID lookup) matches with phase-2 (name
-      // search) results into a single SearchResult[] keyed by query
-      // name, preserving the order of `names` so the UI list reads
-      // top-down the way the user typed/imported them. Each phase-1
-      // match becomes a SearchResult with exactly one candidate (the
-      // canonical lookup hit); phase-2 results pass through unchanged
-      // (each may have 0..N candidates).
-      const phase2ByQuery = new Map<string, SearchResult>();
-      for (const r of phase2Results) phase2ByQuery.set(r.query, r);
-      const results: SearchResult[] = names.map(name => {
-        const phase1 = phase1Matches.get(name);
-        if (phase1) {
-          return { query: name, candidates: [phase1] };
+      if (chunkRateLimited && Array.isArray(chunkRateLimited.queued)) {
+        queuedRetryWindows.push(chunkRateLimited.retryAfterMs);
+        for (const row of chunkRateLimited.queued) {
+          if (!row?.name) continue;
+          queuedByName.set(row.name, row);
         }
-        return phase2ByQuery.get(name) ?? { query: name, candidates: [] };
-      });
-
-      const autoSelected = new Map<string, AppCandidate>();
-      for (const result of results) {
-        if (result.candidates.length > 0) autoSelected.set(result.query, result.candidates[0]);
+        // If Apple has queued some of the names in this chunk, the
+        // remaining chunks are very likely to hit the same throttle.
+        // Stop the loop here; the queued tail will replay through the
+        // background QueuedSearchProvider just like the single-batch
+        // path used to.
+        for (let j = i + 1; j < phase2Chunks.length; j++) {
+          for (const row of phase2Chunks[j]) {
+            queuedByName.set(row.name, row);
+          }
+        }
+        setSearchProgress(prev => prev
+          ? { ...prev, matched: matchedRunning, currentBatch: i + 1 }
+          : prev);
+        break;
       }
+
+      setSearchProgress(prev => prev
+        ? { ...prev, matched: matchedRunning, currentBatch: i + 1 }
+        : prev);
+    }
+    // Surface the abort signal so the caller knows the loop stopped
+    // early — `handleSearch` already handles a partial result set
+    // (some rows unmatched), so we just slot whatever we have in.
+    if (aborted) {
+      console.info(`[wizard] search cancelled after ${phase2Results.length} of ${rowsPayload.length} phase-2 names.`);
+    }
+
+    // Per-chunk rate-limiting was already captured inside the loop
+    // above; the older single-batch path's post-loop `rateLimited`
+    // handling is no longer needed here. `queuedByName` already
+    // carries every name Apple deferred plus every name we never
+    // got to (loop bailed mid-stream on rate-limit / abort).
+
+    const phase2ByQuery = new Map<string, SearchResult>();
+    for (const r of phase2Results) phase2ByQuery.set(r.query, r);
+    const queuedNames = new Set(queuedByName.keys());
+    const results: SearchResult[] = names.map(name => {
+      const lower = name.toLowerCase();
+      const sourceBundleId = bundleByLowerName.get(lower) ?? null;
+      const sourceDeveloper = developerByLowerName.get(lower) ?? null;
+      const phase1 = phase1Matches.get(name);
+      if (phase1) {
+        return {
+          query: name,
+          candidates: [phase1],
+          status: 'matched',
+          matchSource: 'bundle',
+          searchedCountry: searchCountry,
+          sourceBundleId,
+          sourceDeveloper,
+        };
+      }
+      if (queuedNames.has(name)) {
+        return {
+          query: name,
+          candidates: [],
+          status: 'pending',
+          searchedCountry: searchCountry,
+          sourceBundleId,
+          sourceDeveloper,
+          note: 'Apple paused this lookup. We will resume automatically.',
+        };
+      }
+      const phase2 = phase2ByQuery.get(name);
+      if (phase2) {
+        return {
+          ...phase2,
+          status: phase2.candidates.length > 0 ? 'matched' : 'unmatched',
+          matchSource: phase2.candidates.length > 0 ? 'name' : undefined,
+          searchedCountry: searchCountry,
+          sourceBundleId,
+          sourceDeveloper,
+        };
+      }
+      return {
+        query: name,
+        candidates: [],
+        status: 'unmatched',
+        searchedCountry: searchCountry,
+        sourceBundleId,
+        sourceDeveloper,
+      };
+    });
+
+    // Auto-select bundle-ID matches and single-candidate name matches.
+    // Skip multi-candidate name matches so the user picks deliberately.
+    //
+    // - Bundle matches: Apple's iTunes Lookup returned the app for the
+    //   exact bundle ID we sent, so the top candidate is the right one.
+    // - Single-candidate name matches: only one app matched the name in
+    //   the user's storefront — there's nothing else to pick.
+    // - Multi-candidate name matches: e.g. "Calculator" returns dozens
+    //   of candidates from various publishers. Leaving these unselected
+    //   forces a deliberate pick and avoids silently importing the
+    //   wrong "Calculator". The Step-3 top banner surfaces the count
+    //   so the user can click "Import N selected" without scrolling
+    //   to confirm, then iterate through the ambiguous rows later.
+    const autoSelected = new Map<string, AppCandidate>();
+    for (const result of results) {
+      if (result.status === 'pending' || result.candidates.length === 0) continue;
+      const isBundle = result.matchSource === 'bundle';
+      const isUnambiguousNameMatch = result.candidates.length === 1;
+      if (isBundle || isUnambiguousNameMatch) {
+        autoSelected.set(result.query, result.candidates[0]);
+      }
+    }
+
+    return {
+      results,
+      autoSelected,
+      queuedRows: Array.from(queuedByName.values()),
+      queuedRetryAfterMs: queuedRetryWindows.length > 0 ? Math.max(...queuedRetryWindows) : undefined,
+      bundleMatched: phase1Matches.size,
+      bundleLookupTotal: phase1NamesWithBundle.length,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is stable; including it recreates the search function every render
+  }, [bundleIdHints, developerHints]);
+
+  const handleSearch = async () => {
+    const names = getNames();
+    if (names.length === 0) return;
+
+    setSearching(true);
+    setSearchError('');
+    // Fresh AbortController per run — `cancelSearch` reaches into this
+    // ref to abort the in-flight chunk; `runMatchSearch` reads
+    // `signal.aborted` between chunks to break the loop early.
+    searchAbortRef.current = new AbortController();
+    setSearchProgress({
+      matched: 0,
+      total: names.length,
+      currentBatch: 0,
+      totalBatches: 1,
+    });
+
+    try {
+      if (countryInferred) {
+        await updateCountry(country);
+      }
+
+      const {
+        results,
+        autoSelected,
+        queuedRows,
+        queuedRetryAfterMs,
+        bundleMatched,
+        bundleLookupTotal,
+      } = await runMatchSearch(names, country);
 
       // Tell the console how many names the server failed to match so
       // power users can see the list in devtools. The split between
@@ -1846,10 +2424,9 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           unmatched,
         );
       }
-      if (phase1Matches.size > 0) {
+      if (bundleMatched > 0) {
         console.info(
-          `[search] bundle-ID lookup matched ${phase1Matches.size} / ${phase1NamesWithBundle.length} apps from cfgutil; ` +
-          `${phase2Names.length} names fell through to name search.`,
+          `[search] bundle-ID lookup matched ${bundleMatched} / ${bundleLookupTotal} apps from cfgutil.`,
         );
       }
 
@@ -1867,8 +2444,8 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
           newImportId,
           results,
           autoSelected,
-          rateLimited?.queued,
-          rateLimited?.retryAfterMs,
+          queuedRows,
+          queuedRetryAfterMs,
           // Hand the full submitted list through so names that neither
           // landed in `results` nor in the queued tail still get written as
           // `unmatched` placeholders. Fixes the "total=N but itemCount=0"
@@ -1880,22 +2457,24 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
 
       setSearchResults(results);
       setSelected(autoSelected);
+      setSkippedQueries(new Set());
+      setManuallyChosenQueries(new Set());
 
       // Rate-limit path: hand the queued tail to the layout-level provider so
       // the retry loop keeps running if the user navigates away, and still
       // drop the user on Step 3 so they can confirm what we *did* match
       // while we wait out Apple's cooldown. The provider also registers a
       // Task Center entry with a live countdown for the notification area.
-      if (rateLimited && rateLimited.queued.length > 0) {
+      if (queuedRows.length > 0 && queuedRetryAfterMs) {
         queuedSearch.enqueue({
-          queued: rateLimited.queued,
+          queued: queuedRows,
           country,
           importId: newImportId ?? null,
-          retryAfterMs: rateLimited.retryAfterMs,
+          retryAfterMs: queuedRetryAfterMs,
         });
         console.warn(
           `[search] iTunes rate-limited after ${results.length} of ${names.length} names; ` +
-          `${rateLimited.queued.length} queued for replay in ${Math.round(rateLimited.retryAfterMs / 1000)}s.`,
+          `${queuedRows.length} queued for replay in ${Math.round(queuedRetryAfterMs / 1000)}s.`,
         );
       }
 
@@ -1905,8 +2484,21 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       setSearchError(tStatus('search_failed'));
     } finally {
       setSearching(false);
+      setSearchProgress(null);
+      searchAbortRef.current = null;
     }
   };
+
+  /**
+   * Abort the in-flight chunked search. The loop inside `runMatchSearch`
+   * reads `signal.aborted` between chunks; whatever's already returned
+   * is still committed (search progress isn't an all-or-nothing thing —
+   * partial matches go through the same step-3 review flow as a full
+   * batch). The button bound to this lives next to the progress bar.
+   */
+  const cancelSearch = useCallback(() => {
+    searchAbortRef.current?.abort();
+  }, []);
 
   /**
    * Subscribe to background results from the QueuedSearchProvider. Whenever
@@ -1925,7 +2517,21 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
         if (r.candidates.length > 0) freshSelected.set(r.query, r.candidates[0]);
       }
 
-      setSearchResults(prev => [...prev, ...fresh]);
+      setSearchResults(prev => {
+        const byQuery = new Map(prev.map(result => [result.query, result]));
+        for (const r of fresh) {
+          const previous = byQuery.get(r.query);
+          byQuery.set(r.query, {
+            ...previous,
+            query: r.query,
+            candidates: r.candidates,
+            status: r.candidates.length > 0 ? 'matched' : 'unmatched',
+            matchSource: r.candidates.length > 0 ? 'name' : previous?.matchSource,
+            searchedCountry: previous?.searchedCountry ?? country,
+          });
+        }
+        return Array.from(byQuery.values());
+      });
       setSelected(prev => {
         const next = new Map(prev);
         freshSelected.forEach((value, key) => next.set(key, value));
@@ -1934,7 +2540,7 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     };
     const unsubscribe = queuedSearch.subscribe(onResults);
     return unsubscribe;
-  }, [queuedSearch]);
+  }, [country, queuedSearch]);
 
   // Re-search a single block (used by the editable "Confirm" step). The
   // caller may pass `nextDeveloper` to override the CSV-sourced seller hint
@@ -1987,7 +2593,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       // Replace this block in-place with the fresh results, keyed by the new query.
       setSearchResults(prev =>
         prev.map(item =>
-          item.query === originalQuery ? { query: trimmed, candidates: fresh.candidates } : item,
+          item.query === originalQuery
+            ? {
+                ...item,
+                query: trimmed,
+                candidates: fresh.candidates,
+                status: fresh.candidates.length > 0 ? 'matched' : 'unmatched',
+                matchSource: fresh.candidates.length > 0 ? 'name' : undefined,
+                searchedCountry: country,
+                sourceDeveloper: resolvedHint ?? item.sourceDeveloper ?? null,
+              }
+            : item,
         ),
       );
 
@@ -1995,6 +2611,17 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
         const next = new Map(prev);
         next.delete(originalQuery);
         if (fresh.candidates.length > 0) next.set(trimmed, fresh.candidates[0]);
+        return next;
+      });
+      setSkippedQueries(prev => {
+        const next = new Set(prev);
+        next.delete(originalQuery);
+        next.delete(trimmed);
+        return next;
+      });
+      setManuallyChosenQueries(prev => {
+        const next = new Set(prev);
+        next.delete(originalQuery);
         return next;
       });
 
@@ -2009,28 +2636,23 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
         return next;
       });
 
-      // Persist the user's explicit seller edit so follow-up re-searches and
-      // the final /api/search "matched" ranking both see the same hint. We
-      // only touch the map when the caller explicitly passed `nextDeveloper`
-      // (undefined = "don't overwrite the CSV value").
-      if (nextDeveloper !== undefined) {
-        setDeveloperHints(prev => {
-          const next = new Map(prev);
-          next.delete(originalQuery.toLowerCase());
-          if (trimmedDev) next.set(trimmed.toLowerCase(), trimmedDev);
-          return next;
-        });
-      } else if (queryChanged) {
-        // Name changed but seller didn't — carry the existing hint across to
-        // the new key so future edits still benefit from it.
-        setDeveloperHints(prev => {
-          const carry = prev.get(originalQuery.toLowerCase());
-          if (!carry) return prev;
-          const next = new Map(prev);
-          next.delete(originalQuery.toLowerCase());
-          next.set(trimmed.toLowerCase(), carry);
-          return next;
-        });
+      // Persist the user's explicit seller edit + any name change back
+      // onto the matching `importedApps` entry so a re-search picks up
+      // the fresh values. Matched by current name (case-insensitive)
+      // since that's what the search produced from. When `nextDeveloper`
+      // is undefined we leave the existing developer alone (the caller
+      // didn't ask to change it).
+      if (nextDeveloper !== undefined || queryChanged) {
+        setImportedApps(prev => prev.map(entry => {
+          if (entry.name.toLowerCase() !== originalQuery.toLowerCase()) return entry;
+          return {
+            ...entry,
+            name: queryChanged ? trimmed : entry.name,
+            developer: nextDeveloper !== undefined
+              ? (trimmedDev || undefined)
+              : entry.developer,
+          };
+        }));
       }
 
       // Patch the server-side import_item with the edited query + selection.
@@ -2068,6 +2690,15 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       next.delete(query);
       return next;
     });
+    setSkippedQueries(prev => new Set(prev).add(query));
+    setManuallyChosenQueries(prev => {
+      const next = new Set(prev);
+      next.delete(query);
+      return next;
+    });
+    setSearchResults(prev => prev.map(result =>
+      result.query === query ? { ...result, status: 'skipped' } : result,
+    ));
 
     if (!importId) return;
     const itemId = itemIdByQuery.get(query);
@@ -2078,6 +2709,125 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemId, status: 'skipped' }),
     });
+  };
+
+  const handleCancelQueuedMatches = async () => {
+    queuedSearch.cancel();
+    const pendingQueries = searchResults
+      .filter(result => result.status === 'pending')
+      .map(result => result.query);
+    if (pendingQueries.length === 0) return;
+
+    setSearchResults(prev => prev.map(result =>
+      result.status === 'pending'
+        ? { ...result, status: 'unmatched', note: 'Matching was cancelled before Apple resumed the search.' }
+        : result,
+    ));
+
+    if (!importId) return;
+    const items = pendingQueries.map(query => ({
+      query,
+      status: 'unmatched' as const,
+      country,
+      scrapeError: 'Matching was cancelled before Apple resumed the search.',
+    }));
+    try {
+      await fetch('/api/imports/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ importId, items }),
+      });
+    } catch (error) {
+      console.warn('[wizard] Failed to mark cancelled queued matches:', error);
+    }
+  };
+
+  const handleRegionRematch = async (nextCountry: string) => {
+    const rematchCountry = normalizeCountry(nextCountry);
+    const names = searchResults.map(result => result.query);
+    if (names.length === 0 || rematchingRegion) return;
+
+    setRematchingRegion(true);
+    setSearchError('');
+    try {
+      if (rematchCountry !== country || countryInferred) {
+        await updateCountry(rematchCountry);
+      }
+
+      const preservedManual = new Map<string, AppCandidate>();
+      for (const query of manuallyChosenQueries) {
+        const chosen = selected.get(query);
+        if (chosen) preservedManual.set(query, chosen);
+      }
+
+      const namesToSearch = names.filter(name =>
+        !preservedManual.has(name) && !skippedQueries.has(name),
+      );
+      const {
+        results: freshResults,
+        autoSelected,
+        queuedRows,
+        queuedRetryAfterMs,
+      } = await runMatchSearch(namesToSearch, rematchCountry);
+      const freshByQuery = new Map(freshResults.map(result => [result.query, result]));
+
+      const nextResults = searchResults.map(result => {
+        if (skippedQueries.has(result.query)) {
+          return { ...result, status: 'skipped' as const, searchedCountry: rematchCountry };
+        }
+        if (preservedManual.has(result.query)) {
+          return {
+            ...result,
+            status: 'matched' as const,
+            matchSource: 'manual' as const,
+            searchedCountry: rematchCountry,
+          };
+        }
+        return freshByQuery.get(result.query) ?? {
+          ...result,
+          candidates: [],
+          status: 'unmatched' as const,
+          searchedCountry: rematchCountry,
+        };
+      });
+
+      const nextSelected = new Map<string, AppCandidate>();
+      for (const [query, candidate] of preservedManual) nextSelected.set(query, candidate);
+      for (const [query, candidate] of autoSelected) nextSelected.set(query, candidate);
+
+      setSearchResults(nextResults);
+      setSelected(nextSelected);
+
+      if (importId) {
+        const idMap = await writeImportItems(
+          importId,
+          nextResults,
+          nextSelected,
+          queuedRows,
+          queuedRetryAfterMs,
+          names,
+        );
+        setItemIdByQuery(prev => {
+          const next = new Map(prev);
+          for (const [query, id] of idMap) next.set(query, id);
+          return next;
+        });
+      }
+
+      if (queuedRows.length > 0 && queuedRetryAfterMs) {
+        queuedSearch.enqueue({
+          queued: queuedRows,
+          country: rematchCountry,
+          importId,
+          retryAfterMs: queuedRetryAfterMs,
+        });
+      }
+    } catch (error) {
+      console.error('[wizard] region rematch failed:', error);
+      setSearchError('Could not rematch this region. Try again in a moment.');
+    } finally {
+      setRematchingRegion(false);
+    }
   };
 
   const handleConfirm = async (
@@ -2093,6 +2843,7 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     const workingSelected = overrideSelected ?? selected;
     const entries = [...workingSelected.entries()];
     if (entries.length === 0) return;
+    if (searchResults.some(result => result.status === 'pending')) return;
 
     // Sync every visible block's status to the server before we start scraping,
     // so the import history reflects the user's final intent. A block that's
@@ -2101,35 +2852,77 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // in Import History that they deliberately opted not to re-import the
     // tracked app this time round.
     if (importId) {
-      await Promise.all(
-        searchResults.map(async result => {
-          const itemId = itemIdByQuery.get(result.query);
-          if (!itemId) return;
-          const chosen = workingSelected.get(result.query);
-          const wasFiltered =
-            selected.has(result.query) && !workingSelected.has(result.query);
-          const payload = chosen
-            ? {
-                itemId,
-                status: 'matched',
-                appId: chosen.appleId,
-                appName: chosen.name,
-                developer: chosen.developer,
-                url: chosen.url,
-              }
-            : wasFiltered
-              ? { itemId, status: 'skipped' }
-              : {
-                  itemId,
-                  status: result.candidates.length === 0 ? 'unmatched' : 'skipped',
-                };
-          await fetch('/api/imports/items/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
+      const statusPayload = searchResults.map(result => {
+        const chosen = workingSelected.get(result.query);
+        const wasFiltered =
+          selected.has(result.query) && !workingSelected.has(result.query);
+        return chosen
+          ? {
+              query: result.query,
+              status: 'matched',
+              appId: chosen.appleId,
+              appName: chosen.name,
+              developer: chosen.developer,
+              url: chosen.url,
+              iconUrl: chosen.iconUrl,
+              country,
+              scrapeError: null,
+            }
+          : wasFiltered
+            ? { query: result.query, status: 'skipped', country }
+            : {
+                query: result.query,
+                status: result.candidates.length === 0 ? 'unmatched' : 'skipped',
+                country,
+                scrapeError: result.candidates.length === 0
+                  ? tStatus('scrape_error_no_result')
+                  : null,
+              };
+      });
+      const startedAt = performance.now();
+      recordImportEvent('onboarding.confirm.bulk_status.start', {
+        items: statusPayload.length,
+        selected: entries.length,
+      });
+      try {
+        const res = await fetch('/api/imports/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ importId, items: statusPayload }),
+        });
+        if (!res.ok) {
+          recordImportEvent('onboarding.confirm.bulk_status.error', {
+            status: res.status,
+            durationMs: Math.round(performance.now() - startedAt),
           });
-        }),
-      );
+          setSearchError(tStatus('background_import_start_failed'));
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data?.items)) {
+          setItemIdByQuery(prev => {
+            const next = new Map(prev);
+            for (const item of data.items) {
+              if (typeof item?.query === 'string' && typeof item?.id === 'string') {
+                next.set(item.query, item.id);
+              }
+            }
+            return next;
+          });
+        }
+        recordImportEvent('onboarding.confirm.bulk_status.complete', {
+          items: statusPayload.length,
+          durationMs: Math.round(performance.now() - startedAt),
+        });
+      } catch (error) {
+        console.error('[wizard] Failed to persist final import selections:', error);
+        recordImportEvent('onboarding.confirm.bulk_status.error', {
+          durationMs: Math.round(performance.now() - startedAt),
+          error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+        });
+        setSearchError(tStatus('background_import_start_failed'));
+        return;
+      }
     }
 
     const list: ScrapeStatus[] = entries.map(([query, candidate]) => ({
@@ -2139,6 +2932,11 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       status: 'pending',
     }));
 
+    try {
+      window.localStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
+    } catch {
+      /* non-fatal */
+    }
     setScrapeList(list);
     setDone(false);
     setStep(4);
@@ -2678,6 +3476,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
     // happen and the activity log stays clean.
     if (isPreviewMode) {
       const updated = items.map((it) => ({ ...it, status: 'success' as const }));
+      // Mirror the real-import branch below: auto-open the per-app
+      // details for small batches so a developer running the preview
+      // flow sees the rendered scrape rows instead of a collapsed
+      // <details> summary. Without this, the rows are technically in
+      // the DOM but display:none — which Playwright reports as hidden
+      // and which doesn't match production UX.
+      setImportDetailsOpen(items.length <= 8);
       setScrapeList(updated);
       setDone(true);
       return;
@@ -2707,45 +3512,74 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
       return;
     }
 
+    let queueStartedAt: number | null = null;
     try {
-      await Promise.all(entries.map(async ([query, candidate]) => {
-        const itemId = itemIdByQuery.get(query);
-        if (!itemId) return;
-        const res = await fetch('/api/imports/items/update', {
+      const queuePayload = entries.map(([query, candidate]) => ({
+        query,
+        status: 'queued' as const,
+        appId: candidate.appleId,
+        appName: candidate.name,
+        developer: candidate.developer,
+        url: candidate.url,
+        iconUrl: candidate.iconUrl,
+        country,
+        scrapeError: null,
+      }));
+      queueStartedAt = performance.now();
+      recordImportEvent('onboarding.queue.bulk.start', { items: queuePayload.length });
+      if (queuePayload.length > 0) {
+        const res = await fetch('/api/imports/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            itemId,
-            status: 'queued',
-            appId: candidate.appleId,
-            appName: candidate.name,
-            developer: candidate.developer,
-            url: candidate.url,
-            iconUrl: candidate.iconUrl,
-            country,
-            scrapeError: null,
-          }),
+          body: JSON.stringify({ importId, items: queuePayload }),
         });
         if (!res.ok) {
-          throw new Error(`Queue update failed for ${candidate.name}`);
+          throw new Error(`Queue update failed with HTTP ${res.status}`);
         }
-      }));
-
-      // Same path as Settings → Import History → Retry: refresh the shared
-      // queue snapshot so Task Center sees the full backlog, then kick an
-      // immediate server-side drain instead of waiting for the next ticker.
-      await importQueue.refresh();
-      // retryNow() now throws on HTTP failure (so a foreground drain
-      // loop can react). Here we just want a fire-and-forget kick —
-      // the import row is already saved, and a missed first tick is
-      // recoverable via the next 30-min instrumentation tick or a
-      // manual retry from Settings → Import History.
-      try { await importQueue.retryNow(); } catch (err) {
-        console.warn('[wizard] queue kick failed (will recover on next tick):', err);
+        const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data?.items)) {
+          setItemIdByQuery(prev => {
+            const next = new Map(prev);
+            for (const item of data.items) {
+              if (typeof item?.query === 'string' && typeof item?.id === 'string') {
+                next.set(item.query, item.id);
+              }
+            }
+            return next;
+          });
+        }
       }
+      recordImportEvent('onboarding.queue.bulk.complete', {
+        items: queuePayload.length,
+        durationMs: Math.round(performance.now() - queueStartedAt),
+      });
+
+      // Same path as Settings → Import History → Retry, but start the
+      // provider-owned foreground drain loop instead of kicking one server
+      // tick. The server still claims rows in 10-item chunks; the provider
+      // immediately asks for the next chunk until Apple 429s, the queue
+      // empties, or the user cancels.
+      const kickStartedAt = performance.now();
+      recordImportEvent('onboarding.queue.kick.start', { items: queuePayload.length });
+      const queueSnapshot = await importQueue.refresh();
+      recordImportEvent('onboarding.queue.drain.start', { queued: queuePayload.length });
+      importQueue.startDrain({
+        initialSnapshot: queueSnapshot,
+        forceRefresh: queueSnapshot === null,
+      });
+      recordImportEvent('onboarding.queue.kick.complete', {
+        durationMs: Math.round(performance.now() - kickStartedAt),
+      });
       await refreshBackgroundImportProgress();
     } catch (error) {
       console.error('[wizard] Failed to queue import batch:', error);
+      recordImportEvent('onboarding.queue.bulk.error', {
+        items: entries.length,
+        durationMs: queueStartedAt !== null
+          ? Math.round(performance.now() - queueStartedAt)
+          : undefined,
+        error: error instanceof Error ? error.message.slice(0, 120) : String(error).slice(0, 120),
+      });
       setScrapeList(prev => {
         const failed = prev.map(item =>
           item.status === 'success'
@@ -3126,8 +3960,10 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                       // wipe, switching from "configurator" to "manual" would
                       // attempt a bundle-ID lookup against names the user
                       // typed by hand, which is wrong.
-                      setDeveloperHints(new Map());
-                      setBundleIdHints(new Map());
+                      // Wipe the imported-apps list so a switch from
+                      // (say) Configurator to manual entry doesn't
+                      // leave the prior import's rows lingering.
+                      setImportedApps([]);
                       setImportInfo('');
                     }}
                   >
@@ -3215,6 +4051,13 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                   </option>
                 ))}
               </select>
+              {countryInferred && (
+                <div className="wizard-country-language-suggestion">
+                  <div className="wizard-note wizard-note-info" style={{ margin: 0 }}>
+                    Using {countryLabel(country)} based on your device region. Change it here if this phone uses another App Store.
+                  </div>
+                </div>
+              )}
               {/* Region → language suggestion. Mirror of the Settings
                   banner: appears below the picker after a region change
                   whose expected language differs from the active UI
@@ -3495,7 +4338,7 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
               // and add a fresh "Re-run import" link inside it for
               // users who want to redo the export without a tab back.
               const cfgutilImportSuccessful =
-                uploadedFileName !== '' && namesText.trim().length > 0;
+                uploadedFileName !== '' && importedApps.length > 0;
               // Pick an emoji for the device class so the success
               // summary visually matches the import-history row
               // SettingsView renders. Uses the live `selectedCfgutilDevice`
@@ -3673,6 +4516,30 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                               </span>
                             )}
                           </div>
+                          {/* Larger, more visible "we're working on it"
+                              panel — the cfgutil probe shells out + checks
+                              the Automation Tools install, which can take
+                              5–30s on a cold call. The button's 16px
+                              spinner alone isn't enough signal. Renders
+                              only while cfgutilChecking is true; aria-live
+                              announces the title to screen readers. */}
+                          {cfgutilChecking && (
+                            <div
+                              className="cfgutil-checking-status"
+                              role="status"
+                              aria-live="polite"
+                            >
+                              <span className="spinner-lg" aria-hidden />
+                              <div className="cfgutil-checking-status-body">
+                                <div className="cfgutil-checking-status-title">
+                                  {tCfg('checking_status_title')}
+                                </div>
+                                <div className="cfgutil-checking-status-copy">
+                                  {tCfg('checking_status_body')}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </li>
 
@@ -3723,6 +4590,40 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                                 </button>
                               </div>
 
+                              {/* While refreshing, show skeleton rows in
+                                  the same slot as the real device list so
+                                  the panel itself reflects the loading
+                                  state — not just the pill button up top.
+                                  Once cfgutil returns and devices are
+                                  populated, the skeleton block is
+                                  replaced by the real radiogroup. */}
+                              {cfgutilDevicesLoading && cfgutilDevices.length === 0 && (
+                                <div
+                                  className="cfgutil-device-list cfgutil-device-list--loading"
+                                  role="status"
+                                  aria-label={tCfg('device_skeleton_aria')}
+                                  aria-live="polite"
+                                >
+                                  <div className="cfgutil-device-loading-banner">
+                                    <span className="spinner-sm" aria-hidden />
+                                    <span>{tCfg('devices_refreshing_status')}</span>
+                                  </div>
+                                  <div className="cfgutil-device-row cfgutil-device-row--skeleton" aria-hidden>
+                                    <span className="cfgutil-device-dot" />
+                                    <span className="cfgutil-device-text">
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--name" />
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--meta" />
+                                    </span>
+                                  </div>
+                                  <div className="cfgutil-device-row cfgutil-device-row--skeleton" aria-hidden>
+                                    <span className="cfgutil-device-dot" />
+                                    <span className="cfgutil-device-text">
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--name" />
+                                      <span className="cfgutil-device-skeleton cfgutil-device-skeleton--meta" />
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                               {cfgutilDevices.length > 0 && (
                                 <div className="cfgutil-device-list" role="radiogroup" aria-label={tCfg('device_picker_aria')}>
                                   {cfgutilDevices.map(device => {
@@ -3935,13 +4836,22 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
               </div>
             </div>
 
-            <textarea
-              className="textarea"
-              data-testid="onboard-app-names"
-              style={{ minHeight: 220 }}
-              value={namesText}
-              onChange={event => setNamesText(event.target.value)}
-              placeholder={'Instagram\nTikTok\nSpotify\nWhatsApp'}
+            <ImportedAppsTable
+              entries={importedApps}
+              onRemove={(id) => setImportedApps(prev => prev.filter(e => e.id !== id))}
+              onAdd={(rawText) => {
+                const names = parseManualAppText(rawText);
+                if (names.length === 0) return;
+                // Dedupe against the existing list (case-insensitive)
+                // so paste-bombing the same names doesn't multiply rows.
+                const existing = new Set(importedApps.map(e => e.name.toLowerCase()));
+                const fresh = names
+                  .filter(n => !existing.has(n.toLowerCase()))
+                  .map(name => makeImportedAppEntry({ name, source: 'manual' }));
+                if (fresh.length > 0) {
+                  setImportedApps(prev => [...prev, ...fresh]);
+                }
+              }}
             />
 
             {/* The "N of these are already tracked" banner that used to
@@ -3974,8 +4884,20 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
               }}
             />
 
+            {/* In-flight search progress. Replaces the previous endless
+                spinner with a live bar + count + cancel — phase-1
+                bundle-ID lookup feeds the running matched count
+                instantly, then phase-2 name search chunks tick the
+                bar batch-by-batch (~50 names each). */}
+            {searching && searchProgress && (
+              <SearchProgressCard
+                progress={searchProgress}
+                onCancel={cancelSearch}
+              />
+            )}
+
             <div className="wizard-footer-actions">
-              <button className="btn btn-secondary" onClick={() => setStep(1)}>
+              <button className="btn btn-secondary" onClick={() => setStep(1)} disabled={searching}>
                 {tStep2('back')}
               </button>
               <button
@@ -3985,7 +4907,14 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                 onClick={handleSearch}
                   disabled={searching || selectedCount === 0 || ocring}
                 >
-                  {searching ? <><span className="spinner" /> {tStep2('search_busy')}</> : tStep2('search')}
+                  {searching && searchProgress
+                    ? tStep2('search_busy_count', {
+                        matched: searchProgress.matched,
+                        total: searchProgress.total,
+                      })
+                    : searching
+                      ? <><span className="spinner" /> {tStep2('search_busy')}</>
+                      : tStep2('search')}
                 </button>
               </div>
           </>
@@ -4030,6 +4959,94 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
               )
             : selected;
           const effectiveCount = effectiveSelected.size;
+          const statusFor = (result: SearchResult): NonNullable<SearchResult['status']> => {
+            if (skippedQueries.has(result.query)) return 'skipped';
+            if (result.status) return result.status;
+            if (selected.has(result.query)) return 'matched';
+            return result.candidates.length > 0 ? 'matched' : 'unmatched';
+          };
+          const pendingMatchCount = searchResults.filter(result => statusFor(result) === 'pending').length;
+          const summary = {
+            total: searchResults.length,
+            matched: searchResults.filter(result => statusFor(result) === 'matched' && selected.has(result.query)).length,
+            bundle: searchResults.filter(result => statusFor(result) === 'matched' && result.matchSource === 'bundle').length,
+            name: searchResults.filter(result => statusFor(result) === 'matched' && result.matchSource !== 'bundle').length,
+            pending: pendingMatchCount,
+            skipped: searchResults.filter(result => statusFor(result) === 'skipped').length,
+            unavailable: searchResults.filter(result => statusFor(result) === 'unmatched').length,
+          };
+          // Group by the *initial* match shape, NOT by the current
+          // checkbox state. Earlier versions filtered each section on
+          // `selected.has(result.query)`, so unticking a row made it
+          // jump from "Matched by bundle ID" to "Needs review" mid-
+          // session — confusing because the user thinks they just
+          // unchecked an import, not relocated the row. With the new
+          // filter, deselecting toggles the row's checkbox but keeps
+          // it visually anchored to its original section. The actual
+          // selected-for-import set still drives the import via
+          // `effectiveSelected`, and the summary counts still reflect
+          // the live selection state for accuracy.
+          const sectionDefs = [
+            {
+              id: 'bundle',
+              title: 'Matched by bundle ID',
+              description: 'Highest-confidence matches from the identifier imported from the device. Untick a row to skip it — it stays in this section.',
+              results: visibleResults.filter(result =>
+                statusFor(result) === 'matched' && result.matchSource === 'bundle',
+              ),
+            },
+            {
+              id: 'name',
+              title: 'Matched by name',
+              description: 'Good matches from App Store search. Review rows with common app names or unexpected developers; unticking keeps the row here.',
+              results: visibleResults.filter(result =>
+                statusFor(result) === 'matched' && result.matchSource !== 'bundle',
+              ),
+            },
+            {
+              id: 'review',
+              title: 'Needs review',
+              description: 'Ambiguous rows that need a manual pick before import.',
+              results: visibleResults.filter(result => statusFor(result) === 'pending'),
+            },
+            // "unavailable" used to bundle unmatched + skipped together,
+            // but the actions a user wants on each are different: an
+            // unmatched row is a candidate for the "save as manual app"
+            // triage below, while a skipped row is intentionally out
+            // of the import. Splitting them gives the triage a clean
+            // surface and keeps skipped rows from cluttering it.
+            {
+              id: 'unavailable',
+              title: 'Not in the App Store',
+              description: 'These didn’t resolve against iTunes Lookup or name search. Pick a source per row to save them as manual apps, or skip individually.',
+              results: visibleResults.filter(result => statusFor(result) === 'unmatched'),
+            },
+            {
+              id: 'skipped',
+              title: 'Skipped',
+              description: 'Rows you explicitly skipped. They’re here so you can change your mind before continuing.',
+              results: visibleResults.filter(result => statusFor(result) === 'skipped'),
+            },
+          ].filter(section => section.results.length > 0);
+
+          // List of query names that returned no App Store candidates,
+          // and the subset that the user hasn't already skipped /
+          // researched. Used for the bulk-action banner below the
+          // tracked-banner — on a large cfgutil batch (200+ apps),
+          // clicking "Skip this" per row is unworkable. The banner
+          // gives a single "skip all" affordance and a count so the
+          // user knows what they're collapsing.
+          const unmatchedQueries = searchResults
+            .filter(r => r.candidates.length === 0)
+            .map(r => r.query);
+          // Active = no candidate AND not already marked skipped. We
+          // approximate "marked skipped" by checking whether the item
+          // appears in itemIdByQuery (every block has an itemId; the
+          // skip handler hits /api/imports/items/update without
+          // removing the row, so this check is just a fuzz pass — the
+          // bulk action below is idempotent against already-skipped
+          // rows anyway, so a small over-count is harmless).
+          const unmatchedCount = unmatchedQueries.length;
 
           return (
           <>
@@ -4037,6 +5054,72 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             <p className="wizard-subtitle">
               {tStep3('subtitle')}
             </p>
+
+            {/* Top summary + skip-to-import banner. Surfaces the "you can
+                stop here" affordance so a 212-app review doesn't force
+                the user to scroll the whole list. The button mirrors
+                the footer's confirm CTA — both fire the same
+                handleConfirm path. Hidden mid-search so the counts
+                don't flicker during the iTunes lookup loop. */}
+            {!searching && effectiveCount > 0 && (
+              <div
+                className="wizard-note"
+                style={{
+                  marginTop: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  flexWrap: 'wrap',
+                  background: 'var(--bg-2)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--r-lg)',
+                  padding: '14px 16px',
+                }}
+                role="status"
+              >
+                <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                    ✓ {effectiveCount} {effectiveCount === 1 ? 'app is' : 'apps are'} ready to import
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                    {(() => {
+                      const reviewable = visibleResults.filter(r =>
+                        statusFor(r) === 'matched' &&
+                        !selected.has(r.query) &&
+                        r.candidates.length > 0,
+                      ).length;
+                      const unmatched = visibleResults.filter(r => statusFor(r) === 'unmatched').length;
+                      const parts: string[] = [];
+                      if (reviewable > 0) {
+                        parts.push(
+                          `${reviewable} multi-candidate ${reviewable === 1 ? 'row needs' : 'rows need'} a pick`,
+                        );
+                      }
+                      if (unmatched > 0) {
+                        parts.push(
+                          `${unmatched} ${unmatched === 1 ? 'row didn’t' : 'rows didn’t'} match anywhere`,
+                        );
+                      }
+                      if (parts.length === 0) {
+                        return 'Click below to import these now, or scroll to review individual rows.';
+                      }
+                      return `Skip the import below to handle them later, or scroll down: ${parts.join(', ')}.`;
+                    })()}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => void handleConfirm(effectiveSelected)}
+                  disabled={pendingMatchCount > 0 || rematchingRegion}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {pendingMatchCount > 0
+                    ? `Waiting for ${pendingMatchCount}…`
+                    : `Import ${effectiveCount} now →`}
+                </button>
+              </div>
+            )}
 
             {/* Already-tracked banner (moved from Step 2). Uses the exact
                 appleId lookup so the count reflects the actual matches
@@ -4132,7 +5215,7 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                   <button
                     type="button"
                     className="wizard-rate-banner-cancel"
-                    onClick={() => queuedSearch.cancel()}
+                    onClick={() => void handleCancelQueuedMatches()}
                     aria-label={tStep3('rate_limit_cancel_aria')}
                   >
                     {tStep3('rate_limit_cancel')}
@@ -4141,31 +5224,383 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
               );
             })()}
 
-            <div className="search-result-list">
-              {visibleResults.map(result => (
-                <SearchResultBlock
-                  key={result.query}
-                  result={result}
-                  chosen={selected.get(result.query) ?? null}
-                  editing={editingBlock === result.query}
-                  developerHint={developerHints.get(result.query.toLowerCase()) ?? ''}
-                  trackedByAppleId={trackedByAppleId}
-                  onChoose={candidate => {
-                    if (candidate === null) {
-                      const next = new Map(selected);
-                      next.delete(result.query);
-                      setSelected(next);
-                      return;
-                    }
+            {/* Country-rematch toolbar (kept from our branch). Lets the
+                user switch App Store storefront mid-match without
+                losing manual choices or skipped rows. */}
+            <div className="onboard-match-toolbar">
+              <div>
+                <div className="onboard-match-toolbar-title">
+                  Matching in {countryLabel(country)} ({country.toUpperCase()})
+                </div>
+                <div className="onboard-match-toolbar-sub">
+                  Change storefront here if the phone uses another App Store. Manual choices and skipped rows are preserved.
+                </div>
+              </div>
+              <div className="onboard-match-region-controls">
+                <select
+                  className="settings-input settings-select"
+                  value={country}
+                  disabled={rematchingRegion}
+                  onChange={event => void handleRegionRematch(event.target.value)}
+                  aria-label="Change App Store region and rematch"
+                >
+                  {COUNTRY_OPTIONS.map(option => (
+                    <option key={option.code} value={option.code}>
+                      {option.label} ({option.code.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={rematchingRegion}
+                  onClick={() => void handleRegionRematch(country)}
+                >
+                  {rematchingRegion ? <><span className="spinner-sm" /> Rematching…</> : 'Rematch this region'}
+                </button>
+              </div>
+            </div>
 
-                    setSelected(new Map(selected).set(result.query, candidate));
-                  }}
-                  onResearch={(nextQuery, nextDeveloper, force) =>
-                    handleBlockResearch(result.query, nextQuery, nextDeveloper, force)
-                  }
-                  onSkip={() => handleBlockSkip(result.query)}
-                />
-              ))}
+            {unmatchedCount > 0 && (
+              // Unmatched-apps banner (from main's PR #7). Big cfgutil
+              // imports routinely produce 50+ rows that didn't resolve
+              // to an App Store candidate (sideloaded, region-restricted,
+              // names too generic to disambiguate). One "skip all"
+              // affordance keeps the review list usable.
+              //
+              // Note: the flat `visibleResults.map(...)` rendering that
+              // originally followed this on main was dropped during the
+              // merge — our branch's grouped `sectionDefs` rendering
+              // below already renders the same blocks but organised by
+              // status, which is the superseding UX.
+              <div className="wizard-note wizard-note-info" style={{ marginTop: 12 }}>
+                <strong>{tStep3('unmatched_lead', { count: unmatchedCount })}</strong>
+                {tStep3('unmatched_body')}
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      for (const query of unmatchedQueries) {
+                        void handleBlockSkip(query);
+                      }
+                    }}
+                  >
+                    {tStep3('unmatched_skip_all', { count: unmatchedCount })}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="onboard-match-summary">
+              <span>{summary.total} imported</span>
+              <span>{summary.matched} matched</span>
+              <span>{summary.bundle} exact bundle ID</span>
+              <span>{summary.name} name/manual</span>
+              {summary.pending > 0 && <span>{summary.pending} pending</span>}
+              {summary.skipped > 0 && <span>{summary.skipped} skipped</span>}
+              {summary.unavailable > 0 && <span>{summary.unavailable} unavailable</span>}
+              {webClipEntries.length > 0 && <span>{webClipEntries.length} web shortcuts</span>}
+            </div>
+
+            {/* Safari web-shortcuts panel. Rendered above the section list
+                so the user spots and dispatches them up front — saving as
+                a batch of manual web-apps is the right action 99% of the
+                time, and clearing them gets the panel out of the way for
+                the App Store match review below. */}
+            {webClipEntries.length > 0 && (
+              <section className="onboard-match-section" aria-labelledby="webclip-section-heading">
+                <div className="onboard-match-section-header">
+                  <div>
+                    <h2 id="webclip-section-heading">
+                      🧭 Safari shortcuts <span style={{ color: 'var(--text-2)', fontWeight: 400 }}>
+                        (not App Store apps)
+                      </span>
+                    </h2>
+                    <p>
+                      {webClipSaveState === 'saved'
+                        ? `Saved ${webClipSavedCount} as manual web apps. Visit Settings → Manual Apps to fill in privacy-policy URLs and notes.`
+                        : `${webClipEntries.length} rows look like home-screen shortcuts added from Safari. Saving them lands each one in Manual Apps with source = "Safari web app".`}
+                    </p>
+                  </div>
+                  <span>{webClipEntries.length}</span>
+                </div>
+                {webClipSaveState !== 'saved' && (
+                  <>
+                    <ul className="onboard-webclip-list" style={{
+                      listStyle: 'none',
+                      margin: '0 0 12px',
+                      padding: '0 0 0 4px',
+                      maxHeight: 220,
+                      overflowY: 'auto',
+                    }}>
+                      {webClipEntries.map(e => (
+                        <li key={e.id} style={{
+                          padding: '6px 0',
+                          fontSize: 13,
+                          color: 'var(--text)',
+                          borderBottom: '1px solid var(--border)',
+                        }}>
+                          <strong>{e.name}</strong>
+                          {e.bundleId && (
+                            <span style={{ color: 'var(--text-3)', marginLeft: 8, fontSize: 12 }}>
+                              {e.bundleId.slice(0, 60)}
+                              {e.bundleId.length > 60 ? '…' : ''}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    {webClipSaveError && (
+                      <p style={{ color: 'var(--danger)', fontSize: 13, margin: '0 0 8px' }}>
+                        {webClipSaveError}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={webClipSaveState === 'saving'}
+                        onClick={async () => {
+                          setWebClipSaveState('saving');
+                          setWebClipSaveError('');
+                          try {
+                            const res = await fetch('/api/manual-apps/bulk', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                apps: webClipEntries.map(e => ({
+                                  name: e.name,
+                                  source: 'web_clip' as const,
+                                  developer: e.developer ?? null,
+                                })),
+                              }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok) {
+                              throw new Error(data?.error ?? `HTTP ${res.status}`);
+                            }
+                            const created = typeof data.created === 'number' ? data.created : 0;
+                            setWebClipSavedCount(created);
+                            setWebClipSaveState('saved');
+                            // Drop the web-clip rows from importedApps so
+                            // they no longer count toward summary.total and
+                            // don't reappear if the user navigates back to
+                            // Step 2.
+                            setImportedApps(prev => prev.filter(e => !e.likelyWebClip));
+                          } catch (err) {
+                            setWebClipSaveState('error');
+                            setWebClipSaveError(
+                              err instanceof Error ? err.message : 'Failed to save web apps',
+                            );
+                          }
+                        }}
+                      >
+                        {webClipSaveState === 'saving'
+                          ? <><span className="spinner-sm" /> Saving…</>
+                          : `Save ${webClipEntries.length} as manual web apps`}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            <div className="search-result-list">
+              {sectionDefs.map(section => {
+                // The "Not in the App Store" section needs a different row
+                // shape: each row offers a per-row triage dropdown
+                // (TestFlight / Sideloaded / Web app / Own build / Skip)
+                // and the whole section is finalised with a "Save all as
+                // manual apps" bulk CTA. The default-when-unset is
+                // `sideloaded` because it's the broadest "I know this
+                // app exists but it's not on the App Store" bucket.
+                if (section.id === 'unavailable') {
+                  return (
+                    <section key={section.id} className="onboard-match-section">
+                      <div className="onboard-match-section-header">
+                        <div>
+                          <h2>{section.title}</h2>
+                          <p>
+                            {unmatchedSaveState === 'saved'
+                              ? `Saved ${unmatchedSavedCount} as manual apps. Visit Settings → Manual Apps to add privacy-policy URLs or notes.`
+                              : section.description}
+                          </p>
+                        </div>
+                        <span>{section.results.length}</span>
+                      </div>
+                      {unmatchedSaveState !== 'saved' && (
+                        <>
+                          <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 12px' }}>
+                            {section.results.map(result => {
+                              const choice = triageChoices.get(result.query) ?? 'sideloaded';
+                              return (
+                                <li
+                                  key={result.query}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid var(--border)',
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <strong style={{ flex: '1 1 220px', minWidth: 0 }}>
+                                    {result.query}
+                                  </strong>
+                                  <label
+                                    style={{ fontSize: 12, color: 'var(--text-2)' }}
+                                    htmlFor={`triage-${result.query}`}
+                                  >
+                                    Save as
+                                  </label>
+                                  <select
+                                    id={`triage-${result.query}`}
+                                    className="settings-input settings-select"
+                                    style={{ minWidth: 180 }}
+                                    value={choice}
+                                    onChange={(e) => {
+                                      const next = new Map(triageChoices);
+                                      next.set(result.query, e.target.value as TriageChoice);
+                                      setTriageChoices(next);
+                                    }}
+                                  >
+                                    <option value="sideloaded">Sideloaded / enterprise</option>
+                                    <option value="testflight">TestFlight beta</option>
+                                    <option value="web_clip">Safari web app</option>
+                                    <option value="own_build">Own build (Xcode)</option>
+                                    <option value="skip">Skip — don’t track</option>
+                                  </select>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                          {unmatchedSaveError && (
+                            <p style={{ color: 'var(--danger)', fontSize: 13, margin: '0 0 8px' }}>
+                              {unmatchedSaveError}
+                            </p>
+                          )}
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              disabled={unmatchedSaveState === 'saving'}
+                              onClick={async () => {
+                                setUnmatchedSaveState('saving');
+                                setUnmatchedSaveError('');
+                                const payload = section.results
+                                  .map(r => {
+                                    const choice = triageChoices.get(r.query) ?? 'sideloaded';
+                                    if (choice === 'skip') return null;
+                                    return {
+                                      name: r.query,
+                                      source: choice,
+                                      developer: developerHints.get(r.query.toLowerCase()) ?? null,
+                                    };
+                                  })
+                                  .filter((row): row is NonNullable<typeof row> => row !== null);
+                                if (payload.length === 0) {
+                                  // All rows skipped — treat as save success
+                                  // with count 0 so the section collapses.
+                                  setUnmatchedSavedCount(0);
+                                  setUnmatchedSaveState('saved');
+                                  return;
+                                }
+                                try {
+                                  const res = await fetch('/api/manual-apps/bulk', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ apps: payload }),
+                                  });
+                                  const data = await res.json().catch(() => ({}));
+                                  if (!res.ok) {
+                                    throw new Error(data?.error ?? `HTTP ${res.status}`);
+                                  }
+                                  const created = typeof data.created === 'number' ? data.created : 0;
+                                  setUnmatchedSavedCount(created);
+                                  setUnmatchedSaveState('saved');
+                                  // Skip the just-saved rows so they
+                                  // disappear from this section and don't
+                                  // count toward summary.unavailable.
+                                  for (const row of payload) {
+                                    void handleBlockSkip(row.name);
+                                  }
+                                } catch (err) {
+                                  setUnmatchedSaveState('error');
+                                  setUnmatchedSaveError(
+                                    err instanceof Error ? err.message : 'Failed to save manual apps',
+                                  );
+                                }
+                              }}
+                            >
+                              {unmatchedSaveState === 'saving'
+                                ? <><span className="spinner-sm" /> Saving…</>
+                                : `Save ${section.results.length} as manual apps`}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </section>
+                  );
+                }
+                return (
+                <section key={section.id} className="onboard-match-section">
+                  <div className="onboard-match-section-header">
+                    <div>
+                      <h2>{section.title}</h2>
+                      <p>{section.description}</p>
+                    </div>
+                    <span>{section.results.length}</span>
+                  </div>
+                  <div className="onboard-match-section-list">
+                    {section.results.map(result => (
+                      <SearchResultBlock
+                        key={result.query}
+                        result={result}
+                        chosen={selected.get(result.query) ?? null}
+                        editing={editingBlock === result.query}
+                        developerHint={developerHints.get(result.query.toLowerCase()) ?? ''}
+                        trackedByAppleId={trackedByAppleId}
+                        onChoose={candidate => {
+                          if (candidate === null) {
+                            const next = new Map(selected);
+                            next.delete(result.query);
+                            setSelected(next);
+                            setManuallyChosenQueries(prev => {
+                              const manual = new Set(prev);
+                              manual.delete(result.query);
+                              return manual;
+                            });
+                            setSearchResults(prev => prev.map(item =>
+                              item.query === result.query ? { ...item, status: item.candidates.length > 0 ? 'matched' : 'unmatched' } : item,
+                            ));
+                            return;
+                          }
+
+                          setSelected(new Map(selected).set(result.query, candidate));
+                          setSkippedQueries(prev => {
+                            const next = new Set(prev);
+                            next.delete(result.query);
+                            return next;
+                          });
+                          setManuallyChosenQueries(prev => new Set(prev).add(result.query));
+                          setSearchResults(prev => prev.map(item =>
+                            item.query === result.query
+                              ? { ...item, status: 'matched', matchSource: 'manual' }
+                              : item,
+                          ));
+                        }}
+                        onResearch={(nextQuery, nextDeveloper, force) =>
+                          handleBlockResearch(result.query, nextQuery, nextDeveloper, force)
+                        }
+                        onSkip={() => handleBlockSkip(result.query)}
+                      />
+                    ))}
+                  </div>
+                </section>
+                );
+              })}
               {visibleResults.length === 0 && searchResults.length > 0 && (
                 // Only reachable when "Hide already-tracked apps" has
                 // filtered every block out — tell the user what happened
@@ -4195,9 +5630,11 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                 style={{ flex: 1 }}
                 data-testid="onboard-confirm-import"
                 onClick={() => void handleConfirm(effectiveSelected)}
-                disabled={effectiveCount === 0}
+                disabled={effectiveCount === 0 || pendingMatchCount > 0 || rematchingRegion}
               >
-                {tStep3('import_count', { count: effectiveCount })}
+                {pendingMatchCount > 0
+                  ? `Waiting for ${pendingMatchCount} match${pendingMatchCount === 1 ? '' : 'es'}…`
+                  : tStep3('import_count', { count: effectiveCount })}
               </button>
             </div>
           </>
@@ -4223,12 +5660,22 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
             </p>
 
             {(() => {
+              void scrapeRateTick;
               const total = scrapeList.length;
               const successCount = scrapeList.filter(item => item.status === 'success').length;
               const errorCount = scrapeList.filter(item => item.status === 'error').length;
               const queuedCount = scrapeList.filter(item => item.status === 'queued' || item.status === 'pending').length;
               const completedCount = successCount + errorCount;
-              const progressPct = total > 0 ? Math.max(4, Math.round((completedCount / total) * 100)) : 0;
+              const drainState = importQueue.drainState;
+              const attemptedCount = drainState
+                ? Math.min(total, Math.max(completedCount, drainState.processed))
+                : completedCount;
+              const drainPausedUntil = drainState?.pausedUntil ?? null;
+              const drainPaused = Boolean(drainPausedUntil && drainPausedUntil > Date.now());
+              const drainPausedSec = drainPausedUntil
+                ? Math.max(1, Math.ceil((drainPausedUntil - Date.now()) / 1000))
+                : 0;
+              const progressPct = total > 0 ? Math.max(4, Math.round((attemptedCount / total) * 100)) : 0;
               return (
                 <div className="onboard-import-status-card" role="status" aria-live="polite">
                   <div className="onboard-import-status-topline">
@@ -4236,10 +5683,12 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                       <div className="onboard-import-status-title">
                         {done
                           ? tStep4('status_done', { done: completedCount, total })
-                          : tStep4('status_running', { done: completedCount, total })}
+                          : tStep4('status_running', { done: attemptedCount, total })}
                       </div>
                       <div className="onboard-import-status-sub">
-                        {queuedCount > 0
+                        {drainPaused
+                          ? tStep4('rate_limit_sub', { sec: drainPausedSec })
+                          : queuedCount > 0
                           ? tStep4('status_background_hint', { count: queuedCount })
                           : errorCount > 0
                             ? tStep4('status_done_with_errors', { count: errorCount })
@@ -4344,9 +5793,19 @@ export default function OnboardWizard({ initialDevice = 'desktop', flags }: Onbo
                         {item.status === 'queued' && (
                           <div className="scrape-sub" style={{ color: 'var(--orange)' }}>
                             {item.error ?? tStep4('row_queued_default')}
-                            {item.retryAfterMs
-                              ? tStep4('row_queued_retry_in', { sec: Math.max(1, Math.round(item.retryAfterMs / 1000)) })
-                              : ''}
+                            {/*
+                              `row_queued_retry_in` (a "Next retry in NNNs"
+                              countdown) used to render here, derived from
+                              the row's next_attempt_at. It was misleading:
+                              once the server worker claims a row it pushes
+                              next_attempt_at out by 10 minutes as an
+                              in-flight fence (lib/imports.ts ::
+                              claimQueuedBatch), so the user saw a 600s
+                              countdown for a row that was actually about
+                              to finish scraping in seconds. We drop the
+                              timer entirely — the static "Queued / retrying"
+                              copy is the truthful signal.
+                            */}
                           </div>
                         )}
                         {item.status === 'success' && item.changesDetected && (
@@ -4838,6 +6297,15 @@ function SearchResultBlock({
   const moreLabel = chosen
     ? t('see_other_chosen', { count: otherCount })
     : t('see_other_unchosen', { count: otherCount });
+  const status = result.status ?? (chosen ? 'matched' : result.candidates.length > 0 ? 'matched' : 'unmatched');
+  const matchMethodLabel = result.matchSource === 'bundle'
+    ? 'Exact bundle ID'
+    : result.matchSource === 'manual'
+      ? 'Manual choice'
+      : result.matchSource === 'name'
+        ? 'Name match'
+        : null;
+  const storefrontLabel = result.searchedCountry ? countryLabel(result.searchedCountry) : null;
 
   const beginEdit = () => {
     setDraft(result.query);
@@ -4936,14 +6404,24 @@ function SearchResultBlock({
                 colliding with the pill. */}
             <div className="search-result-query-top">
               <div className="search-result-query">&ldquo;{result.query}&rdquo;</div>
-              {(chosen || chosenTracked || (developerHint && !chosen)) && (
+              {(chosen || chosenTracked || (developerHint && !chosen) || status === 'pending' || matchMethodLabel) && (
                 <div className="search-result-query-pills">
+                  {status === 'pending' && (
+                    <span className="search-result-pending">
+                      Pending
+                    </span>
+                  )}
                   {chosen && (
                     <span
                       className="search-result-confirmed"
                       title={t('confirmed_title', { name: chosen.name, dev: chosen.developer })}
                     >
                       {t('confirmed')}
+                    </span>
+                  )}
+                  {matchMethodLabel && (
+                    <span className="search-result-method">
+                      {matchMethodLabel}
                     </span>
                   )}
                   {chosenTracked && (
@@ -5001,13 +6479,29 @@ function SearchResultBlock({
         )}
       </div>
 
-      {result.candidates.length === 0 ? (
+      {status === 'pending' ? (
+        <div className="search-result-empty search-result-pending-body">
+          <p className="search-result-empty-copy">
+            Apple paused this match. We will fill in the App Store details after the cooldown; import waits so this app is not silently skipped.
+            {result.sourceBundleId ? ` Bundle ID: ${result.sourceBundleId}.` : ''}
+          </p>
+          <div className="search-result-empty-actions">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => void onSkip()}
+              disabled={editing}
+            >
+              {t('skip_this')}
+            </button>
+          </div>
+        </div>
+      ) : result.candidates.length === 0 ? (
         <div className="search-result-empty">
           <p className="search-result-empty-copy">
-            {t('no_matches_lead')}
-            {isEditing
-              ? t('no_matches_editing')
-              : t('no_matches_idle')}
+            {result.sourceBundleId
+              ? `No App Store record for bundle ID ${result.sourceBundleId}${storefrontLabel ? ` in ${storefrontLabel}` : ''}. The app may be unavailable in this region, delisted, or installed outside the App Store.`
+              : `${t('no_matches_lead')}${isEditing ? t('no_matches_editing') : t('no_matches_idle')}`}
           </p>
           {!isEditing && (
             <div className="search-result-empty-actions">
@@ -5043,6 +6537,11 @@ function SearchResultBlock({
         <>
           {candidates.map(candidate => {
             const candidateTracked = trackedByAppleId.get(candidate.appleId);
+            const bundleMismatch = Boolean(
+              result.sourceBundleId &&
+              candidate.bundleId &&
+              result.sourceBundleId.toLowerCase() !== candidate.bundleId.toLowerCase(),
+            );
             return (
               <div
                 key={candidate.appleId}
@@ -5104,8 +6603,19 @@ function SearchResultBlock({
                         {t('candidate_tracking_chip')}
                       </span>
                     )}
+                    {bundleMismatch && (
+                      <span className="candidate-bundle-warning">
+                        Bundle differs
+                      </span>
+                    )}
                   </div>
                   <div className="candidate-dev">{candidate.developer}</div>
+                  {result.sourceBundleId && (
+                    <div className="candidate-dev">
+                      Imported {result.sourceBundleId}
+                      {candidate.bundleId ? ` · App Store ${candidate.bundleId}` : ''}
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -14,6 +14,7 @@ import { buildAuditBundle, buildBundleFilename } from '@/lib/audit-bundle';
 import { resolveFlagFromDb } from '@/lib/feature-flags-server';
 import { getActiveFocus } from '@/lib/feature-flag-storage';
 import { readOptionalBoundedJson } from '@/lib/security';
+import { requireMutationGuard } from '@/lib/api-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,22 @@ interface ExportBody {
 }
 
 export async function POST(request: NextRequest) {
+  // Direct admin-token gate in addition to the feature-flag gate below.
+  // The flag alone isn't enough: an attacker who can flip flags via
+  // /api/feature-flags/overrides could otherwise enable the export and
+  // exfiltrate every tracked app. Gate the route on AUDITOR_ADMIN_TOKEN
+  // when configured (Tauri/local installs without the token still pass
+  // through; the proxy's CSRF check covers them).
+  const guard = requireMutationGuard(request, {
+    action: 'export.audit_bundle',
+    rateLimit: {
+      keyPrefix: 'export.audit_bundle',
+      limit: 5,
+      windowMs: 60_000,
+    },
+  });
+  if (!guard.ok) return guard.response;
+
   let body: ExportBody = {};
   try {
     body = await readOptionalBoundedJson<ExportBody>(request, 4 * 1024, {});

@@ -81,21 +81,26 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@ac6db6d3c1f721f886538a378a2d73e85697340a  # v6
         with:
           version: 11.0.6
 
       - name: Install Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
       - name: Install Rust toolchain (${{ matrix.target }})
-        uses: dtolnay/rust-toolchain@stable
+        # Pinned to a SHA, not the `stable` branch — a branch ref is a
+        # particularly weak supply-chain link (anyone with push access
+        # to dtolnay/rust-toolchain could redirect every consumer's
+        # workflow in seconds). Dependabot's github-actions ecosystem
+        # will open a PR when this should be rolled forward.
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable as of 2026-05
         with:
           # Installing the target triple is enough for `cargo build
           # --target x86_64-apple-darwin` to cross-compile from an arm64
@@ -104,7 +109,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Cache Cargo registry + target
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5
         with:
           path: |
             ~/.cargo/registry
@@ -134,11 +139,25 @@ jobs:
       # NODE_MODULE_VERSION that `better-sqlite3` was installed against in
       # the step above — pinning NODE_VERSION at the top of this file
       # guarantees the match.
-      - name: Download bundled Node ${{ env.NODE_VERSION }} (${{ matrix.node_arch }})
+      #
+      # Hash-verified against nodejs.org's SHASUMS256.txt before extraction.
+      # The bundled binary lands inside the signed + notarised app, so a
+      # compromise of the nodejs.org distribution host (or any TLS-MITM
+      # the GitHub runner happens to walk into) would otherwise propagate
+      # a tampered Node into every privacytracker auto-update. Gatekeeper
+      # only verifies the cert chain — it doesn't know what bytes Node
+      # was supposed to be.
+      - name: Download + verify bundled Node ${{ env.NODE_VERSION }} (${{ matrix.node_arch }})
         run: |
           set -euo pipefail
-          curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-${{ matrix.node_arch }}.tar.gz" \
-            | tar xz -C /tmp
+          TARBALL="node-v${NODE_VERSION}-darwin-${{ matrix.node_arch }}.tar.gz"
+          curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${TARBALL}"
+          curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt"
+          # Pull just the tarball's row from SHASUMS256.txt and verify.
+          # `shasum -c -` exits non-zero on mismatch; `set -e` fails the step.
+          grep " ${TARBALL}\$" SHASUMS256.txt | shasum -a 256 -c -
+          tar xzf "${TARBALL}" -C /tmp
+          rm -f "${TARBALL}" SHASUMS256.txt
           mkdir -p src-tauri/binaries
           cp "/tmp/node-v${NODE_VERSION}-darwin-${{ matrix.node_arch }}/bin/node" \
             "src-tauri/binaries/node-${{ matrix.target }}"
@@ -184,7 +203,7 @@ jobs:
       #   • Uploading the resulting artifacts to a draft release when a tag
       #     push fires this workflow (see `tagName` / `releaseName` below).
       - name: Build, sign, notarize, and upload
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4  # v0
         env:
           # --- Apple Developer ID (signing) ---
           # APPLE_CERTIFICATE is the base64 of your Developer ID Application
@@ -264,7 +283,7 @@ jobs:
 
       - name: Upload updater payload artefact
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: updater-${{ matrix.target }}
           path: updater-stage/${{ matrix.target }}/
@@ -325,7 +344,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Resolve release context
         id: ctx
@@ -349,7 +368,7 @@ jobs:
           echo "pub_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"        >> "$GITHUB_OUTPUT"
 
       - name: Download per-arch updater artefacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
         with:
           path: updater
           pattern: updater-*
@@ -434,7 +453,7 @@ jobs:
       # release. Useful when debugging "why does the updater think we're
       # already on latest" reports.
       - name: Upload latest.json as workflow artefact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: latest-json
           path: latest.json

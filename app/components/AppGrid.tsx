@@ -14,6 +14,9 @@ import type {
 import type { AppProfileBadge } from '../../lib/privacy-profile';
 import { localiseBadgeLabel, localiseBadgeDescription } from '../../lib/i18n-meta';
 import VerdictPill from './VerdictPill';
+import ReviewQueue from './ReviewQueue';
+import BulkSelectBar from './BulkSelectBar';
+import type { QueueAppInput } from '../../lib/review-queue';
 
 interface App {
   id: string;
@@ -163,6 +166,12 @@ interface AppGridProps {
    * passed, all surfaces default to visible (legacy behaviour).
    */
   flags?: AppGridFlagState;
+  /** Active audience — drives review-queue guardian variant + copy. */
+  audience?: 'self' | 'loved_one' | 'guardian';
+  /** Whether the user has a privacy profile set (controls mismatch UI). */
+  hasProfile?: boolean;
+  /** Show the progress bar in the queue running header. */
+  showQueueProgressBar?: boolean;
 }
 
 export interface AppGridFlagState {
@@ -185,7 +194,11 @@ export interface AppGridFlagState {
   cardResyncButton: boolean;
   cardDeleteButton: boolean;
   cardAnnotationHighlight: boolean;
+  cardVerdictPill: boolean;
   emptyState: boolean;
+  reviewQueueEnabled: boolean;
+  reviewQueueBulkSelect: boolean;
+  reviewQueueCfgutilUninstall: boolean;
 }
 
 export default function AppGrid({
@@ -197,6 +210,9 @@ export default function AppGrid({
   showAccessibilityFilter = true,
   pendingChangeCategoriesByApp = {},
   flags,
+  audience = 'self',
+  hasProfile = false,
+  showQueueProgressBar = true,
 }: AppGridProps) {
   // i18n — first wave covers page title, filter/sort chrome (placeholder,
   // aria-labels, clear-filter buttons, "All risks" pseudo-option),
@@ -236,7 +252,11 @@ export default function AppGrid({
     cardResyncButton: flags?.cardResyncButton ?? true,
     cardDeleteButton: flags?.cardDeleteButton ?? true,
     cardAnnotationHighlight: flags?.cardAnnotationHighlight ?? true,
+    cardVerdictPill: flags?.cardVerdictPill ?? true,
     emptyState: flags?.emptyState ?? true,
+    reviewQueueEnabled: flags?.reviewQueueEnabled ?? true,
+    reviewQueueBulkSelect: flags?.reviewQueueBulkSelect ?? true,
+    reviewQueueCfgutilUninstall: flags?.reviewQueueCfgutilUninstall ?? false,
   };
 
   const [apps, setApps] = useState<App[]>(initialApps);
@@ -307,6 +327,41 @@ export default function AppGrid({
   const COMPARE_MAX = 2;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [compareMode, setCompareMode] = useState(false);
+
+  // ── Review-queue + bulk-select mode ──────────────────────────────────
+  //
+  // `pageMode` switches the grid between three top-level interactions:
+  //   - 'grid'   — normal browsing (default)
+  //   - 'select' — bulk-mark mode with checkboxes; bulk toolbar visible
+  // Queue mode is a separate full-screen takeover toggled via
+  // `queueOpen` so it can co-exist with whatever pageMode is current.
+  // Compare mode and Select mode are mutually exclusive — entering one
+  // exits the other to keep card-click semantics unambiguous.
+  const [pageMode, setPageMode] = useState<'grid' | 'select'>('grid');
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([]);
+  // Snapshot of verdicts at the moment Select mode was entered — drives
+  // the per-app rollback set surfaced by the BulkSelectBar's Undo toast.
+  const [bulkPrevVerdicts, setBulkPrevVerdicts] = useState<Record<string, import('../../lib/verdict-types').VerdictValue>>({});
+
+  const enterSelectMode = useCallback(() => {
+    setPageMode('select');
+    setCompareMode(false);
+    setSelectedIds([]);
+    setBulkSelectedIds([]);
+    setBulkPrevVerdicts({ ...userVerdicts });
+  }, [userVerdicts]);
+
+  const exitSelectMode = useCallback(() => {
+    setPageMode('grid');
+    setBulkSelectedIds([]);
+  }, []);
+
+  const toggleBulkSelection = useCallback((appId: string) => {
+    setBulkSelectedIds(prev =>
+      prev.includes(appId) ? prev.filter(id => id !== appId) : [...prev, appId],
+    );
+  }, []);
 
   const setRiskLevel = useCallback(
     (next: RiskLevel | null) => {
@@ -697,11 +752,37 @@ export default function AppGrid({
 
   const handleCardClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, appId: string) => {
+      // Select mode wins over compare — when the user has opted into bulk
+      // marking, every click toggles selection. Card body navigation is
+      // suspended until they exit Select mode.
+      if (pageMode === 'select') {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleBulkSelection(appId);
+        return;
+      }
       // Modifier-click toggles selection on any row, regardless of compareMode.
       const isModifier = event.shiftKey || event.metaKey || event.ctrlKey;
       if (isModifier) {
         event.preventDefault();
         event.stopPropagation();
+        // Promote to Select mode when the user shift-clicks a third app —
+        // compare only handles two slots, but the gesture clearly signals
+        // "I want to multi-select." Move both existing compare picks plus
+        // the new click into the bulk selection so nothing is lost.
+        if (
+          f.reviewQueueBulkSelect &&
+          selectedIds.length >= COMPARE_MAX &&
+          !selectedIds.includes(appId)
+        ) {
+          const promoted = [...selectedIds, appId];
+          setSelectedIds([]);
+          setCompareMode(false);
+          setBulkPrevVerdicts({ ...userVerdicts });
+          setBulkSelectedIds(promoted);
+          setPageMode('select');
+          return;
+        }
         toggleSelection(appId);
         return;
       }
@@ -714,7 +795,16 @@ export default function AppGrid({
       }
       // Otherwise: fall through and let the <Link> navigate.
     },
-    [compareMode, toggleSelection],
+    [
+      COMPARE_MAX,
+      compareMode,
+      f.reviewQueueBulkSelect,
+      pageMode,
+      selectedIds,
+      toggleBulkSelection,
+      toggleSelection,
+      userVerdicts,
+    ],
   );
 
   // ── Keyboard shortcuts for the compare flow ──────────────────────────
@@ -825,6 +915,38 @@ export default function AppGrid({
           >
             {compareMode ? tGrid('cancel_compare') : tGrid('compare')}
           </button>}
+          {f.reviewQueueEnabled && (
+            <button
+              type="button"
+              className={`btn btn-secondary review-queue-mode-toggle ${queueOpen ? 'is-active' : ''}`}
+              onClick={() => {
+                if (pageMode === 'select') exitSelectMode();
+                setQueueOpen(true);
+              }}
+              title={tGrid('mode_toggle_queue_title')}
+              disabled={apps.length === 0}
+            >
+              {tGrid('mode_toggle_queue')}
+            </button>
+          )}
+          {f.reviewQueueBulkSelect && (
+            <button
+              type="button"
+              className={`btn ${pageMode === 'select' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => {
+                if (pageMode === 'select') {
+                  exitSelectMode();
+                } else {
+                  enterSelectMode();
+                }
+              }}
+              title={tGrid('mode_toggle_select_title')}
+              aria-pressed={pageMode === 'select'}
+              disabled={apps.length === 0}
+            >
+              {pageMode === 'select' ? tGrid('mode_toggle_select_exit') : tGrid('mode_toggle_select')}
+            </button>
+          )}
           {f.actionsAddApps && <Link
             href="/onboard"
             className="btn btn-primary"
@@ -839,6 +961,22 @@ export default function AppGrid({
           (see app/dashboard/page.tsx). The `reviewableCount` prop is
           still accepted for back-compat but no longer rendered. */}
 
+      {/* Bulk-select toolbar lives ABOVE the filter row so it's visible
+          the moment the user enters Select mode — previously it was
+          rendered after the app grid where `position: sticky` only
+          revealed it on scroll, leaving users on tall pages with no
+          visible bar to interact with. */}
+      {pageMode === 'select' && f.reviewQueueBulkSelect && (
+        <BulkSelectBar
+          selectedIds={bulkSelectedIds}
+          visibleIds={sorted.map(a => a.id)}
+          currentVerdicts={bulkPrevVerdicts}
+          onSelectAll={() => setBulkSelectedIds(sorted.map(a => a.id))}
+          onClear={() => setBulkSelectedIds([])}
+          onExit={exitSelectMode}
+        />
+      )}
+
       <div className="toolbar">
         {f.filterSearch && <div
           className="search-input-wrap"
@@ -852,6 +990,10 @@ export default function AppGrid({
             value={filter}
             onChange={e => setFilter(e.target.value)}
             aria-label={tGrid('filter_input_aria')}
+            // Marks this as the primary search target for the menu-bar
+            // Edit → Find (Cmd+F) action. MenuActionsBridge listens for
+            // the `search:focus` event and focuses+selects this input.
+            data-search-focus="true"
           />
         </div>}
         {/* Sort mode — exposed as a radiogroup (single-select) so screen
@@ -1133,6 +1275,7 @@ export default function AppGrid({
             const u = app.unlinkedCount ?? 0;
             const selectionIndex = selectedIds.indexOf(app.id);
             const isSelected = selectionIndex >= 0;
+            const isBulkSelected = bulkSelectedIds.includes(app.id);
             // Coachmark tour spotlights live on the first card so the
             // tour selectors `[data-tour="app-card-first"]`, `…severity-
             // pill-first`, `…resync-button` resolve to a single
@@ -1142,7 +1285,7 @@ export default function AppGrid({
             <div
               key={app.id}
               data-tour={isTourCard ? 'app-card-first' : undefined}
-              className={`app-card app-card-risk-${risk}${isSelected ? ' app-card-selected' : ''}${compareMode ? ' app-card-selectable' : ''}${
+              className={`app-card app-card-risk-${risk}${isSelected ? ' app-card-selected' : ''}${compareMode ? ' app-card-selectable' : ''}${pageMode === 'select' ? ' app-card-bulk-selectable' : ''}${isBulkSelected ? ' app-card-bulk-selected' : ''}${
                 // Wave I — gold-border treatment for apps with at least
                 // one non-deleted annotation. Annotation count isn't
                 // threaded into the grid yet, so the class is reserved on
@@ -1239,6 +1382,14 @@ export default function AppGrid({
                       {selectionIndex === 0 ? 'A' : 'B'}
                     </div>
                   )}
+                  {pageMode === 'select' && (
+                    <div
+                      className={`app-card-bulk-check ${isBulkSelected ? 'is-checked' : ''}`}
+                      aria-hidden="true"
+                    >
+                      {isBulkSelected ? '✓' : ''}
+                    </div>
+                  )}
                 </div>
 
                 <div className="app-card-body">
@@ -1252,7 +1403,7 @@ export default function AppGrid({
                     // own decision, which trumps the derived profile-match.
                     const showProfile = f.cardProfileBadge;
                     const badge = showProfile ? profileBadges[app.id] : null;
-                    const verdict = userVerdicts[app.id];
+                    const verdict = f.cardVerdictPill ? userVerdicts[app.id] : undefined;
                     if (!badge && !verdict) return null;
                     return (
                       <div className="app-card-profile-row">
@@ -1405,9 +1556,12 @@ export default function AppGrid({
 
           {/* Custom apps — user-authored entries with no App Store listing.
               They share the grid so users discover them alongside the rest,
-              but opt out of risk chips, sync, and per-app navigation to
-              /apps/[id] (which doesn't exist for them). Deletion is inline
-              via the /api/manual-apps DELETE endpoint. */}
+              but opt out of risk chips and sync. The card link points at
+              the manual-app detail page (`/manual-apps/[id]`) which mirrors
+              the App Store apps' `/apps/[id]` shape — the user's mental
+              model is "click an app card, see that app", whether it came
+              from cfgutil or was hand-added. Deletion is inline via the
+              /api/manual-apps DELETE endpoint. */}
           {filteredManualApps.map(m => {
             const meta = manualSourceMeta.get(m.source);
             const icon = meta?.icon ?? '📦';
@@ -1419,7 +1573,7 @@ export default function AppGrid({
             return (
               <div key={`manual-${m.id}`} className="app-card app-card-custom">
                 <Link
-                  href="/dashboard/manual-apps"
+                  href={`/manual-apps/${encodeURIComponent(m.id)}`}
                   className="app-card-link"
                   aria-label={tGrid('open_custom_aria', { name: m.name })}
                 >
@@ -1621,6 +1775,20 @@ export default function AppGrid({
             </div>
           </div>
         </div>
+      )}
+
+      {queueOpen && f.reviewQueueEnabled && (
+        <ReviewQueue
+          apps={sorted as QueueAppInput[]}
+          userVerdicts={userVerdicts}
+          profileBadges={profileBadges}
+          hasProfile={hasProfile}
+          audience={audience}
+          changedAppIds={new Set(sorted.filter(a => a.changeCount > 0).map(a => a.id))}
+          showCfgutilOffer={f.reviewQueueCfgutilUninstall}
+          showProgressBar={showQueueProgressBar}
+          onClose={() => setQueueOpen(false)}
+        />
       )}
 
       {/*

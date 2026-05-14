@@ -8,6 +8,7 @@ import {
   checkRateLimit,
   rateLimitKeyForRequest,
 } from '../../../lib/security';
+import { withApiTiming } from '../../../lib/api-timing';
 
 // Guardrails:
 //   - URL allowlist: only apps.apple.com / itunes.apple.com with an /id<digits>
@@ -18,7 +19,7 @@ import {
 //   - Per-batch cap: the legacy handler trusted `urls` unconditionally.
 const MAX_URLS_PER_BATCH = 100;
 
-export async function POST(request: Request) {
+export const POST = withApiTiming('/api/scrape', async (request: Request) => {
   const rate = checkRateLimit({
     key: rateLimitKeyForRequest(request, 'scrape'),
     limit: 30,
@@ -88,6 +89,29 @@ export async function POST(request: Request) {
       summarizePolicies === true,
       { trigger: triggerOverride },
     );
+
+    // Server-side log of per-result failures. Without this, a headless
+    // deployment (Docker / non-Tauri) has no breadcrumb when an
+    // individual app's scrape errors out — the wizard's import-history
+    // row shows the error string to the user but the operator log has
+    // nothing. Worth emitting at error level since each entry indicates
+    // a specific app that didn't import. Bounded — the route already
+    // caps the batch via MAX_URLS_PER_BATCH.
+    const failures = results.filter(
+      (r): r is Extract<typeof r, { status: 'error' | 'rate_limited' }> =>
+        r.status === 'error' || r.status === 'rate_limited',
+    );
+    if (failures.length > 0) {
+      console.error(
+        `[scrape] ${failures.length} / ${results.length} URLs failed:`,
+        failures.map(f => ({
+          url: f.url,
+          status: f.status,
+          error: f.error,
+        })),
+      );
+    }
+
     if (
       summarizePolicies !== true &&
       results.some(result => result.status === 'success')
@@ -99,4 +123,4 @@ export async function POST(request: Request) {
     console.error('Scrape API error', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});

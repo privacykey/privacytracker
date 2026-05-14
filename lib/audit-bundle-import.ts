@@ -58,12 +58,14 @@
 import crypto from 'crypto';
 import packageJson from '../package.json';
 import db from './db';
+import { sanitizePolicyUrl, validateAppStoreUrl, validateExternalUrl } from './security';
 import type {
   AuditBundle,
   BundleApp,
   BundleAnnotation,
 } from './audit-bundle';
 import { BUNDLE_VERSION } from './audit-bundle';
+import type { ProfilePresetKey } from './privacy-profile';
 import { getSetting, setSetting } from './scheduler';
 
 // ---------------------------------------------------------------------------
@@ -326,6 +328,12 @@ export interface ImportSummary {
   verdictsAdded: number;
   /** Whether the recommender's privacy profile suggestion was stashed. */
   recommenderProfileStashed: boolean;
+  /**
+   * The named preset key the recommender's profile matched at export
+   * time, when the bundle carries one. `null` for v1/v2 bundles (which
+   * predate the field) and for recommenders whose profile was custom.
+   */
+  recommenderProfilePreset: ProfilePresetKey | null;
   /** Recommender display name (for the provenance banner). */
   recommenderName: string;
 }
@@ -480,6 +488,12 @@ export function importAuditBundle(
       try {
         setSetting('recommender_profile_suggestion', JSON.stringify({
           profile: bundle.recommender_profile,
+          // Stash the preset key alongside the raw profile so the loved
+          // one's "preview + accept" UI can render "Recommender used the
+          // Strict preset" without recomputing matchPreset() every time.
+          // Falls through as undefined for v1/v2 bundles that predate
+          // the field; the consumer treats undefined the same as null.
+          preset: bundle.recommender_profile_preset ?? null,
           recommenderName,
           stashedAt: importedAt,
         }));
@@ -570,6 +584,9 @@ export function importAuditBundle(
     annotationsAdded,
     verdictsAdded,
     recommenderProfileStashed,
+    // Pass through whatever the bundle carried — null for v1/v2 bundles
+    // and for custom profiles. The caller decides whether to render it.
+    recommenderProfilePreset: bundle.recommender_profile_preset ?? null,
     recommenderName,
   };
 }
@@ -593,6 +610,36 @@ function guessIncomingLastSynced(app: BundleApp, exportedAt: string): number {
   if (policyFetchedAt && policyFetchedAt > 0) return policyFetchedAt;
   const ms = Date.parse(exportedAt);
   return Number.isFinite(ms) ? ms : Date.now();
+}
+
+/**
+ * Sanitise URLs that arrived inside an untrusted .audit.json. A malicious
+ * recommender bundle could otherwise embed `javascript:`, `data:`, or
+ * `http://169.254.169.254/…` URLs that end up rendered as `<a href={…}>`
+ * in the review UI or fetched server-side during the next policy sync.
+ * Each helper returns `null` (or `''` for the App-Store URL field) so
+ * the row still inserts cleanly — we drop the URL rather than abort
+ * the whole import for one bad field.
+ */
+function safeAppStoreUrl(raw: unknown): string {
+  if (typeof raw !== 'string' || !raw) return '';
+  const v = validateAppStoreUrl(raw);
+  return v.ok && v.url ? v.url.toString() : '';
+}
+
+function safeIconUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw) return null;
+  // Apple's icon CDN is *.mzstatic.com but we don't require a host
+  // allowlist here — any public http(s) icon URL is acceptable in
+  // principle. The validateExternalUrl call blocks `javascript:`,
+  // `data:`, private IPs, and metadata hosts, which is the threat.
+  const v = validateExternalUrl(raw, { maxLength: 2048 });
+  return v.ok && v.url ? v.url.toString() : null;
+}
+
+function safePolicyUrl(raw: unknown): string | null {
+  const cleaned = sanitizePolicyUrl(raw);
+  return cleaned || null;
 }
 
 function upsertApp(app: BundleApp, lastSynced: number): void {
@@ -626,8 +673,8 @@ function upsertApp(app: BundleApp, lastSynced: number): void {
   ).run(
     app.id,
     app.name,
-    app.url ?? '',
-    app.icon_url,
+    safeAppStoreUrl(app.url),
+    safeIconUrl(app.icon_url),
     app.bundle_id,
     app.developer,
     lastSynced,
@@ -635,7 +682,7 @@ function upsertApp(app: BundleApp, lastSynced: number): void {
     app.current_version,
     app.has_privacy_details,
     app.has_accessibility_labels,
-    app.privacy_policy_url,
+    safePolicyUrl(app.privacy_policy_url),
     app.price_amount ?? null,
     app.price_currency ?? null,
     app.price_formatted ?? null,
@@ -678,7 +725,11 @@ function replaceAppLabels(app: BundleApp): void {
 function upsertPolicySummary(app: BundleApp): void {
   const summary = app.policy_summary;
   if (!summary || (!summary.summary_json && !summary.source_text_excerpt)) return;
-  if (!app.privacy_policy_url) return;
+  // Drop the row entirely if the bundle's policy URL doesn't pass
+  // sanitisation — without a safe URL there's no legitimate place to
+  // navigate to from the summary card.
+  const policyUrl = safePolicyUrl(app.privacy_policy_url);
+  if (!policyUrl) return;
 
   // The bundle ships an excerpt of the source text rather than the full
   // doc (see lib/audit-bundle.ts); we store the excerpt as-is so the
@@ -703,7 +754,7 @@ function upsertPolicySummary(app: BundleApp): void {
        generated_at      = COALESCE(excluded.generated_at, privacy_policy_analyses.generated_at)`,
   ).run(
     app.id,
-    app.privacy_policy_url,
+    policyUrl,
     summary.source_text_excerpt ?? null,
     summary.source_text_excerpt ? summary.source_text_excerpt.split(/\s+/).length : 0,
     summary.summary_json ?? null,

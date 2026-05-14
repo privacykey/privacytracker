@@ -25,9 +25,14 @@ export const BULK_MUTEX_KEY = 'wayback_import_running';
  * Bump when the persisted JSON shape changes. `readBulkState` discards
  * blobs with mismatched versions rather than crashing.
  */
-const STATE_SCHEMA_VERSION = 1;
+const STATE_SCHEMA_VERSION = 2;
 
 export type QueueEntryStatus = 'pending' | 'in_progress' | 'done' | 'failed';
+export type WaybackBulkRunStatus =
+  | 'running'
+  | 'pause_requested'
+  | 'paused'
+  | 'cancel_requested';
 
 export interface QueueEntry {
   appId: string;
@@ -69,6 +74,14 @@ export interface WaybackBulkState {
   initiator: 'manual' | 'resume';
   /** Epoch-ms when state was last persisted. */
   updatedAt: number;
+  /** Cooperative control state for pause/cancel/resume UI. */
+  status: WaybackBulkRunStatus;
+  /** Epoch-ms when a pause was requested, if any. */
+  pauseRequestedAt?: number;
+  /** Epoch-ms when the run was paused at an app boundary, if any. */
+  pausedAt?: number;
+  /** Epoch-ms when cancellation was requested, if any. */
+  cancelRequestedAt?: number;
   /** Id of the app currently being processed (denormalised from queue). */
   currentAppId: string | null;
   /** The full app queue with per-app status. */
@@ -109,15 +122,20 @@ export function readBulkState(): WaybackBulkState | null {
     if (
       !parsed ||
       typeof parsed !== 'object' ||
-      parsed.version !== STATE_SCHEMA_VERSION ||
+      (parsed.version !== 1 && parsed.version !== STATE_SCHEMA_VERSION) ||
       typeof parsed.runId !== 'string' ||
       !Array.isArray(parsed.queue)
     ) {
       return null;
     }
-    // Trust the shape once version matches — writes go through writeBulkState
-    // which controls the shape at the producer side.
-    return parsed as WaybackBulkState;
+    // v1 blobs predate pause/cancel controls. Keep them resumable by treating
+    // them as running until the next write upgrades the persisted version.
+    const status = normaliseRunStatus(parsed.status);
+    return {
+      ...parsed,
+      version: STATE_SCHEMA_VERSION,
+      status,
+    } as WaybackBulkState;
   } catch {
     return null;
   }
@@ -127,13 +145,15 @@ export function readBulkState(): WaybackBulkState | null {
  * Persist the state blob atomically (better-sqlite3 is synchronous).
  * Refreshes `updatedAt` to current wall-clock.
  */
-export function writeBulkState(next: Omit<WaybackBulkState, 'version' | 'updatedAt'> & {
+export function writeBulkState(next: Omit<WaybackBulkState, 'version' | 'updatedAt' | 'status'> & {
   version?: number;
+  status?: WaybackBulkRunStatus;
   updatedAt?: number;
 }): void {
   const payload: WaybackBulkState = {
     ...next,
     version: STATE_SCHEMA_VERSION,
+    status: normaliseRunStatus(next.status),
     updatedAt: Date.now(),
   };
   setSetting(STATE_KEY, JSON.stringify(payload));
@@ -210,4 +230,28 @@ export function summariseState(state: WaybackBulkState): {
 export function hasPendingWork(state: WaybackBulkState | null): boolean {
   if (!state) return false;
   return state.queue.some(entry => entry.status === 'pending' || entry.status === 'in_progress');
+}
+
+/** Paused queues are user-controlled and should not auto-resume on startup. */
+export function isBulkStatePaused(state: WaybackBulkState | null): boolean {
+  return state?.status === 'paused' || state?.status === 'pause_requested';
+}
+
+/** Cancel-requested queues should be cleared rather than auto-resumed. */
+export function isBulkStateCancellationRequested(state: WaybackBulkState | null): boolean {
+  return state?.status === 'cancel_requested';
+}
+
+/** Pending work that should be resumed by the startup hook. */
+export function shouldAutoResumeBulkState(state: WaybackBulkState | null): boolean {
+  return hasPendingWork(state) && !isBulkStatePaused(state) && !isBulkStateCancellationRequested(state);
+}
+
+function normaliseRunStatus(raw: unknown): WaybackBulkRunStatus {
+  return raw === 'pause_requested' ||
+    raw === 'paused' ||
+    raw === 'cancel_requested' ||
+    raw === 'running'
+    ? raw
+    : 'running';
 }

@@ -738,6 +738,35 @@ db.exec(
   "CREATE INDEX IF NOT EXISTS idx_import_items_queue ON import_items(status, next_attempt_at) WHERE status = 'queued'",
 );
 
+// Migration: split URL-less 'queued' rows out into 'pending_search'. Two
+// different retry mechanisms used to compete for the same `'queued'`
+// status: the server-side import-queue worker (for scrape retries, which
+// always have a URL) and the client-side QueuedSearchProvider (for
+// iTunes-search retries, which by definition don't have a URL yet). The
+// worker would claim a URL-less row, see no URL, and mass-error every
+// row in the batch — symptom: "Cannot find module 'react'"-like floods
+// of `[ImportQueue] item error […] — no URL on row` lines. Splitting
+// the status lets each retry path own a disjoint set of rows. This
+// migration heals any rows that pre-date the split.
+//
+// Idempotent: rows already at 'pending_search' aren't touched; on a
+// fresh DB the WHERE filter matches nothing.
+try {
+  const healed = db
+    .prepare(
+      "UPDATE import_items SET status = 'pending_search' " +
+        "WHERE status = 'queued' AND (url IS NULL OR url = '')",
+    )
+    .run();
+  if (healed.changes > 0) {
+    console.info(
+      `[db] migrated ${healed.changes} URL-less 'queued' import_items → 'pending_search'`,
+    );
+  }
+} catch (error) {
+  console.warn('[db] pending_search backfill failed:', error);
+}
+
 // Migration: shortlist_entries.mode — backfill 'privacy' on existing rows
 // (the only mode that existed before this column).
 const shortlistCols = (db.prepare('PRAGMA table_info(shortlist_entries)').all() as { name: string }[]).map(c => c.name);

@@ -35,6 +35,7 @@ import {
   type ImportAppHistoryResult,
   type ImportProgressEvent,
 } from './historical-import';
+import { isAbortError } from './wayback';
 import {
   readBulkState,
   writeBulkState,
@@ -89,6 +90,24 @@ export interface RunBulkOptions {
 export interface RunBulkResult {
   totals: WaybackBulkTotals;
   durationMs: number;
+}
+
+const activeRunAbortControllers = new Map<string, AbortController>();
+
+export function requestActiveBulkWaybackCancel(runId?: string | null): boolean {
+  if (runId) {
+    const controller = activeRunAbortControllers.get(runId);
+    if (!controller) return false;
+    controller.abort();
+    return true;
+  }
+
+  let aborted = false;
+  for (const controller of activeRunAbortControllers.values()) {
+    controller.abort();
+    aborted = true;
+  }
+  return aborted;
 }
 
 /**
@@ -161,6 +180,7 @@ export async function runBulkWaybackImport(
       initiator: options.initiator,
       updatedAt: Date.now(),
       currentAppId: null,
+      status: 'running',
       queue,
       totals: zeroTotals(),
       streamRequested: options.streamRequested ?? false,
@@ -170,8 +190,14 @@ export async function runBulkWaybackImport(
   // Defensively (re)acquire the mutex. The POST handler will have already
   // taken it, but the resume path doesn't, and a redundant set to 'true'
   // is harmless.
+  state.status = 'running';
+  delete state.pausedAt;
+  delete state.pauseRequestedAt;
+  delete state.cancelRequestedAt;
   acquireBulkMutex();
   writeBulkState(state);
+  const abortController = new AbortController();
+  activeRunAbortControllers.set(state.runId, abortController);
 
   const runStartedAt = Date.now();
 
@@ -190,6 +216,9 @@ export async function runBulkWaybackImport(
       // from a prior crash are NOT retried automatically — users can
       // kick off a new run to retry.
       if (entry.status === 'done' || entry.status === 'failed') continue;
+
+      const preAppControl = finishIfControlRequested(state, writer, runStartedAt, options);
+      if (preAppControl) return preAppControl;
 
       // Mark in-flight + persist before any work so a crash here is visible.
       entry.status = 'in_progress';
@@ -232,6 +261,7 @@ export async function runBulkWaybackImport(
 
       try {
         const result = await importAppHistory(app, {
+          signal: abortController.signal,
           onProgress: (event: ImportProgressEvent) =>
             writer({ type: 'target', ...event }),
         });
@@ -269,6 +299,12 @@ export async function runBulkWaybackImport(
           result,
         });
       } catch (error) {
+        if (isAbortError(error)) {
+          state.currentAppId = null;
+          const cancelled = finishIfControlRequested(state, writer, runStartedAt, options);
+          if (cancelled) return cancelled;
+          throw error;
+        }
         const message =
           error instanceof Error ? error.message : 'import failed';
         entry.status = 'failed';
@@ -301,6 +337,9 @@ export async function runBulkWaybackImport(
           error: message,
         });
       }
+
+      const postAppControl = finishIfControlRequested(state, writer, runStartedAt, options);
+      if (postAppControl) return postAppControl;
     }
 
     // Clean completion. Write the summary row, clear state + mutex.
@@ -363,7 +402,113 @@ export async function runBulkWaybackImport(
       detail: message.slice(0, 200),
     });
     throw error;
+  } finally {
+    if (activeRunAbortControllers.get(state.runId) === abortController) {
+      activeRunAbortControllers.delete(state.runId);
+    }
   }
+}
+
+function syncControlStatusFromDisk(state: WaybackBulkState): void {
+  const persisted = readBulkState();
+  if (!persisted || persisted.runId !== state.runId) return;
+  if (persisted.status === 'pause_requested' || persisted.status === 'cancel_requested') {
+    state.status = persisted.status;
+    state.pauseRequestedAt = persisted.pauseRequestedAt;
+    state.cancelRequestedAt = persisted.cancelRequestedAt;
+  }
+}
+
+function finishIfControlRequested(
+  state: WaybackBulkState,
+  writer: StreamWriter,
+  runStartedAt: number,
+  options: RunBulkOptions,
+): RunBulkResult | null {
+  syncControlStatusFromDisk(state);
+
+  if (state.status === 'pause_requested') {
+    const durationMs = Date.now() - runStartedAt;
+    state.status = 'paused';
+    state.pausedAt = Date.now();
+    state.currentAppId = null;
+    writeBulkState(state);
+    releaseBulkMutex();
+
+    const summary = summariseState(state);
+    const message =
+      `Wayback import paused — ${summary.remaining} of ${summary.total} app${
+        summary.total === 1 ? '' : 's'
+      } remaining`;
+
+    writer({
+      type: 'paused',
+      totals: state.totals,
+      durationMs,
+      summary,
+    });
+    recordActivity({
+      type: 'wayback_import',
+      status: 'cancelled',
+      summary: message,
+      detail: {
+        mode: 'bulk-paused',
+        totals: state.totals,
+        runId: state.runId,
+      },
+      startedAt: state.startedAt,
+    });
+    recordAudit({
+      action: 'wayback.import.bulk.paused',
+      actorIp: options.actorIp ?? null,
+      userAgent: options.userAgent ?? null,
+      success: true,
+      detail: `remaining=${summary.remaining} total=${summary.total}`,
+    });
+    return { totals: state.totals, durationMs };
+  }
+
+  if (state.status === 'cancel_requested') {
+    const durationMs = Date.now() - runStartedAt;
+    const summary = summariseState(state);
+    const message =
+      `Wayback import cancelled — ${summary.remaining} of ${summary.total} app${
+        summary.total === 1 ? '' : 's'
+      } not processed`;
+
+    writer({
+      type: 'cancelled',
+      totals: state.totals,
+      durationMs,
+      summary,
+    });
+    recordActivity({
+      type: 'wayback_import',
+      status: 'cancelled',
+      summary: message,
+      detail: {
+        mode: 'bulk',
+        cancelled: true,
+        totals: state.totals,
+        runId: state.runId,
+        remaining: summary.remaining,
+        total: summary.total,
+      },
+      startedAt: state.startedAt,
+    });
+    recordAudit({
+      action: 'wayback.import.bulk.cancelled',
+      actorIp: options.actorIp ?? null,
+      userAgent: options.userAgent ?? null,
+      success: true,
+      detail: `remaining=${summary.remaining} total=${summary.total}`,
+    });
+    clearBulkState();
+    releaseBulkMutex();
+    return { totals: state.totals, durationMs };
+  }
+
+  return null;
 }
 
 function lookupAppRow(appId: string): AppRow | null {
@@ -439,6 +584,7 @@ function buildAppSummary(appName: string, result: ImportAppHistoryResult): strin
 export function describeCurrentRun(): {
   running: boolean;
   mutexHeld: boolean;
+  status: WaybackBulkState['status'] | 'idle' | 'stale';
   state: WaybackBulkState | null;
   summary: ReturnType<typeof summariseState> | null;
   currentAppName: string | null;
@@ -453,9 +599,11 @@ export function describeCurrentRun(): {
   // "Stale" = mutex is still held but either the state is gone or has no
   // work left. Startup will clear this to unblock future manual runs.
   const stale = mutexHeld && !hasPendingWork(state);
+  const status = stale ? 'stale' : state?.status ?? (mutexHeld ? 'running' : 'idle');
   return {
-    running: !!state || mutexHeld,
+    running: mutexHeld && !stale && status !== 'paused',
     mutexHeld,
+    status,
     state,
     summary,
     currentAppName,

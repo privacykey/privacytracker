@@ -58,6 +58,14 @@ export type ActivityType =
   // edits and syncs.
   | 'verdict_set'
   | 'verdict_cleared'
+  // Bulk verdict apply (Select mode in AppGrid). One row per bulk apply,
+  // with `detail.count` + `detail.verdict` + `detail.appIds`. Per-app
+  // `verdict_set` rows are *not* written for bulk applies — the single
+  // summary row covers the audit trail without flooding the feed.
+  | 'bulk_verdict_set'
+  // Queue session completion. One row at session end with totals
+  // (kept/replace/uninstall/notes) and the preflight choices used.
+  | 'queue_session_completed'
   // Phase 3 device-action events. Backups + uninstalls land here so
   // the Dev Options activity log retains a forensic trail of every
   // destructive cfgutil call. `cfgutil_uninstall` rows include the
@@ -70,7 +78,14 @@ export type ActivityType =
   // but for the recommender → loved-one workflow. One row per accepted
   // import; the detail blob carries the summary numbers + recommender
   // name for the dashboard provenance banner.
-  | 'bundle_imported';
+  | 'bundle_imported'
+  // Privacy-profile preset boundary transitions — rows surface when the
+  // user picks a preset, switches between presets, or clears a profile.
+  // Custom-to-custom edits inside a non-preset state don't fire (the
+  // activity log is for noteworthy transitions, not keystroke-level
+  // edits). The describePresetTransition helper in lib/privacy-profile.ts
+  // is the single source of truth for when to write one of these.
+  | 'profile_preset_applied';
 
 export type ActivityStatus = 'ok' | 'error' | 'partial' | 'cancelled';
 

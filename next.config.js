@@ -19,8 +19,11 @@ const nextConfig = {
   devIndicators: {
     position: 'bottom-right',
   },
-  // Lock next/image to Apple's CDN hostnames. Wildcard hostnames would turn
-  // /_next/image into an open image proxy.
+  // Lock next/image to Apple's CDN hostnames. The five explicit
+  // `is{1..5}-ssl.mzstatic.com` entries cover every host the App Store
+  // currently serves icons from; no wildcard fallback so an attacker who
+  // discovers a future `evil.mzstatic.com` subdomain can't pipe arbitrary
+  // bytes through /_next/image.
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'is1-ssl.mzstatic.com' },
@@ -28,13 +31,14 @@ const nextConfig = {
       { protocol: 'https', hostname: 'is3-ssl.mzstatic.com' },
       { protocol: 'https', hostname: 'is4-ssl.mzstatic.com' },
       { protocol: 'https', hostname: 'is5-ssl.mzstatic.com' },
-      { protocol: 'https', hostname: '**.mzstatic.com' },
     ],
     // Don't emit SVGs through the optimiser — SVG can carry script payloads.
     dangerouslyAllowSVG: false,
   },
   // Defence-in-depth headers — also cover static asset responses that
-  // proxy.ts's matcher may not touch.
+  // proxy.ts's matcher excludes (`_next/static`, `_next/image`, fonts).
+  // The CSP itself stays in proxy.ts because it needs a per-request
+  // nonce; the headers below are static and safe to apply universally.
   async headers() {
     return [
       {
@@ -43,6 +47,11 @@ const nextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), usb=(), payment=()',
+          },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
         ],
       },
     ];

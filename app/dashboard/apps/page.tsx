@@ -4,14 +4,13 @@ import { redirect } from 'next/navigation';
 import { getAllApps, getPendingChangeCategoriesByApp } from '../../../lib/scraper';
 import { listManualApps } from '../../../lib/manual-apps-server';
 import { MANUAL_APP_SOURCES, MANUAL_APP_SOURCE_META } from '../../../lib/manual-apps';
-import { getProfileBadgesByApp } from '../../../lib/privacy-profile-server';
+import { getProfileBadgesByApp, getPrivacyProfile } from '../../../lib/privacy-profile-server';
 import { getSetting } from '../../../lib/scheduler';
 import { getUserVerdictsByAppId } from '../../../lib/verdicts';
 import type { VerdictValue } from '../../../lib/verdict-types';
 import AppGrid, { type AppGridFlagState } from '../../components/AppGrid';
 import Nav from '../../components/Nav';
-import DeviceConnectedToast from '../../components/DeviceConnectedToast';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
+import { resolveFlagFromDb, getResolverContextFromDb } from '@/lib/feature-flags-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -132,7 +131,11 @@ export default function AppsPage() {
         cardResyncButton: r('flag.appgrid.card.resync_button'),
         cardDeleteButton: r('flag.appgrid.card.delete_button'),
         cardAnnotationHighlight: r('flag.appgrid.card.annotation_highlight'),
+        cardVerdictPill: r('flag.appgrid.card.verdict_pill'),
         emptyState: r('flag.appgrid.empty_state'),
+        reviewQueueEnabled: r('flag.appgrid.review_queue.enabled'),
+        reviewQueueBulkSelect: r('flag.appgrid.review_queue.bulk_select'),
+        reviewQueueCfgutilUninstall: r('flag.appgrid.review_queue.cfgutil_uninstall'),
       };
     } catch (e) {
       console.warn('[apps-page] flag resolution failed:', e);
@@ -140,17 +143,47 @@ export default function AppsPage() {
     }
   })();
 
+  // Audience drives the review-queue's guardian copy variant + default
+  // scope. Falls back to 'self' when the focus blob is missing / DB not
+  // ready — same behaviour as the rest of the focus-aware surfaces.
+  let audience: 'self' | 'loved_one' | 'guardian' = 'self';
+  try {
+    audience = getResolverContextFromDb().focus.audience;
+  } catch (e) {
+    console.warn('[apps-page] reading focus audience failed:', e);
+  }
+
+  // Whether the user has set a privacy profile — gates mismatch-based
+  // sort + scope options in the queue preflight. Cheap read; missing
+  // profile is the empty-object case.
+  let hasProfile = false;
+  try {
+    const profile = getPrivacyProfile();
+    hasProfile = !!profile && Object.keys(profile).length > 0;
+  } catch (e) {
+    console.warn('[apps-page] reading privacy profile failed:', e);
+  }
+
+  // User-toggleable: show the progress bar in the running carousel
+  // header. Defaults to 'true' so new installs see it; users can mute
+  // via Settings if it's distracting.
+  let showQueueProgressBar = true;
+  try {
+    showQueueProgressBar =
+      getSetting('queue_show_progress_bar', 'true') !== 'false';
+  } catch (e) {
+    console.warn('[apps-page] reading queue_show_progress_bar failed:', e);
+  }
+
   return (
     <>
       <Nav appCount={apps.length + manualApps.length} />
-      {/*
-        Phase 4 device-connect toast. Mounted only on the Apps page so
-        the polling loop lives where users naturally land when they
-        want to import — keeps the cfgutil subprocess overhead off
-        every other page. The component is a no-op outside the Tauri
-        shell and outside macOS, so the web build sees nothing.
-      */}
-      <DeviceConnectedToast />
+      {/* Device-connect toast intentionally NOT mounted here. Polling
+          cfgutil from the apps grid was misleading (this view is the
+          user's tracked-apps list, not a 1:1 of what's on a device)
+          and expensive. The toast now lives under /onboard, gated on
+          a "user has used cfgutil before" flag, driven by IOKit
+          device-attach events rather than polling. */}
       <AppGrid
         initialApps={apps}
         initialManualApps={manualApps}
@@ -160,6 +193,9 @@ export default function AppsPage() {
         showAccessibilityFilter={showAccessibilityFilter}
         pendingChangeCategoriesByApp={pendingChangeCategoriesByApp}
         flags={appgridFlags}
+        audience={audience}
+        hasProfile={hasProfile}
+        showQueueProgressBar={showQueueProgressBar}
       />
     </>
   );

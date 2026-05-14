@@ -88,11 +88,15 @@ export async function register() {
     const {
       readBulkState,
       isBulkMutexHeld,
-      releaseBulkMutex,
-      clearBulkState,
-      hasPendingWork,
-      summariseState,
-    } = await import('./lib/wayback-bulk-state');
+	      releaseBulkMutex,
+	      clearBulkState,
+	      writeBulkState,
+	      hasPendingWork,
+	      isBulkStateCancellationRequested,
+	      isBulkStatePaused,
+	      shouldAutoResumeBulkState,
+	      summariseState,
+	    } = await import('./lib/wayback-bulk-state');
     const { runBulkWaybackImport } = await import('./lib/wayback-bulk-runner');
     const {
       readSyncBulkState,
@@ -240,6 +244,31 @@ export async function register() {
     setInterval(tickBackupSnapshots, CHECK_INTERVAL_MS);
     console.log('[BackupSnapshots] Scheduler initialised');
 
+    // Webhook summary tick. Same 30-min cadence as the sync scheduler,
+    // but it's a no-op unless the user has configured a webhook with
+    // `daily_summary` or `weekly_summary` frequency. The helper self-
+    // rate-limits via `notification_webhook_last_sent` so calling it
+    // every tick is safe — actual POSTs only happen when the window
+    // has elapsed AND there's at least one unread notification to
+    // include.
+    const tickWebhookSummary = async () => {
+      try {
+        const { maybePostSummaryWebhook } = await import('./lib/notification-webhooks');
+        const count = await maybePostSummaryWebhook();
+        if (count > 0) {
+          console.log(`[Webhook] Posted summary with ${count} notifications`);
+        }
+      } catch (e) {
+        console.error('[Webhook] Summary tick failed:', e);
+      }
+    };
+    // Offset the first run so it doesn't fight with backup snapshots
+    // for the boot window. After that, every CHECK_INTERVAL_MS tick
+    // both jobs fire.
+    setTimeout(tickWebhookSummary, 45_000);
+    setInterval(tickWebhookSummary, CHECK_INTERVAL_MS);
+    console.log('[Webhook] Summary scheduler initialised');
+
     // Wayback bulk-import resume. Runs exactly once per server boot, a few
     // seconds after startup so we don't compete with Next's initial
     // compile/JIT work. Three outcomes:
@@ -264,11 +293,42 @@ export async function register() {
         // Case 1 — clean state, nothing to do.
         if (!state && !mutexHeld) return;
 
-        // Case 2 — stale lock with no pending work. Heal it.
-        if (!hasPendingWork(state)) {
-          if (mutexHeld) {
-            console.warn('[WaybackResume] Clearing stale bulk-import mutex');
-            releaseBulkMutex();
+	        // Paused queues are intentionally user-controlled. Keep the state
+	        // blob around so Settings can resume/cancel/restart it, but make
+	        // sure a leftover mutex from a crash does not make it look active.
+	        if (isBulkStatePaused(state)) {
+	          if (mutexHeld) releaseBulkMutex();
+	          if (state?.status === 'pause_requested') {
+	            writeBulkState({
+	              ...state,
+	              status: 'paused',
+	              pausedAt: state.pausedAt ?? Date.now(),
+	              currentAppId: null,
+	            });
+	          }
+	          return;
+	        }
+
+	        // A cancel-requested queue left by a crash should not resume.
+	        // Clear it so future manual imports are unblocked.
+	        if (isBulkStateCancellationRequested(state)) {
+	          if (mutexHeld) releaseBulkMutex();
+	          if (state) clearBulkState();
+	          recordActivity({
+	            type: 'wayback_import',
+	            status: 'cancelled',
+	            summary: 'Cleared cancelled Wayback import queue from a previous server run',
+	            detail: { mode: 'bulk-cancelled-stale' },
+	            startedAt: Date.now(),
+	          });
+	          return;
+	        }
+
+	        // Case 2 — stale lock with no pending work. Heal it.
+	        if (!hasPendingWork(state)) {
+	          if (mutexHeld) {
+	            console.warn('[WaybackResume] Clearing stale bulk-import mutex');
+	            releaseBulkMutex();
           }
           if (state) {
             clearBulkState();
@@ -292,9 +352,10 @@ export async function register() {
           return;
         }
 
-        // Case 3 — resume the run. `state` is guaranteed non-null here
-        // because hasPendingWork(null) returns false.
-        const summary = summariseState(state!);
+	        // Case 3 — resume the run. `state` is guaranteed non-null here
+	        // because shouldAutoResumeBulkState(null) returns false.
+	        if (!shouldAutoResumeBulkState(state)) return;
+	        const summary = summariseState(state!);
         const remaining = summary.remaining;
         const total = summary.total;
 

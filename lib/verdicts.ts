@@ -282,6 +282,100 @@ export function setVerdict(input: SetVerdictInput): AppVerdict {
 }
 
 /**
+ * Bulk-set the local user's verdict on many apps in a single transaction.
+ * Used by the AppGrid bulk-select mode — applying "Mark Safe" to 47 apps
+ * should be one DB call, one activity row, and one Undo target rather
+ * than 47 separate writes.
+ *
+ * - Per-app rows go through the same UPSERT semantics as `setVerdict`
+ *   so existing verdicts are replaced, fresh ones inserted, `set_at`
+ *   preserved on overwrite, `updated_at` bumped.
+ * - Imported recommendations are NOT touched. This only writes the
+ *   user-source verdict.
+ * - Activity log: ONE `bulk_verdict_set` row with the count + verdict +
+ *   appIds in `detail`. Per-app `verdict_set` rows are intentionally
+ *   skipped (the summary row is the audit trail).
+ * - Returns the list of resulting AppVerdicts (existing or new), in the
+ *   same order as the input ids.
+ */
+export function setVerdicts(
+  appIds: string[],
+  verdict: VerdictValue,
+  options: { rationale?: string | null } = {},
+): AppVerdict[] {
+  if (!isValidVerdict(verdict)) {
+    throw new Error(`invalid verdict: ${verdict}`);
+  }
+  if (appIds.length === 0) return [];
+
+  const rationale = options.rationale?.trim() || null;
+  const now = Date.now();
+  const out: AppVerdict[] = [];
+
+  const findExisting = db.prepare(
+    `SELECT id, set_at FROM app_verdicts
+     WHERE app_id = ? AND source = 'user' AND source_name IS NULL`,
+  );
+  const update = db.prepare(
+    `UPDATE app_verdicts
+     SET verdict = ?, rationale = ?, updated_at = ?
+     WHERE id = ?`,
+  );
+  const insert = db.prepare(
+    `INSERT INTO app_verdicts
+       (id, app_id, verdict, rationale, source, source_name, set_at, updated_at)
+     VALUES (?, ?, ?, ?, 'user', NULL, ?, ?)`,
+  );
+
+  db.transaction(() => {
+    for (const appId of appIds) {
+      const existing = findExisting.get(appId) as { id: string; set_at: number } | undefined;
+      let id: string;
+      let firstSet: number;
+      if (existing) {
+        id = existing.id;
+        firstSet = existing.set_at;
+        update.run(verdict, rationale, now, id);
+      } else {
+        id = generateId();
+        firstSet = now;
+        insert.run(id, appId, verdict, rationale, now, now);
+      }
+      out.push({
+        id,
+        appId,
+        verdict,
+        rationale,
+        source: 'user',
+        sourceName: null,
+        setAt: firstSet,
+        updatedAt: now,
+      });
+    }
+  })();
+
+  try {
+    recordActivity({
+      type: 'bulk_verdict_set',
+      status: 'ok',
+      appId: null,
+      summary: `Marked ${appIds.length} ${appIds.length === 1 ? 'app' : 'apps'} ${verdict}`,
+      detail: {
+        verdict,
+        count: appIds.length,
+        appIds,
+        hasRationale: !!rationale,
+      },
+      startedAt: now,
+    });
+  } catch (e) {
+    console.warn('[verdicts] bulk activity log failed:', e);
+  }
+
+  return out;
+}
+
+/**
  * Delete a verdict row. Used by the picker's "Clear verdict" action and
  * by the Dev Options "purge" tools. Imported rows can be cleared too —
  * useful if the recipient wants to dismiss a recommendation entirely.

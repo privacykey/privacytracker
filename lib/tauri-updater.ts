@@ -8,6 +8,9 @@
 
 'use client';
 
+import { compareVersions } from './semver-compare';
+import packageJson from '../package.json';
+
 /** Whether we're running inside a Tauri webview. */
 export function isTauri(): boolean {
   if (typeof window === 'undefined') return false;
@@ -48,6 +51,22 @@ export async function checkAndInstall(): Promise<TauriUpdateResult> {
     const update = await updater.check();
     if (!update?.available) {
       return { available: false, installed: false };
+    }
+
+    // Downgrade protection. Tauri's ed25519 signature check verifies
+    // authenticity but not freshness — a GitHub-repo compromise (without
+    // the minisign key) could re-promote a previously-signed older
+    // build as `latest` and we'd otherwise install it on next launch.
+    // Refuse anything whose version isn't strictly newer than the
+    // running app.
+    const current = packageJson.version;
+    if (typeof update.version === 'string' && compareVersions(update.version, current) <= 0) {
+      return {
+        available: false,
+        installed: false,
+        version: update.version,
+        error: `Refusing to install ${update.version} — current version is ${current} (downgrade blocked).`,
+      };
     }
 
     await update.downloadAndInstall();

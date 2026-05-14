@@ -8,9 +8,12 @@
 
 # ── Bundled Next.js standalone tree (rebuilt by stage-standalone.mjs)
 # Both the unpacked tree (used during dev / inspection) and the
-# tarball that actually gets bundled by `tauri build`.
+# tarball that actually gets bundled by `tauri build`. The .ready
+# marker is a per-dev-session freshness side-channel — see
+# src-tauri/src/sidecar.rs and scripts/ensure-standalone-stub.mjs.
 /resources/standalone
 /resources/standalone.tar
+/resources/standalone.tar.ready
 
 # ── Bundled Node sidecar binaries ────────────────────────────────────
 # These are large (~115MB each) and downloaded on demand — see

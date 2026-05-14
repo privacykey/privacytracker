@@ -1,14 +1,19 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CATEGORY_META } from '../../lib/privacy-meta';
 import { categoryLabel } from '../../lib/i18n-meta';
 import {
   PROFILE_CATEGORY_KEYS,
+  PROFILE_PRESETS,
+  PROFILE_PRESET_KEYS,
+  PROFILE_PRESET_META,
   PROFILE_TIERS,
   TIER_META,
+  matchPreset,
   type PrivacyProfile,
+  type ProfilePresetKey,
   type ProfileTier,
 } from '../../lib/privacy-profile';
 
@@ -19,6 +24,13 @@ interface Props {
   onChange: (next: PrivacyProfile) => void;
   /** Disables every input while a save/fetch is in flight. */
   disabled?: boolean;
+  /**
+   * When true (default), clicking a preset that would overwrite an existing
+   * non-matching profile shows an inline confirm before applying. Onboarding's
+   * first-time path passes `false` — the editor's preloaded default isn't
+   * something we need to protect from accidental clicks.
+   */
+  confirmOnPresetApply?: boolean;
 }
 
 /**
@@ -40,12 +52,20 @@ interface Props {
  * `data-tier={tier}` on each pill.
  */
 
-export default function PrivacyProfileEditor({ value, onChange, disabled }: Props) {
+export default function PrivacyProfileEditor({
+  value,
+  onChange,
+  disabled,
+  confirmOnPresetApply = true,
+}: Props) {
   // i18n — category labels in the editor rows + their aria-labels.
   // CATEGORY_META still drives icon + description (translation of the
   // descriptions is tracked separately).
   const tCat = useTranslations('category');
   const tEd = useTranslations('settings.profile_editor');
+  const tPre = useTranslations('settings.profile_editor.presets');
+  const tPreLabel = useTranslations('settings.profile_editor.presets.labels');
+  const tPreDesc = useTranslations('settings.profile_editor.presets.descriptions');
 
   // Stable list of rows so the DOM doesn't flicker when the user toggles a
   // single category. Category key order is whatever CATEGORY_META declares
@@ -54,6 +74,15 @@ export default function PrivacyProfileEditor({ value, onChange, disabled }: Prop
     key,
     meta: CATEGORY_META[key],
   })), []);
+
+  // Which preset (if any) the current state matches exactly. Used to pulse
+  // the active pill and to no-op clicks on a preset the user is already on.
+  const activePreset = useMemo(() => matchPreset(value), [value]);
+
+  // When confirmOnPresetApply is true and the user clicks a preset that would
+  // wipe their existing customisations, we surface an inline confirm bubble
+  // tied to that pill rather than applying instantly.
+  const [pendingPreset, setPendingPreset] = useState<ProfilePresetKey | null>(null);
 
   const setTier = (category: string, tier: ProfileTier | null) => {
     const next: PrivacyProfile = { ...value };
@@ -75,8 +104,120 @@ export default function PrivacyProfileEditor({ value, onChange, disabled }: Prop
 
   const setCount = Object.values(value).filter(v => typeof v === 'string').length;
 
+  /**
+   * Apply a preset, replacing the entire profile. The confirm prompt is
+   * skipped if (a) the caller opted out via confirmOnPresetApply=false,
+   * (b) the profile is empty, or (c) the profile already matches the
+   * clicked preset (idempotent click).
+   */
+  const applyPreset = (presetKey: ProfilePresetKey, viaConfirm: boolean = false) => {
+    const preset = PROFILE_PRESETS[presetKey];
+    if (activePreset === presetKey) {
+      // Already on this preset — clear any stale confirm state.
+      setPendingPreset(null);
+      return;
+    }
+    const profileIsEmpty = setCount === 0;
+    if (!viaConfirm && confirmOnPresetApply && !profileIsEmpty) {
+      setPendingPreset(presetKey);
+      return;
+    }
+    setPendingPreset(null);
+    onChange({ ...preset });
+  };
+
+  const cancelPendingPreset = () => setPendingPreset(null);
+
   return (
     <div className="privacy-profile-editor privacy-profile-strip">
+      {/* Preset row — opinionated whole-profile shortcuts. Clicking a preset
+          replaces every category in one move; the matching pill stays
+          highlighted until the user customises a row, at which point the
+          highlight clears (signalling "this is now custom"). When the
+          editor already has saved preferences, an inline confirm appears
+          before the preset is applied so the user doesn't accidentally
+          wipe their fine-tuning. */}
+      <div className="privacy-profile-presets">
+        <div className="privacy-profile-presets-header">
+          <span className="privacy-profile-presets-label">
+            {tPre('section_label')}
+          </span>
+          <span className="privacy-profile-presets-hint">
+            {tPre('section_hint')}
+          </span>
+        </div>
+        <div
+          className="privacy-profile-presets-row"
+          role="radiogroup"
+          aria-label={tPre('aria_group')}
+        >
+          {PROFILE_PRESET_KEYS.map(presetKey => {
+            const meta = PROFILE_PRESET_META[presetKey];
+            const isActive = activePreset === presetKey;
+            const isPending = pendingPreset === presetKey;
+            return (
+              <div
+                key={presetKey}
+                className={`privacy-profile-preset-cell${isPending ? ' has-pending-confirm' : ''}`}
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  className={`privacy-profile-preset-pill${isActive ? ' is-active' : ''}`}
+                  data-preset={presetKey}
+                  data-severity={meta.severityCls}
+                  onClick={() => applyPreset(presetKey)}
+                  disabled={disabled}
+                  title={tPreDesc(presetKey)}
+                >
+                  <span className="privacy-profile-preset-icon" aria-hidden="true">
+                    {meta.icon}
+                  </span>
+                  <span className="privacy-profile-preset-text">
+                    <span className="privacy-profile-preset-title">
+                      {tPreLabel(presetKey)}
+                    </span>
+                    <span className="privacy-profile-preset-desc">
+                      {tPreDesc(presetKey)}
+                    </span>
+                  </span>
+                </button>
+                {isPending && (
+                  <div
+                    className="privacy-profile-preset-confirm"
+                    role="dialog"
+                    aria-label={tPre('confirm_aria')}
+                  >
+                    <p className="privacy-profile-preset-confirm-text">
+                      {tPre('confirm_text', { preset: tPreLabel(presetKey) })}
+                    </p>
+                    <div className="privacy-profile-preset-confirm-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => applyPreset(presetKey, true)}
+                        disabled={disabled}
+                      >
+                        {tPre('confirm_apply')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={cancelPendingPreset}
+                        disabled={disabled}
+                      >
+                        {tPre('confirm_cancel')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Quick-set actions. Useful for users who want to start from a blank
           slate or pre-fill a lenient / strict baseline, then fine-tune just
           the few categories they actually care about. The label anchors on

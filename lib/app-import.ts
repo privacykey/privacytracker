@@ -34,6 +34,30 @@ const MAX_NAME_LENGTH = 120;
  */
 export const MAX_IMPORT_ROWS = 500;
 
+/**
+ * Bundle-ID patterns that identify Safari home-screen web apps / web clips
+ * rather than App Store apps. cfgutil reports these alongside real apps —
+ * they share the same iPhone "installedApps" list as native installs — but
+ * iTunes Lookup never knows about them (no App Store record exists), so
+ * routing them through the bundle/name search path is wasted work and
+ * leaves them stuck in "Not found" buckets.
+ *
+ *   - `com.apple.WebKit.PushBundle.<UUID>`  — modern Safari "Add to Home Screen"
+ *   - `com.apple.webapp.<…>`                 — older (iOS 16 and before) variant
+ *
+ * Detected up front so they can be diverted into the manual-apps web-clip
+ * path instead.
+ */
+const WEB_CLIP_BUNDLE_PATTERNS: readonly RegExp[] = [
+  /^com\.apple\.WebKit\.PushBundle\./i,
+  /^com\.apple\.webapp\./i,
+];
+
+export function isLikelyWebClipBundle(bundleId: string | null | undefined): boolean {
+  if (typeof bundleId !== 'string' || !bundleId) return false;
+  return WEB_CLIP_BUNDLE_PATTERNS.some(re => re.test(bundleId));
+}
+
 export interface ImportedAppRow {
   name: string;
   /**

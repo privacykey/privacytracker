@@ -150,6 +150,18 @@ export default function NotificationBell({ pollingEnabled = true }: Notification
     return () => clearInterval(id);
   }, [fetchNotifs, pollingEnabled]);
 
+  // Imperative refresh handle — anyone in the layout can dispatch
+  // `window.dispatchEvent(new CustomEvent('notifications:refresh'))` and
+  // the bell will re-fetch immediately. Used by the menu-bar "Mark All
+  // Notifications as Read" item so the badge clears without waiting
+  // for the next 30s poll. Also picked up after any other server-side
+  // change that should reflect in the bell quickly.
+  useEffect(() => {
+    const onRefresh = () => { void fetchNotifs(); };
+    window.addEventListener('notifications:refresh', onRefresh);
+    return () => window.removeEventListener('notifications:refresh', onRefresh);
+  }, [fetchNotifs]);
+
   // Close on outside click
   useEffect(() => {
     if (!open) return;

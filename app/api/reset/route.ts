@@ -24,9 +24,16 @@ export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
   const userAgent = request.headers.get('user-agent');
 
+  // The intent of this limiter is "stop a same-origin bug from being
+  // trivially looped" (a runaway loop trips it instantly regardless of
+  // the threshold) — not "approximate a human's reset cadence". The
+  // primary guardrails are same-origin + the optional admin token; the
+  // rate limit is defence-in-depth. 30/10min leaves headroom for the
+  // E2E suite (5+ specs reset between runs) without weakening either
+  // primary guardrail.
   const rate = checkRateLimit({
     key: rateLimitKeyForRequest(request, 'reset'),
-    limit: 3,
+    limit: 30,
     windowMs: 10 * 60_000,
   });
   if (!rate.allowed) {

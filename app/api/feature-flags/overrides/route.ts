@@ -23,6 +23,7 @@ import {
 } from '@/lib/feature-flag-storage';
 import { HARD_DEFAULTS, type FlagKey, type FlagValue } from '@/lib/feature-flag-rules';
 import { readBoundedJson } from '@/lib/security';
+import { requireMutationGuard } from '@/lib/api-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,21 @@ interface PostBody {
 }
 
 export async function POST(request: NextRequest) {
+  // Flag flips can unlock other destructive surfaces (e.g.
+  // `flag.devopts.cfgutil_uninstall` enables the iPhone-uninstall
+  // wizard, and `flag.settings.admin.export.audit_bundle` exposes the
+  // audit-bundle export route). Treat them as a guarded mutation:
+  // admin token required when configured, rate-limited per-IP.
+  const guard = requireMutationGuard(request, {
+    action: 'feature_flag.override',
+    rateLimit: {
+      keyPrefix: 'feature_flag.override',
+      limit: 30,
+      windowMs: 60_000,
+    },
+  });
+  if (!guard.ok) return guard.response;
+
   let body: PostBody;
   try {
     body = await readBoundedJson<PostBody>(request, 64 * 1024);
@@ -127,6 +143,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const guard = requireMutationGuard(request, {
+    action: 'feature_flag.override.clear',
+    rateLimit: {
+      keyPrefix: 'feature_flag.override.clear',
+      limit: 10,
+      windowMs: 60_000,
+    },
+  });
+  if (!guard.ok) return guard.response;
+
   const surface = request.nextUrl.searchParams.get('surface');
 
   try {
