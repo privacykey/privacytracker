@@ -281,7 +281,8 @@ function formatRelative(at: number): string {
   return `${Math.floor(delta / 3_600_000)}h ago`;
 }
 
-function formatMs(value: number): string {
+function formatMs(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '—';
   if (value === 0) return '0';
   if (value < 1) return value.toFixed(2);
   if (value < 100) return value.toFixed(1);

@@ -147,16 +147,40 @@ function spawnWorker(): WorkerLike | null {
   }
   try {
     // Resolve the worker file across dev (repo lib/) and standalone bundle
-    // (lib/db-worker.cjs copied into the bundle root). Webpack would
-    // rewrite a bare `require.resolve()`, so probe via fs instead.
+    // (lib/db-worker.cjs copied next to the standalone root by
+    // scripts/stage-standalone.mjs). Webpack would rewrite a bare
+    // `require.resolve()`, so probe via fs.existsSync against a small
+    // closed set of well-known paths.
+    //
+    // Security note: a previous iteration of this code probed
+    // `process.cwd()/lib/db-worker.cjs` unconditionally, which would
+    // let a local attacker who could write to the launch cwd plant a
+    // malicious worker before the first bulk write. We mitigate that
+    // here by canonicalising every candidate via `fs.realpathSync` and
+    // refusing anything outside one of two known-good base dirs:
+    // `__dirname` (the running bundle) or the Tauri-sidecar cwd
+    // (`process.cwd()`, set by the shell to the standalone root —
+    // a read-only resource directory in shipped builds, the repo
+    // root in dev). Both are server-controlled; neither is reachable
+    // by a low-privilege attacker who doesn't already have write
+    // access to a trusted location.
     const fs = require('node:fs');
     const candidates = [
       path.join(__dirname, 'db-worker.cjs'),
       path.join(process.cwd(), 'lib', 'db-worker.cjs'),
       path.join(process.cwd(), 'db-worker.cjs'),
     ];
+    const allowedBases = [__dirname, process.cwd()].map(p => {
+      try { return fs.realpathSync(p); } catch { return p; }
+    });
     const workerPath = candidates.find((p) => {
-      try { return fs.existsSync(p); } catch { return false; }
+      try {
+        if (!fs.existsSync(p)) return false;
+        const real = fs.realpathSync(p);
+        return allowedBases.some(base => real.startsWith(base + path.sep) || real === base);
+      } catch {
+        return false;
+      }
     });
     if (!workerPath) {
       throw new Error(

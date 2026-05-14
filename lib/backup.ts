@@ -22,10 +22,83 @@
  * schema tweak.
  */
 
+import crypto from 'crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import db from './db';
-import { recordAudit } from './security';
+import { recordAudit, sanitizePolicyUrl } from './security';
 
 export const CURRENT_BACKUP_VERSION = 1;
+
+/**
+ * Per-install HMAC key. Generated once on first export and stored as a
+ * single base64 line in `<data-dir>/backup-signing.key` with 0600
+ * permissions. Lives **outside** the SQLite DB on purpose: `/api/reset`
+ * and `restoreBackup` both wipe `app_settings`, so storing the key
+ * there would silently invalidate every existing backup the moment the
+ * user did a reset. The key file persists across DB wipes, so the
+ * normal same-install "reset, then restore from backup" flow stays a
+ * trusted operation.
+ *
+ * Independent of {@link AUDITOR_ADMIN_TOKEN}: that gate is about who
+ * can call the route, this is about whether the envelope is authentic.
+ *
+ * Cross-install / hand-crafted bundles will always fail verification
+ * (different key); restoring them requires the explicit
+ * `allowUntrusted: true` opt-in.
+ */
+const BACKUP_HMAC_ALG = 'HMAC-SHA256';
+const BACKUP_KEY_FILENAME = 'backup-signing.key';
+
+function backupKeyPath(): string {
+  // Match lib/db.ts's resolution rule: env var wins, otherwise <cwd>/data.
+  const dataDir = process.env.PRIVACYTRACKER_DATA_DIR || path.join(process.cwd(), 'data');
+  return path.join(dataDir, BACKUP_KEY_FILENAME);
+}
+
+function getOrCreateSigningKey(): Buffer {
+  const file = backupKeyPath();
+  try {
+    const raw = fs.readFileSync(file, 'utf8').trim();
+    if (raw) {
+      const buf = Buffer.from(raw, 'base64');
+      if (buf.length >= 16) return buf;
+    }
+  } catch {
+    // Missing file or read error — fall through to generate.
+  }
+  const fresh = crypto.randomBytes(32);
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    // 0600 — owner read/write only. Anyone who can read this can forge
+    // signed envelopes targeting this install.
+    fs.writeFileSync(file, fresh.toString('base64') + '\n', { mode: 0o600 });
+  } catch (err) {
+    console.warn('[backup] failed to persist signing key:', err);
+  }
+  return fresh;
+}
+
+/** Stable string representation for HMAC input — order of object keys matters. */
+function canonicalize(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonicalize).join(',') + ']';
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  return (
+    '{' +
+    keys
+      .map(k => JSON.stringify(k) + ':' + canonicalize((value as Record<string, unknown>)[k]))
+      .join(',') +
+    '}'
+  );
+}
+
+function computeEnvelopeMac(envelopeWithoutSignature: object, key: Buffer): string {
+  return crypto
+    .createHmac('sha256', key)
+    .update(canonicalize(envelopeWithoutSignature))
+    .digest('base64');
+}
 
 /**
  * Tables captured by a full backup, in parent-first order. Wipe iterates this
@@ -64,11 +137,24 @@ export interface BackupTable {
   rows: Record<string, unknown>[];
 }
 
+export interface BackupSignature {
+  /** Currently always 'HMAC-SHA256'. */
+  alg: string;
+  /** Base64-encoded MAC over the canonicalised envelope (signature excluded). */
+  mac: string;
+}
+
 export interface BackupEnvelope {
   version: number;
   exportedAt: number | null;
   appName: string;
   tables: Record<string, BackupTable>;
+  /**
+   * Optional. Present when the envelope was produced by `exportBackup()` on
+   * an install with a signing key. Absence is treated as "untrusted" by
+   * default (cross-device / hand-crafted bundles).
+   */
+  signature?: BackupSignature;
 }
 
 /**
@@ -90,6 +176,29 @@ export interface BackupEnvelope {
 export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
   'ai_api_key',
 ]);
+
+/**
+ * `app_settings` keys we refuse to write during a restore. These are
+ * keys that unlock dangerous code paths (destructive cfgutil flag) or
+ * impersonate server-side secrets — a malicious envelope could otherwise
+ * silently pre-enable them.
+ *
+ * The check is by prefix so future flags in the same namespace are
+ * covered automatically. The local HMAC signing key is in here too:
+ * even a trusted envelope must not replace our key with the
+ * sender's — that would let the sender forge future envelopes.
+ */
+const RESTORE_SETTING_KEY_DENY_PREFIXES = [
+  'flag.devopts.',
+  'AUDITOR_',
+];
+const RESTORE_SETTING_KEY_DENY_EXACT = new Set<string>();
+
+function isRestoreSettingKeyDenied(key: unknown): boolean {
+  if (typeof key !== 'string') return false;
+  if (RESTORE_SETTING_KEY_DENY_EXACT.has(key)) return true;
+  return RESTORE_SETTING_KEY_DENY_PREFIXES.some(p => key.startsWith(p));
+}
 
 /**
  * Sentinel value used in place of a redacted setting. The empty string is
@@ -148,12 +257,17 @@ export function exportBackup(): BackupEnvelope {
   });
   runReads();
 
-  return {
+  const unsigned = {
     version: CURRENT_BACKUP_VERSION,
     exportedAt: Date.now(),
     appName: 'privacytracker',
     tables,
   };
+  const signature: BackupSignature = {
+    alg: BACKUP_HMAC_ALG,
+    mac: computeEnvelopeMac(unsigned, getOrCreateSigningKey()),
+  };
+  return { ...unsigned, signature };
 }
 
 /**
@@ -212,6 +326,30 @@ export interface RestoreResult {
   inserted: { name: string; rows: number }[];
   totalRows: number;
   restoredAt: number;
+  /** 'trusted' if the envelope's signature matched this install's key. */
+  trust: 'trusted' | 'untrusted';
+  /** Rows the per-field sanitiser refused to write (e.g. javascript: URLs, blocked settings). */
+  blocked: { name: string; rows: number }[];
+}
+
+/**
+ * Thrown when the envelope's signature doesn't match the local HMAC key
+ * (or the signature is missing) and the caller didn't opt in to an
+ * untrusted restore. Carries enough metadata for the route layer to
+ * surface a "this backup wasn't produced on this install — proceed?"
+ * confirmation UI.
+ */
+export class BackupUntrustedError extends Error {
+  signaturePresent: boolean;
+  constructor(signaturePresent: boolean) {
+    super(
+      signaturePresent
+        ? 'Backup signature does not match this install. Pass allowUntrusted=true to restore anyway.'
+        : 'Backup is unsigned (no signature found). Pass allowUntrusted=true to restore anyway.',
+    );
+    this.name = 'BackupUntrustedError';
+    this.signaturePresent = signaturePresent;
+  }
 }
 
 /**
@@ -226,10 +364,17 @@ export interface RestoreResult {
  */
 export function restoreBackup(
   payload: unknown,
-  meta?: { actorIp?: string; userAgent?: string },
+  meta?: { actorIp?: string; userAgent?: string; allowUntrusted?: boolean },
 ): RestoreResult {
   const envelope = parseEnvelope(payload);
   const summary = summarizeBackup(envelope);
+
+  // Signature gate. Verify FIRST so we never wipe the DB on a tampered
+  // envelope just to find out at the end that it didn't authenticate.
+  const trust: 'trusted' | 'untrusted' = verifyEnvelope(envelope);
+  if (trust === 'untrusted' && !meta?.allowUntrusted) {
+    throw new BackupUntrustedError(Boolean(envelope.signature));
+  }
 
   // Capture pre-restore snapshot metadata *before* we wipe. The audit_log
   // table itself is part of the wipe (it's in TABLES_IN_INSERT_ORDER so the
@@ -243,6 +388,7 @@ export function restoreBackup(
   }));
 
   const inserted: { name: string; rows: number }[] = [];
+  const blocked: { name: string; rows: number }[] = [];
   let totalRows = 0;
   const restoredAt = Date.now();
 
@@ -284,13 +430,20 @@ export function restoreBackup(
         const colList = writableCols.map(quoteIdent).join(', ');
         const stmt = db.prepare(`INSERT INTO ${name} (${colList}) VALUES (${placeholders})`);
         let n = 0;
+        let rejected = 0;
         for (const row of table.rows) {
           if (!row || typeof row !== 'object') continue;
-          const values = writableCols.map(col => coerceSqlValue((row as Record<string, unknown>)[col]));
+          const sanitised = sanitiseRowForRestore(name, row as Record<string, unknown>);
+          if (sanitised === null) {
+            rejected += 1;
+            continue;
+          }
+          const values = writableCols.map(col => coerceSqlValue(sanitised[col]));
           stmt.run(...values);
           n += 1;
         }
         inserted.push({ name, rows: n });
+        if (rejected > 0) blocked.push({ name, rows: rejected });
         totalRows += n;
       }
 
@@ -313,7 +466,7 @@ export function restoreBackup(
   // succeeded at the restore, so we don't rethrow.
   try {
     recordAudit({
-      action: 'backup.restore',
+      action: trust === 'trusted' ? 'backup.restore' : 'backup.restore.untrusted',
       actorIp: meta?.actorIp ?? null,
       userAgent: meta?.userAgent ?? null,
       success: true,
@@ -323,7 +476,9 @@ export function restoreBackup(
         exportedAt: envelope.exportedAt ?? null,
         totalRows,
         inserted,
+        blocked,
         priorCounts,
+        trust,
         summary,
       }).slice(0, 1024),
     });
@@ -331,7 +486,69 @@ export function restoreBackup(
     console.warn('[backup] Failed to write audit log for restore:', err);
   }
 
-  return { inserted, totalRows, restoredAt };
+  return { inserted, totalRows, restoredAt, trust, blocked };
+}
+
+/**
+ * Constant-time signature verification. Returns 'trusted' iff the
+ * envelope carries an HMAC-SHA256 signature that matches the local
+ * key; otherwise 'untrusted'.
+ */
+function verifyEnvelope(envelope: BackupEnvelope): 'trusted' | 'untrusted' {
+  if (!envelope.signature || envelope.signature.alg !== BACKUP_HMAC_ALG) {
+    return 'untrusted';
+  }
+  const { signature, ...withoutSig } = envelope;
+  const expectedMac = computeEnvelopeMac(withoutSig, getOrCreateSigningKey());
+  const a = Buffer.from(expectedMac, 'base64');
+  const b = Buffer.from(signature.mac, 'base64');
+  if (a.length === 0 || a.length !== b.length) return 'untrusted';
+  return crypto.timingSafeEqual(a, b) ? 'trusted' : 'untrusted';
+}
+
+/**
+ * Per-row sanitiser applied to every restored row regardless of trust
+ * state (defence in depth: a trusted-looking envelope from a future
+ * compromised exporter should still not be able to plant
+ * `flag.devopts.cfgutil_uninstall=on` or `javascript:` URLs).
+ *
+ * Returns the (possibly modified) row, or `null` if the row must be
+ * dropped entirely.
+ */
+function sanitiseRowForRestore(
+  table: string,
+  row: Record<string, unknown>,
+): Record<string, unknown> | null {
+  if (table === 'app_settings') {
+    if (isRestoreSettingKeyDenied(row.key)) return null;
+    return row;
+  }
+  if (table === 'apps') {
+    return {
+      ...row,
+      url: typeof row.url === 'string' ? sanitizePolicyUrl(row.url) || '' : '',
+      iconUrl:
+        typeof row.iconUrl === 'string' ? sanitizePolicyUrl(row.iconUrl) || null : null,
+      privacyPolicyUrl:
+        typeof row.privacyPolicyUrl === 'string'
+          ? sanitizePolicyUrl(row.privacyPolicyUrl) || null
+          : null,
+    };
+  }
+  if (table === 'manual_apps') {
+    return {
+      ...row,
+      privacy_policy_url:
+        typeof row.privacy_policy_url === 'string'
+          ? sanitizePolicyUrl(row.privacy_policy_url) || null
+          : null,
+      source_url:
+        typeof row.source_url === 'string'
+          ? sanitizePolicyUrl(row.source_url) || null
+          : null,
+    };
+  }
+  return row;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────
@@ -400,11 +617,24 @@ function parseEnvelope(payload: unknown): BackupEnvelope {
     tables[name] = { columns: cols, rows: t.rows as Record<string, unknown>[] };
   }
 
+  // Preserve the signature object verbatim if present so verifyEnvelope
+  // can recompute the MAC over the same canonicalised bytes the
+  // exporter used. Dropping it here was the bug that turned every
+  // round-trip into "untrusted".
+  let signature: BackupSignature | undefined;
+  if (p.signature && typeof p.signature === 'object') {
+    const sig = p.signature as Record<string, unknown>;
+    if (typeof sig.alg === 'string' && typeof sig.mac === 'string') {
+      signature = { alg: sig.alg, mac: sig.mac };
+    }
+  }
+
   return {
     version,
     exportedAt: typeof p.exportedAt === 'number' ? p.exportedAt : null,
     appName: typeof p.appName === 'string' ? p.appName : 'privacytracker',
     tables,
+    ...(signature ? { signature } : {}),
   };
 }
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSetting, setSetting } from '@/lib/scheduler';
+import { readBoundedJson } from '@/lib/security';
+import { requireMutationGuard } from '@/lib/api-guards';
 
 /**
  * Floating dev-menu opt-in state, persisted in `app_settings` so it
@@ -25,9 +27,16 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = requireMutationGuard(req, {
+    action: 'dev_menu.write',
+    rateLimit: { keyPrefix: 'dev_menu.write', limit: 30, windowMs: 60_000 },
+    requireAdminToken: false,
+  });
+  if (!guard.ok) return guard.response;
+
   let body: unknown = null;
   try {
-    body = await req.json();
+    body = await readBoundedJson<unknown>(req, 4 * 1024);
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }

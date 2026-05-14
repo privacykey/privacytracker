@@ -16,10 +16,22 @@ export async function GET(
   }
 
   const body = fs.readFileSync(snapshotPath);
+  // Defence-in-depth filename sanitisation. The upstream
+  // `isSnapshotFilename` regex (lib/backup-snapshots.ts) only admits
+  // `privacytracker-snapshot-<ISO>.json`, so today the basename is
+  // structurally safe. But if a future loosening of that regex ever
+  // permitted bytes the HTTP header layer treats specially (CR/LF for
+  // header injection, `"` to escape the quoted-filename) we'd be
+  // dropping them into a header verbatim. Strip every char that isn't
+  // an ASCII filename component so the response is structurally safe
+  // regardless of upstream changes.
+  const safeName = path
+    .basename(snapshotPath)
+    .replace(/[^A-Za-z0-9._-]/g, '_');
   return new Response(body, {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${path.basename(snapshotPath)}"`,
+      'Content-Disposition': `attachment; filename="${safeName}"`,
       'Cache-Control': 'no-store',
     },
   });

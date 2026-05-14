@@ -106,11 +106,17 @@ export async function fetchAndParsePreview(url: string): Promise<ComparePreview>
 
   // ── Privacy Policy URL ──
   // Supports both ' (straight) and ’ (curly) apostrophes — Apple's HTML
-  // mixes them depending on locale. See the matching code in scraper.ts.
+  // mixes them depending on locale. See the matching code in scraper.ts —
+  // these patterns are deliberately bounded with `{0,2048}?` rather than
+  // `[^]*?` so a pathological body can't drive catastrophic backtracking.
   let privacyPolicyUrl = '';
   const ariaMatch =
-    html.match(/<a\s+[^>]*?aria-label="Developer[’']s Privacy Policy"[^]*?href="([^"]+)"/i) ||
-    html.match(/<a\s+[^]*?href="([^"]+)"[^]*?aria-label="Developer[’']s Privacy Policy"/i);
+    html.match(
+      /<a\s+[^<>]{0,2048}?aria-label="Developer[’']s Privacy Policy"[\s\S]{0,2048}?href="([^"]+)"/i,
+    ) ||
+    html.match(
+      /<a\s+[\s\S]{0,2048}?href="([^"]+)"[\s\S]{0,2048}?aria-label="Developer[’']s Privacy Policy"/i,
+    );
   if (ariaMatch) {
     privacyPolicyUrl = ariaMatch[1];
   } else {

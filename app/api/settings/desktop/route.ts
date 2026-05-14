@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSetting, setSetting } from '@/lib/scheduler';
+import { readBoundedJson } from '@/lib/security';
+import { requireMutationGuard } from '@/lib/api-guards';
 
 /**
  * Desktop-shell settings.
@@ -189,9 +191,23 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Mirror /api/settings — desktop settings can flip require_unlock,
+  // tray_visible, launch_hidden, devtools_open, autostart. Without a
+  // guard, any same-origin XSS could hide the app + auto-launch it on
+  // boot. Body capped at 16 KiB.
+  const guard = requireMutationGuard(req, {
+    action: 'settings.desktop.write',
+    rateLimit: {
+      keyPrefix: 'settings.desktop.write',
+      limit: 20,
+      windowMs: 60_000,
+    },
+  });
+  if (!guard.ok) return guard.response;
+
   let body: unknown = null;
   try {
-    body = await req.json();
+    body = await readBoundedJson<unknown>(req, 16 * 1024);
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }

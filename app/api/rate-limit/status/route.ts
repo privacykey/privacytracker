@@ -4,6 +4,8 @@ import {
   getAllRateLimits,
   type RateLimitCategory,
 } from '@/lib/rate-limit';
+import { readBoundedJson } from '@/lib/security';
+import { requireMutationGuard } from '@/lib/api-guards';
 
 /**
  * Rate-limit visibility endpoint.
@@ -29,9 +31,16 @@ const VALID_CATEGORIES: ReadonlyArray<RateLimitCategory | 'all'> = [
 ];
 
 export async function DELETE(req: NextRequest) {
+  const guard = requireMutationGuard(req, {
+    action: 'rate_limit.clear',
+    rateLimit: { keyPrefix: 'rate_limit.clear', limit: 10, windowMs: 60_000 },
+    requireAdminToken: false,
+  });
+  if (!guard.ok) return guard.response;
+
   let body: unknown = null;
   try {
-    body = await req.json();
+    body = await readBoundedJson<unknown>(req, 1024);
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }

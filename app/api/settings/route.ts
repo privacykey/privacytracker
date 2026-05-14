@@ -76,6 +76,26 @@ export async function GET(request: Request) {
     // success we don't subscribe to USB attach events at all, so users
     // who never use cfgutil don't pay any of its cost.
     cfgutil_imported_at: getSetting('cfgutil_imported_at', ''),
+    // Webhook notifications — POSTs notification summaries to a
+    // user-supplied URL (Slack / Discord / Teams / generic JSON). Empty
+    // URL disables the path entirely. `format` decides the payload
+    // shape; `frequency` decides whether each notification fires its
+    // own POST ('immediate') or whether they're batched into a daily /
+    // weekly summary.
+    notification_webhook_url: getSetting('notification_webhook_url', ''),
+    notification_webhook_format: getSetting('notification_webhook_format', 'generic'),
+    notification_webhook_frequency: getSetting('notification_webhook_frequency', 'immediate'),
+    // Quiet-hours window for both in-app and OS notifications. Stored
+    // as 'HH:MM' strings; empty = no quiet hours configured.
+    notification_quiet_hours_start: getSetting('notification_quiet_hours_start', ''),
+    notification_quiet_hours_end: getSetting('notification_quiet_hours_end', ''),
+    // Background-mode wizard lifecycle. Both are epoch ms timestamps
+    // serialised as strings (empty = never). The dashboard callout is
+    // hidden whenever either is set. Stored separately so we can
+    // distinguish "user finished the wizard" from "user clicked dismiss
+    // without doing anything" in metrics later.
+    background_wizard_completed_at: getSetting('background_wizard_completed_at', ''),
+    background_wizard_dismissed_at: getSetting('background_wizard_dismissed_at', ''),
     admin_token_required: adminTokenRequiredForRequest(request),
   });
 }
@@ -131,7 +151,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid AI provider' }, { status: 400 });
     }
     const provider = normalizeAiProvider(body.ai_provider);
+    const previousProvider = normalizeAiProvider(getSetting('ai_provider', 'disabled'));
     setSetting('ai_provider', provider);
+    // Cross-provider key leak prevention: a user who pasted an OpenAI key
+    // and then flipped the provider to `custom` (with a base URL they
+    // typed in) would otherwise watch their OpenAI key get sent in the
+    // Authorization header of the very next call to that custom endpoint.
+    // Force a re-enter on every provider switch.
+    if (provider !== previousProvider) {
+      setSetting('ai_api_key', '');
+    }
   }
 
   if (body.ai_api_key !== undefined) {
@@ -282,6 +311,113 @@ export async function POST(request: Request) {
       );
     }
     setSetting('policy_scrape_throttle_minutes', String(Math.floor(raw)));
+  }
+
+  if (body.notification_webhook_url !== undefined) {
+    const raw = String(body.notification_webhook_url ?? '').trim();
+    if (raw === '') {
+      setSetting('notification_webhook_url', '');
+    } else {
+      // Webhook destinations are user-controlled and frequently land on
+      // a SaaS endpoint (Slack / Discord / Teams), so we use the same
+      // SSRF-defended validator as the AI base URL — disallow private
+      // networks unless the host is whitelisted. Tauri users running a
+      // self-hosted Mattermost on the LAN can override by hosting
+      // behind a public DNS.
+      const verdict = validateExternalUrl(raw, { maxLength: 512 });
+      if (!verdict.ok) {
+        return NextResponse.json(
+          { error: `Invalid notification_webhook_url: ${verdict.detail ?? verdict.error}` },
+          { status: 400 },
+        );
+      }
+      setSetting('notification_webhook_url', verdict.url!.toString());
+    }
+  }
+
+  if (body.notification_webhook_format !== undefined) {
+    const VALID_FORMATS = ['slack', 'discord', 'teams', 'generic'] as const;
+    const raw = String(body.notification_webhook_format ?? 'generic') as (typeof VALID_FORMATS)[number];
+    if (!(VALID_FORMATS as readonly string[]).includes(raw)) {
+      return NextResponse.json(
+        { error: `notification_webhook_format must be one of: ${VALID_FORMATS.join(', ')}` },
+        { status: 400 },
+      );
+    }
+    setSetting('notification_webhook_format', raw);
+  }
+
+  if (body.notification_webhook_frequency !== undefined) {
+    const VALID_FREQS = ['immediate', 'daily_summary', 'weekly_summary', 'off'] as const;
+    const raw = String(body.notification_webhook_frequency ?? 'immediate') as (typeof VALID_FREQS)[number];
+    if (!(VALID_FREQS as readonly string[]).includes(raw)) {
+      return NextResponse.json(
+        { error: `notification_webhook_frequency must be one of: ${VALID_FREQS.join(', ')}` },
+        { status: 400 },
+      );
+    }
+    setSetting('notification_webhook_frequency', raw);
+  }
+
+  if (body.notification_quiet_hours_start !== undefined) {
+    const raw = String(body.notification_quiet_hours_start ?? '').trim();
+    // Accept '' (clear) or HH:MM 24h format. The notifications layer
+    // tolerates malformed values by treating them as "no quiet hours",
+    // but we reject here so an obviously-broken UI write doesn't get
+    // silently masked.
+    if (raw !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(raw)) {
+      return NextResponse.json(
+        { error: 'notification_quiet_hours_start must be HH:MM or empty' },
+        { status: 400 },
+      );
+    }
+    setSetting('notification_quiet_hours_start', raw);
+  }
+
+  if (body.notification_quiet_hours_end !== undefined) {
+    const raw = String(body.notification_quiet_hours_end ?? '').trim();
+    if (raw !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(raw)) {
+      return NextResponse.json(
+        { error: 'notification_quiet_hours_end must be HH:MM or empty' },
+        { status: 400 },
+      );
+    }
+    setSetting('notification_quiet_hours_end', raw);
+  }
+
+  if (body.background_wizard_completed_at !== undefined) {
+    // Allow '' to clear (re-show the callout) or any non-negative epoch
+    // ms timestamp. We don't validate the value tightly — it's only
+    // read for "is this set" checks downstream.
+    const raw = body.background_wizard_completed_at;
+    if (raw === '' || raw === null) {
+      setSetting('background_wizard_completed_at', '');
+    } else {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return NextResponse.json(
+          { error: 'background_wizard_completed_at must be an epoch ms timestamp or empty' },
+          { status: 400 },
+        );
+      }
+      setSetting('background_wizard_completed_at', String(Math.floor(parsed)));
+    }
+  }
+
+  if (body.background_wizard_dismissed_at !== undefined) {
+    const raw = body.background_wizard_dismissed_at;
+    if (raw === '' || raw === null) {
+      setSetting('background_wizard_dismissed_at', '');
+    } else {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return NextResponse.json(
+          { error: 'background_wizard_dismissed_at must be an epoch ms timestamp or empty' },
+          { status: 400 },
+        );
+      }
+      setSetting('background_wizard_dismissed_at', String(Math.floor(parsed)));
+    }
   }
 
   recordAudit({

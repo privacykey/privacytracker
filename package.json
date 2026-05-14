@@ -24,7 +24,7 @@
     "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
     "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
     "tauri": "tauri",
-    "tauri:dev": "node scripts/ensure-standalone-stub.mjs && tauri dev",
+    "tauri:dev": "node scripts/ensure-standalone-stub.mjs && tauri dev --features devtools",
     "tauri:build": "tauri build"
   },
   "dependencies": {

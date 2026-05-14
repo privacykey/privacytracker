@@ -29,6 +29,19 @@ export const BACKUP_FRESHNESS_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const SETTINGS_BACKUP_PREFIX = 'cfgutil_last_backup_';
 
+/**
+ * Apple ECIDs are hex strings (typically 12-20 chars). Validate at every
+ * TS-side entry point even though the Rust command also char-allowlists,
+ * so a stray caller can't synthesise a key like
+ * `cfgutil_last_backup_flag.devopts.cfgutil_uninstall` via string
+ * concatenation and collide with another setting key. Defence in depth
+ * — if the Rust validator changes or another TS entry point is added,
+ * this still keeps the namespace unambiguous.
+ */
+function isValidEcid(value: string): boolean {
+  return /^[A-Fa-f0-9]{8,24}$/.test(value);
+}
+
 interface BackupStamp {
   /** Epoch ms when the backup completed. */
   finishedAt: number;
@@ -90,6 +103,7 @@ export function checkUninstallGate(ecid: string): DeviceActionGate {
 
 /** Most recent backup stamp for the given ECID, or null. */
 export function getLastBackup(ecid: string): BackupStamp | null {
+  if (!isValidEcid(ecid)) return null;
   const key = SETTINGS_BACKUP_PREFIX + ecid;
   const raw = getSetting(key, '');
   if (!raw) return null;
@@ -112,6 +126,9 @@ export function recordBackup(opts: {
   finishedAt: number;
   deviceName: string | null;
 }): void {
+  if (!isValidEcid(opts.ecid)) {
+    throw new Error(`recordBackup: invalid ECID ${opts.ecid}`);
+  }
   const key = SETTINGS_BACKUP_PREFIX + opts.ecid;
   const stamp: BackupStamp = {
     finishedAt: opts.finishedAt,

@@ -6,7 +6,15 @@ import {
   type ImportItemStatus,
 } from '../../../../lib/imports';
 import { readBoundedJson } from '../../../../lib/security';
+import { requireMutationGuard } from '../../../../lib/api-guards';
 import { withApiTiming } from '../../../../lib/api-timing';
+
+// Per-import-batch cap. The 512 KiB body limit keeps individual rows
+// small, but without an explicit length cap an attacker could submit
+// 10000 minimal rows and drive a lot of SQLite write traffic. 5000 is
+// well above any realistic onboarding flow (a Mac mini's `mobileapps`
+// list maxes out around 1500–2000) yet far below "weaponisable".
+const MAX_ITEMS_PER_REQUEST = 5000;
 
 interface RawItem {
   query: unknown;
@@ -34,6 +42,13 @@ interface RawItem {
 }
 
 async function addImportItemsRoute(request: Request) {
+  const guard = requireMutationGuard(request, {
+    action: 'imports.items.add',
+    rateLimit: { keyPrefix: 'imports.items.add', limit: 30, windowMs: 60_000 },
+    requireAdminToken: false,
+  });
+  if (!guard.ok) return guard.response;
+
   let body: Record<string, unknown>;
   try {
     body = await readBoundedJson<Record<string, unknown>>(request, 512 * 1024);
@@ -51,6 +66,12 @@ async function addImportItemsRoute(request: Request) {
     }
 
     const rawItems: RawItem[] = Array.isArray(body?.items) ? body.items : [];
+    if (rawItems.length > MAX_ITEMS_PER_REQUEST) {
+      return NextResponse.json(
+        { error: `Too many items in one request (${rawItems.length} > ${MAX_ITEMS_PER_REQUEST}). Split into multiple batches.` },
+        { status: 413 },
+      );
+    }
     const cleaned = rawItems
       .map((item): Parameters<typeof addImportItemsAsync>[1][number] | null => {
         const query = typeof item?.query === 'string' ? item.query.trim() : '';

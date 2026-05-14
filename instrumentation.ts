@@ -244,6 +244,31 @@ export async function register() {
     setInterval(tickBackupSnapshots, CHECK_INTERVAL_MS);
     console.log('[BackupSnapshots] Scheduler initialised');
 
+    // Webhook summary tick. Same 30-min cadence as the sync scheduler,
+    // but it's a no-op unless the user has configured a webhook with
+    // `daily_summary` or `weekly_summary` frequency. The helper self-
+    // rate-limits via `notification_webhook_last_sent` so calling it
+    // every tick is safe — actual POSTs only happen when the window
+    // has elapsed AND there's at least one unread notification to
+    // include.
+    const tickWebhookSummary = async () => {
+      try {
+        const { maybePostSummaryWebhook } = await import('./lib/notification-webhooks');
+        const count = await maybePostSummaryWebhook();
+        if (count > 0) {
+          console.log(`[Webhook] Posted summary with ${count} notifications`);
+        }
+      } catch (e) {
+        console.error('[Webhook] Summary tick failed:', e);
+      }
+    };
+    // Offset the first run so it doesn't fight with backup snapshots
+    // for the boot window. After that, every CHECK_INTERVAL_MS tick
+    // both jobs fire.
+    setTimeout(tickWebhookSummary, 45_000);
+    setInterval(tickWebhookSummary, CHECK_INTERVAL_MS);
+    console.log('[Webhook] Summary scheduler initialised');
+
     // Wayback bulk-import resume. Runs exactly once per server boot, a few
     // seconds after startup so we don't compete with Next's initial
     // compile/JIT work. Three outcomes:

@@ -16,18 +16,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       # pnpm needs to be installed before setup-node so that the latter's
       # cache: 'pnpm' resolver can locate the pnpm binary on PATH. Pinned
       # to an exact patch so CI and Docker use the same resolver behavior.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@ac6db6d3c1f721f886538a378a2d73e85697340a  # v6
         with:
           version: 11.0.6
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
         with:
           node-version: '24'
           cache: 'pnpm'
@@ -37,7 +37,7 @@ jobs:
 
       - name: Dependency review
         if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v5
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294  # v5
         with:
           fail-on-severity: high
 
@@ -51,7 +51,7 @@ jobs:
         run: pnpm test:coverage
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         if: always()
         with:
           name: node-v8-coverage
@@ -100,7 +100,7 @@ jobs:
         run: pnpm test:e2e
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         if: always()
         with:
           name: playwright-report
@@ -108,7 +108,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Playwright test results
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         if: always()
         with:
           name: playwright-test-results
@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Install Tauri Linux build dependencies
         # Tauri's webview backend on Linux links against gtk + webkit2gtk;
@@ -144,14 +144,14 @@ jobs:
             patchelf
 
       - name: Install stable Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable as of 2026-05
 
       - name: Cache cargo registry + target
         # Saves the cargo download index, the compiled crate cache, and
         # the target dir between runs. Keyed on the lockfile so a tauri
         # bump invalidates cleanly. Without this each PR re-downloads
         # ~600 transitive crates and the job takes ~3× longer.
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5
         with:
           path: |
             ~/.cargo/registry
@@ -173,7 +173,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Build Docker image
         run: docker build -t privacytracker-smoke .

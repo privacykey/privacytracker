@@ -6,6 +6,25 @@ import db, { dataDir, dbPath } from './db';
 import { getSetting } from './scheduler';
 import { adminTokenConfigured } from './security';
 
+/**
+ * Replace the user's home directory in an absolute path with `~/`.
+ * The diagnostics blob is explicitly designed to be pasted into GitHub
+ * issues — leaking `/Users/<username>/` in every paste is both an
+ * information disclosure and an unnecessary doxing surface. The
+ * redacted form is just as useful for triage (`~/Library/Application
+ * Support/privacytracker/privacy.db` says everything `/Users/jane/...`
+ * does, minus the username).
+ */
+function redactHomeDir(p: string): string {
+  const home = os.homedir();
+  if (!home || home === '/' || home === '\\') return p;
+  if (p === home) return '~';
+  if (p.startsWith(home + '/') || p.startsWith(home + '\\')) {
+    return '~' + p.slice(home.length);
+  }
+  return p;
+}
+
 export type DeploymentCheckStatus = 'ok' | 'info' | 'warn' | 'bad';
 
 export interface DeploymentDiagnosticCheck {
@@ -188,8 +207,8 @@ function readDatabase(): DeploymentDiagnostics['database'] {
     }
 
     return {
-      path: dbPath,
-      dataDir,
+      path: redactHomeDir(dbPath),
+      dataDir: redactHomeDir(dataDir),
       dataDirSource: memory ? 'memory' : process.env.PRIVACYTRACKER_DATA_DIR ? 'env' : 'cwd',
       exists,
       sizeBytes: exists ? fs.statSync(dbPath).size : null,
@@ -199,8 +218,8 @@ function readDatabase(): DeploymentDiagnostics['database'] {
     };
   } catch (error) {
     return {
-      path: dbPath,
-      dataDir,
+      path: redactHomeDir(dbPath),
+      dataDir: redactHomeDir(dataDir),
       dataDirSource: memory ? 'memory' : process.env.PRIVACYTRACKER_DATA_DIR ? 'env' : 'cwd',
       exists: false,
       sizeBytes: null,
@@ -231,6 +250,7 @@ function buildChecks(
       id: 'database',
       label: 'Database storage',
       status: database.writable ? 'ok' : 'bad',
+      // database.path has already been home-dir-redacted above.
       detail: database.writable
         ? `SQLite is writable at ${database.path}.`
         : database.error ?? `SQLite is not writable at ${database.path}.`,

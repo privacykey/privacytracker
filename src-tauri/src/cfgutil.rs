@@ -692,6 +692,56 @@ pub struct CfgutilBackupResult {
     pub error: Option<String>,
 }
 
+/// Canonicalise and validate the destination directory for a cfgutil
+/// backup. The webview is only ever supposed to ask for paths under
+/// `~/Documents/privacytracker-Backups/`; this function enforces that
+/// at the Rust boundary so a compromised webview can't pre-stage
+/// directories in security-sensitive locations like `~/Library/
+/// LaunchAgents`. Expands a leading `~/`, rejects relative paths and
+/// any path containing `..` components, and verifies the result still
+/// sits inside the allowed base.
+#[cfg(target_os = "macos")]
+fn resolve_backup_dest(dest_dir: &str) -> Result<PathBuf, String> {
+    if dest_dir.is_empty() {
+        return Err("dest_dir is empty".to_string());
+    }
+
+    let home = dirs::home_dir().ok_or_else(|| "could not resolve user home dir".to_string())?;
+    let allowed_base = home.join("Documents").join("privacytracker-Backups");
+
+    // Expand a leading `~/`. We deliberately do NOT support `~user/`
+    // (other-user expansion) — only the running user's home is allowed.
+    let candidate: PathBuf = if let Some(rest) = dest_dir.strip_prefix("~/") {
+        home.join(rest)
+    } else if dest_dir == "~" {
+        home.clone()
+    } else {
+        PathBuf::from(dest_dir)
+    };
+
+    if !candidate.is_absolute() {
+        return Err("dest_dir must be absolute (or start with ~/)".to_string());
+    }
+
+    // Reject any traversal sequences before we touch the filesystem.
+    use std::path::Component;
+    for c in candidate.components() {
+        if matches!(c, Component::ParentDir) {
+            return Err("dest_dir contains `..` components".to_string());
+        }
+    }
+
+    if !candidate.starts_with(&allowed_base) {
+        return Err(format!(
+            "dest_dir must be under {} (got {})",
+            allowed_base.display(),
+            candidate.display()
+        ));
+    }
+
+    Ok(candidate)
+}
+
 /// Result of `run_cfgutil_remove_app`. Bundles command output so the
 /// review-and-act wizard can render per-row success/failure without
 /// re-running cfgutil to check.
@@ -738,12 +788,36 @@ fn run_cfgutil_backup_impl(ecid: String, dest_dir: String) -> CfgutilBackupResul
         ..Default::default()
     };
 
+    // Refuse anything that isn't a plain ECID. Same allowlist as
+    // run_cfgutil_remove_app — defence in depth against a compromised
+    // webview trying to smuggle cfgutil flags via --ecid's value.
+    if !ecid.chars().all(|c| c.is_ascii_alphanumeric()) {
+        out.error = Some(format!(
+            "Refusing to back up — ECID contains unexpected characters: {ecid}"
+        ));
+        return out;
+    }
+
+    // Constrain dest_dir to ~/Documents/privacytracker-Backups/<...>.
+    // Canonicalise the parent (the leaf typically doesn't exist yet) and
+    // confirm the result still sits under the allowed base, so symlink
+    // games or "../" components can't escape.
+    let resolved_dest = match resolve_backup_dest(&dest_dir) {
+        Ok(p) => p,
+        Err(e) => {
+            out.error = Some(format!("Refusing to back up — bad dest_dir: {e}"));
+            return out;
+        }
+    };
+
     let check = cached_detect_cfgutil();
     if !check.available {
         out.error = Some(check.error.unwrap_or_else(|| "cfgutil not available".to_string()));
         return out;
     }
     let cfgutil_path = check.path.unwrap_or_else(|| "cfgutil".to_string());
+
+    let dest_dir = resolved_dest.to_string_lossy().into_owned();
 
     // Make sure dest_dir exists — cfgutil's behaviour is undefined if
     // the parent doesn't exist. Best-effort create; permission errors
@@ -883,6 +957,28 @@ fn run_cfgutil_remove_app_impl(ecid: String, bundle_id: String) -> CfgutilRemove
             "Refusing to remove app — ECID contains unexpected characters: {ecid}"
         ));
         return out;
+    }
+
+    // Defence-in-depth: require a fresh Touch ID / device-password
+    // confirmation before the destructive cfgutil command runs. The
+    // wizard's "type DELETE" prompt is a webview-side check, so a
+    // compromised webview could call this command directly to skip it.
+    // LAContext is the only confirmation step that a JS payload can't
+    // bypass: it's a native modal whose result depends on hardware
+    // (the user's finger) or the macOS login password.
+    match crate::touch_id::prompt(
+        &format!("Confirm removing {bundle_id} from this iPhone"),
+        std::time::Duration::from_secs(120),
+    ) {
+        Ok(true) => {}
+        Ok(false) => {
+            out.error = Some("Authentication cancelled".to_string());
+            return out;
+        }
+        Err(e) => {
+            out.error = Some(format!("Authentication required: {e}"));
+            return out;
+        }
     }
 
     let check = cached_detect_cfgutil();

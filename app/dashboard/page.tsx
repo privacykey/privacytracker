@@ -9,6 +9,7 @@ import {
 import { countManualApps } from '../../lib/manual-apps-server';
 import { getMismatchedApps } from '../../lib/privacy-profile-server';
 import { resolveFlagFromDb } from '../../lib/feature-flags-server';
+import { getSetting } from '../../lib/scheduler';
 import { getActiveFocus, getWelcomedAt, setWelcomedAt } from '../../lib/feature-flag-storage';
 import {
   getUserVerdictsByAppId,
@@ -172,10 +173,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         staleSection: resolve('flag.dashboard.stale_section'),
         activitySection: resolve('flag.dashboard.activity_section'),
         riskTierLegend: resolve('flag.dashboard.risk_tier_legend'),
+        backgroundModeWizard: resolve('flag.dashboard.background_mode_wizard'),
       };
     } catch (error) {
       console.warn('[dashboard] flag resolution failed:', error);
       return undefined;
+    }
+  })();
+
+  // Server-side visibility gate for the background-mode callout. The
+  // callout renders only when the user hasn't already completed or
+  // dismissed the wizard — both stored as epoch ms strings in
+  // app_settings, empty = never. The component does its own runtime
+  // Tauri check on top, so this is purely the "is the user new to
+  // this surface?" signal.
+  const backgroundCalloutVisible = (() => {
+    try {
+      const completed = getSetting('background_wizard_completed_at', '');
+      const dismissed = getSetting('background_wizard_dismissed_at', '');
+      return !completed && !dismissed;
+    } catch {
+      return false;
     }
   })();
 
@@ -274,6 +292,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         manualAppsBannerDismissed={manualAppsBannerDismissed}
         mismatchedApps={mismatchedApps}
         flags={flags}
+        backgroundCalloutVisible={backgroundCalloutVisible}
       />
       {tourEnabled && tourFocus && (
         <CoachmarkTour
