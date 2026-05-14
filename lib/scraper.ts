@@ -1456,6 +1456,32 @@ interface ScrapeWritePlan {
   accessibilityFeatures: AccessibilityFeatureRecord[] | null;
   hasAccessibilityLabels: number | null;
   snapshot: PrivacyTypeSnapshot[];
+  /**
+   * "Customers Also Bought" + "More By This Developer" shelves observed
+   * on the product page. `null` means "the parser couldn't decide" — we
+   * leave any existing rows in `related_apps_observed` alone. An empty
+   * array means "the parser ran and saw zero entries" — caller wipes the
+   * existing rows so we don't show stale shelves.
+   */
+  relatedApps: RelatedAppShelfRecord[] | null;
+}
+
+/**
+ * One row's worth of related-app data observed on the source app's
+ * product page. Mirrors {@link RelatedAppInput} in
+ * `lib/related-apps-observed.ts` minus the `sourceAppId` (which the
+ * commit path adds when it writes). Defined inline rather than imported
+ * to keep this module's existing zero-import-from-related-apps-observed
+ * surface (the lib file imports from `./db`, which would create a
+ * cycle if scraper imported it directly).
+ */
+export interface RelatedAppShelfRecord {
+  relatedAppleId:   string;
+  relatedName:      string;
+  relatedDeveloper: string | null;
+  relatedIconUrl:   string | null;
+  relatedStoreUrl:  string;
+  shelfType:        'may_also_like' | 'more_by_developer';
 }
 
 interface CommitScrapedAppInput {
@@ -1689,6 +1715,22 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
   }
 
   const parsedPrivacyItems = normalizePrivacyItems(privacyItems);
+
+  // ── Extract related-app shelves ──
+  // Apple's product page has two shelves of related apps near the bottom:
+  // "Customers Also Bought" / "You Might Also Like" and "More By This
+  // Developer". Both live in the same `shelfMapping` blob we already walk
+  // for privacy types. Any parse error → null so the commit path leaves
+  // existing rows untouched (transient Apple shape drift doesn't wipe a
+  // previously-good shelf capture).
+  let relatedApps: RelatedAppShelfRecord[] | null;
+  try {
+    relatedApps = extractRelatedAppShelves(rawData);
+  } catch (e) {
+    console.warn('Could not extract related-app shelves from raw JSON', e);
+    relatedApps = null;
+  }
+
   return {
     privacyItems: parsedPrivacyItems,
     accessibilityFeatures,
@@ -1701,7 +1743,153 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
         title: category.title,
       })),
     })),
+    relatedApps,
   };
+}
+
+/**
+ * Walk Apple's `shelfMapping` for the two related-app shelves that
+ * appear on every product page: "Customers Also Bought" (aka "You
+ * Might Also Like") and "More By This Developer".
+ *
+ * The exact shape inside `shelfMapping` drifts every few months. We
+ * search defensively across a handful of known keys and bail on any
+ * shape we don't recognise — empty result is always safe.
+ *
+ * Result is capped at {@link MAX_RELATED_PER_SHELF} entries per shelf to
+ * keep the DB write batch predictable when Apple returns a long list.
+ */
+const MAX_RELATED_PER_SHELF = 10;
+
+export function extractRelatedAppShelves(rawData: any): RelatedAppShelfRecord[] {
+  const out: RelatedAppShelfRecord[] = [];
+  const shelfMap = rawData?.[0]?.data?.shelfMapping;
+  if (!shelfMap || typeof shelfMap !== 'object') return out;
+
+  // Candidate (shelfKey → shelfType) pairs. Apple has shipped each of
+  // these spellings at various points; checking all of them costs nothing
+  // and keeps us forward-compatible.
+  const SHELF_CANDIDATES: Array<{ keys: string[]; shelfType: 'may_also_like' | 'more_by_developer' }> = [
+    {
+      keys: [
+        'customersAlsoBoughtAppsCollection',
+        'customersAlsoBoughtApps',
+        'youMightAlsoLike',
+        'youMightAlsoLikeApps',
+      ],
+      shelfType: 'may_also_like',
+    },
+    {
+      keys: [
+        'moreByThisDeveloperCollection',
+        'moreByThisDeveloper',
+        'moreByDeveloper',
+      ],
+      shelfType: 'more_by_developer',
+    },
+  ];
+
+  for (const { keys, shelfType } of SHELF_CANDIDATES) {
+    for (const key of keys) {
+      const shelf = shelfMap[key];
+      if (!shelf) continue;
+      const items = readShelfItems(shelf);
+      if (!items.length) continue;
+      let captured = 0;
+      for (const item of items) {
+        if (captured >= MAX_RELATED_PER_SHELF) break;
+        const rec = normaliseRelatedItem(item, shelfType);
+        if (rec) {
+          out.push(rec);
+          captured++;
+        }
+      }
+      // First key that hits wins for this shelf type.
+      break;
+    }
+  }
+  return out;
+}
+
+/**
+ * Tolerate the two layouts Apple has used:
+ *   - `{ items: [...] }` (current shelfMapping shape, same as privacyTypes)
+ *   - `{ seeAllAction: { pageData: { shelves: [{ items: [...] }] } } }`
+ *     (the "see all" deep-link wrapper that some shelves carry)
+ *
+ * Returns a flat `unknown[]` of raw item objects; the caller normalises.
+ */
+function readShelfItems(shelf: any): any[] {
+  if (Array.isArray(shelf?.items)) return shelf.items;
+  const nestedShelves = shelf?.seeAllAction?.pageData?.shelves;
+  if (Array.isArray(nestedShelves)) {
+    const out: any[] = [];
+    for (const inner of nestedShelves) {
+      if (Array.isArray(inner?.items)) out.push(...inner.items);
+    }
+    return out;
+  }
+  return [];
+}
+
+function normaliseRelatedItem(
+  item: any,
+  shelfType: 'may_also_like' | 'more_by_developer',
+): RelatedAppShelfRecord | null {
+  if (!item || typeof item !== 'object') return null;
+
+  // Apple Apple ID: 'id' (modern) or 'appleId' (older). Coerce to string —
+  // it's always numeric on the wire but we store as TEXT for portability
+  // with the rest of the apps table.
+  const idRaw = item.id ?? item.appleId ?? item.adamId;
+  const relatedAppleId = idRaw === null || idRaw === undefined ? '' : String(idRaw);
+  if (!relatedAppleId) return null;
+
+  const relatedName = pickString(item.name, item.title);
+  if (!relatedName) return null;
+
+  // Store URL is canonical and required (no point recording an entry the
+  // user can't click through to).
+  const relatedStoreUrl = pickString(
+    item.url,
+    item.appLink,
+    item.storeUrl,
+    typeof item.attributes?.url === 'string' ? item.attributes.url : undefined,
+  );
+  if (!relatedStoreUrl) return null;
+
+  const relatedDeveloper = pickString(
+    item.artistName,
+    item.developerName,
+    item.subtitle,
+    item.attributes?.artistName,
+  );
+
+  // Icon URL: Apple typically wraps in `artwork.url` with a template
+  // pattern like `https://.../{w}x{h}bb.png`. We store the template
+  // as-is; the client can swap in dimensions when rendering.
+  const iconTemplate = pickString(
+    item.artwork?.url,
+    item.artwork?.template,
+    item.iconUrl,
+    item.imageUrl,
+  );
+
+  return {
+    relatedAppleId,
+    relatedName,
+    relatedDeveloper: relatedDeveloper || null,
+    relatedIconUrl: iconTemplate || null,
+    relatedStoreUrl,
+    shelfType,
+  };
+}
+
+function pickString(...values: unknown[]): string {
+  for (const v of values) {
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+  }
+  return '';
 }
 
 function normalizePrivacyItems(items: any[]): ParsedPrivacyItem[] {
@@ -1883,6 +2071,36 @@ function pushScrapedAppStatements(
           f.title,
           f.description,
           f.iconTemplate,
+        ],
+      });
+    }
+  }
+
+  // Related-app shelves ("Customers Also Bought" / "More By This Developer").
+  // Same wipe+reinsert + null-skip pattern as the accessibility block above:
+  // null means the parser couldn't decide, so we leave any previously
+  // captured rows in place rather than silently wiping them on a transient
+  // shape drift in Apple's JSON.
+  if (writePlan.relatedApps !== null) {
+    statements.push({
+      sql: 'DELETE FROM related_apps_observed WHERE source_app_id = ?',
+      params: [appId],
+    });
+    for (const r of writePlan.relatedApps) {
+      statements.push({
+        sql: `INSERT INTO related_apps_observed
+                (source_app_id, related_apple_id, related_name, related_developer,
+                 related_icon_url, related_store_url, shelf_type, observed_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        params: [
+          appId,
+          r.relatedAppleId,
+          r.relatedName,
+          r.relatedDeveloper,
+          r.relatedIconUrl,
+          r.relatedStoreUrl,
+          r.shelfType,
+          now,
         ],
       });
     }

@@ -30,6 +30,11 @@ import { NextResponse } from 'next/server';
 import db from '../../../lib/db';
 import { safeFetch } from '../../../lib/security';
 import { getSetting } from '../../../lib/scheduler';
+import { getMayAlsoLike } from '../../../lib/related-apps-observed';
+
+/** Modes supported by this endpoint. See the top-of-file docstring. */
+type RelatedMode = 'top_in_category' | 'may_also_like';
+const VALID_MODES: readonly RelatedMode[] = ['top_in_category', 'may_also_like'];
 
 const APPLE_HOSTS = ['apps.apple.com', 'itunes.apple.com', 'rss.applemarketingtools.com'];
 const DEFAULT_COUNTRY = 'us';
@@ -40,6 +45,9 @@ interface AppRow {
   genreId: number | null;
   genreName: string | null;
   priceAmount: number | null;
+  /** App Store listing URL — surfaced in the `may_also_like` response so
+   *  the UI can offer a one-click rescrape when the table is empty. */
+  url: string;
 }
 
 interface RelatedCandidate {
@@ -48,110 +56,6 @@ interface RelatedCandidate {
   developer: string;
   iconUrl: string;
   url: string;
-}
-
-type RelatedMode = 'top_in_category' | 'may_also_like';
-
-function parseMode(raw: string | null): RelatedMode {
-  return raw === 'may_also_like' ? 'may_also_like' : 'top_in_category';
-}
-
-/**
- * Strip the source app's name down to a single search keyword so iTunes
- * Search treats it like a category cue rather than a vendor-specific
- * lookup. "Notion: Notes, AI & Calendar" → "Notion", "Spark – Email by
- * Readdle" → "Spark", "iA Writer" → "iA Writer". We keep up to two
- * tokens because some apps actually do publish under two-word names
- * (e.g. "Apple Notes"), but anything beyond that is marketing fluff
- * and dilutes the result quality.
- */
-function buildLikeKeyword(rawName: string): string {
-  const stripped = rawName
-    // Cut off everything after the first separator that introduces a
-    // tagline ("App: tagline", "App – tagline", "App | tagline" etc).
-    .split(/[:|–—-]/)[0]
-    .trim()
-    // Drop a trailing "App"/"by Vendor" suffix that would skew search
-    // toward the literal vendor instead of similar apps.
-    .replace(/\s+(?:app|by\s+.+?)$/i, '')
-    .trim();
-  const tokens = stripped.split(/\s+/).filter(Boolean).slice(0, 2);
-  return tokens.join(' ');
-}
-
-/**
- * iTunes Search — used by the "you may also like" mode. iTunes returns
- * results ranked by Apple's relevance heuristic for the term, scoped to
- * software apps; we filter to the source app's primary genre + free/paid
- * tier (since users almost never want to swap a paid app for a free one
- * with the same name, and vice versa).
- *
- * Same failure handling as the chart feed — empty array on any
- * non-success path so the caller renders the empty state.
- */
-async function fetchMayAlsoLike(opts: {
-  country: string;
-  free: boolean;
-  genreId: number;
-  keyword: string;
-  excludeAppleId: string;
-  limit: number;
-}): Promise<RelatedCandidate[]> {
-  const { country, free, genreId, keyword, excludeAppleId, limit } = opts;
-  if (!keyword) return [];
-  // entity=software keeps the result set to apps (vs in-app purchases or
-  // podcasts). attribute=genreIndex doesn't exist on iTunes Search, so we
-  // post-filter by primaryGenreId from each result. media=software is
-  // implied but pinning it makes the API contract explicit.
-  const url =
-    `https://itunes.apple.com/search?` +
-    `term=${encodeURIComponent(keyword)}` +
-    `&country=${country}` +
-    `&media=software` +
-    `&entity=software` +
-    `&limit=30`;
-  try {
-    const { response, body } = await safeFetch(url, {
-      allowedHosts: APPLE_HOSTS,
-      headers: { Accept: 'application/json' },
-      timeoutMs: 8000,
-      maxBytes: 2 * 1024 * 1024,
-      redirect: 'follow',
-    });
-    if (!response.ok) return [];
-    const parsed = JSON.parse(body.toString('utf8')) as {
-      results?: Array<{
-        trackId?: number;
-        trackName?: string;
-        artistName?: string;
-        artworkUrl100?: string;
-        artworkUrl60?: string;
-        trackViewUrl?: string;
-        primaryGenreId?: number;
-        price?: number;
-      }>;
-    };
-    const results = parsed.results ?? [];
-    const out: RelatedCandidate[] = [];
-    for (const r of results) {
-      if (r.primaryGenreId !== genreId) continue;
-      const resultFree = (r.price ?? 0) <= 0;
-      if (resultFree !== free) continue;
-      const appleId = r.trackId != null ? String(r.trackId) : '';
-      if (!appleId || appleId === excludeAppleId) continue;
-      const name = r.trackName?.trim();
-      const developer = r.artistName?.trim() ?? '';
-      const iconUrl = r.artworkUrl100 ?? r.artworkUrl60 ?? '';
-      const trackUrl = r.trackViewUrl ?? '';
-      if (!name || !trackUrl) continue;
-      out.push({ appleId, name, developer, iconUrl, url: trackUrl });
-      if (out.length >= limit) break;
-    }
-    return out;
-  } catch (err) {
-    console.warn('[/api/related-apps] search fetch failed:', err);
-    return [];
-  }
 }
 
 function normaliseCountry(raw: string | null | undefined): string {
@@ -280,7 +184,10 @@ export async function GET(request: Request) {
     Math.max(1, Number.isFinite(Number(limitRaw)) ? Number(limitRaw) : 5),
     10,
   );
-  const mode = parseMode(searchParams.get('mode'));
+  const modeRaw = searchParams.get('mode');
+  const mode: RelatedMode = (VALID_MODES as readonly string[]).includes(modeRaw ?? '')
+    ? (modeRaw as RelatedMode)
+    : 'top_in_category';
 
   if (!sourceAppId || !/^[A-Za-z0-9_-]+$/.test(sourceAppId)) {
     return NextResponse.json(
@@ -293,7 +200,7 @@ export async function GET(request: Request) {
   try {
     row = db
       .prepare(
-        'SELECT id, name, genreId, genreName, priceAmount FROM apps WHERE id = ?',
+        'SELECT id, name, genreId, genreName, priceAmount, url FROM apps WHERE id = ?',
       )
       .get(sourceAppId) as AppRow | undefined;
   } catch (e) {
@@ -308,6 +215,36 @@ export async function GET(request: Request) {
       { error: 'Source app not found.' },
       { status: 404 },
     );
+  }
+
+  // Mode dispatch — `may_also_like` reads from the local
+  // `related_apps_observed` table populated by the scraper at fetch
+  // time. No network calls; the response is empty + `reason` flagged
+  // when we've never scraped the source app's product page (or scraped
+  // it before the shelf-extraction code shipped).
+  if (mode === 'may_also_like') {
+    const rows = getMayAlsoLike(sourceAppId).slice(0, limit);
+    const candidates: RelatedCandidate[] = rows.map(r => ({
+      appleId:   r.relatedAppleId,
+      name:      r.relatedName,
+      developer: r.relatedDeveloper ?? '',
+      iconUrl:   r.relatedIconUrl ?? '',
+      url:       r.relatedStoreUrl,
+    }));
+    return NextResponse.json({
+      mode,
+      // Genre fields stay null in this mode — they're a "top in category"
+      // concept and the UI knows not to render them for other modes.
+      genreId:   null,
+      genreName: null,
+      free:      null,
+      candidates,
+      // `reason` is set when we have zero rows AND the source app
+      // hasn't been scraped since the shelf extractor shipped. The UI
+      // can offer a one-click rescrape in this state.
+      reason:    candidates.length === 0 ? 'not_scraped_yet' : undefined,
+      sourceAppUrl: row.url,
+    });
   }
 
   const country = normaliseCountry(getSetting('app_country', DEFAULT_COUNTRY));
@@ -331,30 +268,23 @@ export async function GET(request: Request) {
 
   if (genreId == null) {
     return NextResponse.json({
+      mode,
       genreId: null,
       genreName: null,
       free: null,
       candidates: [] as RelatedCandidate[],
+      sourceAppUrl: row.url,
     });
   }
 
   const free = (priceAmount ?? 0) <= 0;
-  const candidates = mode === 'may_also_like'
-    ? await fetchMayAlsoLike({
-        country,
-        free,
-        genreId,
-        keyword: buildLikeKeyword(row.name),
-        excludeAppleId: sourceAppId,
-        limit,
-      })
-    : await fetchTopInGenre({
-        country,
-        free,
-        genreId,
-        excludeAppleId: sourceAppId,
-        limit,
-      });
+  const candidates = await fetchTopInGenre({
+    country,
+    free,
+    genreId,
+    excludeAppleId: sourceAppId,
+    limit,
+  });
 
   return NextResponse.json({
     mode,
@@ -362,5 +292,6 @@ export async function GET(request: Request) {
     genreName,
     free,
     candidates,
+    sourceAppUrl: row.url,
   });
 }

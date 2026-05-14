@@ -1,0 +1,283 @@
+/* Compare-view slot card + modal overlay.
+ * Co-located with CompareAppsView.tsx so Turbopack reliably hot-reloads;
+ * the 26k-line globals.css has been unreliable for incremental dev rebuilds
+ * (see the queue work — we hit the same stale-bundle issue twice).
+ *
+ * Two card states share most chrome:
+ *   .compare-slot-card.is-empty   — dashed border, plus-glyph CTA
+ *   .compare-slot-card.is-picked  — solid border, icon + name + dev + risk
+ *
+ * The modal reuses the existing .modal-overlay / .modal-card classes for
+ * the chrome + dismissal behaviour; this file only adds modal-specific
+ * tweaks for the larger picker surface.
+ */
+
+/* ── Slot card ─────────────────────────────── */
+.compare-slot-card {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  min-height: 148px;
+  padding: 18px 16px;
+  border-radius: 16px;
+  background: var(--surface, #fff);
+  color: var(--text, #1f2937);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 160ms, background 140ms, border-color 140ms;
+  position: relative;
+  width: 100%;
+}
+.compare-slot-card.is-empty {
+  border: 2px dashed var(--border-strong, #c7cdd6);
+  background: var(--surface, #fff);
+}
+.compare-slot-card.is-picked {
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+}
+.compare-slot-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12));
+  border-color: var(--blue, #2563eb);
+}
+.compare-slot-card:focus-visible {
+  outline: 2px solid var(--blue, #2563eb);
+  outline-offset: 2px;
+}
+
+.compare-slot-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text, #6b7280);
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+/* Empty card content */
+.compare-slot-card-empty-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 4px 0;
+}
+.compare-slot-card-plus {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--blue-dim, #eff6ff);
+  color: var(--blue, #2563eb);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.compare-slot-card-cta {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #1f2937);
+}
+.compare-slot-card-hint {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.75;
+}
+
+/* Picked card content */
+.compare-slot-card-picked-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.compare-slot-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 13px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.compare-slot-card-icon-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 13px;
+  background: var(--surface-hover, #f3f4f6);
+  flex-shrink: 0;
+}
+.compare-slot-card-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.compare-slot-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #1f2937);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compare-slot-card-developer {
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compare-slot-card-meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* Inline actions inside the picked card — small text-style affordances
+   that sit unobtrusively in the top-right corner. Stop click bubbling so
+   they don't reopen the modal when the user hits Clear/Change. */
+.compare-slot-card-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
+}
+.compare-slot-card-action {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--text, #6b7280);
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.compare-slot-card-action:hover {
+  background: var(--surface-hover, #f3f4f6);
+  border-color: var(--border-strong, #9ca3af);
+}
+.compare-slot-card-action.is-clear:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* ── Modal-specific overrides ──────────────── */
+/* The modal-card is shared chrome — we give it a wider max-width than the
+   default (460px) when used by the slot picker so the inline search +
+   results have breathing room. */
+.compare-slot-modal-card {
+  max-width: 560px;
+  width: min(560px, calc(100vw - 32px));
+  padding: 22px;
+}
+.compare-slot-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.compare-slot-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+.compare-slot-modal-close {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--surface, #fff);
+  color: var(--text, #1f2937);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.compare-slot-modal-close:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* Slot Clear button inside the modal — was previously inline-styled in
+   SlotPicker. Same pill chrome as the card actions for consistency. */
+.compare-slot-clear-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 1px solid var(--border, #e5e7eb);
+  color: var(--text, #6b7280);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 10px;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.compare-slot-clear-btn:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* ── "Not scraped yet" empty state for the may-also-like panel ─ */
+/* Replaces the generic empty paragraph with a stacked layout: copy on
+   top, "Rescrape this app" CTA underneath. Sits alongside the rest of
+   the compare-related-* chrome already in globals.css. */
+.compare-related-not-scraped {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+}
+.compare-related-not-scraped p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text, #6b7280);
+}
+
+/* ── Mobile breakpoint ─────────────────────── */
+@media (max-width: 640px) {
+  /* Result lists inside the SlotPicker have a fixed maxHeight that
+     squeezes badly on narrow viewports. Let them grow inside the
+     near-fullscreen modal layout below. */
+  .compare-slot-modal-card .compare-search-results,
+  .compare-slot-modal-card .compare-search-results-expanded {
+    max-height: none !important;
+  }
+  /* Cards stack inside their grid container — but the inline gap of 12px
+     in the parent <div style={...}> is fine. We only need the modal to
+     go near-full-screen on phones. */
+  .compare-slot-modal-card {
+    max-width: 100%;
+    width: calc(100vw - 16px);
+    margin: 8px;
+    padding: 16px;
+  }
+}

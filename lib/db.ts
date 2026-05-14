@@ -594,6 +594,34 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_audit_bundle_imports_imported_at
     ON audit_bundle_imports(imported_at DESC);
+
+  /* App Store "Customers Also Bought" / "More By This Developer" shelves
+     captured during a normal product-page scrape. Each row is one
+     related-app candidate observed in the source app's shoebox JSON.
+     Replace-on-write semantics: when the source app is rescraped we
+     wipe the existing rows for (source_app_id, shelf_type) and reinsert,
+     so a single source app never has stale shelf entries.
+
+     shelf_type:
+       'may_also_like'      — Apple's "You Might Also Like" shelf
+       'more_by_developer'  — same developer's other apps
+
+     Foreign key cascades on apps deletion so when the user stops
+     tracking an app, its related-app records disappear too. */
+  CREATE TABLE IF NOT EXISTS related_apps_observed (
+    source_app_id      TEXT NOT NULL,
+    related_apple_id   TEXT NOT NULL,
+    related_name       TEXT NOT NULL,
+    related_developer  TEXT,
+    related_icon_url   TEXT,
+    related_store_url  TEXT NOT NULL,
+    shelf_type         TEXT NOT NULL CHECK (shelf_type IN ('may_also_like', 'more_by_developer')),
+    observed_at        INTEGER NOT NULL,
+    PRIMARY KEY (source_app_id, related_apple_id, shelf_type),
+    FOREIGN KEY (source_app_id) REFERENCES apps(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_related_apps_source
+    ON related_apps_observed(source_app_id, shelf_type);
 `);
 
 // Run safe migrations for existing databases.
