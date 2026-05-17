@@ -1,31 +1,33 @@
-import { notFound } from 'next/navigation';
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { getManualApp } from '../../../lib/manual-apps-server';
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   getCurrentManualAppPolicyVersion,
   listManualAppEvents,
-} from '../../../lib/manual-app-history';
-import { MANUAL_APP_SOURCE_META } from '../../../lib/manual-apps';
-import ManualAppDetailView from '../../components/ManualAppDetailView';
-import Nav from '../../components/Nav';
+} from "../../../lib/manual-app-history";
+import { MANUAL_APP_SOURCE_META } from "../../../lib/manual-apps";
+import { getManualApp } from "../../../lib/manual-apps-server";
+import ManualAppDetailView from "../../components/ManualAppDetailView";
+import Nav from "../../components/Nav";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   try {
     const { id } = await params;
     const app = getManualApp(id);
-    if (app) return { title: t('manual_app_detail_title', { name: app.name }) };
+    if (app) {
+      return { title: t("manual_app_detail_title", { name: app.name }) };
+    }
   } catch (error) {
-    console.warn('[manual-app-detail] generateMetadata failed:', error);
+    console.warn("[manual-app-detail] generateMetadata failed:", error);
   }
-  return { title: t('manual_app_detail_fallback_alt') };
+  return { title: t("manual_app_detail_fallback_alt") };
 }
 
 export default async function ManualAppDetailPage({
@@ -35,7 +37,9 @@ export default async function ManualAppDetailPage({
 }) {
   const { id } = await params;
   const app = getManualApp(id);
-  if (!app) notFound();
+  if (!app) {
+    notFound();
+  }
 
   // Both calls are synchronous better-sqlite3 reads, so we don't defer
   // them to the client. The page is force-dynamic already, so this lands
@@ -49,9 +53,9 @@ export default async function ManualAppDetailPage({
       <Nav />
       <ManualAppDetailView
         app={app}
-        meta={meta}
-        events={events}
         currentVersion={currentVersion}
+        events={events}
+        meta={meta}
       />
     </>
   );

@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { openKeyboardHelp } from './KeyboardShortcuts';
-import { openAboutModal } from './AboutModal';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { openAboutModal } from "./AboutModal";
+import { openKeyboardHelp } from "./KeyboardShortcuts";
 
 /**
  * Small bottom-right affordance that says "Press ? for shortcuts" and sits
@@ -23,7 +23,7 @@ export default function KeyboardHint() {
   // i18n — translates the four visible labels and three tooltip
   // titles. Captured at the top so the conditional <kbd>?</kbd>
   // sandwich below can interpolate the prefix/suffix bilingual.
-  const t = useTranslations('footer.kbd_hint');
+  const t = useTranslations("footer.kbd_hint");
   const [dismissed, setDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -34,16 +34,18 @@ export default function KeyboardHint() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return null;
+  }
 
   // Pass the current path through to /help/definitions so its "Back" button
   // returns the user here instead of the dashboard. Suppressed when we're
   // already on the definitions page (no useful round-trip), or when the
   // pathname lookup failed for some reason.
   const definitionsHref =
-    pathname && pathname !== '/help/definitions'
-      ? { pathname: '/help/definitions', query: { from: pathname } }
-      : '/help/definitions';
+    pathname && pathname !== "/help/definitions"
+      ? { pathname: "/help/definitions", query: { from: pathname } }
+      : "/help/definitions";
 
   return (
     // The parent <footer> in app/layout.tsx already supplies the
@@ -53,25 +55,26 @@ export default function KeyboardHint() {
       {!dismissed && (
         <>
           <button
-            type="button"
             className="kbd-hint-button"
             onClick={openKeyboardHelp}
-            title={t('shortcut_button_title')}
+            title={t("shortcut_button_title")}
+            type="button"
           >
-            {t('shortcut_prefix')} <kbd className="kbd kbd-inline">?</kbd> {t('shortcut_suffix')}
+            {t("shortcut_prefix")} <kbd className="kbd kbd-inline">?</kbd>{" "}
+            {t("shortcut_suffix")}
           </button>
           <button
-            type="button"
+            aria-label={t("dismiss_aria")}
             className="kbd-hint-dismiss"
-            aria-label={t('dismiss_aria')}
-            onClick={e => {
+            onClick={(e) => {
               e.stopPropagation();
               setDismissed(true);
             }}
+            type="button"
           >
             ✕
           </button>
-          <span className="kbd-hint-divider" aria-hidden="true" />
+          <span aria-hidden="true" className="kbd-hint-divider" />
         </>
       )}
       <span className="kbd-hint-links">
@@ -80,21 +83,21 @@ export default function KeyboardHint() {
             (including Apple's built-in-app labels and the country-specific
             transparency report). */}
         <Link
-          href={definitionsHref}
           className="kbd-hint-link"
-          title={t('definitions_title')}
+          href={definitionsHref}
+          title={t("definitions_title")}
         >
-          {t('definitions_label')}
+          {t("definitions_label")}
         </Link>
-        <span className="kbd-hint-divider" aria-hidden="true" />
+        <span aria-hidden="true" className="kbd-hint-divider" />
       </span>
       <button
-        type="button"
         className="kbd-hint-about"
         onClick={openAboutModal}
-        title={t('about_title')}
+        title={t("about_title")}
+        type="button"
       >
-        {t('about_label')}
+        {t("about_label")}
       </button>
     </div>
   );

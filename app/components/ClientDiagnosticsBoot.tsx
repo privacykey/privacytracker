@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Boots the client-side diagnostics module on mount. Renders nothing.
@@ -6,8 +6,8 @@
  * the fetch wrapper, and the rAF-gap monitor without per-page wiring.
  */
 
-import { useEffect } from 'react';
-import { installClientDiagnostics } from '@/lib/client-diagnostics';
+import { useEffect } from "react";
+import { installClientDiagnostics } from "@/lib/client-diagnostics";
 
 export default function ClientDiagnosticsBoot() {
   useEffect(() => {

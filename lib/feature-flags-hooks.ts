@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Client-side React hooks for the feature-flag resolver. Thin wrappers around
@@ -8,18 +8,18 @@
  *   const compare = useFlag('flag.page.compare');
  */
 
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from "react";
 import {
-  HARD_DEFAULTS,
   type FlagKey,
   type FlagValue,
   type FocusState,
-} from './feature-flag-rules';
+  HARD_DEFAULTS,
+} from "./feature-flag-rules";
 import {
+  getCachedContext,
   resolveFlag,
   subscribeToContext,
-  getCachedContext,
-} from './feature-flags';
+} from "./feature-flags";
 
 /**
  * Read a single flag's resolved value, re-rendering on context changes.
@@ -33,7 +33,7 @@ export function useFlag(key: FlagKey): FlagValue {
       return ctx ? resolveFlag(key, ctx) : HARD_DEFAULTS[key];
     },
     // Server snapshot — server components should use `resolveFlagFromDb()`.
-    () => HARD_DEFAULTS[key],
+    () => HARD_DEFAULTS[key]
   );
 }
 
@@ -42,12 +42,12 @@ export function useFocus(): FocusState {
   return useSyncExternalStore(
     subscribeToContext,
     () => getCachedContext()?.focus ?? FALLBACK_FOCUS,
-    () => FALLBACK_FOCUS,
+    () => FALLBACK_FOCUS
   );
 }
 
 const FALLBACK_FOCUS: FocusState = {
-  audience: 'self',
-  goals: new Set(['understand']),
+  audience: "self",
+  goals: new Set(["understand"]),
   aiConfigured: false,
 };

@@ -112,6 +112,8 @@
       "share": "📲 Share with iPhone",
       "share_title": "Share via your iPhone — opens AirDrop, iMessage, Mail, and other system share targets",
       "continue_to_backup": "Continue to Backup →",
+      "remove_apps_from_phone": "Remove {count, plural, one {# app} other {# apps}} from your phone →",
+      "resync_from_device": "Re-sync from this device",
       "share_status_shared": "✓ Shared",
       "share_status_copied": "✓ Copied — paste it into Messages or Mail",
       "share_app_store_link": "App Store ↗",
@@ -142,7 +144,7 @@
     },
     "backup": {
       "heading": "Back up your device first",
-      "subtitle": "We won't let the uninstall step run until a backup of the target device has landed on this Mac in the last 24 hours. Restoring an accidentally-removed app from a backup is straightforward; recovering an app you uninstalled with no backup at all is not.",
+      "subtitle": "We strongly recommend backing up the device before deleting apps. Restoring an accidentally-removed app from a backup is straightforward; recovering one you uninstalled with no backup at all is not.",
       "device_list_empty": "Plug an iPhone or iPad into this Mac with a USB cable. Trust the computer on the device's lock screen. The list will refresh automatically.",
       "ios_device_fallback": "iOS device",
       "run_backup": "Run backup",
@@ -151,13 +153,18 @@
       "continue_to_uninstall": "Continue to uninstall",
       "saved_at": "Backup saved to <code>{path}</code> at {time}.",
       "saved_no_time": "Backup saved to <code>{path}</code>.",
-      "default_error": "Backup failed."
+      "default_error": "Backup failed.",
+      "skip_backup": "Skip backup (at your own risk)",
+      "skip_backup_title": "Continue without a backup. We'll ask you to type DELETE again before any app is removed.",
+      "mismatch_heading": "Heads up — this might not be the right device",
+      "mismatch_body": "{count, plural, one {# of the apps you're about to delete wasn't imported from this device. cfgutil will refuse to remove an app that isn't installed.} other {# of the apps you're about to delete weren't imported from this device. cfgutil will refuse to remove apps that aren't installed.}}",
+      "mismatch_more": "…and {count} more"
     },
     "act": {
-      "heading": "Uninstall, one app at a time",
-      "subtitle_lead": "Each uninstall runs separately and asks you to type",
-      "subtitle_keyword": "DELETE",
-      "subtitle_after": "first. There's no batch path — that's on purpose.",
+      "heading": "Remove apps from your phone",
+      "subtitle_lead": "Review the list below, then click",
+      "subtitle_keyword": "Delete apps",
+      "subtitle_after": ". We'll show what's about to happen, then ask you to type DELETE before anything is removed.",
       "empty": "Nothing on this list is marked for uninstall. Go back to step 1 if you want to mark some.",
       "removing": "Removing…",
       "removed": "✓ Removed",
@@ -165,7 +172,16 @@
       "no_bundle_id_title": "We don't have this app's bundle ID stored — can't uninstall via cfgutil.",
       "default_uninstall_error": "Uninstall failed.",
       "default_backup_error": "Backup failed.",
-      "default_export_error": "Export failed"
+      "default_export_error": "Export failed",
+      "delete_apps_button": "Delete {count, plural, one {# app} other {# apps}}",
+      "deleting_bulk": "Deleting…",
+      "all_done": "Every app on this list has been removed from your phone.",
+      "pending": "Pending",
+      "failed": "Failed",
+      "backup_ok": "Backup of {device} taken at {time}",
+      "backup_missing_warn": "No recent backup of this device.",
+      "backup_missing_action": "Back up first",
+      "default_device_name": "the connected device"
     },
     "saved_notes": {
       "heading": "Your notes",
@@ -187,7 +203,17 @@
       "cancel": "Cancel",
       "uninstall_confirm": "Uninstall {appName}",
       "type_placeholder": "DELETE",
-      "no_backup_time": "—"
+      "no_backup_time": "—",
+      "list_heading": "Are you sure you want to delete {count, plural, one {# app} other {# apps}}?",
+      "list_body": "These apps will be removed from your phone using Apple Configurator. Tap an app's name to go back and change your verdict.",
+      "list_no_bundle": "(no bundle ID — will be skipped)",
+      "list_continue": "Continue",
+      "final_heading": "Final step — type DELETE",
+      "final_body": "About to remove these apps from {device}. You took a backup at {time}, so anything important should be recoverable.",
+      "final_no_backup_heading": "Proceed without a backup?",
+      "final_no_backup_body": "There's no recent backup of this device. If you delete an app you didn't mean to, there's nothing to restore it from. You can go back and back up first — strongly recommended — or type DELETE below to proceed at your own risk.",
+      "final_confirm": "Delete apps",
+      "final_confirm_no_backup": "Delete apps without backup"
     },
     "share_modal": {
       "title_aria": "Share checklist",
@@ -389,7 +415,9 @@
     "step2": {
       "subtitle_screenshots": "Upload screenshots from Settings → General → iPhone Storage or the App Library search list. We will extract app names in your browser, then you can review them.",
       "subtitle_file": "Drop a .csv or .txt export from your computer. We will pull the app names into a reviewable list before matching them.",
-      "subtitle_configurator": "Follow the steps below to export the device's app list with Apple Configurator, then drop the CSV here. Only the app name column is read — every other field is ignored.",
+      "subtitle_configurator": "Direct import with Apple Configurator — plug the device in, then click Import. We read the app list directly via the cfgutil command-line tool, so there's no CSV step. If something doesn't work, switch to a file upload below.",
+      "configurator_switch_to_file": "Use a CSV / TXT file instead →",
+      "configurator_switch_to_file_aria": "Switch to the file-upload method to drop a CSV manually",
       "subtitle_manual": "Type one app per line, or separate them with commas. We will match them against the App Store automatically.",
       "ios_safari_heads_up_lead": "Heads up:",
       "ios_safari_heads_up_body_pre": " the screenshot scanner runs entirely in your browser, and iPhone Safari doesn't give it enough memory / the right security headers to load the OCR engine reliably. You can still try — sometimes it works on short lists — but if it fails, switch to ",
@@ -590,11 +618,49 @@
       "see_other_chosen": "{count, plural, one {See # other match} other {See # other matches}}",
       "see_other_unchosen": "{count, plural, one {+ # other match} other {+ # other matches}}"
     },
+    "already_tracked": {
+      "summary": "{count, plural, one {# app already tracked from {device} — already matched.} other {# apps already tracked from {device} — already matched.}}",
+      "help": "These bundles are linked to this device already. We'll skip re-importing them and show you the diff at the end.",
+      "device_fallback": "this device"
+    },
+    "step2_diff": {
+      "region_aria": "What's changed since the last import from this device",
+      "heading": "What's changed on {device}?",
+      "device_fallback": "this device",
+      "summary_counts": "{adds, plural, =0 {nothing to add} one {# to add} other {# to add}} · {removes, plural, =0 {nothing to remove} one {# to remove} other {# to remove}} · {unchanged, plural, =0 {nothing already tracked} one {# already tracked} other {# already tracked}}",
+      "loading": "Working out the diff against your previous import…",
+      "load_error_title": "Couldn't load this device's tracked apps",
+      "load_error_body": "We compared what cfgutil reported, but the lookup against your tracked apps failed: {error}. You can refresh and try again.",
+      "no_changes_title": "Nothing's changed on this device",
+      "no_changes_body": "Every app cfgutil reported is already tracked. Click Continue to keep going — we'll skip the scrape since nothing's new.",
+      "adds_heading": "{count, plural, one {# new app on this device} other {# new apps on this device}}",
+      "adds_help": "These bundles weren't on your device's last import — tick the ones you want to start tracking.",
+      "removes_heading": "{count, plural, one {# app no longer on this device} other {# apps no longer on this device}}",
+      "removes_help": "These were on your last import but aren't on the device now. Tick the ones to untrack — apps with no other device links and no notes/verdicts/shortlist entries will be untracked entirely.",
+      "unchanged_heading": "{count, plural, one {# app already tracked — already matched} other {# apps already tracked — already matched}}",
+      "unchanged_help": "These are unchanged since your last import. Nothing to do.",
+      "all_tracked_title": "Everything on {device} is already tracked",
+      "all_tracked_body": "{count, plural, one {# app on your device matches what we're already tracking — there's nothing new to import.} other {# apps on your device match what we're already tracking — there's nothing new to import.}}",
+      "all_tracked_summary": "We'll re-link any that drifted to other devices, but nothing's being scraped or removed.",
+      "done": "Done",
+      "selection_summary": "{adds} to add · {removes} to remove",
+      "add_check_aria": "Add {name} to tracking",
+      "remove_check_aria": "Untrack {name}",
+      "continue": "Continue",
+      "confirm": {
+        "title": "Apply these changes?",
+        "body": "We're about to remove <strong>{removes, plural, one {# app} other {# apps}}</strong> from tracking and add <strong>{adds, plural, one {# app} other {# apps}}</strong> for {device}. Removes happen straight away; adds are matched against the App Store next.",
+        "continue": "Continue",
+        "back": "Back",
+        "committing": "Saving…",
+        "close_aria": "Close"
+      }
+    },
     "cfgutil": {
       "panel_aria": "Auto-import via Apple Configurator",
       "eyebrow": "Desktop auto-import",
-      "title": "Export apps directly from a connected iPhone",
-      "copy": "If Apple Configurator 2 is installed on this Mac, we can pull the full list of installed apps straight from a device over USB — no CSV export step, no manual file drop. Skip to the file drop below if you'd rather do it by hand or have an existing CSV.",
+      "title": "Direct import with Apple Configurator",
+      "copy": "Connect an iPhone or iPad over USB and we'll read the installed app list straight from the device via the Apple Configurator command-line tool — no CSV export step. The legacy manual export instructions stay tucked away until you hit a snag.",
       "step1_title": "Install Apple Configurator 2",
       "step1_installed_badge": " · Installed",
       "step1_copy_pre": "Apple's free device management tool — we only use its ",
@@ -625,7 +691,7 @@
       "step3_select_required": "Choose a device before importing.",
       "step3_no_devices": "No trusted iPhone or iPad found. Plug one in, unlock it, and tap Trust if prompted.",
       "step3_no_apps": "cfgutil found the device, but returned no installed apps. Unlock the device, wait a moment, then retry.",
-      "step3_imported_count": "Imported {count, plural, one {# app} other {# apps}} from {device} — review the list below, edit anything obviously wrong, then search the App Store.",
+      "step3_imported_count": "Found {count, plural, one {# app} other {# apps}} on {device} — review the list below, edit anything obviously wrong, then search the App Store to start tracking them.",
       "step3_merged_duplicates": "{count, plural, one {(# duplicate name was merged for matching — two apps shared the same display name.)} other {(# duplicate names were merged for matching — multiple apps shared the same display name.)}}",
       "device_fallback": "iOS device",
       "device_ios_version": "iOS {version}",
@@ -635,6 +701,7 @@
       "device_picker_selected": "Ready to import from {device}.",
       "device_picker_empty": "Connect and trust an iPhone or iPad, then refresh the list.",
       "device_picker_aria": "Connected devices",
+      "prior_imports_badge": "{count, plural, one {Previously imported from {deviceName} once — we'll show the diff before saving} other {Previously imported from {deviceName} # times — we'll show the diff before saving}}",
       "device_refresh": "Refresh devices",
       "device_refreshing": "Refreshing…",
       "checking_status_title": "Searching for cfgutil…",
@@ -718,9 +785,9 @@
         "hint": "Fastest way to onboard a large app library."
       },
       "configurator": {
-        "title": "Apple Configurator CSV",
+        "title": "Direct import from Apple device",
         "eyebrow": "Most accurate",
-        "blurb": "Use an Apple Configurator info export for an exhaustive, pre-authorised app list direct from the device.",
+        "blurb": "Plug your iPhone or iPad into this Mac — we pull the full app list straight from the device via the Apple Configurator command-line tool. No CSV export needed.",
         "hint": "Best for IT or security teams auditing a managed iPhone."
       },
       "manual": {
@@ -1047,6 +1114,10 @@
       "title": "Remove apps from your phone",
       "body": "Mark which apps to uninstall and we'll guide you through removing them — needs a privacy profile so we know what you're filtering out."
     },
+    "resync_apps_from_device": {
+      "title": "Re-sync apps from your iPhone",
+      "body": "Import a fresh app list from one of your devices and see what's been added or removed since last time."
+    },
     "gate": {
       "title": "Try this first?",
       "body": "{prerequisite} is recommended before {task}. Want to do that first?",
@@ -1054,6 +1125,63 @@
       "secondary": "Continue anyway",
       "close_aria": "Close"
     }
+  },
+  "devices": {
+    "page_title": "Devices",
+    "page_subtitle": "One row per device you've imported apps from. Re-sync to see what's been added or removed since last time.",
+    "empty": "No devices yet. They'll appear here after your next import.",
+    "app_count": "{count, plural, one {# app} other {# apps}}",
+    "resync": "Re-sync",
+    "rename": "Rename",
+    "delete": "Delete",
+    "rename_save": "Save",
+    "rename_cancel": "Cancel",
+    "rename_input_aria": "New device name",
+    "delete_confirm": "Delete this device? Apps that aren't on any other device will be untracked entirely.",
+    "delete_modal_badge": "Delete device",
+    "delete_modal_title": "Delete {name}?",
+    "delete_modal_body": "{count, plural, =0 {No apps are linked to this device — deleting it removes it from your list.} one {# app is linked to this device. Apps that aren't on any other device AND have no notes / verdicts / shortlist entries will be untracked entirely. Notes and verdicts you've added are preserved.} other {# apps are linked to this device. Apps that aren't on any other device AND have no notes / verdicts / shortlist entries will be untracked entirely. Notes and verdicts you've added are preserved.}}",
+    "delete_modal_cancel": "Cancel",
+    "delete_modal_confirm": "Delete device",
+    "delete_modal_deleting": "Deleting…",
+    "unknown_placeholder_hint": "default — rename when you know which device these came from",
+    "resync_toast": "Re-sync done · {added} added · {removed} removed · {orphaned} untracked entirely",
+    "resync_toast_merged": "{count, plural, one {# duplicate row collapsed} other {# duplicate rows collapsed}}",
+    "tracked_on": {
+      "label": "Tracked on:",
+      "aria": "Devices this app is tracked on"
+    },
+    "app_panel": {
+      "heading": "{count, plural, one {Installed on # device} other {Installed on # devices}}",
+      "subtitle": "Click a device to manage or re-sync.",
+      "aria": "Devices this app is installed on",
+      "manage_link": "Manage devices →"
+    }
+  },
+  "device_sync": {
+    "diff_title": "What's changed since last time?",
+    "diff_subtitle": "Tick the changes you want to apply. Untick anything you'd rather keep tracked as-is.",
+    "confirm_title": "Apply these changes?",
+    "confirm_subtitle": "Last chance to review — nothing's written until you confirm.",
+    "loading": "Working out the diff…",
+    "close_aria": "Close",
+    "cancel": "Cancel",
+    "continue": "Continue",
+    "back": "Back",
+    "looks_good": "Looks good — apply",
+    "committing": "Saving…",
+    "adds_heading": "Added (<strong>{count}</strong>)",
+    "adds_aria": "Apps added to this device",
+    "removes_heading": "Removed (<strong>{count}</strong>)",
+    "removes_aria": "Apps removed from this device",
+    "unchanged_count": "Unchanged: {count, plural, one {# app} other {# apps}}",
+    "orphan_badge": "Untracking everywhere",
+    "orphan_warning": "Not on any other device — ticking this will untrack the app completely.",
+    "orphan_heading": "{count, plural, one {# app will be untracked everywhere} other {# apps will be untracked everywhere}}",
+    "selection_summary": "{adds} to add · {removes} to remove",
+    "confirm_summary": "Removing <strong>{removes}</strong>, adding <strong>{adds}</strong>, leaving <strong>{kept}</strong> alone.",
+    "add_check_aria": "Add {name}",
+    "remove_check_aria": "Remove {name}"
   },
   "legal": {
     "audit_bundle_note": "When you export an audit bundle, it includes the apps you're tracking, their privacy labels, your AI-generated summaries, and any annotations you've written. It also includes your privacy profile so the recipient can see why you flagged certain apps. Nothing leaves your device until you explicitly share the file."
@@ -2356,6 +2484,13 @@
     "clear_mismatch_aria": "Clear profile-mismatch filter",
     "clear_a11y_title": "Clear accessibility filter",
     "clear_a11y_aria": "Clear accessibility filter",
+    "clear_device_title": "Clear device filter",
+    "clear_device_aria": "Clear device filter",
+    "device_filter_aria": "Filter apps by device",
+    "device_filter_label": "Device",
+    "device_filter_all": "All devices · {count}",
+    "device_filter_unattached": "Unattached · {count}",
+    "device_filter_unattached_short": "unattached apps",
     "profile_mismatches_label": "Profile mismatches",
     "has_features_title": "Apps that declare at least one accessibility feature.",
     "has_features_label": "Has features",
@@ -3289,6 +3424,7 @@
       "privacy_policies": "Fetch and (optionally) re-summarise the developer privacy policy for every app that exposes one. Runs sequentially to stay gentle on publishers and your AI provider. You can navigate away while it's working — progress stays live in the background-task tray.",
       "policy_change_alerts": "When a rescrape detects that a privacy policy's text has changed, the AI Policy tab shows a banner linking to the line-by-line diff on the History tab. Pick how long the banner should keep showing after the change is captured.",
       "policy_scrape_throttle": "Skip repeat privacy-policy scrapes within a cooldown window. Applies to manual Re-sync, scheduled background runs, and import flows — each app is rate-limited individually, not globally. Disable this to force every Re-sync click to hit the network (useful when testing).",
+      "policy_scrape_disabled": "Stop all background privacy-policy fetching — including the per-app auto-fetch that fires after every App Store sync, the bulk runner, and resumed-after-crash sync queues. A safer dial than the throttle when you don't want the app reaching out to publishers at all.",
       "import_history": "Every batch of apps you added during onboarding lives here. Review what each app matched with, fix a wrong match, or roll a whole import back.",
       "deployment_diagnostics": "Check whether this install can serve requests, write to its SQLite database, and see the proxy headers a LAN deployment should send.",
       "backup_restore": "Snapshot your entire database to a portable JSON file, or restore a previous backup. Your data stays on your machine.",
@@ -4048,7 +4184,10 @@
     "policy_throttle": {
       "enabled_label": "Throttle enabled",
       "cooldown_label": "Cooldown (minutes)",
-      "cooldown_help": "Default 60. Set to <strong>0</strong> to allow every Re-sync through without waiting. Max 10 080 (one week)."
+      "cooldown_help": "Default 60. Set to <strong>0</strong> to allow every Re-sync through without waiting. Max 10 080 (one week).",
+      "scrape_disabled_label": "Disable policy scraping",
+      "scrape_disabled_help": "When on, privacytracker <strong>never fetches privacy policies</strong> in the background — no per-app auto-fetch after an App Store sync, no bulk runs, no scheduled refreshes. The manual <em>Re-scrape</em> buttons return an error too. Existing cached policies and their AI summaries stay intact, and you can still re-summarise from cached text. Use this to completely stop background policy activity.",
+      "throttle_inert_when_disabled": "Throttle has no effect while policy scraping is disabled above."
     },
     "privacy_profile_card": {
       "toggle_title": "Use a privacy profile",
@@ -4139,6 +4278,7 @@
       "privacy_policies": "Privacy Policies",
       "policy_change_alerts": "Privacy Policy Change Alerts",
       "policy_scrape_throttle": "Policy Scrape Throttle",
+      "policy_scrape_disabled": "Policy Scraping",
       "import_history": "Import History",
       "deployment_diagnostics": "Deployment Diagnostics",
       "backup_restore": "Backup & Restore",

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Tiny inline-SVG sparkline.
@@ -33,28 +33,28 @@
 const MAX_SAMPLES = 240;
 
 export interface SparklineProps {
-  values: number[];
-  width?: number;
-  height?: number;
-  severity?: 'ok' | 'warn' | 'danger';
-  min?: number;
-  max?: number;
   /** Required: short description of what this sparkline tracks. */
   ariaLabel: string;
+  height?: number;
   /** Optional last-value annotation rendered inline under the SVG. */
   lastValueLabel?: string;
+  max?: number;
+  min?: number;
+  severity?: "ok" | "warn" | "danger";
+  values: number[];
+  width?: number;
 }
 
-function pickStroke(severity?: 'ok' | 'warn' | 'danger'): string {
+function pickStroke(severity?: "ok" | "warn" | "danger"): string {
   switch (severity) {
-    case 'ok':
-      return 'var(--success, #16a34a)';
-    case 'warn':
-      return 'var(--warning, #d97706)';
-    case 'danger':
-      return 'var(--danger, #dc2626)';
+    case "ok":
+      return "var(--success, #16a34a)";
+    case "warn":
+      return "var(--warning, #d97706)";
+    case "danger":
+      return "var(--danger, #dc2626)";
     default:
-      return 'var(--text-2, #6b7280)';
+      return "var(--text-2, #6b7280)";
   }
 }
 
@@ -74,10 +74,10 @@ export default function Sparkline({
     // box so the layout doesn't reflow when the first sample arrives.
     return (
       <span
-        className="sparkline sparkline-empty"
-        style={{ display: 'inline-block', width, height }}
-        role="img"
         aria-label={ariaLabel}
+        className="sparkline sparkline-empty"
+        role="img"
+        style={{ display: "inline-block", width, height }}
       />
     );
   }
@@ -101,26 +101,26 @@ export default function Sparkline({
   // Path: M first L rest. polyline would also work but a path is what
   // most existing chart libs emit so any future styling integrates
   // cleanly.
-  const d = `M${points[0]} L${points.slice(1).join(' ')}`;
+  const d = `M${points[0]} L${points.slice(1).join(" ")}`;
 
   const stroke = pickStroke(severity);
 
   return (
-    <span className="sparkline" role="img" aria-label={ariaLabel}>
+    <span aria-label={ariaLabel} className="sparkline" role="img">
       <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
         aria-hidden="true"
+        height={height}
+        preserveAspectRatio="none"
+        viewBox={`0 0 ${width} ${height}`}
+        width={width}
       >
         <path
           d={d}
           fill="none"
           stroke={stroke}
-          strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
+          strokeWidth={1.5}
         />
       </svg>
       {lastValueLabel && (

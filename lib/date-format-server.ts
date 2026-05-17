@@ -10,14 +10,14 @@
  * from '@/lib/date-format'` without dragging the DB layer along.
  */
 
-import 'server-only';
-import { getSetting } from './scheduler';
-import { normaliseDateFormat, type DateFormatMode } from './date-format';
+import "server-only";
+import { type DateFormatMode, normaliseDateFormat } from "./date-format";
+import { getSetting } from "./scheduler";
 
 export function getDateFormatPreference(): DateFormatMode {
-  let raw = '';
+  let raw = "";
   try {
-    raw = getSetting('date_format', '');
+    raw = getSetting("date_format", "");
   } catch {
     // Fresh DB / migration in-flight — fall through to default.
   }

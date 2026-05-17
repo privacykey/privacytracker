@@ -16,40 +16,43 @@
  * than Apple's documented limit (~14 req/min for search vs Apple's ~20).
  */
 
-import { getSetting, setSetting } from './scheduler';
+import { getSetting, setSetting } from "./scheduler";
 
 // All four keys live in `app_settings`. Keep the names stable — a renamed
 // key is a forgotten cooldown on next deploy. `_until` keys store ms-since-
 // epoch as a string; `_reason` keys store an English forensic log line.
-const KEY_SEARCH_UNTIL = 'rate_limit_search_until';
-const KEY_SEARCH_REASON = 'rate_limit_search_reason';
-const KEY_SCRAPE_UNTIL = 'rate_limit_scrape_until';
-const KEY_SCRAPE_REASON = 'rate_limit_scrape_reason';
+const KEY_SEARCH_UNTIL = "rate_limit_search_until";
+const KEY_SEARCH_REASON = "rate_limit_search_reason";
+const KEY_SCRAPE_UNTIL = "rate_limit_scrape_until";
+const KEY_SCRAPE_REASON = "rate_limit_scrape_reason";
 
-export type RateLimitCategory = 'search' | 'scrape';
+export type RateLimitCategory = "search" | "scrape";
 
-const CATEGORY_KEYS: Record<RateLimitCategory, { until: string; reason: string }> = {
+const CATEGORY_KEYS: Record<
+  RateLimitCategory,
+  { until: string; reason: string }
+> = {
   search: { until: KEY_SEARCH_UNTIL, reason: KEY_SEARCH_REASON },
   scrape: { until: KEY_SCRAPE_UNTIL, reason: KEY_SCRAPE_REASON },
 };
 
 /**
  * Snapshot of one category's rate-limit state. `active === true` means a
- * *hard* cooldown is in effect (Apple gave us a 429/403). The proactive
+ *hard* cooldown is in effect (Apple gave us a 429/403). The proactive
  * soft pacer doesn't surface here. `resumeAt` is ms-since-epoch (0 when
  * inactive). `reason` is an English log line — not translated.
  */
 export interface RateLimitSnapshot {
-  category: RateLimitCategory;
   active: boolean;
-  resumeAt: number;
+  category: RateLimitCategory;
   reason: string;
+  resumeAt: number;
 }
 
 /** Combined snapshot returned by `getAllRateLimits()` and the API. */
 export interface RateLimitStatusResponse {
-  search: RateLimitSnapshot;
   scrape: RateLimitSnapshot;
+  search: RateLimitSnapshot;
   /** Unix-ms timestamp of the response, so UI can correct for client clock skew. */
   serverNow: number;
 }
@@ -57,16 +60,17 @@ export interface RateLimitStatusResponse {
 function readCategory(category: RateLimitCategory): RateLimitSnapshot {
   const { until, reason } = CATEGORY_KEYS[category];
   // Coerce + guard a corrupted setting to "not throttled" rather than throwing.
-  const rawUntil = getSetting(until, '0');
+  const rawUntil = getSetting(until, "0");
   const resumeAt = Number.parseInt(rawUntil, 10);
-  const validResumeAt = Number.isFinite(resumeAt) && resumeAt > 0 ? resumeAt : 0;
+  const validResumeAt =
+    Number.isFinite(resumeAt) && resumeAt > 0 ? resumeAt : 0;
   const active = validResumeAt > Date.now();
   return {
     category,
     active,
     resumeAt: active ? validResumeAt : 0,
     // Don't surface a stale reason once the cooldown has elapsed.
-    reason: active ? getSetting(reason, '') : '',
+    reason: active ? getSetting(reason, "") : "",
   };
 }
 
@@ -78,8 +82,8 @@ export function getRateLimit(category: RateLimitCategory): RateLimitSnapshot {
 /** Get the current state for both categories plus a server timestamp. */
 export function getAllRateLimits(): RateLimitStatusResponse {
   return {
-    search: readCategory('search'),
-    scrape: readCategory('scrape'),
+    search: readCategory("search"),
+    scrape: readCategory("scrape"),
     serverNow: Date.now(),
   };
 }
@@ -103,11 +107,11 @@ export function getRemainingCooldownMs(category: RateLimitCategory): number {
 export function recordRateLimit(
   category: RateLimitCategory,
   retryAfterMs: number,
-  reason: string,
+  reason: string
 ): number {
   const { until, reason: reasonKey } = CATEGORY_KEYS[category];
   const newResumeAt = Date.now() + Math.max(0, retryAfterMs);
-  const existing = Number.parseInt(getSetting(until, '0'), 10);
+  const existing = Number.parseInt(getSetting(until, "0"), 10);
   const validExisting = Number.isFinite(existing) ? existing : 0;
   const finalResumeAt = Math.max(newResumeAt, validExisting);
   setSetting(until, String(finalResumeAt));
@@ -122,8 +126,8 @@ export function recordRateLimit(
  */
 export function clearRateLimit(category: RateLimitCategory): void {
   const { until, reason } = CATEGORY_KEYS[category];
-  setSetting(until, '0');
-  setSetting(reason, '');
+  setSetting(until, "0");
+  setSetting(reason, "");
 }
 
 // Token bucket per category. Tokens regenerate at a steady rate; each
@@ -133,9 +137,9 @@ export function clearRateLimit(category: RateLimitCategory): void {
 
 interface TokenBucket {
   capacity: number;
-  tokens: number;
-  refillIntervalMs: number;
   lastRefillAt: number;
+  refillIntervalMs: number;
+  tokens: number;
 }
 
 const BUCKETS: Record<RateLimitCategory, TokenBucket> = {
@@ -145,7 +149,7 @@ const BUCKETS: Record<RateLimitCategory, TokenBucket> = {
   search: {
     capacity: 4,
     tokens: 4,
-    refillIntervalMs: 4_200,
+    refillIntervalMs: 4200,
     lastRefillAt: Date.now(),
   },
   // App Store HTML: budget of 18 req/min (Apple ~30). 6-token burst lets a
@@ -153,7 +157,7 @@ const BUCKETS: Record<RateLimitCategory, TokenBucket> = {
   scrape: {
     capacity: 6,
     tokens: 6,
-    refillIntervalMs: 3_300,
+    refillIntervalMs: 3300,
     lastRefillAt: Date.now(),
   },
 };
@@ -161,9 +165,13 @@ const BUCKETS: Record<RateLimitCategory, TokenBucket> = {
 function refillBucket(bucket: TokenBucket): void {
   const now = Date.now();
   const elapsed = now - bucket.lastRefillAt;
-  if (elapsed <= 0) return;
+  if (elapsed <= 0) {
+    return;
+  }
   const newTokens = Math.floor(elapsed / bucket.refillIntervalMs);
-  if (newTokens <= 0) return;
+  if (newTokens <= 0) {
+    return;
+  }
   bucket.tokens = Math.min(bucket.capacity, bucket.tokens + newTokens);
   bucket.lastRefillAt = now;
 }
@@ -174,7 +182,9 @@ function refillBucket(bucket: TokenBucket): void {
  * we return regardless and let the reactive 429 path take over if needed.
  * Throws nothing. Always resolves.
  */
-export async function acquireRateLimitToken(category: RateLimitCategory): Promise<void> {
+export async function acquireRateLimitToken(
+  category: RateLimitCategory
+): Promise<void> {
   const bucket = BUCKETS[category];
   refillBucket(bucket);
   if (bucket.tokens >= 1) {
@@ -182,7 +192,7 @@ export async function acquireRateLimitToken(category: RateLimitCategory): Promis
     return;
   }
   const waitMs = Math.min(800, bucket.refillIntervalMs);
-  await new Promise<void>(resolve => setTimeout(resolve, waitMs));
+  await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
   refillBucket(bucket);
   // Decrement even if no fresh token — the call site will make the request
   // either way and the next retry will pace correctly.

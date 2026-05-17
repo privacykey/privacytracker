@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Step-2 chunked-search progress card. Replaces the previous endless
@@ -12,33 +12,33 @@
  * matched count after each chunk completes.
  */
 
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 // Co-located CSS — Turbopack hot-reloads reliably this way; the giant
 // globals.css has burned us on incremental builds.
-import './onboard-step2.css';
+import "./onboard-step2.css";
 
 interface Props {
+  onCancel: () => void;
   progress: {
     matched: number;
     total: number;
     currentBatch: number;
     totalBatches: number;
   };
-  onCancel: () => void;
 }
 
 export default function SearchProgressCard({ progress, onCancel }: Props) {
-  const t = useTranslations('onboard.step2.search_progress');
+  const t = useTranslations("onboard.step2.search_progress");
   // Drive the bar from batch completion when the matched count
   // doesn't move (e.g. several chunks return zero matches in a row —
   // still progress, just not match progress). Bar fills to whichever
   // signal is further along.
-  const matchedPct = progress.total > 0
-    ? (progress.matched / progress.total) * 100
-    : 0;
-  const batchPct = progress.totalBatches > 0
-    ? (progress.currentBatch / progress.totalBatches) * 100
-    : 0;
+  const matchedPct =
+    progress.total > 0 ? (progress.matched / progress.total) * 100 : 0;
+  const batchPct =
+    progress.totalBatches > 0
+      ? (progress.currentBatch / progress.totalBatches) * 100
+      : 0;
   const pct = Math.min(100, Math.max(matchedPct, batchPct));
 
   // First chunk hasn't finished yet — show an indeterminate-looking
@@ -48,24 +48,22 @@ export default function SearchProgressCard({ progress, onCancel }: Props) {
   const isPreFirst = progress.currentBatch === 0 && progress.matched === 0;
 
   return (
-    <div className="search-progress-card" role="status" aria-live="polite">
+    <div aria-live="polite" className="search-progress-card" role="status">
       <div className="search-progress-card-headline">
-        <span className="search-progress-card-title">
-          {t('title')}
-        </span>
+        <span className="search-progress-card-title">{t("title")}</span>
         <span className="search-progress-card-count">
-          {t('matched_of_total', {
+          {t("matched_of_total", {
             matched: progress.matched,
             total: progress.total,
           })}
         </span>
       </div>
       <div
-        className={`search-progress-bar${isPreFirst ? ' is-indeterminate' : ''}`}
-        role="progressbar"
-        aria-valuemin={0}
         aria-valuemax={progress.total}
+        aria-valuemin={0}
         aria-valuenow={progress.matched}
+        className={`search-progress-bar${isPreFirst ? "is-indeterminate" : ""}`}
+        role="progressbar"
       >
         <div
           className="search-progress-bar-fill"
@@ -75,24 +73,22 @@ export default function SearchProgressCard({ progress, onCancel }: Props) {
       <div className="search-progress-card-footer">
         <span className="search-progress-card-batch">
           {isPreFirst
-            ? t('preparing')
-            : t('batch_of', {
+            ? t("preparing")
+            : t("batch_of", {
                 current: progress.currentBatch,
                 total: progress.totalBatches,
               })}
         </span>
         <button
-          type="button"
           className="search-progress-cancel-btn"
           onClick={onCancel}
-          title={t('cancel_title')}
+          title={t("cancel_title")}
+          type="button"
         >
-          {t('cancel')}
+          {t("cancel")}
         </button>
       </div>
-      <p className="search-progress-card-hint">
-        {t('hint')}
-      </p>
+      <p className="search-progress-card-hint">{t("hint")}</p>
     </div>
   );
 }

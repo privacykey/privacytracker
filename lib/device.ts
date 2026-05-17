@@ -6,25 +6,39 @@
  * points. Dependency-free so it imports cleanly into both bundles.
  */
 
-export type DeviceClass = 'phone' | 'tablet' | 'desktop';
+export type DeviceClass = "phone" | "tablet" | "desktop";
 
 /**
  * Cheap User-Agent sniff. Not perfect — UA strings lie — but good enough
  * for an SSR default before client refinement.
  */
-export function detectDeviceFromUA(userAgent: string | null | undefined): DeviceClass {
-  const ua = (userAgent ?? '').toString();
-  if (!ua) return 'desktop';
+export function detectDeviceFromUA(
+  userAgent: string | null | undefined
+): DeviceClass {
+  const ua = (userAgent ?? "").toString();
+  if (!ua) {
+    return "desktop";
+  }
 
-  if (/iPad/i.test(ua)) return 'tablet';
-  if (/iPhone|iPod/i.test(ua)) return 'phone';
+  if (/iPad/i.test(ua)) {
+    return "tablet";
+  }
+  if (/iPhone|iPod/i.test(ua)) {
+    return "phone";
+  }
   // Android: the "Mobile" substring distinguishes phones from tablets.
-  if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? 'phone' : 'tablet';
+  if (/Android/i.test(ua)) {
+    return /Mobile/i.test(ua) ? "phone" : "tablet";
+  }
 
-  if (/Mobi|Opera Mini|IEMobile/i.test(ua)) return 'phone';
-  if (/Tablet|PlayBook|Silk/i.test(ua)) return 'tablet';
+  if (/Mobi|Opera Mini|IEMobile/i.test(ua)) {
+    return "phone";
+  }
+  if (/Tablet|PlayBook|Silk/i.test(ua)) {
+    return "tablet";
+  }
 
-  return 'desktop';
+  return "desktop";
 }
 
 /**
@@ -34,19 +48,28 @@ export function detectDeviceFromUA(userAgent: string | null | undefined): Device
  * original `initial`.
  */
 export function refineDeviceOnClient(initial: DeviceClass): DeviceClass {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') return initial;
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return initial;
+  }
 
   const width = window.innerWidth || document.documentElement.clientWidth || 0;
-  const touchPoints = typeof (navigator as any).maxTouchPoints === 'number'
-    ? ((navigator as any).maxTouchPoints as number)
-    : 0;
-  const platform = ((navigator as any).platform as string | undefined) ?? '';
-  const isDesktopModeIpad = platform === 'MacIntel' && touchPoints > 1;
+  const touchPoints =
+    typeof (navigator as any).maxTouchPoints === "number"
+      ? ((navigator as any).maxTouchPoints as number)
+      : 0;
+  const platform = ((navigator as any).platform as string | undefined) ?? "";
+  const isDesktopModeIpad = platform === "MacIntel" && touchPoints > 1;
 
-  if (isDesktopModeIpad) return 'tablet';
+  if (isDesktopModeIpad) {
+    return "tablet";
+  }
 
-  if (width > 0 && width <= 600) return 'phone';
-  if (width > 0 && width <= 1023 && touchPoints > 0) return 'tablet';
+  if (width > 0 && width <= 600) {
+    return "phone";
+  }
+  if (width > 0 && width <= 1023 && touchPoints > 0) {
+    return "tablet";
+  }
 
   return initial;
 }

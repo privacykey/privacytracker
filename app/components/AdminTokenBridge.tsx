@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Admin-token UI signal bus.
@@ -17,7 +17,7 @@
  *     tree doesn't need to be re-shuffled.
  */
 
-export const ADMIN_TOKEN_CHANGED_EVENT = 'pt:admin-token-changed';
+export const ADMIN_TOKEN_CHANGED_EVENT = "pt:admin-token-changed";
 
 export default function AdminTokenBridge() {
   return null;

@@ -1,10 +1,10 @@
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import {
+  clearErrorLog,
   installErrorLogRing,
   snapshotErrorLog,
-  clearErrorLog,
-} from '../lib/error-log-ring';
+} from "../lib/error-log-ring";
 
 /**
  * Tests for the error-log ring buffer (lib/error-log-ring.ts).
@@ -33,57 +33,57 @@ function silently(fn: () => void): void {
   }
 }
 
-test('captures console.error into the ring (newest first)', () => {
+test("captures console.error into the ring (newest first)", () => {
   clearErrorLog();
   silently(() => {
-    console.error('first');
-    console.error('second');
-    console.error('third');
+    console.error("first");
+    console.error("second");
+    console.error("third");
   });
 
   const snap = snapshotErrorLog();
   assert.equal(snap.entries.length, 3);
-  assert.equal(snap.entries[0].message, 'third');
-  assert.equal(snap.entries[1].message, 'second');
-  assert.equal(snap.entries[2].message, 'first');
-  assert.equal(snap.entries[0].level, 'error');
+  assert.equal(snap.entries[0].message, "third");
+  assert.equal(snap.entries[1].message, "second");
+  assert.equal(snap.entries[2].message, "first");
+  assert.equal(snap.entries[0].level, "error");
 });
 
-test('captures console.warn with level=warn', () => {
+test("captures console.warn with level=warn", () => {
   clearErrorLog();
   silently(() => {
-    console.warn('a warning');
-    console.error('an error');
+    console.warn("a warning");
+    console.error("an error");
   });
 
   const snap = snapshotErrorLog();
   const byLevel = Object.fromEntries(
-    snap.entries.map(e => [e.message, e.level]),
+    snap.entries.map((e) => [e.message, e.level])
   );
-  assert.equal(byLevel['a warning'], 'warn');
-  assert.equal(byLevel['an error'], 'error');
+  assert.equal(byLevel["a warning"], "warn");
+  assert.equal(byLevel["an error"], "error");
 });
 
-test('serialises Error stack traces, plain strings, and objects', () => {
+test("serialises Error stack traces, plain strings, and objects", () => {
   clearErrorLog();
   silently(() => {
-    const err = new Error('boom');
+    const err = new Error("boom");
     console.error(err);
-    console.error('plain string');
-    console.error({ shape: 'object', n: 42 });
+    console.error("plain string");
+    console.error({ shape: "object", n: 42 });
   });
 
   const snap = snapshotErrorLog();
   assert.equal(snap.entries.length, 3);
   // Newest first — last call is at index 0.
   assert.match(snap.entries[0].message, /shape/);
-  assert.equal(snap.entries[1].message, 'plain string');
+  assert.equal(snap.entries[1].message, "plain string");
   assert.match(snap.entries[2].message, /Error: boom/);
 });
 
-test('truncates messages over 4 KB and flags `truncated: true`', () => {
+test("truncates messages over 4 KB and flags `truncated: true`", () => {
   clearErrorLog();
-  const huge = 'x'.repeat(10_000);
+  const huge = "x".repeat(10_000);
   silently(() => {
     console.error(huge);
   });
@@ -94,10 +94,10 @@ test('truncates messages over 4 KB and flags `truncated: true`', () => {
   // 4 KB cap plus the "(truncated)" suffix — total length must be
   // strictly less than the original.
   assert.ok(e.message.length < huge.length);
-  assert.ok(e.message.endsWith('(truncated)'));
+  assert.ok(e.message.endsWith("(truncated)"));
 });
 
-test('evicts oldest entries when the ring exceeds capacity', () => {
+test("evicts oldest entries when the ring exceeds capacity", () => {
   clearErrorLog();
   silently(() => {
     // Cap is 200; push 250 distinct messages and expect only the last
@@ -110,24 +110,24 @@ test('evicts oldest entries when the ring exceeds capacity', () => {
   const snap = snapshotErrorLog({ limit: 200 });
   assert.equal(snap.entries.length, 200);
   // Newest first → first entry should be the highest-numbered.
-  assert.equal(snap.entries[0].message, 'entry-249');
+  assert.equal(snap.entries[0].message, "entry-249");
   // Last entry in the slice should be the oldest *surviving* one,
   // which is entry-50 (250 − 200 = 50).
-  assert.equal(snap.entries[snap.entries.length - 1].message, 'entry-50');
+  assert.equal(snap.entries[snap.entries.length - 1].message, "entry-50");
   // capacity reflects the ring's MAX_ENTRIES, not the active count.
   assert.equal(snap.capacity, 200);
 });
 
-test('clearErrorLog drops every entry', () => {
+test("clearErrorLog drops every entry", () => {
   silently(() => {
-    console.error('before clear');
+    console.error("before clear");
   });
   clearErrorLog();
   const snap = snapshotErrorLog();
   assert.equal(snap.entries.length, 0);
 });
 
-test('install is idempotent — multiple installs do not multiply entries', () => {
+test("install is idempotent — multiple installs do not multiply entries", () => {
   // Re-installing should be a no-op. If it weren't, this single
   // console.error would land in the ring twice.
   installErrorLogRing();
@@ -135,17 +135,19 @@ test('install is idempotent — multiple installs do not multiply entries', () =
   installErrorLogRing();
   clearErrorLog();
   silently(() => {
-    console.error('once');
+    console.error("once");
   });
 
   const snap = snapshotErrorLog();
   assert.equal(snap.entries.length, 1);
 });
 
-test('limit option clamps to MAX_ENTRIES and rejects 0/negative', () => {
+test("limit option clamps to MAX_ENTRIES and rejects 0/negative", () => {
   clearErrorLog();
   silently(() => {
-    for (let i = 0; i < 5; i++) console.error(`m${i}`);
+    for (let i = 0; i < 5; i++) {
+      console.error(`m${i}`);
+    }
   });
 
   // Asking for more than capacity returns whatever's in the ring.
@@ -155,7 +157,7 @@ test('limit option clamps to MAX_ENTRIES and rejects 0/negative', () => {
   // Asking for 1 returns just the newest.
   const one = snapshotErrorLog({ limit: 1 });
   assert.equal(one.entries.length, 1);
-  assert.equal(one.entries[0].message, 'm4');
+  assert.equal(one.entries[0].message, "m4");
 
   // Zero / negative gets clamped to at least 1 (we still want
   // something useful back).

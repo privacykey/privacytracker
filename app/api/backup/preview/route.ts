@@ -1,6 +1,7 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { previewRestore, BackupFormatError } from '../../../../lib/backup';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { BackupFormatError, previewRestore } from "../../../../lib/backup";
 
 // Backups can be large — up to tens of MB for long-running installs. The
 // proxy caps general API bodies at 256 KiB, but the preview/restore endpoints
@@ -27,29 +28,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[backup] preview failed:', error);
+    console.error("[backup] preview failed:", error);
     return NextResponse.json(
-      { error: message || 'Could not preview backup.' },
-      { status: 400 },
+      { error: message || "Could not preview backup." },
+      { status: 400 }
     );
   }
 }
 
-async function readJsonBody(request: Request, maxBytes: number): Promise<unknown> {
-  const declared = Number(request.headers.get('content-length') ?? '');
+async function readJsonBody(
+  request: Request,
+  maxBytes: number
+): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new Error(`Backup too large (${declared} > ${maxBytes} bytes).`);
   }
   const buf = Buffer.from(await request.arrayBuffer());
   if (buf.byteLength > maxBytes) {
-    throw new Error(`Backup too large (${buf.byteLength} > ${maxBytes} bytes).`);
+    throw new Error(
+      `Backup too large (${buf.byteLength} > ${maxBytes} bytes).`
+    );
   }
   if (buf.byteLength === 0) {
-    throw new Error('Empty upload.');
+    throw new Error("Empty upload.");
   }
   try {
-    return JSON.parse(buf.toString('utf8'));
+    return JSON.parse(buf.toString("utf8"));
   } catch {
-    throw new Error('Uploaded file is not valid JSON.');
+    throw new Error("Uploaded file is not valid JSON.");
   }
 }

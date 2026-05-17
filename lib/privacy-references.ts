@@ -1,4 +1,4 @@
-import type { ExternalPolicyReference } from './policy-summary-meta';
+import type { ExternalPolicyReference } from "./policy-summary-meta";
 
 /**
  * External-policy-reference lookup (PrivacySpy/ToS;DR match-by-name) has

@@ -6,14 +6,16 @@
  * Next's `next build` stays happy and the web bundle stays clean.
  */
 
-'use client';
+"use client";
 
-import { compareVersions } from './semver-compare';
-import packageJson from '../package.json';
+import packageJson from "../package.json";
+import { compareVersions } from "./semver-compare";
 
 /** Whether we're running inside a Tauri webview. */
 export function isTauri(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === "undefined") {
+    return false;
+  }
   // Tauri v2 exposes __TAURI_INTERNALS__; v1 used __TAURI__. Either signal
   // is enough to attempt the plugin import.
   const w = window as unknown as Record<string, unknown>;
@@ -24,14 +26,14 @@ export function isTauri(): boolean {
 export interface TauriUpdateResult {
   /** True if Tauri reported an update is available. */
   available: boolean;
-  /** True if download + install succeeded (relaunch follows). */
-  installed: boolean;
-  /** Version string Tauri sees as latest, if any. */
-  version?: string;
-  /** Release notes Tauri parsed out of the manifest, if any. */
-  notes?: string;
   /** Error string if anything threw. UI surfaces verbatim. */
   error?: string;
+  /** True if download + install succeeded (relaunch follows). */
+  installed: boolean;
+  /** Release notes Tauri parsed out of the manifest, if any. */
+  notes?: string;
+  /** Version string Tauri sees as latest, if any. */
+  version?: string;
 }
 
 /**
@@ -40,13 +42,15 @@ export interface TauriUpdateResult {
  * installed: false }` so the UI falls back to manual instructions.
  */
 export async function checkAndInstall(): Promise<TauriUpdateResult> {
-  if (!isTauri()) return { available: false, installed: false };
+  if (!isTauri()) {
+    return { available: false, installed: false };
+  }
 
   try {
     // Dynamic import — Next splits this into its own chunk that only the
     // Tauri build loads. The catch swallows resolution failures gracefully.
-    const updater = await import('@tauri-apps/plugin-updater');
-    const proc = await import('@tauri-apps/plugin-process');
+    const updater = await import("@tauri-apps/plugin-updater");
+    const proc = await import("@tauri-apps/plugin-process");
 
     const update = await updater.check();
     if (!update?.available) {
@@ -60,7 +64,10 @@ export async function checkAndInstall(): Promise<TauriUpdateResult> {
     // Refuse anything whose version isn't strictly newer than the
     // running app.
     const current = packageJson.version;
-    if (typeof update.version === 'string' && compareVersions(update.version, current) <= 0) {
+    if (
+      typeof update.version === "string" &&
+      compareVersions(update.version, current) <= 0
+    ) {
       return {
         available: false,
         installed: false,

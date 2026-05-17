@@ -9,7 +9,8 @@ pnpm install           # requires Node 24 LTS (see `engines` in package.json) an
 pnpm dev               # http://localhost:3000
 pnpm build             # production build
 pnpm start             # serve the production build
-pnpm lint              # ESLint flat config for Next 16
+pnpm lint              # Ultracite (Biome) — lint + format check
+pnpm lint:fix          # Ultracite auto-fix (safe rules only)
 pnpm typecheck         # TypeScript without emitting files
 pnpm test              # focused node:test suite
 pnpm lint:i18n         # check locales/*.json key parity against en.json
@@ -109,6 +110,8 @@ Entry points:
 
 Relevant settings in `app_settings`: `wayback_show_imported` (`'true'`/`'false'`, controls whether the per-app timeline renders imported rows by default — the detail page still has a local toggle), `wayback_import_running` (cross-request mutex), `wayback_bulk_state` (resume state blob), and the shared `policy_scrape_throttle_*` keys.
 
+**Global kill-switch for policy scraping.** `policy_scrape_disabled` (`'true'`/`'false'`, default `'false'`) in `app_settings` is a stronger gate than the throttle: when on, `fetchAndStorePolicySource` short-circuits before the HTTP call for every caller (per-app auto-trigger from `scraper.ts`, bulk runner, scheduled sync, instrumentation resume). The single user-initiated escape hatch is `bypassThrottle=true` (the "Force re-scrape" path) — every other call respects the kill-switch. The bulk-sync route returns 409 with code `policy_scrape_disabled`, the per-app regenerate route returns 409 for `phase: 'fetch' | 'all'` but lets `phase: 'summarise'` through (cached text + AI is still useful when fetches are off), and `instrumentation.ts`'s policy resume clears the queue + mutex with a `bulk-skipped-disabled` activity row instead of starting a run. UI lives at `settings.policy_throttle.scrape_disabled_*` in i18n; toggling it greys the throttle inputs and shows an "inert when disabled" note above them. Test coverage in `tests/policy-scrape-disabled.test.ts` pins the contract (zero fetches when on, bypassThrottle override, cache preservation).
+
 The timeline renders wayback rows with a purple dot (`.timeline-dot.wayback`), a clock (🕰) glyph, a "Wayback · YYYY-MM-DD" badge, and a "View on Wayback" link to the capture URL. `lib/changelog-types.ts` exposes these via `source?: 'live' | 'wayback'` and `wayback_snapshot_url` on `SnapshotChangelogRow` — both are normalised server-side in `getChangelog` so older rows default to `'live'`. Each row also carries a `triggered_by` value (`'scheduled' | 'manual' | 'import' | 'wayback' | null`) which drives the `TriggerPill` in the card header; legacy (pre-migration) rows get `null` and render a generic "Live sync" pill. When a wayback baseline snapshot_json is byte-identical to an adjacent live row, `getChangelog` sets `matches_live_sync: true` and the timeline renders a green "Matches live sync" badge so users can see at a glance that the archive and the live App Store page agree.
 
 ### Database
@@ -160,6 +163,15 @@ The editor takes an optional `confirmOnPresetApply` prop (default `true`). When 
 ### UI
 
 Server components under `app/dashboard/**` hand off to client components in `app/components/*View.tsx` / `*Wizard.tsx` (these are the large interactive surfaces — `OnboardWizard`, `SettingsView`, `AppDetailView`, `AppGrid`). Global tokens and severity/category styling live in `app/globals.css` and `lib/privacy-meta.ts` (`SEVERITY_CONFIG`, `CATEGORY_META`). The `@/*` TS path alias maps to the repo root.
+
+### Lint + format (Biome via Ultracite)
+
+Lint AND format both run through `@biomejs/biome` (`pnpm lint` = `ultracite check`, `pnpm lint:fix` = `ultracite fix`). ESLint and Prettier are gone — Biome handles both jobs in a single pass. The config lives in `biome.jsonc`, which `extends` the `ultracite/biome/core` + `/react` + `/next` presets and applies a set of project-specific overrides on top:
+
+- **a11y rules → `warn`.** The codebase predates strict a11y enforcement and has hundreds of `<div onClick>`, `role="radio"`, etc. patterns that Ultracite would flag as errors. They're surfaced as warnings (visible in lint output, do not fail CI) so the team can fix them gradually without a giant remediation PR.
+- **Convention-driven `off` overrides** ported from the old ESLint policy: `noExplicitAny`, `noNonNullAssertion`, `useExhaustiveDependencies` (next-intl `t*` is stable), `useFilenamingConvention` (mixed kebab + PascalCase by design), `noImgElement` (App Store artwork is cross-origin), `noDangerouslySetInnerHtml` (DOMPurify-sanitised), `useNumericSeparators` (broke CSS `z-index` literals on autofix), and a handful of stylistic rules.
+
+If you add a new project that should be lint-consistent with this one, copy `biome.jsonc` verbatim plus the `@biomejs/biome` + `ultracite` devDependencies. Each repo owns its own copy — there's no shared `@privacykey/biome-config` package.
 
 ### Disclosure pages (`/privacy-policy`, `/legal`)
 

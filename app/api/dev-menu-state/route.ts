@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSetting, setSetting } from '@/lib/scheduler';
-import { readBoundedJson } from '@/lib/security';
-import { requireMutationGuard } from '@/lib/api-guards';
+import { type NextRequest, NextResponse } from "next/server";
+import { requireMutationGuard } from "@/lib/api-guards";
+import { getSetting, setSetting } from "@/lib/scheduler";
+import { readBoundedJson } from "@/lib/security";
 
 /**
  * Floating dev-menu opt-in state, persisted in `app_settings` so it
@@ -14,12 +14,12 @@ import { requireMutationGuard } from '@/lib/api-guards';
  * Persisted key: `dev_menu_enabled`. Matching localStorage key on the JS
  * side is `dev-menu-on`.
  */
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-const KEY = 'dev_menu_enabled';
+const KEY = "dev_menu_enabled";
 
 function read(): { enabled: boolean } {
-  return { enabled: getSetting(KEY, 'false') === 'true' };
+  return { enabled: getSetting(KEY, "false") === "true" };
 }
 
 export async function GET() {
@@ -28,28 +28,33 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const guard = requireMutationGuard(req, {
-    action: 'dev_menu.write',
-    rateLimit: { keyPrefix: 'dev_menu.write', limit: 30, windowMs: 60_000 },
+    action: "dev_menu.write",
+    rateLimit: { keyPrefix: "dev_menu.write", limit: 30, windowMs: 60_000 },
     requireAdminToken: false,
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   let body: unknown = null;
   try {
     body = await readBoundedJson<unknown>(req, 4 * 1024);
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 });
+    return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
-  if (!body || typeof body !== 'object') {
-    return NextResponse.json({ error: 'expected object body' }, { status: 400 });
-  }
-  const next = (body as { enabled?: unknown }).enabled;
-  if (typeof next !== 'boolean') {
+  if (!body || typeof body !== "object") {
     return NextResponse.json(
-      { error: 'expected { enabled: boolean }' },
-      { status: 400 },
+      { error: "expected object body" },
+      { status: 400 }
     );
   }
-  setSetting(KEY, next ? 'true' : 'false');
+  const next = (body as { enabled?: unknown }).enabled;
+  if (typeof next !== "boolean") {
+    return NextResponse.json(
+      { error: "expected { enabled: boolean }" },
+      { status: 400 }
+    );
+  }
+  setSetting(KEY, next ? "true" : "false");
   return NextResponse.json(read());
 }

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Review-and-act wizard for Phase 3.
@@ -42,44 +42,31 @@
  *     confirmation. There is no batch path.
  */
 
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Annotation } from "../../lib/annotations";
 import {
+  backupDeviceViaCfgutil,
+  type ConnectedDevice,
   isDesktop,
   listConnectedDevices,
-  backupDeviceViaCfgutil,
   removeAppViaCfgutil,
-  type ConnectedDevice,
-} from '../../lib/desktop';
-import VerdictPicker from './VerdictPicker';
-import type { AppVerdict, VerdictValue } from '../../lib/verdict-types';
-import type { AppProfileBadge } from '../../lib/privacy-profile';
-import type { ShortlistEntry } from '../../lib/shortlist-types';
-import type { Annotation } from '../../lib/annotations';
-import { isSafeExternalHref } from '../../lib/safe-href';
+} from "../../lib/desktop";
+import type { AppProfileBadge } from "../../lib/privacy-profile";
+import { isSafeExternalHref } from "../../lib/safe-href";
+import type { ShortlistEntry } from "../../lib/shortlist-types";
+import type { AppVerdict, VerdictValue } from "../../lib/verdict-types";
+import VerdictPicker from "./VerdictPicker";
 
 interface Row {
-  id: string;
-  name: string;
+  bundleId: string | null;
   developer: string | null;
   iconUrl: string | null;
-  bundleId: string | null;
-  /** Real App Store URL. Used for tap-to-open links in the
-   *  printable checklist + the share-to-iPhone payload. May be
-   *  null for sample-data / manual-entry apps that don't have a
-   *  store listing. */
-  url: string | null;
-  profileBadge: AppProfileBadge | null;
-  /**
-   * Existing shortlist candidates for this app — populated by the
-   * server from /api/shortlist (the same data that drives
-   * /dashboard/shortlist). The Compare step renders them inline
-   * under each "Replace" row so users can see what they've already
-   * saved without leaving the wizard.
-   */
-  shortlistCandidates: ShortlistEntry[];
+  id: string;
+  importedVerdicts: AppVerdict[];
+  name: string;
   /**
    * The user's existing notes for this app. Surfaced in the Compare
    * step as a compact read-only preview so users picking a
@@ -89,14 +76,35 @@ interface Row {
    * the detail page is the canonical write path).
    */
   notes: Annotation[];
+  profileBadge: AppProfileBadge | null;
+  /**
+   * Existing shortlist candidates for this app — populated by the
+   * server from /api/shortlist (the same data that drives
+   * /dashboard/shortlist). The Compare step renders them inline
+   * under each "Replace" row so users can see what they've already
+   * saved without leaving the wizard.
+   */
+  shortlistCandidates: ShortlistEntry[];
+  /** Real App Store URL. Used for tap-to-open links in the
+   *  printable checklist + the share-to-iPhone payload. May be
+   *  null for sample-data / manual-entry apps that don't have a
+   *  store listing. */
+  url: string | null;
   userVerdict: AppVerdict | null;
-  importedVerdicts: AppVerdict[];
 }
 
 interface Props {
-  rows: Row[];
-  audience: 'self' | 'loved_one' | 'guardian';
+  audience: "self" | "loved_one" | "guardian";
   flagOn: boolean;
+  rows: Row[];
+  /**
+   * `appId → ECID[]` for apps in the uninstall queue. Used to warn the
+   * user when the *connected* cfgutil device's ECID doesn't match any
+   * of the device(s) the app was originally imported from. Entries are
+   * absent when the app's source device(s) have a NULL ecid (CSV /
+   * manual imports) — those rows skip the match check entirely.
+   */
+  sourceDeviceEcids?: Record<string, string[]>;
 }
 
 /**
@@ -110,41 +118,46 @@ interface Props {
  * but only one of the affordances on the step is a save action; the
  * rest are share / proceed.
  */
-type Step = 'review' | 'compare' | 'action' | 'backup' | 'act';
+type Step = "review" | "compare" | "action" | "backup" | "act";
 
 interface BackupState {
-  status: 'idle' | 'running' | 'done' | 'error';
   device: ConnectedDevice | null;
+  error: string | null;
   finishedAt: number | null;
   path: string | null;
-  error: string | null;
+  status: "idle" | "running" | "done" | "error";
 }
 
 interface UninstallState {
-  status: 'idle' | 'running' | 'done' | 'error';
   error: string | null;
+  status: "idle" | "running" | "done" | "error";
 }
 
-export default function ReviewRecommendationsView({ rows: initialRows, audience, flagOn }: Props) {
+export default function ReviewRecommendationsView({
+  rows: initialRows,
+  audience,
+  flagOn,
+  sourceDeviceEcids = {},
+}: Props) {
   // i18n — every visible string in the wizard reads from
   // `review_rec.*`. Sub-translators are split per step block so
   // call-sites stay short (e.g. tReview('heading') not
   // tRoot('review.heading')).
-  const t = useTranslations('review_rec');
-  const tHero = useTranslations('review_rec.hero');
-  const tGate = useTranslations('review_rec.audience_gate');
-  const tSteps = useTranslations('review_rec.step_labels');
-  const tReview = useTranslations('review_rec.review');
-  const tCompare = useTranslations('review_rec.compare');
-  const tAction = useTranslations('review_rec.action');
-  const tBackup = useTranslations('review_rec.backup');
-  const tAct = useTranslations('review_rec.act');
-  const tConfirm = useTranslations('review_rec.confirm_modal');
-  const tShareModal = useTranslations('review_rec.share_modal');
-  const tMigrate = useTranslations('review_rec.migrate_modal');
-  const tPrint = useTranslations('review_rec.print');
-  const tPayload = useTranslations('review_rec.share_payload');
-  const tVerdict = useTranslations('verdict');
+  const t = useTranslations("review_rec");
+  const tHero = useTranslations("review_rec.hero");
+  const tGate = useTranslations("review_rec.audience_gate");
+  const tSteps = useTranslations("review_rec.step_labels");
+  const tReview = useTranslations("review_rec.review");
+  const tCompare = useTranslations("review_rec.compare");
+  const tAction = useTranslations("review_rec.action");
+  const tBackup = useTranslations("review_rec.backup");
+  const tAct = useTranslations("review_rec.act");
+  const tConfirm = useTranslations("review_rec.confirm_modal");
+  const tShareModal = useTranslations("review_rec.share_modal");
+  const tMigrate = useTranslations("review_rec.migrate_modal");
+  const tPrint = useTranslations("review_rec.print");
+  const tPayload = useTranslations("review_rec.share_payload");
+  const tVerdict = useTranslations("verdict");
 
   // Initial step honours `?step=` so the back-link from /dashboard/compare
   // (which passes `?step=compare`) lands the user back at Step 2 instead
@@ -164,40 +177,51 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   // dismissals (line 2111).
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
+      if (event.key !== "Escape") {
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target) {
         const tag = target.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-        if (target.isContentEditable) return;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+          return;
+        }
+        if (target.isContentEditable) {
+          return;
+        }
       }
-      router.push('/dashboard/apps');
+      router.push("/dashboard/apps");
     }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [router]);
   const initialStep: Step = (() => {
-    const raw = searchParams?.get('step');
-    if (raw === 'review' || raw === 'compare' || raw === 'action' ||
-        raw === 'backup' || raw === 'act') {
+    const raw = searchParams?.get("step");
+    if (
+      raw === "review" ||
+      raw === "compare" ||
+      raw === "action" ||
+      raw === "backup" ||
+      raw === "act"
+    ) {
       return raw;
     }
-    return 'review';
+    return "review";
   })();
   const [step, setStep] = useState<Step>(initialStep);
   const [rows, setRows] = useState<Row[]>(initialRows);
   const [devices, setDevices] = useState<ConnectedDevice[]>([]);
   const [selectedEcid, setSelectedEcid] = useState<string | null>(null);
   const [backup, setBackup] = useState<BackupState>({
-    status: 'idle',
+    status: "idle",
     device: null,
     finishedAt: null,
     path: null,
     error: null,
   });
-  const [uninstallStates, setUninstallStates] = useState<Record<string, UninstallState>>({});
-  const [confirmingApp, setConfirmingApp] = useState<Row | null>(null);
-  const [confirmText, setConfirmText] = useState('');
+  const [uninstallStates, setUninstallStates] = useState<
+    Record<string, UninstallState>
+  >({});
   /**
    * Per-row free-text "replacing with" memo — captured during the
    * Compare step. Stored in component state only (not persisted) so
@@ -222,7 +246,8 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
    * every time the user lands on Step 2 fresh, so a future session
    * never opens with the gate already bypassed.
    */
-  const [proceedDespiteMissingPick, setProceedDespiteMissingPick] = useState(false);
+  const [proceedDespiteMissingPick, setProceedDespiteMissingPick] =
+    useState(false);
   /**
    * Migration wizard modal state. Opens from the "Set up the desktop
    * migration" CTA on the Action step. Tracks the export step's
@@ -231,9 +256,9 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
    */
   const [migrateOpen, setMigrateOpen] = useState(false);
   const [migrateExport, setMigrateExport] = useState<{
-    status: 'idle' | 'busy' | 'done' | 'error';
+    status: "idle" | "busy" | "done" | "error";
     error: string | null;
-  }>({ status: 'idle', error: null });
+  }>({ status: "idle", error: null });
   /**
    * Tracks whether the Web Share API has just succeeded so we can
    * flash a small status pill below the share button. Clears after
@@ -262,48 +287,110 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
     setDesktop(isDesktop());
   }, []);
 
-  const audienceOk = audience === 'self';
+  const audienceOk = audience === "self";
   const showDeviceAddon = audienceOk && flagOn && desktop;
 
   const uninstallQueue = useMemo(
-    () => rows.filter(r => r.userVerdict?.verdict === 'uninstall'),
-    [rows],
+    () => rows.filter((r) => r.userVerdict?.verdict === "uninstall"),
+    [rows]
   );
   const replaceQueue = useMemo(
-    () => rows.filter(r => r.userVerdict?.verdict === 'replace'),
-    [rows],
+    () => rows.filter((r) => r.userVerdict?.verdict === "replace"),
+    [rows]
   );
   const safeQueue = useMemo(
-    () => rows.filter(r => r.userVerdict?.verdict === 'safe'),
-    [rows],
+    () => rows.filter((r) => r.userVerdict?.verdict === "safe"),
+    [rows]
   );
+
+  /**
+   * Device-match analysis for the uninstall queue.
+   *
+   * For each app, we have an ordered list of ECIDs the app was
+   * originally imported from (via the `app_devices` junction). Apps
+   * whose source-device ECIDs include the *currently connected* ECID
+   * are clear to delete from this device; apps whose ECIDs don't
+   * include it are "mismatched" — the user is about to try to
+   * uninstall an app that wasn't on this phone.
+   *
+   * Apps missing from `sourceDeviceEcids` are "unknown source" — the
+   * device row had a NULL ecid (CSV / manual / pre-junction installs)
+   * so we can't verify either way. Those neither trip the warning nor
+   * count as matched.
+   */
+  const deviceMatch = useMemo(() => {
+    if (!selectedEcid) {
+      return { matched: [], mismatched: [], unknown: uninstallQueue };
+    }
+    const matched: Row[] = [];
+    const mismatched: Row[] = [];
+    const unknown: Row[] = [];
+    for (const row of uninstallQueue) {
+      const ecids = sourceDeviceEcids[row.id];
+      if (!ecids || ecids.length === 0) {
+        unknown.push(row);
+      } else if (ecids.includes(selectedEcid)) {
+        matched.push(row);
+      } else {
+        mismatched.push(row);
+      }
+    }
+    return { matched, mismatched, unknown };
+  }, [uninstallQueue, sourceDeviceEcids, selectedEcid]);
+
+  /**
+   * Three-gate bulk-delete state machine. Replaces the previous per-app
+   * confirmation flow with a single "Delete N apps" path:
+   *
+   *   `null`       — act step renders the queue as a read-only list +
+   *                  a single "Delete N apps" CTA at the bottom.
+   *   `'list'`     — Modal 1: lists every app to be deleted and asks
+   *                  "Are you sure?". Cancel returns to `null`,
+   *                  Continue advances to `'final'`.
+   *   `'final'`    — Modal 2: type DELETE to confirm. The copy and
+   *                  keyword vary on whether a fresh backup exists —
+   *                  the no-backup variant additionally requires the
+   *                  user to type the keyword in a "this is at your
+   *                  own risk" worded prompt. Cancel returns to `null`.
+   *   `'executing'` — Bulk loop in progress. The act-step list shows
+   *                  per-app status (idle/running/done/error); the
+   *                  modal is dismissed so the user sees progress.
+   */
+  const [bulkModal, setBulkModal] = useState<
+    null | "list" | "final" | "executing"
+  >(null);
+  const [bulkConfirmText, setBulkConfirmText] = useState("");
 
   const onVerdictChange = useCallback(
     (rowId: string) => (next: VerdictValue | null) => {
-      setRows(prev =>
-        prev.map(r => {
-          if (r.id !== rowId) return r;
-          if (!next) return { ...r, userVerdict: null };
+      setRows((prev) =>
+        prev.map((r) => {
+          if (r.id !== rowId) {
+            return r;
+          }
+          if (!next) {
+            return { ...r, userVerdict: null };
+          }
           const now = Date.now();
           return {
             ...r,
             userVerdict: r.userVerdict
               ? { ...r.userVerdict, verdict: next, updatedAt: now }
               : {
-                  id: 'pending',
+                  id: "pending",
                   appId: r.id,
                   verdict: next,
                   rationale: null,
-                  source: 'user',
+                  source: "user",
                   sourceName: null,
                   setAt: now,
                   updatedAt: now,
                 },
           };
-        }),
+        })
       );
     },
-    [],
+    []
   );
 
   // ── Inline rationale editor ────────────────────────────────────────
@@ -320,8 +407,12 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   // rationale without a verdict would have no row to attach to.
   // The inline editor renders disabled with a hint when
   // `userVerdict` is null.
-  const [rationaleDrafts, setRationaleDrafts] = useState<Record<string, string>>({});
-  const rationaleTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [rationaleDrafts, setRationaleDrafts] = useState<
+    Record<string, string>
+  >({});
+  const rationaleTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {}
+  );
 
   /**
    * Read the current draft for a row — falling back to the saved
@@ -332,60 +423,67 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
    */
   const getRationaleDraft = useCallback(
     (row: Row) => {
-      if (Object.prototype.hasOwnProperty.call(rationaleDrafts, row.id)) {
+      if (Object.hasOwn(rationaleDrafts, row.id)) {
         return rationaleDrafts[row.id];
       }
-      return row.userVerdict?.rationale ?? '';
+      return row.userVerdict?.rationale ?? "";
     },
-    [rationaleDrafts],
+    [rationaleDrafts]
   );
 
-  const onRationaleChange = useCallback(
-    (row: Row, next: string) => {
-      // Buffer the edit so the textarea stays responsive.
-      setRationaleDrafts(prev => ({ ...prev, [row.id]: next }));
-      // Skip the debounced save when there's no verdict to attach
-      // the rationale to — the picker shows a hint in that case.
-      if (!row.userVerdict) return;
-      // Debounce — clear the previous timer so we never end up with
-      // overlapping in-flight POSTs for the same row.
-      const existing = rationaleTimers.current[row.id];
-      if (existing) clearTimeout(existing);
-      rationaleTimers.current[row.id] = setTimeout(async () => {
-        const verdict = row.userVerdict?.verdict;
-        if (!verdict) return;
-        const trimmed = next.trim();
-        try {
-          const res = await fetch('/api/verdicts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              appId: row.id,
-              verdict,
-              rationale: trimmed || null,
-            }),
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const { verdict: saved }: { verdict: AppVerdict } = await res.json();
-          // Mirror into the row state so the printable PDF + the
-          // share payload pick up the new value without a refresh.
-          setRows(prev =>
-            prev.map(r => (r.id === row.id ? { ...r, userVerdict: saved } : r)),
-          );
-        } catch (e) {
-          console.warn('[review] inline rationale save failed:', e);
+  const onRationaleChange = useCallback((row: Row, next: string) => {
+    // Buffer the edit so the textarea stays responsive.
+    setRationaleDrafts((prev) => ({ ...prev, [row.id]: next }));
+    // Skip the debounced save when there's no verdict to attach
+    // the rationale to — the picker shows a hint in that case.
+    if (!row.userVerdict) {
+      return;
+    }
+    // Debounce — clear the previous timer so we never end up with
+    // overlapping in-flight POSTs for the same row.
+    const existing = rationaleTimers.current[row.id];
+    if (existing) {
+      clearTimeout(existing);
+    }
+    rationaleTimers.current[row.id] = setTimeout(async () => {
+      const verdict = row.userVerdict?.verdict;
+      if (!verdict) {
+        return;
+      }
+      const trimmed = next.trim();
+      try {
+        const res = await fetch("/api/verdicts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            appId: row.id,
+            verdict,
+            rationale: trimmed || null,
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
         }
-      }, 600);
-    },
-    [],
-  );
+        const { verdict: saved }: { verdict: AppVerdict } = await res.json();
+        // Mirror into the row state so the printable PDF + the
+        // share payload pick up the new value without a refresh.
+        setRows((prev) =>
+          prev.map((r) => (r.id === row.id ? { ...r, userVerdict: saved } : r))
+        );
+      } catch (e) {
+        console.warn("[review] inline rationale save failed:", e);
+      }
+    }, 600);
+  }, []);
 
   // Flush any pending rationale writes on unmount so a "type, navigate
   // away" sequence doesn't drop the last edit on the floor.
   useEffect(() => {
     const timers = rationaleTimers.current;
     return () => {
-      for (const id of Object.keys(timers)) clearTimeout(timers[id]);
+      for (const id of Object.keys(timers)) {
+        clearTimeout(timers[id]);
+      }
     };
   }, []);
 
@@ -396,42 +494,50 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   const removeShortlistCandidate = useCallback(
     async (sourceAppId: string, candidateAppleId: string) => {
       // Optimistic remove.
-      setRows(prev =>
-        prev.map(r =>
+      setRows((prev) =>
+        prev.map((r) =>
           r.id === sourceAppId
             ? {
                 ...r,
                 shortlistCandidates: r.shortlistCandidates.filter(
-                  c => c.candidateAppleId !== candidateAppleId,
+                  (c) => c.candidateAppleId !== candidateAppleId
                 ),
               }
-            : r,
-        ),
+            : r
+        )
       );
       try {
         const qs = new URLSearchParams({ sourceAppId, candidateAppleId });
-        const res = await fetch(`/api/shortlist?${qs}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetch(`/api/shortlist?${qs}`, { method: "DELETE" });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
       } catch (e) {
-        console.warn('[review] shortlist remove failed:', e);
+        console.warn("[review] shortlist remove failed:", e);
         // Best-effort rollback — refetch the page would be cleaner
         // but the inline restore keeps the user's flow intact.
-        setRows(prev =>
-          prev.map(r => {
-            if (r.id !== sourceAppId) return r;
+        setRows((prev) =>
+          prev.map((r) => {
+            if (r.id !== sourceAppId) {
+              return r;
+            }
             // Don't double-add; only restore if the candidate is
             // genuinely missing from the current list.
-            if (r.shortlistCandidates.some(c => c.candidateAppleId === candidateAppleId)) {
+            if (
+              r.shortlistCandidates.some(
+                (c) => c.candidateAppleId === candidateAppleId
+              )
+            ) {
               return r;
             }
             // We don't have the original entry handy here — punt to a
             // page refresh on next user interaction.
             return r;
-          }),
+          })
         );
       }
     },
-    [],
+    []
   );
 
   /**
@@ -443,20 +549,26 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
    */
   const pickShortlistCandidate = useCallback(
     (sourceAppId: string, candidateName: string) => {
-      setReplacements(prev => ({ ...prev, [sourceAppId]: candidateName }));
+      setReplacements((prev) => ({ ...prev, [sourceAppId]: candidateName }));
     },
-    [],
+    []
   );
 
   // Connected-device polling — only on the Backup step.
   useEffect(() => {
-    if (step !== 'backup') return;
-    if (!desktop) return;
+    if (step !== "backup") {
+      return;
+    }
+    if (!desktop) {
+      return;
+    }
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const tick = async () => {
       const result = await listConnectedDevices();
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       if (!result || result.cfgutilUnavailable) {
         setDevices([]);
         return;
@@ -465,36 +577,48 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
       if (!selectedEcid && result.devices[0]) {
         setSelectedEcid(result.devices[0].ecid);
       }
-      if (cancelled) return;
-      timer = setTimeout(tick, 5_000);
+      if (cancelled) {
+        return;
+      }
+      timer = setTimeout(tick, 5000);
     };
     tick();
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
+      if (timer) {
+        clearTimeout(timer);
+      }
     };
   }, [step, selectedEcid, desktop]);
 
   const runBackup = useCallback(async () => {
-    if (!selectedEcid) return;
-    const device = devices.find(d => d.ecid === selectedEcid) ?? null;
-    setBackup({ status: 'running', device, finishedAt: null, path: null, error: null });
+    if (!selectedEcid) {
+      return;
+    }
+    const device = devices.find((d) => d.ecid === selectedEcid) ?? null;
+    setBackup({
+      status: "running",
+      device,
+      finishedAt: null,
+      path: null,
+      error: null,
+    });
     const destDir = `~/Documents/privacytracker-Backups/${selectedEcid}`;
     const result = await backupDeviceViaCfgutil(selectedEcid, destDir);
     if (!result.ok) {
       setBackup({
-        status: 'error',
+        status: "error",
         device,
         finishedAt: null,
         path: null,
-        error: result.error ?? tAct('default_backup_error'),
+        error: result.error ?? tAct("default_backup_error"),
       });
       return;
     }
     try {
-      await fetch('/api/device-actions/backup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/device-actions/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ecid: selectedEcid,
           path: result.backupPath ?? destDir,
@@ -503,30 +627,32 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
         }),
       });
     } catch (e) {
-      console.warn('[review] failed to record backup:', e);
+      console.warn("[review] failed to record backup:", e);
     }
     setBackup({
-      status: 'done',
+      status: "done",
       device,
       finishedAt: result.finishedAt ?? Date.now(),
       path: result.backupPath,
       error: null,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, [selectedEcid, devices]);
 
   const runUninstall = useCallback(
-    async (row: Row) => {
-      if (!selectedEcid || !row.bundleId) return;
-      setUninstallStates(prev => ({
+    async (row: Row, acknowledgeNoBackup: boolean) => {
+      if (!(selectedEcid && row.bundleId)) {
+        return;
+      }
+      setUninstallStates((prev) => ({
         ...prev,
-        [row.id]: { status: 'running', error: null },
+        [row.id]: { status: "running", error: null },
       }));
       const result = await removeAppViaCfgutil(selectedEcid, row.bundleId);
       try {
-        await fetch('/api/device-actions/uninstall', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch("/api/device-actions/uninstall", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ecid: selectedEcid,
             bundleId: row.bundleId,
@@ -534,36 +660,77 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
             appName: row.name,
             ok: result.ok,
             error: result.error,
+            acknowledgeNoBackup,
           }),
         });
       } catch (e) {
-        console.warn('[review] failed to record uninstall outcome:', e);
+        console.warn("[review] failed to record uninstall outcome:", e);
       }
-      setUninstallStates(prev => ({
+      setUninstallStates((prev) => ({
         ...prev,
         [row.id]: result.ok
-          ? { status: 'done', error: null }
-          : { status: 'error', error: result.error ?? tAct('default_uninstall_error') },
+          ? { status: "done", error: null }
+          : {
+              status: "error",
+              error: result.error ?? tAct("default_uninstall_error"),
+            },
       }));
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
-    [selectedEcid],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    [selectedEcid]
   );
 
-  const openConfirm = (row: Row) => {
-    setConfirmingApp(row);
-    setConfirmText('');
-  };
-  const closeConfirm = () => {
-    setConfirmingApp(null);
-    setConfirmText('');
-  };
+  /**
+   * Sequential bulk-uninstall runner. Iterates the queue, calling
+   * `runUninstall` per row. Errors don't abort the batch — the per-app
+   * state surfaces ✓/✕/spinner inline, and the user sees a summary
+   * once the loop finishes. Apps that lack a bundle ID are skipped
+   * (cfgutil needs one) and surface as `error`.
+   *
+   * The `acknowledgeNoBackup` flag flows through to every per-app
+   * request so the server-side gate can allow the bypass uniformly
+   * across the batch.
+   */
+  const runBulkUninstall = useCallback(
+    async (acknowledgeNoBackup: boolean) => {
+      if (!selectedEcid) {
+        return;
+      }
+      setBulkModal("executing");
+      for (const row of uninstallQueue) {
+        if (!row.bundleId) {
+          setUninstallStates((prev) => ({
+            ...prev,
+            [row.id]: {
+              status: "error",
+              error: tAct("no_bundle_id_title"),
+            },
+          }));
+          continue;
+        }
+        // Skip apps that already succeeded — re-runs (e.g. retry after
+        // a partial failure) shouldn't fire cfgutil again for done rows.
+        const currentState = uninstallStates[row.id];
+        if (currentState?.status === "done") {
+          continue;
+        }
+        await runUninstall(row, acknowledgeNoBackup);
+      }
+      setBulkModal(null);
+      setBulkConfirmText("");
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runUninstall closes over selectedEcid + t* (stable); uninstallStates is read inside via setState callback
+    [selectedEcid, uninstallQueue, runUninstall]
+  );
+
+  // Modal 2 (`bulkModal === 'final'`) autofocuses its type-DELETE
+  // input. The ref is captured here and attached on render.
   const confirmInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (confirmingApp) {
+    if (bulkModal === "final") {
       confirmInputRef.current?.focus();
     }
-  }, [confirmingApp]);
+  }, [bulkModal]);
 
   // ── Save / share / print plumbing ──────────────────────────────────
   // Print toggles a body class; the @media print stylesheet hides
@@ -571,13 +738,15 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   // visible. The block contains real <a href> elements for App
   // Store URLs, so the saved PDF carries them as clickable links.
   const triggerPrint = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    document.body.classList.add('review-rec-print-active');
+    if (typeof window === "undefined") {
+      return;
+    }
+    document.body.classList.add("review-rec-print-active");
     const cleanup = () => {
-      document.body.classList.remove('review-rec-print-active');
-      window.removeEventListener('afterprint', cleanup);
+      document.body.classList.remove("review-rec-print-active");
+      window.removeEventListener("afterprint", cleanup);
     };
-    window.addEventListener('afterprint', cleanup);
+    window.addEventListener("afterprint", cleanup);
     window.requestAnimationFrame(() => window.print());
   }, []);
 
@@ -585,30 +754,40 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   // The PDF flow is for offline review; this is for "AirDrop my
   // checklist to my iPhone" or "text it to myself". Lines are kept
   // short so the message reads sensibly in iMessage / Mail previews.
-  const buildSharePayload = useCallback((): { title: string; text: string; url: string } => {
-    const lines: string[] = [tPayload('header')];
+  const buildSharePayload = useCallback((): {
+    title: string;
+    text: string;
+    url: string;
+  } => {
+    const lines: string[] = [tPayload("header")];
     if (uninstallQueue.length > 0) {
-      lines.push('', tPayload('uninstall_section', { count: uninstallQueue.length }));
+      lines.push(
+        "",
+        tPayload("uninstall_section", { count: uninstallQueue.length })
+      );
       for (const r of uninstallQueue) {
-        lines.push(`• ${r.name}${r.url ? ` — ${r.url}` : ''}`);
+        lines.push(`• ${r.name}${r.url ? ` — ${r.url}` : ""}`);
       }
     }
     if (replaceQueue.length > 0) {
-      lines.push('', tPayload('replace_section', { count: replaceQueue.length }));
+      lines.push(
+        "",
+        tPayload("replace_section", { count: replaceQueue.length })
+      );
       for (const r of replaceQueue) {
         const swap = replacements[r.id]?.trim();
-        const replaceLine = swap ? ` → ${swap}` : '';
-        lines.push(`• ${r.name}${replaceLine}${r.url ? ` — ${r.url}` : ''}`);
+        const replaceLine = swap ? ` → ${swap}` : "";
+        lines.push(`• ${r.name}${replaceLine}${r.url ? ` — ${r.url}` : ""}`);
       }
     }
     if (safeQueue.length > 0) {
-      lines.push('', tPayload('safe_section', { count: safeQueue.length }));
+      lines.push("", tPayload("safe_section", { count: safeQueue.length }));
       for (const r of safeQueue) {
         lines.push(`• ${r.name}`);
       }
     }
-    const url = typeof window !== 'undefined' ? window.location.href : '';
-    return { title: tPayload('title'), text: lines.join('\n'), url };
+    const url = typeof window === "undefined" ? "" : window.location.href;
+    return { title: tPayload("title"), text: lines.join("\n"), url };
   }, [uninstallQueue, replaceQueue, safeQueue, replacements, tPayload]);
 
   /**
@@ -644,24 +823,27 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
     const fullText = `${payload.text}\n\n${payload.url}`;
 
     // 1. Web Share API.
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function"
+    ) {
       try {
         // canShare() throws / returns false for some payload shapes
         // (e.g. URL-less on iOS Safari < 16). Guard against that
         // before calling share() so we don't trip the AbortError
         // path with a non-recoverable TypeError.
         const canTry =
-          typeof navigator.canShare === 'function'
+          typeof navigator.canShare === "function"
             ? navigator.canShare(payload)
             : true;
         if (canTry) {
           await navigator.share(payload);
-          setShareStatus(tAction('share_status_shared'));
-          window.setTimeout(() => setShareStatus(null), 3_000);
+          setShareStatus(tAction("share_status_shared"));
+          window.setTimeout(() => setShareStatus(null), 3000);
           return;
         }
       } catch (e) {
-        if (e instanceof Error && e.name === 'AbortError') {
+        if (e instanceof Error && e.name === "AbortError") {
           // User dismissed the share sheet — don't fall through
           // to clipboard, since they actively cancelled.
           return;
@@ -671,11 +853,11 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
     }
 
     // 2. Clipboard API.
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(fullText);
-        setShareStatus(tAction('share_status_copied'));
-        window.setTimeout(() => setShareStatus(null), 3_000);
+        setShareStatus(tAction("share_status_copied"));
+        window.setTimeout(() => setShareStatus(null), 3000);
         return;
       } catch {
         // Permission denied, insecure context, etc. Fall through.
@@ -683,20 +865,20 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
     }
 
     // 3. execCommand('copy') with a hidden textarea.
-    if (typeof document !== 'undefined') {
+    if (typeof document !== "undefined") {
       try {
-        const ta = document.createElement('textarea');
+        const ta = document.createElement("textarea");
         ta.value = fullText;
-        ta.setAttribute('readonly', '');
-        ta.style.position = 'fixed';
-        ta.style.top = '-9999px';
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.top = "-9999px";
         document.body.appendChild(ta);
         ta.select();
-        const ok = document.execCommand('copy');
+        const ok = document.execCommand("copy");
         document.body.removeChild(ta);
         if (ok) {
-          setShareStatus(tAction('share_status_copied'));
-          window.setTimeout(() => setShareStatus(null), 3_000);
+          setShareStatus(tAction("share_status_copied"));
+          window.setTimeout(() => setShareStatus(null), 3000);
           return;
         }
       } catch {
@@ -711,7 +893,9 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   // When the manual-copy modal opens, focus + select-all the
   // textarea so the user can hit Cmd-C / Ctrl-C immediately.
   useEffect(() => {
-    if (!shareFallback) return;
+    if (!shareFallback) {
+      return;
+    }
     const handle = window.requestAnimationFrame(() => {
       shareFallbackRef.current?.focus();
       shareFallbackRef.current?.select();
@@ -725,57 +909,58 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
   // when the gate conditions are met — otherwise the wizard is a
   // clean three-step flow with no disabled buttons.
   const visibleSteps: Array<{ id: Step; label: string; enabled: boolean }> = [
-    { id: 'review', label: tSteps('review'), enabled: true },
-    { id: 'compare', label: tSteps('compare'), enabled: true },
-    { id: 'action', label: tSteps('action'), enabled: true },
+    { id: "review", label: tSteps("review"), enabled: true },
+    { id: "compare", label: tSteps("compare"), enabled: true },
+    { id: "action", label: tSteps("action"), enabled: true },
   ];
   if (showDeviceAddon) {
-    visibleSteps.push({ id: 'backup', label: tSteps('backup'), enabled: true });
+    visibleSteps.push({ id: "backup", label: tSteps("backup"), enabled: true });
     visibleSteps.push({
-      id: 'act',
-      label: tSteps('act'),
-      enabled: backup.status === 'done',
+      id: "act",
+      label: tSteps("act"),
+      enabled: backup.status === "done",
     });
   }
 
   return (
     <main className="review-rec-main">
       <header className="review-rec-hero">
-        <Link href="/dashboard/apps" className="priv-back-link">{tHero('back_to_apps')}</Link>
-        <p className="priv-eyebrow">{tHero('eyebrow')}</p>
-        <h1 className="legal-page-title">{tHero('title')}</h1>
-        <p className="legal-page-sub">{tHero('subtitle')}</p>
+        <Link className="priv-back-link" href="/dashboard/apps">
+          {tHero("back_to_apps")}
+        </Link>
+        <p className="priv-eyebrow">{tHero("eyebrow")}</p>
+        <h1 className="legal-page-title">{tHero("title")}</h1>
+        <p className="legal-page-sub">{tHero("subtitle")}</p>
       </header>
 
       {!audienceOk && (
         <div className="review-rec-gate review-rec-gate-soft">
           <p>
-            <strong>{tGate('heading')}</strong>
+            <strong>{tGate("heading")}</strong>
           </p>
           <p>
-            {tGate('body_lead')} <em>{tGate('body_em')}</em> {tGate('body_after')}{' '}
-            <code>{audience.replace('_', ' ')}</code> {tGate('body_after_audience')}
+            {tGate("body_lead")} <em>{tGate("body_em")}</em>{" "}
+            {tGate("body_after")} <code>{audience.replace("_", " ")}</code>{" "}
+            {tGate("body_after_audience")}
           </p>
           <p>
-            <Link href="/dashboard/settings#focus">
-              {tGate('switch_link')}
-            </Link>{' '}
-            {tGate('switch_suffix')}
+            <Link href="/dashboard/settings#focus">{tGate("switch_link")}</Link>{" "}
+            {tGate("switch_suffix")}
           </p>
         </div>
       )}
 
-      <ol className="review-rec-stepper" aria-label={t('stepper_aria')}>
+      <ol aria-label={t("stepper_aria")} className="review-rec-stepper">
         {visibleSteps.map((s, i) => (
           <li
+            aria-current={step === s.id ? "step" : undefined}
+            className={step === s.id ? "is-active" : ""}
             key={s.id}
-            aria-current={step === s.id ? 'step' : undefined}
-            className={step === s.id ? 'is-active' : ''}
           >
             <button
-              type="button"
-              onClick={() => s.enabled && setStep(s.id)}
               disabled={!s.enabled}
+              onClick={() => s.enabled && setStep(s.id)}
+              type="button"
             >
               <span className="review-rec-stepper-num">{i + 1}</span>
               <span>{s.label}</span>
@@ -784,30 +969,33 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
         ))}
       </ol>
 
-      {step === 'review' && (
+      {step === "review" && (
         <section className="review-rec-step">
-          <h2>{tReview('heading')}</h2>
+          <h2>{tReview("heading")}</h2>
           <p className="review-rec-step-sub">
             {rows.length === 0
-              ? tReview('empty')
-              : tReview('summary', {
+              ? tReview("empty")
+              : tReview("summary", {
                   replaceCount: replaceQueue.length,
                   uninstallCount: uninstallQueue.length,
                   safeCount: safeQueue.length,
                 })}
           </p>
           <div className="review-rec-list">
-            {rows.map(row => (
-              <article key={row.id} className="review-rec-row review-rec-row-compact">
+            {rows.map((row) => (
+              <article
+                className="review-rec-row review-rec-row-compact"
+                key={row.id}
+              >
                 <div className="review-rec-row-head">
                   {row.iconUrl ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
-                      src={row.iconUrl}
                       alt=""
                       className="review-rec-row-icon"
-                      width={40}
                       height={40}
+                      src={row.iconUrl}
+                      width={40}
                     />
                   ) : (
                     <div className="review-rec-row-icon review-rec-row-icon-placeholder" />
@@ -815,8 +1003,8 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                   <div className="review-rec-row-meta">
                     <div className="review-rec-row-name">
                       <Link
-                        href={`/apps/${row.id}`}
                         className="review-rec-row-name-link"
+                        href={`/apps/${row.id}`}
                       >
                         {row.name}
                       </Link>
@@ -861,36 +1049,39 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                         one-liners below the editor */}
                 <div className="review-rec-row-notes">
                   <label className="review-rec-row-notes-label">
-                    {tReview('notes_label')}
+                    {tReview("notes_label")}
                     {!row.userVerdict && (
                       <span className="review-rec-row-notes-hint">
-                        {tReview('notes_hint')}
+                        {tReview("notes_hint")}
                       </span>
                     )}
                   </label>
                   <textarea
                     className="review-rec-row-notes-input"
+                    disabled={!row.userVerdict}
+                    maxLength={400}
+                    onChange={(e) => onRationaleChange(row, e.target.value)}
                     placeholder={
                       row.userVerdict
-                        ? tReview('notes_placeholder_with_verdict', {
+                        ? tReview("notes_placeholder_with_verdict", {
                             appName: row.name,
-                            verdict: tVerdict(`${row.userVerdict.verdict}_short`),
+                            verdict: tVerdict(
+                              `${row.userVerdict.verdict}_short`
+                            ),
                           })
-                        : tReview('notes_placeholder_no_verdict')
+                        : tReview("notes_placeholder_no_verdict")
                     }
-                    value={getRationaleDraft(row)}
-                    onChange={e => onRationaleChange(row, e.target.value)}
-                    disabled={!row.userVerdict}
                     rows={2}
-                    maxLength={400}
+                    value={getRationaleDraft(row)}
                   />
-                  {row.importedVerdicts.map(rec => (
-                    <p key={rec.id} className="review-rec-row-imported">
-                      {tReview('imported_says', {
-                        name: rec.sourceName ?? tReview('imported_says_anon_name'),
-                      })}{' '}
+                  {row.importedVerdicts.map((rec) => (
+                    <p className="review-rec-row-imported" key={rec.id}>
+                      {tReview("imported_says", {
+                        name:
+                          rec.sourceName ?? tReview("imported_says_anon_name"),
+                      })}{" "}
                       <em>{tVerdict(`${rec.verdict}_short`)}</em>
-                      {rec.rationale ? ` — ${rec.rationale}` : ''}
+                      {rec.rationale ? ` — ${rec.rationale}` : ""}
                     </p>
                   ))}
                 </div>
@@ -900,56 +1091,59 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
           {rows.length > 0 && (
             <div className="review-rec-step-actions">
               <button
-                type="button"
                 className="btn btn-primary"
-                onClick={() => setStep('compare')}
+                onClick={() => setStep("compare")}
+                type="button"
               >
-                {tReview('continue_button', { count: replaceQueue.length })}
+                {tReview("continue_button", { count: replaceQueue.length })}
               </button>
             </div>
           )}
         </section>
       )}
 
-      {step === 'compare' && (
+      {step === "compare" && (
         <section className="review-rec-step">
-          <h2>{tCompare('heading')}</h2>
-          <p className="review-rec-step-sub">{tCompare('subtitle')}</p>
+          <h2>{tCompare("heading")}</h2>
+          <p className="review-rec-step-sub">{tCompare("subtitle")}</p>
 
           {replaceQueue.length === 0 ? (
             <div className="review-rec-empty">
-              <p>{tCompare('empty')}</p>
+              <p>{tCompare("empty")}</p>
               <div className="review-rec-step-actions">
                 <button
-                  type="button"
                   className="btn btn-ghost"
-                  onClick={() => setStep('review')}
+                  onClick={() => setStep("review")}
+                  type="button"
                 >
-                  {tCompare('back_to_review')}
+                  {tCompare("back_to_review")}
                 </button>
                 <button
-                  type="button"
                   className="btn btn-primary"
-                  onClick={() => setStep('action')}
+                  onClick={() => setStep("action")}
+                  type="button"
                 >
-                  {tCompare('skip_to_action')}
+                  {tCompare("skip_to_action")}
                 </button>
               </div>
             </div>
           ) : (
             <>
               <div className="review-rec-list">
-                {replaceQueue.map(row => (
-                  <article key={row.id} className="review-rec-row review-rec-row-compare">
+                {replaceQueue.map((row) => (
+                  <article
+                    className="review-rec-row review-rec-row-compare"
+                    key={row.id}
+                  >
                     <div className="review-rec-row-head">
                       {row.iconUrl ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
-                          src={row.iconUrl}
                           alt=""
                           className="review-rec-row-icon"
-                          width={40}
                           height={40}
+                          src={row.iconUrl}
+                          width={40}
                         />
                       ) : (
                         <div className="review-rec-row-icon review-rec-row-icon-placeholder" />
@@ -957,23 +1151,27 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                       <div className="review-rec-row-meta">
                         <div className="review-rec-row-name">
                           <Link
-                            href={`/apps/${row.id}`}
                             className="review-rec-row-name-link"
+                            href={`/apps/${row.id}`}
                           >
                             {row.name}
                           </Link>
-                          {row.profileBadge && <ProfileBadge badge={row.profileBadge} />}
+                          {row.profileBadge && (
+                            <ProfileBadge badge={row.profileBadge} />
+                          )}
                         </div>
                         {row.developer && (
-                          <div className="review-rec-row-dev">{row.developer}</div>
+                          <div className="review-rec-row-dev">
+                            {row.developer}
+                          </div>
                         )}
                       </div>
                       <div className="review-rec-row-action">
                         <Link
-                          href={`/dashboard/compare?a=id:${encodeURIComponent(row.id)}&from=review`}
                           className="btn btn-secondary btn-sm"
+                          href={`/dashboard/compare?a=id:${encodeURIComponent(row.id)}&from=review`}
                         >
-                          {tCompare('find_alternatives')}
+                          {tCompare("find_alternatives")}
                         </Link>
                       </div>
                     </div>
@@ -991,7 +1189,7 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                     {row.shortlistCandidates.length > 0 && (
                       <div className="review-rec-row-shortlist">
                         <div className="review-rec-row-shortlist-label">
-                          {tCompare('shortlist_label')}
+                          {tCompare("shortlist_label")}
                           <span className="review-rec-row-shortlist-count">
                             {row.shortlistCandidates.length}
                           </span>
@@ -1001,36 +1199,40 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                             and missing that clicking populates the
                             "Replacing with" field below. */}
                         <p className="review-rec-row-shortlist-hint">
-                          {tCompare('shortlist_hint')}
+                          {tCompare("shortlist_hint")}
                         </p>
                         <ul className="review-rec-row-shortlist-list">
-                          {row.shortlistCandidates.map(candidate => {
+                          {row.shortlistCandidates.map((candidate) => {
                             const isPicked =
-                              replacements[row.id]?.trim() === candidate.candidateName;
+                              replacements[row.id]?.trim() ===
+                              candidate.candidateName;
                             return (
                               <li key={candidate.id}>
                                 <button
-                                  type="button"
-                                  className={`review-rec-shortlist-chip${isPicked ? ' is-picked' : ''}`}
+                                  className={`review-rec-shortlist-chip${isPicked ? "is-picked" : ""}`}
                                   onClick={() =>
-                                    pickShortlistCandidate(row.id, candidate.candidateName)
+                                    pickShortlistCandidate(
+                                      row.id,
+                                      candidate.candidateName
+                                    )
                                   }
                                   title={
                                     isPicked
-                                      ? tCompare('shortlist_chip_picked_title')
-                                      : tCompare('shortlist_chip_pick_title', {
+                                      ? tCompare("shortlist_chip_picked_title")
+                                      : tCompare("shortlist_chip_pick_title", {
                                           name: candidate.candidateName,
                                         })
                                   }
+                                  type="button"
                                 >
                                   {candidate.candidateIconUrl ? (
                                     /* eslint-disable-next-line @next/next/no-img-element */
                                     <img
-                                      src={candidate.candidateIconUrl}
                                       alt=""
                                       className="review-rec-shortlist-chip-icon"
-                                      width={20}
                                       height={20}
+                                      src={candidate.candidateIconUrl}
+                                      width={20}
                                     />
                                   ) : (
                                     <span className="review-rec-shortlist-chip-icon review-rec-shortlist-chip-icon-placeholder" />
@@ -1040,23 +1242,31 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                                   </span>
                                   {isPicked && (
                                     <span
-                                      className="review-rec-shortlist-chip-tick"
                                       aria-hidden="true"
+                                      className="review-rec-shortlist-chip-tick"
                                     >
                                       ✓
                                     </span>
                                   )}
                                 </button>
                                 <button
-                                  type="button"
+                                  aria-label={tCompare(
+                                    "shortlist_chip_remove_aria",
+                                    {
+                                      name: candidate.candidateName,
+                                    }
+                                  )}
                                   className="review-rec-shortlist-chip-remove"
                                   onClick={() =>
-                                    removeShortlistCandidate(row.id, candidate.candidateAppleId)
+                                    removeShortlistCandidate(
+                                      row.id,
+                                      candidate.candidateAppleId
+                                    )
                                   }
-                                  aria-label={tCompare('shortlist_chip_remove_aria', {
-                                    name: candidate.candidateName,
-                                  })}
-                                  title={tCompare('shortlist_chip_remove_title')}
+                                  title={tCompare(
+                                    "shortlist_chip_remove_title"
+                                  )}
+                                  type="button"
                                 >
                                   ✕
                                 </button>
@@ -1068,18 +1278,18 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                     )}
 
                     <ReplacingWithCombobox
-                      row={row}
-                      value={replacements[row.id] ?? ''}
+                      labelText={tCompare("replacing_with")}
                       onChange={(next) =>
-                        setReplacements(prev => ({ ...prev, [row.id]: next }))
+                        setReplacements((prev) => ({ ...prev, [row.id]: next }))
                       }
                       onPick={(name) => pickShortlistCandidate(row.id, name)}
-                      labelText={tCompare('replacing_with')}
                       placeholder={
                         row.shortlistCandidates.length > 0
-                          ? tCompare('replacing_with_placeholder_with_chips')
-                          : tCompare('replacing_with_placeholder_default')
+                          ? tCompare("replacing_with_placeholder_with_chips")
+                          : tCompare("replacing_with_placeholder_default")
                       }
+                      row={row}
+                      value={replacements[row.id] ?? ""}
                     />
 
                     {row.userVerdict?.rationale && (
@@ -1098,9 +1308,7 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                         the app detail page with the notes accordion
                         ready to expand. Caps at 3 entries with a
                         "+ N more" indicator past that. */}
-                    {row.notes.length > 0 && (
-                      <SavedNotesPreview row={row} />
-                    )}
+                    {row.notes.length > 0 && <SavedNotesPreview row={row} />}
                   </article>
                 ))}
               </div>
@@ -1114,7 +1322,7 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                   want to be blocked here. */}
               {(() => {
                 const missingPickCount = replaceQueue.filter(
-                  r => (replacements[r.id] ?? '').trim() === '',
+                  (r) => (replacements[r.id] ?? "").trim() === ""
                 ).length;
                 const continueBlocked =
                   missingPickCount > 0 && !proceedDespiteMissingPick;
@@ -1126,39 +1334,39 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
                         role="status"
                       >
                         <p className="review-rec-missing-pick-text">
-                          {tCompare('missing_pick_notice', {
+                          {tCompare("missing_pick_notice", {
                             count: missingPickCount,
                           })}
                         </p>
                         <label className="review-rec-missing-pick-toggle">
                           <input
-                            type="checkbox"
+                            aria-label={tCompare("missing_pick_aria")}
                             checked={proceedDespiteMissingPick}
-                            onChange={e =>
+                            onChange={(e) =>
                               setProceedDespiteMissingPick(e.target.checked)
                             }
-                            aria-label={tCompare('missing_pick_aria')}
+                            type="checkbox"
                           />
-                          <span>{tCompare('missing_pick_acknowledge')}</span>
+                          <span>{tCompare("missing_pick_acknowledge")}</span>
                         </label>
                       </div>
                     )}
                     <div className="review-rec-step-actions">
                       <button
-                        type="button"
                         className="btn btn-ghost"
-                        onClick={() => setStep('review')}
+                        onClick={() => setStep("review")}
+                        type="button"
                       >
-                        {tCompare('back_to_review')}
+                        {tCompare("back_to_review")}
                       </button>
                       <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={() => setStep('action')}
-                        disabled={continueBlocked}
                         aria-disabled={continueBlocked}
+                        className="btn btn-primary"
+                        disabled={continueBlocked}
+                        onClick={() => setStep("action")}
+                        type="button"
                       >
-                        {tCompare('continue_to_action')}
+                        {tCompare("continue_to_action")}
                       </button>
                     </div>
                   </>
@@ -1169,87 +1377,103 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
         </section>
       )}
 
-      {step === 'action' && (
+      {step === "action" && (
         <section className="review-rec-step">
-          <h2>{tAction('heading')}</h2>
-          <p className="review-rec-step-sub">{tAction('subtitle')}</p>
+          <h2>{tAction("heading")}</h2>
+          <p className="review-rec-step-sub">{tAction("subtitle")}</p>
 
           <div className="review-rec-summary">
             {replaceQueue.length === 0 &&
               uninstallQueue.length === 0 &&
               safeQueue.length === 0 && (
-                <p className="review-rec-step-sub">{tAction('empty')}</p>
+                <p className="review-rec-step-sub">{tAction("empty")}</p>
               )}
             {uninstallQueue.length > 0 && (
               <SummaryGroup
-                title={tAction('group_uninstall', { count: uninstallQueue.length })}
-                tone="bad"
+                appStoreLinkLabel={tAction("share_app_store_link")}
                 rows={uninstallQueue}
-                appStoreLinkLabel={tAction('share_app_store_link')}
+                title={tAction("group_uninstall", {
+                  count: uninstallQueue.length,
+                })}
+                tone="bad"
               />
             )}
             {replaceQueue.length > 0 && (
               <SummaryGroup
-                title={tAction('group_replace', { count: replaceQueue.length })}
-                tone="warn"
-                rows={replaceQueue}
-                replacements={replacements}
-                appStoreLinkLabel={tAction('share_app_store_link')}
-                replacementLabel={tAction('replacement_label')}
+                appStoreLinkLabel={tAction("share_app_store_link")}
+                replacementLabel={tAction("replacement_label")}
                 replacementLinkAria={(name) =>
-                  tAction('replacement_link_label', { name })
+                  tAction("replacement_link_label", { name })
                 }
+                replacements={replacements}
+                rows={replaceQueue}
+                title={tAction("group_replace", { count: replaceQueue.length })}
+                tone="warn"
               />
             )}
             {safeQueue.length > 0 && (
               <SummaryGroup
-                title={tAction('group_safe', { count: safeQueue.length })}
-                tone="ok"
+                appStoreLinkLabel={tAction("share_app_store_link")}
                 rows={safeQueue}
-                appStoreLinkLabel={tAction('share_app_store_link')}
+                title={tAction("group_safe", { count: safeQueue.length })}
+                tone="ok"
               />
             )}
           </div>
 
           <div className="review-rec-step-actions">
             <button
-              type="button"
               className="btn btn-primary"
-              onClick={triggerPrint}
               disabled={
                 replaceQueue.length === 0 &&
                 uninstallQueue.length === 0 &&
                 safeQueue.length === 0
               }
+              onClick={triggerPrint}
+              type="button"
             >
-              {tAction('save_pdf')}
+              {tAction("save_pdf")}
             </button>
             <button
-              type="button"
               className="btn btn-secondary"
-              onClick={shareChecklist}
               disabled={
                 replaceQueue.length === 0 &&
                 uninstallQueue.length === 0 &&
                 safeQueue.length === 0
               }
-              title={tAction('share_title')}
+              onClick={shareChecklist}
+              title={tAction("share_title")}
+              type="button"
             >
-              {tAction('share')}
+              {tAction("share")}
             </button>
+            {/* Primary end-of-wizard CTA when the user has any apps
+             *  flagged for uninstall. Routes into the backup → device-
+             *  match → confirm → act flow. Previously the user saw a
+             *  "Continue to backup" button alongside a "Re-sync from
+             *  device" link — the labels were ambiguous and users
+             *  weren't sure which was the destructive path. Now the
+             *  intent is in the button name: this is the path that
+             *  deletes apps from your phone. */}
             {showDeviceAddon && uninstallQueue.length > 0 && (
               <button
+                className="btn btn-danger"
+                onClick={() => setStep("backup")}
                 type="button"
-                className="btn btn-ghost"
-                onClick={() => setStep('backup')}
               >
-                {tAction('continue_to_backup')}
+                {tAction("remove_apps_from_phone", {
+                  count: uninstallQueue.length,
+                })}
               </button>
             )}
           </div>
 
           {shareStatus && (
-            <p className="review-rec-share-status" role="status" aria-live="polite">
+            <p
+              aria-live="polite"
+              className="review-rec-share-status"
+              role="status"
+            >
               {shareStatus}
             </p>
           )}
@@ -1265,28 +1489,27 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
               "download the desktop app" CTA would be confusing. */}
           {!desktop && uninstallQueue.length > 0 && (
             <aside
+              aria-label={tAction("migrate_banner_title")}
               className="review-rec-migrate-banner"
-              role="complementary"
-              aria-label={tAction('migrate_banner_title')}
             >
               <div className="review-rec-migrate-banner-body">
                 <strong className="review-rec-migrate-banner-title">
-                  {tAction('migrate_banner_title')}
+                  {tAction("migrate_banner_title")}
                 </strong>
                 <p className="review-rec-migrate-banner-copy">
-                  {tAction('migrate_banner_body')}
+                  {tAction("migrate_banner_body")}
                 </p>
               </div>
               <button
-                type="button"
+                aria-label={tAction("migrate_banner_aria")}
                 className="btn btn-secondary review-rec-migrate-banner-cta"
                 onClick={() => {
-                  setMigrateExport({ status: 'idle', error: null });
+                  setMigrateExport({ status: "idle", error: null });
                   setMigrateOpen(true);
                 }}
-                aria-label={tAction('migrate_banner_aria')}
+                type="button"
               >
-                {tAction('migrate_banner_cta')}
+                {tAction("migrate_banner_cta")}
               </button>
             </aside>
           )}
@@ -1303,16 +1526,15 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
           uninterrupted. */}
       {migrateOpen && (
         <MigrateModal
-          tMigrate={tMigrate}
-          exportStatus={migrateExport.status}
           exportError={migrateExport.error}
+          exportStatus={migrateExport.status}
           onClose={() => setMigrateOpen(false)}
           onExport={async () => {
-            setMigrateExport({ status: 'busy', error: null });
+            setMigrateExport({ status: "busy", error: null });
             try {
-              const r = await fetch('/api/export/audit-bundle', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+              const r = await fetch("/api/export/audit-bundle", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   migrationFlow: true,
                   // Same-user migration — the recommender_name field
@@ -1330,54 +1552,64 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
               // Convert the response into a downloadable file. Server
               // already sets Content-Disposition with the filename.
               const blob = await r.blob();
-              const cd = r.headers.get('Content-Disposition') ?? '';
-              const fname = /filename="([^"]+)"/.exec(cd)?.[1]
-                ?? `privacytracker-migration-${Date.now()}.audit.json`;
+              const cd = r.headers.get("Content-Disposition") ?? "";
+              const fname =
+                /filename="([^"]+)"/.exec(cd)?.[1] ??
+                `privacytracker-migration-${Date.now()}.audit.json`;
               const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
+              const a = document.createElement("a");
               a.href = url;
               a.download = fname;
               document.body.appendChild(a);
               a.click();
               a.remove();
               URL.revokeObjectURL(url);
-              setMigrateExport({ status: 'done', error: null });
+              setMigrateExport({ status: "done", error: null });
             } catch (e: unknown) {
-              const msg = e instanceof Error ? e.message : tAct('default_export_error');
-              setMigrateExport({ status: 'error', error: msg });
+              const msg =
+                e instanceof Error ? e.message : tAct("default_export_error");
+              setMigrateExport({ status: "error", error: msg });
             }
           }}
+          tMigrate={tMigrate}
         />
       )}
 
-      {step === 'backup' && showDeviceAddon && (
+      {step === "backup" && showDeviceAddon && (
         <section className="review-rec-step">
-          <h2>{tBackup('heading')}</h2>
-          <p className="review-rec-step-sub">{tBackup('subtitle')}</p>
+          <h2>{tBackup("heading")}</h2>
+          <p className="review-rec-step-sub">{tBackup("subtitle")}</p>
 
           <div className="review-rec-device-list">
             {devices.length === 0 ? (
-              <p className="review-rec-step-sub">{tBackup('device_list_empty')}</p>
+              <p className="review-rec-step-sub">
+                {tBackup("device_list_empty")}
+              </p>
             ) : (
-              devices.map(d => (
+              devices.map((d) => (
                 <label
+                  className={`review-rec-device-row${selectedEcid === d.ecid ? "is-selected" : ""}`}
                   key={d.ecid}
-                  className={`review-rec-device-row${selectedEcid === d.ecid ? ' is-selected' : ''}`}
                 >
                   <input
-                    type="radio"
-                    name="device"
                     checked={selectedEcid === d.ecid}
+                    name="device"
                     onChange={() => setSelectedEcid(d.ecid)}
+                    type="radio"
                   />
                   <div>
                     <div className="review-rec-device-name">
-                      {d.name ?? d.deviceClass ?? tBackup('ios_device_fallback')}
+                      {d.name ??
+                        d.deviceClass ??
+                        tBackup("ios_device_fallback")}
                     </div>
                     <div className="review-rec-device-meta">
-                      {[d.deviceClass, d.iosVersion ? `iOS ${d.iosVersion}` : null]
+                      {[
+                        d.deviceClass,
+                        d.iosVersion ? `iOS ${d.iosVersion}` : null,
+                      ]
                         .filter(Boolean)
-                        .join(' · ')}
+                        .join(" · ")}
                     </div>
                   </div>
                 </label>
@@ -1385,45 +1617,94 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
             )}
           </div>
 
+          {/* Device-match warning. Fires when the user has selected a
+              connected device whose ECID isn't on file as a source for
+              one or more of the queued-for-uninstall apps. Soft warning
+              — the user can still proceed (maybe they imported the
+              same app on a different device later, or the original
+              import was CSV without an ECID), but a "are you sure
+              you're on the right phone?" banner here saves a confusing
+              cfgutil error message in the next step. */}
+          {selectedEcid && deviceMatch.mismatched.length > 0 && (
+            <div
+              aria-live="polite"
+              className="review-rec-device-mismatch"
+              role="alert"
+            >
+              <strong>{tBackup("mismatch_heading")}</strong>
+              <p>
+                {tBackup("mismatch_body", {
+                  count: deviceMatch.mismatched.length,
+                })}
+              </p>
+              <ul>
+                {deviceMatch.mismatched.slice(0, 6).map((row) => (
+                  <li key={row.id}>
+                    {row.name}
+                    {row.developer ? ` — ${row.developer}` : ""}
+                  </li>
+                ))}
+                {deviceMatch.mismatched.length > 6 && (
+                  <li>
+                    {tBackup("mismatch_more", {
+                      count: deviceMatch.mismatched.length - 6,
+                    })}
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+
           <div className="review-rec-step-actions">
             <button
-              type="button"
               className="btn btn-primary"
+              disabled={!selectedEcid || backup.status === "running"}
               onClick={runBackup}
-              disabled={!selectedEcid || backup.status === 'running'}
+              type="button"
             >
-              {backup.status === 'running'
-                ? tBackup('running')
-                : backup.status === 'done'
-                  ? tBackup('running_again')
-                  : tBackup('run_backup')}
+              {backup.status === "running"
+                ? tBackup("running")
+                : backup.status === "done"
+                  ? tBackup("running_again")
+                  : tBackup("run_backup")}
             </button>
-            {backup.status === 'done' && (
+            {backup.status === "done" && (
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => setStep('act')}
+                onClick={() => setStep("act")}
+                type="button"
               >
-                {tBackup('continue_to_uninstall')}
+                {tBackup("continue_to_uninstall")}
+              </button>
+            )}
+            {backup.status !== "done" && backup.status !== "running" && (
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={!selectedEcid}
+                onClick={() => setStep("act")}
+                title={tBackup("skip_backup_title")}
+                type="button"
+              >
+                {tBackup("skip_backup")}
               </button>
             )}
           </div>
 
-          {backup.status === 'done' && backup.path && (
+          {backup.status === "done" && backup.path && (
             <p className="review-rec-step-sub">
               {backup.finishedAt
-                ? tBackup.rich('saved_at', {
+                ? tBackup.rich("saved_at", {
                     path: backup.path,
                     time: new Date(backup.finishedAt).toLocaleTimeString(),
-                    code: chunks => <code>{chunks}</code>,
+                    code: (chunks) => <code>{chunks}</code>,
                   })
-                : tBackup.rich('saved_no_time', {
+                : tBackup.rich("saved_no_time", {
                     path: backup.path,
-                    code: chunks => <code>{chunks}</code>,
+                    code: (chunks) => <code>{chunks}</code>,
                   })}
             </p>
           )}
-          {backup.status === 'error' && (
+          {backup.status === "error" && (
             <p className="review-rec-error" role="alert">
               {backup.error}
             </p>
@@ -1431,81 +1712,169 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
         </section>
       )}
 
-      {step === 'act' && showDeviceAddon && (
+      {step === "act" && showDeviceAddon && (
         <section className="review-rec-step">
-          <h2>{tAct('heading')}</h2>
+          <h2>{tAct("heading")}</h2>
           <p className="review-rec-step-sub">
-            {tAct('subtitle_lead')}{' '}
-            <strong>{tAct('subtitle_keyword')}</strong> {tAct('subtitle_after')}
+            {tAct("subtitle_lead")} <strong>{tAct("subtitle_keyword")}</strong>{" "}
+            {tAct("subtitle_after")}
           </p>
 
-          {uninstallQueue.length === 0 ? (
-            <p className="review-rec-step-sub">{tAct('empty')}</p>
-          ) : (
-            <div className="review-rec-list">
-              {uninstallQueue.map(row => {
-                const state = uninstallStates[row.id] ?? { status: 'idle', error: null };
-                return (
-                  <article key={row.id} className="review-rec-row review-rec-row-act">
-                    <div className="review-rec-row-head">
-                      {row.iconUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={row.iconUrl}
-                          alt=""
-                          className="review-rec-row-icon"
-                          width={40}
-                          height={40}
-                        />
-                      ) : (
-                        <div className="review-rec-row-icon review-rec-row-icon-placeholder" />
-                      )}
-                      <div className="review-rec-row-meta">
-                        <div className="review-rec-row-name">{row.name}</div>
-                        {row.developer && (
-                          <div className="review-rec-row-dev">{row.developer}</div>
-                        )}
-                      </div>
-                      <div className="review-rec-row-action">
-                        {state.status === 'done' ? (
-                          <span className="review-rec-row-status review-rec-row-status-done">
-                            {tAct('removed')}
-                          </span>
-                        ) : state.status === 'running' ? (
-                          <span className="review-rec-row-status">{tAct('removing')}</span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn btn-danger btn-sm"
-                            onClick={() => openConfirm(row)}
-                            disabled={!row.bundleId}
-                            title={
-                              !row.bundleId
-                                ? tAct('no_bundle_id_title')
-                                : undefined
-                            }
-                          >
-                            {tAct('uninstall_button')}
-                          </button>
-                        )}
-                        {state.status === 'error' && (
-                          <p className="review-rec-error" role="alert">
-                            {state.error}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {row.userVerdict?.rationale && (
-                      <div className="review-rec-row-notes">
-                        <p className="review-rec-row-reason">
-                          &ldquo;{row.userVerdict.rationale}&rdquo;
-                        </p>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
+          {/* Backup status banner — surfaces whether a recent backup is
+              on file so the user understands which Modal 2 variant
+              they'll see. Fresh ✓ → reassuring; missing / stale ⚠ →
+              warning. Drives no other behaviour here; the actual gate
+              decision is made server-side when the bulk loop runs. */}
+          {uninstallQueue.length > 0 && (
+            <div
+              className={`review-rec-backup-status${
+                backup.status === "done"
+                  ? "review-rec-backup-status-ok"
+                  : "review-rec-backup-status-warn"
+              }`}
+              role="status"
+            >
+              {backup.status === "done" && backup.finishedAt ? (
+                <span>
+                  ✓{" "}
+                  {tAct("backup_ok", {
+                    device: backup.device?.name ?? tAct("default_device_name"),
+                    time: new Date(backup.finishedAt).toLocaleTimeString(),
+                  })}
+                </span>
+              ) : (
+                <span>
+                  ⚠ {tAct("backup_missing_warn")}{" "}
+                  <button
+                    className="review-rec-inline-link"
+                    onClick={() => setStep("backup")}
+                    type="button"
+                  >
+                    {tAct("backup_missing_action")}
+                  </button>
+                </span>
+              )}
             </div>
+          )}
+
+          {uninstallQueue.length === 0 ? (
+            <p className="review-rec-step-sub">{tAct("empty")}</p>
+          ) : (
+            <>
+              <div className="review-rec-list">
+                {uninstallQueue.map((row) => {
+                  const state = uninstallStates[row.id] ?? {
+                    status: "idle",
+                    error: null,
+                  };
+                  return (
+                    <article
+                      className="review-rec-row review-rec-row-act"
+                      key={row.id}
+                    >
+                      <div className="review-rec-row-head">
+                        {row.iconUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            alt=""
+                            className="review-rec-row-icon"
+                            height={40}
+                            src={row.iconUrl}
+                            width={40}
+                          />
+                        ) : (
+                          <div className="review-rec-row-icon review-rec-row-icon-placeholder" />
+                        )}
+                        <div className="review-rec-row-meta">
+                          <div className="review-rec-row-name">{row.name}</div>
+                          {row.developer && (
+                            <div className="review-rec-row-dev">
+                              {row.developer}
+                            </div>
+                          )}
+                        </div>
+                        <div className="review-rec-row-action">
+                          {state.status === "done" ? (
+                            <span className="review-rec-row-status review-rec-row-status-done">
+                              {tAct("removed")}
+                            </span>
+                          ) : state.status === "running" ? (
+                            <span className="review-rec-row-status">
+                              {tAct("removing")}
+                            </span>
+                          ) : state.status === "error" ? (
+                            <span
+                              className="review-rec-row-status review-rec-row-status-error"
+                              title={state.error ?? undefined}
+                            >
+                              ✕ {tAct("failed")}
+                            </span>
+                          ) : (
+                            <span className="review-rec-row-status review-rec-row-status-pending">
+                              {tAct("pending")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {row.userVerdict?.rationale && (
+                        <div className="review-rec-row-notes">
+                          <p className="review-rec-row-reason">
+                            &ldquo;{row.userVerdict.rationale}&rdquo;
+                          </p>
+                        </div>
+                      )}
+                      {state.status === "error" && state.error && (
+                        <p className="review-rec-error" role="alert">
+                          {state.error}
+                        </p>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+
+              {/* Single bulk-delete CTA. Opens Modal 1 (list + are you
+                  sure) which advances to Modal 2 (type DELETE). The
+                  button is hidden once the queue is fully done so users
+                  don't get a useless control. Disabled while the bulk
+                  loop is mid-flight. */}
+              {(() => {
+                const anyPending = uninstallQueue.some(
+                  (row) =>
+                    (uninstallStates[row.id]?.status ?? "idle") !== "done"
+                );
+                if (!anyPending) {
+                  return (
+                    <p className="review-rec-step-sub review-rec-step-sub-success">
+                      ✓ {tAct("all_done")}
+                    </p>
+                  );
+                }
+                return (
+                  <div className="review-rec-step-actions">
+                    <button
+                      className="btn btn-danger"
+                      disabled={bulkModal === "executing"}
+                      onClick={() => {
+                        setBulkConfirmText("");
+                        setBulkModal("list");
+                      }}
+                      type="button"
+                    >
+                      {bulkModal === "executing"
+                        ? tAct("deleting_bulk")
+                        : tAct("delete_apps_button", {
+                            count: uninstallQueue.filter(
+                              (row) =>
+                                (uninstallStates[row.id]?.status ?? "idle") !==
+                                "done"
+                            ).length,
+                          })}
+                    </button>
+                  </div>
+                );
+              })()}
+            </>
           )}
         </section>
       )}
@@ -1517,88 +1886,211 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
           line so it can be tapped/right-clicked independently. */}
       {shareFallback && (
         <div
-          className="review-rec-modal-overlay"
-          role="dialog"
+          aria-label={tShareModal("title_aria")}
           aria-modal="true"
-          aria-label={tShareModal('title_aria')}
-          onMouseDown={e => {
-            if (e.target === e.currentTarget) setShareFallback(null);
+          className="review-rec-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShareFallback(null);
+            }
           }}
+          role="dialog"
         >
           <div className="review-rec-modal review-rec-share-modal">
-            <h3>{tShareModal('heading')}</h3>
+            <h3>{tShareModal("heading")}</h3>
             <p>
-              {tShareModal('body_lead')}{' '}
-              <kbd className="kbd">{tShareModal('kbd_mac')}</kbd> /
-              <kbd className="kbd">{tShareModal('kbd_win')}</kbd>
-              {tShareModal('body_then')}
+              {tShareModal("body_lead")}{" "}
+              <kbd className="kbd">{tShareModal("kbd_mac")}</kbd> /
+              <kbd className="kbd">{tShareModal("kbd_win")}</kbd>
+              {tShareModal("body_then")}
             </p>
             <textarea
-              ref={shareFallbackRef}
-              readOnly
               className="review-rec-share-fallback-text"
+              readOnly
+              ref={shareFallbackRef}
               rows={10}
               value={`${shareFallback.text}\n\n${shareFallback.url}`}
             />
             <div className="review-rec-modal-actions">
               <button
-                type="button"
                 className="btn btn-ghost"
                 onClick={() => setShareFallback(null)}
+                type="button"
               >
-                {tShareModal('done')}
+                {tShareModal("done")}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Per-app confirmation modal — type DELETE to enable the action. */}
-      {confirmingApp && (
-        <div className="review-rec-modal-overlay" role="dialog" aria-modal="true">
+      {/* Modal 1 — list of apps + "Are you sure?". First of two
+          confirmation gates. Cancel returns the user to the act step
+          unchanged; Continue advances to Modal 2. Closes on overlay
+          click (we don't allow accidental dismissal while a delete is
+          actually in flight; bulkModal === 'executing' suppresses both
+          modals). */}
+      {bulkModal === "list" && (
+        <div
+          aria-labelledby="bulk-confirm-title"
+          aria-modal="true"
+          className="review-rec-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setBulkModal(null);
+            }
+          }}
+          role="dialog"
+        >
           <div className="review-rec-modal">
-            <h3>{tConfirm('heading', { appName: confirmingApp.name })}</h3>
-            <p>
-              {tConfirm('body_lead')}{' '}
-              <strong>
-                {backup.device?.name ?? tConfirm('fallback_device_name')}
-              </strong>
-              {tConfirm('body_after_device', {
-                time: backup.finishedAt
-                  ? new Date(backup.finishedAt).toLocaleTimeString()
-                  : tConfirm('no_backup_time'),
+            <h3 id="bulk-confirm-title">
+              {tConfirm("list_heading", {
+                count: uninstallQueue.filter(
+                  (row) =>
+                    (uninstallStates[row.id]?.status ?? "idle") !== "done"
+                ).length,
               })}
-            </p>
-            <p>
-              {tConfirm('type_delete_prompt')}{' '}
-              <strong>{tConfirm('type_delete_keyword')}</strong>{' '}
-              {tConfirm('type_delete_suffix')}
-            </p>
-            <input
-              ref={confirmInputRef}
-              type="text"
-              value={confirmText}
-              onChange={e => setConfirmText(e.target.value)}
-              placeholder={tConfirm('type_placeholder')}
-              className="review-rec-confirm-input"
-              autoComplete="off"
-              spellCheck={false}
-            />
+            </h3>
+            <p>{tConfirm("list_body")}</p>
+            <ul className="review-rec-bulk-list">
+              {uninstallQueue
+                .filter(
+                  (row) =>
+                    (uninstallStates[row.id]?.status ?? "idle") !== "done"
+                )
+                .map((row) => (
+                  <li className="review-rec-bulk-list-row" key={row.id}>
+                    {row.iconUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        alt=""
+                        className="review-rec-bulk-list-icon"
+                        height={28}
+                        src={row.iconUrl}
+                        width={28}
+                      />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className="review-rec-bulk-list-icon review-rec-bulk-list-icon-placeholder"
+                      />
+                    )}
+                    <span className="review-rec-bulk-list-text">
+                      <strong>{row.name}</strong>
+                      {row.developer ? ` — ${row.developer}` : ""}
+                      {!row.bundleId && (
+                        <span className="review-rec-bulk-list-warn">
+                          {" "}
+                          {tConfirm("list_no_bundle")}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+            </ul>
             <div className="review-rec-modal-actions">
-              <button type="button" className="btn btn-ghost" onClick={closeConfirm}>
-                {tConfirm('cancel')}
+              <button
+                className="btn btn-ghost"
+                onClick={() => setBulkModal(null)}
+                type="button"
+              >
+                {tConfirm("cancel")}
               </button>
               <button
-                type="button"
                 className="btn btn-danger"
-                disabled={confirmText !== 'DELETE'}
                 onClick={() => {
-                  const target = confirmingApp;
-                  closeConfirm();
-                  if (target) runUninstall(target);
+                  setBulkConfirmText("");
+                  setBulkModal("final");
                 }}
+                type="button"
               >
-                {tConfirm('uninstall_confirm', { appName: confirmingApp.name })}
+                {tConfirm("list_continue")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2 — type DELETE final gate. Two copy variants:
+            - Fresh backup: reassuring "this is the final step" tone.
+            - Missing / stale backup: louder "no recent backup — at
+              your own risk" tone. Same keyword (`DELETE`) in both
+              variants so the user only has to learn one phrase; the
+              `acknowledgeNoBackup` flag flows through to the API
+              when no backup is on file. */}
+      {bulkModal === "final" && (
+        <div
+          aria-labelledby="bulk-final-title"
+          aria-modal="true"
+          className="review-rec-modal-overlay"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setBulkModal(null);
+            }
+          }}
+          role="dialog"
+        >
+          <div className="review-rec-modal">
+            {backup.status === "done" && backup.finishedAt ? (
+              <>
+                <h3 id="bulk-final-title">{tConfirm("final_heading")}</h3>
+                <p>
+                  {tConfirm("final_body", {
+                    device:
+                      backup.device?.name ?? tConfirm("fallback_device_name"),
+                    time: new Date(backup.finishedAt).toLocaleTimeString(),
+                  })}
+                </p>
+              </>
+            ) : (
+              <>
+                <h3
+                  className="review-rec-modal-title-warn"
+                  id="bulk-final-title"
+                >
+                  ⚠ {tConfirm("final_no_backup_heading")}
+                </h3>
+                <p className="review-rec-modal-warn">
+                  {tConfirm("final_no_backup_body")}
+                </p>
+              </>
+            )}
+            <p>
+              {tConfirm("type_delete_prompt")}{" "}
+              <strong>{tConfirm("type_delete_keyword")}</strong>{" "}
+              {tConfirm("type_delete_suffix")}
+            </p>
+            <input
+              autoComplete="off"
+              autoFocus
+              className="review-rec-confirm-input"
+              onChange={(e) => setBulkConfirmText(e.target.value)}
+              placeholder={tConfirm("type_placeholder")}
+              ref={confirmInputRef}
+              spellCheck={false}
+              type="text"
+              value={bulkConfirmText}
+            />
+            <div className="review-rec-modal-actions">
+              <button
+                className="btn btn-ghost"
+                onClick={() => setBulkModal(null)}
+                type="button"
+              >
+                {tConfirm("cancel")}
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={bulkConfirmText !== "DELETE"}
+                onClick={() => {
+                  const acknowledgeNoBackup = backup.status !== "done";
+                  void runBulkUninstall(acknowledgeNoBackup);
+                }}
+                type="button"
+              >
+                {backup.status === "done"
+                  ? tConfirm("final_confirm")
+                  : tConfirm("final_confirm_no_backup")}
               </button>
             </div>
           </div>
@@ -1610,21 +2102,23 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
           works in the iOS Files app preview. App icons are inline
           <img>s sourced from the same iconUrl the screen view uses;
           most browsers preserve them in the saved PDF. */}
-      <div className="review-rec-print" aria-hidden="true">
-        <h1>{tPrint('title')}</h1>
+      <div aria-hidden="true" className="review-rec-print">
+        <h1>{tPrint("title")}</h1>
         <p className="review-rec-print-meta">
-          {tPrint('generated', { date: new Date().toLocaleString() })}
+          {tPrint("generated", { date: new Date().toLocaleString() })}
         </p>
 
         {uninstallQueue.length > 0 && (
           <section>
-            <h2>{tPrint('uninstall_heading', { count: uninstallQueue.length })}</h2>
+            <h2>
+              {tPrint("uninstall_heading", { count: uninstallQueue.length })}
+            </h2>
             <ul>
-              {uninstallQueue.map(row => (
+              {uninstallQueue.map((row) => (
                 <PrintRow
+                  appStoreLinkLabel={tPrint("app_store_link")}
                   key={row.id}
                   row={row}
-                  appStoreLinkLabel={tPrint('app_store_link')}
                 />
               ))}
             </ul>
@@ -1633,15 +2127,15 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
 
         {replaceQueue.length > 0 && (
           <section>
-            <h2>{tPrint('replace_heading', { count: replaceQueue.length })}</h2>
-            <p className="review-rec-print-hint">{tPrint('replace_hint')}</p>
+            <h2>{tPrint("replace_heading", { count: replaceQueue.length })}</h2>
+            <p className="review-rec-print-hint">{tPrint("replace_hint")}</p>
             <ul>
-              {replaceQueue.map(row => (
+              {replaceQueue.map((row) => (
                 <PrintRow
+                  appStoreLinkLabel={tPrint("app_store_link")}
                   key={row.id}
                   row={row}
                   swap={replacements[row.id]?.trim()}
-                  appStoreLinkLabel={tPrint('app_store_link')}
                 />
               ))}
             </ul>
@@ -1650,13 +2144,13 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
 
         {safeQueue.length > 0 && (
           <section>
-            <h2>{tPrint('safe_heading', { count: safeQueue.length })}</h2>
+            <h2>{tPrint("safe_heading", { count: safeQueue.length })}</h2>
             <ul>
-              {safeQueue.map(row => (
+              {safeQueue.map((row) => (
                 <PrintRow
+                  appStoreLinkLabel={tPrint("app_store_link")}
                   key={row.id}
                   row={row}
-                  appStoreLinkLabel={tPrint('app_store_link')}
                 />
               ))}
             </ul>
@@ -1665,9 +2159,7 @@ export default function ReviewRecommendationsView({ rows: initialRows, audience,
 
         {uninstallQueue.length === 0 &&
           replaceQueue.length === 0 &&
-          safeQueue.length === 0 && (
-            <p>{tPrint('empty')}</p>
-          )}
+          safeQueue.length === 0 && <p>{tPrint("empty")}</p>}
       </div>
     </main>
   );
@@ -1699,26 +2191,27 @@ function PrintRow({
       {row.iconUrl ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={row.iconUrl}
           alt=""
           className="review-rec-print-icon"
-          width={28}
           height={28}
+          src={row.iconUrl}
+          width={28}
         />
       ) : (
         <span className="review-rec-print-icon review-rec-print-icon-placeholder" />
       )}
       <span className="review-rec-print-row-body">
         <strong>{row.name}</strong>
-        {row.developer ? ` · ${row.developer}` : ''}
+        {row.developer ? ` · ${row.developer}` : ""}
         {swap && (
           <>
-            {' '}→ <strong>{swap}</strong>
+            {" "}
+            → <strong>{swap}</strong>
           </>
         )}
         {isSafeExternalHref(row.url) && (
           <>
-            {' · '}
+            {" · "}
             <a href={row.url!}>{appStoreLinkLabel}</a>
           </>
         )}
@@ -1741,9 +2234,9 @@ function PrintRow({
 function ProfileBadge({ badge }: { badge: AppProfileBadge }) {
   return (
     <span
+      aria-label={badge.description}
       className={`review-rec-profile-badge match-${badge.tone}`}
       title={badge.description}
-      aria-label={badge.description}
     >
       {badge.label}
     </span>
@@ -1766,7 +2259,7 @@ function SummaryGroup({
   replacementLinkAria,
 }: {
   title: string;
-  tone: 'ok' | 'warn' | 'bad';
+  tone: "ok" | "warn" | "bad";
   rows: Row[];
   replacements?: Record<string, string>;
   /** Localised label for the inline App Store link — comes from
@@ -1789,10 +2282,12 @@ function SummaryGroup({
   replacementLinkAria?: (name: string) => string;
 }) {
   return (
-    <section className={`review-rec-summary-group review-rec-summary-group-${tone}`}>
+    <section
+      className={`review-rec-summary-group review-rec-summary-group-${tone}`}
+    >
       <h3>{title}</h3>
       <ul>
-        {rows.map(row => {
+        {rows.map((row) => {
           const swap = replacements?.[row.id]?.trim();
           // When we have a chosen replacement name, look up the
           // matching shortlist candidate so we can render the
@@ -1800,12 +2295,13 @@ function SummaryGroup({
           // Falls back to bare-text when the name doesn't match any
           // shortlist entry (the user typed a free-form replacement).
           const swapCandidate = swap
-            ? row.shortlistCandidates.find(c =>
-                c.candidateName.trim().toLowerCase() === swap.toLowerCase(),
+            ? row.shortlistCandidates.find(
+                (c) =>
+                  c.candidateName.trim().toLowerCase() === swap.toLowerCase()
               )
             : undefined;
           return (
-            <li key={row.id} className="review-rec-summary-row">
+            <li className="review-rec-summary-row" key={row.id}>
               {/* App icon — same 32px thumbnail the AppGrid renders, sized
                   down so the row stays compact. Falls back to a tinted
                   placeholder when the app has no stored iconUrl (sample
@@ -1813,29 +2309,35 @@ function SummaryGroup({
               {row.iconUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  src={row.iconUrl}
                   alt=""
                   className="review-rec-summary-icon"
-                  width={32}
                   height={32}
+                  src={row.iconUrl}
+                  width={32}
                 />
               ) : (
                 <div className="review-rec-summary-icon review-rec-summary-icon-placeholder" />
               )}
               <div className="review-rec-summary-body">
                 <div className="review-rec-summary-line">
-                  <Link href={`/apps/${row.id}`} className="review-rec-summary-name">
+                  <Link
+                    className="review-rec-summary-name"
+                    href={`/apps/${row.id}`}
+                  >
                     {row.name}
                   </Link>
                   {row.developer && (
-                    <span className="review-rec-summary-dev"> · {row.developer}</span>
+                    <span className="review-rec-summary-dev">
+                      {" "}
+                      · {row.developer}
+                    </span>
                   )}
                   {isSafeExternalHref(row.url) && (
                     <a
-                      href={row.url!}
                       className="review-rec-summary-link"
-                      target="_blank"
+                      href={row.url!}
                       rel="noopener"
+                      target="_blank"
                     >
                       {appStoreLinkLabel}
                     </a>
@@ -1859,16 +2361,16 @@ function SummaryGroup({
                     {swapCandidate?.candidateIconUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
-                        src={swapCandidate.candidateIconUrl}
                         alt=""
                         className="review-rec-summary-replacement-icon"
-                        width={20}
                         height={20}
+                        src={swapCandidate.candidateIconUrl}
+                        width={20}
                       />
                     ) : (
                       <span
-                        className="review-rec-summary-replacement-icon review-rec-summary-replacement-icon-placeholder"
                         aria-hidden="true"
+                        className="review-rec-summary-replacement-icon review-rec-summary-replacement-icon-placeholder"
                       />
                     )}
                     <strong className="review-rec-summary-replacement-name">
@@ -1876,13 +2378,15 @@ function SummaryGroup({
                     </strong>
                     {swapCandidate?.candidateStoreUrl && (
                       <a
-                        href={swapCandidate.candidateStoreUrl}
+                        aria-label={
+                          replacementLinkAria
+                            ? replacementLinkAria(swap)
+                            : undefined
+                        }
                         className="review-rec-summary-replacement-link"
-                        target="_blank"
+                        href={swapCandidate.candidateStoreUrl}
                         rel="noopener"
-                        aria-label={replacementLinkAria
-                          ? replacementLinkAria(swap)
-                          : undefined}
+                        target="_blank"
                       >
                         {appStoreLinkLabel}
                       </a>
@@ -1916,7 +2420,7 @@ function MigrateModal({
   onExport,
 }: {
   tMigrate: ReturnType<typeof useTranslations>;
-  exportStatus: 'idle' | 'busy' | 'done' | 'error';
+  exportStatus: "idle" | "busy" | "done" | "error";
   exportError: string | null;
   onClose: () => void;
   onExport: () => void | Promise<void>;
@@ -1930,84 +2434,86 @@ function MigrateModal({
   // privacykey/privacytracker). Keep this in sync if the repo is
   // ever renamed.
   const DESKTOP_DOWNLOAD_URL =
-    'https://github.com/privacykey/privacytracker/releases/latest';
+    "https://github.com/privacykey/privacytracker/releases/latest";
 
   return (
     <div
-      className="review-rec-modal-overlay"
-      role="dialog"
+      aria-label={tMigrate("title_aria")}
       aria-modal="true"
-      aria-label={tMigrate('title_aria')}
-      onClick={e => {
-        if (e.target === e.currentTarget) onClose();
+      className="review-rec-modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
       }}
+      role="dialog"
     >
       <div className="review-rec-modal review-rec-modal-wide">
         <header className="review-rec-migrate-modal-head">
-          <h3>{tMigrate('heading')}</h3>
+          <h3>{tMigrate("heading")}</h3>
           <button
-            type="button"
+            aria-label={tMigrate("close_aria")}
             className="review-rec-migrate-modal-close"
             onClick={onClose}
-            aria-label={tMigrate('close_aria')}
+            type="button"
           >
             ✕
           </button>
         </header>
-        <p className="review-rec-migrate-modal-intro">{tMigrate('intro')}</p>
+        <p className="review-rec-migrate-modal-intro">{tMigrate("intro")}</p>
 
         <ol className="review-rec-migrate-steps">
           <li>
-            <h4>{tMigrate('step_1_title')}</h4>
-            <p>{tMigrate('step_1_body')}</p>
+            <h4>{tMigrate("step_1_title")}</h4>
+            <p>{tMigrate("step_1_body")}</p>
             <a
-              href={DESKTOP_DOWNLOAD_URL}
               className="btn btn-secondary"
-              target="_blank"
+              href={DESKTOP_DOWNLOAD_URL}
               rel="noopener"
+              target="_blank"
             >
-              {tMigrate('step_1_link')}
+              {tMigrate("step_1_link")}
             </a>
           </li>
           <li>
-            <h4>{tMigrate('step_2_title')}</h4>
-            <p>{tMigrate('step_2_body')}</p>
+            <h4>{tMigrate("step_2_title")}</h4>
+            <p>{tMigrate("step_2_body")}</p>
             <button
-              type="button"
               className="btn btn-primary"
+              disabled={exportStatus === "busy"}
               onClick={onExport}
-              disabled={exportStatus === 'busy'}
+              type="button"
             >
-              {exportStatus === 'busy'
-                ? tMigrate('step_2_busy')
-                : tMigrate('step_2_button')}
+              {exportStatus === "busy"
+                ? tMigrate("step_2_busy")
+                : tMigrate("step_2_button")}
             </button>
-            {exportStatus === 'done' && (
+            {exportStatus === "done" && (
               <p
                 className="review-rec-migrate-export-status review-rec-migrate-export-status-ok"
                 role="status"
               >
-                {tMigrate('step_2_done')}
+                {tMigrate("step_2_done")}
               </p>
             )}
-            {exportStatus === 'error' && (
+            {exportStatus === "error" && (
               <p
                 className="review-rec-migrate-export-status review-rec-migrate-export-status-err"
                 role="alert"
               >
-                {exportError ?? tMigrate('step_2_error')}
+                {exportError ?? tMigrate("step_2_error")}
               </p>
             )}
           </li>
           <li>
-            <h4>{tMigrate('step_3_title')}</h4>
-            <p>{tMigrate('step_3_body')}</p>
+            <h4>{tMigrate("step_3_title")}</h4>
+            <p>{tMigrate("step_3_body")}</p>
           </li>
         </ol>
 
         <div className="review-rec-modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            {tMigrate('close')}
+          <button className="btn btn-ghost" onClick={onClose} type="button">
+            {tMigrate("close")}
           </button>
         </div>
       </div>
@@ -2059,30 +2565,37 @@ function ReplacingWithCombobox({
     const tokens = value
       .toLowerCase()
       .split(/\s+/)
-      .map(t => t.trim())
-      .filter(t => t.length > 0);
-    return row.shortlistCandidates.filter(c => {
-      const haystack = `${c.candidateName} ${c.candidateDeveloper}`.toLowerCase();
-      return tokens.length === 0 || tokens.every(t => haystack.includes(t));
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    return row.shortlistCandidates.filter((c) => {
+      const haystack =
+        `${c.candidateName} ${c.candidateDeveloper}`.toLowerCase();
+      return tokens.length === 0 || tokens.every((t) => haystack.includes(t));
     });
   }, [row.shortlistCandidates, value]);
 
   // Close on outside click. We use a ref-rooted check so a click on
   // any descendant (suggestion item, input, etc.) stays open.
   useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (!containerRef.current) return;
-      if (!containerRef.current.contains(e.target as Node)) setOpen(false);
+    if (!open) {
+      return;
     }
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    function onDoc(e: MouseEvent) {
+      if (!containerRef.current) {
+        return;
+      }
+      if (!containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
   // Reset highlight whenever suggestions change so the up/down nav
   // never lands on an out-of-range index.
   useEffect(() => {
-    setHighlight(h => (h >= suggestions.length ? 0 : h));
+    setHighlight((h) => (h >= suggestions.length ? 0 : h));
   }, [suggestions.length]);
 
   // No candidates at all → render as a plain input. This avoids
@@ -2092,74 +2605,73 @@ function ReplacingWithCombobox({
 
   return (
     <div className="review-rec-row-replacement" ref={containerRef}>
-      <label htmlFor={inputId} className="review-rec-row-replacement-label">
+      <label className="review-rec-row-replacement-label" htmlFor={inputId}>
         {labelText}
       </label>
       <input
-        id={inputId}
-        type="text"
-        className="review-rec-row-replacement-input"
-        placeholder={placeholder}
-        value={value}
-        autoComplete="off"
-        role={hasCandidates ? 'combobox' : undefined}
-        aria-controls={hasCandidates ? listboxId : undefined}
-        aria-expanded={hasCandidates ? open : undefined}
-        aria-autocomplete={hasCandidates ? 'list' : undefined}
         aria-activedescendant={
           hasCandidates && open && suggestions[highlight]
             ? `${listboxId}-${highlight}`
             : undefined
         }
-        onFocus={() => hasCandidates && setOpen(true)}
-        onChange={e => {
+        aria-autocomplete={hasCandidates ? "list" : undefined}
+        aria-controls={hasCandidates ? listboxId : undefined}
+        aria-expanded={hasCandidates ? open : undefined}
+        autoComplete="off"
+        className="review-rec-row-replacement-input"
+        id={inputId}
+        maxLength={120}
+        onChange={(e) => {
           onChange(e.target.value);
-          if (hasCandidates) setOpen(true);
+          if (hasCandidates) {
+            setOpen(true);
+          }
         }}
-        onKeyDown={e => {
-          if (!hasCandidates) return;
-          if (e.key === 'ArrowDown') {
+        onFocus={() => hasCandidates && setOpen(true)}
+        onKeyDown={(e) => {
+          if (!hasCandidates) {
+            return;
+          }
+          if (e.key === "ArrowDown") {
             e.preventDefault();
             setOpen(true);
-            setHighlight(h => Math.min(h + 1, suggestions.length - 1));
-          } else if (e.key === 'ArrowUp') {
+            setHighlight((h) => Math.min(h + 1, suggestions.length - 1));
+          } else if (e.key === "ArrowUp") {
             e.preventDefault();
             setOpen(true);
-            setHighlight(h => Math.max(h - 1, 0));
-          } else if (e.key === 'Enter') {
+            setHighlight((h) => Math.max(h - 1, 0));
+          } else if (e.key === "Enter") {
             if (open && suggestions[highlight]) {
               e.preventDefault();
               onPick(suggestions[highlight].candidateName);
               setOpen(false);
             }
-          } else if (e.key === 'Escape') {
+          } else if (e.key === "Escape") {
             setOpen(false);
           }
         }}
-        maxLength={120}
+        placeholder={placeholder}
+        role={hasCandidates ? "combobox" : undefined}
+        type="text"
+        value={value}
       />
       {hasCandidates && open && suggestions.length > 0 && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          className="review-rec-row-replacement-suggestions"
-        >
+        <ul className="review-rec-row-replacement-suggestions" id={listboxId}>
           {suggestions.map((s, i) => {
             const active = i === highlight;
             return (
               <li
-                key={s.id}
-                id={`${listboxId}-${i}`}
-                role="option"
                 aria-selected={active}
                 className={`review-rec-row-replacement-suggestion${
-                  active ? ' is-active' : ''
+                  active ? "is-active" : ""
                 }`}
+                id={`${listboxId}-${i}`}
+                key={s.id}
                 // Use mousedown instead of click so the input's blur
                 // handler (which would close the popover before the
                 // click lands) can't race us. We also stop default so
                 // the input keeps focus through the pick.
-                onMouseDown={e => {
+                onMouseDown={(e) => {
                   e.preventDefault();
                   onPick(s.candidateName);
                   setOpen(false);
@@ -2169,16 +2681,16 @@ function ReplacingWithCombobox({
                 {s.candidateIconUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    src={s.candidateIconUrl}
                     alt=""
                     className="review-rec-row-replacement-suggestion-icon"
-                    width={22}
                     height={22}
+                    src={s.candidateIconUrl}
+                    width={22}
                   />
                 ) : (
                   <span
-                    className="review-rec-row-replacement-suggestion-icon review-rec-row-replacement-suggestion-icon-placeholder"
                     aria-hidden="true"
+                    className="review-rec-row-replacement-suggestion-icon review-rec-row-replacement-suggestion-icon-placeholder"
                   />
                 )}
                 <span className="review-rec-row-replacement-suggestion-body">
@@ -2217,10 +2729,10 @@ function ReplacingWithCombobox({
 // than a separate concept.
 
 const NOTE_TAG_LABEL_KEYS: Record<string, string> = {
-  concern: 'tag_concern',
-  positive: 'tag_positive',
-  follow_up: 'tag_follow_up',
-  other: 'tag_other',
+  concern: "tag_concern",
+  positive: "tag_positive",
+  follow_up: "tag_follow_up",
+  other: "tag_other",
 };
 
 /** Strip markdown syntax for the preview line — we don't render
@@ -2230,25 +2742,27 @@ const NOTE_TAG_LABEL_KEYS: Record<string, string> = {
  *  with just the text. Anything else is kept verbatim. */
 function condenseMarkdown(input: string): string {
   return input
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')      // images → drop
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')   // links → keep label
-    .replace(/`([^`]+)`/g, '$1')                // inline code
-    .replace(/\*\*([^*]+)\*\*/g, '$1')          // bold
-    .replace(/__([^_]+)__/g, '$1')              // bold (alt)
-    .replace(/\*([^*]+)\*/g, '$1')              // italic
-    .replace(/_([^_]+)_/g, '$1')                // italic (alt)
-    .replace(/~~([^~]+)~~/g, '$1')              // strikethrough
-    .replace(/^#+\s+/gm, '')                    // heading markers
-    .replace(/^>\s+/gm, '')                     // blockquote markers
-    .replace(/^[-*]\s+/gm, '')                  // bullet markers
-    .replace(/^\d+\.\s+/gm, '')                 // ordered list markers
-    .replace(/\s+/g, ' ')                       // collapse whitespace
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "") // images → drop
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1") // links → keep label
+    .replace(/`([^`]+)`/g, "$1") // inline code
+    .replace(/\*\*([^*]+)\*\*/g, "$1") // bold
+    .replace(/__([^_]+)__/g, "$1") // bold (alt)
+    .replace(/\*([^*]+)\*/g, "$1") // italic
+    .replace(/_([^_]+)_/g, "$1") // italic (alt)
+    .replace(/~~([^~]+)~~/g, "$1") // strikethrough
+    .replace(/^#+\s+/gm, "") // heading markers
+    .replace(/^>\s+/gm, "") // blockquote markers
+    .replace(/^[-*]\s+/gm, "") // bullet markers
+    .replace(/^\d+\.\s+/gm, "") // ordered list markers
+    .replace(/\s+/g, " ") // collapse whitespace
     .trim();
 }
 
 function truncate(s: string, n: number): string {
-  if (s.length <= n) return s;
-  return s.slice(0, n).trimEnd() + '…';
+  if (s.length <= n) {
+    return s;
+  }
+  return `${s.slice(0, n).trimEnd()}…`;
 }
 
 interface SavedNotesPreviewProps {
@@ -2256,7 +2770,7 @@ interface SavedNotesPreviewProps {
 }
 
 function SavedNotesPreview({ row }: SavedNotesPreviewProps) {
-  const tNotes = useTranslations('review_rec.saved_notes');
+  const tNotes = useTranslations("review_rec.saved_notes");
   const MAX_VISIBLE = 3;
   const visible = row.notes.slice(0, MAX_VISIBLE);
   const hidden = row.notes.length - visible.length;
@@ -2265,27 +2779,29 @@ function SavedNotesPreview({ row }: SavedNotesPreviewProps) {
     <div className="review-rec-row-saved-notes">
       <div className="review-rec-row-saved-notes-label">
         <span>
-          {tNotes('heading')}
+          {tNotes("heading")}
           <span className="review-rec-row-saved-notes-count">
             {row.notes.length}
           </span>
         </span>
         <Link
-          href={`/apps/${row.id}#annotations-sidebar-title`}
           className="review-rec-row-saved-notes-edit"
+          href={`/apps/${row.id}#annotations-sidebar-title`}
         >
-          {tNotes('edit_link')}
+          {tNotes("edit_link")}
         </Link>
       </div>
       <ul className="review-rec-row-saved-notes-list">
         {visible.map((note) => (
           <li
+            className={`review-rec-saved-note review-rec-saved-note--tag-${note.tag ?? "none"}`}
             key={note.id}
-            className={`review-rec-saved-note review-rec-saved-note--tag-${note.tag ?? 'none'}`}
           >
             {note.tag && (
               <span className="review-rec-saved-note-tag">
-                {NOTE_TAG_LABEL_KEYS[note.tag] ? tNotes(NOTE_TAG_LABEL_KEYS[note.tag]) : note.tag}
+                {NOTE_TAG_LABEL_KEYS[note.tag]
+                  ? tNotes(NOTE_TAG_LABEL_KEYS[note.tag])
+                  : note.tag}
               </span>
             )}
             <p className="review-rec-saved-note-content">
@@ -2295,7 +2811,7 @@ function SavedNotesPreview({ row }: SavedNotesPreviewProps) {
         ))}
         {hidden > 0 && (
           <li className="review-rec-saved-note-more">
-            {tNotes('more_on_app_page', { count: hidden })}
+            {tNotes("more_on_app_page", { count: hidden })}
           </li>
         )}
       </ul>

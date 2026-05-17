@@ -1,78 +1,90 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { getAllApps, getAppWithPrivacy, getGroupedPrivacyView } from '../../../lib/scraper';
-import { getChangelog } from '../../../lib/changelog';
-import { markImportItemsRemovedForApp } from '../../../lib/imports';
-import db from '../../../lib/db';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { withApiTiming } from "../../../lib/api-timing";
+import { getChangelog } from "../../../lib/changelog";
+import db from "../../../lib/db";
+import { markImportItemsRemovedForApp } from "../../../lib/imports";
 import {
-  recordAudit,
-  requestActorIp,
+  getAllApps,
+  getAppWithPrivacy,
+  getGroupedPrivacyView,
+} from "../../../lib/scraper";
+import {
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
-  adminTokenRequiredForRequest,
+  recordAudit,
+  requestActorIp,
   requestHasValidAdminToken,
-} from '../../../lib/security';
-import { withApiTiming } from '../../../lib/api-timing';
+} from "../../../lib/security";
 
 async function getAppsRoute(request: Request) {
   const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  const view = searchParams.get('view');
-  const changelog = searchParams.get('changelog');
+  const id = searchParams.get("id");
+  const view = searchParams.get("view");
+  const changelog = searchParams.get("changelog");
 
-  if (id && changelog === 'true') {
+  if (id && changelog === "true") {
     const logs = getChangelog(id);
     return NextResponse.json(logs);
   }
 
   if (id) {
     const appInfo = getAppWithPrivacy(id);
-    if (!appInfo) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!appInfo) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     return NextResponse.json(appInfo);
   }
 
-  if (view === 'grouped') {
+  if (view === "grouped") {
     return NextResponse.json(getGroupedPrivacyView());
   }
 
   return NextResponse.json(getAllApps());
 }
 
-export const GET = withApiTiming('/api/apps', getAppsRoute);
+export const GET = withApiTiming("/api/apps", getAppsRoute);
 
 export async function DELETE(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'apps.delete'),
+    key: rateLimitKeyForRequest(request, "apps.delete"),
     limit: 60,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded' },
-      { status: 429 },
-    );
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
-      action: 'app.delete.unauthorised',
+      action: "app.delete.unauthorised",
       actorIp,
       userAgent,
       success: false,
     });
-    return NextResponse.json({ error: 'Admin token required' }, { status: 401 });
+    return NextResponse.json(
+      { error: "Admin token required" },
+      { status: 401 }
+    );
   }
 
   const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  const id = searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  }
   // The stored app id is the numeric Apple track id — validate so the audit
   // log isn't polluted with arbitrary user-supplied strings.
   if (!/^\d{1,20}$/.test(id)) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
   // Flip any import rows that brought this app in to `status = 'removed'`
@@ -83,23 +95,23 @@ export async function DELETE(request: Request) {
   // silently re-add the app the user explicitly removed.
   const tx = db.transaction(() => {
     markImportItemsRemovedForApp(id);
-    db.prepare('DELETE FROM apps WHERE id = ?').run(id);
+    db.prepare("DELETE FROM apps WHERE id = ?").run(id);
   });
   try {
     tx();
   } catch (error) {
     recordAudit({
-      action: 'app.delete.failed',
+      action: "app.delete.failed",
       actorIp,
       userAgent,
       success: false,
       detail: `id=${id} error=${error instanceof Error ? error.message : String(error)}`,
     });
-    return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
+    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
 
   recordAudit({
-    action: 'app.delete.success',
+    action: "app.delete.success",
     actorIp,
     userAgent,
     success: true,

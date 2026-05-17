@@ -1,6 +1,6 @@
 // next-intl v4 plugin — registers the per-request server config at `./i18n.ts`.
-const createNextIntlPlugin = require('next-intl/plugin');
-const withNextIntl = createNextIntlPlugin('./i18n.ts');
+const createNextIntlPlugin = require("next-intl/plugin");
+const withNextIntl = createNextIntlPlugin("./i18n.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -11,13 +11,13 @@ const nextConfig = {
   // the Tauri desktop sidecar. Next 16 doesn't support `next start` alongside
   // `output: 'standalone'`, so the Docker / web path keeps the default output
   // and `npm run build:standalone` flips this flag via `BUILD_STANDALONE=1`.
-  ...(process.env.BUILD_STANDALONE ? { output: 'standalone' } : {}),
+  ...(process.env.BUILD_STANDALONE ? { output: "standalone" } : {}),
   // better-sqlite3 is a native binding; Next must not bundle it.
   serverExternalPackages: ["better-sqlite3"],
   // Dev-only indicator — bottom-right anchor matches the CSS stacking rule
   // in app/globals.css. Production builds don't render this.
   devIndicators: {
-    position: 'bottom-right',
+    position: "bottom-right",
   },
   // Lock next/image to Apple's CDN hostnames. The five explicit
   // `is{1..5}-ssl.mzstatic.com` entries cover every host the App Store
@@ -26,11 +26,11 @@ const nextConfig = {
   // bytes through /_next/image.
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'is1-ssl.mzstatic.com' },
-      { protocol: 'https', hostname: 'is2-ssl.mzstatic.com' },
-      { protocol: 'https', hostname: 'is3-ssl.mzstatic.com' },
-      { protocol: 'https', hostname: 'is4-ssl.mzstatic.com' },
-      { protocol: 'https', hostname: 'is5-ssl.mzstatic.com' },
+      { protocol: "https", hostname: "is1-ssl.mzstatic.com" },
+      { protocol: "https", hostname: "is2-ssl.mzstatic.com" },
+      { protocol: "https", hostname: "is3-ssl.mzstatic.com" },
+      { protocol: "https", hostname: "is4-ssl.mzstatic.com" },
+      { protocol: "https", hostname: "is5-ssl.mzstatic.com" },
     ],
     // Don't emit SVGs through the optimiser — SVG can carry script payloads.
     dangerouslyAllowSVG: false,
@@ -42,16 +42,17 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: "/:path*",
         headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), usb=(), payment=()',
+            key: "Permissions-Policy",
+            value:
+              "camera=(), microphone=(), geolocation=(), usb=(), payment=()",
           },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
         ],
       },
     ];

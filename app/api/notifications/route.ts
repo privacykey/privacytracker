@@ -1,12 +1,13 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
 import {
   getNotifications,
   getUnreadCount,
   markAllRead,
   markUnreadByIds,
-} from '../../../lib/notifications';
-import { readOptionalBoundedJson } from '../../../lib/security';
+} from "../../../lib/notifications";
+import { readOptionalBoundedJson } from "../../../lib/security";
 
 export async function GET() {
   const notifications = getNotifications(30);
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
     body = {};
   }
 
-  if (body.action === 'mark_read') {
+  if (body.action === "mark_read") {
     markAllRead();
     return NextResponse.json({ success: true });
   }
@@ -37,14 +38,16 @@ export async function POST(request: Request) {
   // an empty / missing array to flip "everything" — that would
   // silently re-unread rows the user has long since acknowledged
   // through other paths (per-app review actions, reset, etc.).
-  if (body.action === 'mark_unread') {
+  if (body.action === "mark_unread") {
     if (!Array.isArray(body.ids)) {
       return NextResponse.json(
-        { error: 'mark_unread requires `ids: string[]`' },
-        { status: 400 },
+        { error: "mark_unread requires `ids: string[]`" },
+        { status: 400 }
       );
     }
-    const ids = body.ids.filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const ids = body.ids.filter(
+      (v): v is string => typeof v === "string" && v.length > 0
+    );
     if (ids.length === 0) {
       // Idempotent no-op rather than an error — covers the harmless
       // case where the client's stash was empty (the bell opened
@@ -55,5 +58,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, flipped });
   }
 
-  return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }

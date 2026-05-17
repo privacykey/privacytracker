@@ -24,26 +24,33 @@
  * state rather than blocking the user from picking another app.
  */
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
-import db from '../../../lib/db';
-import { safeFetch } from '../../../lib/security';
-import { getSetting } from '../../../lib/scheduler';
-import { getMayAlsoLike } from '../../../lib/related-apps-observed';
+import { NextResponse } from "next/server";
+import db from "../../../lib/db";
+import { getMayAlsoLike } from "../../../lib/related-apps-observed";
+import { getSetting } from "../../../lib/scheduler";
+import { safeFetch } from "../../../lib/security";
 
 /** Modes supported by this endpoint. See the top-of-file docstring. */
-type RelatedMode = 'top_in_category' | 'may_also_like';
-const VALID_MODES: readonly RelatedMode[] = ['top_in_category', 'may_also_like'];
+type RelatedMode = "top_in_category" | "may_also_like";
+const VALID_MODES: readonly RelatedMode[] = [
+  "top_in_category",
+  "may_also_like",
+];
 
-const APPLE_HOSTS = ['apps.apple.com', 'itunes.apple.com', 'rss.applemarketingtools.com'];
-const DEFAULT_COUNTRY = 'us';
+const APPLE_HOSTS = [
+  "apps.apple.com",
+  "itunes.apple.com",
+  "rss.applemarketingtools.com",
+];
+const DEFAULT_COUNTRY = "us";
 
 interface AppRow {
-  id: string;
-  name: string;
   genreId: number | null;
   genreName: string | null;
+  id: string;
+  name: string;
   priceAmount: number | null;
   /** App Store listing URL — surfaced in the `may_also_like` response so
    *  the UI can offer a one-click rescrape when the table is empty. */
@@ -52,14 +59,14 @@ interface AppRow {
 
 interface RelatedCandidate {
   appleId: string;
-  name: string;
   developer: string;
   iconUrl: string;
+  name: string;
   url: string;
 }
 
 function normaliseCountry(raw: string | null | undefined): string {
-  const trimmed = (raw ?? '').trim().toLowerCase();
+  const trimmed = (raw ?? "").trim().toLowerCase();
   return /^[a-z]{2}$/.test(trimmed) ? trimmed : DEFAULT_COUNTRY;
 }
 
@@ -71,22 +78,30 @@ function normaliseCountry(raw: string | null | undefined): string {
  */
 async function lookupGenreAndPrice(
   appleId: string,
-  country: string,
-): Promise<{ genreId: number | null; genreName: string | null; priceAmount: number | null } | null> {
-  if (!/^\d+$/.test(appleId)) return null;
+  country: string
+): Promise<{
+  genreId: number | null;
+  genreName: string | null;
+  priceAmount: number | null;
+} | null> {
+  if (!/^\d+$/.test(appleId)) {
+    return null;
+  }
   try {
     const { response, body } = await safeFetch(
       `https://itunes.apple.com/lookup?id=${appleId}&country=${country}`,
       {
         allowedHosts: APPLE_HOSTS,
-        headers: { Accept: 'application/json' },
+        headers: { Accept: "application/json" },
         timeoutMs: 8000,
         maxBytes: 1 * 1024 * 1024,
-        redirect: 'follow',
-      },
+        redirect: "follow",
+      }
     );
-    if (!response.ok) return null;
-    const payload = JSON.parse(body.toString('utf8')) as {
+    if (!response.ok) {
+      return null;
+    }
+    const payload = JSON.parse(body.toString("utf8")) as {
       results?: Array<{
         primaryGenreId?: number;
         primaryGenreName?: string;
@@ -94,11 +109,17 @@ async function lookupGenreAndPrice(
       }>;
     };
     const entry = payload.results?.[0];
-    if (!entry) return null;
+    if (!entry) {
+      return null;
+    }
     return {
-      genreId: typeof entry.primaryGenreId === 'number' ? entry.primaryGenreId : null,
-      genreName: typeof entry.primaryGenreName === 'string' ? entry.primaryGenreName : null,
-      priceAmount: typeof entry.price === 'number' ? entry.price : null,
+      genreId:
+        typeof entry.primaryGenreId === "number" ? entry.primaryGenreId : null,
+      genreName:
+        typeof entry.primaryGenreName === "string"
+          ? entry.primaryGenreName
+          : null,
+      priceAmount: typeof entry.price === "number" ? entry.price : null,
     };
   } catch {
     return null;
@@ -129,70 +150,82 @@ async function fetchTopInGenre(opts: {
   // directly — saves a round-trip and avoids batching ids through
   // /lookup. Pull 50 to give the genre filter room (the chart is
   // already country-wide; the genre filter narrows in-place).
-  const feed = free ? 'topfreeapplications' : 'toppaidapplications';
+  const feed = free ? "topfreeapplications" : "toppaidapplications";
   const url = `https://itunes.apple.com/${country}/rss/${feed}/limit=50/genre=${genreId}/json`;
   try {
     const { response, body } = await safeFetch(url, {
       allowedHosts: APPLE_HOSTS,
-      headers: { Accept: 'application/json' },
+      headers: { Accept: "application/json" },
       timeoutMs: 8000,
       maxBytes: 2 * 1024 * 1024,
-      redirect: 'follow',
+      redirect: "follow",
     });
-    if (!response.ok) return [];
-    const parsed = JSON.parse(body.toString('utf8')) as {
+    if (!response.ok) {
+      return [];
+    }
+    const parsed = JSON.parse(body.toString("utf8")) as {
       feed?: {
         entry?: Array<{
-          'im:name'?: { label?: string };
-          'im:artist'?: { label?: string };
-          'im:image'?: Array<{ label?: string }>;
-          id?: { attributes?: { 'im:id'?: string } };
-          link?: { attributes?: { href?: string } } | Array<{ attributes?: { href?: string } }>;
+          "im:name"?: { label?: string };
+          "im:artist"?: { label?: string };
+          "im:image"?: Array<{ label?: string }>;
+          id?: { attributes?: { "im:id"?: string } };
+          link?:
+            | { attributes?: { href?: string } }
+            | Array<{ attributes?: { href?: string } }>;
         }>;
       };
     };
     const entries = parsed.feed?.entry ?? [];
     const out: RelatedCandidate[] = [];
     for (const e of entries) {
-      const appleId = e.id?.attributes?.['im:id'];
-      if (!appleId || appleId === excludeAppleId) continue;
-      const name = e['im:name']?.label?.trim();
-      const developer = e['im:artist']?.label?.trim() ?? '';
+      const appleId = e.id?.attributes?.["im:id"];
+      if (!appleId || appleId === excludeAppleId) {
+        continue;
+      }
+      const name = e["im:name"]?.label?.trim();
+      const developer = e["im:artist"]?.label?.trim() ?? "";
       // iTunes RSS images are ordered small → large; pick the largest
       // (last) for crisper rendering at 28 px on retina displays.
-      const images = Array.isArray(e['im:image']) ? e['im:image'] : [];
-      const iconUrl = images[images.length - 1]?.label ?? '';
+      const images = Array.isArray(e["im:image"]) ? e["im:image"] : [];
+      const iconUrl = images.at(-1)?.label ?? "";
       // The first link entry on a feed row is the App Store URL.
       const linkRaw = Array.isArray(e.link) ? e.link[0] : e.link;
-      const url = linkRaw?.attributes?.href ?? '';
-      if (!name || !url) continue;
+      const url = linkRaw?.attributes?.href ?? "";
+      if (!(name && url)) {
+        continue;
+      }
       out.push({ appleId, name, developer, iconUrl, url });
-      if (out.length >= limit) break;
+      if (out.length >= limit) {
+        break;
+      }
     }
     return out;
   } catch (err) {
-    console.warn('[/api/related-apps] feed fetch failed:', err);
+    console.warn("[/api/related-apps] feed fetch failed:", err);
     return [];
   }
 }
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const sourceAppId = searchParams.get('sourceAppId');
-  const limitRaw = searchParams.get('limit');
+  const sourceAppId = searchParams.get("sourceAppId");
+  const limitRaw = searchParams.get("limit");
   const limit = Math.min(
     Math.max(1, Number.isFinite(Number(limitRaw)) ? Number(limitRaw) : 5),
-    10,
+    10
   );
-  const modeRaw = searchParams.get('mode');
-  const mode: RelatedMode = (VALID_MODES as readonly string[]).includes(modeRaw ?? '')
+  const modeRaw = searchParams.get("mode");
+  const mode: RelatedMode = (VALID_MODES as readonly string[]).includes(
+    modeRaw ?? ""
+  )
     ? (modeRaw as RelatedMode)
-    : 'top_in_category';
+    : "top_in_category";
 
-  if (!sourceAppId || !/^[A-Za-z0-9_-]+$/.test(sourceAppId)) {
+  if (!(sourceAppId && /^[A-Za-z0-9_-]+$/.test(sourceAppId))) {
     return NextResponse.json(
-      { error: 'sourceAppId is required and must be a valid app id.' },
-      { status: 400 },
+      { error: "sourceAppId is required and must be a valid app id." },
+      { status: 400 }
     );
   }
 
@@ -200,20 +233,20 @@ export async function GET(request: Request) {
   try {
     row = db
       .prepare(
-        'SELECT id, name, genreId, genreName, priceAmount, url FROM apps WHERE id = ?',
+        "SELECT id, name, genreId, genreName, priceAmount, url FROM apps WHERE id = ?"
       )
       .get(sourceAppId) as AppRow | undefined;
   } catch (e) {
-    console.error('[/api/related-apps] DB read failed:', e);
+    console.error("[/api/related-apps] DB read failed:", e);
     return NextResponse.json(
-      { error: 'Could not read source app.' },
-      { status: 500 },
+      { error: "Could not read source app." },
+      { status: 500 }
     );
   }
   if (!row) {
     return NextResponse.json(
-      { error: 'Source app not found.' },
-      { status: 404 },
+      { error: "Source app not found." },
+      { status: 404 }
     );
   }
 
@@ -222,32 +255,32 @@ export async function GET(request: Request) {
   // time. No network calls; the response is empty + `reason` flagged
   // when we've never scraped the source app's product page (or scraped
   // it before the shelf-extraction code shipped).
-  if (mode === 'may_also_like') {
+  if (mode === "may_also_like") {
     const rows = getMayAlsoLike(sourceAppId).slice(0, limit);
-    const candidates: RelatedCandidate[] = rows.map(r => ({
-      appleId:   r.relatedAppleId,
-      name:      r.relatedName,
-      developer: r.relatedDeveloper ?? '',
-      iconUrl:   r.relatedIconUrl ?? '',
-      url:       r.relatedStoreUrl,
+    const candidates: RelatedCandidate[] = rows.map((r) => ({
+      appleId: r.relatedAppleId,
+      name: r.relatedName,
+      developer: r.relatedDeveloper ?? "",
+      iconUrl: r.relatedIconUrl ?? "",
+      url: r.relatedStoreUrl,
     }));
     return NextResponse.json({
       mode,
       // Genre fields stay null in this mode — they're a "top in category"
       // concept and the UI knows not to render them for other modes.
-      genreId:   null,
+      genreId: null,
       genreName: null,
-      free:      null,
+      free: null,
       candidates,
       // `reason` is set when we have zero rows AND the source app
       // hasn't been scraped since the shelf extractor shipped. The UI
       // can offer a one-click rescrape in this state.
-      reason:    candidates.length === 0 ? 'not_scraped_yet' : undefined,
+      reason: candidates.length === 0 ? "not_scraped_yet" : undefined,
       sourceAppUrl: row.url,
     });
   }
 
-  const country = normaliseCountry(getSetting('app_country', DEFAULT_COUNTRY));
+  const country = normaliseCountry(getSetting("app_country", DEFAULT_COUNTRY));
 
   // Backfill missing genre/price by hitting iTunes lookup on demand.
   // We don't write back to the DB here — that's the scrape path's

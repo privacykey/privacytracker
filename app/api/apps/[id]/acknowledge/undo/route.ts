@@ -6,18 +6,19 @@
  * panel; the client stashes preState when the action is recorded and posts
  * it back here.
  */
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { undoReviewAction } from '../../../../../../lib/changelog';
-import { readOptionalBoundedJson } from '../../../../../../lib/security';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { undoReviewAction } from "../../../../../../lib/changelog";
+import { readOptionalBoundedJson } from "../../../../../../lib/security";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   if (!id) {
-    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
   let body: {
@@ -31,12 +32,13 @@ export async function POST(
   try {
     body = await readOptionalBoundedJson(request, 4 * 1024, {});
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const actionId = typeof body?.actionId === 'string' ? body.actionId.trim() : '';
+  const actionId =
+    typeof body?.actionId === "string" ? body.actionId.trim() : "";
   if (!actionId) {
-    return NextResponse.json({ error: 'Missing actionId' }, { status: 400 });
+    return NextResponse.json({ error: "Missing actionId" }, { status: 400 });
   }
 
   // Defensive numeric coercion to reject NaN / negative / non-finite values.
@@ -44,13 +46,15 @@ export async function POST(
   const changeCount = Number(raw.changeCount);
   const changesAcknowledgedAt = Number(raw.changesAcknowledgedAt);
   const changesSnoozedUntil = Number(raw.changesSnoozedUntil);
-  const allFinite = [changeCount, changesAcknowledgedAt, changesSnoozedUntil].every(
-    n => Number.isFinite(n) && n >= 0,
-  );
+  const allFinite = [
+    changeCount,
+    changesAcknowledgedAt,
+    changesSnoozedUntil,
+  ].every((n) => Number.isFinite(n) && n >= 0);
   if (!allFinite) {
     return NextResponse.json(
-      { error: 'preState fields must be finite, non-negative numbers' },
-      { status: 400 },
+      { error: "preState fields must be finite, non-negative numbers" },
+      { status: 400 }
     );
   }
 
@@ -64,8 +68,10 @@ export async function POST(
     // 410 Gone signals a stale undo stack (double Cmd-Z, sibling-tab undo)
     // so the UI can quietly drop the op without an error toast.
     return NextResponse.json(
-      { error: 'Review action no longer exists or does not belong to this app' },
-      { status: 410 },
+      {
+        error: "Review action no longer exists or does not belong to this app",
+      },
+      { status: 410 }
     );
   }
   return NextResponse.json({ ok: true });

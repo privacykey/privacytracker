@@ -1,6 +1,6 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import fs from "node:fs";
+import path from "node:path";
+import Database from "better-sqlite3";
 
 /*
  * Build-phase detection. `next build` runs page-data collection in parallel
@@ -11,8 +11,8 @@ import fs from 'fs';
  * BUILD_STANDALONE is set by package.json's build:standalone script.
  */
 export const isBuildPhase =
-  process.env.NEXT_PHASE === 'phase-production-build' ||
-  process.env.BUILD_STANDALONE === '1';
+  process.env.NEXT_PHASE === "phase-production-build" ||
+  process.env.BUILD_STANDALONE === "1";
 
 /*
  * Resolve the data directory.
@@ -23,17 +23,19 @@ export const isBuildPhase =
  */
 export const dataDir = process.env.PRIVACYTRACKER_DATA_DIR
   ? path.resolve(process.env.PRIVACYTRACKER_DATA_DIR)
-  : path.join(process.cwd(), 'data');
-if (!isBuildPhase && !fs.existsSync(dataDir)) {
+  : path.join(process.cwd(), "data");
+if (!(isBuildPhase || fs.existsSync(dataDir))) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-export const dbPath = isBuildPhase ? ':memory:' : path.join(dataDir, 'privacy.db');
+export const dbPath = isBuildPhase
+  ? ":memory:"
+  : path.join(dataDir, "privacy.db");
 const db = new Database(dbPath);
 
-db.pragma('journal_mode = WAL');
-db.pragma('busy_timeout = 5000');
-db.pragma('foreign_keys = ON');
+db.pragma("journal_mode = WAL");
+db.pragma("busy_timeout = 5000");
+db.pragma("foreign_keys = ON");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS apps (
@@ -622,6 +624,41 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_related_apps_source
     ON related_apps_observed(source_app_id, shelf_type);
+
+  /* Devices — one row per "the user said this is My iPhone" import source.
+     Created at import time (every method gets a device row; cfgutil pre-fills
+     name + ecid + model from Apple Configurator's device probe, CSV/manual
+     ask the user). ECID is the stable per-device id from Apple Configurator;
+     CSV/manual have NULL ECID. is_unknown_placeholder is set on the one
+     migration row that retro-links pre-existing apps. */
+  CREATE TABLE IF NOT EXISTS devices (
+    id                       TEXT PRIMARY KEY,
+    name                     TEXT NOT NULL,
+    ecid                     TEXT,
+    model                    TEXT,
+    ios_version              TEXT,
+    device_class             TEXT,
+    created_at               INTEGER NOT NULL,
+    last_synced_at           INTEGER NOT NULL,
+    is_unknown_placeholder   INTEGER NOT NULL DEFAULT 0
+  );
+  /* Unique partial index — multiple devices can have NULL ECID (CSV/manual);
+     at most one device can claim a specific cfgutil ECID. */
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_ecid ON devices(ecid) WHERE ecid IS NOT NULL;
+
+  /* App ↔ device junction. An app like Instagram tracked from both an
+     iPhone and an iPad has two rows here — one per device. Cascades both
+     ways: deleting an app or a device cleans up its links automatically. */
+  CREATE TABLE IF NOT EXISTS app_devices (
+    app_id          TEXT NOT NULL,
+    device_id       TEXT NOT NULL,
+    first_seen_at   INTEGER NOT NULL,
+    last_seen_at    INTEGER NOT NULL,
+    PRIMARY KEY (app_id, device_id),
+    FOREIGN KEY (app_id)    REFERENCES apps(id)    ON DELETE CASCADE,
+    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_app_devices_device ON app_devices(device_id);
 `);
 
 // Run safe migrations for existing databases.
@@ -632,15 +669,19 @@ db.exec(`
 // column name". applyColumnMigrations swallows that specific failure only.
 function applyColumnMigrations(
   existingCols: string[],
-  migrationsList: ReadonlyArray<[string, string]>,
+  migrationsList: readonly [string, string][]
 ): void {
   for (const [col, sql] of migrationsList) {
-    if (existingCols.includes(col)) continue;
+    if (existingCols.includes(col)) {
+      continue;
+    }
     try {
       db.exec(sql);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (/duplicate column name/i.test(msg)) continue;
+      if (/duplicate column name/i.test(msg)) {
+        continue;
+      }
       throw e;
     }
   }
@@ -650,93 +691,201 @@ function applyColumnMigrations(
 function applySingleColumnMigration(
   existingCols: string[],
   col: string,
-  sql: string,
+  sql: string
 ): void {
-  if (existingCols.includes(col)) return;
+  if (existingCols.includes(col)) {
+    return;
+  }
   try {
     db.exec(sql);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/duplicate column name/i.test(msg)) return;
+    if (/duplicate column name/i.test(msg)) {
+      return;
+    }
     throw e;
   }
 }
 
-const appCols = (db.prepare('PRAGMA table_info(apps)').all() as { name: string }[]).map(c => c.name);
+const appCols = (
+  db.prepare("PRAGMA table_info(apps)").all() as { name: string }[]
+).map((c) => c.name);
 const migrations: [string, string][] = [
-  ['firstSeen', 'ALTER TABLE apps ADD COLUMN firstSeen INTEGER NOT NULL DEFAULT 0'],
-  ['changeCount', 'ALTER TABLE apps ADD COLUMN changeCount INTEGER NOT NULL DEFAULT 0'],
-  ['bundleId', 'ALTER TABLE apps ADD COLUMN bundleId TEXT'],
-  ['developer', 'ALTER TABLE apps ADD COLUMN developer TEXT'],
-  ['privacyPolicyUrl', 'ALTER TABLE apps ADD COLUMN privacyPolicyUrl TEXT'],
-  ['changes_acknowledged_at', 'ALTER TABLE apps ADD COLUMN changes_acknowledged_at INTEGER NOT NULL DEFAULT 0'],
-  ['changes_snoozed_until', 'ALTER TABLE apps ADD COLUMN changes_snoozed_until INTEGER NOT NULL DEFAULT 0'],
-  ['currentVersion', 'ALTER TABLE apps ADD COLUMN currentVersion TEXT'],
-  ['versionUpdatedAt', 'ALTER TABLE apps ADD COLUMN versionUpdatedAt INTEGER'],
-  ['whatsNew', 'ALTER TABLE apps ADD COLUMN whatsNew TEXT'],
-  ['hasPrivacyDetails', 'ALTER TABLE apps ADD COLUMN hasPrivacyDetails INTEGER'],
+  [
+    "firstSeen",
+    "ALTER TABLE apps ADD COLUMN firstSeen INTEGER NOT NULL DEFAULT 0",
+  ],
+  [
+    "changeCount",
+    "ALTER TABLE apps ADD COLUMN changeCount INTEGER NOT NULL DEFAULT 0",
+  ],
+  ["bundleId", "ALTER TABLE apps ADD COLUMN bundleId TEXT"],
+  ["developer", "ALTER TABLE apps ADD COLUMN developer TEXT"],
+  ["privacyPolicyUrl", "ALTER TABLE apps ADD COLUMN privacyPolicyUrl TEXT"],
+  [
+    "changes_acknowledged_at",
+    "ALTER TABLE apps ADD COLUMN changes_acknowledged_at INTEGER NOT NULL DEFAULT 0",
+  ],
+  [
+    "changes_snoozed_until",
+    "ALTER TABLE apps ADD COLUMN changes_snoozed_until INTEGER NOT NULL DEFAULT 0",
+  ],
+  ["currentVersion", "ALTER TABLE apps ADD COLUMN currentVersion TEXT"],
+  ["versionUpdatedAt", "ALTER TABLE apps ADD COLUMN versionUpdatedAt INTEGER"],
+  ["whatsNew", "ALTER TABLE apps ADD COLUMN whatsNew TEXT"],
+  [
+    "hasPrivacyDetails",
+    "ALTER TABLE apps ADD COLUMN hasPrivacyDetails INTEGER",
+  ],
   // Accessibility nutrition labels. NULL until next scrape.
-  ['hasAccessibilityLabels', 'ALTER TABLE apps ADD COLUMN hasAccessibilityLabels INTEGER'],
+  [
+    "hasAccessibilityLabels",
+    "ALTER TABLE apps ADD COLUMN hasAccessibilityLabels INTEGER",
+  ],
   // Pricing + IAP snapshot. NULL = unknown (UI hides the price chip).
-  ['priceAmount',     'ALTER TABLE apps ADD COLUMN priceAmount REAL'],
-  ['priceCurrency',   'ALTER TABLE apps ADD COLUMN priceCurrency TEXT'],
-  ['priceFormatted',  'ALTER TABLE apps ADD COLUMN priceFormatted TEXT'],
-  ['hasIap',          'ALTER TABLE apps ADD COLUMN hasIap INTEGER'],
+  ["priceAmount", "ALTER TABLE apps ADD COLUMN priceAmount REAL"],
+  ["priceCurrency", "ALTER TABLE apps ADD COLUMN priceCurrency TEXT"],
+  ["priceFormatted", "ALTER TABLE apps ADD COLUMN priceFormatted TEXT"],
+  ["hasIap", "ALTER TABLE apps ADD COLUMN hasIap INTEGER"],
   // Apple genre/category. NULL until next sync.
-  ['genreId',         'ALTER TABLE apps ADD COLUMN genreId INTEGER'],
-  ['genreName',       'ALTER TABLE apps ADD COLUMN genreName TEXT'],
+  ["genreId", "ALTER TABLE apps ADD COLUMN genreId INTEGER"],
+  ["genreName", "ALTER TABLE apps ADD COLUMN genreName TEXT"],
 ];
 applyColumnMigrations(appCols, migrations);
 
 // Migration: add type_id column to privacy_categories if missing
-const catCols = (db.prepare('PRAGMA table_info(privacy_categories)').all() as { name: string }[]).map(c => c.name);
+const catCols = (
+  db.prepare("PRAGMA table_info(privacy_categories)").all() as {
+    name: string;
+  }[]
+).map((c) => c.name);
 applySingleColumnMigration(
   catCols,
-  'type_id',
-  'ALTER TABLE privacy_categories ADD COLUMN type_id TEXT REFERENCES privacy_types(id) ON DELETE CASCADE',
+  "type_id",
+  "ALTER TABLE privacy_categories ADD COLUMN type_id TEXT REFERENCES privacy_types(id) ON DELETE CASCADE"
 );
 
 // Migration: privacy_snapshots.source + wayback_snapshot_url for the
 // historical-import flow. app_version / app_version_updated_at stamp each
 // snapshot with the App Store version current at scrape time.
-const snapshotCols = (db.prepare('PRAGMA table_info(privacy_snapshots)').all() as { name: string }[]).map(c => c.name);
+const snapshotCols = (
+  db.prepare("PRAGMA table_info(privacy_snapshots)").all() as { name: string }[]
+).map((c) => c.name);
 const snapshotMigrations: [string, string][] = [
-  ['source',                  "ALTER TABLE privacy_snapshots ADD COLUMN source TEXT NOT NULL DEFAULT 'live'"],
-  ['wayback_snapshot_url',    'ALTER TABLE privacy_snapshots ADD COLUMN wayback_snapshot_url TEXT'],
-  ['triggered_by',            'ALTER TABLE privacy_snapshots ADD COLUMN triggered_by TEXT'],
-  ['app_version',             'ALTER TABLE privacy_snapshots ADD COLUMN app_version TEXT'],
-  ['app_version_updated_at',  'ALTER TABLE privacy_snapshots ADD COLUMN app_version_updated_at INTEGER'],
+  [
+    "source",
+    "ALTER TABLE privacy_snapshots ADD COLUMN source TEXT NOT NULL DEFAULT 'live'",
+  ],
+  [
+    "wayback_snapshot_url",
+    "ALTER TABLE privacy_snapshots ADD COLUMN wayback_snapshot_url TEXT",
+  ],
+  [
+    "triggered_by",
+    "ALTER TABLE privacy_snapshots ADD COLUMN triggered_by TEXT",
+  ],
+  ["app_version", "ALTER TABLE privacy_snapshots ADD COLUMN app_version TEXT"],
+  [
+    "app_version_updated_at",
+    "ALTER TABLE privacy_snapshots ADD COLUMN app_version_updated_at INTEGER",
+  ],
 ];
 applyColumnMigrations(snapshotCols, snapshotMigrations);
 
 // Migration: change_review_actions.covered_snapshot_ids — JSON array of
 // snapshot ids pending at action time, so the History timeline can link
 // each review row to the specific syncs it acknowledged.
-const reviewActionCols = (db.prepare('PRAGMA table_info(change_review_actions)').all() as { name: string }[]).map(c => c.name);
+const reviewActionCols = (
+  db.prepare("PRAGMA table_info(change_review_actions)").all() as {
+    name: string;
+  }[]
+).map((c) => c.name);
 applySingleColumnMigration(
   reviewActionCols,
-  'covered_snapshot_ids',
-  'ALTER TABLE change_review_actions ADD COLUMN covered_snapshot_ids TEXT',
+  "covered_snapshot_ids",
+  "ALTER TABLE change_review_actions ADD COLUMN covered_snapshot_ids TEXT"
 );
 
 // Migration: `removed_app_id` on import_items. When the user deletes a tracked
 // app that was originally added through an import, the FK `ON DELETE SET NULL`
 // wipes `app_id`. This column preserves the old pointer so the import history
 // can still show which app was removed, and so retries can be refused.
-const importItemCols = (db.prepare('PRAGMA table_info(import_items)').all() as { name: string }[]).map(c => c.name);
+const importItemCols = (
+  db.prepare("PRAGMA table_info(import_items)").all() as { name: string }[]
+).map((c) => c.name);
 const importItemMigrations: [string, string][] = [
-  ['removed_app_id',  'ALTER TABLE import_items ADD COLUMN removed_app_id TEXT'],
+  ["removed_app_id", "ALTER TABLE import_items ADD COLUMN removed_app_id TEXT"],
   // Background queue bookkeeping for the per-item retry loop. See CREATE TABLE.
-  ['icon_url',        'ALTER TABLE import_items ADD COLUMN icon_url TEXT'],
-  ['country',         'ALTER TABLE import_items ADD COLUMN country TEXT'],
-  ['next_attempt_at', 'ALTER TABLE import_items ADD COLUMN next_attempt_at INTEGER'],
-  ['attempt_count',   'ALTER TABLE import_items ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0'],
+  ["icon_url", "ALTER TABLE import_items ADD COLUMN icon_url TEXT"],
+  ["country", "ALTER TABLE import_items ADD COLUMN country TEXT"],
+  [
+    "next_attempt_at",
+    "ALTER TABLE import_items ADD COLUMN next_attempt_at INTEGER",
+  ],
+  [
+    "attempt_count",
+    "ALTER TABLE import_items ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0",
+  ],
 ];
 applyColumnMigrations(importItemCols, importItemMigrations);
 // Partial index on the queue hot-path; old DBs need this added by hand.
 db.exec(
-  "CREATE INDEX IF NOT EXISTS idx_import_items_queue ON import_items(status, next_attempt_at) WHERE status = 'queued'",
+  "CREATE INDEX IF NOT EXISTS idx_import_items_queue ON import_items(status, next_attempt_at) WHERE status = 'queued'"
 );
+
+// Migration: imports.device_id — links an import session to a device row.
+// Nullable: existing imports from before the devices feature stay legible
+// in import history with a NULL pointer. New imports populate this from
+// the OnboardWizard's device-naming step.
+const importsCols = (
+  db.prepare("PRAGMA table_info(imports)").all() as { name: string }[]
+).map((c) => c.name);
+applySingleColumnMigration(
+  importsCols,
+  "device_id",
+  "ALTER TABLE imports ADD COLUMN device_id TEXT"
+);
+
+// One-time backfill: if any apps exist but no devices have been created,
+// create a single "Unknown device" placeholder and link every existing
+// app to it. Subsequent boots are no-ops because at least one device row
+// exists. Users can rename "Unknown device" or split apps off it onto
+// correctly-named devices via Settings → Devices.
+try {
+  const deviceCount = (
+    db.prepare("SELECT COUNT(*) AS n FROM devices").get() as { n: number }
+  ).n;
+  const appCount = (
+    db.prepare("SELECT COUNT(*) AS n FROM apps").get() as { n: number }
+  ).n;
+  if (deviceCount === 0 && appCount > 0) {
+    const now = Date.now();
+    const placeholderId = (
+      db.prepare("SELECT lower(hex(randomblob(16))) AS id").get() as {
+        id: string;
+      }
+    ).id;
+    const tx = db.transaction(() => {
+      db.prepare(`
+        INSERT INTO devices (id, name, ecid, model, ios_version, device_class,
+                             created_at, last_synced_at, is_unknown_placeholder)
+        VALUES (?, ?, NULL, NULL, NULL, NULL, ?, ?, 1)
+      `).run(placeholderId, "Unknown device", now, now);
+      db.prepare(`
+        INSERT OR IGNORE INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)
+        SELECT id, ?, COALESCE(firstSeen, lastSynced, ?), ?
+        FROM apps
+      `).run(placeholderId, now, now);
+    });
+    tx();
+    console.info(
+      `[db] devices backfill: linked ${appCount} existing apps to "Unknown device"`
+    );
+  }
+} catch (error) {
+  // Belt-and-braces — don't block boot on the backfill.
+  console.warn("[db] unknown-device backfill failed:", error);
+}
 
 // Migration: split URL-less 'queued' rows out into 'pending_search'. Two
 // different retry mechanisms used to compete for the same `'queued'`
@@ -755,55 +904,96 @@ try {
   const healed = db
     .prepare(
       "UPDATE import_items SET status = 'pending_search' " +
-        "WHERE status = 'queued' AND (url IS NULL OR url = '')",
+        "WHERE status = 'queued' AND (url IS NULL OR url = '')"
     )
     .run();
   if (healed.changes > 0) {
     console.info(
-      `[db] migrated ${healed.changes} URL-less 'queued' import_items → 'pending_search'`,
+      `[db] migrated ${healed.changes} URL-less 'queued' import_items → 'pending_search'`
     );
   }
 } catch (error) {
-  console.warn('[db] pending_search backfill failed:', error);
+  console.warn("[db] pending_search backfill failed:", error);
 }
 
 // Migration: shortlist_entries.mode — backfill 'privacy' on existing rows
 // (the only mode that existed before this column).
-const shortlistCols = (db.prepare('PRAGMA table_info(shortlist_entries)').all() as { name: string }[]).map(c => c.name);
+const shortlistCols = (
+  db.prepare("PRAGMA table_info(shortlist_entries)").all() as { name: string }[]
+).map((c) => c.name);
 applySingleColumnMigration(
   shortlistCols,
-  'mode',
-  "ALTER TABLE shortlist_entries ADD COLUMN mode TEXT NOT NULL DEFAULT 'privacy'",
+  "mode",
+  "ALTER TABLE shortlist_entries ADD COLUMN mode TEXT NOT NULL DEFAULT 'privacy'"
 );
 
 // Migration: notifications.stale (defaults to 0).
 // notifications.not_before — quiet-hours deferral. NULL = show now;
 // non-null = don't surface in the bell until after this time. Bell UI
 // filters by `not_before IS NULL OR not_before <= unixepoch() * 1000`.
-const notifCols = (db.prepare('PRAGMA table_info(notifications)').all() as { name: string }[]).map(c => c.name);
+const notifCols = (
+  db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[]
+).map((c) => c.name);
 const notifMigrations: [string, string][] = [
-  ['stale',      'ALTER TABLE notifications ADD COLUMN stale INTEGER NOT NULL DEFAULT 0'],
-  ['not_before', 'ALTER TABLE notifications ADD COLUMN not_before INTEGER'],
+  [
+    "stale",
+    "ALTER TABLE notifications ADD COLUMN stale INTEGER NOT NULL DEFAULT 0",
+  ],
+  ["not_before", "ALTER TABLE notifications ADD COLUMN not_before INTEGER"],
 ];
 applyColumnMigrations(notifCols, notifMigrations);
 
 // Migrations for privacy_policy_analyses
-const policyCols = (db.prepare('PRAGMA table_info(privacy_policy_analyses)').all() as { name: string }[]).map(c => c.name);
+const policyCols = (
+  db.prepare("PRAGMA table_info(privacy_policy_analyses)").all() as {
+    name: string;
+  }[]
+).map((c) => c.name);
 const policyMigrations: [string, string][] = [
-  ['source_origin', 'ALTER TABLE privacy_policy_analyses ADD COLUMN source_origin TEXT'],
-  ['source_final_url', 'ALTER TABLE privacy_policy_analyses ADD COLUMN source_final_url TEXT'],
+  [
+    "source_origin",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN source_origin TEXT",
+  ],
+  [
+    "source_final_url",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN source_final_url TEXT",
+  ],
   // Previous AI summary captured when replaced, for diff rendering.
-  ['previous_summary_json', 'ALTER TABLE privacy_policy_analyses ADD COLUMN previous_summary_json TEXT'],
-  ['previous_summary_at', 'ALTER TABLE privacy_policy_analyses ADD COLUMN previous_summary_at INTEGER'],
+  [
+    "previous_summary_json",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN previous_summary_json TEXT",
+  ],
+  [
+    "previous_summary_at",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN previous_summary_at INTEGER",
+  ],
   // Phase log for the most recent regenerate run.
-  ['last_run_log', 'ALTER TABLE privacy_policy_analyses ADD COLUMN last_run_log TEXT'],
-  ['source_fetched_at', 'ALTER TABLE privacy_policy_analyses ADD COLUMN source_fetched_at INTEGER'],
+  [
+    "last_run_log",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN last_run_log TEXT",
+  ],
+  [
+    "source_fetched_at",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN source_fetched_at INTEGER",
+  ],
   // Chunk-note persistence for reusing computed per-chunk summaries on retry.
-  ['chunk_notes_json', 'ALTER TABLE privacy_policy_analyses ADD COLUMN chunk_notes_json TEXT'],
-  ['chunk_notes_hash', 'ALTER TABLE privacy_policy_analyses ADD COLUMN chunk_notes_hash TEXT'],
+  [
+    "chunk_notes_json",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN chunk_notes_json TEXT",
+  ],
+  [
+    "chunk_notes_hash",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN chunk_notes_hash TEXT",
+  ],
   // Live-run bookkeeping. NULL run_status treated as 'idle'.
-  ['run_status',     'ALTER TABLE privacy_policy_analyses ADD COLUMN run_status TEXT'],
-  ['run_started_at', 'ALTER TABLE privacy_policy_analyses ADD COLUMN run_started_at INTEGER'],
+  [
+    "run_status",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN run_status TEXT",
+  ],
+  [
+    "run_started_at",
+    "ALTER TABLE privacy_policy_analyses ADD COLUMN run_started_at INTEGER",
+  ],
 ];
 applyColumnMigrations(policyCols, policyMigrations);
 
@@ -811,17 +1001,29 @@ applyColumnMigrations(policyCols, policyMigrations);
 // at run_status='running'. Flip it back to 'idle' on boot so the UI
 // doesn't show a phantom spinner forever.
 try {
-  db.exec(`UPDATE privacy_policy_analyses SET run_status = 'idle' WHERE run_status = 'running'`);
+  db.exec(
+    `UPDATE privacy_policy_analyses SET run_status = 'idle' WHERE run_status = 'running'`
+  );
 } catch (error) {
   // Belt+braces — don't block boot on this UPDATE.
-  console.warn('[db] clearing stale policy run_status failed:', error);
+  console.warn("[db] clearing stale policy run_status failed:", error);
 }
 
 // Migrations for privacy_policy_versions Internet-Archive columns.
-const versionCols = (db.prepare('PRAGMA table_info(privacy_policy_versions)').all() as { name: string }[]).map(c => c.name);
+const versionCols = (
+  db.prepare("PRAGMA table_info(privacy_policy_versions)").all() as {
+    name: string;
+  }[]
+).map((c) => c.name);
 const versionMigrations: [string, string][] = [
-  ['archive_url',          'ALTER TABLE privacy_policy_versions ADD COLUMN archive_url TEXT'],
-  ['archive_submitted_at', 'ALTER TABLE privacy_policy_versions ADD COLUMN archive_submitted_at INTEGER'],
+  [
+    "archive_url",
+    "ALTER TABLE privacy_policy_versions ADD COLUMN archive_url TEXT",
+  ],
+  [
+    "archive_submitted_at",
+    "ALTER TABLE privacy_policy_versions ADD COLUMN archive_submitted_at INTEGER",
+  ],
 ];
 applyColumnMigrations(versionCols, versionMigrations);
 
@@ -872,7 +1074,7 @@ try {
   `);
 } catch (error) {
   // Never fatal — prefer booting the app over blowing up on an optional backfill.
-  console.warn('[db] privacy_policy_versions backfill failed:', error);
+  console.warn("[db] privacy_policy_versions backfill failed:", error);
 }
 
 export default db;

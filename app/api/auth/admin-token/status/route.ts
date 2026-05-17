@@ -9,10 +9,13 @@
  *
  * Never returns the token itself.
  */
-import { NextResponse, type NextRequest } from 'next/server';
-import { adminTokenConfigured, requestHasValidAdminToken } from '@/lib/security';
+import { type NextRequest, NextResponse } from "next/server";
+import {
+  adminTokenConfigured,
+  requestHasValidAdminToken,
+} from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   return NextResponse.json({

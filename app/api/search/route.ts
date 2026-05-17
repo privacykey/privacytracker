@@ -1,17 +1,18 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { sanitizeNamesList, sanitizeRowsList } from "../../../lib/app-import";
+import { normalizeCountry } from "../../../lib/region";
 import {
-  searchAppsByName,
   lookupAppsByBundleId,
   type SearchQuery,
-} from '../../../lib/scraper';
-import { sanitizeNamesList, sanitizeRowsList } from '../../../lib/app-import';
-import { normalizeCountry } from '../../../lib/region';
+  searchAppsByName,
+} from "../../../lib/scraper";
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
   readBoundedJson,
-} from '../../../lib/security';
+} from "../../../lib/security";
 
 // Local-first guardrails:
 //   - Bounded body: imports can carry up to MAX_IMPORT_ROWS names, but nothing
@@ -22,17 +23,17 @@ const SEARCH_BODY_MAX_BYTES = 256 * 1024;
 
 export async function POST(request: Request) {
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'search'),
+    key: rateLimitKeyForRequest(request, "search"),
     limit: 60,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Rate limit exceeded for /api/search. Try again shortly.' },
+      { error: "Rate limit exceeded for /api/search. Try again shortly." },
       {
         status: 429,
-        headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) },
-      },
+        headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) },
+      }
     );
   }
 
@@ -45,12 +46,14 @@ export async function POST(request: Request) {
   try {
     body = await readBoundedJson(request, SEARCH_BODY_MAX_BYTES);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid request body';
+    const message =
+      error instanceof Error ? error.message : "Invalid request body";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const { names, rows, bundleIds, country } = body ?? {};
-  const options = country !== undefined ? { country: normalizeCountry(country) } : {};
+  const options =
+    country === undefined ? {} : { country: normalizeCountry(country) };
 
   try {
     // Bundle-ID lookup is preferred when present (it's more accurate
@@ -66,8 +69,10 @@ export async function POST(request: Request) {
       // 200/req anyway; the cap here just stops a runaway client from
       // queuing thousands of lookups in one POST.
       const ids = (bundleIds as unknown[])
-        .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
-        .map(v => v.trim())
+        .filter(
+          (v): v is string => typeof v === "string" && v.trim().length > 0
+        )
+        .map((v) => v.trim())
         .slice(0, 1000);
       if (ids.length === 0) {
         return NextResponse.json({ results: [] });
@@ -85,12 +90,12 @@ export async function POST(request: Request) {
       // `BundleIdLookupResult` has shape { bundleId, match: AppCandidate | null },
       // so "unmatched" = match === null.
       const unmatchedIds = batch.results
-        .filter(r => r.match === null)
-        .map(r => r.bundleId);
+        .filter((r) => r.match === null)
+        .map((r) => r.bundleId);
       if (unmatchedIds.length > 0) {
         console.warn(
           `[search] bundle-ID lookup found nothing for ${unmatchedIds.length} / ${batch.results.length} ids:`,
-          unmatchedIds,
+          unmatchedIds
         );
       }
 
@@ -117,11 +122,14 @@ export async function POST(request: Request) {
     if (Array.isArray(rows) && rows.length > 0) {
       queries = sanitizeRowsList(rows);
     } else if (Array.isArray(names) && names.length > 0) {
-      queries = sanitizeNamesList(names).map(name => ({ name }));
+      queries = sanitizeNamesList(names).map((name) => ({ name }));
     } else {
       return NextResponse.json(
-        { error: 'Invalid payload: expected `names`, `rows`, or `bundleIds` array' },
-        { status: 400 },
+        {
+          error:
+            "Invalid payload: expected `names`, `rows`, or `bundleIds` array",
+        },
+        { status: 400 }
       );
     }
 
@@ -139,12 +147,12 @@ export async function POST(request: Request) {
     // names dropped out. Logs at warn level; the array is bounded by
     // the same MAX_IMPORT_ROWS guard the input is.
     const unmatchedNames = batch.results
-      .filter(r => r.candidates.length === 0)
-      .map(r => r.query);
+      .filter((r) => r.candidates.length === 0)
+      .map((r) => r.query);
     if (unmatchedNames.length > 0) {
       console.warn(
         `[search] ${unmatchedNames.length} / ${batch.results.length} names returned no App Store matches:`,
-        unmatchedNames,
+        unmatchedNames
       );
     }
 
@@ -163,7 +171,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ results: batch.results });
   } catch (error) {
-    console.error('Search API error', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Search API error", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

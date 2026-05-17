@@ -1,8 +1,14 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
-import { exportShortlistMarkdown, listShortlistGroups } from '../../../../lib/shortlist';
-import { checkRateLimit, rateLimitKeyForRequest } from '../../../../lib/security';
+import { NextResponse } from "next/server";
+import {
+  checkRateLimit,
+  rateLimitKeyForRequest,
+} from "../../../../lib/security";
+import {
+  exportShortlistMarkdown,
+  listShortlistGroups,
+} from "../../../../lib/shortlist";
 
 /**
  * Export the shortlist. Two formats:
@@ -18,18 +24,18 @@ import { checkRateLimit, rateLimitKeyForRequest } from '../../../../lib/security
  */
 export async function GET(request: Request) {
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'shortlist.export'),
+    key: rateLimitKeyForRequest(request, "shortlist.export"),
     limit: 30,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const url = new URL(request.url);
-  const format = (url.searchParams.get('format') ?? 'md').toLowerCase();
+  const format = (url.searchParams.get("format") ?? "md").toLowerCase();
 
-  if (format === 'json') {
+  if (format === "json") {
     return NextResponse.json({
       exported_at: new Date().toISOString(),
       groups: listShortlistGroups(),
@@ -37,11 +43,11 @@ export async function GET(request: Request) {
   }
 
   const md = exportShortlistMarkdown();
-  const filename = `app-shortlist-${new Date().toISOString().split('T')[0]}.md`;
+  const filename = `app-shortlist-${new Date().toISOString().split("T")[0]}.md`;
   return new Response(md, {
     headers: {
-      'Content-Type':        'text/markdown; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      "Content-Type": "text/markdown; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
 }

@@ -15,10 +15,12 @@
  * pulling in node:crypto / node:dns from lib/security.ts.
  */
 export function isSafeExternalHref(href: string | undefined | null): boolean {
-  if (typeof href !== 'string' || !href.trim()) return false;
+  if (typeof href !== "string" || !href.trim()) {
+    return false;
+  }
   try {
     const u = new URL(href);
-    return u.protocol === 'http:' || u.protocol === 'https:';
+    return u.protocol === "http:" || u.protocol === "https:";
   } catch {
     return false;
   }

@@ -1,11 +1,12 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
 import {
   BackupFormatError,
   BackupUntrustedError,
   restoreBackup,
-} from '../../../../lib/backup';
-import { getSetting } from '../../../../lib/scheduler';
+} from "../../../../lib/backup";
+import { getSetting } from "../../../../lib/scheduler";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -13,7 +14,7 @@ import {
   recordAudit,
   requestActorIp,
   requestHasValidAdminToken,
-} from '../../../../lib/security';
+} from "../../../../lib/security";
 
 // Match the preview cap. See preview/route.ts for rationale.
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
@@ -30,42 +31,51 @@ const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
  */
 export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'backup.restore'),
+    key: rateLimitKeyForRequest(request, "backup.restore"),
     limit: 3,
     windowMs: 10 * 60_000,
   });
   if (!rate.allowed) {
     recordAudit({
-      action: 'backup.restore.rate_limited',
+      action: "backup.restore.rate_limited",
       actorIp,
       userAgent,
       success: false,
       detail: `retryAfterMs=${rate.retryAfterMs}`,
     });
     return NextResponse.json(
-      { error: 'Too many restore attempts. Try again later.' },
-      { status: 429 },
+      { error: "Too many restore attempts. Try again later." },
+      { status: 429 }
     );
   }
 
-  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
-      action: 'backup.restore.unauthorised',
+      action: "backup.restore.unauthorised",
       actorIp,
       userAgent,
       success: false,
-      detail: 'admin token required but missing or invalid',
+      detail: "admin token required but missing or invalid",
     });
-    return NextResponse.json({ error: 'Admin token required' }, { status: 401 });
+    return NextResponse.json(
+      { error: "Admin token required" },
+      { status: 401 }
+    );
   }
 
-  if (getSetting('sync_running', 'false') === 'true') {
+  if (getSetting("sync_running", "false") === "true") {
     return NextResponse.json(
-      { error: 'A sync is currently running. Please wait until it finishes before restoring.' },
-      { status: 409 },
+      {
+        error:
+          "A sync is currently running. Please wait until it finishes before restoring.",
+      },
+      { status: 409 }
     );
   }
 
@@ -75,7 +85,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     recordAudit({
-      action: 'backup.restore.bad_request',
+      action: "backup.restore.bad_request",
       actorIp,
       userAgent,
       success: false,
@@ -91,13 +101,13 @@ export async function POST(request: Request) {
   // through it would land an attacker-supplied envelope without the
   // user noticing.
   const url = new URL(request.url);
-  const allowUntrustedParam = url.searchParams.get('allowUntrusted');
-  const allowUntrustedHeader = request.headers.get('x-allow-untrusted-backup');
+  const allowUntrustedParam = url.searchParams.get("allowUntrusted");
+  const allowUntrustedHeader = request.headers.get("x-allow-untrusted-backup");
   const allowUntrusted =
-    allowUntrustedParam === '1' ||
-    allowUntrustedParam === 'true' ||
-    allowUntrustedHeader === '1' ||
-    allowUntrustedHeader === 'true';
+    allowUntrustedParam === "1" ||
+    allowUntrustedParam === "true" ||
+    allowUntrustedHeader === "1" ||
+    allowUntrustedHeader === "true";
 
   try {
     const result = restoreBackup(payload, {
@@ -109,7 +119,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof BackupUntrustedError) {
       recordAudit({
-        action: 'backup.restore.untrusted_rejected',
+        action: "backup.restore.untrusted_rejected",
         actorIp,
         userAgent,
         success: false,
@@ -118,15 +128,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: error.message,
-          code: 'untrusted_backup',
+          code: "untrusted_backup",
           signaturePresent: error.signaturePresent,
         },
-        { status: 409 },
+        { status: 409 }
       );
     }
     if (error instanceof BackupFormatError) {
       recordAudit({
-        action: 'backup.restore.format_error',
+        action: "backup.restore.format_error",
         actorIp,
         userAgent,
         success: false,
@@ -134,37 +144,42 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    console.error('[backup] restore failed:', error);
+    console.error("[backup] restore failed:", error);
     const message = error instanceof Error ? error.message : String(error);
     recordAudit({
-      action: 'backup.restore.failed',
+      action: "backup.restore.failed",
       actorIp,
       userAgent,
       success: false,
       detail: message.slice(0, 256),
     });
     return NextResponse.json(
-      { error: message || 'Failed to restore backup.' },
-      { status: 500 },
+      { error: message || "Failed to restore backup." },
+      { status: 500 }
     );
   }
 }
 
-async function readJsonBody(request: Request, maxBytes: number): Promise<unknown> {
-  const declared = Number(request.headers.get('content-length') ?? '');
+async function readJsonBody(
+  request: Request,
+  maxBytes: number
+): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new Error(`Backup too large (${declared} > ${maxBytes} bytes).`);
   }
   const buf = Buffer.from(await request.arrayBuffer());
   if (buf.byteLength > maxBytes) {
-    throw new Error(`Backup too large (${buf.byteLength} > ${maxBytes} bytes).`);
+    throw new Error(
+      `Backup too large (${buf.byteLength} > ${maxBytes} bytes).`
+    );
   }
   if (buf.byteLength === 0) {
-    throw new Error('Empty upload.');
+    throw new Error("Empty upload.");
   }
   try {
-    return JSON.parse(buf.toString('utf8'));
+    return JSON.parse(buf.toString("utf8"));
   } catch {
-    throw new Error('Uploaded file is not valid JSON.');
+    throw new Error("Uploaded file is not valid JSON.");
   }
 }

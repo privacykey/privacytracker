@@ -22,20 +22,22 @@
  * grouped by surface, not by hash order.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const localesDir = join(__dirname, '..', 'locales');
+const localesDir = join(__dirname, "..", "locales");
 
 /** Recursively flatten a nested object into dotted keys. */
-function flatten(obj, prefix = '') {
+function flatten(obj, prefix = "") {
   const out = new Set();
   for (const [k, v] of Object.entries(obj)) {
     const path = prefix ? `${prefix}.${k}` : k;
-    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-      for (const child of flatten(v, path)) out.add(child);
+    if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+      for (const child of flatten(v, path)) {
+        out.add(child);
+      }
     } else {
       out.add(path);
     }
@@ -48,7 +50,7 @@ function loadLocale(file) {
   const path = join(localesDir, file);
   let raw;
   try {
-    raw = readFileSync(path, 'utf-8');
+    raw = readFileSync(path, "utf-8");
   } catch (e) {
     throw new Error(`Couldn't read ${file}: ${e.message}`);
   }
@@ -61,14 +63,14 @@ function loadLocale(file) {
   return flatten(parsed);
 }
 
-const localeFiles = readdirSync(localesDir).filter((f) => f.endsWith('.json'));
-if (!localeFiles.includes('en.json')) {
-  console.error('No locales/en.json found — nothing to compare against.');
+const localeFiles = readdirSync(localesDir).filter((f) => f.endsWith(".json"));
+if (!localeFiles.includes("en.json")) {
+  console.error("No locales/en.json found — nothing to compare against.");
   process.exit(2);
 }
 
-const enKeys = loadLocale('en.json');
-const targets = localeFiles.filter((f) => f !== 'en.json');
+const enKeys = loadLocale("en.json");
+const targets = localeFiles.filter((f) => f !== "en.json");
 
 let problems = 0;
 
@@ -86,20 +88,30 @@ for (const file of targets) {
   problems += missing.length + extra.length;
   console.log(`\n✗ ${file} — out of parity`);
   if (missing.length > 0) {
-    console.log(`  ${missing.length} key(s) present in en.json but missing here:`);
-    for (const k of missing) console.log(`    - ${k}`);
+    console.log(
+      `  ${missing.length} key(s) present in en.json but missing here:`
+    );
+    for (const k of missing) {
+      console.log(`    - ${k}`);
+    }
   }
   if (extra.length > 0) {
-    console.log(`  ${extra.length} key(s) present here but absent from en.json:`);
-    for (const k of extra) console.log(`    + ${k}`);
+    console.log(
+      `  ${extra.length} key(s) present here but absent from en.json:`
+    );
+    for (const k of extra) {
+      console.log(`    + ${k}`);
+    }
   }
 }
 
 if (problems > 0) {
   console.log(
-    `\nFound ${problems} parity issue(s). Crowdin's "all approved" pull would silently leave the gaps in place — fix or delete the rogue keys before merging.`,
+    `\nFound ${problems} parity issue(s). Crowdin's "all approved" pull would silently leave the gaps in place — fix or delete the rogue keys before merging.`
   );
   process.exit(1);
 }
 
-console.log(`\nAll ${targets.length} target locale(s) at parity with en.json (${enKeys.size} keys each).`);
+console.log(
+  `\nAll ${targets.length} target locale(s) at parity with en.json (${enKeys.size} keys each).`
+);

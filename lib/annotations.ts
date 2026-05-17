@@ -13,47 +13,55 @@
  * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
  */
 
-import db from './db';
-import { recordActivity } from './activity';
+import { recordActivity } from "./activity";
+import db from "./db";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type AnnotationSource = 'user' | 'imported';
-export type AnnotationVisibility = 'export' | 'private';
-export type AnnotationTag = 'concern' | 'positive' | 'follow_up' | 'other';
+export type AnnotationSource = "user" | "imported";
+export type AnnotationVisibility = "export" | "private";
+export type AnnotationTag = "concern" | "positive" | "follow_up" | "other";
 
 export interface Annotation {
-  id: string;
   appId: string;
   content: string;
+  createdAt: number;
+  /** Non-null while soft-deleted; null when active. */
+  deletedAt: number | null;
+  id: string;
   source: AnnotationSource;
   /** Recommender display name, present when source === 'imported'. */
   sourceName: string | null;
-  visibility: AnnotationVisibility;
   tag: AnnotationTag | null;
-  createdAt: number;
   updatedAt: number;
-  /** Non-null while soft-deleted; null when active. */
-  deletedAt: number | null;
+  visibility: AnnotationVisibility;
 }
 
 interface DbRow {
-  id: string;
   app_id: string;
   content: string;
+  created_at: number;
+  deleted_at: number | null;
+  id: string;
   source: string;
   source_name: string | null;
-  visibility: string;
   tag: string | null;
-  created_at: number;
   updated_at: number;
-  deleted_at: number | null;
+  visibility: string;
 }
 
-const VALID_TAGS: readonly AnnotationTag[] = ['concern', 'positive', 'follow_up', 'other'];
-const VALID_VISIBILITIES: readonly AnnotationVisibility[] = ['export', 'private'];
+const VALID_TAGS: readonly AnnotationTag[] = [
+  "concern",
+  "positive",
+  "follow_up",
+  "other",
+];
+const VALID_VISIBILITIES: readonly AnnotationVisibility[] = [
+  "export",
+  "private",
+];
 
 /** Soft-delete grace window — past this, a row is purged on the next read sweep. */
 export const SOFT_DELETE_WINDOW_MS = 30_000;
@@ -78,8 +86,10 @@ function rowToAnnotation(row: DbRow): Annotation {
 }
 
 function generateId(): string {
-  return globalThis.crypto?.randomUUID?.() ??
-    `ann_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    `ann_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -99,34 +109,38 @@ export function listAnnotations(appId: string): Annotation[] {
   const sweep = db.transaction(() => {
     db.prepare(
       `DELETE FROM annotations
-       WHERE deleted_at IS NOT NULL AND deleted_at < ?`,
+       WHERE deleted_at IS NOT NULL AND deleted_at < ?`
     ).run(cutoff);
   });
   try {
     sweep();
   } catch (e) {
     // Sweep failure is non-fatal — log and continue with the read.
-    console.warn('[annotations] sweep failed:', e);
+    console.warn("[annotations] sweep failed:", e);
   }
 
-  const rows = db.prepare(
-    `SELECT id, app_id, content, source, source_name, visibility, tag,
+  const rows = db
+    .prepare(
+      `SELECT id, app_id, content, source, source_name, visibility, tag,
             created_at, updated_at, deleted_at
      FROM annotations
      WHERE app_id = ? AND deleted_at IS NULL
-     ORDER BY created_at DESC`,
-  ).all(appId) as DbRow[];
+     ORDER BY created_at DESC`
+    )
+    .all(appId) as DbRow[];
 
   return rows.map(rowToAnnotation);
 }
 
 /** Read a single annotation by id (including soft-deleted rows; callers filter). */
 export function getAnnotation(id: string): Annotation | null {
-  const row = db.prepare(
-    `SELECT id, app_id, content, source, source_name, visibility, tag,
+  const row = db
+    .prepare(
+      `SELECT id, app_id, content, source, source_name, visibility, tag,
             created_at, updated_at, deleted_at
-     FROM annotations WHERE id = ?`,
-  ).get(id) as DbRow | undefined;
+     FROM annotations WHERE id = ?`
+    )
+    .get(id) as DbRow | undefined;
   return row ? rowToAnnotation(row) : null;
 }
 
@@ -139,8 +153,8 @@ interface CreateInput {
   content: string;
   source?: AnnotationSource;
   sourceName?: string | null;
-  visibility?: AnnotationVisibility;
   tag?: AnnotationTag | null;
+  visibility?: AnnotationVisibility;
 }
 
 /**
@@ -150,32 +164,42 @@ interface CreateInput {
 export function createAnnotation(input: CreateInput): Annotation {
   const id = generateId();
   const now = Date.now();
-  const source = input.source ?? 'user';
+  const source = input.source ?? "user";
   const sourceName = input.sourceName ?? null;
-  const visibility = input.visibility ?? 'export';
+  const visibility = input.visibility ?? "export";
   const tag = input.tag && VALID_TAGS.includes(input.tag) ? input.tag : null;
 
   db.prepare(
     `INSERT INTO annotations
        (id, app_id, content, source, source_name, visibility, tag,
         created_at, updated_at, deleted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
-  ).run(id, input.appId, input.content, source, sourceName, visibility, tag, now, now);
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
+  ).run(
+    id,
+    input.appId,
+    input.content,
+    source,
+    sourceName,
+    visibility,
+    tag,
+    now,
+    now
+  );
 
   // Activity log — only for user-authored notes; imported notes log under
   // the bundle-import event instead so we don't double-count.
-  if (source === 'user') {
+  if (source === "user") {
     try {
       recordActivity({
-        type: 'annotation_created',
-        status: 'ok',
+        type: "annotation_created",
+        status: "ok",
         appId: input.appId,
-        summary: 'Note created',
+        summary: "Note created",
         detail: { annotationId: id, tag, visibility },
         startedAt: now,
       });
     } catch (e) {
-      console.warn('[annotations] activity log failed:', e);
+      console.warn("[annotations] activity log failed:", e);
     }
   }
 
@@ -184,8 +208,8 @@ export function createAnnotation(input: CreateInput): Annotation {
 
 interface UpdateInput {
   content?: string;
-  visibility?: AnnotationVisibility;
   tag?: AnnotationTag | null;
+  visibility?: AnnotationVisibility;
 }
 
 /**
@@ -193,45 +217,52 @@ interface UpdateInput {
  * Touches updated_at on every call regardless of whether content changed —
  * that's how the auto-save indicator knows when to flash "Saved".
  */
-export function updateAnnotation(id: string, input: UpdateInput): Annotation | null {
+export function updateAnnotation(
+  id: string,
+  input: UpdateInput
+): Annotation | null {
   const existing = getAnnotation(id);
-  if (!existing || existing.deletedAt !== null) return null;
+  if (!existing || existing.deletedAt !== null) {
+    return null;
+  }
 
   const now = Date.now();
-  const sets: string[] = ['updated_at = ?'];
+  const sets: string[] = ["updated_at = ?"];
   const params: (string | number | null)[] = [now];
 
   if (input.content !== undefined) {
-    sets.push('content = ?');
+    sets.push("content = ?");
     params.push(input.content);
   }
   if (input.visibility !== undefined) {
     if (!VALID_VISIBILITIES.includes(input.visibility)) {
       throw new Error(`invalid visibility: ${input.visibility}`);
     }
-    sets.push('visibility = ?');
+    sets.push("visibility = ?");
     params.push(input.visibility);
   }
   if (input.tag !== undefined) {
     const next = input.tag && VALID_TAGS.includes(input.tag) ? input.tag : null;
-    sets.push('tag = ?');
+    sets.push("tag = ?");
     params.push(next);
   }
 
   params.push(id);
-  db.prepare(`UPDATE annotations SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+  db.prepare(`UPDATE annotations SET ${sets.join(", ")} WHERE id = ?`).run(
+    ...params
+  );
 
   try {
     recordActivity({
-      type: 'annotation_edited',
-      status: 'ok',
+      type: "annotation_edited",
+      status: "ok",
       appId: existing.appId,
-      summary: 'Note edited',
+      summary: "Note edited",
       detail: { annotationId: id },
       startedAt: now,
     });
   } catch (e) {
-    console.warn('[annotations] activity log failed:', e);
+    console.warn("[annotations] activity log failed:", e);
   }
 
   return getAnnotation(id);
@@ -244,24 +275,29 @@ export function updateAnnotation(id: string, input: UpdateInput): Annotation | n
  */
 export function softDeleteAnnotation(id: string): Annotation | null {
   const existing = getAnnotation(id);
-  if (!existing) return null;
-  if (existing.deletedAt !== null) return existing;
+  if (!existing) {
+    return null;
+  }
+  if (existing.deletedAt !== null) {
+    return existing;
+  }
 
   const now = Date.now();
-  db.prepare('UPDATE annotations SET deleted_at = ?, updated_at = ? WHERE id = ?')
-    .run(now, now, id);
+  db.prepare(
+    "UPDATE annotations SET deleted_at = ?, updated_at = ? WHERE id = ?"
+  ).run(now, now, id);
 
   try {
     recordActivity({
-      type: 'annotation_deleted',
-      status: 'ok',
+      type: "annotation_deleted",
+      status: "ok",
       appId: existing.appId,
-      summary: 'Note deleted',
+      summary: "Note deleted",
       detail: { annotationId: id },
       startedAt: now,
     });
   } catch (e) {
-    console.warn('[annotations] activity log failed:', e);
+    console.warn("[annotations] activity log failed:", e);
   }
 
   return getAnnotation(id);
@@ -273,7 +309,9 @@ export function softDeleteAnnotation(id: string): Annotation | null {
  */
 export function restoreAnnotation(id: string): Annotation | null {
   const existing = getAnnotation(id);
-  if (!existing || existing.deletedAt === null) return existing;
+  if (!existing || existing.deletedAt === null) {
+    return existing;
+  }
 
   const elapsed = Date.now() - existing.deletedAt;
   if (elapsed > SOFT_DELETE_WINDOW_MS) {
@@ -281,24 +319,27 @@ export function restoreAnnotation(id: string): Annotation | null {
     return null;
   }
 
-  db.prepare('UPDATE annotations SET deleted_at = NULL, updated_at = ? WHERE id = ?')
-    .run(Date.now(), id);
+  db.prepare(
+    "UPDATE annotations SET deleted_at = NULL, updated_at = ? WHERE id = ?"
+  ).run(Date.now(), id);
 
   return getAnnotation(id);
 }
 
 /** Hard-delete an annotation immediately. Used by Dev Options "purge" button. */
 export function purgeAnnotation(id: string): boolean {
-  const result = db.prepare('DELETE FROM annotations WHERE id = ?').run(id);
+  const result = db.prepare("DELETE FROM annotations WHERE id = ?").run(id);
   return result.changes > 0;
 }
 
 /** Count active annotations across all apps — used by the "{N} apps with notes" focus-card line. */
 export function countAnnotatedApps(): number {
-  const row = db.prepare(`
+  const row = db
+    .prepare(`
     SELECT COUNT(DISTINCT app_id) AS count
     FROM annotations
     WHERE deleted_at IS NULL
-  `).get() as { count: number } | undefined;
+  `)
+    .get() as { count: number } | undefined;
   return row?.count ?? 0;
 }

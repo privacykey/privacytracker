@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * LanguageSuggestionBanner — surfaces in the Settings → App Store Region
@@ -21,49 +21,51 @@
  * one-shot dismissal is sufficient for v1.
  */
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 interface Props {
-  /** Which language the banner is suggesting we switch *to*. */
-  target: 'zh' | 'en';
   /** Called after a successful dismiss or switch — parent clears state. */
   onDismiss: () => void;
+  /** Which language the banner is suggesting we switch *to*. */
+  target: "zh" | "en";
 }
 
 export default function LanguageSuggestionBanner({ target, onDismiss }: Props) {
-  const t = useTranslations('language_suggestion');
+  const t = useTranslations("language_suggestion");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const titleKey = target === 'zh' ? 'to_zh_title' : 'to_en_title';
-  const bodyKey = target === 'zh' ? 'to_zh_body' : 'to_en_body';
-  const ctaKey = target === 'zh' ? 'to_zh_cta' : 'to_en_cta';
+  const titleKey = target === "zh" ? "to_zh_title" : "to_en_title";
+  const bodyKey = target === "zh" ? "to_zh_body" : "to_en_body";
+  const ctaKey = target === "zh" ? "to_zh_cta" : "to_en_cta";
 
   async function handleSwitch() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/locale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/locale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale: target }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       // Hard reload so server-rendered surfaces flush to the new
       // bundle on first paint. Same pattern LocaleSwitcher uses.
       window.location.reload();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t('switch_failed'));
+      setError(e instanceof Error ? e.message : t("switch_failed"));
       setBusy(false);
     }
   }
 
   return (
     <aside
+      aria-live="polite"
       className="language-suggestion-banner"
       role="status"
-      aria-live="polite"
     >
       <div className="language-suggestion-body">
         <strong className="language-suggestion-title">{t(titleKey)}</strong>
@@ -76,21 +78,21 @@ export default function LanguageSuggestionBanner({ target, onDismiss }: Props) {
       </div>
       <div className="language-suggestion-actions">
         <button
-          type="button"
           className="btn btn-primary btn-sm"
-          onClick={() => void handleSwitch()}
           disabled={busy}
+          onClick={() => void handleSwitch()}
+          type="button"
         >
           {t(ctaKey)}
         </button>
         <button
-          type="button"
+          aria-label={t("dismiss_aria")}
           className="btn btn-ghost btn-sm"
-          onClick={onDismiss}
-          aria-label={t('dismiss_aria')}
           disabled={busy}
+          onClick={onDismiss}
+          type="button"
         >
-          {t('dismiss')}
+          {t("dismiss")}
         </button>
       </div>
     </aside>

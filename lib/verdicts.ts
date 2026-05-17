@@ -24,43 +24,49 @@
  * still has to make their own decision.
  */
 
-import db from './db';
-import { recordActivity } from './activity';
+import { recordActivity } from "./activity";
+import db from "./db";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type VerdictValue = 'safe' | 'replace' | 'uninstall';
-export type VerdictSource = 'user' | 'imported';
+export type VerdictValue = "safe" | "replace" | "uninstall";
+export type VerdictSource = "user" | "imported";
 
 export interface AppVerdict {
-  id: string;
   appId: string;
-  verdict: VerdictValue;
+  id: string;
   rationale: string | null;
+  setAt: number;
   source: VerdictSource;
   /** Recommender display name when source === 'imported'; null for 'user'. */
   sourceName: string | null;
-  setAt: number;
   updatedAt: number;
+  verdict: VerdictValue;
 }
 
 interface DbRow {
-  id: string;
   app_id: string;
-  verdict: string;
+  id: string;
   rationale: string | null;
+  set_at: number;
   source: string;
   source_name: string | null;
-  set_at: number;
   updated_at: number;
+  verdict: string;
 }
 
-const VALID_VERDICTS: readonly VerdictValue[] = ['safe', 'replace', 'uninstall'];
+const VALID_VERDICTS: readonly VerdictValue[] = [
+  "safe",
+  "replace",
+  "uninstall",
+];
 
 export function isValidVerdict(v: unknown): v is VerdictValue {
-  return typeof v === 'string' && (VALID_VERDICTS as readonly string[]).includes(v);
+  return (
+    typeof v === "string" && (VALID_VERDICTS as readonly string[]).includes(v)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -81,8 +87,10 @@ function rowToVerdict(row: DbRow): AppVerdict {
 }
 
 function generateId(): string {
-  return globalThis.crypto?.randomUUID?.() ??
-    `vrd_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    `vrd_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -91,34 +99,40 @@ function generateId(): string {
 
 /** Every verdict (user + imported) attached to an app, freshest first. */
 export function listVerdicts(appId: string): AppVerdict[] {
-  const rows = db.prepare(
-    `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
+  const rows = db
+    .prepare(
+      `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
      FROM app_verdicts
      WHERE app_id = ?
-     ORDER BY set_at DESC`,
-  ).all(appId) as DbRow[];
+     ORDER BY set_at DESC`
+    )
+    .all(appId) as DbRow[];
   return rows.map(rowToVerdict);
 }
 
 /** The local user's own verdict for an app, or null if undecided. */
 export function getUserVerdict(appId: string): AppVerdict | null {
-  const row = db.prepare(
-    `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
+  const row = db
+    .prepare(
+      `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
      FROM app_verdicts
      WHERE app_id = ? AND source = 'user'
-     LIMIT 1`,
-  ).get(appId) as DbRow | undefined;
+     LIMIT 1`
+    )
+    .get(appId) as DbRow | undefined;
   return row ? rowToVerdict(row) : null;
 }
 
 /** Imported recommendations for an app, freshest first. */
 export function listImportedVerdicts(appId: string): AppVerdict[] {
-  const rows = db.prepare(
-    `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
+  const rows = db
+    .prepare(
+      `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
      FROM app_verdicts
      WHERE app_id = ? AND source = 'imported'
-     ORDER BY set_at DESC`,
-  ).all(appId) as DbRow[];
+     ORDER BY set_at DESC`
+    )
+    .all(appId) as DbRow[];
   return rows.map(rowToVerdict);
 }
 
@@ -129,16 +143,24 @@ export function listImportedVerdicts(appId: string): AppVerdict[] {
  * belong in a "what have I decided?" tally.
  */
 export function countUserVerdicts(): Record<VerdictValue, number> {
-  const rows = db.prepare(
-    `SELECT verdict, COUNT(*) AS n
+  const rows = db
+    .prepare(
+      `SELECT verdict, COUNT(*) AS n
      FROM app_verdicts
      WHERE source = 'user'
-     GROUP BY verdict`,
-  ).all() as { verdict: string; n: number }[];
+     GROUP BY verdict`
+    )
+    .all() as { verdict: string; n: number }[];
 
-  const out: Record<VerdictValue, number> = { safe: 0, replace: 0, uninstall: 0 };
+  const out: Record<VerdictValue, number> = {
+    safe: 0,
+    replace: 0,
+    uninstall: 0,
+  };
   for (const r of rows) {
-    if (isValidVerdict(r.verdict)) out[r.verdict] = r.n;
+    if (isValidVerdict(r.verdict)) {
+      out[r.verdict] = r.n;
+    }
   }
   return out;
 }
@@ -150,13 +172,17 @@ export function countUserVerdicts(): Record<VerdictValue, number> {
  * absent from the map (callers should treat that as "undecided").
  */
 export function getUserVerdictsByAppId(): Map<string, AppVerdict> {
-  const rows = db.prepare(
-    `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
+  const rows = db
+    .prepare(
+      `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
      FROM app_verdicts
-     WHERE source = 'user'`,
-  ).all() as DbRow[];
+     WHERE source = 'user'`
+    )
+    .all() as DbRow[];
   const out = new Map<string, AppVerdict>();
-  for (const r of rows) out.set(r.app_id, rowToVerdict(r));
+  for (const r of rows) {
+    out.set(r.app_id, rowToVerdict(r));
+  }
   return out;
 }
 
@@ -167,12 +193,14 @@ export function getUserVerdictsByAppId(): Map<string, AppVerdict> {
  * recommendations are absent from the map.
  */
 export function getImportedVerdictsByAppId(): Map<string, AppVerdict[]> {
-  const rows = db.prepare(
-    `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
+  const rows = db
+    .prepare(
+      `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
      FROM app_verdicts
      WHERE source = 'imported'
-     ORDER BY set_at DESC`,
-  ).all() as DbRow[];
+     ORDER BY set_at DESC`
+    )
+    .all() as DbRow[];
   const out = new Map<string, AppVerdict[]>();
   for (const r of rows) {
     const v = rowToVerdict(r);
@@ -189,11 +217,11 @@ export function getImportedVerdictsByAppId(): Map<string, AppVerdict[]> {
 
 interface SetVerdictInput {
   appId: string;
-  verdict: VerdictValue;
   rationale?: string | null;
   /** Defaults to 'user'. Bundle-import path passes 'imported' + sourceName. */
   source?: VerdictSource;
   sourceName?: string | null;
+  verdict: VerdictValue;
 }
 
 /**
@@ -208,12 +236,11 @@ export function setVerdict(input: SetVerdictInput): AppVerdict {
   if (!isValidVerdict(input.verdict)) {
     throw new Error(`invalid verdict: ${input.verdict}`);
   }
-  const source = input.source ?? 'user';
-  const sourceName = source === 'imported'
-    ? (input.sourceName?.trim() || null)
-    : null;
-  if (source === 'imported' && !sourceName) {
-    throw new Error('imported verdicts require a sourceName');
+  const source = input.source ?? "user";
+  const sourceName =
+    source === "imported" ? input.sourceName?.trim() || null : null;
+  if (source === "imported" && !sourceName) {
+    throw new Error("imported verdicts require a sourceName");
   }
 
   const now = Date.now();
@@ -222,11 +249,13 @@ export function setVerdict(input: SetVerdictInput): AppVerdict {
   // SQLite's NULL-distinct semantics on UNIQUE means we can't rely on
   // INSERT OR REPLACE for the user case (where source_name IS NULL),
   // so we hand-roll the upsert with an IS-NULL match.
-  const existing = db.prepare(
-    `SELECT id, set_at FROM app_verdicts
+  const existing = db
+    .prepare(
+      `SELECT id, set_at FROM app_verdicts
      WHERE app_id = ? AND source = ?
-       AND ((source_name IS NULL AND ? IS NULL) OR source_name = ?)`,
-  ).get(input.appId, source, sourceName, sourceName) as
+       AND ((source_name IS NULL AND ? IS NULL) OR source_name = ?)`
+    )
+    .get(input.appId, source, sourceName, sourceName) as
     | { id: string; set_at: number }
     | undefined;
 
@@ -240,7 +269,7 @@ export function setVerdict(input: SetVerdictInput): AppVerdict {
     db.prepare(
       `UPDATE app_verdicts
        SET verdict = ?, rationale = ?, updated_at = ?
-       WHERE id = ?`,
+       WHERE id = ?`
     ).run(input.verdict, rationale, now, id);
   } else {
     id = generateId();
@@ -248,24 +277,37 @@ export function setVerdict(input: SetVerdictInput): AppVerdict {
     db.prepare(
       `INSERT INTO app_verdicts
          (id, app_id, verdict, rationale, source, source_name, set_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(id, input.appId, input.verdict, rationale, source, sourceName, now, now);
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      id,
+      input.appId,
+      input.verdict,
+      rationale,
+      source,
+      sourceName,
+      now,
+      now
+    );
   }
 
   // Activity log — only user verdicts. Imported verdicts get logged
   // under the bundle-import event so we don't double-count.
-  if (source === 'user') {
+  if (source === "user") {
     try {
       recordActivity({
-        type: 'verdict_set',
-        status: 'ok',
+        type: "verdict_set",
+        status: "ok",
         appId: input.appId,
         summary: `Marked ${input.verdict}`,
-        detail: { verdictId: id, verdict: input.verdict, hasRationale: !!rationale },
+        detail: {
+          verdictId: id,
+          verdict: input.verdict,
+          hasRationale: !!rationale,
+        },
         startedAt: now,
       });
     } catch (e) {
-      console.warn('[verdicts] activity log failed:', e);
+      console.warn("[verdicts] activity log failed:", e);
     }
   }
 
@@ -301,12 +343,14 @@ export function setVerdict(input: SetVerdictInput): AppVerdict {
 export function setVerdicts(
   appIds: string[],
   verdict: VerdictValue,
-  options: { rationale?: string | null } = {},
+  options: { rationale?: string | null } = {}
 ): AppVerdict[] {
   if (!isValidVerdict(verdict)) {
     throw new Error(`invalid verdict: ${verdict}`);
   }
-  if (appIds.length === 0) return [];
+  if (appIds.length === 0) {
+    return [];
+  }
 
   const rationale = options.rationale?.trim() || null;
   const now = Date.now();
@@ -314,22 +358,24 @@ export function setVerdicts(
 
   const findExisting = db.prepare(
     `SELECT id, set_at FROM app_verdicts
-     WHERE app_id = ? AND source = 'user' AND source_name IS NULL`,
+     WHERE app_id = ? AND source = 'user' AND source_name IS NULL`
   );
   const update = db.prepare(
     `UPDATE app_verdicts
      SET verdict = ?, rationale = ?, updated_at = ?
-     WHERE id = ?`,
+     WHERE id = ?`
   );
   const insert = db.prepare(
     `INSERT INTO app_verdicts
        (id, app_id, verdict, rationale, source, source_name, set_at, updated_at)
-     VALUES (?, ?, ?, ?, 'user', NULL, ?, ?)`,
+     VALUES (?, ?, ?, ?, 'user', NULL, ?, ?)`
   );
 
   db.transaction(() => {
     for (const appId of appIds) {
-      const existing = findExisting.get(appId) as { id: string; set_at: number } | undefined;
+      const existing = findExisting.get(appId) as
+        | { id: string; set_at: number }
+        | undefined;
       let id: string;
       let firstSet: number;
       if (existing) {
@@ -346,7 +392,7 @@ export function setVerdicts(
         appId,
         verdict,
         rationale,
-        source: 'user',
+        source: "user",
         sourceName: null,
         setAt: firstSet,
         updatedAt: now,
@@ -356,10 +402,10 @@ export function setVerdicts(
 
   try {
     recordActivity({
-      type: 'bulk_verdict_set',
-      status: 'ok',
+      type: "bulk_verdict_set",
+      status: "ok",
       appId: null,
-      summary: `Marked ${appIds.length} ${appIds.length === 1 ? 'app' : 'apps'} ${verdict}`,
+      summary: `Marked ${appIds.length} ${appIds.length === 1 ? "app" : "apps"} ${verdict}`,
       detail: {
         verdict,
         count: appIds.length,
@@ -369,7 +415,7 @@ export function setVerdicts(
       startedAt: now,
     });
   } catch (e) {
-    console.warn('[verdicts] bulk activity log failed:', e);
+    console.warn("[verdicts] bulk activity log failed:", e);
   }
 
   return out;
@@ -382,25 +428,31 @@ export function setVerdicts(
  *
  * Returns true if a row was actually deleted.
  */
-export function clearVerdict(appId: string, source: VerdictSource = 'user', sourceName: string | null = null): boolean {
-  const result = db.prepare(
-    `DELETE FROM app_verdicts
+export function clearVerdict(
+  appId: string,
+  source: VerdictSource = "user",
+  sourceName: string | null = null
+): boolean {
+  const result = db
+    .prepare(
+      `DELETE FROM app_verdicts
      WHERE app_id = ? AND source = ?
-       AND ((source_name IS NULL AND ? IS NULL) OR source_name = ?)`,
-  ).run(appId, source, sourceName, sourceName);
+       AND ((source_name IS NULL AND ? IS NULL) OR source_name = ?)`
+    )
+    .run(appId, source, sourceName, sourceName);
 
-  if (result.changes > 0 && source === 'user') {
+  if (result.changes > 0 && source === "user") {
     try {
       recordActivity({
-        type: 'verdict_cleared',
-        status: 'ok',
+        type: "verdict_cleared",
+        status: "ok",
         appId,
-        summary: 'Verdict cleared',
+        summary: "Verdict cleared",
         detail: {},
         startedAt: Date.now(),
       });
     } catch (e) {
-      console.warn('[verdicts] activity log failed:', e);
+      console.warn("[verdicts] activity log failed:", e);
     }
   }
 
@@ -409,6 +461,8 @@ export function clearVerdict(appId: string, source: VerdictSource = 'user', sour
 
 /** Hard-delete every verdict for an app (any source). Used by app deletion + Dev Options. */
 export function purgeVerdictsForApp(appId: string): number {
-  const result = db.prepare('DELETE FROM app_verdicts WHERE app_id = ?').run(appId);
+  const result = db
+    .prepare("DELETE FROM app_verdicts WHERE app_id = ?")
+    .run(appId);
   return result.changes;
 }

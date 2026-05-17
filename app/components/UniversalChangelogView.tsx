@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Client view for /changelog. Owns:
@@ -16,13 +16,13 @@
  * `useSearchParams` without touching the rest of the component.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-import AppChangeTimeline from './charts/AppChangeTimeline';
-import type { ChangeEntry } from '../../lib/changelog-types';
-import { formatDate } from '../../lib/date-format';
-import { useDateFormat } from '../../lib/date-format-hook';
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ChangeEntry } from "../../lib/changelog-types";
+import { formatDate } from "../../lib/date-format";
+import { useDateFormat } from "../../lib/date-format-hook";
+import AppChangeTimeline from "./charts/AppChangeTimeline";
 
 interface AppForFilter {
   id: string;
@@ -35,27 +35,21 @@ interface AppForFilter {
  * client bundle doesn't drag in the server-only DB code path.
  */
 interface UniversalChangeRow {
-  id: string;
+  appDeveloper: string | null;
+  appIconUrl: string | null;
   appId: string;
   appName: string;
-  appIconUrl: string | null;
-  appDeveloper: string | null;
+  entry: ChangeEntry;
+  id: string;
   scrapedAt: number;
-  source: 'live' | 'wayback';
+  source: "live" | "wayback";
   /**
    * Mirrors the server's `SyncTrigger` union — includes `'sample'` for
    * demo-seed rows so the JSON we deserialize fits the type cleanly.
    * The UI doesn't render a pill for the value yet, but the union has
    * to admit `'sample'` to match what the API can return.
    */
-  triggeredBy:
-    | 'scheduled'
-    | 'manual'
-    | 'import'
-    | 'wayback'
-    | 'sample'
-    | null;
-  entry: ChangeEntry;
+  triggeredBy: "scheduled" | "manual" | "import" | "wayback" | "sample" | null;
 }
 
 interface ApiResponse {
@@ -71,26 +65,26 @@ interface ApiResponse {
  * semantics that aren't worth the complexity for v1.
  */
 type Preset =
-  | 'all'
-  | 'privacy_added'
-  | 'privacy_removed'
-  | 'privacy_modified'
-  | 'accessibility'
-  | 'policy'
-  | 'wayback';
+  | "all"
+  | "privacy_added"
+  | "privacy_removed"
+  | "privacy_modified"
+  | "accessibility"
+  | "policy"
+  | "wayback";
 
 interface FilterState {
-  preset: Preset;
   appId: string; // '' = all apps
-  from: string;  // ISO yyyy-mm-dd or ''
+  from: string; // ISO yyyy-mm-dd or ''
+  preset: Preset;
   to: string;
 }
 
 const INITIAL_FILTERS: FilterState = {
-  preset: 'all',
-  appId: '',
-  from: '',
-  to: '',
+  preset: "all",
+  appId: "",
+  from: "",
+  to: "",
 };
 
 const PAGE_SIZE = 50;
@@ -99,22 +93,25 @@ const PAGE_SIZE = 50;
  * Map a Preset → the (type, category) query-string params for the API.
  * Empty arrays mean "no constraint on this dimension".
  */
-function presetToFilter(preset: Preset): { types: string[]; categories: string[] } {
+function presetToFilter(preset: Preset): {
+  types: string[];
+  categories: string[];
+} {
   switch (preset) {
-    case 'all':
+    case "all":
       return { types: [], categories: [] };
-    case 'privacy_added':
-      return { types: ['added'], categories: ['privacy-label'] };
-    case 'privacy_removed':
-      return { types: ['removed'], categories: ['privacy-label'] };
-    case 'privacy_modified':
-      return { types: ['modified'], categories: ['privacy-label'] };
-    case 'accessibility':
-      return { types: [], categories: ['accessibility'] };
-    case 'policy':
-      return { types: [], categories: ['privacy-policy'] };
-    case 'wayback':
-      return { types: [], categories: ['wayback-attempt'] };
+    case "privacy_added":
+      return { types: ["added"], categories: ["privacy-label"] };
+    case "privacy_removed":
+      return { types: ["removed"], categories: ["privacy-label"] };
+    case "privacy_modified":
+      return { types: ["modified"], categories: ["privacy-label"] };
+    case "accessibility":
+      return { types: [], categories: ["accessibility"] };
+    case "policy":
+      return { types: [], categories: ["privacy-policy"] };
+    case "wayback":
+      return { types: [], categories: ["wayback-attempt"] };
   }
 }
 
@@ -123,8 +120,10 @@ function presetToFilter(preset: Preset): { types: string[]; categories: string[]
  * string → undefined so we don't send a 0 lower bound.
  */
 function isoDateToMs(iso: string, atEndOfDay = false): number | undefined {
-  if (!iso) return undefined;
-  const d = new Date(iso + (atEndOfDay ? 'T23:59:59Z' : 'T00:00:00Z'));
+  if (!iso) {
+    return;
+  }
+  const d = new Date(iso + (atEndOfDay ? "T23:59:59Z" : "T00:00:00Z"));
   const t = d.getTime();
   return Number.isFinite(t) ? t : undefined;
 }
@@ -132,7 +131,10 @@ function isoDateToMs(iso: string, atEndOfDay = false): number | undefined {
 // Local thin wrapper that forwards to the shared formatter so callers
 // don't have to know about the `withTime` opt — every changelog row
 // shows the time-of-day suffix.
-function formatRowDate(ms: number, mode: Parameters<typeof formatDate>[1]): string {
+function formatRowDate(
+  ms: number,
+  mode: Parameters<typeof formatDate>[1]
+): string {
   return formatDate(ms, mode, { withTime: true });
 }
 
@@ -161,15 +163,21 @@ function formatRowDate(ms: number, mode: Parameters<typeof formatDate>[1]): stri
  */
 function formatIsoDatePreview(
   iso: string,
-  mode: Parameters<typeof formatDate>[1],
+  mode: Parameters<typeof formatDate>[1]
 ): string | null {
-  if (!iso) return null;
+  if (!iso) {
+    return null;
+  }
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return null;
+  if (!m) {
+    return null;
+  }
   const y = Number(m[1]);
   const mo = Number(m[2]);
   const d = Number(m[3]);
-  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
+  if (!(Number.isFinite(y) && Number.isFinite(mo) && Number.isFinite(d))) {
+    return null;
+  }
   const ms = new Date(y, mo - 1, d).getTime();
   return formatDate(ms, mode);
 }
@@ -182,41 +190,51 @@ function formatIsoDatePreview(
  * this page.
  */
 function iconForEntry(entry: ChangeEntry): { glyph: string; cls: string } {
-  if (entry.category === 'privacy-policy') {
+  if (entry.category === "privacy-policy") {
     return {
-      glyph: entry.policy_event === 'error' ? '⚠' : '📄',
-      cls: `timeline-change-icon policy${entry.policy_event === 'error' ? ' policy-error' : ''}`,
+      glyph: entry.policy_event === "error" ? "⚠" : "📄",
+      cls: `timeline-change-icon policy${entry.policy_event === "error" ? " policy-error" : ""}`,
     };
   }
-  if (entry.category === 'wayback-attempt') {
+  if (entry.category === "wayback-attempt") {
     const failed =
-      entry.wayback_event === 'no_capture' ||
-      entry.wayback_event === 'save_now_failed';
+      entry.wayback_event === "no_capture" ||
+      entry.wayback_event === "save_now_failed";
     return {
-      glyph: '🕰',
-      cls: `timeline-change-icon wayback${failed ? ' wayback-failed' : ''}`,
+      glyph: "🕰",
+      cls: `timeline-change-icon wayback${failed ? " wayback-failed" : ""}`,
     };
   }
-  if (entry.category === 'accessibility') {
+  if (entry.category === "accessibility") {
     return {
-      glyph: entry.type === 'removed' ? '−' : entry.type === 'added' ? '+' : '↻',
+      glyph:
+        entry.type === "removed" ? "−" : entry.type === "added" ? "+" : "↻",
       cls: `timeline-change-icon ${entry.type} accessibility`,
     };
   }
   // Default: privacy label.
   switch (entry.type) {
-    case 'added':    return { glyph: '+', cls: 'timeline-change-icon added' };
-    case 'removed':  return { glyph: '−', cls: 'timeline-change-icon removed' };
-    case 'modified': return { glyph: '↻', cls: 'timeline-change-icon modified' };
-    case 'policy':   return { glyph: '📄', cls: 'timeline-change-icon policy' };
-    case 'wayback':  return { glyph: '🕰', cls: 'timeline-change-icon wayback' };
+    case "added":
+      return { glyph: "+", cls: "timeline-change-icon added" };
+    case "removed":
+      return { glyph: "−", cls: "timeline-change-icon removed" };
+    case "modified":
+      return { glyph: "↻", cls: "timeline-change-icon modified" };
+    case "policy":
+      return { glyph: "📄", cls: "timeline-change-icon policy" };
+    case "wayback":
+      return { glyph: "🕰", cls: "timeline-change-icon wayback" };
   }
 }
 
-export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] }) {
-  const t = useTranslations('changelog_page');
-  const tFilters = useTranslations('changelog_page.filters');
-  const tRow = useTranslations('changelog_page.row');
+export default function UniversalChangelogView({
+  apps,
+}: {
+  apps: AppForFilter[];
+}) {
+  const t = useTranslations("changelog_page");
+  const tFilters = useTranslations("changelog_page.filters");
+  const tRow = useTranslations("changelog_page.row");
   // Picks up the user's date-format preference from /api/date-format
   // and re-renders dates whenever the preference is broadcast (Settings
   // → Appearance → Date format).
@@ -235,18 +253,28 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
     (off: number) => {
       const { types, categories } = presetToFilter(filters.preset);
       const params = new URLSearchParams();
-      if (types.length > 0) params.set('type', types.join(','));
-      if (categories.length > 0) params.set('category', categories.join(','));
-      if (filters.appId) params.set('appId', filters.appId);
+      if (types.length > 0) {
+        params.set("type", types.join(","));
+      }
+      if (categories.length > 0) {
+        params.set("category", categories.join(","));
+      }
+      if (filters.appId) {
+        params.set("appId", filters.appId);
+      }
       const fromMs = isoDateToMs(filters.from);
-      if (fromMs !== undefined) params.set('from', String(fromMs));
+      if (fromMs !== undefined) {
+        params.set("from", String(fromMs));
+      }
       const toMs = isoDateToMs(filters.to, true);
-      if (toMs !== undefined) params.set('to', String(toMs));
-      params.set('limit', String(PAGE_SIZE));
-      params.set('offset', String(off));
+      if (toMs !== undefined) {
+        params.set("to", String(toMs));
+      }
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String(off));
       return params.toString();
     },
-    [filters],
+    [filters]
   );
 
   // Whenever the filter changes, reset to page 0 and refetch. Uses an
@@ -259,7 +287,9 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
     fetch(`/api/changelog?${buildQuery(0)}`, { signal: ctrl.signal })
       .then(async (r) => {
         const body = await r.json();
-        if (!r.ok) throw new Error(body?.error ?? `HTTP ${r.status}`);
+        if (!r.ok) {
+          throw new Error(body?.error ?? `HTTP ${r.status}`);
+        }
         return body as ApiResponse;
       })
       .then((data) => {
@@ -268,7 +298,9 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
         setOffset(data.rows.length);
       })
       .catch((e: Error) => {
-        if (e.name === 'AbortError') return;
+        if (e.name === "AbortError") {
+          return;
+        }
         setError(e.message);
       })
       .finally(() => setLoading(false));
@@ -281,7 +313,9 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
     fetch(`/api/changelog?${buildQuery(offset)}`)
       .then(async (r) => {
         const body = await r.json();
-        if (!r.ok) throw new Error(body?.error ?? `HTTP ${r.status}`);
+        if (!r.ok) {
+          throw new Error(body?.error ?? `HTTP ${r.status}`);
+        }
         return body as ApiResponse;
       })
       .then((data) => {
@@ -295,36 +329,33 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
 
   const presetButtons: Array<{ id: Preset; label: string }> = useMemo(
     () => [
-      { id: 'all',                label: tFilters('all_changes') },
-      { id: 'privacy_added',      label: tFilters('privacy_added') },
-      { id: 'privacy_removed',    label: tFilters('privacy_removed') },
-      { id: 'privacy_modified',   label: tFilters('privacy_modified') },
-      { id: 'accessibility',      label: tFilters('accessibility') },
-      { id: 'policy',             label: tFilters('policy_updates') },
-      { id: 'wayback',            label: tFilters('wayback') },
+      { id: "all", label: tFilters("all_changes") },
+      { id: "privacy_added", label: tFilters("privacy_added") },
+      { id: "privacy_removed", label: tFilters("privacy_removed") },
+      { id: "privacy_modified", label: tFilters("privacy_modified") },
+      { id: "accessibility", label: tFilters("accessibility") },
+      { id: "policy", label: tFilters("policy_updates") },
+      { id: "wayback", label: tFilters("wayback") },
     ],
-    [tFilters],
+    [tFilters]
   );
 
   return (
     <>
       {/* Hero chart — global mode (no appId), so the existing
           /api/stats/timeline aggregator returns site-wide buckets. */}
-      <section
-        className="changelog-hero"
-        aria-label={t('hero_chart_title')}
-      >
+      <section aria-label={t("hero_chart_title")} className="changelog-hero">
         <div className="changelog-hero-head">
-          <h2 className="changelog-hero-title">{t('hero_chart_title')}</h2>
-          <p className="changelog-hero-sub">{t('hero_chart_sub')}</p>
+          <h2 className="changelog-hero-title">{t("hero_chart_title")}</h2>
+          <p className="changelog-hero-sub">{t("hero_chart_sub")}</p>
         </div>
-        <AppChangeTimeline showPresets showLegend />
+        <AppChangeTimeline showLegend showPresets />
       </section>
 
       {/* Filters */}
       <section
+        aria-label={tFilters("section_aria")}
         className="changelog-filters"
-        aria-label={tFilters('section_aria')}
       >
         <div className="changelog-filter-row">
           <div className="changelog-filter-presets" role="tablist">
@@ -332,14 +363,14 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
               const active = filters.preset === b.id;
               return (
                 <button
-                  key={b.id}
-                  type="button"
-                  role="tab"
                   aria-selected={active}
-                  className={`changelog-filter-preset${active ? ' is-active' : ''}`}
+                  className={`changelog-filter-preset${active ? "is-active" : ""}`}
+                  key={b.id}
                   onClick={() =>
                     setFilters((prev) => ({ ...prev, preset: b.id }))
                   }
+                  role="tab"
+                  type="button"
                 >
                   {b.label}
                 </button>
@@ -350,14 +381,14 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
 
         <div className="changelog-filter-row">
           <label className="changelog-filter-field">
-            <span>{tFilters('app_label')}</span>
+            <span>{tFilters("app_label")}</span>
             <select
-              value={filters.appId}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, appId: e.target.value }))
               }
+              value={filters.appId}
             >
-              <option value="">{tFilters('app_all')}</option>
+              <option value="">{tFilters("app_all")}</option>
               {apps.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
@@ -367,13 +398,13 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
           </label>
 
           <label className="changelog-filter-field">
-            <span>{tFilters('from_label')}</span>
+            <span>{tFilters("from_label")}</span>
             <input
-              type="date"
-              value={filters.from}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, from: e.target.value }))
               }
+              type="date"
+              value={filters.from}
             />
             {/* Settings-aware preview. Native <input type="date"> always
                 renders the picker UI in the browser's locale and exposes
@@ -384,34 +415,34 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
                 DMY sees `31/12/2025` underneath, ISO sees `2025-12-31`,
                 etc. Empty input → no preview (the helper returns null). */}
             {filters.from && (
-              <span className="changelog-filter-preview" aria-live="polite">
+              <span aria-live="polite" className="changelog-filter-preview">
                 {formatIsoDatePreview(filters.from, dateMode)}
               </span>
             )}
           </label>
 
           <label className="changelog-filter-field">
-            <span>{tFilters('to_label')}</span>
+            <span>{tFilters("to_label")}</span>
             <input
-              type="date"
-              value={filters.to}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, to: e.target.value }))
               }
+              type="date"
+              value={filters.to}
             />
             {filters.to && (
-              <span className="changelog-filter-preview" aria-live="polite">
+              <span aria-live="polite" className="changelog-filter-preview">
                 {formatIsoDatePreview(filters.to, dateMode)}
               </span>
             )}
           </label>
 
           <button
-            type="button"
             className="btn btn-ghost changelog-filter-reset"
             onClick={() => setFilters(INITIAL_FILTERS)}
+            type="button"
           >
-            {tFilters('reset')}
+            {tFilters("reset")}
           </button>
         </div>
       </section>
@@ -419,27 +450,27 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
       {/* Feed */}
       <section className="changelog-feed">
         {loading && rows.length === 0 && (
-          <p className="changelog-status">{t('loading')}</p>
+          <p className="changelog-status">{t("loading")}</p>
         )}
         {!loading && error && (
           <p className="changelog-status changelog-status-err" role="alert">
-            {t('error')}
+            {t("error")}
           </p>
         )}
-        {!loading && !error && rows.length === 0 && (
-          <p className="changelog-status">{t('empty')}</p>
+        {!(loading || error) && rows.length === 0 && (
+          <p className="changelog-status">{t("empty")}</p>
         )}
         {rows.length > 0 && (
           <ul className="changelog-rows">
             {rows.map((r) => (
               <UniversalChangelogRow
-                key={r.id}
-                row={r}
                 dateMode={dateMode}
-                viewAppLabel={tRow('view_app_link')}
-                openAppAria={(name) => tRow('open_app_aria', { name })}
-                waybackLinkLabel={tRow('wayback_link')}
-                detailsMore={(count) => tRow('details_more', { count })}
+                detailsMore={(count) => tRow("details_more", { count })}
+                key={r.id}
+                openAppAria={(name) => tRow("open_app_aria", { name })}
+                row={r}
+                viewAppLabel={tRow("view_app_link")}
+                waybackLinkLabel={tRow("wayback_link")}
               />
             ))}
           </ul>
@@ -447,16 +478,16 @@ export default function UniversalChangelogView({ apps }: { apps: AppForFilter[] 
         {(rows.length > 0 || total > 0) && (
           <footer className="changelog-feed-foot">
             <span className="changelog-feed-count">
-              {t('footer_count', { shown: rows.length, total })}
+              {t("footer_count", { shown: rows.length, total })}
             </span>
             {rows.length < total && (
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={loadMore}
                 disabled={loading}
+                onClick={loadMore}
+                type="button"
               >
-                {t('load_more')}
+                {t("load_more")}
               </button>
             )}
           </footer>
@@ -494,39 +525,43 @@ function UniversalChangelogRow({
   const visibleDetails = details.slice(0, 3);
   const overflow = details.length - visibleDetails.length;
   const waybackUrl =
-    row.source === 'wayback' && row.entry.wayback_event === 'requested_snapshot'
+    row.source === "wayback" && row.entry.wayback_event === "requested_snapshot"
       ? row.entry.save_now_url
       : null;
 
   return (
     <li className="changelog-row">
-      <span className={icon.cls} aria-hidden="true">{icon.glyph}</span>
+      <span aria-hidden="true" className={icon.cls}>
+        {icon.glyph}
+      </span>
       <div className="changelog-row-body">
         <div className="changelog-row-head">
           <Link
-            href={`/apps/${row.appId}`}
-            className="changelog-row-app"
             aria-label={openAppAria(row.appName)}
+            className="changelog-row-app"
+            href={`/apps/${row.appId}`}
           >
             {row.appIconUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                src={row.appIconUrl}
                 alt=""
                 className="changelog-row-app-icon"
-                width={20}
                 height={20}
+                src={row.appIconUrl}
+                width={20}
               />
             ) : (
               <span
-                className="changelog-row-app-icon changelog-row-app-icon-placeholder"
                 aria-hidden="true"
+                className="changelog-row-app-icon changelog-row-app-icon-placeholder"
               />
             )}
             <span className="changelog-row-app-name">{row.appName}</span>
           </Link>
-          <span className="changelog-row-time">{formatRowDate(row.scrapedAt, dateMode)}</span>
-          {row.source === 'wayback' && (
+          <span className="changelog-row-time">
+            {formatRowDate(row.scrapedAt, dateMode)}
+          </span>
+          {row.source === "wayback" && (
             <span className="changelog-row-tag changelog-row-tag-wayback">
               Wayback
             </span>
@@ -539,20 +574,22 @@ function UniversalChangelogRow({
               <li key={i}>{d}</li>
             ))}
             {overflow > 0 && (
-              <li className="changelog-row-details-more">{detailsMore(overflow)}</li>
+              <li className="changelog-row-details-more">
+                {detailsMore(overflow)}
+              </li>
             )}
           </ul>
         )}
         <div className="changelog-row-links">
-          <Link href={`/apps/${row.appId}`} className="changelog-row-link">
+          <Link className="changelog-row-link" href={`/apps/${row.appId}`}>
             {viewAppLabel}
           </Link>
           {waybackUrl && (
             <a
-              href={waybackUrl}
               className="changelog-row-link"
-              target="_blank"
+              href={waybackUrl}
               rel="noopener"
+              target="_blank"
             >
               {waybackLinkLabel}
             </a>

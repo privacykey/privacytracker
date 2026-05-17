@@ -7,8 +7,8 @@
  * `src-tauri/src/sidecar.rs::SidecarHandle::shutdown`.
  */
 
-const INITIAL_DELAY_MS = 5_000;
-const POLL_INTERVAL_MS = 3_000;
+const INITIAL_DELAY_MS = 5000;
+const POLL_INTERVAL_MS = 3000;
 
 /** Idempotency latch so dev hot-reload / tests don't stack timers. */
 let installed = false;
@@ -20,10 +20,16 @@ let installed = false;
  */
 function readParentPid(): number | null {
   const raw = process.env.PRIVACYTRACKER_PARENT_PID;
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) return null;
-  if (parsed === process.pid) return null;
+  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+    return null;
+  }
+  if (parsed === process.pid) {
+    return null;
+  }
   return parsed;
 }
 
@@ -39,8 +45,12 @@ function isAlive(pid: number): boolean {
     return true;
   } catch (err) {
     const code = (err as NodeJS.ErrnoException)?.code;
-    if (code === 'ESRCH') return false;
-    if (code === 'EPERM') return true;
+    if (code === "ESRCH") {
+      return false;
+    }
+    if (code === "EPERM") {
+      return true;
+    }
     return true;
   }
 }
@@ -49,8 +59,13 @@ function isAlive(pid: number): boolean {
  * Install the parent-watchdog timer. Idempotent. The timer is `unref()`'d
  * so it never holds the event loop open on its own.
  */
-export function installParentWatchdog(): { active: boolean; parentPid: number | null } {
-  if (installed) return { active: true, parentPid: readParentPid() };
+export function installParentWatchdog(): {
+  active: boolean;
+  parentPid: number | null;
+} {
+  if (installed) {
+    return { active: true, parentPid: readParentPid() };
+  }
 
   const parentPid = readParentPid();
   if (parentPid === null) {
@@ -59,9 +74,11 @@ export function installParentWatchdog(): { active: boolean; parentPid: number | 
   installed = true;
 
   const tick = () => {
-    if (isAlive(parentPid)) return;
+    if (isAlive(parentPid)) {
+      return;
+    }
     console.log(
-      `[parent-watchdog] parent PID ${parentPid} is gone — exiting Node sidecar (PID ${process.pid})`,
+      `[parent-watchdog] parent PID ${parentPid} is gone — exiting Node sidecar (PID ${process.pid})`
     );
     // exit(0) so SQLite WAL checkpointing and other shutdown hooks run
     // through the normal clean-exit path.
@@ -76,7 +93,7 @@ export function installParentWatchdog(): { active: boolean; parentPid: number | 
   handle.unref();
 
   console.log(
-    `[parent-watchdog] watching parent PID ${parentPid} (interval ${POLL_INTERVAL_MS}ms after ${INITIAL_DELAY_MS}ms initial delay)`,
+    `[parent-watchdog] watching parent PID ${parentPid} (interval ${POLL_INTERVAL_MS}ms after ${INITIAL_DELAY_MS}ms initial delay)`
   );
   return { active: true, parentPid };
 }

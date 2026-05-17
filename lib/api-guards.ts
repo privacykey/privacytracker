@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -6,13 +6,13 @@ import {
   recordAudit,
   requestActorIp,
   requestHasValidAdminToken,
-} from './security';
+} from "./security";
 
 interface MutationGuardRateLimit {
   keyPrefix: string;
   limit: number;
-  windowMs: number;
   message?: string;
+  windowMs: number;
 }
 
 export interface MutationGuardOptions {
@@ -36,10 +36,10 @@ export type MutationGuardResult =
 
 export function requireMutationGuard(
   request: Request,
-  options: MutationGuardOptions,
+  options: MutationGuardOptions
 ): MutationGuardResult {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
   const requireAdminToken = options.requireAdminToken ?? true;
 
   const rate = checkRateLimit({
@@ -61,28 +61,41 @@ export function requireMutationGuard(
       actorIp,
       userAgent,
       response: NextResponse.json(
-        { error: options.rateLimit.message ?? 'Rate limit exceeded. Try again shortly.' },
+        {
+          error:
+            options.rateLimit.message ??
+            "Rate limit exceeded. Try again shortly.",
+        },
         {
           status: 429,
-          headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) },
-        },
+          headers: {
+            "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)),
+          },
+        }
       ),
     };
   }
 
-  if (requireAdminToken && adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    requireAdminToken &&
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
       action: `${options.action}.unauthorised`,
       actorIp,
       userAgent,
       success: false,
-      detail: 'admin token required but missing or invalid',
+      detail: "admin token required but missing or invalid",
     });
     return {
       ok: false,
       actorIp,
       userAgent,
-      response: NextResponse.json({ error: 'Admin token required' }, { status: 401 }),
+      response: NextResponse.json(
+        { error: "Admin token required" },
+        { status: 401 }
+      ),
     };
   }
 

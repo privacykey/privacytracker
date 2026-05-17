@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * QueuedSearchProvider
@@ -22,69 +22,69 @@
 
 import {
   createContext,
-  ReactNode,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { useTaskCenter, type TaskHandle } from './TaskCenter';
+} from "react";
+import { type TaskHandle, useTaskCenter } from "./TaskCenter";
 
 export interface SearchQueryRow {
-  name: string;
   developer?: string;
+  name: string;
 }
 
 interface Candidate {
   appleId: string;
-  name: string;
+  bundleId: string;
   developer: string;
   iconUrl: string;
-  url: string;
-  bundleId: string;
+  name: string;
   searchQuery: string;
+  url: string;
 }
 
 export interface SearchResultLike {
-  query: string;
   candidates: Candidate[];
+  query: string;
 }
 
 type ResultsListener = (fresh: SearchResultLike[]) => void;
 
 export interface QueuedSearchState {
+  /** Number of queries the provider has matched so far (for progress). */
+  matched: number;
   /** True while a queue is waiting for cooldown or a fetch is in flight. */
   pending: boolean;
   /** Items still waiting on Apple. */
   remaining: number;
-  /** Original batch size when the queue was first enqueued. */
-  total: number;
   /** Wall-clock ms when the next retry fires; null if fetching right now. */
   resumeAt: number | null;
-  /** Number of queries the provider has matched so far (for progress). */
-  matched: number;
+  /** Original batch size when the queue was first enqueued. */
+  total: number;
 }
 
 interface EnqueueInit {
-  queued: SearchQueryRow[];
   country: string;
   importId: string | null;
+  queued: SearchQueryRow[];
   retryAfterMs: number;
 }
 
 interface QueuedSearchApi {
-  state: QueuedSearchState;
+  /** User-driven cancel — drops the queue, completes the Task Center entry. */
+  cancel(): void;
   /**
    * Hand off a tail to the provider. If a queue is already pending, the new
    * rows are appended and the longer of the two retry windows wins.
    */
   enqueue(init: EnqueueInit): void;
+  state: QueuedSearchState;
   /** Subscribe to fresh SearchResult batches as they resolve. */
   subscribe(fn: ResultsListener): () => void;
-  /** User-driven cancel — drops the queue, completes the Task Center entry. */
-  cancel(): void;
 }
 
 const Ctx = createContext<QueuedSearchApi | null>(null);
@@ -106,7 +106,7 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
 
   // Everything below uses refs so the drain loop is stable across renders.
   const queuedRef = useRef<SearchQueryRow[]>([]);
-  const countryRef = useRef<string>('us');
+  const countryRef = useRef<string>("us");
   const importIdRef = useRef<string | null>(null);
   const totalRef = useRef<number>(0);
   const matchedRef = useRef<number>(0);
@@ -148,7 +148,7 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
   const resetAll = useCallback(() => {
     clearTimers();
     queuedRef.current = [];
-    countryRef.current = 'us';
+    countryRef.current = "us";
     importIdRef.current = null;
     totalRef.current = 0;
     matchedRef.current = 0;
@@ -159,11 +159,11 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
   }, [clearTimers]);
 
   const emit = useCallback((fresh: SearchResultLike[]) => {
-    listenersRef.current.forEach(fn => {
+    listenersRef.current.forEach((fn) => {
       try {
         fn(fresh);
       } catch (err) {
-        console.warn('[queued-search] listener threw:', err);
+        console.warn("[queued-search] listener threw:", err);
       }
     });
   }, []);
@@ -175,15 +175,17 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
    */
   const backfillImportItems = useCallback(async (fresh: SearchResultLike[]) => {
     const importId = importIdRef.current;
-    if (!importId || fresh.length === 0) return;
-    const items = fresh.map(r => {
+    if (!importId || fresh.length === 0) {
+      return;
+    }
+    const items = fresh.map((r) => {
       const top = r.candidates[0];
       if (!top) {
-        return { query: r.query, status: 'unmatched' as const };
+        return { query: r.query, status: "unmatched" as const };
       }
       return {
         query: r.query,
-        status: 'matched' as const,
+        status: "matched" as const,
         appId: top.appleId,
         appName: top.name,
         developer: top.developer,
@@ -191,13 +193,13 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
       };
     });
     try {
-      await fetch('/api/imports/items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/imports/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ importId, items }),
       });
     } catch (err) {
-      console.warn('[queued-search] backfill failed:', err);
+      console.warn("[queued-search] backfill failed:", err);
     }
   }, []);
 
@@ -205,44 +207,51 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
    * Schedule the next retry + a 1-Hz tick that refreshes the countdown
    * subtitle on the Task Center entry so it animates down to zero.
    */
-  const scheduleRetry = useCallback((delayMs: number) => {
-    clearTimers();
-    if (abortedRef.current) return;
+  const scheduleRetry = useCallback(
+    (delayMs: number) => {
+      clearTimers();
+      if (abortedRef.current) {
+        return;
+      }
 
-    const resumeAt = Date.now() + delayMs;
-    setState(prev => ({ ...prev, pending: true, resumeAt }));
+      const resumeAt = Date.now() + delayMs;
+      setState((prev) => ({ ...prev, pending: true, resumeAt }));
 
-    tickRef.current = setInterval(() => {
-      if (abortedRef.current) return;
-      const remaining = Math.max(0, resumeAt - Date.now());
-      const secs = Math.ceil(remaining / 1000);
+      tickRef.current = setInterval(() => {
+        if (abortedRef.current) {
+          return;
+        }
+        const remaining = Math.max(0, resumeAt - Date.now());
+        const secs = Math.ceil(remaining / 1000);
+        taskHandleRef.current?.setProgress(
+          matchedRef.current,
+          totalRef.current,
+          remaining > 0
+            ? `Resuming in ${secs}s · ${queuedRef.current.length} queued`
+            : "Resuming now…"
+        );
+      }, 1000);
+
+      // Initial tick so the label reflects the right number immediately.
       taskHandleRef.current?.setProgress(
         matchedRef.current,
         totalRef.current,
-        remaining > 0
-          ? `Resuming in ${secs}s · ${queuedRef.current.length} queued`
-          : 'Resuming now…',
+        `Resuming in ${Math.ceil(delayMs / 1000)}s · ${queuedRef.current.length} queued`
       );
-    }, 1000);
 
-    // Initial tick so the label reflects the right number immediately.
-    taskHandleRef.current?.setProgress(
-      matchedRef.current,
-      totalRef.current,
-      `Resuming in ${Math.ceil(delayMs / 1000)}s · ${queuedRef.current.length} queued`,
-    );
-
-    timerRef.current = setTimeout(() => {
-      timerRef.current = null;
-      // Call through the ref so we always invoke the latest `drain`
-      // (re-pointed by the effect below whenever its identity changes).
-      // Direct reference would either need `drain` in our deps —
-      // creating a useCallback identity cycle since drain depends on
-      // scheduleRetry — or hit the immutability lint rule for
-      // accessing a variable declared further down in the file.
-      void drainRef.current?.();
-    }, delayMs);
-  }, [clearTimers]);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        // Call through the ref so we always invoke the latest `drain`
+        // (re-pointed by the effect below whenever its identity changes).
+        // Direct reference would either need `drain` in our deps —
+        // creating a useCallback identity cycle since drain depends on
+        // scheduleRetry — or hit the immutability lint rule for
+        // accessing a variable declared further down in the file.
+        void drainRef.current?.();
+      }, delayMs);
+    },
+    [clearTimers]
+  );
 
   /**
    * One pass at the current queue. Drains everything that Apple returns in a
@@ -250,15 +259,19 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
    * the new tail. Loops cooperatively via scheduleRetry — we never hot-loop.
    */
   const drain = useCallback(async () => {
-    if (abortedRef.current) return;
-    if (inFlightRef.current) return;
+    if (abortedRef.current) {
+      return;
+    }
+    if (inFlightRef.current) {
+      return;
+    }
     const batch = queuedRef.current;
     if (batch.length === 0) {
       // Nothing left — mark done.
       setState({ ...IDLE_STATE });
       taskHandleRef.current?.complete(
-        'done',
-        `${matchedRef.current} of ${totalRef.current} matched`,
+        "done",
+        `${matchedRef.current} of ${totalRef.current} matched`
       );
       resetAll();
       return;
@@ -266,22 +279,26 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
 
     inFlightRef.current = true;
     clearTimers();
-    setState(prev => ({ ...prev, pending: true, resumeAt: null }));
+    setState((prev) => ({ ...prev, pending: true, resumeAt: null }));
     taskHandleRef.current?.setProgress(
       matchedRef.current,
       totalRef.current,
-      `Searching ${batch.length}…`,
+      `Searching ${batch.length}…`
     );
 
     try {
-      const res = await fetch('/api/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rows: batch, country: countryRef.current }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
-      const fresh: SearchResultLike[] = Array.isArray(data?.results) ? data.results : [];
+      const fresh: SearchResultLike[] = Array.isArray(data?.results)
+        ? data.results
+        : [];
       const rate = data?.rateLimited as
         | { retryAfterMs: number; queued: SearchQueryRow[] }
         | undefined;
@@ -312,19 +329,20 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
       taskHandleRef.current?.setProgress(
         totalRef.current,
         totalRef.current,
-        'Complete',
+        "Complete"
       );
       taskHandleRef.current?.complete(
-        'done',
-        `${matchedRef.current} of ${totalRef.current} matched`,
+        "done",
+        `${matchedRef.current} of ${totalRef.current} matched`
       );
       resetAll();
     } catch (err) {
-      console.error('[queued-search] drain failed:', err);
+      console.error("[queued-search] drain failed:", err);
       inFlightRef.current = false;
       // Transport error — back off ~30s before retrying the same batch.
       taskHandleRef.current?.update({
-        message: err instanceof Error ? err.message : 'Network error — retrying',
+        message:
+          err instanceof Error ? err.message : "Network error — retrying",
       });
       scheduleRetry(30_000);
     }
@@ -337,52 +355,61 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
     drainRef.current = drain;
   }, [drain]);
 
-  const enqueue = useCallback((init: EnqueueInit) => {
-    if (!Array.isArray(init.queued) || init.queued.length === 0) return;
+  const enqueue = useCallback(
+    (init: EnqueueInit) => {
+      if (!Array.isArray(init.queued) || init.queued.length === 0) {
+        return;
+      }
 
-    // Append onto whatever's currently waiting. The country / importId from
-    // the most recent enqueue wins because the caller is the authoritative
-    // source for their own session.
-    abortedRef.current = false;
-    const existing = queuedRef.current;
-    const merged = existing.length > 0 ? [...existing, ...init.queued] : init.queued;
-    queuedRef.current = merged;
-    countryRef.current = init.country;
-    importIdRef.current = init.importId;
-    totalRef.current = Math.max(totalRef.current, merged.length + matchedRef.current);
+      // Append onto whatever's currently waiting. The country / importId from
+      // the most recent enqueue wins because the caller is the authoritative
+      // source for their own session.
+      abortedRef.current = false;
+      const existing = queuedRef.current;
+      const merged =
+        existing.length > 0 ? [...existing, ...init.queued] : init.queued;
+      queuedRef.current = merged;
+      countryRef.current = init.country;
+      importIdRef.current = init.importId;
+      totalRef.current = Math.max(
+        totalRef.current,
+        merged.length + matchedRef.current
+      );
 
-    // Create or update the Task Center entry. We keep a single task across
-    // multiple rate-limit bounces so the UI isn't flooded with duplicates.
-    if (!taskHandleRef.current) {
-      taskHandleRef.current = taskCenter.startTask({
-        title: 'Matching queued apps',
-        subtitle: 'Apple rate-limited the search — resuming automatically',
-        kind: 'import',
-        href: '/onboard',
-        progress: {
-          current: matchedRef.current,
-          total: totalRef.current,
-          label: `Resuming in ${Math.ceil(init.retryAfterMs / 1000)}s · ${merged.length} queued`,
-        },
-        onCancel: () => {
-          abortedRef.current = true;
-          queuedRef.current = [];
-          clearTimers();
-          setState(IDLE_STATE);
-          taskHandleRef.current = null;
-        },
+      // Create or update the Task Center entry. We keep a single task across
+      // multiple rate-limit bounces so the UI isn't flooded with duplicates.
+      if (!taskHandleRef.current) {
+        taskHandleRef.current = taskCenter.startTask({
+          title: "Matching queued apps",
+          subtitle: "Apple rate-limited the search — resuming automatically",
+          kind: "import",
+          href: "/onboard",
+          progress: {
+            current: matchedRef.current,
+            total: totalRef.current,
+            label: `Resuming in ${Math.ceil(init.retryAfterMs / 1000)}s · ${merged.length} queued`,
+          },
+          onCancel: () => {
+            abortedRef.current = true;
+            queuedRef.current = [];
+            clearTimers();
+            setState(IDLE_STATE);
+            taskHandleRef.current = null;
+          },
+        });
+      }
+
+      setState({
+        pending: true,
+        remaining: merged.length,
+        total: totalRef.current,
+        resumeAt: Date.now() + init.retryAfterMs,
+        matched: matchedRef.current,
       });
-    }
-
-    setState({
-      pending: true,
-      remaining: merged.length,
-      total: totalRef.current,
-      resumeAt: Date.now() + init.retryAfterMs,
-      matched: matchedRef.current,
-    });
-    scheduleRetry(init.retryAfterMs);
-  }, [clearTimers, scheduleRetry, taskCenter]);
+      scheduleRetry(init.retryAfterMs);
+    },
+    [clearTimers, scheduleRetry, taskCenter]
+  );
 
   const subscribe = useCallback((fn: ResultsListener) => {
     listenersRef.current.add(fn);
@@ -395,7 +422,7 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
     abortedRef.current = true;
     queuedRef.current = [];
     clearTimers();
-    taskHandleRef.current?.complete('cancelled', 'Cancelled');
+    taskHandleRef.current?.complete("cancelled", "Cancelled");
     taskHandleRef.current = null;
     setState(IDLE_STATE);
   }, [clearTimers]);
@@ -406,7 +433,7 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
 
   const api = useMemo<QueuedSearchApi>(
     () => ({ state, enqueue, subscribe, cancel }),
-    [state, enqueue, subscribe, cancel],
+    [state, enqueue, subscribe, cancel]
   );
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
@@ -415,7 +442,9 @@ export function QueuedSearchProvider({ children }: { children: ReactNode }) {
 export function useQueuedSearch(): QueuedSearchApi {
   const ctx = useContext(Ctx);
   if (!ctx) {
-    throw new Error('useQueuedSearch must be used inside <QueuedSearchProvider>.');
+    throw new Error(
+      "useQueuedSearch must be used inside <QueuedSearchProvider>."
+    );
   }
   return ctx;
 }

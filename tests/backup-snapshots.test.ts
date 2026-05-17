@@ -1,6 +1,6 @@
-import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import test from 'node:test';
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import test from "node:test";
 import {
   createBackupSnapshot,
   getBackupSnapshotDir,
@@ -8,10 +8,10 @@ import {
   listBackupSnapshots,
   runScheduledBackupSnapshotIfDue,
   saveBackupSnapshotSettings,
-} from '../lib/backup-snapshots';
-import { setSetting } from '../lib/scheduler';
+} from "../lib/backup-snapshots";
+import { setSetting } from "../lib/scheduler";
 
-const LAST_RUN_KEY = 'backup_snapshot_last_run_at';
+const LAST_RUN_KEY = "backup_snapshot_last_run_at";
 
 function resetSnapshotState() {
   fs.rmSync(getBackupSnapshotDir(), { recursive: true, force: true });
@@ -20,12 +20,12 @@ function resetSnapshotState() {
     intervalHours: 24,
     retentionCount: 10,
   });
-  setSetting(LAST_RUN_KEY, '0');
+  setSetting(LAST_RUN_KEY, "0");
 }
 
 test.beforeEach(resetSnapshotState);
 
-test('backup snapshot settings are clamped to safe local bounds', () => {
+test("backup snapshot settings are clamped to safe local bounds", () => {
   saveBackupSnapshotSettings({
     enabled: true,
     intervalHours: 0,
@@ -38,25 +38,25 @@ test('backup snapshot settings are clamped to safe local bounds', () => {
   assert.equal(settings.retentionCount, 100);
 });
 
-test('createBackupSnapshot writes a versioned JSON file and prunes old rows', async () => {
+test("createBackupSnapshot writes a versioned JSON file and prunes old rows", async () => {
   saveBackupSnapshotSettings({
     enabled: true,
     intervalHours: 24,
     retentionCount: 2,
   });
 
-  const first = createBackupSnapshot('manual');
-  await new Promise(resolve => setTimeout(resolve, 2));
-  createBackupSnapshot('manual');
-  await new Promise(resolve => setTimeout(resolve, 2));
-  const third = createBackupSnapshot('manual');
+  const first = createBackupSnapshot("manual");
+  await new Promise((resolve) => setTimeout(resolve, 2));
+  createBackupSnapshot("manual");
+  await new Promise((resolve) => setTimeout(resolve, 2));
+  const third = createBackupSnapshot("manual");
 
   const snapshots = listBackupSnapshots();
   assert.equal(snapshots.length, 2);
   assert.equal(third.pruned.length, 1);
   assert.equal(fs.existsSync(first.snapshot.path), false);
 
-  const body = JSON.parse(fs.readFileSync(third.snapshot.path, 'utf8')) as {
+  const body = JSON.parse(fs.readFileSync(third.snapshot.path, "utf8")) as {
     version?: number;
     tables?: Record<string, unknown>;
   };
@@ -64,7 +64,7 @@ test('createBackupSnapshot writes a versioned JSON file and prunes old rows', as
   assert.ok(body.tables);
 });
 
-test('scheduled snapshots only run when enabled and due', () => {
+test("scheduled snapshots only run when enabled and due", () => {
   assert.equal(runScheduledBackupSnapshotIfDue(Date.now()), null);
 
   const now = Date.now();

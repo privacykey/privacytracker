@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Bulk-select floating toolbar — appears below the AppGrid filter row
@@ -10,21 +10,24 @@
  * delete window pattern (`SOFT_DELETE_WINDOW_MS` = 30s in annotations).
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
-import type { VerdictValue } from '../../lib/verdict-types';
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { VerdictValue } from "../../lib/verdict-types";
 // Co-located CSS — Turbopack hot-reloads small files reliably; appending
 // to the 26k-line globals.css was leaving the bulk-select rules unbundled
 // until a full dev-server restart.
-import './bulk-select-bar.css';
+import "./bulk-select-bar.css";
 
 interface BulkSelectBarProps {
-  selectedIds: string[];
-  visibleIds: string[];
-  onSelectAll: () => void;
+  /**
+   * Map of appId → existing user verdict at the moment Select mode was
+   * entered. Used to compute the rollback set for Undo.
+   */
+  currentVerdicts: Record<string, VerdictValue>;
   onClear: () => void;
   onExit: () => void;
+  onSelectAll: () => void;
   /**
    * Reverse a bulk apply. The parent maintains `previousVerdicts`
    * (per-app verdict captured before the bulk write) so Undo can
@@ -32,13 +35,10 @@ interface BulkSelectBarProps {
    * the per-app rewrite.
    */
   onUndoRequest?: (
-    previous: Array<{ appId: string; verdict: VerdictValue | null }>,
+    previous: Array<{ appId: string; verdict: VerdictValue | null }>
   ) => Promise<void> | void;
-  /**
-   * Map of appId → existing user verdict at the moment Select mode was
-   * entered. Used to compute the rollback set for Undo.
-   */
-  currentVerdicts: Record<string, VerdictValue>;
+  selectedIds: string[];
+  visibleIds: string[];
 }
 
 const CONFIRM_THRESHOLD = 10;
@@ -52,10 +52,12 @@ export default function BulkSelectBar({
   onExit,
   currentVerdicts,
 }: BulkSelectBarProps) {
-  const t = useTranslations('review_queue.select_mode');
-  const tVerdict = useTranslations('verdict');
+  const t = useTranslations("review_queue.select_mode");
+  const tVerdict = useTranslations("verdict");
   const router = useRouter();
-  const [pendingConfirm, setPendingConfirm] = useState<VerdictValue | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<VerdictValue | null>(
+    null
+  );
   const [applying, setApplying] = useState(false);
   const [undo, setUndo] = useState<{
     verdict: VerdictValue;
@@ -64,76 +66,93 @@ export default function BulkSelectBar({
   const undoTimerRef = useRef<number | null>(null);
 
   // Clean up the undo timer when the bar unmounts (mode exit, etc.).
-  useEffect(() => () => {
-    if (undoTimerRef.current !== null) window.clearTimeout(undoTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (undoTimerRef.current !== null) {
+        window.clearTimeout(undoTimerRef.current);
+      }
+    },
+    []
+  );
 
   const apply = useCallback(
     async (verdict: VerdictValue) => {
       setApplying(true);
-      const previous = selectedIds.map(id => ({
+      const previous = selectedIds.map((id) => ({
         appId: id,
         verdict: currentVerdicts[id] ?? null,
       }));
       try {
-        const res = await fetch('/api/verdicts/bulk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/verdicts/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ appIds: selectedIds, verdict }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         // Schedule undo window expiry.
         setUndo({ verdict, previous });
-        if (undoTimerRef.current !== null) window.clearTimeout(undoTimerRef.current);
-        undoTimerRef.current = window.setTimeout(() => setUndo(null), UNDO_WINDOW_MS);
+        if (undoTimerRef.current !== null) {
+          window.clearTimeout(undoTimerRef.current);
+        }
+        undoTimerRef.current = window.setTimeout(
+          () => setUndo(null),
+          UNDO_WINDOW_MS
+        );
         router.refresh();
         // Selection is preserved so the user can re-apply a different
         // verdict (or use Undo) without re-picking. Parent can call
         // `onClear()` to reset if desired.
       } catch (e) {
-        console.warn('[BulkSelectBar] apply failed', e);
-        alert(t('error_apply'));
+        console.warn("[BulkSelectBar] apply failed", e);
+        // biome-ignore lint/suspicious/noAlert: fallback feedback for bulk-apply errors
+        alert(t("error_apply"));
       } finally {
         setApplying(false);
         setPendingConfirm(null);
       }
     },
-    [currentVerdicts, router, selectedIds, t],
+    [currentVerdicts, router, selectedIds, t]
   );
 
   const handleMark = useCallback(
     (verdict: VerdictValue) => {
-      if (selectedIds.length === 0) return;
+      if (selectedIds.length === 0) {
+        return;
+      }
       if (selectedIds.length > CONFIRM_THRESHOLD) {
         setPendingConfirm(verdict);
       } else {
         void apply(verdict);
       }
     },
-    [apply, selectedIds.length],
+    [apply, selectedIds.length]
   );
 
   const handleUndo = useCallback(async () => {
-    if (!undo) return;
+    if (!undo) {
+      return;
+    }
     const { previous } = undo;
     try {
       // Walk the previous list — per-app POST or DELETE to restore.
       await Promise.all(
-        previous.map(p =>
+        previous.map((p) =>
           p.verdict
-            ? fetch('/api/verdicts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            ? fetch("/api/verdicts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ appId: p.appId, verdict: p.verdict }),
               })
             : fetch(`/api/verdicts?appId=${encodeURIComponent(p.appId)}`, {
-                method: 'DELETE',
-              }),
-        ),
+                method: "DELETE",
+              })
+        )
       );
       router.refresh();
     } catch (e) {
-      console.warn('[BulkSelectBar] undo failed', e);
+      console.warn("[BulkSelectBar] undo failed", e);
     } finally {
       setUndo(null);
       if (undoTimerRef.current !== null) {
@@ -148,31 +167,31 @@ export default function BulkSelectBar({
   return (
     <>
       <div
-        className={`bulk-select-bar ${hasSelection ? 'is-active' : 'is-empty'}`}
+        aria-label={t("toolbar_label")}
+        className={`bulk-select-bar ${hasSelection ? "is-active" : "is-empty"}`}
         role="region"
-        aria-label={t('toolbar_label')}
       >
         {/* Top row: state-aware headline so the user always knows what
             the bar wants from them. Empty → invitation. Active →
             confirmation + a nudge toward the action buttons below. */}
         <div className="bulk-select-bar-headline">
-          <span className="bulk-select-bar-icon" aria-hidden="true">
-            {hasSelection ? '✓' : '☐'}
+          <span aria-hidden="true" className="bulk-select-bar-icon">
+            {hasSelection ? "✓" : "☐"}
           </span>
           <span className="bulk-select-bar-title">
             {hasSelection
-              ? t('headline_active', { count: selectedIds.length })
-              : t('headline_empty')}
+              ? t("headline_active", { count: selectedIds.length })
+              : t("headline_empty")}
           </span>
           {/* The exit button hugs the right of the headline so it's
               always discoverable, regardless of selection state. */}
           <button
-            type="button"
+            aria-label={t("exit")}
             className="bulk-select-bar-exit"
-            onClick={onExit}
             disabled={applying}
-            title={t('exit_title')}
-            aria-label={t('exit')}
+            onClick={onExit}
+            title={t("exit_title")}
+            type="button"
           >
             ✕
           </button>
@@ -184,31 +203,37 @@ export default function BulkSelectBar({
             instructions above. */}
         <div className="bulk-select-bar-actions">
           <button
-            type="button"
             className="bulk-select-action bulk-select-action-safe"
             disabled={!hasSelection || applying}
-            onClick={() => handleMark('safe')}
+            onClick={() => handleMark("safe")}
+            type="button"
           >
-            <span className="bulk-select-action-icon" aria-hidden="true">✓</span>
-            <span>{t('mark_safe')}</span>
+            <span aria-hidden="true" className="bulk-select-action-icon">
+              ✓
+            </span>
+            <span>{t("mark_safe")}</span>
           </button>
           <button
-            type="button"
             className="bulk-select-action bulk-select-action-replace"
             disabled={!hasSelection || applying}
-            onClick={() => handleMark('replace')}
+            onClick={() => handleMark("replace")}
+            type="button"
           >
-            <span className="bulk-select-action-icon" aria-hidden="true">↻</span>
-            <span>{t('mark_replace')}</span>
+            <span aria-hidden="true" className="bulk-select-action-icon">
+              ↻
+            </span>
+            <span>{t("mark_replace")}</span>
           </button>
           <button
-            type="button"
             className="bulk-select-action bulk-select-action-uninstall"
             disabled={!hasSelection || applying}
-            onClick={() => handleMark('uninstall')}
+            onClick={() => handleMark("uninstall")}
+            type="button"
           >
-            <span className="bulk-select-action-icon" aria-hidden="true">🗑</span>
-            <span>{t('mark_uninstall')}</span>
+            <span aria-hidden="true" className="bulk-select-action-icon">
+              🗑
+            </span>
+            <span>{t("mark_uninstall")}</span>
           </button>
         </div>
 
@@ -218,54 +243,67 @@ export default function BulkSelectBar({
             visual noise without disabling-but-leaving-around. */}
         <div className="bulk-select-bar-footer">
           {!hasSelection && visibleIds.length > 0 && (
-            <button type="button" className="bulk-select-bar-link" onClick={onSelectAll}>
-              {t('select_all_n', { count: visibleIds.length })}
+            <button
+              className="bulk-select-bar-link"
+              onClick={onSelectAll}
+              type="button"
+            >
+              {t("select_all_n", { count: visibleIds.length })}
             </button>
           )}
           {hasSelection && (
-            <button type="button" className="bulk-select-bar-link" onClick={onClear}>
-              {t('clear')}
+            <button
+              className="bulk-select-bar-link"
+              onClick={onClear}
+              type="button"
+            >
+              {t("clear")}
             </button>
           )}
           {hasSelection && (
-            <span className="bulk-select-bar-hint" aria-hidden="true">
-              {t('hint_active')}
+            <span aria-hidden="true" className="bulk-select-bar-hint">
+              {t("hint_active")}
             </span>
           )}
         </div>
       </div>
 
       {pendingConfirm && (
-        <div className="modal-overlay" onClick={() => !applying && setPendingConfirm(null)}>
+        <div
+          className="modal-overlay"
+          onClick={() => !applying && setPendingConfirm(null)}
+        >
           <div
-            className="modal-card"
-            role="dialog"
             aria-modal="true"
-            onClick={e => e.stopPropagation()}
+            className="modal-card"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
           >
             <h2 className="modal-title">
-              {t('confirm_title', { count: selectedIds.length })}
+              {t("confirm_title", { count: selectedIds.length })}
             </h2>
             <p className="modal-copy">
-              {t('confirm_body', { verdict: tVerdict(`${pendingConfirm}_short`) })}
+              {t("confirm_body", {
+                verdict: tVerdict(`${pendingConfirm}_short`),
+              })}
             </p>
             <div className="modal-actions">
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => setPendingConfirm(null)}
                 disabled={applying}
+                onClick={() => setPendingConfirm(null)}
+                type="button"
               >
-                {t('confirm_cancel')}
+                {t("confirm_cancel")}
               </button>
               <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void apply(pendingConfirm)}
-                disabled={applying}
                 autoFocus
+                className="btn btn-primary"
+                disabled={applying}
+                onClick={() => void apply(pendingConfirm)}
+                type="button"
               >
-                {t('confirm_apply')}
+                {t("confirm_apply")}
               </button>
             </div>
           </div>
@@ -274,16 +312,16 @@ export default function BulkSelectBar({
 
       {undo && (
         <div className="bulk-select-undo-toast" role="status">
-          {t('applied', {
+          {t("applied", {
             count: undo.previous.length,
             verdict: tVerdict(`${undo.verdict}_short`),
           })}
           <button
-            type="button"
             className="bulk-select-undo-toast-btn"
             onClick={() => void handleUndo()}
+            type="button"
           >
-            {t('undo')}
+            {t("undo")}
           </button>
         </div>
       )}

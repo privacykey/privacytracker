@@ -13,7 +13,10 @@ updates:
           - next
           - react
           - react-dom
-          - eslint-config-next
+      biome-lint:
+        patterns:
+          - "@biomejs/*"
+          - ultracite
       test-tooling:
         patterns:
           - "@playwright/*"

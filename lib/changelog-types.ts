@@ -10,23 +10,24 @@ export interface PrivacyCategorySnapshot {
 }
 
 export interface PrivacyTypeSnapshot {
+  categories: PrivacyCategorySnapshot[];
   identifier: string;
   title: string;
-  categories: PrivacyCategorySnapshot[];
 }
 
 export interface ChangeEntry {
-  type: 'added' | 'removed' | 'modified' | 'policy' | 'wayback';
-  description: string;
-  details?: string[];
   /**
    * Drives the icon. `privacy-policy` for privacy-policy text changes,
    * `wayback-attempt` for historical-import Save Page Now outcomes,
    * `accessibility` for Apple's accessibility-labels shelf changes.
    */
-  category?: 'privacy-label' | 'privacy-policy' | 'wayback-attempt' | 'accessibility';
-  /** For `privacy-policy` entries: the `privacy_policy_versions.id`. */
-  policy_version_id?: string;
+  category?:
+    | "privacy-label"
+    | "privacy-policy"
+    | "wayback-attempt"
+    | "accessibility";
+  description: string;
+  details?: string[];
   /**
    * Sub-classification for `privacy-policy` entries:
    *   first   — first-ever successful scrape
@@ -34,18 +35,21 @@ export interface ChangeEntry {
    *   changed — rescrape, content differs from previous
    *   error   — fetch failed
    */
-  policy_event?: 'first' | 'same' | 'changed' | 'error';
+  policy_event?: "first" | "same" | "changed" | "error";
+  /** For `privacy-policy` entries: the `privacy_policy_versions.id`. */
+  policy_version_id?: string;
+  /** For `requested_snapshot` entries: the Save Page Now URL. */
+  save_now_url?: string;
+  /** For `wayback-attempt` entries: the calendar quarter target (epoch ms). */
+  target_date?: number;
+  type: "added" | "removed" | "modified" | "policy" | "wayback";
   /**
    * Sub-classification for `wayback-attempt` entries:
    *   requested_snapshot — Save Page Now accepted the request
    *   no_capture         — archive.org has no capture near the target quarter
    *   save_now_failed    — Save-Now was attempted but failed (reason in `description`)
    */
-  wayback_event?: 'requested_snapshot' | 'no_capture' | 'save_now_failed';
-  /** For `requested_snapshot` entries: the Save Page Now URL. */
-  save_now_url?: string;
-  /** For `wayback-attempt` entries: the calendar quarter target (epoch ms). */
-  target_date?: number;
+  wayback_event?: "requested_snapshot" | "no_capture" | "save_now_failed";
 }
 
 /**
@@ -54,11 +58,20 @@ export interface ChangeEntry {
  * acknowledged change sets. The `kind` discriminator drives client rendering.
  */
 export interface SnapshotChangelogRow {
-  kind: 'snapshot';
-  id: string;
-  scraped_at: number;
+  /** App Store version string at capture time, e.g. "7.22.0". Null on legacy rows. */
+  app_version?: string | null;
+  /** Epoch ms of `currentVersionReleaseDate` at capture time. */
+  app_version_updated_at?: number | null;
   changes_detected: number;
   changes_summary: ChangeEntry[];
+  id: string;
+  kind: "snapshot";
+  /**
+   * True on `source: 'wayback'` rows whose snapshot is byte-identical to an
+   * adjacent `source: 'live'` row. Drives the "Matches live sync" tag.
+   */
+  matches_live_sync?: boolean;
+  scraped_at: number;
   /**
    * Raw snapshot_json string. Used server-side to detect wayback rows whose
    * content exactly matches an adjacent live row (see `matches_live_sync`).
@@ -71,9 +84,7 @@ export interface SnapshotChangelogRow {
    *   'wayback' — back-dated snapshot reconstructed from a Wayback capture;
    *               does not contribute to `apps.changeCount`.
    */
-  source?: 'live' | 'wayback';
-  /** For `source: 'wayback'` rows: the `https://web.archive.org/web/…` capture URL. */
-  wayback_snapshot_url?: string | null;
+  source?: "live" | "wayback";
   /**
    * What caused the scrape. Normalised server-side; legacy NULL rows get an
    * inferred label.
@@ -83,24 +94,18 @@ export interface SnapshotChangelogRow {
    *   'wayback'   — back-filled from the Internet Archive
    *   'sample'    — dev-only seed-sample-data endpoint
    */
-  triggered_by?: 'scheduled' | 'manual' | 'import' | 'wayback' | 'sample' | null;
-  /**
-   * True on `source: 'wayback'` rows whose snapshot is byte-identical to an
-   * adjacent `source: 'live'` row. Drives the "Matches live sync" tag.
-   */
-  matches_live_sync?: boolean;
-  /** App Store version string at capture time, e.g. "7.22.0". Null on legacy rows. */
-  app_version?: string | null;
-  /** Epoch ms of `currentVersionReleaseDate` at capture time. */
-  app_version_updated_at?: number | null;
+  triggered_by?:
+    | "scheduled"
+    | "manual"
+    | "import"
+    | "wayback"
+    | "sample"
+    | null;
+  /** For `source: 'wayback'` rows: the `https://web.archive.org/web/…` capture URL. */
+  wayback_snapshot_url?: string | null;
 }
 
 export interface ReviewChangelogRow {
-  kind: 'review';
-  /** The change_review_actions.id — prefixed so it can't collide with a snapshot uuid. */
-  id: string;
-  /** Populated from change_review_actions.acted_at for sort/formatting parity. */
-  scraped_at: number;
   action: ReviewAction;
   covered_count: number;
   /**
@@ -108,9 +113,14 @@ export interface ReviewChangelogRow {
    * newest-first. Empty/omitted on legacy rows that predate the column.
    */
   covered_snapshot_ids?: string[];
+  /** The change_review_actions.id — prefixed so it can't collide with a snapshot uuid. */
+  id: string;
+  kind: "review";
+  note: string | null;
+  /** Populated from change_review_actions.acted_at for sort/formatting parity. */
+  scraped_at: number;
   /** For `snoozed` rows only; null for everything else. */
   snooze_until: number | null;
-  note: string | null;
 }
 
 export type ChangelogRow = SnapshotChangelogRow | ReviewChangelogRow;
@@ -120,27 +130,27 @@ export type ChangelogRow = SnapshotChangelogRow | ReviewChangelogRow;
  * Events are newest first.
  */
 export interface UnacknowledgedChangeEvent {
+  changes: ChangeEntry[];
   id: string;
   scraped_at: number;
-  changes: ChangeEntry[];
 }
 
 export interface UnacknowledgedChanges {
-  /** Timestamp of the last acknowledgement (0 if never acknowledged). */
-  since: number;
-  /** Sync events with detected changes since `since`, newest first. */
-  events: UnacknowledgedChangeEvent[];
-  /** Flat count of ChangeEntry items across all events — what the UI surfaces. */
-  totalCount: number;
   /** Count of added entries across all events. */
   addedCount: number;
+  /** Sync events with detected changes since `since`, newest first. */
+  events: UnacknowledgedChangeEvent[];
   /** Count of removed entries across all events. */
   removedCount: number;
+  /** Timestamp of the last acknowledgement (0 if never acknowledged). */
+  since: number;
   /**
    * Snooze bookkeeping. `snoozedUntil > Date.now()` collapses the review
    * panel into a "Snoozed until …" state. 0 when not snoozed or elapsed.
    */
   snoozedUntil: number;
+  /** Flat count of ChangeEntry items across all events — what the UI surfaces. */
+  totalCount: number;
 }
 
 /**
@@ -151,22 +161,20 @@ export interface UnacknowledgedChanges {
  *   snoozed    — hide the review panel for N days
  *   unsnoozed  — user clicked "Resume reminders now"
  */
-export type ReviewAction = 'reviewed' | 'dismissed' | 'snoozed' | 'unsnoozed';
+export type ReviewAction = "reviewed" | "dismissed" | "snoozed" | "unsnoozed";
 
 /** Preset snooze durations offered by the UI. */
 export const SNOOZE_DAYS_OPTIONS = [1, 7, 30] as const;
 export type SnoozeDays = (typeof SNOOZE_DAYS_OPTIONS)[number];
 
 export interface ReviewActionRecord {
-  id: string;
-  app_id: string;
-  action: ReviewAction;
   acted_at: number;
+  action: ReviewAction;
+  app_id: string;
   covered_count: number;
   /** Snapshot ids pending at the moment of the action. Empty on legacy rows. */
   covered_snapshot_ids?: string[];
-  /** Only set for `snoozed` rows. */
-  snooze_until: number | null;
+  id: string;
   note: string | null;
   /**
    * Snapshot of the apps-row columns the action mutated, captured BEFORE
@@ -178,4 +186,6 @@ export interface ReviewActionRecord {
     changesAcknowledgedAt: number;
     changesSnoozedUntil: number;
   };
+  /** Only set for `snoozed` rows. */
+  snooze_until: number | null;
 }

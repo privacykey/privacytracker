@@ -20,30 +20,37 @@
  * produces the snapshot, not here.
  */
 
-import { NextResponse } from 'next/server';
-import os from 'node:os';
-import db from '@/lib/db';
-import { installRuntimeDiagnostics, snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
-import { snapshotApiTimings } from '@/lib/api-timing';
-import { snapshotDbWorkerTimings } from '@/lib/db-worker-client';
-import { snapshotDatabaseHealth } from '@/lib/db-health';
-import { snapshotDisk } from '@/lib/disk-usage';
-import { snapshotErrorLog } from '@/lib/error-log-ring';
-import { getAllRateLimits } from '@/lib/rate-limit';
-import { describeCurrentRun as describeWaybackRun } from '@/lib/wayback-bulk-runner';
-import { describeCurrentSyncRun } from '@/lib/sync-bulk-runner';
-import { describeCurrentPolicyRun } from '@/lib/policy-bulk-runner';
-import { HARD_DEFAULTS, type FlagKey, type FlagValue } from '@/lib/feature-flag-rules';
-import { getResolverContextFromDb } from '@/lib/feature-flags-server';
-import { resolveFlag } from '@/lib/feature-flags';
-import { buildDeploymentDiagnostics } from '@/lib/deployment-diagnostics';
+import os from "node:os";
+import { NextResponse } from "next/server";
+import { snapshotApiTimings } from "@/lib/api-timing";
+import db from "@/lib/db";
+import { snapshotDatabaseHealth } from "@/lib/db-health";
+import { snapshotDbWorkerTimings } from "@/lib/db-worker-client";
+import { buildDeploymentDiagnostics } from "@/lib/deployment-diagnostics";
+import { snapshotDisk } from "@/lib/disk-usage";
+import { snapshotErrorLog } from "@/lib/error-log-ring";
+import {
+  type FlagKey,
+  type FlagValue,
+  HARD_DEFAULTS,
+} from "@/lib/feature-flag-rules";
+import { resolveFlag } from "@/lib/feature-flags";
+import { getResolverContextFromDb } from "@/lib/feature-flags-server";
+import { describeCurrentPolicyRun } from "@/lib/policy-bulk-runner";
+import { getAllRateLimits } from "@/lib/rate-limit";
+import {
+  installRuntimeDiagnostics,
+  snapshotRuntimeMetrics,
+} from "@/lib/runtime-diagnostics";
+import { describeCurrentSyncRun } from "@/lib/sync-bulk-runner";
+import { describeCurrentRun as describeWaybackRun } from "@/lib/wayback-bulk-runner";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface FlagDiff {
-  key: FlagKey;
-  hardDefault: FlagValue;
   current: FlagValue;
+  hardDefault: FlagValue;
+  key: FlagKey;
   override: FlagValue | null;
 }
 
@@ -75,15 +82,19 @@ export async function GET(request: Request) {
   // subsystem never wipes out the rest of the bundle. The user is
   // probably collecting this *because* something's broken.
   const safe = <T>(fn: () => T, fallback: T): T => {
-    try { return fn(); } catch { return fallback; }
+    try {
+      return fn();
+    } catch {
+      return fallback;
+    }
   };
 
   // Host info copied verbatim from /api/desktop/diagnostics. We
   // duplicate the four lines instead of self-fetching that route so
   // the bundle stays a single in-process call.
   const host = {
-    osType: safe(() => os.type(), 'unknown'),
-    osRelease: safe(() => os.release(), 'unknown'),
+    osType: safe(() => os.type(), "unknown"),
+    osRelease: safe(() => os.release(), "unknown"),
     totalMemMb: safe(() => Math.round(os.totalmem() / 1024 / 1024), 0),
     freeMemMb: safe(() => Math.round(os.freemem() / 1024 / 1024), 0),
     cpuCount: safe(() => os.cpus().length, 0),
@@ -109,7 +120,10 @@ export async function GET(request: Request) {
     dbWorker: safe(() => snapshotDbWorkerTimings(), null),
     database: safe(() => snapshotDatabaseHealth(), null),
     disk: safe(() => snapshotDisk(), null),
-    errorLog: safe(() => snapshotErrorLog({ limit: 50 }), { entries: [], capacity: 0 }),
+    errorLog: safe(() => snapshotErrorLog({ limit: 50 }), {
+      entries: [],
+      capacity: 0,
+    }),
     backgroundJobs: {
       wayback: safe(() => describeWaybackRun(), null),
       sync: safe(() => describeCurrentSyncRun(), null),

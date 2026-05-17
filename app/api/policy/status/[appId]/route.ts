@@ -1,6 +1,7 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { getPolicyAnalysis } from '../../../../../lib/privacy-policy';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { getPolicyAnalysis } from "../../../../../lib/privacy-policy";
 
 /**
  * Lightweight polling endpoint for the AI Policy tab. Returns just
@@ -11,20 +12,20 @@ import { getPolicyAnalysis } from '../../../../../lib/privacy-policy';
  */
 export async function GET(
   _request: Request,
-  context: { params: Promise<{ appId: string }> },
+  context: { params: Promise<{ appId: string }> }
 ): Promise<Response> {
   // Next 15 types params as a Promise; accept both shapes.
   const params = await Promise.resolve(context.params);
   const appId = params?.appId?.trim();
-  if (!appId || !/^\d{1,20}$/.test(appId)) {
-    return NextResponse.json({ error: 'Invalid appId' }, { status: 400 });
+  if (!(appId && /^\d{1,20}$/.test(appId))) {
+    return NextResponse.json({ error: "Invalid appId" }, { status: 400 });
   }
 
   const analysis = getPolicyAnalysis(appId);
   if (!analysis) {
     // 200 with a "not started" shape so the client can poll into existence.
     return NextResponse.json({
-      runStatus: 'idle',
+      runStatus: "idle",
       runStartedAt: null,
       lastRunLog: [],
       status: null,
@@ -32,7 +33,7 @@ export async function GET(
   }
 
   return NextResponse.json({
-    runStatus: analysis.runStatus ?? 'idle',
+    runStatus: analysis.runStatus ?? "idle",
     runStartedAt: analysis.runStartedAt ?? null,
     lastRunLog: analysis.lastRunLog ?? [],
     // `status` lets the client detect terminal results (ready / fetch_error)

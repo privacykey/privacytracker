@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Step-2 imported-apps table — the user-facing surface for the structured
@@ -29,35 +29,37 @@
  * by removing it.
  */
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
+import { useState } from "react";
 // Co-located CSS — Turbopack hot-reloads reliably this way; the giant
 // globals.css has burned us on incremental builds.
-import './onboard-step2.css';
+import "./onboard-step2.css";
 
 export interface ImportedAppEntryView {
-  id: string;
-  name: string;
-  developer?: string;
   bundleId?: string;
+  developer?: string;
+  id: string;
   likelyWebClip?: boolean;
-  source: 'manual' | 'cfgutil' | 'file' | 'ocr';
+  name: string;
+  source: "manual" | "cfgutil" | "file" | "ocr";
 }
 
 interface Props {
   entries: ImportedAppEntryView[];
-  onRemove: (id: string) => void;
   onAdd: (rawText: string) => void;
+  onRemove: (id: string) => void;
 }
 
 export default function ImportedAppsTable({ entries, onRemove, onAdd }: Props) {
-  const t = useTranslations('onboard.step2.table');
-  const [pending, setPending] = useState('');
+  const t = useTranslations("onboard.step2.table");
+  const [pending, setPending] = useState("");
 
   const handleSubmit = () => {
-    if (pending.trim().length === 0) return;
+    if (pending.trim().length === 0) {
+      return;
+    }
     onAdd(pending);
-    setPending('');
+    setPending("");
   };
 
   const isEmpty = entries.length === 0;
@@ -65,10 +67,13 @@ export default function ImportedAppsTable({ entries, onRemove, onAdd }: Props) {
   return (
     <div className="imported-apps-table">
       <div className="imported-apps-table-header">
-        <span className="imported-apps-table-count" data-testid="imported-apps-count">
+        <span
+          className="imported-apps-table-count"
+          data-testid="imported-apps-count"
+        >
           {isEmpty
-            ? t('empty_header')
-            : t('count_header', { count: entries.length })}
+            ? t("empty_header")
+            : t("count_header", { count: entries.length })}
         </span>
       </div>
 
@@ -77,15 +82,22 @@ export default function ImportedAppsTable({ entries, onRemove, onAdd }: Props) {
           the viewport. Empty state renders an inline hint inside the
           same container so the layout shape stays consistent. */}
       <div
-        className={`imported-apps-table-rows${isEmpty ? ' is-empty' : ''}`}
-        role="list"
+        className={`imported-apps-table-rows${isEmpty ? "is-empty" : ""}`}
         data-testid="imported-apps-rows"
+        role="list"
       >
         {isEmpty ? (
-          <div className="imported-apps-table-empty-hint">{t('empty_hint')}</div>
+          <div className="imported-apps-table-empty-hint">
+            {t("empty_hint")}
+          </div>
         ) : (
-          entries.map(entry => (
-            <ImportedAppRow key={entry.id} entry={entry} onRemove={onRemove} t={t} />
+          entries.map((entry) => (
+            <ImportedAppRow
+              entry={entry}
+              key={entry.id}
+              onRemove={onRemove}
+              t={t}
+            />
           ))
         )}
       </div>
@@ -96,25 +108,25 @@ export default function ImportedAppsTable({ entries, onRemove, onAdd }: Props) {
         <textarea
           className="textarea imported-apps-table-add-input"
           data-testid="onboard-app-names"
-          rows={3}
-          value={pending}
-          onChange={e => setPending(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          onChange={(e) => setPending(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
               handleSubmit();
             }
           }}
-          placeholder={t('add_placeholder')}
+          placeholder={t("add_placeholder")}
+          rows={3}
+          value={pending}
         />
         <button
-          type="button"
           className="btn btn-secondary imported-apps-table-add-btn"
-          onClick={handleSubmit}
-          disabled={pending.trim().length === 0}
           data-testid="imported-apps-add"
+          disabled={pending.trim().length === 0}
+          onClick={handleSubmit}
+          type="button"
         >
-          {t('add_label')}
+          {t("add_label")}
         </button>
       </div>
     </div>
@@ -142,32 +154,32 @@ function ImportedAppRow({
         {entry.bundleId && (
           <span
             className="imported-apps-row-chip imported-apps-row-chip-bundle"
-            title={t('chip_bundle_title', { bundleId: entry.bundleId })}
+            title={t("chip_bundle_title", { bundleId: entry.bundleId })}
           >
-            {t('chip_bundle_label')}
+            {t("chip_bundle_label")}
           </span>
         )}
         {entry.likelyWebClip && (
           <span
             className="imported-apps-row-chip imported-apps-row-chip-webclip"
-            title={t('chip_webclip_title')}
+            title={t("chip_webclip_title")}
           >
-            {t('chip_webclip_label')}
+            {t("chip_webclip_label")}
           </span>
         )}
         <span
           className={`imported-apps-row-source imported-apps-row-source-${entry.source}`}
-          title={t(`source_title.${entry.source}` as 'source_title.manual')}
+          title={t(`source_title.${entry.source}` as "source_title.manual")}
         >
-          {t(`source_label.${entry.source}` as 'source_label.manual')}
+          {t(`source_label.${entry.source}` as "source_label.manual")}
         </span>
       </div>
       <button
-        type="button"
+        aria-label={t("remove_aria", { name: entry.name })}
         className="imported-apps-row-remove"
         onClick={() => onRemove(entry.id)}
-        title={t('remove_title', { name: entry.name })}
-        aria-label={t('remove_aria', { name: entry.name })}
+        title={t("remove_title", { name: entry.name })}
+        type="button"
       >
         ✕
       </button>

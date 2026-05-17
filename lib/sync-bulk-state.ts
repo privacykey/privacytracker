@@ -8,53 +8,57 @@
  * tick picks up pending apps.
  */
 
-import { getSetting, setSetting } from './scheduler';
-import db from './db';
+import db from "./db";
+import { getSetting, setSetting } from "./scheduler";
 
 /** Key under which the state blob lives in `app_settings`. */
-const STATE_KEY = 'sync_bulk_state';
+const STATE_KEY = "sync_bulk_state";
 
 /** Cross-request lock key. */
-export const SYNC_BULK_MUTEX_KEY = 'sync_running';
+export const SYNC_BULK_MUTEX_KEY = "sync_running";
 
 /** Bump when the persisted JSON shape changes incompatibly. */
 const STATE_SCHEMA_VERSION = 1;
 
-export type SyncQueueEntryStatus = 'pending' | 'in_progress' | 'done' | 'failed';
+export type SyncQueueEntryStatus =
+  | "pending"
+  | "in_progress"
+  | "done"
+  | "failed";
 
 /** One per-app outcome category, mirrored up into run totals. */
 export type SyncAppOutcome =
-  | 'succeeded'     // fetchAndParseApp resolved, no error
-  | 'changed'       // succeeded AND changesDetected (rolled up into `changes`)
-  | 'failed'        // scrape threw, non-rate-limit
-  | 'rate_limited'  // Apple 429 — handled by next scheduled tick, not by resume
-  | 'skipped';      // app row had no URL at dequeue time
+  | "succeeded" // fetchAndParseApp resolved, no error
+  | "changed" // succeeded AND changesDetected (rolled up into `changes`)
+  | "failed" // scrape threw, non-rate-limit
+  | "rate_limited" // Apple 429 — handled by next scheduled tick, not by resume
+  | "skipped"; // app row had no URL at dequeue time
 
 export interface SyncQueueEntry {
   appId: string;
   appName: string;
-  url: string;
-  status: SyncQueueEntryStatus;
-  /** Epoch-ms when we flipped to in_progress. */
-  startedAt?: number;
-  /** Epoch-ms when processing finished. */
-  finishedAt?: number;
-  /** Short error message on failure (trimmed to keep the blob small). */
-  error?: string;
-  /** Final per-app outcome category (mirrored up into totals). */
-  outcome?: SyncAppOutcome;
   /** Whether the scrape produced a privacy-label diff. */
   changesDetected?: boolean;
+  /** Short error message on failure (trimmed to keep the blob small). */
+  error?: string;
+  /** Epoch-ms when processing finished. */
+  finishedAt?: number;
+  /** Final per-app outcome category (mirrored up into totals). */
+  outcome?: SyncAppOutcome;
+  /** Epoch-ms when we flipped to in_progress. */
+  startedAt?: number;
+  status: SyncQueueEntryStatus;
+  url: string;
 }
 
 export interface SyncBulkTotals {
   attempted: number;
-  succeeded: number;
   /** Subset of succeeded that actually produced a diff. */
   changes: number;
   failed: number;
   rateLimited: number;
   skipped: number;
+  succeeded: number;
 }
 
 /** Exported so the runner can seed a fresh run with zeros. */
@@ -70,27 +74,27 @@ export function zeroSyncTotals(): SyncBulkTotals {
 }
 
 export interface SyncBulkState {
-  /** Schema version of the persisted blob. */
-  version: number;
-  /** UUID generated at the start of the run; changes on resume. */
-  runId: string;
-  /** Epoch-ms when the original run started. Survives resume. */
-  startedAt: number;
+  /** Id of the app currently being processed (denormalised from queue). */
+  currentAppId: string | null;
   /**
    * How the run started.
    *   - `manual`     — user pressed "Sync now" in Settings.
    *   - `scheduled`  — 30-min ticker fired in `instrumentation.ts`.
    *   - `resume`     — server restarted mid-run; instrumentation re-spawned.
    */
-  initiator: 'manual' | 'scheduled' | 'resume';
-  /** Epoch-ms when state was last persisted. */
-  updatedAt: number;
-  /** Id of the app currently being processed (denormalised from queue). */
-  currentAppId: string | null;
+  initiator: "manual" | "scheduled" | "resume";
   /** The full app queue with per-app status. */
   queue: SyncQueueEntry[];
+  /** UUID generated at the start of the run; changes on resume. */
+  runId: string;
+  /** Epoch-ms when the original run started. Survives resume. */
+  startedAt: number;
   /** Rolling totals across the whole run. */
   totals: SyncBulkTotals;
+  /** Epoch-ms when state was last persisted. */
+  updatedAt: number;
+  /** Schema version of the persisted blob. */
+  version: number;
 }
 
 /**
@@ -99,15 +103,17 @@ export interface SyncBulkState {
  * callers treat null as "nothing to resume".
  */
 export function readSyncBulkState(): SyncBulkState | null {
-  const raw = getSetting(STATE_KEY, '');
-  if (!raw) return null;
+  const raw = getSetting(STATE_KEY, "");
+  if (!raw) {
+    return null;
+  }
   try {
     const parsed = JSON.parse(raw);
     if (
       !parsed ||
-      typeof parsed !== 'object' ||
+      typeof parsed !== "object" ||
       parsed.version !== STATE_SCHEMA_VERSION ||
-      typeof parsed.runId !== 'string' ||
+      typeof parsed.runId !== "string" ||
       !Array.isArray(parsed.queue)
     ) {
       return null;
@@ -120,10 +126,10 @@ export function readSyncBulkState(): SyncBulkState | null {
 
 /** Persist the state blob. Refreshes `updatedAt` on every write. */
 export function writeSyncBulkState(
-  next: Omit<SyncBulkState, 'version' | 'updatedAt'> & {
+  next: Omit<SyncBulkState, "version" | "updatedAt"> & {
     version?: number;
     updatedAt?: number;
-  },
+  }
 ): void {
   const payload: SyncBulkState = {
     ...next,
@@ -135,24 +141,26 @@ export function writeSyncBulkState(
 
 /** Remove the state blob. Called on clean completion / stale-heal. */
 export function clearSyncBulkState(): void {
-  db.prepare('DELETE FROM app_settings WHERE key = ?').run(STATE_KEY);
+  db.prepare("DELETE FROM app_settings WHERE key = ?").run(STATE_KEY);
 }
 
 /** Acquire the cross-request mutex. Returns true if we got it. */
 export function acquireSyncBulkMutex(): boolean {
-  if (getSetting(SYNC_BULK_MUTEX_KEY) === 'true') return false;
-  setSetting(SYNC_BULK_MUTEX_KEY, 'true');
+  if (getSetting(SYNC_BULK_MUTEX_KEY) === "true") {
+    return false;
+  }
+  setSetting(SYNC_BULK_MUTEX_KEY, "true");
   return true;
 }
 
 /** Release the mutex unconditionally. Safe to call even when not held. */
 export function releaseSyncBulkMutex(): void {
-  setSetting(SYNC_BULK_MUTEX_KEY, 'false');
+  setSetting(SYNC_BULK_MUTEX_KEY, "false");
 }
 
 /** Is the mutex currently claimed? */
 export function isSyncBulkMutexHeld(): boolean {
-  return getSetting(SYNC_BULK_MUTEX_KEY) === 'true';
+  return getSetting(SYNC_BULK_MUTEX_KEY) === "true";
 }
 
 /** Convenience: per-status counts so UI callers don't walk the queue. */
@@ -170,16 +178,16 @@ export function summariseSyncState(state: SyncBulkState): {
   let failed = 0;
   for (const entry of state.queue) {
     switch (entry.status) {
-      case 'pending':
+      case "pending":
         pending++;
         break;
-      case 'in_progress':
+      case "in_progress":
         inProgress++;
         break;
-      case 'done':
+      case "done":
         done++;
         break;
-      case 'failed':
+      case "failed":
         failed++;
         break;
     }
@@ -196,8 +204,10 @@ export function summariseSyncState(state: SyncBulkState): {
 
 /** Has the persisted state got anything left to do? */
 export function hasSyncPendingWork(state: SyncBulkState | null): boolean {
-  if (!state) return false;
+  if (!state) {
+    return false;
+  }
   return state.queue.some(
-    entry => entry.status === 'pending' || entry.status === 'in_progress',
+    (entry) => entry.status === "pending" || entry.status === "in_progress"
   );
 }

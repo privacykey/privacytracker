@@ -5,16 +5,16 @@
  * See https://privacytracker-docs.privacykey.org/develop/feature-flags
  */
 
-import db from './db';
-import { getSetting, setSetting } from './scheduler';
+import db from "./db";
 import {
-  HARD_DEFAULTS,
-  activeGoalsFrom,
   type Audience,
+  activeGoalsFrom,
   type FlagKey,
   type FlagValue,
   type FocusState,
-} from './feature-flag-rules';
+  HARD_DEFAULTS,
+} from "./feature-flag-rules";
+import { getSetting, setSetting } from "./scheduler";
 
 // ============================================================================
 // Override read/write
@@ -29,7 +29,7 @@ export function getAllOverrides(): Map<FlagKey, FlagValue> {
     .prepare(
       `SELECT flag_key, override_value
        FROM feature_flag_overrides
-       WHERE quarantined = 0`,
+       WHERE quarantined = 0`
     )
     .all() as Array<{ flag_key: string; override_value: string }>;
 
@@ -56,22 +56,18 @@ export function setOverride(key: FlagKey, value: FlagValue): void {
        set_at = excluded.set_at,
        set_by = excluded.set_by,
        previous_focus = excluded.previous_focus,
-       quarantined = 0`,
+       quarantined = 0`
   ).run(key, value, now, previousFocus);
 }
 
 /** DELETE a single override row. */
 export function clearOverride(key: FlagKey): void {
-  db.prepare(
-    `DELETE FROM feature_flag_overrides WHERE flag_key = ?`,
-  ).run(key);
+  db.prepare("DELETE FROM feature_flag_overrides WHERE flag_key = ?").run(key);
 }
 
 /** DELETE all non-quarantined overrides ("Reset all to defaults"). */
 export function clearAllOverrides(): void {
-  db.prepare(
-    `DELETE FROM feature_flag_overrides WHERE quarantined = 0`,
-  ).run();
+  db.prepare("DELETE FROM feature_flag_overrides WHERE quarantined = 0").run();
 }
 
 /** DELETE overrides whose key starts with `flag.{surfacePrefix}.`. */
@@ -79,7 +75,7 @@ export function clearSurfaceOverrides(surfacePrefix: string): void {
   db.prepare(
     `DELETE FROM feature_flag_overrides
      WHERE quarantined = 0
-       AND flag_key LIKE ?`,
+       AND flag_key LIKE ?`
   ).run(`flag.${surfacePrefix}.%`);
 }
 
@@ -90,33 +86,36 @@ export function clearSurfaceOverrides(surfacePrefix: string): void {
 /** Read the active focus from `app_settings`. Defaults to `audience = 'self'`
  *  with no goals when nothing is stored. */
 export function getActiveFocus(): FocusState {
-  const audience = (getSetting('flag.focus.audience', '') || 'self') as Audience;
+  const audience = (getSetting("flag.focus.audience", "") ||
+    "self") as Audience;
   const goals = activeGoalsFrom({
-    understand: getSetting('flag.focus.goal.understand') === 'true',
-    declutter: getSetting('flag.focus.goal.declutter') === 'true',
-    minimal: getSetting('flag.focus.goal.minimal') === 'true',
-    accessibility: getSetting('flag.focus.goal.accessibility') === 'true',
+    understand: getSetting("flag.focus.goal.understand") === "true",
+    declutter: getSetting("flag.focus.goal.declutter") === "true",
+    minimal: getSetting("flag.focus.goal.minimal") === "true",
+    accessibility: getSetting("flag.focus.goal.accessibility") === "true",
   });
-  const aiProvider = getSetting('ai_provider', '');
-  const aiConfigured = aiProvider !== '' && aiProvider !== 'disabled';
+  const aiProvider = getSetting("ai_provider", "");
+  const aiConfigured = aiProvider !== "" && aiProvider !== "disabled";
   return { audience, goals, aiConfigured };
 }
 
 /** Write the active focus atomically (single transaction). */
-export function setActiveFocus(focus: Pick<FocusState, 'audience'> & {
-  understand: boolean;
-  declutter: boolean;
-  minimal: boolean;
-  accessibility: boolean;
-}): void {
+export function setActiveFocus(
+  focus: Pick<FocusState, "audience"> & {
+    understand: boolean;
+    declutter: boolean;
+    minimal: boolean;
+    accessibility: boolean;
+  }
+): void {
   const transaction = db.transaction(() => {
-    setSetting('flag.focus.audience', focus.audience);
-    setSetting('flag.focus.goal.understand', String(focus.understand));
-    setSetting('flag.focus.goal.declutter', String(focus.declutter));
-    setSetting('flag.focus.goal.minimal', String(focus.minimal));
-    setSetting('flag.focus.goal.accessibility', String(focus.accessibility));
+    setSetting("flag.focus.audience", focus.audience);
+    setSetting("flag.focus.goal.understand", String(focus.understand));
+    setSetting("flag.focus.goal.declutter", String(focus.declutter));
+    setSetting("flag.focus.goal.minimal", String(focus.minimal));
+    setSetting("flag.focus.goal.accessibility", String(focus.accessibility));
     // Stamp the change so YourFocusCard can render "Focus updated {date}".
-    setSetting('flag.focus.updated_at', String(Date.now()));
+    setSetting("flag.focus.updated_at", String(Date.now()));
   });
   transaction();
 }
@@ -127,8 +126,10 @@ export function setActiveFocus(focus: Pick<FocusState, 'audience'> & {
  * updated …" line on null.
  */
 export function getFocusUpdatedAt(): number | null {
-  const raw = getSetting('flag.focus.updated_at', '');
-  if (!raw) return null;
+  const raw = getSetting("flag.focus.updated_at", "");
+  if (!raw) {
+    return null;
+  }
   const n = Number.parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
@@ -148,7 +149,7 @@ export function quarantineOverride(key: string, value: string): void {
        override_value = excluded.override_value,
        set_at = excluded.set_at,
        set_by = excluded.set_by,
-       quarantined = 1`,
+       quarantined = 1`
   ).run(key, value, now);
 }
 
@@ -159,25 +160,29 @@ export function quarantineOverride(key: string, value: string): void {
  */
 export function unquarantineKnownOverrides(): number {
   const knownKeys = Object.keys(HARD_DEFAULTS);
-  const result = db.prepare(
-    `UPDATE feature_flag_overrides
+  const result = db
+    .prepare(
+      `UPDATE feature_flag_overrides
      SET quarantined = 0
      WHERE quarantined = 1
-       AND flag_key IN (${knownKeys.map(() => '?').join(', ')})`,
-  ).run(...knownKeys);
+       AND flag_key IN (${knownKeys.map(() => "?").join(", ")})`
+    )
+    .run(...knownKeys);
   return result.changes;
 }
 
 /** Quarantine rows whose keys are NOT in the registry (returns count). */
 export function quarantineUnknownOverrides(): number {
   const knownKeys = Object.keys(HARD_DEFAULTS);
-  const placeholders = knownKeys.map(() => '?').join(', ');
-  const result = db.prepare(
-    `UPDATE feature_flag_overrides
+  const placeholders = knownKeys.map(() => "?").join(", ");
+  const result = db
+    .prepare(
+      `UPDATE feature_flag_overrides
      SET quarantined = 1
      WHERE quarantined = 0
-       AND flag_key NOT IN (${placeholders})`,
-  ).run(...knownKeys);
+       AND flag_key NOT IN (${placeholders})`
+    )
+    .run(...knownKeys);
   return result.changes;
 }
 
@@ -188,12 +193,14 @@ export function listQuarantinedOverrides(): Array<{
   set_at: number;
   set_by: string;
 }> {
-  return db.prepare(
-    `SELECT flag_key, override_value, set_at, set_by
+  return db
+    .prepare(
+      `SELECT flag_key, override_value, set_at, set_by
      FROM feature_flag_overrides
      WHERE quarantined = 1
-     ORDER BY set_at DESC`,
-  ).all() as Array<{
+     ORDER BY set_at DESC`
+    )
+    .all() as Array<{
     flag_key: string;
     override_value: string;
     set_at: number;
@@ -204,7 +211,7 @@ export function listQuarantinedOverrides(): Array<{
 /** DELETE a quarantined row entirely. */
 export function purgeQuarantinedOverride(key: string): void {
   db.prepare(
-    `DELETE FROM feature_flag_overrides WHERE flag_key = ? AND quarantined = 1`,
+    "DELETE FROM feature_flag_overrides WHERE flag_key = ? AND quarantined = 1"
   ).run(key);
 }
 
@@ -214,12 +221,12 @@ export function purgeQuarantinedOverride(key: string): void {
 // ============================================================================
 
 export function getWelcomedAt(): number | null {
-  const value = getSetting('welcomed_at', '');
-  return value ? parseInt(value, 10) : null;
+  const value = getSetting("welcomed_at", "");
+  return value ? Number.parseInt(value, 10) : null;
 }
 
 export function setWelcomedAt(timestamp: number = Date.now()): void {
-  setSetting('welcomed_at', String(timestamp));
+  setSetting("welcomed_at", String(timestamp));
 }
 
 // ============================================================================
@@ -227,26 +234,30 @@ export function setWelcomedAt(timestamp: number = Date.now()): void {
 // Co-located here so all flag-related state shares one import path.
 // ============================================================================
 
-const PREVIEW_KEY = 'feature_flag_preview_state';
+const PREVIEW_KEY = "feature_flag_preview_state";
 
 export interface PreviewState {
+  accessibility: boolean;
   audience: Audience;
-  understand: boolean;
   declutter: boolean;
   minimal: boolean;
-  accessibility: boolean;
   /** Override staging during preview — uncommitted */
   stagedOverrides: Record<FlagKey, FlagValue>;
-  /** Tour pause state — populated when tour is mid-run during preview */
-  tourPaused?: { stepIndex: number; tourId: string };
   /** When the preview started (for the persistent banner copy) */
   startedAt: number;
+  /** Tour pause state — populated when tour is mid-run during preview */
+  tourPaused?: { stepIndex: number; tourId: string };
+  understand: boolean;
 }
 
 export function getPreviewState(): PreviewState | null {
-  if (typeof window === 'undefined') return null; // server-safe no-op
+  if (typeof window === "undefined") {
+    return null; // server-safe no-op
+  }
   const raw = window.sessionStorage.getItem(PREVIEW_KEY);
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   try {
     return JSON.parse(raw) as PreviewState;
   } catch {
@@ -256,11 +267,15 @@ export function getPreviewState(): PreviewState | null {
 }
 
 export function setPreviewState(state: PreviewState): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") {
+    return;
+  }
   window.sessionStorage.setItem(PREVIEW_KEY, JSON.stringify(state));
 }
 
 export function clearPreviewState(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") {
+    return;
+  }
   window.sessionStorage.removeItem(PREVIEW_KEY);
 }

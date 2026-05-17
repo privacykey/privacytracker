@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Task Center
@@ -24,23 +24,23 @@
  *     they can scroll back a little.
  */
 
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   createContext,
-  ReactNode,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-} from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { useFlag } from '../../lib/feature-flags-hooks';
+} from "react";
+import { useFlag } from "../../lib/feature-flags-hooks";
 
-type TaskKind = 'sync' | 'scrape' | 'policy' | 'import' | 'other';
-export type TaskStatus = 'running' | 'done' | 'error' | 'cancelled';
+type TaskKind = "sync" | "scrape" | "policy" | "import" | "other";
+export type TaskStatus = "running" | "done" | "error" | "cancelled";
 
 /**
  * Shape returned by GET /api/sync/status. We only need the subset the
@@ -49,11 +49,11 @@ export type TaskStatus = 'running' | 'done' | 'error' | 'cancelled';
  * the sync set to "manual".
  */
 interface SchedulerStatus {
-  schedule: 'manual' | 'daily' | 'weekly';
-  lastRun: number;
-  nextRun: number | null;
   isDue: boolean;
   isRunning: boolean;
+  lastRun: number;
+  nextRun: number | null;
+  schedule: "manual" | "daily" | "weekly";
 }
 
 // Lightweight background poll for the scheduler. 60s resolution is plenty
@@ -66,14 +66,16 @@ const SCHEDULER_POLL_MS = 60_000;
 // is slow enough that the poll itself is negligible cost (three tiny
 // SELECTs server-side), fast enough that the progress counter doesn't
 // look stuck.
-const ACTIVE_TASKS_POLL_MS = 4_000;
+const ACTIVE_TASKS_POLL_MS = 4000;
 
 interface ActiveJobView {
-  running: boolean;
-  mutexHeld: boolean;
-  stale: boolean;
-  initiator: 'manual' | 'scheduled' | 'automatic' | 'resume' | null;
   currentAppName: string | null;
+  initiator: "manual" | "scheduled" | "automatic" | "resume" | null;
+  mutexHeld: boolean;
+  runId: string | null;
+  running: boolean;
+  stale: boolean;
+  startedAt: number | null;
   summary: {
     total: number;
     pending: number;
@@ -82,99 +84,92 @@ interface ActiveJobView {
     failed: number;
     remaining: number;
   } | null;
-  runId: string | null;
-  startedAt: number | null;
   updatedAt: number | null;
 }
 
 interface ActiveTasksResponse {
-  wayback: ActiveJobView;
-  sync: ActiveJobView;
   policy: ActiveJobView;
   policyRuns?: ActivePolicyRunView[];
+  sync: ActiveJobView;
+  wayback: ActiveJobView;
 }
 
 interface ActivePolicyRunView {
   appId: string;
   appName: string | null;
-  runStartedAt: number | null;
-  updatedAt: number | null;
   lastPhase: string | null;
   lastPhaseNote: string | null;
+  runStartedAt: number | null;
+  updatedAt: number | null;
 }
 
-type ServerJobKey = 'wayback' | 'sync' | 'policy';
+type ServerJobKey = "wayback" | "sync" | "policy";
 
 const SERVER_JOB_KIND: Record<ServerJobKey, TaskKind> = {
-  wayback: 'import',
-  sync: 'sync',
-  policy: 'policy',
+  wayback: "import",
+  sync: "sync",
+  policy: "policy",
 };
 
 const SERVER_JOB_HREF: Record<ServerJobKey, string> = {
-  wayback: '/dashboard/settings#import-history',
-  sync: '/dashboard/settings#sync-schedule',
-  policy: '/dashboard/settings#privacy-policies-bulk',
+  wayback: "/dashboard/settings#import-history",
+  sync: "/dashboard/settings#sync-schedule",
+  policy: "/dashboard/settings#privacy-policies-bulk",
 };
 
 export interface TaskProgress {
   current: number;
-  total: number;
   label?: string;
+  total: number;
 }
 
 export interface Task {
-  id: string;
-  title: string;
-  subtitle?: string;
-  kind: TaskKind;
-  status: TaskStatus;
-  progress?: TaskProgress;
-  startedAt: number;
   endedAt?: number;
   /** Optional link to the page that kicked the task off. */
   href?: string;
+  id: string;
+  kind: TaskKind;
   /** Human-readable error/result message, shown in the menu row. */
   message?: string;
+  progress?: TaskProgress;
+  startedAt: number;
+  status: TaskStatus;
+  subtitle?: string;
+  title: string;
 }
 
 export interface TaskHandle {
+  complete(status: "done" | "error" | "cancelled", message?: string): void;
   id: string;
-  update(patch: Partial<Omit<Task, 'id' | 'startedAt'>>): void;
   setProgress(current: number, total: number, label?: string): void;
-  complete(status?: 'done' | 'error' | 'cancelled', message?: string): void;
+  update(patch: Partial<Omit<Task, "id" | "startedAt">>): void;
 }
 
 interface StartTaskInit {
-  title: string;
-  subtitle?: string;
-  kind?: TaskKind;
   href?: string;
-  progress?: TaskProgress;
+  kind?: TaskKind;
   /** Called when the user clicks Cancel. Should stop the work. */
   onCancel?: () => void;
+  progress?: TaskProgress;
+  subtitle?: string;
+  title: string;
 }
 
 interface RunBackgroundFetchInit {
-  title: string;
-  subtitle?: string;
-  kind?: TaskKind;
   href?: string;
-  url: string;
   init?: RequestInit;
+  kind?: TaskKind;
   /** Lets the caller post-process the response into a progress update or final message. */
-  onResponse?: (res: Response) => Promise<{ message?: string } | void>;
+  onResponse?: (res: Response) => Promise<{ message?: string } | undefined>;
+  subtitle?: string;
+  title: string;
+  url: string;
 }
 
 interface TaskCenterApi {
-  tasks: Task[];
-  runningCount: number;
-  /**
-   * Latest known scheduler state (schedule, next run wall-clock, etc.).
-   * `null` until the first poll succeeds — treat that as "unknown" in the UI
-   * rather than "manual".
-   */
-  schedulerStatus: SchedulerStatus | null;
+  cancelTask(id: string): void;
+  clearCompleted(): void;
+  dismissTask(id: string): void;
   /**
    * Force an immediate re-fetch of /api/sync/status. Call this after any
    * user action that changes the scheduler (saving a new schedule in
@@ -184,15 +179,20 @@ interface TaskCenterApi {
    * and keeps the last good status on failure.
    */
   refreshScheduler(): Promise<void>;
-  startTask(init: StartTaskInit): TaskHandle;
-  cancelTask(id: string): void;
-  dismissTask(id: string): void;
-  clearCompleted(): void;
   /**
    * Convenience: fire a single `fetch` whose lifecycle is owned by the
    * context, so the request survives the caller component unmounting.
    */
   runBackgroundFetch(init: RunBackgroundFetchInit): TaskHandle;
+  runningCount: number;
+  /**
+   * Latest known scheduler state (schedule, next run wall-clock, etc.).
+   * `null` until the first poll succeeds — treat that as "unknown" in the UI
+   * rather than "manual".
+   */
+  schedulerStatus: SchedulerStatus | null;
+  startTask(init: StartTaskInit): TaskHandle;
+  tasks: Task[];
 }
 
 const TaskCenterContext = createContext<TaskCenterApi | null>(null);
@@ -231,11 +231,14 @@ export function TaskCenterProvider({
    */
   resumeCardsEnabled?: boolean;
 }) {
-  const t = useTranslations('task_center');
+  const t = useTranslations("task_center");
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [schedulerStatus, setSchedulerStatus] = useState<SchedulerStatus | null>(null);
+  const [schedulerStatus, setSchedulerStatus] =
+    useState<SchedulerStatus | null>(null);
   const cancelHandlers = useRef<CancelMap>(new Map());
-  const dismissTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const dismissTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
   const tasksRef = useRef<Task[]>([]);
   useEffect(() => {
     tasksRef.current = tasks;
@@ -260,14 +263,18 @@ export function TaskCenterProvider({
   // failure, we just keep the last good status.
   const refreshScheduler = useCallback(async () => {
     try {
-      const res = await fetch('/api/sync/status', { cache: 'no-store' });
-      if (!res.ok) return;
+      const res = await fetch("/api/sync/status", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
       const body = (await res.json()) as SchedulerStatus;
-      if (mountedRef.current) setSchedulerStatus(body);
+      if (mountedRef.current) {
+        setSchedulerStatus(body);
+      }
     } catch (err) {
       // Network hiccups are expected (e.g. while the dev server reloads).
       // Keep the last good status rather than clobbering it.
-      console.warn('[tasks] Scheduler status fetch failed:', err);
+      console.warn("[tasks] Scheduler status fetch failed:", err);
     }
   }, []);
 
@@ -287,109 +294,146 @@ export function TaskCenterProvider({
   // session didn't kick off. Filters to `initiator === 'resume'` so manual
   // runs don't get a duplicate card (the calling UI already owns those via
   // startTask). The actual poll callback is declared after startTask below.
-  const serverTasksRef = useRef<Map<ServerJobKey, { handle: TaskHandle; runId: string }>>(
-    new Map(),
-  );
+  const serverTasksRef = useRef<
+    Map<ServerJobKey, { handle: TaskHandle; runId: string }>
+  >(new Map());
   const policyRunTasksRef = useRef<Map<string, TaskHandle>>(new Map());
 
-  const scheduleAutoDismiss = useCallback((id: string) => {
-    // Wave I: when auto-dismiss is gated off, finished rows stay pinned
-    // until the user dismisses them. Clear any existing timer first so a
-    // mid-flight toggle from on→off cancels the pending removal.
-    const existing = dismissTimers.current.get(id);
-    if (existing) clearTimeout(existing);
-    if (!autoDismissEnabled) {
-      dismissTimers.current.delete(id);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setTasks(prev => prev.filter(t => t.id !== id));
-      dismissTimers.current.delete(id);
-    }, AUTO_DISMISS_MS);
-    dismissTimers.current.set(id, timer);
-  }, [autoDismissEnabled]);
+  const scheduleAutoDismiss = useCallback(
+    (id: string) => {
+      // Wave I: when auto-dismiss is gated off, finished rows stay pinned
+      // until the user dismisses them. Clear any existing timer first so a
+      // mid-flight toggle from on→off cancels the pending removal.
+      const existing = dismissTimers.current.get(id);
+      if (existing) {
+        clearTimeout(existing);
+      }
+      if (!autoDismissEnabled) {
+        dismissTimers.current.delete(id);
+        return;
+      }
+      const timer = setTimeout(() => {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        dismissTimers.current.delete(id);
+      }, AUTO_DISMISS_MS);
+      dismissTimers.current.set(id, timer);
+    },
+    [autoDismissEnabled]
+  );
 
-  const startTask = useCallback((init: StartTaskInit): TaskHandle => {
-    const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const task: Task = {
-      id,
-      title: init.title,
-      subtitle: init.subtitle,
-      kind: init.kind ?? 'other',
-      href: init.href,
-      progress: init.progress,
-      status: 'running',
-      startedAt: Date.now(),
-    };
+  const startTask = useCallback(
+    (init: StartTaskInit): TaskHandle => {
+      const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const task: Task = {
+        id,
+        title: init.title,
+        subtitle: init.subtitle,
+        kind: init.kind ?? "other",
+        href: init.href,
+        progress: init.progress,
+        status: "running",
+        startedAt: Date.now(),
+      };
 
-    if (init.onCancel) cancelHandlers.current.set(id, init.onCancel);
+      if (init.onCancel) {
+        cancelHandlers.current.set(id, init.onCancel);
+      }
 
-    setTasks(prev => {
-      const next = [task, ...prev];
-      if (next.length > MAX_RECENT) return next.slice(0, MAX_RECENT);
-      return next;
-    });
+      setTasks((prev) => {
+        const next = [task, ...prev];
+        if (next.length > MAX_RECENT) {
+          return next.slice(0, MAX_RECENT);
+        }
+        return next;
+      });
 
-    const update: TaskHandle['update'] = patch => {
-      setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)));
-    };
+      const update: TaskHandle["update"] = (patch) => {
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, ...patch } : t))
+        );
+      };
 
-    const setProgress: TaskHandle['setProgress'] = (current, total, label) => {
-      setTasks(prev =>
-        prev.map(t => (t.id === id ? { ...t, progress: { current, total, label } } : t)),
-      );
-    };
+      const setProgress: TaskHandle["setProgress"] = (
+        current,
+        total,
+        label
+      ) => {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === id ? { ...t, progress: { current, total, label } } : t
+          )
+        );
+      };
 
-    const complete: TaskHandle['complete'] = (status = 'done', message) => {
-      setTasks(prev =>
-        prev.map(t =>
-          t.id === id
-            ? { ...t, status, endedAt: Date.now(), message: message ?? t.message }
-            : t,
-        ),
-      );
+      const complete: TaskHandle["complete"] = (status, message) => {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  status,
+                  endedAt: Date.now(),
+                  message: message ?? t.message,
+                }
+              : t
+          )
+        );
+        cancelHandlers.current.delete(id);
+        // Successful and errored tasks now stick around in the "Recent" section
+        // so the user can see what the system has been up to. The MAX_RECENT
+        // cap in startTask() keeps the list from growing unbounded, and the
+        // "Clear finished" button lets the user tidy up when they want to.
+        // Only cancelled tasks still auto-dismiss — cancelling is explicitly
+        // "I didn't want this; get it off my screen".
+        if (status === "cancelled") {
+          scheduleAutoDismiss(id);
+        }
+      };
+
+      return { id, update, setProgress, complete };
+    },
+    [scheduleAutoDismiss]
+  );
+
+  const cancelTask = useCallback(
+    (id: string) => {
+      const handler = cancelHandlers.current.get(id);
       cancelHandlers.current.delete(id);
-      // Successful and errored tasks now stick around in the "Recent" section
-      // so the user can see what the system has been up to. The MAX_RECENT
-      // cap in startTask() keeps the list from growing unbounded, and the
-      // "Clear finished" button lets the user tidy up when they want to.
-      // Only cancelled tasks still auto-dismiss — cancelling is explicitly
-      // "I didn't want this; get it off my screen".
-      if (status === 'cancelled') scheduleAutoDismiss(id);
-    };
-
-    return { id, update, setProgress, complete };
-  }, [scheduleAutoDismiss]);
-
-  const cancelTask = useCallback((id: string) => {
-    const handler = cancelHandlers.current.get(id);
-    cancelHandlers.current.delete(id);
-    try {
-      handler?.();
-    } catch (error) {
-      /* Still mark cancelled below, but surface the handler's error in devtools. */
-      console.warn(`[tasks] Cancel handler for ${id} threw:`, error);
-    }
-    setTasks(prev =>
-      prev.map(item =>
-        item.id === id && item.status === 'running'
-          ? { ...item, status: 'cancelled', endedAt: Date.now(), message: t('msg_cancelled') }
-          : item,
-      ),
-    );
-    scheduleAutoDismiss(id);
-  }, [scheduleAutoDismiss, t]);
+      try {
+        handler?.();
+      } catch (error) {
+        /* Still mark cancelled below, but surface the handler's error in devtools. */
+        console.warn(`[tasks] Cancel handler for ${id} threw:`, error);
+      }
+      setTasks((prev) =>
+        prev.map((item) =>
+          item.id === id && item.status === "running"
+            ? {
+                ...item,
+                status: "cancelled",
+                endedAt: Date.now(),
+                message: t("msg_cancelled"),
+              }
+            : item
+        )
+      );
+      scheduleAutoDismiss(id);
+    },
+    [scheduleAutoDismiss, t]
+  );
 
   const dismissTask = useCallback((id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+    setTasks((prev) => prev.filter((t) => t.id !== id));
     const timer = dismissTimers.current.get(id);
-    if (timer) clearTimeout(timer);
+    if (timer) {
+      clearTimeout(timer);
+    }
     dismissTimers.current.delete(id);
     cancelHandlers.current.delete(id);
   }, []);
 
   const clearCompleted = useCallback(() => {
-    setTasks(prev => prev.filter(t => t.status === 'running'));
+    setTasks((prev) => prev.filter((t) => t.status === "running"));
   }, []);
 
   const runBackgroundFetch = useCallback(
@@ -398,7 +442,7 @@ export function TaskCenterProvider({
       const handle = startTask({
         title: init.title,
         subtitle: init.subtitle,
-        kind: init.kind ?? 'other',
+        kind: init.kind ?? "other",
         href: init.href,
         onCancel: () => controller.abort(),
       });
@@ -413,33 +457,43 @@ export function TaskCenterProvider({
             let message = `Failed (${res.status})`;
             try {
               const body = await res.json();
-              if (typeof body?.error === 'string') message = body.error;
+              if (typeof body?.error === "string") {
+                message = body.error;
+              }
             } catch (error) {
               /* response body wasn't JSON — surface once in devtools */
-              console.warn('[tasks] Non-JSON error body:', error);
+              console.warn("[tasks] Non-JSON error body:", error);
             }
-            handle.complete('error', message);
+            handle.complete("error", message);
             return;
           }
           if (init.onResponse) {
             const outcome = await init.onResponse(res);
-            handle.complete('done', outcome?.message);
+            handle.complete("done", outcome?.message);
           } else {
-            handle.complete('done');
+            handle.complete("done");
           }
         } catch (err) {
           // Abort comes through as DOMException name 'AbortError' — that's
           // already handled by cancelTask which sets status='cancelled'.
-          if ((err as Error)?.name === 'AbortError') return;
-          console.error(`[tasks] Background fetch for "${init.title}" failed:`, err);
-          handle.complete('error', (err as Error)?.message ?? t('msg_unknown_error'));
+          if ((err as Error)?.name === "AbortError") {
+            return;
+          }
+          console.error(
+            `[tasks] Background fetch for "${init.title}" failed:`,
+            err
+          );
+          handle.complete(
+            "error",
+            (err as Error)?.message ?? t("msg_unknown_error")
+          );
         }
       })();
 
       return handle;
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
-    [startTask],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    [startTask]
   );
 
   // Poll /api/tasks/active and surface any resumed bulk run as a TaskCenter
@@ -448,30 +502,32 @@ export function TaskCenterProvider({
   // so filtering prevents duplicate cards.
   const pollActiveTasks = useCallback(async () => {
     try {
-      const res = await fetch('/api/tasks/active', { cache: 'no-store' });
-      if (!res.ok || !mountedRef.current) return;
+      const res = await fetch("/api/tasks/active", { cache: "no-store" });
+      if (!(res.ok && mountedRef.current)) {
+        return;
+      }
       const body = (await res.json()) as ActiveTasksResponse;
-      const jobs: Array<[ServerJobKey, ActiveJobView]> = [
-        ['wayback', body.wayback],
-        ['sync', body.sync],
-        ['policy', body.policy],
+      const jobs: [ServerJobKey, ActiveJobView][] = [
+        ["wayback", body.wayback],
+        ["sync", body.sync],
+        ["policy", body.policy],
       ];
       for (const [jobKey, job] of jobs) {
         const existing = serverTasksRef.current.get(jobKey);
 
         // Nothing running or run blob already cleared → complete any
         // tracked task for this job and move on.
-        if (!job.running || !job.runId) {
+        if (!(job.running && job.runId)) {
           if (existing) {
-            existing.handle.complete('done');
+            existing.handle.complete("done");
             serverTasksRef.current.delete(jobKey);
           }
           continue;
         }
 
-        const hasLocalTask = tasksRef.current.some(task =>
-          task.status === 'running' &&
-          task.href === SERVER_JOB_HREF[jobKey],
+        const hasLocalTask = tasksRef.current.some(
+          (task) =>
+            task.status === "running" && task.href === SERVER_JOB_HREF[jobKey]
         );
 
         // Show resumed jobs even after a reload. Also show manual policy
@@ -479,14 +535,16 @@ export function TaskCenterProvider({
         // user refreshed or opened a second tab mid-run). This keeps bulk
         // re-summarise visible without duplicating the task that launched it.
         const shouldSurface =
-          (job.initiator === 'resume' && resumeCardsEnabled) ||
-          (jobKey === 'policy' && job.initiator === 'manual' && !hasLocalTask);
-        if (!shouldSurface) continue;
+          (job.initiator === "resume" && resumeCardsEnabled) ||
+          (jobKey === "policy" && job.initiator === "manual" && !hasLocalTask);
+        if (!shouldSurface) {
+          continue;
+        }
 
         // Run boundary — a different runId means the previous one ended
         // and a new one started between polls. Close the old card first.
         if (existing && existing.runId !== job.runId) {
-          existing.handle.complete('done');
+          existing.handle.complete("done");
           serverTasksRef.current.delete(jobKey);
         }
 
@@ -494,65 +552,75 @@ export function TaskCenterProvider({
         const total = job.summary?.total ?? 0;
         const label = job.currentAppName ?? undefined;
 
-        if (!serverTasksRef.current.has(jobKey)) {
+        if (serverTasksRef.current.has(jobKey)) {
+          const current = serverTasksRef.current.get(jobKey)!;
+          current.handle.setProgress(done, total, label);
+        } else {
           const handle = startTask({
             title: t(`kind_${jobKey}`),
-            subtitle: t('subtitle_resumed'),
+            subtitle: t("subtitle_resumed"),
             kind: SERVER_JOB_KIND[jobKey],
             href: SERVER_JOB_HREF[jobKey],
             progress: { current: done, total, label },
           });
           serverTasksRef.current.set(jobKey, { handle, runId: job.runId });
-        } else {
-          const current = serverTasksRef.current.get(jobKey)!;
-          current.handle.setProgress(done, total, label);
         }
       }
 
-      const activePolicyRuns = Array.isArray(body.policyRuns) ? body.policyRuns : [];
-      const activePolicyIds = new Set(activePolicyRuns.map(run => run.appId));
+      const activePolicyRuns = Array.isArray(body.policyRuns)
+        ? body.policyRuns
+        : [];
+      const activePolicyIds = new Set(activePolicyRuns.map((run) => run.appId));
       for (const [appId, handle] of policyRunTasksRef.current.entries()) {
         if (!activePolicyIds.has(appId)) {
-          handle.complete('done');
+          handle.complete("done");
           policyRunTasksRef.current.delete(appId);
         }
       }
 
       for (const run of activePolicyRuns) {
         const href = `/apps/${run.appId}`;
-        const localDuplicate = tasksRef.current.some(task =>
-          task.status === 'running' &&
-          task.kind === 'policy' &&
-          task.href === href,
+        const localDuplicate = tasksRef.current.some(
+          (task) =>
+            task.status === "running" &&
+            task.kind === "policy" &&
+            task.href === href
         );
-        if (localDuplicate && !policyRunTasksRef.current.has(run.appId)) continue;
+        if (localDuplicate && !policyRunTasksRef.current.has(run.appId)) {
+          continue;
+        }
 
         const subtitle = run.appName
-          ? (run.lastPhase
-              ? `${run.appName} · ${run.lastPhaseNote || run.lastPhase}`.slice(0, 120)
-              : run.appName)
-          : (run.lastPhaseNote || run.lastPhase || 'Running');
+          ? run.lastPhase
+            ? `${run.appName} · ${run.lastPhaseNote || run.lastPhase}`.slice(
+                0,
+                120
+              )
+            : run.appName
+          : run.lastPhaseNote || run.lastPhase || "Running";
 
-        if (!policyRunTasksRef.current.has(run.appId)) {
+        if (policyRunTasksRef.current.has(run.appId)) {
+          policyRunTasksRef.current.get(run.appId)!.update({ subtitle });
+        } else {
           const handle = startTask({
-            title: t('kind_policy'),
+            title: t("kind_policy"),
             subtitle,
-            kind: 'policy',
+            kind: "policy",
             href,
           });
           policyRunTasksRef.current.set(run.appId, handle);
-        } else {
-          policyRunTasksRef.current.get(run.appId)!.update({ subtitle });
         }
       }
     } catch (err) {
       // Network blip — keep last known state. The next tick will recover.
-      console.warn('[tasks] Active-tasks poll failed:', err);
+      console.warn("[tasks] Active-tasks poll failed:", err);
     }
   }, [startTask, resumeCardsEnabled, t]);
 
   useEffect(() => {
-    if (!pollingEnabled) return;
+    if (!pollingEnabled) {
+      return;
+    }
     pollActiveTasks();
     const timer = setInterval(pollActiveTasks, ACTIVE_TASKS_POLL_MS);
     return () => clearInterval(timer);
@@ -563,7 +631,9 @@ export function TaskCenterProvider({
   useEffect(() => {
     const timers = dismissTimers.current;
     return () => {
-      timers.forEach(t => clearTimeout(t));
+      timers.forEach((t) => {
+        clearTimeout(t);
+      });
       timers.clear();
     };
   }, []);
@@ -571,7 +641,7 @@ export function TaskCenterProvider({
   const api = useMemo<TaskCenterApi>(
     () => ({
       tasks,
-      runningCount: tasks.filter(t => t.status === 'running').length,
+      runningCount: tasks.filter((t) => t.status === "running").length,
       schedulerStatus,
       refreshScheduler,
       startTask,
@@ -589,16 +659,20 @@ export function TaskCenterProvider({
       dismissTask,
       clearCompleted,
       runBackgroundFetch,
-    ],
+    ]
   );
 
-  return <TaskCenterContext.Provider value={api}>{children}</TaskCenterContext.Provider>;
+  return (
+    <TaskCenterContext.Provider value={api}>
+      {children}
+    </TaskCenterContext.Provider>
+  );
 }
 
 export function useTaskCenter(): TaskCenterApi {
   const ctx = useContext(TaskCenterContext);
   if (!ctx) {
-    throw new Error('useTaskCenter must be used inside <TaskCenterProvider>.');
+    throw new Error("useTaskCenter must be used inside <TaskCenterProvider>.");
   }
   return ctx;
 }
@@ -609,25 +683,39 @@ export function useTaskCenter(): TaskCenterApi {
  * label ("Daily sync · in 3h 42m").
  */
 function formatCountdown(msUntil: number): string {
-  if (msUntil <= 0) return 'any moment now';
+  if (msUntil <= 0) {
+    return "any moment now";
+  }
   const totalSeconds = Math.floor(msUntil / 1000);
   const days = Math.floor(totalSeconds / 86_400);
   const hours = Math.floor((totalSeconds % 86_400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
-  if (days > 0) return `in ${days}d ${hours}h`;
-  if (hours > 0) return `in ${hours}h ${minutes}m`;
-  if (minutes > 0) return `in ${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+  if (days > 0) {
+    return `in ${days}d ${hours}h`;
+  }
+  if (hours > 0) {
+    return `in ${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `in ${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+  }
   return `in ${seconds}s`;
 }
 
 type SchedT = (key: string, values?: Record<string, string | number>) => string;
-function scheduleLabel(t: SchedT, schedule: SchedulerStatus['schedule']): string {
+function scheduleLabel(
+  t: SchedT,
+  schedule: SchedulerStatus["schedule"]
+): string {
   switch (schedule) {
-    case 'daily': return t('schedule_daily');
-    case 'weekly': return t('schedule_weekly');
-    default: return t('schedule_default');
+    case "daily":
+      return t("schedule_daily");
+    case "weekly":
+      return t("schedule_weekly");
+    default:
+      return t("schedule_default");
   }
 }
 
@@ -639,15 +727,21 @@ export function TaskCenterTrigger() {
   // i18n — panel chrome (aria, title, clear-finished, empty state,
   // dismiss aria). Per-row task copy is composed dynamically and stays
   // English for now.
-  const t = useTranslations('task_center');
+  const t = useTranslations("task_center");
   // Wave I: short-circuit when `flag.taskcenter.widget` resolves off.
   // The Nav already gates `flag.nav.task_center_trigger`; this is the
   // belt-and-braces gate on the widget itself so future surfaces that
   // mount it directly still respect the toggle.
-  const widgetOn = useFlag('flag.taskcenter.widget') === 'on';
+  const widgetOn = useFlag("flag.taskcenter.widget") === "on";
 
-  const { tasks, runningCount, schedulerStatus, cancelTask, dismissTask, clearCompleted } =
-    useTaskCenter();
+  const {
+    tasks,
+    runningCount,
+    schedulerStatus,
+    cancelTask,
+    dismissTask,
+    clearCompleted,
+  } = useTaskCenter();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -657,34 +751,42 @@ export function TaskCenterTrigger() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
     };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     setNowTick(Date.now());
     const t = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(t);
   }, [open]);
 
-  const anyCompleted = tasks.some(t => t.status !== 'running');
+  const anyCompleted = tasks.some((t) => t.status !== "running");
 
   const hasUpcoming =
     !!schedulerStatus &&
-    schedulerStatus.schedule !== 'manual' &&
-    typeof schedulerStatus.nextRun === 'number';
+    schedulerStatus.schedule !== "manual" &&
+    typeof schedulerStatus.nextRun === "number";
   const upcomingCountdown =
     hasUpcoming && schedulerStatus
       ? formatCountdown((schedulerStatus.nextRun ?? 0) - nowTick)
@@ -705,83 +807,111 @@ export function TaskCenterTrigger() {
    */
   const goToSyncSchedule = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>) => {
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+        return;
+      }
       e.preventDefault();
       setOpen(false);
 
-      if (pathname === '/dashboard/settings') {
-        const el = document.getElementById('sync-schedule');
+      if (pathname === "/dashboard/settings") {
+        const el = document.getElementById("sync-schedule");
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          if (typeof window !== 'undefined' && window.history) {
-            window.history.replaceState(null, '', '#sync-schedule');
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          if (typeof window !== "undefined" && window.history) {
+            window.history.replaceState(null, "", "#sync-schedule");
           }
         }
       } else {
-        router.push('/dashboard/settings#sync-schedule');
+        router.push("/dashboard/settings#sync-schedule");
       }
     },
-    [pathname, router],
+    [pathname, router]
   );
 
-  if (!widgetOn) return null;
+  if (!widgetOn) {
+    return null;
+  }
 
   return (
     <div className="task-center" ref={rootRef}>
       <button
-        type="button"
-        className={`task-center-trigger ${runningCount > 0 ? 'is-active' : ''} ${open ? 'is-open' : ''}`}
-        onClick={() => setOpen(v => !v)}
-        aria-label={runningCount > 0 ? t('trigger_aria_running', { count: runningCount }) : t('trigger_aria_idle')}
         aria-expanded={open}
+        aria-label={
+          runningCount > 0
+            ? t("trigger_aria_running", { count: runningCount })
+            : t("trigger_aria_idle")
+        }
+        className={`task-center-trigger ${runningCount > 0 ? "is-active" : ""} ${open ? "is-open" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        type="button"
       >
         {runningCount > 0 ? (
-          <span className="task-center-spinner" aria-hidden="true" />
+          <span aria-hidden="true" className="task-center-spinner" />
         ) : (
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="18"
+            viewBox="0 0 18 18"
+            width="18"
+          >
             <path
               d="M9 1.5V3.75M9 14.25V16.5M3.75 9H1.5M16.5 9H14.25M4.28 4.28L2.7 2.7M15.3 15.3L13.72 13.72M4.28 13.72L2.7 15.3M15.3 2.7L13.72 4.28"
               stroke="currentColor"
-              strokeWidth="1.5"
               strokeLinecap="round"
+              strokeWidth="1.5"
             />
           </svg>
         )}
-        {runningCount > 0 && <span className="task-center-badge">{runningCount}</span>}
+        {runningCount > 0 && (
+          <span className="task-center-badge">{runningCount}</span>
+        )}
       </button>
 
       {open && (
-        <div className="task-center-panel" role="dialog" aria-label={t('panel_aria')}>
+        <div
+          aria-label={t("panel_aria")}
+          className="task-center-panel"
+          role="dialog"
+        >
           <div className="task-center-panel-header">
-            <div className="task-center-panel-title">{t('panel_title')}</div>
+            <div className="task-center-panel-title">{t("panel_title")}</div>
             {anyCompleted && (
               <button
-                type="button"
                 className="task-center-panel-clear"
                 onClick={clearCompleted}
+                type="button"
               >
-                {t('clear_finished')}
+                {t("clear_finished")}
               </button>
             )}
           </div>
 
           {hasUpcoming && schedulerStatus && (
             <div className="task-center-upcoming-wrap">
-              <div className="task-center-section-label">{t('section_upcoming')}</div>
+              <div className="task-center-section-label">
+                {t("section_upcoming")}
+              </div>
               <a
-                href="/dashboard/settings#sync-schedule"
                 className="task-center-upcoming"
+                href="/dashboard/settings#sync-schedule"
                 onClick={goToSyncSchedule}
               >
-                <div className="task-center-upcoming-icon" aria-hidden="true">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.5" />
+                <div aria-hidden="true" className="task-center-upcoming-icon">
+                  <svg fill="none" height="16" viewBox="0 0 16 16" width="16">
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6.25"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
                     <path
                       d="M8 4.5V8L10.25 9.75"
                       stroke="currentColor"
-                      strokeWidth="1.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
+                      strokeWidth="1.5"
                     />
                   </svg>
                 </div>
@@ -791,13 +921,18 @@ export function TaskCenterTrigger() {
                   </div>
                   <div className="task-center-upcoming-sub">
                     {schedulerStatus.isRunning
-                      ? t('row_running_now')
+                      ? t("row_running_now")
                       : schedulerStatus.isDue
-                        ? t('row_due_running_soon')
+                        ? t("row_due_running_soon")
                         : `Next run ${upcomingCountdown}`}
                   </div>
                 </div>
-                <div className="task-center-upcoming-chevron" aria-hidden="true">›</div>
+                <div
+                  aria-hidden="true"
+                  className="task-center-upcoming-chevron"
+                >
+                  ›
+                </div>
               </a>
             </div>
           )}
@@ -805,52 +940,54 @@ export function TaskCenterTrigger() {
           {tasks.length === 0 ? (
             <div className="task-center-empty">
               <div className="task-center-empty-icon">✓</div>
-              <div className="task-center-empty-title">{t('empty_title')}</div>
-              <p className="task-center-empty-text">{t('empty_text')}</p>
+              <div className="task-center-empty-title">{t("empty_title")}</div>
+              <p className="task-center-empty-text">{t("empty_text")}</p>
             </div>
           ) : (
-            <>
-              {(() => {
-                const running = tasks.filter(t => t.status === 'running');
-                const recent = tasks.filter(t => t.status !== 'running');
-                return (
-                  <>
-                    {running.length > 0 && (
-                      <>
-                        <div className="task-center-section-label">{t('section_running')}</div>
-                        <ul className="task-center-list">
-                          {running.map(task => (
-                            <TaskRow
-                              key={task.id}
-                              task={task}
-                              onCancel={() => cancelTask(task.id)}
-                              onDismiss={() => dismissTask(task.id)}
-                              onNavigate={() => setOpen(false)}
-                            />
-                          ))}
-                        </ul>
-                      </>
-                    )}
-                    {recent.length > 0 && (
-                      <>
-                        <div className="task-center-section-label">{t('section_recent')}</div>
-                        <ul className="task-center-list">
-                          {recent.map(task => (
-                            <TaskRow
-                              key={task.id}
-                              task={task}
-                              onCancel={() => cancelTask(task.id)}
-                              onDismiss={() => dismissTask(task.id)}
-                              onNavigate={() => setOpen(false)}
-                            />
-                          ))}
-                        </ul>
-                      </>
-                    )}
-                  </>
-                );
-              })()}
-            </>
+            (() => {
+              const running = tasks.filter((t) => t.status === "running");
+              const recent = tasks.filter((t) => t.status !== "running");
+              return (
+                <>
+                  {running.length > 0 && (
+                    <>
+                      <div className="task-center-section-label">
+                        {t("section_running")}
+                      </div>
+                      <ul className="task-center-list">
+                        {running.map((task) => (
+                          <TaskRow
+                            key={task.id}
+                            onCancel={() => cancelTask(task.id)}
+                            onDismiss={() => dismissTask(task.id)}
+                            onNavigate={() => setOpen(false)}
+                            task={task}
+                          />
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {recent.length > 0 && (
+                    <>
+                      <div className="task-center-section-label">
+                        {t("section_recent")}
+                      </div>
+                      <ul className="task-center-list">
+                        {recent.map((task) => (
+                          <TaskRow
+                            key={task.id}
+                            onCancel={() => cancelTask(task.id)}
+                            onDismiss={() => dismissTask(task.id)}
+                            onNavigate={() => setOpen(false)}
+                            task={task}
+                          />
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </>
+              );
+            })()
           )}
 
           {/* Diagnostics deep-link. The TaskCenter is already the
@@ -866,8 +1003,8 @@ export function TaskCenterTrigger() {
           {(tasks.length > 0 || hasUpcoming) && (
             <div className="task-center-footer-link-wrap">
               <Link
-                href="/dashboard/diagnostics"
                 className="task-center-footer-link"
+                href="/dashboard/diagnostics"
                 onClick={() => setOpen(false)}
                 title="Live runtime metrics: memory, event-loop lag, slow queries"
               >
@@ -893,34 +1030,49 @@ function TaskRow({
   onNavigate: () => void;
 }) {
   // i18n — for the per-row dismiss aria-label.
-  const t = useTranslations('task_center');
+  const t = useTranslations("task_center");
   const statusIcon =
-    task.status === 'running' ? '⏳'
-    : task.status === 'done' ? '✓'
-    : task.status === 'cancelled' ? '⊘'
-    : '✕';
+    task.status === "running"
+      ? "⏳"
+      : task.status === "done"
+        ? "✓"
+        : task.status === "cancelled"
+          ? "⊘"
+          : "✕";
 
   const progressPct =
     task.progress && task.progress.total > 0
-      ? Math.min(100, Math.round((task.progress.current / task.progress.total) * 100))
+      ? Math.min(
+          100,
+          Math.round((task.progress.current / task.progress.total) * 100)
+        )
       : null;
 
   return (
     <li className={`task-row task-row--${task.status}`}>
-      <div className="task-row-status" aria-hidden="true">
-        {task.status === 'running' ? <span className="task-row-spinner" /> : statusIcon}
+      <div aria-hidden="true" className="task-row-status">
+        {task.status === "running" ? (
+          <span className="task-row-spinner" />
+        ) : (
+          statusIcon
+        )}
       </div>
 
       <div className="task-row-body">
         <div className="task-row-title-line">
           <span className="task-row-title">{task.title}</span>
-          {task.subtitle && <span className="task-row-subtitle">{task.subtitle}</span>}
+          {task.subtitle && (
+            <span className="task-row-subtitle">{task.subtitle}</span>
+          )}
         </div>
 
         {task.progress && progressPct !== null ? (
           <div className="task-row-progress">
             <div className="task-row-progress-bar">
-              <div className="task-row-progress-fill" style={{ width: `${progressPct}%` }} />
+              <div
+                className="task-row-progress-fill"
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
             <span className="task-row-progress-label">
               {task.progress.label
@@ -934,21 +1086,30 @@ function TaskRow({
       </div>
 
       <div className="task-row-actions">
-        {task.href && task.status === 'running' && (
+        {task.href && task.status === "running" && (
           <Link
-            href={task.href}
             className="task-row-btn task-row-btn--view"
+            href={task.href}
             onClick={onNavigate}
           >
             View
           </Link>
         )}
-        {task.status === 'running' ? (
-          <button type="button" className="task-row-btn task-row-btn--cancel" onClick={onCancel}>
+        {task.status === "running" ? (
+          <button
+            className="task-row-btn task-row-btn--cancel"
+            onClick={onCancel}
+            type="button"
+          >
             Cancel
           </button>
         ) : (
-          <button type="button" className="task-row-btn task-row-btn--dismiss" onClick={onDismiss} aria-label={t('dismiss_aria')}>
+          <button
+            aria-label={t("dismiss_aria")}
+            className="task-row-btn task-row-btn--dismiss"
+            onClick={onDismiss}
+            type="button"
+          >
             ✕
           </button>
         )}

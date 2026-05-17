@@ -1,14 +1,15 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { scrapeInitialUrls } from '../../../lib/scraper';
-import { schedulePostAppUpdatePolicyFetch } from '../../../lib/post-app-update-policy-fetch';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { withApiTiming } from "../../../lib/api-timing";
+import { schedulePostAppUpdatePolicyFetch } from "../../../lib/post-app-update-policy-fetch";
+import { scrapeInitialUrls } from "../../../lib/scraper";
 import {
-  validateAppStoreUrl,
-  readBoundedJson,
   checkRateLimit,
   rateLimitKeyForRequest,
-} from '../../../lib/security';
-import { withApiTiming } from '../../../lib/api-timing';
+  readBoundedJson,
+  validateAppStoreUrl,
+} from "../../../lib/security";
 
 // Guardrails:
 //   - URL allowlist: only apps.apple.com / itunes.apple.com with an /id<digits>
@@ -19,16 +20,19 @@ import { withApiTiming } from '../../../lib/api-timing';
 //   - Per-batch cap: the legacy handler trusted `urls` unconditionally.
 const MAX_URLS_PER_BATCH = 100;
 
-export const POST = withApiTiming('/api/scrape', async (request: Request) => {
+export const POST = withApiTiming("/api/scrape", async (request: Request) => {
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'scrape'),
+    key: rateLimitKeyForRequest(request, "scrape"),
     limit: 30,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Rate limit exceeded for /api/scrape. Try again shortly.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
+      { error: "Rate limit exceeded for /api/scrape. Try again shortly." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) },
+      }
     );
   }
 
@@ -41,44 +45,49 @@ export const POST = withApiTiming('/api/scrape', async (request: Request) => {
   try {
     body = await readBoundedJson(request);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid request body';
+    const message =
+      error instanceof Error ? error.message : "Invalid request body";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
   const { urls, resync, summarizePolicies, trigger } = body;
 
   if (!Array.isArray(urls) || urls.length === 0) {
-    return NextResponse.json({ error: 'urls must be a non-empty array' }, { status: 400 });
+    return NextResponse.json(
+      { error: "urls must be a non-empty array" },
+      { status: 400 }
+    );
   }
   if (urls.length > MAX_URLS_PER_BATCH) {
     return NextResponse.json(
       { error: `urls exceeds cap of ${MAX_URLS_PER_BATCH}` },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
   const cleaned: string[] = [];
   for (const candidate of urls) {
     const verdict = validateAppStoreUrl(candidate);
-    if (!verdict.ok || !verdict.url) {
+    if (!(verdict.ok && verdict.url)) {
       return NextResponse.json(
         {
-          error: `Rejected URL (${verdict.error ?? 'invalid_url'}): ${String(candidate).slice(0, 200)}`,
+          error: `Rejected URL (${verdict.error ?? "invalid_url"}): ${String(candidate).slice(0, 200)}`,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
     cleaned.push(verdict.url.toString());
   }
 
   // Callers can label the scrape (Settings → Sync now, Onboarding, Change
-   // Match retry). Unknown/missing values fall back to the signature default:
-   // resync === true means "user asked us to refresh", so we treat it as
-   // manual; resync === false means "first scrape for this URL", i.e. import.
-  const allowedTriggers = ['scheduled', 'manual', 'import', 'wayback'] as const;
+  // Match retry). Unknown/missing values fall back to the signature default:
+  // resync === true means "user asked us to refresh", so we treat it as
+  // manual; resync === false means "first scrape for this URL", i.e. import.
+  const allowedTriggers = ["scheduled", "manual", "import", "wayback"] as const;
   type AllowedTrigger = (typeof allowedTriggers)[number];
   const triggerOverride: AllowedTrigger | undefined =
-    typeof trigger === 'string' && (allowedTriggers as readonly string[]).includes(trigger)
+    typeof trigger === "string" &&
+    (allowedTriggers as readonly string[]).includes(trigger)
       ? (trigger as AllowedTrigger)
       : undefined;
 
@@ -87,7 +96,7 @@ export const POST = withApiTiming('/api/scrape', async (request: Request) => {
       cleaned,
       resync === true,
       summarizePolicies === true,
-      { trigger: triggerOverride },
+      { trigger: triggerOverride }
     );
 
     // Server-side log of per-result failures. Without this, a headless
@@ -98,29 +107,32 @@ export const POST = withApiTiming('/api/scrape', async (request: Request) => {
     // a specific app that didn't import. Bounded — the route already
     // caps the batch via MAX_URLS_PER_BATCH.
     const failures = results.filter(
-      (r): r is Extract<typeof r, { status: 'error' | 'rate_limited' }> =>
-        r.status === 'error' || r.status === 'rate_limited',
+      (r): r is Extract<typeof r, { status: "error" | "rate_limited" }> =>
+        r.status === "error" || r.status === "rate_limited"
     );
     if (failures.length > 0) {
       console.error(
         `[scrape] ${failures.length} / ${results.length} URLs failed:`,
-        failures.map(f => ({
+        failures.map((f) => ({
           url: f.url,
           status: f.status,
           error: f.error,
-        })),
+        }))
       );
     }
 
     if (
       summarizePolicies !== true &&
-      results.some(result => result.status === 'success')
+      results.some((result) => result.status === "success")
     ) {
-      schedulePostAppUpdatePolicyFetch(resync === true ? 'sync' : 'import');
+      schedulePostAppUpdatePolicyFetch(resync === true ? "sync" : "import");
     }
     return NextResponse.json({ results });
   } catch (error) {
-    console.error('Scrape API error', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Scrape API error", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 });

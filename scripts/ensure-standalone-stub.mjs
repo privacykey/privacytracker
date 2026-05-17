@@ -19,27 +19,31 @@
 //
 // Idempotent on both steps.
 
-import { existsSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, rmSync, statSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repo = path.resolve(here, '..');
-const tarball = path.join(repo, 'src-tauri', 'resources', 'standalone.tar');
+const repo = path.resolve(here, "..");
+const tarball = path.join(repo, "src-tauri", "resources", "standalone.tar");
 const readyMarker = `${tarball}.ready`;
 
 // Step 1: always clear the freshness marker.
 if (existsSync(readyMarker)) {
   rmSync(readyMarker, { force: true });
-  console.log(`ensure-standalone-stub: cleared stale ${path.basename(readyMarker)}`);
+  console.log(
+    `ensure-standalone-stub: cleared stale ${path.basename(readyMarker)}`
+  );
 }
 
 // Step 2: stub the tarball iff missing.
 if (!existsSync(tarball)) {
   // Cargo's validator only checks `Path::exists()`, so an empty file is enough.
-  writeFileSync(tarball, '');
+  writeFileSync(tarball, "");
   console.log(`ensure-standalone-stub: wrote 0-byte placeholder at ${tarball}`);
 } else if (statSync(tarball).size === 0) {
-  console.log(`ensure-standalone-stub: 0-byte placeholder already present at ${tarball}`);
+  console.log(
+    `ensure-standalone-stub: 0-byte placeholder already present at ${tarball}`
+  );
 }
 // Real (non-zero) tarball on disk — left intact for atomic rename to overwrite.

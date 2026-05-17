@@ -1,12 +1,12 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { sanitizeA11yProfile } from "../../../lib/accessibility-profile";
 import {
   getAccessibilityProfile,
   saveAccessibilityProfile,
-} from '../../../lib/accessibility-profile-server';
-import { sanitizeA11yProfile } from '../../../lib/accessibility-profile';
-import { readBoundedJson } from '../../../lib/security';
+} from "../../../lib/accessibility-profile-server";
+import { readBoundedJson } from "../../../lib/security";
 
 /**
  * GET  → { profile: { [featureKey]: preference } | null }
@@ -26,11 +26,14 @@ export async function PUT(request: Request) {
   try {
     body = await readBoundedJson(request, 16 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body || typeof body !== 'object') {
-    return NextResponse.json({ error: 'Body must be an object' }, { status: 400 });
+  if (!body || typeof body !== "object") {
+    return NextResponse.json(
+      { error: "Body must be an object" },
+      { status: 400 }
+    );
   }
 
   const raw = (body as { profile?: unknown }).profile;
@@ -40,8 +43,11 @@ export async function PUT(request: Request) {
   }
   if (raw === undefined) {
     return NextResponse.json(
-      { error: 'Missing `profile` key. Pass null to clear, or an object to save.' },
-      { status: 400 },
+      {
+        error:
+          "Missing `profile` key. Pass null to clear, or an object to save.",
+      },
+      { status: 400 }
     );
   }
 

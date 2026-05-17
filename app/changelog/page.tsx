@@ -13,19 +13,19 @@
  * filter state + paginated fetches.
  */
 
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import db from '../../lib/db';
-import Nav from '../components/Nav';
-import UniversalChangelogView from '../components/UniversalChangelogView';
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import db from "../../lib/db";
+import Nav from "../components/Nav";
+import UniversalChangelogView from "../components/UniversalChangelogView";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   return {
-    title: t('changelog_title'),
-    description: t('changelog_description'),
+    title: t("changelog_title"),
+    description: t("changelog_description"),
   };
 }
 
@@ -35,7 +35,7 @@ interface AppForFilter {
 }
 
 export default async function ChangelogPage() {
-  const t = await getTranslations('changelog_page');
+  const t = await getTranslations("changelog_page");
 
   // Apps list for the filter dropdown. Pulled server-side so the
   // initial render doesn't have to wait for a fetch — and so search-
@@ -44,10 +44,10 @@ export default async function ChangelogPage() {
   let apps: AppForFilter[] = [];
   try {
     apps = db
-      .prepare('SELECT id, name FROM apps ORDER BY name COLLATE NOCASE')
+      .prepare("SELECT id, name FROM apps ORDER BY name COLLATE NOCASE")
       .all() as AppForFilter[];
   } catch (e) {
-    console.warn('[/changelog] apps list query failed:', e);
+    console.warn("[/changelog] apps list query failed:", e);
   }
 
   return (
@@ -56,8 +56,8 @@ export default async function ChangelogPage() {
       <div className="page-container">
         <div className="page-header">
           <div>
-            <h1 className="page-title">{t('title')}</h1>
-            <p className="page-subtitle">{t('subtitle')}</p>
+            <h1 className="page-title">{t("title")}</h1>
+            <p className="page-subtitle">{t("subtitle")}</p>
           </div>
         </div>
 

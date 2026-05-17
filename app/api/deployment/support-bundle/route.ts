@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { buildDeploymentSupportBundle } from '@/lib/deployment-diagnostics';
+import { NextResponse } from "next/server";
+import { buildDeploymentSupportBundle } from "@/lib/deployment-diagnostics";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Copy/paste-safe support bundle for local/LAN deployment troubleshooting.
@@ -9,6 +9,6 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request) {
   return NextResponse.json(buildDeploymentSupportBundle(request.headers), {
-    headers: { 'Cache-Control': 'no-store' },
+    headers: { "Cache-Control": "no-store" },
   });
 }

@@ -1,9 +1,9 @@
-import db from './db';
-import crypto from 'crypto';
-import { ChangeEntry } from './changelog';
-import { getSetting, setSetting } from './scheduler';
-import type { AiTimeoutPhase } from './ai-config';
-import { type CategoryMismatch } from './privacy-profile';
+import crypto from "node:crypto";
+import type { AiTimeoutPhase } from "./ai-config";
+import type { ChangeEntry } from "./changelog";
+import db from "./db";
+import type { CategoryMismatch } from "./privacy-profile";
+import { getSetting, setSetting } from "./scheduler";
 
 // Quiet hours: when the flag resolves on AND the current wall time falls
 // inside the configured window, notifications are deferred by stamping
@@ -15,11 +15,17 @@ import { type CategoryMismatch } from './privacy-profile';
 
 function parseHHMM(value: string): { hour: number; minute: number } | null {
   const m = value.match(/^(\d{2}):(\d{2})$/);
-  if (!m) return null;
-  const hour = parseInt(m[1], 10);
-  const minute = parseInt(m[2], 10);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  if (!m) {
+    return null;
+  }
+  const hour = Number.parseInt(m[1], 10);
+  const minute = Number.parseInt(m[2], 10);
+  if (!(Number.isFinite(hour) && Number.isFinite(minute))) {
+    return null;
+  }
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null;
+  }
   return { hour, minute };
 }
 
@@ -32,18 +38,23 @@ export function computeNotBefore(now: Date = new Date()): number | null {
   // Lazy require to keep the resolver out of any accidental client bundle.
   let quietHoursOn = false;
   try {
-    const { resolveFlagFromDb } = require('./feature-flags-server') as typeof import('./feature-flags-server');
-    quietHoursOn = resolveFlagFromDb('flag.notifications.quiet_hours') === 'on';
+    const { resolveFlagFromDb } =
+      require("./feature-flags-server") as typeof import("./feature-flags-server");
+    quietHoursOn = resolveFlagFromDb("flag.notifications.quiet_hours") === "on";
   } catch {
     quietHoursOn = false;
   }
-  if (!quietHoursOn) return null;
+  if (!quietHoursOn) {
+    return null;
+  }
 
-  const startStr = getSetting('notification_quiet_hours_start', '');
-  const endStr = getSetting('notification_quiet_hours_end', '');
+  const startStr = getSetting("notification_quiet_hours_start", "");
+  const endStr = getSetting("notification_quiet_hours_end", "");
   const start = parseHHMM(startStr);
   const end = parseHHMM(endStr);
-  if (!start || !end) return null;
+  if (!(start && end)) {
+    return null;
+  }
 
   const minutesNow = now.getHours() * 60 + now.getMinutes();
   const minutesStart = start.hour * 60 + start.minute;
@@ -51,7 +62,9 @@ export function computeNotBefore(now: Date = new Date()): number | null {
 
   // Same-day window (start < end) vs overnight (start > end).
   // Equal start/end means zero-length window → no quiet hours.
-  if (minutesStart === minutesEnd) return null;
+  if (minutesStart === minutesEnd) {
+    return null;
+  }
 
   let inside: boolean;
   if (minutesStart < minutesEnd) {
@@ -60,7 +73,9 @@ export function computeNotBefore(now: Date = new Date()): number | null {
     inside = minutesNow >= minutesStart || minutesNow < minutesEnd;
   }
 
-  if (!inside) return null;
+  if (!inside) {
+    return null;
+  }
 
   const endTs = new Date(now);
   endTs.setHours(end.hour, end.minute, 0, 0);
@@ -71,14 +86,27 @@ export function computeNotBefore(now: Date = new Date()): number | null {
   return endTs.getTime();
 }
 
-export function createNotification(appId: string, appName: string, changes: ChangeEntry[]): void {
-  if (changes.length === 0) return;
+export function createNotification(
+  appId: string,
+  appName: string,
+  changes: ChangeEntry[]
+): void {
+  if (changes.length === 0) {
+    return;
+  }
   const notBefore = computeNotBefore();
   const createdAt = Date.now();
   db.prepare(`
     INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)
     VALUES (?, ?, ?, ?, ?, 0, ?)
-  `).run(crypto.randomUUID(), appId, appName, JSON.stringify(changes), createdAt, notBefore);
+  `).run(
+    crypto.randomUUID(),
+    appId,
+    appName,
+    JSON.stringify(changes),
+    createdAt,
+    notBefore
+  );
 
   // Webhook fan-out (Slack / Discord / Teams / generic). Fire-and-forget
   // so a slow / broken webhook can't block the in-app notification
@@ -94,21 +122,23 @@ export function createNotification(appId: string, appName: string, changes: Chan
 // critical path for notification persistence.
 async function fireWebhookIfConfigured(
   appName: string,
-  changes: ChangeEntry[],
+  changes: ChangeEntry[]
 ): Promise<void> {
   try {
-    const { postImmediateWebhook } = await import('./notification-webhooks');
+    const { postImmediateWebhook } = await import("./notification-webhooks");
     // Pick the first change's description as the headline — the in-app
     // bell renders all of them, but a chat post wants a single line.
     // Falls back to a generic phrasing when the description is missing.
-    const headline = changes[0]?.description || `${changes.length} change${changes.length === 1 ? '' : 's'}`;
+    const headline =
+      changes[0]?.description ||
+      `${changes.length} change${changes.length === 1 ? "" : "s"}`;
     await postImmediateWebhook({
       appName,
       summary: headline,
       createdAt: Date.now(),
     });
   } catch (err) {
-    console.warn('[notifications] webhook fan-out failed:', err);
+    console.warn("[notifications] webhook fan-out failed:", err);
   }
 }
 
@@ -116,12 +146,12 @@ async function fireWebhookIfConfigured(
 // prefix prevents collision with real Apple track ids; the bell uses
 // these values to route clicks (e.g. AI-timeout → AI settings,
 // import-completion → Settings#import-history).
-export const AI_TIMEOUT_NOTIFICATION_APP_ID = '__ai_timeout__';
-export const MANUAL_APPS_NOTIFICATION_APP_ID = '__manual_apps__';
-export const IMPORT_COMPLETION_NOTIFICATION_APP_ID = '__import__';
-export const WAYBACK_RESUME_NOTIFICATION_APP_ID = '__wayback_resume__';
-export const SYNC_RESUME_NOTIFICATION_APP_ID = '__sync_resume__';
-export const POLICY_RESUME_NOTIFICATION_APP_ID = '__policy_resume__';
+export const AI_TIMEOUT_NOTIFICATION_APP_ID = "__ai_timeout__";
+export const MANUAL_APPS_NOTIFICATION_APP_ID = "__manual_apps__";
+export const IMPORT_COMPLETION_NOTIFICATION_APP_ID = "__import__";
+export const WAYBACK_RESUME_NOTIFICATION_APP_ID = "__wayback_resume__";
+export const SYNC_RESUME_NOTIFICATION_APP_ID = "__sync_resume__";
+export const POLICY_RESUME_NOTIFICATION_APP_ID = "__policy_resume__";
 
 // Per-notification-type cooldowns to avoid spam.
 const PROFILE_MISMATCH_NOTIFY_WINDOW_MS = 24 * 60 * 60_000;
@@ -134,34 +164,38 @@ const AI_TIMEOUT_NOTIFY_WINDOW_MS = 10 * 60_000;
 interface AiTimeoutNotificationInput {
   appId: string;
   appName: string;
+  /** Model label (e.g. "llama3.2"). */
+  modelLabel?: string;
+  /** How long the call actually ran before aborting. */
+  observedMs: number;
   phase: AiTimeoutPhase;
   /** The configured timeout budget. */
   timeoutMs: number;
-  /** How long the call actually ran before aborting. */
-  observedMs: number;
-  /** Model label (e.g. "llama3.2"). */
-  modelLabel?: string;
 }
 
 /**
  * Persist an "AI timed out" notification. Debounced per-phase via
  * `AI_TIMEOUT_NOTIFY_WINDOW_MS`. Returns `true` when a row was inserted.
  */
-export function createAiTimeoutNotification(input: AiTimeoutNotificationInput): boolean {
+export function createAiTimeoutNotification(
+  input: AiTimeoutNotificationInput
+): boolean {
   const dedupeKey = `ai_timeout_notify_${input.phase}_at`;
-  const lastFired = Number(getSetting(dedupeKey, '0')) || 0;
+  const lastFired = Number(getSetting(dedupeKey, "0")) || 0;
   const now = Date.now();
-  if (now - lastFired < AI_TIMEOUT_NOTIFY_WINDOW_MS) return false;
+  if (now - lastFired < AI_TIMEOUT_NOTIFY_WINDOW_MS) {
+    return false;
+  }
 
   const prettyPhase =
-    input.phase === 'direct'
-      ? 'direct summary'
-      : input.phase === 'chunk'
-        ? 'per-chunk'
-        : 'chunk-merge';
+    input.phase === "direct"
+      ? "direct summary"
+      : input.phase === "chunk"
+        ? "per-chunk"
+        : "chunk-merge";
   const observedSecs = Math.max(1, Math.round(input.observedMs / 1000));
   const budgetSecs = Math.max(1, Math.round(input.timeoutMs / 1000));
-  const modelSuffix = input.modelLabel ? ` with ${input.modelLabel}` : '';
+  const modelSuffix = input.modelLabel ? ` with ${input.modelLabel}` : "";
   const description =
     `AI ${prettyPhase} call${modelSuffix} aborted after ${observedSecs}s ` +
     `(limit: ${budgetSecs}s). Raise the ${input.phase}-phase AI timeout in Settings → AI.`;
@@ -172,12 +206,12 @@ export function createAiTimeoutNotification(input: AiTimeoutNotificationInput): 
   `).run(
     crypto.randomUUID(),
     AI_TIMEOUT_NOTIFICATION_APP_ID,
-    input.appName || 'Privacy policy AI',
+    input.appName || "Privacy policy AI",
     JSON.stringify([
       {
         // Synthetic type tag for routing/styling; structured fields below
         // are what the bell reads, with `description` as fallback.
-        type: 'ai_timeout',
+        type: "ai_timeout",
         description,
         phase: input.phase,
         timeoutMs: input.timeoutMs,
@@ -185,7 +219,7 @@ export function createAiTimeoutNotification(input: AiTimeoutNotificationInput): 
         modelLabel: input.modelLabel,
       } as unknown as ChangeEntry,
     ]),
-    now,
+    now
   );
 
   setSetting(dedupeKey, String(now));
@@ -193,10 +227,10 @@ export function createAiTimeoutNotification(input: AiTimeoutNotificationInput): 
 }
 
 interface ManualAppsPromptInput {
-  /** How many rows the import finished without an App Store match. */
-  unmatchedCount: number;
   /** Name of the import file / source, shown in the notification subline. */
   sourceLabel?: string | null;
+  /** How many rows the import finished without an App Store match. */
+  unmatchedCount: number;
 }
 
 /**
@@ -204,21 +238,27 @@ interface ManualAppsPromptInput {
  * call unconditionally — returns `false` (without inserting) when the
  * 24h cooldown is still active. Returns `true` when a row was inserted.
  */
-export function createManualAppsPromptNotification(input: ManualAppsPromptInput): boolean {
-  if (input.unmatchedCount <= 0) return false;
+export function createManualAppsPromptNotification(
+  input: ManualAppsPromptInput
+): boolean {
+  if (input.unmatchedCount <= 0) {
+    return false;
+  }
 
-  const dedupeKey = 'manual_apps_prompt_notified_at';
-  const lastFired = Number(getSetting(dedupeKey, '0')) || 0;
+  const dedupeKey = "manual_apps_prompt_notified_at";
+  const lastFired = Number(getSetting(dedupeKey, "0")) || 0;
   const now = Date.now();
-  if (now - lastFired < MANUAL_APPS_NOTIFY_WINDOW_MS) return false;
+  if (now - lastFired < MANUAL_APPS_NOTIFY_WINDOW_MS) {
+    return false;
+  }
 
   const source = input.sourceLabel?.trim();
-  const sourceSuffix = source ? ` from ${source}` : '';
+  const sourceSuffix = source ? ` from ${source}` : "";
   const description =
-    `${input.unmatchedCount} row${input.unmatchedCount !== 1 ? 's' : ''}` +
+    `${input.unmatchedCount} row${input.unmatchedCount === 1 ? "" : "s"}` +
     `${sourceSuffix} didn\u2019t match an App Store listing. ` +
-    `If any are Safari web apps, TestFlight betas, or sideloaded apps, ` +
-    `track them under Manual apps so you still have a privacy record.`;
+    "If any are Safari web apps, TestFlight betas, or sideloaded apps, " +
+    "track them under Manual apps so you still have a privacy record.";
 
   db.prepare(`
     INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read)
@@ -226,17 +266,17 @@ export function createManualAppsPromptNotification(input: ManualAppsPromptInput)
   `).run(
     crypto.randomUUID(),
     MANUAL_APPS_NOTIFICATION_APP_ID,
-    'Manual apps',
+    "Manual apps",
     JSON.stringify([
       {
         // Synthetic type tag; structured fields are below, description is fallback.
-        type: 'manual_apps_prompt',
+        type: "manual_apps_prompt",
         description,
         unmatchedCount: input.unmatchedCount,
         sourceLabel: source ?? null,
       } as unknown as ChangeEntry,
     ]),
-    now,
+    now
   );
 
   setSetting(dedupeKey, String(now));
@@ -244,23 +284,25 @@ export function createManualAppsPromptNotification(input: ManualAppsPromptInput)
 }
 
 interface ImportCompletionInput {
-  importId: string;
-  sourceLabel: string | null;
-  total: number;
-  imported: number;
   errored: number;
-  queued: number;
-  unmatched: number;
+  imported: number;
+  importId: string;
   itemCount: number;
+  queued: number;
+  sourceLabel: string | null;
   /** Activity status: drives the bell icon tone (green/orange/red). */
-  status: 'ok' | 'partial' | 'error';
+  status: "ok" | "partial" | "error";
+  total: number;
+  unmatched: number;
 }
 
 /**
  * Bell notification fired for every import completion regardless of status.
  * Not debounced — volume is naturally low.
  */
-export function createImportCompletionNotification(input: ImportCompletionInput): void {
+export function createImportCompletionNotification(
+  input: ImportCompletionInput
+): void {
   const imported = Math.max(0, input.imported | 0);
   const total = Math.max(0, input.total | 0);
   const queued = Math.max(0, input.queued | 0);
@@ -268,34 +310,40 @@ export function createImportCompletionNotification(input: ImportCompletionInput)
   const unmatched = Math.max(0, input.unmatched | 0);
   const itemCount = Math.max(0, input.itemCount | 0);
   const source = input.sourceLabel?.trim();
-  const sourceSuffix = source ? ` from ${source}` : '';
+  const sourceSuffix = source ? ` from ${source}` : "";
 
   const headlineParts: string[] = [];
-  if (input.status === 'ok') {
+  if (input.status === "ok") {
     headlineParts.push(`Imported ${imported} of ${total}${sourceSuffix}`);
-  } else if (input.status === 'partial') {
+  } else if (input.status === "partial") {
     headlineParts.push(`${imported} of ${total} imported${sourceSuffix}`);
     const tail: string[] = [];
-    if (queued > 0) tail.push(`${queued} queued`);
-    if (errored > 0) tail.push(`${errored} failed`);
-    if (unmatched > 0) tail.push(`${unmatched} unmatched`);
-    if (tail.length > 0) headlineParts.push(tail.join(', '));
-  } else {
-    // error — cover both "nothing landed" and "items never persisted"
-    if (total > 0 && itemCount === 0) {
-      headlineParts.push(
-        `Import failed before any apps were recorded${sourceSuffix} — ` +
-        `Apple search likely rate-limited us. Use "Resume matching" in Import History.`,
-      );
-    } else {
-      headlineParts.push(
-        `Import of ${total} app${total !== 1 ? 's' : ''}${sourceSuffix} failed · ` +
-        `${errored} error${errored !== 1 ? 's' : ''}, ${queued} still queued`,
-      );
+    if (queued > 0) {
+      tail.push(`${queued} queued`);
     }
+    if (errored > 0) {
+      tail.push(`${errored} failed`);
+    }
+    if (unmatched > 0) {
+      tail.push(`${unmatched} unmatched`);
+    }
+    if (tail.length > 0) {
+      headlineParts.push(tail.join(", "));
+    }
+    // error — cover both "nothing landed" and "items never persisted"
+  } else if (total > 0 && itemCount === 0) {
+    headlineParts.push(
+      `Import failed before any apps were recorded${sourceSuffix} — ` +
+        `Apple search likely rate-limited us. Use "Resume matching" in Import History.`
+    );
+  } else {
+    headlineParts.push(
+      `Import of ${total} app${total === 1 ? "" : "s"}${sourceSuffix} failed · ` +
+        `${errored} error${errored === 1 ? "" : "s"}, ${queued} still queued`
+    );
   }
 
-  const description = headlineParts.join(' · ').slice(0, 500);
+  const description = headlineParts.join(" · ").slice(0, 500);
 
   db.prepare(`
     INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read)
@@ -303,10 +351,10 @@ export function createImportCompletionNotification(input: ImportCompletionInput)
   `).run(
     crypto.randomUUID(),
     IMPORT_COMPLETION_NOTIFICATION_APP_ID,
-    'Import finished',
+    "Import finished",
     JSON.stringify([
       {
-        type: 'import_completed',
+        type: "import_completed",
         description,
         importId: input.importId,
         status: input.status,
@@ -319,20 +367,20 @@ export function createImportCompletionNotification(input: ImportCompletionInput)
         sourceLabel: source ?? null,
       } as unknown as ChangeEntry,
     ]),
-    Date.now(),
+    Date.now()
   );
 }
 
 interface ProfileMismatchNotificationInput {
   appId: string;
   appName: string;
+  /** `true` when this is the app's first import; tunes the wording. */
+  isNew?: boolean;
   /**
    * Newly-mismatched categories (in the new footprint, not the previous).
    * Callers must diff per-category — passing existing mismatches re-notifies.
    */
   newMismatches: CategoryMismatch[];
-  /** `true` when this is the app's first import; tunes the wording. */
-  isNew?: boolean;
 }
 
 /**
@@ -342,18 +390,22 @@ interface ProfileMismatchNotificationInput {
  * Returns `true` when a row was inserted.
  */
 export function createProfileMismatchNotification(
-  input: ProfileMismatchNotificationInput,
+  input: ProfileMismatchNotificationInput
 ): boolean {
-  if (!input.appId || input.newMismatches.length === 0) return false;
+  if (!input.appId || input.newMismatches.length === 0) {
+    return false;
+  }
 
   const dedupeKey = `profile_mismatch_notified_${input.appId}_at`;
-  const lastFired = Number(getSetting(dedupeKey, '0')) || 0;
+  const lastFired = Number(getSetting(dedupeKey, "0")) || 0;
   const now = Date.now();
-  if (now - lastFired < PROFILE_MISMATCH_NOTIFY_WINDOW_MS) return false;
+  if (now - lastFired < PROFILE_MISMATCH_NOTIFY_WINDOW_MS) {
+    return false;
+  }
 
   const [top] = input.newMismatches;
   const totalMismatches = input.newMismatches.length;
-  const mismatchWord = totalMismatches === 1 ? 'mismatch' : 'mismatches';
+  const mismatchWord = totalMismatches === 1 ? "mismatch" : "mismatches";
 
   // The full per-category breakdown is one click away on the app detail
   // page (#profile-mismatch anchor + pulse on the privacy-types section).
@@ -372,7 +424,7 @@ export function createProfileMismatchNotification(
     JSON.stringify([
       {
         // Synthetic type tag for routing/branching.
-        type: 'profile_mismatch',
+        type: "profile_mismatch",
         description,
         newCategoryCount: input.newMismatches.length,
         topCategory: top.category,
@@ -380,7 +432,7 @@ export function createProfileMismatchNotification(
         topAllowed: top.allowed,
       } as unknown as ChangeEntry,
     ]),
-    now,
+    now
   );
 
   setSetting(dedupeKey, String(now));
@@ -390,10 +442,10 @@ export function createProfileMismatchNotification(
 interface VersionUpdateNotificationInput {
   appId: string;
   appName: string;
-  previousVersion: string;
   currentVersion: string;
-  previousVersionUpdatedAt: number | null;
   currentVersionUpdatedAt: number | null;
+  previousVersion: string;
+  previousVersionUpdatedAt: number | null;
 }
 
 /**
@@ -402,25 +454,33 @@ interface VersionUpdateNotificationInput {
  * Debounced per-app via a 1h cooldown. Returns `true` when inserted.
  */
 export function createVersionUpdateNotification(
-  input: VersionUpdateNotificationInput,
+  input: VersionUpdateNotificationInput
 ): boolean {
-  if (!input.appId) return false;
-  if (!input.previousVersion || !input.currentVersion) return false;
-  if (input.previousVersion === input.currentVersion) return false;
+  if (!input.appId) {
+    return false;
+  }
+  if (!(input.previousVersion && input.currentVersion)) {
+    return false;
+  }
+  if (input.previousVersion === input.currentVersion) {
+    return false;
+  }
 
   const dedupeKey = `version_update_notified_${input.appId}_at`;
-  const lastFired = Number(getSetting(dedupeKey, '0')) || 0;
+  const lastFired = Number(getSetting(dedupeKey, "0")) || 0;
   const now = Date.now();
-  if (now - lastFired < VERSION_UPDATE_NOTIFY_WINDOW_MS) return false;
+  if (now - lastFired < VERSION_UPDATE_NOTIFY_WINDOW_MS) {
+    return false;
+  }
 
   // Released-on suffix when iTunes reports a release date.
   const releasedSuffix = input.currentVersionUpdatedAt
-    ? ` (released ${new Intl.DateTimeFormat('en-AU', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
+    ? ` (released ${new Intl.DateTimeFormat("en-AU", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
       }).format(new Date(input.currentVersionUpdatedAt))})`
-    : '';
+    : "";
 
   const description =
     `${input.appName} updated from v${input.previousVersion} ` +
@@ -436,7 +496,7 @@ export function createVersionUpdateNotification(
     JSON.stringify([
       {
         // Synthetic type tag — drives the user's versionUpdates on/off filter.
-        type: 'version_update',
+        type: "version_update",
         description,
         previousVersion: input.previousVersion,
         currentVersion: input.currentVersion,
@@ -444,7 +504,7 @@ export function createVersionUpdateNotification(
         currentVersionUpdatedAt: input.currentVersionUpdatedAt,
       } as unknown as ChangeEntry,
     ]),
-    now,
+    now
   );
 
   setSetting(dedupeKey, String(now));
@@ -454,10 +514,10 @@ export function createVersionUpdateNotification(
 interface WaybackResumeNotificationInput {
   /** Remaining apps (pending + in_progress) at the moment of resume. */
   appsRemaining: number;
-  /** Total apps in the queue. */
-  totalApps: number;
   /** Stale-heal case: mutex was true but no queue existed. */
   staleHealed?: boolean;
+  /** Total apps in the queue. */
+  totalApps: number;
 }
 
 /**
@@ -467,16 +527,18 @@ interface WaybackResumeNotificationInput {
  * variant fires when the mutex was stuck without a state blob.
  */
 export function createWaybackResumeNotification(
-  input: WaybackResumeNotificationInput,
+  input: WaybackResumeNotificationInput
 ): void {
-  if (!isResumeEnabled()) return;
+  if (!isResumeEnabled()) {
+    return;
+  }
   const appsRemaining = Math.max(0, input.appsRemaining | 0);
   const totalApps = Math.max(0, input.totalApps | 0);
 
   const description = input.staleHealed
-    ? 'A previous Wayback import lock was stuck after a server restart and has been cleared. You can start a new import now.'
+    ? "A previous Wayback import lock was stuck after a server restart and has been cleared. You can start a new import now."
     : `Wayback import resumed — ${appsRemaining} of ${totalApps} app${
-        totalApps === 1 ? '' : 's'
+        totalApps === 1 ? "" : "s"
       } still to process. Running in the background.`;
 
   db.prepare(`
@@ -485,24 +547,24 @@ export function createWaybackResumeNotification(
   `).run(
     crypto.randomUUID(),
     WAYBACK_RESUME_NOTIFICATION_APP_ID,
-    'Wayback import',
+    "Wayback import",
     JSON.stringify([
       {
         // Synthetic type tag for routing/branching.
-        type: input.staleHealed ? 'wayback_stale_cleared' : 'wayback_resumed',
+        type: input.staleHealed ? "wayback_stale_cleared" : "wayback_resumed",
         description,
         appsRemaining,
         totalApps,
       } as unknown as ChangeEntry,
     ]),
-    Date.now(),
+    Date.now()
   );
 }
 
 interface SyncResumeNotificationInput {
   appsRemaining: number;
-  totalApps: number;
   staleHealed?: boolean;
+  totalApps: number;
 }
 
 /**
@@ -512,8 +574,9 @@ interface SyncResumeNotificationInput {
  */
 function isResumeEnabled(): boolean {
   try {
-    const { resolveFlagFromDb } = require('./feature-flags-server') as typeof import('./feature-flags-server');
-    return resolveFlagFromDb('flag.notifications.resume.enabled') === 'on';
+    const { resolveFlagFromDb } =
+      require("./feature-flags-server") as typeof import("./feature-flags-server");
+    return resolveFlagFromDb("flag.notifications.resume.enabled") === "on";
   } catch {
     return true;
   }
@@ -524,16 +587,18 @@ function isResumeEnabled(): boolean {
  * resumed on startup. Same shape as `createWaybackResumeNotification`.
  */
 export function createSyncResumeNotification(
-  input: SyncResumeNotificationInput,
+  input: SyncResumeNotificationInput
 ): void {
-  if (!isResumeEnabled()) return;
+  if (!isResumeEnabled()) {
+    return;
+  }
   const appsRemaining = Math.max(0, input.appsRemaining | 0);
   const totalApps = Math.max(0, input.totalApps | 0);
 
   const description = input.staleHealed
-    ? 'A previous App Store sync lock was stuck after a server restart and has been cleared. You can start a new sync now.'
+    ? "A previous App Store sync lock was stuck after a server restart and has been cleared. You can start a new sync now."
     : `App Store sync resumed — ${appsRemaining} of ${totalApps} app${
-        totalApps === 1 ? '' : 's'
+        totalApps === 1 ? "" : "s"
       } still to process. Running in the background.`;
 
   db.prepare(`
@@ -542,23 +607,23 @@ export function createSyncResumeNotification(
   `).run(
     crypto.randomUUID(),
     SYNC_RESUME_NOTIFICATION_APP_ID,
-    'App Store sync',
+    "App Store sync",
     JSON.stringify([
       {
-        type: input.staleHealed ? 'sync_stale_cleared' : 'sync_resumed',
+        type: input.staleHealed ? "sync_stale_cleared" : "sync_resumed",
         description,
         appsRemaining,
         totalApps,
       } as unknown as ChangeEntry,
     ]),
-    Date.now(),
+    Date.now()
   );
 }
 
 interface PolicyResumeNotificationInput {
   appsRemaining: number;
-  totalApps: number;
   staleHealed?: boolean;
+  totalApps: number;
 }
 
 /**
@@ -566,16 +631,18 @@ interface PolicyResumeNotificationInput {
  * and resumed on startup. Same shape as the wayback/sync equivalents.
  */
 export function createPolicyResumeNotification(
-  input: PolicyResumeNotificationInput,
+  input: PolicyResumeNotificationInput
 ): void {
-  if (!isResumeEnabled()) return;
+  if (!isResumeEnabled()) {
+    return;
+  }
   const appsRemaining = Math.max(0, input.appsRemaining | 0);
   const totalApps = Math.max(0, input.totalApps | 0);
 
   const description = input.staleHealed
-    ? 'A previous privacy-policy sync lock was stuck after a server restart and has been cleared. You can start a new policy sync now.'
+    ? "A previous privacy-policy sync lock was stuck after a server restart and has been cleared. You can start a new policy sync now."
     : `Privacy-policy sync resumed — ${appsRemaining} of ${totalApps} app${
-        totalApps === 1 ? '' : 's'
+        totalApps === 1 ? "" : "s"
       } still to process. Running in the background.`;
 
   db.prepare(`
@@ -584,16 +651,16 @@ export function createPolicyResumeNotification(
   `).run(
     crypto.randomUUID(),
     POLICY_RESUME_NOTIFICATION_APP_ID,
-    'Privacy-policy sync',
+    "Privacy-policy sync",
     JSON.stringify([
       {
-        type: input.staleHealed ? 'policy_stale_cleared' : 'policy_resumed',
+        type: input.staleHealed ? "policy_stale_cleared" : "policy_resumed",
         description,
         appsRemaining,
         totalApps,
       } as unknown as ChangeEntry,
     ]),
-    Date.now(),
+    Date.now()
   );
 }
 
@@ -605,14 +672,24 @@ export function createPolicyResumeNotification(
  * Synthetic notifications (AI timeout, manual-apps, import completion,
  * resume cards) carry an empty change_summary and always pass through.
  */
-function classifyChange(c: ChangeEntry): 'label_changes' | 'policy_updates' | 'accessibility_changes' | 'new_privacy_types' {
-  if (c.category === 'privacy-policy') return 'policy_updates';
-  if (c.category === 'accessibility') return 'accessibility_changes';
-  // Whole-new privacy type: `type: 'added'` with empty/missing details.
-  if (c.type === 'added' && (!c.details || c.details.length === 0)) {
-    return 'new_privacy_types';
+function classifyChange(
+  c: ChangeEntry
+):
+  | "label_changes"
+  | "policy_updates"
+  | "accessibility_changes"
+  | "new_privacy_types" {
+  if (c.category === "privacy-policy") {
+    return "policy_updates";
   }
-  return 'label_changes';
+  if (c.category === "accessibility") {
+    return "accessibility_changes";
+  }
+  // Whole-new privacy type: `type: 'added'` with empty/missing details.
+  if (c.type === "added" && (!c.details || c.details.length === 0)) {
+    return "new_privacy_types";
+  }
+  return "label_changes";
 }
 
 function getEnabledTypeFilter(): {
@@ -628,28 +705,43 @@ function getEnabledTypeFilter(): {
     new_privacy_types: true,
   };
   try {
-    const { resolveFlagFromDb } = require('./feature-flags-server') as typeof import('./feature-flags-server');
+    const { resolveFlagFromDb } =
+      require("./feature-flags-server") as typeof import("./feature-flags-server");
     return {
-      label_changes: resolveFlagFromDb('flag.notifications.types.label_changes') === 'on',
-      policy_updates: resolveFlagFromDb('flag.notifications.types.policy_updates') === 'on',
-      accessibility_changes: resolveFlagFromDb('flag.notifications.types.accessibility_changes') === 'on',
-      new_privacy_types: resolveFlagFromDb('flag.notifications.types.new_privacy_types') === 'on',
+      label_changes:
+        resolveFlagFromDb("flag.notifications.types.label_changes") === "on",
+      policy_updates:
+        resolveFlagFromDb("flag.notifications.types.policy_updates") === "on",
+      accessibility_changes:
+        resolveFlagFromDb("flag.notifications.types.accessibility_changes") ===
+        "on",
+      new_privacy_types:
+        resolveFlagFromDb("flag.notifications.types.new_privacy_types") ===
+        "on",
     };
   } catch {
     return fallback;
   }
 }
 
-function applyTypeFilter(changes: ChangeEntry[], enabled: ReturnType<typeof getEnabledTypeFilter>): ChangeEntry[] {
-  if (changes.length === 0) return changes; // synthetic — pass through
-  return changes.filter(c => enabled[classifyChange(c)]);
+function applyTypeFilter(
+  changes: ChangeEntry[],
+  enabled: ReturnType<typeof getEnabledTypeFilter>
+): ChangeEntry[] {
+  if (changes.length === 0) {
+    return changes; // synthetic — pass through
+  }
+  return changes.filter((c) => enabled[classifyChange(c)]);
 }
 
 export function getNotifications(limit = 30) {
   // Quiet-hours filter: NULL not_before means "show now".
   const now = Date.now();
   const enabled = getEnabledTypeFilter();
-  return (db.prepare(`
+  return (
+    (
+      db
+        .prepare(`
     SELECT n.id, n.app_id, n.app_name, n.change_summary, n.created_at, n.read,
            n.stale, a.iconUrl
     FROM notifications n
@@ -657,24 +749,31 @@ export function getNotifications(limit = 30) {
     WHERE n.not_before IS NULL OR n.not_before <= ?
     ORDER BY n.created_at DESC
     LIMIT ?
-  `).all(now, limit) as any[])
-    .map(n => {
-      const parsed = JSON.parse(n.change_summary) as ChangeEntry[];
-      const filtered = applyTypeFilter(parsed, enabled);
-      return { ...n, change_summary: filtered, originalLength: parsed.length };
-    })
-    // Keep synthetic rows (originally empty); drop rows whose changes were all filtered.
-    .filter(n => n.originalLength === 0 || n.change_summary.length > 0)
-    .map(n => ({
-      id: n.id,
-      app_id: n.app_id,
-      app_name: n.app_name,
-      change_summary: n.change_summary,
-      created_at: n.created_at,
-      read: n.read,
-      stale: n.stale,
-      iconUrl: n.iconUrl,
-    }));
+  `)
+        .all(now, limit) as any[]
+    )
+      .map((n) => {
+        const parsed = JSON.parse(n.change_summary) as ChangeEntry[];
+        const filtered = applyTypeFilter(parsed, enabled);
+        return {
+          ...n,
+          change_summary: filtered,
+          originalLength: parsed.length,
+        };
+      })
+      // Keep synthetic rows (originally empty); drop rows whose changes were all filtered.
+      .filter((n) => n.originalLength === 0 || n.change_summary.length > 0)
+      .map((n) => ({
+        id: n.id,
+        app_id: n.app_id,
+        app_name: n.app_name,
+        change_summary: n.change_summary,
+        created_at: n.created_at,
+        read: n.read,
+        stale: n.stale,
+        iconUrl: n.iconUrl,
+      }))
+  );
 }
 
 export function getUnreadCount(): number {
@@ -682,27 +781,46 @@ export function getUnreadCount(): number {
   const now = Date.now();
   const enabled = getEnabledTypeFilter();
   // Fast path: every type on → per-type filter is a no-op, use SQL count.
-  if (enabled.label_changes && enabled.policy_updates && enabled.accessibility_changes && enabled.new_privacy_types) {
-    return ((db.prepare(
-      'SELECT COUNT(*) as c FROM notifications WHERE read = 0 AND (not_before IS NULL OR not_before <= ?)',
-    ).get(now) as any)?.c) ?? 0;
+  if (
+    enabled.label_changes &&
+    enabled.policy_updates &&
+    enabled.accessibility_changes &&
+    enabled.new_privacy_types
+  ) {
+    return (
+      (
+        db
+          .prepare(
+            "SELECT COUNT(*) as c FROM notifications WHERE read = 0 AND (not_before IS NULL OR not_before <= ?)"
+          )
+          .get(now) as any
+      )?.c ?? 0
+    );
   }
   // Slow path: walk unread rows, apply filter, count survivors.
-  const rows = db.prepare(
-    'SELECT change_summary FROM notifications WHERE read = 0 AND (not_before IS NULL OR not_before <= ?)',
-  ).all(now) as Array<{ change_summary: string }>;
+  const rows = db
+    .prepare(
+      "SELECT change_summary FROM notifications WHERE read = 0 AND (not_before IS NULL OR not_before <= ?)"
+    )
+    .all(now) as Array<{ change_summary: string }>;
   let count = 0;
   for (const r of rows) {
     let parsed: ChangeEntry[] = [];
-    try { parsed = JSON.parse(r.change_summary) as ChangeEntry[]; } catch { /* ignore */ }
+    try {
+      parsed = JSON.parse(r.change_summary) as ChangeEntry[];
+    } catch {
+      /* ignore */
+    }
     const filtered = applyTypeFilter(parsed, enabled);
-    if (parsed.length === 0 || filtered.length > 0) count++;
+    if (parsed.length === 0 || filtered.length > 0) {
+      count++;
+    }
   }
   return count;
 }
 
 export function markAllRead(): void {
-  db.prepare('UPDATE notifications SET read = 1').run();
+  db.prepare("UPDATE notifications SET read = 1").run();
 }
 
 /**
@@ -711,12 +829,14 @@ export function markAllRead(): void {
  * Returns the number of rows actually flipped.
  */
 export function markUnreadByIds(ids: readonly string[]): number {
-  if (ids.length === 0) return 0;
+  if (ids.length === 0) {
+    return 0;
+  }
   // Cap to stay well under better-sqlite3's 999 parameter limit.
   const capped = ids.slice(0, 200);
-  const placeholders = capped.map(() => '?').join(',');
+  const placeholders = capped.map(() => "?").join(",");
   const stmt = db.prepare(
-    `UPDATE notifications SET read = 0 WHERE id IN (${placeholders})`,
+    `UPDATE notifications SET read = 0 WHERE id IN (${placeholders})`
   );
   const res = stmt.run(...capped);
   return Number(res.changes ?? 0);
@@ -732,7 +852,9 @@ export function markUnreadByIds(ids: readonly string[]): number {
  * synthetic row. Returns the number of rows updated.
  */
 export function markNotificationsStaleForApp(appId: string): number {
-  if (!appId) return 0;
+  if (!appId) {
+    return 0;
+  }
   if (
     appId === AI_TIMEOUT_NOTIFICATION_APP_ID ||
     appId === MANUAL_APPS_NOTIFICATION_APP_ID ||
@@ -741,7 +863,9 @@ export function markNotificationsStaleForApp(appId: string): number {
     return 0;
   }
   const res = db
-    .prepare(`UPDATE notifications SET stale = 1 WHERE app_id = ? AND stale = 0`)
+    .prepare(
+      "UPDATE notifications SET stale = 1 WHERE app_id = ? AND stale = 0"
+    )
     .run(appId);
   return Number(res.changes ?? 0);
 }
@@ -750,11 +874,12 @@ export function markNotificationsStaleForApp(appId: string): number {
  * Synthetic app id for "Apple's privacy-label HTML drifted — parser
  * fell through every fallback shelf for one or more apps."
  */
-export const PARSER_FALLTHROUGH_NOTIFICATION_APP_ID = '__parser_fallthrough__';
+export const PARSER_FALLTHROUGH_NOTIFICATION_APP_ID = "__parser_fallthrough__";
 
 /** Cooldown window for the parser-fallthrough alert. */
 const PARSER_FALLTHROUGH_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const PARSER_FALLTHROUGH_LAST_NOTIFIED_KEY = 'parser_fallthrough_last_notified_at';
+const PARSER_FALLTHROUGH_LAST_NOTIFIED_KEY =
+  "parser_fallthrough_last_notified_at";
 
 /**
  * Raise a single bell notification when the App Store HTML parser's
@@ -768,23 +893,28 @@ export function createParserFallthroughNotification(input: {
 }): boolean {
   // Cooldown gate first — cheap settings read.
   const now = Date.now();
-  const lastRaw = getSetting(PARSER_FALLTHROUGH_LAST_NOTIFIED_KEY, '0');
+  const lastRaw = getSetting(PARSER_FALLTHROUGH_LAST_NOTIFIED_KEY, "0");
   const last = Number.parseInt(lastRaw, 10);
-  if (Number.isFinite(last) && last > 0 && now - last < PARSER_FALLTHROUGH_COOLDOWN_MS) {
+  if (
+    Number.isFinite(last) &&
+    last > 0 &&
+    now - last < PARSER_FALLTHROUGH_COOLDOWN_MS
+  ) {
     return false;
   }
 
   const appsAffected = Math.max(1, input.appsAffected | 0);
   // Wording is hedged — only one row fires per cooldown window even if
   // many apps fall through in a single sync.
-  const examplePart = input.appName ? `most recently ${input.appName}` : '';
-  const scopePart = appsAffected > 1
-    ? `${appsAffected} apps in this batch${examplePart ? ` (${examplePart})` : ''}`
-    : `at least one app${examplePart ? ` (${examplePart})` : ''}`;
+  const examplePart = input.appName ? `most recently ${input.appName}` : "";
+  const scopePart =
+    appsAffected > 1
+      ? `${appsAffected} apps in this batch${examplePart ? ` (${examplePart})` : ""}`
+      : `at least one app${examplePart ? ` (${examplePart})` : ""}`;
   const description =
     `Privacy labels couldn't be parsed for ${scopePart}. ` +
-    `Apple may have changed the App Store HTML format. The history pages will keep working, but no fresh ` +
-    `privacy-label data will land until the parser catches up. If this persists, please open a GitHub issue.`;
+    "Apple may have changed the App Store HTML format. The history pages will keep working, but no fresh " +
+    "privacy-label data will land until the parser catches up. If this persists, please open a GitHub issue.";
 
   db.prepare(`
     INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read)
@@ -792,16 +922,16 @@ export function createParserFallthroughNotification(input: {
   `).run(
     crypto.randomUUID(),
     PARSER_FALLTHROUGH_NOTIFICATION_APP_ID,
-    'Privacy-label parser',
+    "Privacy-label parser",
     JSON.stringify([
       {
-        type: 'parser_fallthrough',
+        type: "parser_fallthrough",
         description,
         appsAffected,
         exampleAppName: input.appName ?? null,
       } as unknown as ChangeEntry,
     ]),
-    now,
+    now
   );
   setSetting(PARSER_FALLTHROUGH_LAST_NOTIFIED_KEY, String(now));
   return true;

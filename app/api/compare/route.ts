@@ -1,14 +1,22 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import db from '../../../lib/db';
-import { buildSnapshot } from '../../../lib/changelog';
-import { buildAccessibilitySnapshot } from '../../../lib/accessibility';
-import { fetchAndParsePreview, type ComparePreview } from '../../../lib/compare-scrape';
-import { getPolicyAnalysis } from '../../../lib/privacy-policy';
-import { AppleRateLimitError } from '../../../lib/scraper';
-import { checkRateLimit, rateLimitKeyForRequest, validateAppStoreUrl } from '../../../lib/security';
-import type { PolicySummary } from '../../../lib/policy-summary-meta';
-import type { AccessibilityFeature } from '../../../lib/accessibility-types';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { buildAccessibilitySnapshot } from "../../../lib/accessibility";
+import type { AccessibilityFeature } from "../../../lib/accessibility-types";
+import { buildSnapshot } from "../../../lib/changelog";
+import {
+  type ComparePreview,
+  fetchAndParsePreview,
+} from "../../../lib/compare-scrape";
+import db from "../../../lib/db";
+import type { PolicySummary } from "../../../lib/policy-summary-meta";
+import { getPolicyAnalysis } from "../../../lib/privacy-policy";
+import { AppleRateLimitError } from "../../../lib/scraper";
+import {
+  checkRateLimit,
+  rateLimitKeyForRequest,
+  validateAppStoreUrl,
+} from "../../../lib/security";
 
 /**
  * GET /api/compare?a=<spec>&b=<spec>
@@ -29,16 +37,6 @@ import type { AccessibilityFeature } from '../../../lib/accessibility-types';
  */
 
 interface CompareSlot {
-  source: 'library' | 'scrape';
-  id: string;
-  name: string;
-  iconUrl: string;
-  developer: string;
-  privacyPolicyUrl: string;
-  url: string;
-  privacyTypes: ComparePreview['privacyTypes'];
-  hasPrivacyDetails: number | null;
-  policySummary: PolicySummary | null;
   /**
    * Accessibility features (VoiceOver, Larger Text, etc.) the developer
    * declares on Apple's accessibility nutrition-labels shelf. Empty array
@@ -48,6 +46,7 @@ interface CompareSlot {
    * can render its Accessibility tab without a second round-trip.
    */
   accessibilityFeatures: AccessibilityFeature[];
+  developer: string;
   /**
    * Tri-state mirror of `apps.hasAccessibilityLabels`:
    *   1    — developer claims at least one feature
@@ -58,28 +57,45 @@ interface CompareSlot {
    * states.
    */
   hasAccessibilityLabels: number | null;
+  hasPrivacyDetails: number | null;
+  iconUrl: string;
+  id: string;
+  name: string;
+  policySummary: PolicySummary | null;
+  privacyPolicyUrl: string;
+  privacyTypes: ComparePreview["privacyTypes"];
+  source: "library" | "scrape";
+  url: string;
 }
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const specA = url.searchParams.get('a');
-  const specB = url.searchParams.get('b');
+  const specA = url.searchParams.get("a");
+  const specB = url.searchParams.get("b");
 
-  if (!specA || !specB) {
-    return NextResponse.json({ error: 'Both `a` and `b` are required' }, { status: 400 });
+  if (!(specA && specB)) {
+    return NextResponse.json(
+      { error: "Both `a` and `b` are required" },
+      { status: 400 }
+    );
   }
 
   // Apply the shared scrape rate limit if either slot will hit iTunes.
-  if (specA.startsWith('url:') || specB.startsWith('url:')) {
+  if (specA.startsWith("url:") || specB.startsWith("url:")) {
     const rate = checkRateLimit({
-      key: rateLimitKeyForRequest(request, 'compare'),
+      key: rateLimitKeyForRequest(request, "compare"),
       limit: 30,
       windowMs: 60_000,
     });
     if (!rate.allowed) {
       return NextResponse.json(
-        { error: 'Rate limit exceeded for /api/compare. Try again shortly.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
+        { error: "Rate limit exceeded for /api/compare. Try again shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)),
+          },
+        }
       );
     }
   }
@@ -90,30 +106,31 @@ export async function GET(request: Request) {
   } catch (error) {
     if (error instanceof AppleRateLimitError) {
       return NextResponse.json(
-        { error: 'App Store rate-limited us. Try again in a minute.' },
-        { status: 429 },
+        { error: "App Store rate-limited us. Try again in a minute." },
+        { status: 429 }
       );
     }
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    console.error('/api/compare error', error);
+    const message =
+      error instanceof Error ? error.message : "Internal Server Error";
+    console.error("/api/compare error", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 async function resolveSlot(spec: string): Promise<CompareSlot> {
-  if (spec.startsWith('id:')) {
+  if (spec.startsWith("id:")) {
     const appId = spec.slice(3);
     return resolveFromLibrary(appId);
   }
-  if (spec.startsWith('url:')) {
+  if (spec.startsWith("url:")) {
     const candidateUrl = spec.slice(4);
     const verdict = validateAppStoreUrl(candidateUrl);
-    if (!verdict.ok || !verdict.url) {
-      throw new Error(`Rejected URL (${verdict.error ?? 'invalid_url'})`);
+    if (!(verdict.ok && verdict.url)) {
+      throw new Error(`Rejected URL (${verdict.error ?? "invalid_url"})`);
     }
     const preview = await fetchAndParsePreview(verdict.url.toString());
     return {
-      source: 'scrape',
+      source: "scrape",
       id: preview.appleId,
       name: preview.name,
       iconUrl: preview.iconUrl,
@@ -134,16 +151,26 @@ async function resolveSlot(spec: string): Promise<CompareSlot> {
 }
 
 function resolveFromLibrary(appId: string): CompareSlot {
-  const app = db.prepare(
-    'SELECT id, name, iconUrl, developer, url, privacyPolicyUrl, hasPrivacyDetails, hasAccessibilityLabels FROM apps WHERE id = ?',
-  ).get(appId) as {
-    id: string; name: string; iconUrl: string; developer: string;
-    url: string; privacyPolicyUrl: string;
-    hasPrivacyDetails: number | null;
-    hasAccessibilityLabels: number | null;
-  } | undefined;
+  const app = db
+    .prepare(
+      "SELECT id, name, iconUrl, developer, url, privacyPolicyUrl, hasPrivacyDetails, hasAccessibilityLabels FROM apps WHERE id = ?"
+    )
+    .get(appId) as
+    | {
+        id: string;
+        name: string;
+        iconUrl: string;
+        developer: string;
+        url: string;
+        privacyPolicyUrl: string;
+        hasPrivacyDetails: number | null;
+        hasAccessibilityLabels: number | null;
+      }
+    | undefined;
 
-  if (!app) throw new Error(`App not found: ${appId}`);
+  if (!app) {
+    throw new Error(`App not found: ${appId}`);
+  }
 
   const privacyTypes = buildSnapshot(appId);
   const analysis = getPolicyAnalysis(appId);
@@ -157,7 +184,7 @@ function resolveFromLibrary(appId: string): CompareSlot {
   const accessibilityFeatures = buildAccessibilitySnapshot(app.id);
 
   return {
-    source: 'library',
+    source: "library",
     id: app.id,
     name: app.name,
     iconUrl: app.iconUrl,

@@ -1,6 +1,7 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import db from '../../../lib/db';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import db from "../../../lib/db";
 
 /**
  * Liveness probe for Docker / uptime checks. Intentionally does NOT touch
@@ -10,13 +11,15 @@ import db from '../../../lib/db';
  */
 export async function GET() {
   try {
-    const row = db.prepare('SELECT 1 as ok').get() as { ok: number } | undefined;
+    const row = db.prepare("SELECT 1 as ok").get() as
+      | { ok: number }
+      | undefined;
     if (!row || row.ok !== 1) {
-      return NextResponse.json({ status: 'degraded' }, { status: 503 });
+      return NextResponse.json({ status: "degraded" }, { status: 503 });
     }
-    return NextResponse.json({ status: 'ok' });
+    return NextResponse.json({ status: "ok" });
   } catch (error) {
-    console.error('[health] DB ping failed', error);
-    return NextResponse.json({ status: 'degraded' }, { status: 503 });
+    console.error("[health] DB ping failed", error);
+    return NextResponse.json({ status: "degraded" }, { status: 503 });
   }
 }

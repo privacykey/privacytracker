@@ -9,9 +9,9 @@
  *      `prepare()`. Records SQL (truncated), duration, and parameter count
  *      — never parameter values.
  */
-import { monitorEventLoopDelay, type IntervalHistogram } from 'node:perf_hooks';
-import { getHeapStatistics } from 'node:v8';
-import type Database from 'better-sqlite3';
+import { type IntervalHistogram, monitorEventLoopDelay } from "node:perf_hooks";
+import { getHeapStatistics } from "node:v8";
+import type Database from "better-sqlite3";
 
 // ── Tunables ──────────────────────────────────────────────────────────
 
@@ -30,18 +30,18 @@ const EVENT_LOOP_RESOLUTION_MS = 20;
 // ── Slow-query ring ──────────────────────────────────────────────────
 
 export interface SlowQueryRecord {
-  /** Truncated SQL — see {@link SLOW_QUERY_SQL_MAX_LEN}. */
-  sql: string;
-  /** Wall-clock duration in milliseconds, rounded to 2 decimals. */
-  durationMs: number;
-  /** Statement method that produced the timing — `all` / `get` / `run` / `iterate`. */
-  method: 'all' | 'get' | 'run' | 'iterate';
-  /** Number of bound parameters, NOT their values. */
-  paramCount: number;
   /** Epoch ms at the moment the query *finished*. */
   at: number;
+  /** Wall-clock duration in milliseconds, rounded to 2 decimals. */
+  durationMs: number;
   /** Truncated error message if the query threw. */
   error?: string;
+  /** Statement method that produced the timing — `all` / `get` / `run` / `iterate`. */
+  method: "all" | "get" | "run" | "iterate";
+  /** Number of bound parameters, NOT their values. */
+  paramCount: number;
+  /** Truncated SQL — see {@link SLOW_QUERY_SQL_MAX_LEN}. */
+  sql: string;
 }
 
 /**
@@ -49,7 +49,9 @@ export interface SlowQueryRecord {
  * `getRecentSlowQueries` can return rows in chronological order regardless
  * of the ring's wrap point.
  */
-const slowRing: Array<SlowQueryRecord | undefined> = new Array(SLOW_QUERY_RING_SIZE);
+const slowRing: Array<SlowQueryRecord | undefined> = new Array(
+  SLOW_QUERY_RING_SIZE
+);
 let slowRingWriteIndex = 0;
 /** Total number of slow queries observed since process start (or last clear). */
 let slowQueryTotalCount = 0;
@@ -61,7 +63,9 @@ function recordSlowQuery(record: SlowQueryRecord): void {
 }
 
 /** Return the most recent slow-query records, oldest first. */
-export function getRecentSlowQueries(limit = SLOW_QUERY_RING_SIZE): SlowQueryRecord[] {
+export function getRecentSlowQueries(
+  limit = SLOW_QUERY_RING_SIZE
+): SlowQueryRecord[] {
   // Walk the ring from the oldest live slot forward.
   const wrapped = slowRingWriteIndex >= SLOW_QUERY_RING_SIZE;
   const start = wrapped ? slowRingWriteIndex % SLOW_QUERY_RING_SIZE : 0;
@@ -70,7 +74,9 @@ export function getRecentSlowQueries(limit = SLOW_QUERY_RING_SIZE): SlowQueryRec
   const out: SlowQueryRecord[] = [];
   for (let i = liveCount - want; i < liveCount; i++) {
     const slot = slowRing[(start + i) % SLOW_QUERY_RING_SIZE];
-    if (slot) out.push(slot);
+    if (slot) {
+      out.push(slot);
+    }
   }
   return out;
 }
@@ -85,7 +91,7 @@ export function clearSlowQueryRing(): void {
 // ── Profiling toggle ─────────────────────────────────────────────────
 
 /** Default ON outside tests. Overhead is one conditional per DB call. */
-let profilingEnabled = process.env.NODE_ENV !== 'test';
+let profilingEnabled = process.env.NODE_ENV !== "test";
 
 export function setProfilingEnabled(enabled: boolean): void {
   profilingEnabled = enabled;
@@ -103,15 +109,24 @@ export function isProfilingEnabled(): boolean {
  * `db.prepare(sql).pluck()` keeps working. Calls pass straight through when
  * profiling is disabled.
  */
-function wrapStatement(stmt: Database.Statement, sql: string): Database.Statement {
-  const truncatedSql = sql.length > SLOW_QUERY_SQL_MAX_LEN
-    ? sql.slice(0, SLOW_QUERY_SQL_MAX_LEN - 1) + '…'
-    : sql;
+function wrapStatement(
+  stmt: Database.Statement,
+  sql: string
+): Database.Statement {
+  const truncatedSql =
+    sql.length > SLOW_QUERY_SQL_MAX_LEN
+      ? `${sql.slice(0, SLOW_QUERY_SQL_MAX_LEN - 1)}…`
+      : sql;
 
-  const wrap = <K extends 'all' | 'get' | 'run' | 'iterate'>(method: K) => {
+  const wrap = <K extends "all" | "get" | "run" | "iterate">(method: K) => {
     const original = stmt[method];
-    if (typeof original !== 'function') return;
-    (stmt as any)[method] = function (this: Database.Statement, ...args: unknown[]) {
+    if (typeof original !== "function") {
+      return;
+    }
+    (stmt as any)[method] = function (
+      this: Database.Statement,
+      ...args: unknown[]
+    ) {
       if (!profilingEnabled) {
         return (original as any).apply(this, args);
       }
@@ -138,9 +153,10 @@ function wrapStatement(stmt: Database.Statement, sql: string): Database.Statemen
             method,
             paramCount: args.length,
             at: Date.now(),
-            error: err instanceof Error
-              ? err.message.slice(0, SLOW_QUERY_SQL_MAX_LEN)
-              : String(err).slice(0, SLOW_QUERY_SQL_MAX_LEN),
+            error:
+              err instanceof Error
+                ? err.message.slice(0, SLOW_QUERY_SQL_MAX_LEN)
+                : String(err).slice(0, SLOW_QUERY_SQL_MAX_LEN),
           });
         }
         throw err;
@@ -148,10 +164,10 @@ function wrapStatement(stmt: Database.Statement, sql: string): Database.Statemen
     };
   };
 
-  wrap('all');
-  wrap('get');
-  wrap('run');
-  wrap('iterate');
+  wrap("all");
+  wrap("get");
+  wrap("run");
+  wrap("iterate");
 
   return stmt;
 }
@@ -162,10 +178,12 @@ let dbInstrumented = false;
  * Idempotent — safe to call twice during dev hot reload.
  */
 export function instrumentDatabase(rawDb: Database.Database): void {
-  if (dbInstrumented) return;
+  if (dbInstrumented) {
+    return;
+  }
   dbInstrumented = true;
   const originalPrepare = rawDb.prepare.bind(rawDb);
-  const instrumentedPrepare = function (sql: string): Database.Statement {
+  const instrumentedPrepare = (sql: string): Database.Statement => {
     const stmt = originalPrepare(sql);
     return wrapStatement(stmt, sql);
   };
@@ -180,8 +198,12 @@ let lagHistogramStartedAt = 0;
 
 /** Lazily start the event-loop-delay histogram. Idempotent. */
 export function ensureEventLoopMonitor(): void {
-  if (lagHistogram) return;
-  lagHistogram = monitorEventLoopDelay({ resolution: EVENT_LOOP_RESOLUTION_MS });
+  if (lagHistogram) {
+    return;
+  }
+  lagHistogram = monitorEventLoopDelay({
+    resolution: EVENT_LOOP_RESOLUTION_MS,
+  });
   lagHistogram.enable();
   lagHistogramStartedAt = Date.now();
 }
@@ -197,31 +219,36 @@ export function resetEventLoopMonitor(): void {
 }
 
 interface EventLoopSnapshot {
-  /** Wall-clock seconds the histogram has been collecting. */
-  windowSeconds: number;
-  /** Sample count over the window. */
-  samples: number;
+  maxMs: number;
+  meanMs: number;
   /** All values are in milliseconds, so the UI doesn't need to scale ns. */
   minMs: number;
-  meanMs: number;
-  maxMs: number;
-  stddevMs: number;
   p50Ms: number;
   p95Ms: number;
   p99Ms: number;
+  /** Sample count over the window. */
+  samples: number;
   /** p99 above 100ms is jank; above 1000ms is beach-balling. */
-  severity: 'ok' | 'warn' | 'danger';
+  severity: "ok" | "warn" | "danger";
+  stddevMs: number;
+  /** Wall-clock seconds the histogram has been collecting. */
+  windowSeconds: number;
 }
 
 function snapshotEventLoop(): EventLoopSnapshot | null {
-  if (!lagHistogram) return null;
+  if (!lagHistogram) {
+    return null;
+  }
   // perf_hooks histogram values are nanoseconds.
   const NS_PER_MS = 1e6;
   const p99Ms = lagHistogram.percentile(99) / NS_PER_MS;
-  const severity: EventLoopSnapshot['severity'] =
-    p99Ms >= 1000 ? 'danger' : p99Ms >= 100 ? 'warn' : 'ok';
+  const severity: EventLoopSnapshot["severity"] =
+    p99Ms >= 1000 ? "danger" : p99Ms >= 100 ? "warn" : "ok";
   return {
-    windowSeconds: Math.max(0, Math.round((Date.now() - lagHistogramStartedAt) / 1000)),
+    windowSeconds: Math.max(
+      0,
+      Math.round((Date.now() - lagHistogramStartedAt) / 1000)
+    ),
     // Older Node lacks `count`; `exceeds` is universal and a close-enough proxy.
     samples: lagHistogram.count ?? lagHistogram.exceeds ?? 0,
     minMs: lagHistogram.min / NS_PER_MS,
@@ -238,8 +265,8 @@ function snapshotEventLoop(): EventLoopSnapshot | null {
 // ── Snapshot helpers ─────────────────────────────────────────────────
 
 export interface RuntimeMetrics {
+  eventLoop: EventLoopSnapshot | null;
   generatedAt: string;
-  uptimeSeconds: number;
   /** Output of `process.memoryUsage()` with bytes formatted as MiB. */
   memory: {
     rssMb: number;
@@ -247,16 +274,6 @@ export interface RuntimeMetrics {
     heapUsedMb: number;
     externalMb: number;
     arrayBuffersMb: number;
-  };
-  /** V8 heap statistics. `heapSizeLimit` is the V8 ceiling. */
-  v8Heap: {
-    totalHeapSizeMb: number;
-    usedHeapSizeMb: number;
-    heapSizeLimitMb: number;
-    mallocedMemoryMb: number;
-    externalMemoryMb: number;
-    /** > 0.85 is a smell — GC of last resort. */
-    heapFractionUsed: number;
   };
   /** `process.resourceUsage()` rolled up into the fields users care about. */
   resourceUsage: {
@@ -268,12 +285,22 @@ export interface RuntimeMetrics {
     voluntaryContextSwitches: number;
     involuntaryContextSwitches: number;
   };
-  eventLoop: EventLoopSnapshot | null;
   slowQueries: {
     thresholdMs: number;
     totalSinceStart: number;
     profilingEnabled: boolean;
     recent: SlowQueryRecord[];
+  };
+  uptimeSeconds: number;
+  /** V8 heap statistics. `heapSizeLimit` is the V8 ceiling. */
+  v8Heap: {
+    totalHeapSizeMb: number;
+    usedHeapSizeMb: number;
+    heapSizeLimitMb: number;
+    mallocedMemoryMb: number;
+    externalMemoryMb: number;
+    /** > 0.85 is a smell — GC of last resort. */
+    heapFractionUsed: number;
   };
 }
 
@@ -286,7 +313,7 @@ const toMb = (bytes: number) => Math.round((bytes / BYTES_PER_MB) * 100) / 100;
  * the full ring (e.g. GitHub issue exports).
  */
 export function snapshotRuntimeMetrics(
-  recentSlowQueriesLimit = SLOW_QUERY_RING_SIZE,
+  recentSlowQueriesLimit = SLOW_QUERY_RING_SIZE
 ): RuntimeMetrics {
   const mem = process.memoryUsage();
   const rsrc = process.resourceUsage();
@@ -308,14 +335,17 @@ export function snapshotRuntimeMetrics(
       heapSizeLimitMb: toMb(heap.heap_size_limit),
       mallocedMemoryMb: toMb(heap.malloced_memory),
       externalMemoryMb: toMb(heap.external_memory),
-      heapFractionUsed: heap.heap_size_limit > 0
-        ? Math.round((heap.used_heap_size / heap.heap_size_limit) * 1000) / 1000
-        : 0,
+      heapFractionUsed:
+        heap.heap_size_limit > 0
+          ? Math.round((heap.used_heap_size / heap.heap_size_limit) * 1000) /
+            1000
+          : 0,
     },
     resourceUsage: {
       // Node reports CPU times in microseconds; convert to seconds.
       userCpuSeconds: Math.round((rsrc.userCPUTime / 1_000_000) * 100) / 100,
-      systemCpuSeconds: Math.round((rsrc.systemCPUTime / 1_000_000) * 100) / 100,
+      systemCpuSeconds:
+        Math.round((rsrc.systemCPUTime / 1_000_000) * 100) / 100,
       // `maxRSS` is in kilobytes on Linux/macOS; convert to MB.
       maxRssMb: Math.round((rsrc.maxRSS / 1024) * 100) / 100,
       minorPageFaults: rsrc.minorPageFault,

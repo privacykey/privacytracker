@@ -22,7 +22,7 @@
  * one summary row for the scheduled run itself, not a cascade).
  */
 
-import db from './db';
+import db from "./db";
 
 /**
  * Maximum rows we keep in `activity_log` at rest. Older rows are dropped on
@@ -33,92 +33,92 @@ import db from './db';
 const ACTIVITY_RETENTION = 2000;
 
 export type ActivityType =
-  | 'scrape'
-  | 'resync'
-  | 'policy_summary'
-  | 'scheduled_sync'
-  | 'manual_sync'
-  | 'import'
-  | 'wayback_import'
-  | 'backup_export'
-  | 'backup_restore'
-  | 'reset'
+  | "scrape"
+  | "resync"
+  | "policy_summary"
+  | "scheduled_sync"
+  | "manual_sync"
+  | "import"
+  | "wayback_import"
+  | "backup_export"
+  | "backup_restore"
+  | "reset"
   // Round 3 PR 1: migration step events. Per-step + summary rows so the
   // Dev Options activity-log accordion can show "what the migration did" at
   // boot-time. Annotation events use this type too — create/edit/delete of
   // user annotations on App Detail surfaces here for the same audit-log reasons.
-  | 'migration'
-  | 'annotation_created'
-  | 'annotation_edited'
-  | 'annotation_deleted'
+  | "migration"
+  | "annotation_created"
+  | "annotation_edited"
+  | "annotation_deleted"
   // Per-app verdict events. Verdicts ('safe' | 'replace' | 'uninstall')
   // are categorical decisions distinct from freeform annotations — they
   // surface here so the dashboard activity feed and the Dev Options
   // audit log can show "marked X as uninstall on Y" alongside note
   // edits and syncs.
-  | 'verdict_set'
-  | 'verdict_cleared'
+  | "verdict_set"
+  | "verdict_cleared"
   // Bulk verdict apply (Select mode in AppGrid). One row per bulk apply,
   // with `detail.count` + `detail.verdict` + `detail.appIds`. Per-app
   // `verdict_set` rows are *not* written for bulk applies — the single
   // summary row covers the audit trail without flooding the feed.
-  | 'bulk_verdict_set'
+  | "bulk_verdict_set"
   // Queue session completion. One row at session end with totals
   // (kept/replace/uninstall/notes) and the preflight choices used.
-  | 'queue_session_completed'
+  | "queue_session_completed"
   // Phase 3 device-action events. Backups + uninstalls land here so
   // the Dev Options activity log retains a forensic trail of every
   // destructive cfgutil call. `cfgutil_uninstall` rows include the
   // bundle ID + ecid + per-row outcome in the detail blob; the
   // dashboard activity feed just shows the summary string.
-  | 'cfgutil_backup'
-  | 'cfgutil_uninstall'
-  | 'flag_quarantined_purged'
+  | "cfgutil_backup"
+  | "cfgutil_uninstall"
+  | "flag_quarantined_purged"
   // Round 3 v1 final: audit-bundle imports — counterpart to backup_export
   // but for the recommender → loved-one workflow. One row per accepted
   // import; the detail blob carries the summary numbers + recommender
   // name for the dashboard provenance banner.
-  | 'bundle_imported'
+  | "bundle_imported"
   // Privacy-profile preset boundary transitions — rows surface when the
   // user picks a preset, switches between presets, or clears a profile.
   // Custom-to-custom edits inside a non-preset state don't fire (the
   // activity log is for noteworthy transitions, not keystroke-level
   // edits). The describePresetTransition helper in lib/privacy-profile.ts
   // is the single source of truth for when to write one of these.
-  | 'profile_preset_applied'
+  | "profile_preset_applied"
   // Dashboard layout preset boundary transitions — mirrors
   // `profile_preset_applied`. Surfaces only when the change crosses a
   // named preset (default/minimal/caretaker/watchdog/at_a_glance). The
   // editor saves at every keystroke, so custom-to-custom edits never
   // fire — `describeLayoutTransition` in lib/dashboard-layout.ts is the
   // gate.
-  | 'dashboard_layout_applied';
+  | "dashboard_layout_applied";
 
-export type ActivityStatus = 'ok' | 'error' | 'partial' | 'cancelled';
+export type ActivityStatus = "ok" | "error" | "partial" | "cancelled";
 
 export interface ActivityRow {
-  id: string;
-  type: ActivityType;
-  status: ActivityStatus;
   appId: string | null;
   appName: string | null;
-  summary: string | null;
   /** Parsed JSON if the stored blob is valid JSON; otherwise null. */
   detail: Record<string, unknown> | null;
-  startedAt: number;
-  endedAt: number | null;
   durationMs: number | null;
+  endedAt: number | null;
+  id: string;
+  startedAt: number;
+  status: ActivityStatus;
+  summary: string | null;
+  type: ActivityType;
 }
 
 interface RecordActivityInput {
-  type: ActivityType;
-  status: ActivityStatus;
   appId?: string | null;
   appName?: string | null;
-  summary?: string | null;
   detail?: Record<string, unknown> | null;
-  startedAt: number;
   endedAt?: number | null;
+  startedAt: number;
+  status: ActivityStatus;
+  summary?: string | null;
+  type: ActivityType;
 }
 
 /**
@@ -137,7 +137,7 @@ export function recordActivity(input: RecordActivityInput): void {
       `INSERT INTO activity_log
          (id, type, status, app_id, app_name, summary, detail,
           started_at, ended_at, duration_ms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       input.type,
@@ -148,14 +148,14 @@ export function recordActivity(input: RecordActivityInput): void {
       input.detail ? JSON.stringify(input.detail) : null,
       input.startedAt,
       endedAt,
-      durationMs,
+      durationMs
     );
 
     // Enforce retention cap — delete oldest rows beyond ACTIVITY_RETENTION.
     // SQLite's LIMIT-in-DELETE isn't universally available in every build,
     // so we do it in two steps: count, then delete oldest if over.
     const count = db
-      .prepare('SELECT COUNT(*) AS n FROM activity_log')
+      .prepare("SELECT COUNT(*) AS n FROM activity_log")
       .get() as { n: number };
     if (count.n > ACTIVITY_RETENTION) {
       const overflow = count.n - ACTIVITY_RETENTION;
@@ -165,28 +165,28 @@ export function recordActivity(input: RecordActivityInput): void {
             SELECT id FROM activity_log
             ORDER BY started_at ASC
             LIMIT ?
-          )`,
+          )`
       ).run(overflow);
     }
   } catch (error) {
-    console.warn('[activity] recordActivity failed:', error);
+    console.warn("[activity] recordActivity failed:", error);
   }
 }
 
-export type ActivitySortField = 'started_at' | 'ended_at' | 'duration_ms';
-export type ActivitySortDir = 'asc' | 'desc';
+export type ActivitySortField = "started_at" | "ended_at" | "duration_ms";
+export type ActivitySortDir = "asc" | "desc";
 
 export interface ActivityFilterOptions {
-  /** Filter to a specific type, or omit to return all. */
-  type?: ActivityType;
-  /** Filter to a specific status, or omit to return all. */
-  status?: ActivityStatus;
   /**
    * Lower-bound inclusive epoch-ms on `started_at`. Used by the UI
    * "last X minutes / hours / days" filter — computed on the client and
    * passed in as an absolute timestamp so the server stays stateless.
    */
   since?: number;
+  /** Filter to a specific status, or omit to return all. */
+  status?: ActivityStatus;
+  /** Filter to a specific type, or omit to return all. */
+  type?: ActivityType;
   /** Upper-bound inclusive epoch-ms on `started_at`. Usually unused. */
   until?: number;
 }
@@ -204,53 +204,60 @@ export interface GetActivityOptions extends ActivityFilterOptions {
  * plus the ordered positional bind values. Keeping this in one place so
  * the reader and counter stay in lockstep.
  */
-function buildFilterClause(opts: ActivityFilterOptions): { sql: string; params: unknown[] } {
+function buildFilterClause(opts: ActivityFilterOptions): {
+  sql: string;
+  params: unknown[];
+} {
   const clauses: string[] = [];
   const params: unknown[] = [];
   if (opts.type) {
-    clauses.push('type = ?');
+    clauses.push("type = ?");
     params.push(opts.type);
   }
   if (opts.status) {
-    clauses.push('status = ?');
+    clauses.push("status = ?");
     params.push(opts.status);
   }
-  if (typeof opts.since === 'number' && Number.isFinite(opts.since)) {
-    clauses.push('started_at >= ?');
+  if (typeof opts.since === "number" && Number.isFinite(opts.since)) {
+    clauses.push("started_at >= ?");
     params.push(opts.since);
   }
-  if (typeof opts.until === 'number' && Number.isFinite(opts.until)) {
-    clauses.push('started_at <= ?');
+  if (typeof opts.until === "number" && Number.isFinite(opts.until)) {
+    clauses.push("started_at <= ?");
     params.push(opts.until);
   }
-  if (clauses.length === 0) return { sql: '', params };
-  return { sql: `WHERE ${clauses.join(' AND ')}`, params };
+  if (clauses.length === 0) {
+    return { sql: "", params };
+  }
+  return { sql: `WHERE ${clauses.join(" AND ")}`, params };
 }
 
 function buildOrderClause(
   sortBy: ActivitySortField | undefined,
-  sortDir: ActivitySortDir | undefined,
+  sortDir: ActivitySortDir | undefined
 ): string {
-  const field: ActivitySortField = sortBy ?? 'started_at';
-  const dir: ActivitySortDir = sortDir ?? 'desc';
+  const field: ActivitySortField = sortBy ?? "started_at";
+  const dir: ActivitySortDir = sortDir ?? "desc";
   // `duration_ms` and `ended_at` can be NULL for still-running rows — we
   // want those sorted last regardless of direction so the listing reads
   // "newest completed first, in-flight below". SQLite treats NULL as
   // smaller than anything else by default, so we coalesce for asc.
-  if (field === 'duration_ms') {
-    return dir === 'asc'
-      ? 'ORDER BY COALESCE(duration_ms, 9223372036854775807) ASC, started_at DESC'
-      : 'ORDER BY COALESCE(duration_ms, -1) DESC, started_at DESC';
+  if (field === "duration_ms") {
+    return dir === "asc"
+      ? "ORDER BY COALESCE(duration_ms, 9223372036854775807) ASC, started_at DESC"
+      : "ORDER BY COALESCE(duration_ms, -1) DESC, started_at DESC";
   }
-  if (field === 'ended_at') {
-    return dir === 'asc'
-      ? 'ORDER BY COALESCE(ended_at, 9223372036854775807) ASC, started_at DESC'
-      : 'ORDER BY COALESCE(ended_at, 0) DESC, started_at DESC';
+  if (field === "ended_at") {
+    return dir === "asc"
+      ? "ORDER BY COALESCE(ended_at, 9223372036854775807) ASC, started_at DESC"
+      : "ORDER BY COALESCE(ended_at, 0) DESC, started_at DESC";
   }
-  return dir === 'asc' ? 'ORDER BY started_at ASC' : 'ORDER BY started_at DESC';
+  return dir === "asc" ? "ORDER BY started_at ASC" : "ORDER BY started_at DESC";
 }
 
-export function getRecentActivity(opts: GetActivityOptions = {}): ActivityRow[] {
+export function getRecentActivity(
+  opts: GetActivityOptions = {}
+): ActivityRow[] {
   const limit = Math.min(Math.max(1, opts.limit ?? 50), 500);
   const offset = Math.max(0, opts.offset ?? 0);
 
@@ -264,11 +271,11 @@ export function getRecentActivity(opts: GetActivityOptions = {}): ActivityRow[] 
          FROM activity_log
          ${whereSql}
          ${orderSql}
-         LIMIT ? OFFSET ?`,
+         LIMIT ? OFFSET ?`
     )
     .all(...whereParams, limit, offset);
 
-  return (rows as unknown[]).map(row => {
+  return (rows as unknown[]).map((row) => {
     const r = row as {
       id: string;
       type: string;

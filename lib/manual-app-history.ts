@@ -7,54 +7,60 @@
  * Never imported from client components — `db` and Node crypto are Node-only.
  */
 
-import crypto from 'crypto';
-import db from './db';
+import crypto from "node:crypto";
+import db from "./db";
 
 // ── Event types ────────────────────────────────────────────────────────
 // Kept as a loose string union so future event flavours (e.g. 'note_added'
 // vs 'note_edited') can ship without a migration. The TypeScript union is
 // the source of truth; the DB stores whatever string we write.
-export type ManualAppEventType = 'scrape' | 'field_change';
+export type ManualAppEventType = "scrape" | "field_change";
 
-export type ManualAppPolicyEvent = 'first' | 'same' | 'changed' | 'error';
+export type ManualAppPolicyEvent = "first" | "same" | "changed" | "error";
 
 export interface ManualAppScrapeDetail {
+  contentHash?: string;
+  /** Human-readable error string for `policy_event='error'` rows. */
+  error?: string;
+  finalUrl?: string;
   policy_event: ManualAppPolicyEvent;
+  policyUrl?: string;
+  title?: string;
   /** Row id in manual_app_policy_versions, when the fetch succeeded. */
   versionId?: string;
   wordCount?: number;
-  contentHash?: string;
-  policyUrl?: string;
-  finalUrl?: string;
-  title?: string;
-  /** Human-readable error string for `policy_event='error'` rows. */
-  error?: string;
 }
 
 export interface ManualAppFieldChangeDetail {
-  field: 'name' | 'source' | 'developer' | 'privacyPolicyUrl' | 'sourceUrl' | 'notes';
+  field:
+    | "name"
+    | "source"
+    | "developer"
+    | "privacyPolicyUrl"
+    | "sourceUrl"
+    | "notes";
   from: string | null;
   to: string | null;
 }
 
 export type ManualAppEventDetail =
-  | ({ kind: 'scrape' } & ManualAppScrapeDetail)
-  | ({ kind: 'field_change' } & ManualAppFieldChangeDetail);
+  | ({ kind: "scrape" } & ManualAppScrapeDetail)
+  | ({ kind: "field_change" } & ManualAppFieldChangeDetail);
 
 export interface ManualAppEvent {
+  detail: ManualAppEventDetail | null;
   id: string;
   manualAppId: string;
-  type: ManualAppEventType;
   occurredAt: number;
-  detail: ManualAppEventDetail | null;
+  type: ManualAppEventType;
 }
 
 interface ManualAppEventRow {
+  detail: string | null;
+  event_type: string;
   id: string;
   manual_app_id: string;
-  event_type: string;
   occurred_at: number;
-  detail: string | null;
 }
 
 function hydrateEvent(row: ManualAppEventRow): ManualAppEvent {
@@ -71,7 +77,7 @@ function hydrateEvent(row: ManualAppEventRow): ManualAppEvent {
   return {
     id: row.id,
     manualAppId: row.manual_app_id,
-    type: (row.event_type as ManualAppEventType) ?? 'scrape',
+    type: (row.event_type as ManualAppEventType) ?? "scrape",
     occurredAt: row.occurred_at,
     detail,
   };
@@ -93,7 +99,7 @@ export function appendManualAppEvent(input: {
 
   db.prepare(
     `INSERT INTO manual_app_events (id, manual_app_id, event_type, occurred_at, detail)
-     VALUES (?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?)`
   ).run(id, input.manualAppId, input.type, occurredAt, detailJson);
 
   return {
@@ -105,14 +111,17 @@ export function appendManualAppEvent(input: {
   };
 }
 
-export function listManualAppEvents(manualAppId: string, limit = 200): ManualAppEvent[] {
+export function listManualAppEvents(
+  manualAppId: string,
+  limit = 200
+): ManualAppEvent[] {
   const rows = db
     .prepare(
       `SELECT id, manual_app_id, event_type, occurred_at, detail
          FROM manual_app_events
         WHERE manual_app_id = ?
         ORDER BY occurred_at DESC, rowid DESC
-        LIMIT ?`,
+        LIMIT ?`
     )
     .all(manualAppId, limit) as ManualAppEventRow[];
   return rows.map(hydrateEvent);
@@ -124,10 +133,12 @@ export function listManualAppEvents(manualAppId: string, limit = 200): ManualApp
  */
 export function deleteManualAppHistory(manualAppId: string): void {
   const tx = db.transaction(() => {
-    db.prepare('DELETE FROM manual_app_events WHERE manual_app_id = ?').run(manualAppId);
-    db.prepare('DELETE FROM manual_app_policy_versions WHERE manual_app_id = ?').run(
-      manualAppId,
+    db.prepare("DELETE FROM manual_app_events WHERE manual_app_id = ?").run(
+      manualAppId
     );
+    db.prepare(
+      "DELETE FROM manual_app_policy_versions WHERE manual_app_id = ?"
+    ).run(manualAppId);
   });
   tx();
 }
@@ -135,36 +146,38 @@ export function deleteManualAppHistory(manualAppId: string): void {
 // ── Policy versions ────────────────────────────────────────────────────
 
 export interface ManualAppPolicyVersion {
-  id: string;
-  manualAppId: string;
   contentHash: string;
   firstFetchedAt: number;
+  id: string;
   lastFetchedAt: number;
+  manualAppId: string;
   policyUrl: string | null;
-  sourceFinalUrl: string | null;
-  sourceTitle: string | null;
   sourceContentType: string | null;
+  sourceFinalUrl: string | null;
   sourceOrigin: string | null;
-  sourceWordCount: number;
   sourceText: string;
+  sourceTitle: string | null;
+  sourceWordCount: number;
 }
 
 interface ManualAppPolicyVersionRow {
-  id: string;
-  manual_app_id: string;
   content_hash: string;
   first_fetched_at: number;
+  id: string;
   last_fetched_at: number;
+  manual_app_id: string;
   policy_url: string | null;
-  source_final_url: string | null;
-  source_title: string | null;
   source_content_type: string | null;
+  source_final_url: string | null;
   source_origin: string | null;
-  source_word_count: number;
   source_text: string;
+  source_title: string | null;
+  source_word_count: number;
 }
 
-function hydrateVersion(row: ManualAppPolicyVersionRow): ManualAppPolicyVersion {
+function hydrateVersion(
+  row: ManualAppPolicyVersionRow
+): ManualAppPolicyVersion {
   return {
     id: row.id,
     manualAppId: row.manual_app_id,
@@ -200,13 +213,13 @@ export function upsertManualAppPolicyVersion(input: {
 }): { id: string; isNew: boolean } {
   const existing = db
     .prepare(
-      `SELECT id FROM manual_app_policy_versions WHERE manual_app_id = ? AND content_hash = ?`,
+      "SELECT id FROM manual_app_policy_versions WHERE manual_app_id = ? AND content_hash = ?"
     )
     .get(input.manualAppId, input.contentHash) as { id?: string } | undefined;
 
   if (existing?.id) {
     db.prepare(
-      `UPDATE manual_app_policy_versions SET last_fetched_at = ? WHERE id = ?`,
+      "UPDATE manual_app_policy_versions SET last_fetched_at = ? WHERE id = ?"
     ).run(input.fetchedAt, existing.id);
     return { id: existing.id, isNew: false };
   }
@@ -217,7 +230,7 @@ export function upsertManualAppPolicyVersion(input: {
        id, manual_app_id, content_hash, first_fetched_at, last_fetched_at,
        policy_url, source_final_url, source_title, source_content_type,
        source_origin, source_word_count, source_text
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     input.manualAppId,
@@ -230,25 +243,27 @@ export function upsertManualAppPolicyVersion(input: {
     input.sourceContentType,
     input.sourceOrigin,
     input.sourceWordCount,
-    input.sourceText,
+    input.sourceText
   );
   return { id, isNew: true };
 }
 
-export function getManualAppPolicyVersion(id: string): ManualAppPolicyVersion | null {
+export function getManualAppPolicyVersion(
+  id: string
+): ManualAppPolicyVersion | null {
   const row = db
     .prepare(
       `SELECT id, manual_app_id, content_hash, first_fetched_at, last_fetched_at,
               policy_url, source_final_url, source_title, source_content_type,
               source_origin, source_word_count, source_text
-         FROM manual_app_policy_versions WHERE id = ?`,
+         FROM manual_app_policy_versions WHERE id = ?`
     )
     .get(id) as ManualAppPolicyVersionRow | undefined;
   return row ? hydrateVersion(row) : null;
 }
 
 export function getCurrentManualAppPolicyVersion(
-  manualAppId: string,
+  manualAppId: string
 ): ManualAppPolicyVersion | null {
   const row = db
     .prepare(
@@ -258,7 +273,7 @@ export function getCurrentManualAppPolicyVersion(
          FROM manual_app_policy_versions
         WHERE manual_app_id = ?
         ORDER BY last_fetched_at DESC
-        LIMIT 1`,
+        LIMIT 1`
     )
     .get(manualAppId) as ManualAppPolicyVersionRow | undefined;
   return row ? hydrateVersion(row) : null;
@@ -267,7 +282,7 @@ export function getCurrentManualAppPolicyVersion(
 export function hasAnyManualAppPolicyVersion(manualAppId: string): boolean {
   const row = db
     .prepare(
-      `SELECT 1 AS present FROM manual_app_policy_versions WHERE manual_app_id = ? LIMIT 1`,
+      "SELECT 1 AS present FROM manual_app_policy_versions WHERE manual_app_id = ? LIMIT 1"
     )
     .get(manualAppId) as { present?: number } | undefined;
   return Boolean(row?.present);

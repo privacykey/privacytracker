@@ -19,25 +19,25 @@
  *   are rejected (defence against SSRF via DNS rebinding — see note below).
  */
 
-import crypto from 'crypto';
-import { promises as dns } from 'dns';
-import db from './db';
+import crypto from "node:crypto";
+import { promises as dns } from "node:dns";
+import db from "./db";
 
 // ─────────────────────────────────────────────
 // URL validation
 // ─────────────────────────────────────────────
 
 export type UrlValidationError =
-  | 'invalid_url'
-  | 'unsupported_protocol'
-  | 'private_host'
-  | 'host_not_allowed'
-  | 'too_long';
+  | "invalid_url"
+  | "unsupported_protocol"
+  | "private_host"
+  | "host_not_allowed"
+  | "too_long";
 
 export interface UrlValidationResult {
-  ok: boolean;
-  error?: UrlValidationError;
   detail?: string;
+  error?: UrlValidationError;
+  ok: boolean;
   url?: URL;
 }
 
@@ -50,14 +50,14 @@ export interface UrlValidationResult {
  * literally (exact equality) and via the private-IP checker below.
  */
 const BLOCKED_HOSTNAMES = new Set<string>([
-  'localhost',
-  'localhost.localdomain',
-  'ip6-localhost',
-  'ip6-loopback',
-  'metadata.google.internal',
-  'metadata',
-  'instance-data',
-  'instance-data.ec2.internal',
+  "localhost",
+  "localhost.localdomain",
+  "ip6-localhost",
+  "ip6-loopback",
+  "metadata.google.internal",
+  "metadata",
+  "instance-data",
+  "instance-data.ec2.internal",
 ]);
 
 /**
@@ -69,29 +69,37 @@ const BLOCKED_HOSTNAMES = new Set<string>([
  * reason for the AI base URL (or any user-configured URL) to hit these.
  */
 const METADATA_HOSTNAMES = new Set<string>([
-  'metadata.google.internal',
-  'metadata',
-  'instance-data',
-  'instance-data.ec2.internal',
+  "metadata.google.internal",
+  "metadata",
+  "instance-data",
+  "instance-data.ec2.internal",
 ]);
 
 function isMetadataHost(host: string): boolean {
   const h = host.toLowerCase();
-  if (METADATA_HOSTNAMES.has(h)) return true;
+  if (METADATA_HOSTNAMES.has(h)) {
+    return true;
+  }
   // IPv4 literals: anything in 169.254.0.0/16 counts as metadata-adjacent
   // (IMDS lives at 169.254.169.254; ECS task metadata at 169.254.170.2).
   const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (v4) {
     const a = Number(v4[1]);
     const b = Number(v4[2]);
-    if (a === 169 && b === 254) return true;
+    if (a === 169 && b === 254) {
+      return true;
+    }
   }
   // IPv6 metadata: AWS uses fd00:ec2::254 and GCP/Azure use fe80::a9fe:a9fe-ish
   // link-local. Blocking anything in fe80::/10 here is conservative but cheap.
-  if (h.includes(':')) {
-    const stripped = h.replace(/^\[|\]$/g, '');
-    if (stripped.startsWith('fd00:ec2')) return true;
-    if (/^fe[89ab]/.test(stripped)) return true;
+  if (h.includes(":")) {
+    const stripped = h.replace(/^\[|\]$/g, "");
+    if (stripped.startsWith("fd00:ec2")) {
+      return true;
+    }
+    if (/^fe[89ab]/.test(stripped)) {
+      return true;
+    }
   }
   return false;
 }
@@ -100,36 +108,66 @@ export function isPrivateIpv4(hostname: string): boolean {
   // Plain dotted quad check; doesn't cover integer/octal/mixed forms which we
   // reject up front by requiring strict dotted-quad shape.
   const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!match) return false;
+  if (!match) {
+    return false;
+  }
   const octets = match.slice(1, 5).map(Number);
-  if (octets.some(o => o < 0 || o > 255)) return true; // reject malformed
+  if (octets.some((o) => o < 0 || o > 255)) {
+    return true; // reject malformed
+  }
 
   const [a, b] = octets;
   // 0.0.0.0/8, 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16 (link-local incl. 169.254.169.254),
   // 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10 (CGNAT), 224.0.0.0/4 (multicast)
-  if (a === 0) return true;
-  if (a === 10) return true;
-  if (a === 127) return true;
-  if (a === 169 && b === 254) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 100 && b >= 64 && b <= 127) return true;
-  if (a >= 224) return true;
+  if (a === 0) {
+    return true;
+  }
+  if (a === 10) {
+    return true;
+  }
+  if (a === 127) {
+    return true;
+  }
+  if (a === 169 && b === 254) {
+    return true;
+  }
+  if (a === 172 && b >= 16 && b <= 31) {
+    return true;
+  }
+  if (a === 192 && b === 168) {
+    return true;
+  }
+  if (a === 100 && b >= 64 && b <= 127) {
+    return true;
+  }
+  if (a >= 224) {
+    return true;
+  }
   return false;
 }
 
 export function isPrivateIpv6(hostname: string): boolean {
   // Strip brackets Node may leave on URL.hostname for IPv6.
-  const stripped = hostname.replace(/^\[|\]$/g, '').toLowerCase();
-  if (!stripped.includes(':')) return false;
-  if (stripped === '::' || stripped === '::1') return true;
+  const stripped = hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (!stripped.includes(":")) {
+    return false;
+  }
+  if (stripped === "::" || stripped === "::1") {
+    return true;
+  }
   // fc00::/7 (unique-local), fe80::/10 (link-local), ff00::/8 (multicast),
   // ::ffff:0:0/96 (IPv4-mapped — let isPrivateIpv4 handle the mapped part).
-  if (/^fc|^fd/.test(stripped)) return true;
-  if (/^fe[89ab]/.test(stripped)) return true;
-  if (/^ff/.test(stripped)) return true;
-  if (stripped.startsWith('::ffff:')) {
-    const mapped = stripped.slice('::ffff:'.length);
+  if (/^fc|^fd/.test(stripped)) {
+    return true;
+  }
+  if (/^fe[89ab]/.test(stripped)) {
+    return true;
+  }
+  if (/^ff/.test(stripped)) {
+    return true;
+  }
+  if (stripped.startsWith("::ffff:")) {
+    const mapped = stripped.slice("::ffff:".length);
     return isPrivateIpv4(mapped);
   }
   return false;
@@ -154,60 +192,86 @@ export function isPrivateIpv6(hostname: string): boolean {
  */
 export function validateExternalUrl(
   raw: unknown,
-  opts: { allowedHosts?: string[]; maxLength?: number; allowPrivateHosts?: boolean } = {},
+  opts: {
+    allowedHosts?: string[];
+    maxLength?: number;
+    allowPrivateHosts?: boolean;
+  } = {}
 ): UrlValidationResult {
-  if (typeof raw !== 'string' || !raw.trim()) {
-    return { ok: false, error: 'invalid_url', detail: 'URL is empty or not a string' };
+  if (typeof raw !== "string" || !raw.trim()) {
+    return {
+      ok: false,
+      error: "invalid_url",
+      detail: "URL is empty or not a string",
+    };
   }
 
   const maxLength = opts.maxLength ?? 2048;
   if (raw.length > maxLength) {
-    return { ok: false, error: 'too_long', detail: `URL exceeds ${maxLength} chars` };
+    return {
+      ok: false,
+      error: "too_long",
+      detail: `URL exceeds ${maxLength} chars`,
+    };
   }
 
   let parsed: URL;
   try {
     parsed = new URL(raw);
   } catch {
-    return { ok: false, error: 'invalid_url', detail: 'Not a parseable URL' };
+    return { ok: false, error: "invalid_url", detail: "Not a parseable URL" };
   }
 
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return {
       ok: false,
-      error: 'unsupported_protocol',
-      detail: `Only http(s) URLs are accepted (got ${parsed.protocol || 'unknown'})`,
+      error: "unsupported_protocol",
+      detail: `Only http(s) URLs are accepted (got ${parsed.protocol || "unknown"})`,
     };
   }
 
   const host = parsed.hostname.toLowerCase();
   if (!host) {
-    return { ok: false, error: 'invalid_url', detail: 'URL has no hostname' };
+    return { ok: false, error: "invalid_url", detail: "URL has no hostname" };
   }
 
   // Metadata endpoints are always blocked — even for callers that opt in to
   // `allowPrivateHosts`. IMDS credential theft is the single worst SSRF
   // outcome on a cloud host, so we keep the gate closed unconditionally.
   if (isMetadataHost(host)) {
-    return { ok: false, error: 'private_host', detail: `Metadata host ${host} is always blocked` };
+    return {
+      ok: false,
+      error: "private_host",
+      detail: `Metadata host ${host} is always blocked`,
+    };
   }
 
   if (!opts.allowPrivateHosts) {
     if (BLOCKED_HOSTNAMES.has(host)) {
-      return { ok: false, error: 'private_host', detail: `Hostname ${host} is blocked` };
+      return {
+        ok: false,
+        error: "private_host",
+        detail: `Hostname ${host} is blocked`,
+      };
     }
 
     if (isPrivateIpv4(host) || isPrivateIpv6(host)) {
-      return { ok: false, error: 'private_host', detail: `Hostname ${host} is a private/loopback IP` };
+      return {
+        ok: false,
+        error: "private_host",
+        detail: `Hostname ${host} is a private/loopback IP`,
+      };
     }
   }
 
   if (opts.allowedHosts && opts.allowedHosts.length > 0) {
-    const allowed = opts.allowedHosts.some(pattern => hostMatches(host, pattern));
+    const allowed = opts.allowedHosts.some((pattern) =>
+      hostMatches(host, pattern)
+    );
     if (!allowed) {
       return {
         ok: false,
-        error: 'host_not_allowed',
+        error: "host_not_allowed",
         detail: `Hostname ${host} is not on the allowlist`,
       };
     }
@@ -218,7 +282,7 @@ export function validateExternalUrl(
 
 function hostMatches(host: string, pattern: string): boolean {
   const p = pattern.toLowerCase();
-  if (p.startsWith('*.')) {
+  if (p.startsWith("*.")) {
     const suffix = p.slice(2);
     return host === suffix || host.endsWith(`.${suffix}`);
   }
@@ -233,15 +297,25 @@ function hostMatches(host: string, pattern: string): boolean {
 export async function hostResolvesToPublic(hostname: string): Promise<boolean> {
   // IP literals: we already validated upstream.
   const host = hostname.toLowerCase();
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return !isPrivateIpv4(host);
-  if (host.includes(':')) return !isPrivateIpv6(host);
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    return !isPrivateIpv4(host);
+  }
+  if (host.includes(":")) {
+    return !isPrivateIpv6(host);
+  }
 
   try {
     const records = await dns.lookup(hostname, { all: true, verbatim: true });
-    if (records.length === 0) return false;
+    if (records.length === 0) {
+      return false;
+    }
     for (const record of records) {
-      if (record.family === 4 && isPrivateIpv4(record.address)) return false;
-      if (record.family === 6 && isPrivateIpv6(record.address)) return false;
+      if (record.family === 4 && isPrivateIpv4(record.address)) {
+        return false;
+      }
+      if (record.family === 6 && isPrivateIpv6(record.address)) {
+        return false;
+      }
     }
     return true;
   } catch {
@@ -256,8 +330,18 @@ export async function hostResolvesToPublic(hostname: string): Promise<boolean> {
 
 export interface SafeFetchOptions {
   allowedHosts?: string[];
+  /**
+   * Permit loopback / RFC-1918 hosts. Metadata endpoints remain blocked.
+   * Only set this for calls that legitimately target a user's self-hosted
+   * service (e.g. local Ollama for AI).
+   */
+  allowPrivateHosts?: boolean;
+  /** Headers to add. Note: fetch already supplies the defaults. */
+  headers?: Record<string, string>;
   /** Max response body size in bytes. Default 5 MiB. */
   maxBytes?: number;
+  /** Hard cap on the number of redirects when redirect is 'follow'. */
+  maxRedirects?: number;
   /**
    * Max URL length in characters. Default 2048 — covers every UI-driven
    * scrape we do but isn't enough for the iTunes bulk-lookup endpoint
@@ -265,8 +349,8 @@ export interface SafeFetchOptions {
    * a longer cap pass it through explicitly.
    */
   maxUrlLength?: number;
-  /** Timeout in ms. Default 15 000. */
-  timeoutMs?: number;
+  /** 'follow' (default) | 'error' | 'manual'. */
+  redirect?: RequestRedirect;
   /**
    * Strictly verify the hostname doesn't resolve to a private IP.
    * Defaults to **true** — callers that hit `allowPrivateHosts: true`
@@ -276,20 +360,10 @@ export interface SafeFetchOptions {
    * `resolveAndCheck: false` explicitly.
    */
   resolveAndCheck?: boolean;
-  /** Headers to add. Note: fetch already supplies the defaults. */
-  headers?: Record<string, string>;
   /** Optional caller-controlled abort signal, composed with the timeout. */
   signal?: AbortSignal;
-  /** 'follow' (default) | 'error' | 'manual'. */
-  redirect?: RequestRedirect;
-  /** Hard cap on the number of redirects when redirect is 'follow'. */
-  maxRedirects?: number;
-  /**
-   * Permit loopback / RFC-1918 hosts. Metadata endpoints remain blocked.
-   * Only set this for calls that legitimately target a user's self-hosted
-   * service (e.g. local Ollama for AI).
-   */
-  allowPrivateHosts?: boolean;
+  /** Timeout in ms. Default 15 000. */
+  timeoutMs?: number;
 }
 
 /**
@@ -300,15 +374,17 @@ export interface SafeFetchOptions {
  */
 export async function safeFetch(
   rawUrl: string,
-  options: SafeFetchOptions = {},
+  options: SafeFetchOptions = {}
 ): Promise<{ response: Response; body: Buffer; finalUrl: string }> {
   const validation = validateExternalUrl(rawUrl, {
     allowedHosts: options.allowedHosts,
     allowPrivateHosts: options.allowPrivateHosts,
     maxLength: options.maxUrlLength,
   });
-  if (!validation.ok || !validation.url) {
-    throw new Error(`Blocked URL: ${validation.error ?? 'invalid_url'} — ${validation.detail ?? rawUrl}`);
+  if (!(validation.ok && validation.url)) {
+    throw new Error(
+      `Blocked URL: ${validation.error ?? "invalid_url"} — ${validation.detail ?? rawUrl}`
+    );
   }
 
   const url = validation.url;
@@ -321,14 +397,16 @@ export async function safeFetch(
   if (resolveAndCheck && !options.allowPrivateHosts) {
     const ok = await hostResolvesToPublic(url.hostname);
     if (!ok) {
-      throw new Error(`Blocked URL: host ${url.hostname} did not resolve to a public address`);
+      throw new Error(
+        `Blocked URL: host ${url.hostname} did not resolve to a public address`
+      );
     }
   }
 
   const maxBytes = options.maxBytes ?? 5 * 1024 * 1024; // 5 MiB
   const timeoutMs = options.timeoutMs ?? 15_000;
   const maxRedirects = options.maxRedirects ?? 5;
-  const redirect: RequestRedirect = options.redirect ?? 'manual';
+  const redirect: RequestRedirect = options.redirect ?? "manual";
   const signal = withTimeoutSignal(timeoutMs, options.signal);
 
   let currentUrl = url.toString();
@@ -337,15 +415,15 @@ export async function safeFetch(
   // We follow redirects manually so we can re-validate every hop's hostname.
   // This defends against an initial allowlisted URL 302-ing to an internal IP.
   while (true) {
-	    const res = await fetch(currentUrl, {
-	      method: 'GET',
-	      headers: options.headers,
-	      redirect: 'manual',
-	      signal,
-	    });
+    const res = await fetch(currentUrl, {
+      method: "GET",
+      headers: options.headers,
+      redirect: "manual",
+      signal,
+    });
 
-    if (redirect === 'follow' && res.status >= 300 && res.status < 400) {
-      const location = res.headers.get('location');
+    if (redirect === "follow" && res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
       if (!location) {
         return readBounded(res, currentUrl, maxBytes);
       }
@@ -366,12 +444,16 @@ export async function safeFetch(
       });
       if (!nextValidation.ok) {
         throw new Error(
-          `safeFetch: redirect rejected — ${nextValidation.error}: ${nextValidation.detail}`,
+          `safeFetch: redirect rejected — ${nextValidation.error}: ${nextValidation.detail}`
         );
       }
       if (resolveAndCheck && !options.allowPrivateHosts) {
         const ok = await hostResolvesToPublic(nextValidation.url!.hostname);
-        if (!ok) throw new Error(`safeFetch: redirect host ${nextValidation.url!.hostname} is private`);
+        if (!ok) {
+          throw new Error(
+            `safeFetch: redirect host ${nextValidation.url!.hostname} is private`
+          );
+        }
       }
       currentUrl = nextUrl;
       continue;
@@ -381,7 +463,10 @@ export async function safeFetch(
   }
 }
 
-function withTimeoutSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
+function withTimeoutSignal(
+  timeoutMs: number,
+  signal?: AbortSignal
+): AbortSignal {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 }
@@ -389,13 +474,13 @@ function withTimeoutSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal
 async function readBounded(
   res: Response,
   finalUrl: string,
-  maxBytes: number,
+  maxBytes: number
 ): Promise<{ response: Response; body: Buffer; finalUrl: string }> {
   // Content-Length fast-path — lets us fail without actually reading a huge body.
-  const declared = Number(res.headers.get('content-length') ?? '');
+  const declared = Number(res.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new Error(
-      `safeFetch: declared content-length ${declared} exceeds cap ${maxBytes}`,
+      `safeFetch: declared content-length ${declared} exceeds cap ${maxBytes}`
     );
   }
 
@@ -408,11 +493,19 @@ async function readBounded(
   let total = 0;
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
+    if (done) {
+      break;
+    }
+    if (!value) {
+      continue;
+    }
     total += value.byteLength;
     if (total > maxBytes) {
-      try { await reader.cancel(); } catch { /* ignore */ }
+      try {
+        await reader.cancel();
+      } catch {
+        /* ignore */
+      }
       throw new Error(`safeFetch: response exceeded ${maxBytes} bytes`);
     }
     chunks.push(Buffer.from(value));
@@ -456,7 +549,11 @@ export interface RateLimitVerdict {
 const rateLimitLogMutedUntil = new Map<string, number>();
 const RATE_LIMIT_LOG_COOLDOWN_MS = 1000;
 
-export function checkRateLimit({ key, limit, windowMs }: RateLimitOptions): RateLimitVerdict {
+export function checkRateLimit({
+  key,
+  limit,
+  windowMs,
+}: RateLimitOptions): RateLimitVerdict {
   const now = Date.now();
   const cutoff = now - windowMs;
   let bucket = rateLimitBuckets.get(key);
@@ -485,18 +582,24 @@ export function checkRateLimit({ key, limit, windowMs }: RateLimitOptions): Rate
       rateLimitLogMutedUntil.set(key, now + RATE_LIMIT_LOG_COOLDOWN_MS);
       console.warn(
         `[rate-limit] DENY ${key} — ${bucket.timestamps.length}/${limit} in ` +
-        `${Math.round(windowMs / 1000)}s window; retry-after ${Math.round(retryAfterMs / 1000)}s. ` +
-        'This is our INTERNAL limiter (lib/security.ts), not Apple\'s 429 cooldown.',
+          `${Math.round(windowMs / 1000)}s window; retry-after ${Math.round(retryAfterMs / 1000)}s. ` +
+          "This is our INTERNAL limiter (lib/security.ts), not Apple's 429 cooldown."
       );
     }
-    return { allowed: false, remaining: 0, retryAfterMs: Math.max(0, retryAfterMs) };
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterMs: Math.max(0, retryAfterMs),
+    };
   }
   bucket.timestamps.push(now);
 
   // Opportunistically garbage-collect old empty buckets.
   if (rateLimitBuckets.size > 5000) {
     for (const [k, b] of rateLimitBuckets) {
-      if (b.timestamps.length === 0) rateLimitBuckets.delete(k);
+      if (b.timestamps.length === 0) {
+        rateLimitBuckets.delete(k);
+      }
     }
   }
 
@@ -507,10 +610,13 @@ export function checkRateLimit({ key, limit, windowMs }: RateLimitOptions): Rate
   };
 }
 
-export function rateLimitKeyForRequest(request: Request, prefix: string): string {
-  const xff = request.headers.get('x-forwarded-for');
-  const direct = request.headers.get('x-real-ip');
-  const ip = (xff?.split(',')[0].trim() || direct || 'unknown').toLowerCase();
+export function rateLimitKeyForRequest(
+  request: Request,
+  prefix: string
+): string {
+  const xff = request.headers.get("x-forwarded-for");
+  const direct = request.headers.get("x-real-ip");
+  const ip = (xff?.split(",")[0].trim() || direct || "unknown").toLowerCase();
   return `${prefix}:${ip}`;
 }
 
@@ -529,9 +635,11 @@ export function rateLimitKeyForRequest(request: Request, prefix: string): string
  *   allowed through when they carry the admin token.
  */
 export function isSameOriginRequest(request: Request): boolean {
-  const origin = request.headers.get('origin');
-  const host = request.headers.get('host');
-  if (!origin || !host) return false;
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (!(origin && host)) {
+    return false;
+  }
   try {
     const originUrl = new URL(origin);
     // Match on host:port equality — http vs https is acceptable because this
@@ -553,23 +661,28 @@ export function adminTokenConfigured(): boolean {
 
 function stripHostPort(host: string): string {
   const trimmed = host.trim().toLowerCase();
-  if (trimmed.startsWith('[')) {
-    const end = trimmed.indexOf(']');
+  if (trimmed.startsWith("[")) {
+    const end = trimmed.indexOf("]");
     return end >= 0 ? trimmed.slice(1, end) : trimmed;
   }
-  return trimmed.split(':')[0] ?? trimmed;
+  return trimmed.split(":")[0] ?? trimmed;
 }
 
 export function requestLooksNonLocal(request: Request): boolean {
-  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-  const host = forwardedHost || request.headers.get('host');
-  if (!host) return false;
+  const forwardedHost = request.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const host = forwardedHost || request.headers.get("host");
+  if (!host) {
+    return false;
+  }
   const h = stripHostPort(host);
   return !(
-    h === 'localhost' ||
-    h.endsWith('.localhost') ||
-    h === '::1' ||
-    h === '0.0.0.0' ||
+    h === "localhost" ||
+    h.endsWith(".localhost") ||
+    h === "::1" ||
+    h === "0.0.0.0" ||
     /^127(?:\.\d{1,3}){3}$/.test(h)
   );
 }
@@ -583,14 +696,18 @@ export function adminTokenRequiredForRequest(request: Request): boolean {
  * callers. The corresponding `x-auditor-admin-token` header path remains
  * for scripted callers (curl, the audit-bundle test harness, etc.).
  */
-export const ADMIN_TOKEN_COOKIE = 'pt_admin_token';
+export const ADMIN_TOKEN_COOKIE = "pt_admin_token";
 
 function readAdminTokenCookie(request: Request): string | null {
-  const cookieHeader = request.headers.get('cookie');
-  if (!cookieHeader) return null;
-  for (const part of cookieHeader.split(';')) {
-    const eq = part.indexOf('=');
-    if (eq < 0) continue;
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) {
+    return null;
+  }
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) {
+      continue;
+    }
     const name = part.slice(0, eq).trim();
     if (name === ADMIN_TOKEN_COOKIE) {
       return decodeURIComponent(part.slice(eq + 1).trim());
@@ -602,21 +719,29 @@ function readAdminTokenCookie(request: Request): string | null {
 function constantTimeMatch(provided: string, expected: string): boolean {
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
+  if (a.length !== b.length) {
+    return false;
+  }
   return crypto.timingSafeEqual(a, b);
 }
 
 export function requestHasValidAdminToken(request: Request): boolean {
   const expected = process.env.AUDITOR_ADMIN_TOKEN;
-  if (!expected) return false;
+  if (!expected) {
+    return false;
+  }
   // Prefer the cookie path (HttpOnly, set via /api/auth/admin-token/login).
   // Fall back to the explicit header for scripted callers that don't run
   // through a cookie jar. Either source has to match the env var via a
   // constant-time compare.
   const cookieVal = readAdminTokenCookie(request);
-  if (cookieVal && constantTimeMatch(cookieVal, expected)) return true;
-  const provided = request.headers.get('x-auditor-admin-token');
-  if (provided && constantTimeMatch(provided, expected)) return true;
+  if (cookieVal && constantTimeMatch(cookieVal, expected)) {
+    return true;
+  }
+  const provided = request.headers.get("x-auditor-admin-token");
+  if (provided && constantTimeMatch(provided, expected)) {
+    return true;
+  }
   return false;
 }
 
@@ -644,20 +769,20 @@ export function recordAudit(event: {
       crypto.randomUUID(),
       Date.now(),
       event.action.slice(0, 120),
-      (event.actorIp ?? '').slice(0, 64),
-      (event.userAgent ?? '').slice(0, 256),
-      (event.detail ?? '').slice(0, 1024),
-      event.success ? 1 : 0,
+      (event.actorIp ?? "").slice(0, 64),
+      (event.userAgent ?? "").slice(0, 256),
+      (event.detail ?? "").slice(0, 1024),
+      event.success ? 1 : 0
     );
   } catch (error) {
-    console.error('[audit] failed to record event', event.action, error);
+    console.error("[audit] failed to record event", event.action, error);
   }
 }
 
 export function requestActorIp(request: Request): string {
-  const xff = request.headers.get('x-forwarded-for');
-  const direct = request.headers.get('x-real-ip');
-  return (xff?.split(',')[0].trim() || direct || 'unknown').toLowerCase();
+  const xff = request.headers.get("x-forwarded-for");
+  const direct = request.headers.get("x-real-ip");
+  return (xff?.split(",")[0].trim() || direct || "unknown").toLowerCase();
 }
 
 // ─────────────────────────────────────────────
@@ -671,24 +796,26 @@ export function requestActorIp(request: Request): string {
  */
 export async function readBoundedJson<T = unknown>(
   request: Request,
-  maxBytes = 256 * 1024,
+  maxBytes = 256 * 1024
 ): Promise<T> {
-  const declared = Number(request.headers.get('content-length') ?? '');
+  const declared = Number(request.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new Error(`Request body too large (${declared} > ${maxBytes} bytes)`);
   }
 
   const buf = Buffer.from(await request.arrayBuffer());
   if (buf.byteLength > maxBytes) {
-    throw new Error(`Request body too large (${buf.byteLength} > ${maxBytes} bytes)`);
+    throw new Error(
+      `Request body too large (${buf.byteLength} > ${maxBytes} bytes)`
+    );
   }
   if (buf.byteLength === 0) {
-    throw new Error('Request body is empty');
+    throw new Error("Request body is empty");
   }
   try {
-    return JSON.parse(buf.toString('utf8')) as T;
+    return JSON.parse(buf.toString("utf8")) as T;
   } catch {
-    throw new Error('Invalid JSON body');
+    throw new Error("Invalid JSON body");
   }
 }
 
@@ -698,24 +825,28 @@ export async function readBoundedJson<T = unknown>(
  */
 export async function readOptionalBoundedJson<T = unknown>(
   request: Request,
-  maxBytes = 256 * 1024,
-  fallback: T,
+  maxBytes: number,
+  fallback: T
 ): Promise<T> {
-  const declared = Number(request.headers.get('content-length') ?? '');
+  const declared = Number(request.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new Error(`Request body too large (${declared} > ${maxBytes} bytes)`);
   }
 
   const buf = Buffer.from(await request.arrayBuffer());
   if (buf.byteLength > maxBytes) {
-    throw new Error(`Request body too large (${buf.byteLength} > ${maxBytes} bytes)`);
+    throw new Error(
+      `Request body too large (${buf.byteLength} > ${maxBytes} bytes)`
+    );
   }
-  const text = buf.toString('utf8');
-  if (!text.trim()) return fallback;
+  const text = buf.toString("utf8");
+  if (!text.trim()) {
+    return fallback;
+  }
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new Error('Invalid JSON body');
+    throw new Error("Invalid JSON body");
   }
 }
 
@@ -723,7 +854,7 @@ export async function readOptionalBoundedJson<T = unknown>(
 // App Store URL allowlist + policy URL sanitiser
 // ─────────────────────────────────────────────
 
-const APP_STORE_HOSTS = ['apps.apple.com', 'itunes.apple.com'];
+const APP_STORE_HOSTS = ["apps.apple.com", "itunes.apple.com"];
 
 /**
  * Accept only canonical App Store URLs. Used by /api/scrape so a client can't
@@ -732,12 +863,14 @@ const APP_STORE_HOSTS = ['apps.apple.com', 'itunes.apple.com'];
  */
 export function validateAppStoreUrl(raw: unknown): UrlValidationResult {
   const base = validateExternalUrl(raw, { allowedHosts: APP_STORE_HOSTS });
-  if (!base.ok || !base.url) return base;
+  if (!(base.ok && base.url)) {
+    return base;
+  }
   if (!/\/id\d+(?:\/|$|\?)/i.test(base.url.pathname)) {
     return {
       ok: false,
-      error: 'invalid_url',
-      detail: 'App Store URL must contain an /id<digits> segment',
+      error: "invalid_url",
+      detail: "App Store URL must contain an /id<digits> segment",
     };
   }
   return base;
@@ -751,6 +884,8 @@ export function validateAppStoreUrl(raw: unknown): UrlValidationResult {
  */
 export function sanitizePolicyUrl(raw: unknown): string {
   const result = validateExternalUrl(raw, { maxLength: 2048 });
-  if (!result.ok || !result.url) return '';
+  if (!(result.ok && result.url)) {
+    return "";
+  }
   return result.url.toString();
 }

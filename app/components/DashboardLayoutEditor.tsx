@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * "Simple" editable dashboard layout — preset pills + drag-to-reorder rows
@@ -11,44 +11,50 @@
  * is purely the list-view UI.
  */
 
-import { useCallback } from 'react';
-import { useTranslations } from 'next-intl';
 import {
+  closestCenter,
   DndContext,
+  type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "next-intl";
+import { useCallback } from "react";
 import {
   CALLOUT_CARDS,
   DASHBOARD_PRESET_KEYS,
   DASHBOARD_PRESET_META,
   type DashboardCardId,
   type DashboardLayout,
-} from '../../lib/dashboard-layout';
-import { useDashboardLayoutSaver } from '../../lib/use-dashboard-layout-saver';
-import { CardThumbnail } from './DashboardCardThumbnail';
+} from "../../lib/dashboard-layout";
+import { useDashboardLayoutSaver } from "../../lib/use-dashboard-layout-saver";
+import { CardThumbnail } from "./DashboardCardThumbnail";
 
 interface Props {
   initialLayout: DashboardLayout;
 }
 
 export default function DashboardLayoutEditor({ initialLayout }: Props) {
-  const t = useTranslations('dashboard.layout_editor');
-  const tPresetLabel = useTranslations('dashboard.layout_editor.presets.labels');
-  const tPresetDesc = useTranslations('dashboard.layout_editor.presets.descriptions');
-  const tCardLabel = useTranslations('dashboard.layout_editor.cards.labels');
-  const tCardDesc = useTranslations('dashboard.layout_editor.cards.descriptions');
+  const t = useTranslations("dashboard.layout_editor");
+  const tPresetLabel = useTranslations(
+    "dashboard.layout_editor.presets.labels"
+  );
+  const tPresetDesc = useTranslations(
+    "dashboard.layout_editor.presets.descriptions"
+  );
+  const tCardLabel = useTranslations("dashboard.layout_editor.cards.labels");
+  const tCardDesc = useTranslations(
+    "dashboard.layout_editor.cards.descriptions"
+  );
 
   const saver = useDashboardLayoutSaver(initialLayout);
   const {
@@ -72,16 +78,18 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
   // the checkbox.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
-      if (!over || active.id === over.id) return;
+      if (!over || active.id === over.id) {
+        return;
+      }
       reorder(active.id as DashboardCardId, over.id as DashboardCardId);
     },
-    [reorder],
+    [reorder]
   );
 
   return (
@@ -90,41 +98,44 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
       <div className="layout-editor-presets">
         <div className="layout-editor-presets-header">
           <span className="layout-editor-presets-label">
-            {t('preset_section_label')}
+            {t("preset_section_label")}
           </span>
           <span className="layout-editor-presets-hint">
-            {t('preset_section_hint')}
+            {t("preset_section_hint")}
           </span>
         </div>
         <div
+          aria-label={t("preset_aria_group")}
           className="layout-editor-presets-row"
           role="radiogroup"
-          aria-label={t('preset_aria_group')}
         >
-          {DASHBOARD_PRESET_KEYS.map(presetKey => {
+          {DASHBOARD_PRESET_KEYS.map((presetKey) => {
             const meta = DASHBOARD_PRESET_META[presetKey];
             const isActive = activePreset === presetKey;
             const isPending = pendingPreset === presetKey;
             return (
               <div
-                key={presetKey}
                 className={`layout-editor-preset-cell${
-                  isPending ? ' has-pending-confirm' : ''
+                  isPending ? "has-pending-confirm" : ""
                 }`}
+                key={presetKey}
               >
                 <button
-                  type="button"
-                  role="radio"
                   aria-checked={isActive}
                   className={`layout-editor-preset-pill${
-                    isActive ? ' is-active' : ''
+                    isActive ? "is-active" : ""
                   }`}
                   data-preset={presetKey}
                   data-severity={meta.severityCls}
                   onClick={() => applyPreset(presetKey)}
+                  role="radio"
                   title={tPresetDesc(presetKey)}
+                  type="button"
                 >
-                  <span className="layout-editor-preset-icon" aria-hidden="true">
+                  <span
+                    aria-hidden="true"
+                    className="layout-editor-preset-icon"
+                  >
                     {meta.icon}
                   </span>
                   <span className="layout-editor-preset-text">
@@ -138,27 +149,27 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
                 </button>
                 {isPending && (
                   <div
+                    aria-label={t("confirm_aria")}
                     className="layout-editor-preset-confirm"
                     role="dialog"
-                    aria-label={t('confirm_aria')}
                   >
                     <p className="layout-editor-preset-confirm-text">
-                      {t('confirm_text', { preset: tPresetLabel(presetKey) })}
+                      {t("confirm_text", { preset: tPresetLabel(presetKey) })}
                     </p>
                     <div className="layout-editor-preset-confirm-actions">
                       <button
-                        type="button"
                         className="btn btn-primary btn-sm"
                         onClick={() => applyPreset(presetKey, true)}
+                        type="button"
                       >
-                        {t('confirm_apply')}
+                        {t("confirm_apply")}
                       </button>
                       <button
-                        type="button"
                         className="btn btn-ghost btn-sm"
                         onClick={cancelPendingPreset}
+                        type="button"
                       >
-                        {t('confirm_cancel')}
+                        {t("confirm_cancel")}
                       </button>
                     </div>
                   </div>
@@ -172,56 +183,58 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
       {/* Sortable card list. */}
       <div className="layout-editor-list-wrap">
         <div className="layout-editor-list-header">
-          <span className="layout-editor-list-title">{t('list_title')}</span>
+          <span className="layout-editor-list-title">{t("list_title")}</span>
           <div className="layout-editor-list-status">
-            {savingState === 'saving' && (
-              <span className="layout-editor-saving" aria-hidden="true">
-                {t('saving')}
+            {savingState === "saving" && (
+              <span aria-hidden="true" className="layout-editor-saving">
+                {t("saving")}
               </span>
             )}
-            {savingState === 'saved' && (
-              <span className="layout-editor-saved" aria-hidden="true">
-                {t('saved')}
+            {savingState === "saved" && (
+              <span aria-hidden="true" className="layout-editor-saved">
+                {t("saved")}
               </span>
             )}
-            {savingState === 'error' && errorMsg && (
+            {savingState === "error" && errorMsg && (
               <span className="layout-editor-error" role="alert">
-                {t('save_error', { message: errorMsg })}
+                {t("save_error", { message: errorMsg })}
               </span>
             )}
             <button
-              type="button"
               className="btn btn-ghost btn-sm layout-editor-reset"
+              disabled={savingState === "saving"}
               onClick={resetLayout}
-              disabled={savingState === 'saving'}
+              type="button"
             >
-              {t('reset_button')}
+              {t("reset_button")}
             </button>
           </div>
         </div>
 
         <DndContext
-          sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
+          sensors={sensors}
         >
           <SortableContext
             items={layout.order as string[]}
             strategy={verticalListSortingStrategy}
           >
-            <ol className="layout-editor-list" aria-label={t('list_aria')}>
-              {layout.order.map(id => (
+            <ol aria-label={t("list_aria")} className="layout-editor-list">
+              {layout.order.map((id) => (
                 <SortableRow
-                  key={id}
-                  id={id}
-                  hidden={hiddenSet.has(id)}
-                  label={tCardLabel(id)}
+                  autoManagedLabel={t("auto_managed_label")}
+                  autoManagedTitle={t("auto_managed_title")}
                   description={tCardDesc(id)}
-                  showHideLabel={t('show_hide_label')}
-                  autoManagedLabel={t('auto_managed_label')}
-                  autoManagedTitle={t('auto_managed_title')}
-                  dragHandleAria={t('drag_handle_aria', { name: tCardLabel(id) })}
+                  dragHandleAria={t("drag_handle_aria", {
+                    name: tCardLabel(id),
+                  })}
+                  hidden={hiddenSet.has(id)}
+                  id={id}
+                  key={id}
+                  label={tCardLabel(id)}
                   onToggleVisibility={() => toggleVisibility(id)}
+                  showHideLabel={t("show_hide_label")}
                 />
               ))}
             </ol>
@@ -231,10 +244,10 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
 
       {/* Live region for keyboard drag + post-save announcements. */}
       <div
+        aria-atomic="true"
+        aria-live="polite"
         className="sr-only"
         role="status"
-        aria-live="polite"
-        aria-atomic="true"
       >
         {liveMessage}
       </div>
@@ -247,15 +260,15 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
 // ─────────────────────────────────────────────
 
 interface SortableRowProps {
-  id: DashboardCardId;
-  hidden: boolean;
-  label: string;
-  description: string;
-  showHideLabel: string;
   autoManagedLabel: string;
   autoManagedTitle: string;
+  description: string;
   dragHandleAria: string;
+  hidden: boolean;
+  id: DashboardCardId;
+  label: string;
   onToggleVisibility: () => void;
+  showHideLabel: string;
 }
 
 function SortableRow({
@@ -269,8 +282,14 @@ function SortableRow({
   dragHandleAria,
   onToggleVisibility,
 }: SortableRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
   const isCallout = CALLOUT_CARDS.has(id);
   const style: React.CSSProperties = {
@@ -281,24 +300,24 @@ function SortableRow({
 
   return (
     <li
+      className={`layout-editor-row${isDragging ? "is-dragging" : ""}${
+        hidden ? "is-hidden" : ""
+      }${isCallout ? "is-callout" : ""}`}
+      data-card-id={id}
       ref={setNodeRef}
       style={style}
-      className={`layout-editor-row${isDragging ? ' is-dragging' : ''}${
-        hidden ? ' is-hidden' : ''
-      }${isCallout ? ' is-callout' : ''}`}
-      data-card-id={id}
     >
       <button
-        type="button"
-        className="layout-editor-drag-handle"
         aria-label={dragHandleAria}
+        className="layout-editor-drag-handle"
+        type="button"
         {...attributes}
         {...listeners}
       >
         <span aria-hidden="true">⋮⋮</span>
       </button>
 
-      <div className="layout-editor-row-thumb" aria-hidden="true">
+      <div aria-hidden="true" className="layout-editor-row-thumb">
         <CardThumbnail id={id} />
       </div>
 
@@ -310,21 +329,23 @@ function SortableRow({
       <div className="layout-editor-row-controls">
         {isCallout ? (
           <span
+            aria-label={autoManagedTitle}
             className="layout-editor-auto-managed"
             title={autoManagedTitle}
-            aria-label={autoManagedTitle}
           >
             {autoManagedLabel}
           </span>
         ) : (
           <label className="layout-editor-visibility-toggle">
             <input
-              type="checkbox"
+              aria-label={`${showHideLabel} — ${label}`}
               checked={!hidden}
               onChange={onToggleVisibility}
-              aria-label={`${showHideLabel} — ${label}`}
+              type="checkbox"
             />
-            <span className="layout-editor-visibility-text">{showHideLabel}</span>
+            <span className="layout-editor-visibility-text">
+              {showHideLabel}
+            </span>
           </label>
         )}
       </div>

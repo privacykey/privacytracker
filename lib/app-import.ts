@@ -1,21 +1,21 @@
 const NOISE_LINES = [
-  'iphone storage',
-  'recommendations',
-  'offload unused apps',
-  'documents & data',
-  'last used',
-  'app size',
-  'search',
-  'cancel',
-  'done',
-  'edit',
-  'settings',
-  'general',
-  'storage',
-  'icloud',
-  'back',
-  'siri',
-  'family',
+  "iphone storage",
+  "recommendations",
+  "offload unused apps",
+  "documents & data",
+  "last used",
+  "app size",
+  "search",
+  "cancel",
+  "done",
+  "edit",
+  "settings",
+  "general",
+  "storage",
+  "icloud",
+  "back",
+  "siri",
+  "family",
 ];
 
 /**
@@ -53,13 +53,16 @@ const WEB_CLIP_BUNDLE_PATTERNS: readonly RegExp[] = [
   /^com\.apple\.webapp\./i,
 ];
 
-export function isLikelyWebClipBundle(bundleId: string | null | undefined): boolean {
-  if (typeof bundleId !== 'string' || !bundleId) return false;
-  return WEB_CLIP_BUNDLE_PATTERNS.some(re => re.test(bundleId));
+export function isLikelyWebClipBundle(
+  bundleId: string | null | undefined
+): boolean {
+  if (typeof bundleId !== "string" || !bundleId) {
+    return false;
+  }
+  return WEB_CLIP_BUNDLE_PATTERNS.some((re) => re.test(bundleId));
 }
 
 export interface ImportedAppRow {
-  name: string;
   /**
    * Optional developer / seller hint carried through from a structured
    * import (Apple Configurator CSV column like "Vendor" or "Seller").
@@ -76,6 +79,7 @@ export interface ImportedAppRow {
    * match, and to offer a one-click path into the manual-apps editor.
    */
   likelyWebClip?: boolean;
+  name: string;
 }
 
 export interface ParsedImport {
@@ -91,7 +95,7 @@ export interface ParsedImport {
  * `parseImportedAppRows` when you need developer hints too.
  */
 export function parseImportedAppText(text: string): string[] {
-  return parseImportedAppRows(text).rows.map(r => r.name);
+  return parseImportedAppRows(text).rows.map((r) => r.name);
 }
 
 export function parseImportedAppRows(text: string): ParsedImport {
@@ -100,11 +104,13 @@ export function parseImportedAppRows(text: string): ParsedImport {
   // `split(',')` would butcher.
   const rows = text
     .split(/\r?\n/)
-    .map(row => row.trim())
+    .map((row) => row.trim())
     .filter(Boolean)
     .map(parseCsvRow);
 
-  if (rows.length === 0) return { rows: [], totalRowsInSource: 0, truncated: false };
+  if (rows.length === 0) {
+    return { rows: [], totalRowsInSource: 0, truncated: false };
+  }
 
   // Pick the column that actually holds app names. Single-column files keep
   // working (column 0, no header) while Apple Configurator / Apple Devices /
@@ -112,13 +118,18 @@ export function parseImportedAppRows(text: string): ParsedImport {
   // the right field automatically. We also try to locate a developer /
   // seller / vendor column so we can use it as a secondary match signal.
   const picked = pickAppNameColumn(rows);
-  const developerColumn = pickDeveloperColumn(rows, picked.column, picked.startRow > 0);
+  const developerColumn = pickDeveloperColumn(
+    rows,
+    picked.column,
+    picked.startRow > 0
+  );
   // Version column only has meaning when the header row told us so — guessing
   // at a version column from data alone is error-prone (dates, size strings,
   // and rank numbers all masquerade as version-ish tokens).
-  const versionColumn = picked.startRow > 0
-    ? pickVersionColumn(rows[0], picked.column, developerColumn)
-    : null;
+  const versionColumn =
+    picked.startRow > 0
+      ? pickVersionColumn(rows[0], picked.column, developerColumn)
+      : null;
 
   // Account for the header row if we dropped one so "totalRowsInSource"
   // reflects what the user actually put in.
@@ -127,16 +138,23 @@ export function parseImportedAppRows(text: string): ParsedImport {
 
   const parsed: ImportedAppRow[] = [];
   for (const row of dataRows) {
-    const rawName = row[picked.column] ?? '';
-    if (HEADER_CELL_LABELS.has(rawName.trim().toLowerCase())) continue;
-    if (looksLikeNonName(rawName)) continue;
+    const rawName = row[picked.column] ?? "";
+    if (HEADER_CELL_LABELS.has(rawName.trim().toLowerCase())) {
+      continue;
+    }
+    if (looksLikeNonName(rawName)) {
+      continue;
+    }
 
     const name = normalizeAppName(rawName);
-    if (!name) continue;
+    if (!name) {
+      continue;
+    }
 
-    const developer = developerColumn !== null
-      ? sanitizeDeveloperCell(row[developerColumn] ?? '')
-      : undefined;
+    const developer =
+      developerColumn === null
+        ? undefined
+        : sanitizeDeveloperCell(row[developerColumn] ?? "");
 
     // Apple Configurator hallmark for a Safari web clip (home-screen web app):
     // the row has a name but *both* the Seller/Vendor column and the Version
@@ -147,13 +165,17 @@ export function parseImportedAppRows(text: string): ParsedImport {
     // false positives on ordinary App Store apps.
     let likelyWebClip = false;
     if (developerColumn !== null && versionColumn !== null) {
-      const devCell = (row[developerColumn] ?? '').trim();
-      const verCell = (row[versionColumn] ?? '').trim();
-      if (!devCell && !verCell) likelyWebClip = true;
+      const devCell = (row[developerColumn] ?? "").trim();
+      const verCell = (row[versionColumn] ?? "").trim();
+      if (!(devCell || verCell)) {
+        likelyWebClip = true;
+      }
     }
 
     const entry: ImportedAppRow = developer ? { name, developer } : { name };
-    if (likelyWebClip) entry.likelyWebClip = true;
+    if (likelyWebClip) {
+      entry.likelyWebClip = true;
+    }
     parsed.push(entry);
   }
 
@@ -180,7 +202,7 @@ export function extractAppNamesFromOcr(text: string): string[] {
     .split(/\r?\n/)
     .map(cleanOcrLine)
     .filter(Boolean)
-    .filter(line => !isNoiseLine(line as string)) as string[];
+    .filter((line) => !isNoiseLine(line as string)) as string[];
 
   return dedupeNames(rows).slice(0, MAX_IMPORT_ROWS);
 }
@@ -193,7 +215,7 @@ export function extractAppNamesFromOcr(text: string): string[] {
  */
 function parseCsvRow(row: string): string[] {
   const cells: string[] = [];
-  let cur = '';
+  let cur = "";
   let inQuotes = false;
 
   for (let i = 0; i < row.length; i += 1) {
@@ -211,39 +233,39 @@ function parseCsvRow(row: string): string[] {
       }
     } else if (ch === '"') {
       inQuotes = true;
-    } else if (ch === ',') {
+    } else if (ch === ",") {
       cells.push(cur);
-      cur = '';
+      cur = "";
     } else {
       cur += ch;
     }
   }
   cells.push(cur);
-  return cells.map(cell => cell.trim());
+  return cells.map((cell) => cell.trim());
 }
 
 /** Cells we treat as header labels and never ingest as a name, regardless of case. */
 const HEADER_CELL_LABELS = new Set([
-  'name',
-  'app',
-  'app name',
-  'application',
-  'application name',
-  'title',
-  'app title',
-  'display name',
+  "name",
+  "app",
+  "app name",
+  "application",
+  "application name",
+  "title",
+  "app title",
+  "display name",
 ]);
 
 /** Columns whose header matches one of these is assumed to hold the app name. */
 const NAME_HEADER_CANDIDATES = [
-  'app name',
-  'application name',
-  'app title',
-  'display name',
-  'name',
-  'title',
-  'app',
-  'application',
+  "app name",
+  "application name",
+  "app title",
+  "display name",
+  "name",
+  "title",
+  "app",
+  "application",
 ];
 
 /**
@@ -252,15 +274,15 @@ const NAME_HEADER_CANDIDATES = [
  * iTunes Search returns multiple candidates for the same name.
  */
 const DEV_HEADER_CANDIDATES = [
-  'seller',
-  'vendor',
-  'developer',
-  'publisher',
-  'artist',
-  'artist name',
-  'author',
-  'company',
-  'manufacturer',
+  "seller",
+  "vendor",
+  "developer",
+  "publisher",
+  "artist",
+  "artist name",
+  "author",
+  "company",
+  "manufacturer",
 ];
 
 /**
@@ -277,10 +299,16 @@ const DEV_HEADER_CANDIDATES = [
  */
 function looksLikeUdid(value: string): boolean {
   const s = value.trim();
-  if (!/^[0-9a-f-]+$/i.test(s)) return false;
-  const stripped = s.replace(/-/g, '');
-  if (stripped.length < 8) return false;
-  if (s.includes('-')) return true;
+  if (!/^[0-9a-f-]+$/i.test(s)) {
+    return false;
+  }
+  const stripped = s.replace(/-/g, "");
+  if (stripped.length < 8) {
+    return false;
+  }
+  if (s.includes("-")) {
+    return true;
+  }
   return stripped.length >= 16;
 }
 
@@ -299,7 +327,7 @@ function looksLikeSize(value: string): boolean {
 
 function looksLikePrice(value: string): boolean {
   const v = value.trim().toLowerCase();
-  return v === 'free' || /^[$€£¥]\s?\d+(?:[.,]\d{1,2})?$/.test(v);
+  return v === "free" || /^[$€£¥]\s?\d+(?:[.,]\d{1,2})?$/.test(v);
 }
 
 /**
@@ -309,15 +337,31 @@ function looksLikePrice(value: string): boolean {
  */
 function looksLikeNonName(value: string): boolean {
   const trimmed = value.trim();
-  if (!trimmed) return true;
-  if (looksLikeUdid(trimmed)) return true;
-  if (looksLikeBundleId(trimmed)) return true;
-  if (looksLikeVersionToken(trimmed)) return true;
-  if (looksLikeSize(trimmed)) return true;
-  if (looksLikePrice(trimmed)) return true;
-  if (/^(yes|no|true|false|y|n)$/i.test(trimmed)) return true;
+  if (!trimmed) {
+    return true;
+  }
+  if (looksLikeUdid(trimmed)) {
+    return true;
+  }
+  if (looksLikeBundleId(trimmed)) {
+    return true;
+  }
+  if (looksLikeVersionToken(trimmed)) {
+    return true;
+  }
+  if (looksLikeSize(trimmed)) {
+    return true;
+  }
+  if (looksLikePrice(trimmed)) {
+    return true;
+  }
+  if (/^(yes|no|true|false|y|n)$/i.test(trimmed)) {
+    return true;
+  }
   // Pure numeric / timestamp-ish — no letters at all.
-  if (!/[A-Za-z]/.test(trimmed)) return true;
+  if (!/[A-Za-z]/.test(trimmed)) {
+    return true;
+  }
   return false;
 }
 
@@ -326,20 +370,26 @@ function looksLikeNonName(value: string): boolean {
  * (≤40 chars) and at least one looks like a column label rather than data.
  */
 function firstRowLooksLikeHeader(row: string[]): boolean {
-  if (row.length === 0) return false;
-  const allShort = row.every(cell => cell.length > 0 && cell.length <= 40);
-  if (!allShort) return false;
-  return row.some(cell => {
+  if (row.length === 0) {
+    return false;
+  }
+  const allShort = row.every((cell) => cell.length > 0 && cell.length <= 40);
+  if (!allShort) {
+    return false;
+  }
+  return row.some((cell) => {
     const lower = cell.trim().toLowerCase();
-    return HEADER_CELL_LABELS.has(lower)
-      || NAME_HEADER_CANDIDATES.includes(lower)
-      || lower === 'udid'
-      || lower === 'identifier'
-      || lower === 'bundle id'
-      || lower === 'version'
-      || lower === 'developer'
-      || lower === 'vendor'
-      || lower === 'size';
+    return (
+      HEADER_CELL_LABELS.has(lower) ||
+      NAME_HEADER_CANDIDATES.includes(lower) ||
+      lower === "udid" ||
+      lower === "identifier" ||
+      lower === "bundle id" ||
+      lower === "version" ||
+      lower === "developer" ||
+      lower === "vendor" ||
+      lower === "size"
+    );
   });
 }
 
@@ -354,14 +404,21 @@ function firstRowLooksLikeHeader(row: string[]): boolean {
  *   3. Ties break left-to-right so legacy single-column files keep using
  *      column 0.
  */
-function pickAppNameColumn(rows: string[][]): { startRow: number; column: number } {
-  if (rows.length === 0) return { startRow: 0, column: 0 };
+function pickAppNameColumn(rows: string[][]): {
+  startRow: number;
+  column: number;
+} {
+  if (rows.length === 0) {
+    return { startRow: 0, column: 0 };
+  }
 
   if (firstRowLooksLikeHeader(rows[0])) {
-    const header = rows[0].map(cell => cell.trim().toLowerCase());
+    const header = rows[0].map((cell) => cell.trim().toLowerCase());
     for (const candidate of NAME_HEADER_CANDIDATES) {
       const idx = header.indexOf(candidate);
-      if (idx !== -1) return { startRow: 1, column: idx };
+      if (idx !== -1) {
+        return { startRow: 1, column: idx };
+      }
     }
     // Header exists but didn't expose a recognisable name column. Drop
     // the header row and fall through to scoring against the data rows.
@@ -373,7 +430,9 @@ function pickAppNameColumn(rows: string[][]): { startRow: number; column: number
 }
 
 function scoreColumns(rows: string[][]): number {
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) {
+    return 0;
+  }
   const maxCols = rows.reduce((max, row) => Math.max(max, row.length), 0);
   let bestCol = 0;
   let bestScore = -1;
@@ -382,7 +441,9 @@ function scoreColumns(rows: string[][]): number {
     let score = 0;
     for (const row of rows) {
       const cell = row[col];
-      if (cell && !looksLikeNonName(cell)) score += 1;
+      if (cell && !looksLikeNonName(cell)) {
+        score += 1;
+      }
     }
     if (score > bestScore) {
       bestScore = score;
@@ -405,15 +466,19 @@ function scoreColumns(rows: string[][]): number {
 function pickDeveloperColumn(
   rows: string[][],
   nameColumn: number,
-  hasHeader: boolean,
+  hasHeader: boolean
 ): number | null {
-  if (rows.length === 0) return null;
+  if (rows.length === 0) {
+    return null;
+  }
 
   if (hasHeader) {
-    const header = rows[0].map(cell => cell.trim().toLowerCase());
+    const header = rows[0].map((cell) => cell.trim().toLowerCase());
     for (const cand of DEV_HEADER_CANDIDATES) {
       const idx = header.indexOf(cand);
-      if (idx !== -1 && idx !== nameColumn) return idx;
+      if (idx !== -1 && idx !== nameColumn) {
+        return idx;
+      }
     }
     // No recognisable seller header — don't guess; false positives here
     // would pin the wrong developer during ranking and hurt matches.
@@ -428,11 +493,15 @@ function pickDeveloperColumn(
   let bestScore = 1; // require at least 2 text-y cells to pick
 
   for (let col = 0; col < maxCols; col += 1) {
-    if (col === nameColumn) continue;
+    if (col === nameColumn) {
+      continue;
+    }
     let score = 0;
     for (const row of dataRows) {
       const cell = row[col];
-      if (cell && !looksLikeNonName(cell)) score += 1;
+      if (cell && !looksLikeNonName(cell)) {
+        score += 1;
+      }
     }
     if (score > bestScore) {
       bestScore = score;
@@ -455,16 +524,30 @@ function pickDeveloperColumn(
 function pickVersionColumn(
   headerRow: string[],
   nameColumn: number,
-  developerColumn: number | null,
+  developerColumn: number | null
 ): number | null {
-  if (!headerRow || headerRow.length === 0) return null;
-  const header = headerRow.map(cell => cell.trim().toLowerCase());
-  const candidates = ['version', 'app version', 'current version', 'ver', 'build'];
+  if (!headerRow || headerRow.length === 0) {
+    return null;
+  }
+  const header = headerRow.map((cell) => cell.trim().toLowerCase());
+  const candidates = [
+    "version",
+    "app version",
+    "current version",
+    "ver",
+    "build",
+  ];
   for (const cand of candidates) {
     const idx = header.indexOf(cand);
-    if (idx === -1) continue;
-    if (idx === nameColumn) continue;
-    if (developerColumn !== null && idx === developerColumn) continue;
+    if (idx === -1) {
+      continue;
+    }
+    if (idx === nameColumn) {
+      continue;
+    }
+    if (developerColumn !== null && idx === developerColumn) {
+      continue;
+    }
     return idx;
   }
   return null;
@@ -476,15 +559,25 @@ function pickVersionColumn(
  * "Meta Platforms, Inc." as the same brand.
  */
 function sanitizeDeveloperCell(value: string): string | undefined {
-  if (typeof value !== 'string') return undefined;
+  if (typeof value !== "string") {
+    return;
+  }
   let next = value
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
-  if (!next) return undefined;
-  if (looksLikeNonName(next)) return undefined;
-  if (HEADER_CELL_LABELS.has(next.toLowerCase())) return undefined;
-  if (next.length > MAX_NAME_LENGTH) next = next.slice(0, MAX_NAME_LENGTH).trim();
+  if (!next) {
+    return;
+  }
+  if (looksLikeNonName(next)) {
+    return;
+  }
+  if (HEADER_CELL_LABELS.has(next.toLowerCase())) {
+    return;
+  }
+  if (next.length > MAX_NAME_LENGTH) {
+    next = next.slice(0, MAX_NAME_LENGTH).trim();
+  }
   return next;
 }
 
@@ -500,24 +593,27 @@ function dedupeRows(rows: ImportedAppRow[]): ImportedAppRow[] {
     // Merge: prefer the copy with a developer hint attached, but always
     // propagate `likelyWebClip: true` if *any* duplicate saw the signal —
     // a single web-clip-shaped row is enough to warrant the hint.
-    const merged: ImportedAppRow = !existing.developer && row.developer
-      ? { ...row }
-      : { ...existing };
-    if (existing.likelyWebClip || row.likelyWebClip) merged.likelyWebClip = true;
+    const merged: ImportedAppRow =
+      !existing.developer && row.developer ? { ...row } : { ...existing };
+    if (existing.likelyWebClip || row.likelyWebClip) {
+      merged.likelyWebClip = true;
+    }
     seen.set(key, merged);
   }
   return [...seen.values()];
 }
 
 function cleanOcrLine(line: string): string {
-  let next = line.replace(/\s+/g, ' ').trim();
-  if (!next) return '';
+  let next = line.replace(/\s+/g, " ").trim();
+  if (!next) {
+    return "";
+  }
 
-  next = next.replace(/^[•·\-\*]+/, '').trim();
-  next = next.replace(/\s+\d+(?:\.\d+)?\s?(?:KB|MB|GB|TB)\b.*$/i, '').trim();
-  next = next.replace(/\s+last used.*$/i, '').trim();
-  next = next.replace(/\s+\d+%.*$/i, '').trim();
-  next = next.replace(/^[0-9]+\s*/, '').trim();
+  next = next.replace(/^[•·\-*]+/, "").trim();
+  next = next.replace(/\s+\d+(?:\.\d+)?\s?(?:KB|MB|GB|TB)\b.*$/i, "").trim();
+  next = next.replace(/\s+last used.*$/i, "").trim();
+  next = next.replace(/\s+\d+%.*$/i, "").trim();
+  next = next.replace(/^[0-9]+\s*/, "").trim();
   next = normalizeAppName(next);
 
   return next;
@@ -526,14 +622,34 @@ function cleanOcrLine(line: string): string {
 function isNoiseLine(line: string): boolean {
   const lower = line.toLowerCase();
 
-  if (!/[a-z]/i.test(line)) return true;
-  if (lower.length < 2) return true;
-  if (/^\d+(?:\.\d+)?\s?(?:kb|mb|gb|tb)$/i.test(lower)) return true;
-  if (/^last used\b/i.test(lower)) return true;
-  if (/^\d{1,2}:\d{2}\b/.test(lower)) return true;
-  if (/^[\d\s.,%]+$/.test(lower)) return true;
-  if (NOISE_LINES.some(token => lower === token || lower.startsWith(`${token} `))) return true;
-  if (lower.includes('delete app') || lower.includes('offload app')) return true;
+  if (!/[a-z]/i.test(line)) {
+    return true;
+  }
+  if (lower.length < 2) {
+    return true;
+  }
+  if (/^\d+(?:\.\d+)?\s?(?:kb|mb|gb|tb)$/i.test(lower)) {
+    return true;
+  }
+  if (/^last used\b/i.test(lower)) {
+    return true;
+  }
+  if (/^\d{1,2}:\d{2}\b/.test(lower)) {
+    return true;
+  }
+  if (/^[\d\s.,%]+$/.test(lower)) {
+    return true;
+  }
+  if (
+    NOISE_LINES.some(
+      (token) => lower === token || lower.startsWith(`${token} `)
+    )
+  ) {
+    return true;
+  }
+  if (lower.includes("delete app") || lower.includes("offload app")) {
+    return true;
+  }
 
   return false;
 }
@@ -551,19 +667,21 @@ function isNoiseLine(line: string): boolean {
  * Returning '' signals "not a usable name"; callers should filter those out.
  */
 export function normalizeAppName(value: string): string {
-  if (typeof value !== 'string') return '';
+  if (typeof value !== "string") {
+    return "";
+  }
 
   // 1. Remove control characters (C0/C1, zero-width, bidi marks).
   let next = value
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
-    .replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF]/g, '');
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+    .replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF]/g, "");
 
   // 2. Collapse whitespace + normalise bar-separated words used by some
   //    screenshot OCR tools.
   next = next
-    .replace(/\s+/g, ' ')
-    .replace(/[|]+/g, ' ')
-    .replace(/\s+[|:;.,]+$/, '')
+    .replace(/\s+/g, " ")
+    .replace(/[|]+/g, " ")
+    .replace(/\s+[|:;.,]+$/, "")
     .trim();
 
   // 3. Strip trailing version numbers. We keep "Word 2024" style titles by
@@ -578,8 +696,12 @@ export function normalizeAppName(value: string): string {
   }
 
   // Reject trivially-short or content-free names.
-  if (next.length < 2) return '';
-  if (!/[\p{L}\p{N}]/u.test(next)) return '';
+  if (next.length < 2) {
+    return "";
+  }
+  if (!/[\p{L}\p{N}]/u.test(next)) {
+    return "";
+  }
 
   return next;
 }
@@ -607,20 +729,25 @@ export function stripVersionSuffix(value: string): string {
     next = next
       // Trailing bracketed/parenthesised version chunk. Greedy within the
       // brackets so "(build 123.4)" and "[v 2.0]" both match.
-      .replace(/\s*[(\[][^()\[\]]*\d+(?:\.\d+)+[^()\[\]]*[)\]]\s*$/, '')
+      .replace(/\s*[([][^()[\]]*\d+(?:\.\d+)+[^()[\]]*[)\]]\s*$/, "")
       // Dash-prefixed version must be tried *before* the bare numeric form so
       // "Outlook — 1.2.3" collapses to "Outlook" rather than "Outlook —".
-      .replace(/\s*[—–-]\s*(?:build\s+|version\s+|ver\.?\s*|v\.?\s*)?\d+(?:\.\d+)+\s*$/i, '')
-      .replace(/\s*[—–-]\s*v\d+\s*$/i, '')
+      .replace(
+        /\s*[—–-]\s*(?:build\s+|version\s+|ver\.?\s*|v\.?\s*)?\d+(?:\.\d+)+\s*$/i,
+        ""
+      )
+      .replace(/\s*[—–-]\s*v\d+\s*$/i, "")
       // "App version 1.2.3" / "App ver. 1.2.3" / "App v1.2.3" / "App 1.2.3"
-      .replace(/\s+(?:version\s+|ver\.?\s*|v\.?\s*)?\d+(?:\.\d+)+\s*$/i, '')
+      .replace(/\s+(?:version\s+|ver\.?\s*|v\.?\s*)?\d+(?:\.\d+)+\s*$/i, "")
       // Trailing "v<digits>" with no dot (e.g. "MyApp v2") — conservative, only
       // with a leading `v` so we don't eat legitimate numeric titles.
-      .replace(/\s+v\d+\s*$/i, '')
+      .replace(/\s+v\d+\s*$/i, "")
       // Trim any orphaned trailing separator we may have left behind.
-      .replace(/\s*[—–\-|:;,]+\s*$/, '')
+      .replace(/\s*[—–\-|:;,]+\s*$/, "")
       .trim();
-    if (next === before) break;
+    if (next === before) {
+      break;
+    }
   }
   return next;
 }
@@ -639,12 +766,18 @@ export function sanitizeAppNameInput(value: string): string {
  * list of names and returns the same canonical list the wizard produces.
  */
 export function sanitizeNamesList(values: unknown): string[] {
-  if (!Array.isArray(values)) return [];
+  if (!Array.isArray(values)) {
+    return [];
+  }
   const cleaned: string[] = [];
   for (const raw of values) {
-    if (typeof raw !== 'string') continue;
+    if (typeof raw !== "string") {
+      continue;
+    }
     const cleanName = normalizeAppName(raw);
-    if (cleanName) cleaned.push(cleanName);
+    if (cleanName) {
+      cleaned.push(cleanName);
+    }
   }
   return dedupeNames(cleaned).slice(0, MAX_IMPORT_ROWS);
 }
@@ -654,19 +787,34 @@ export function sanitizeNamesList(values: unknown): string[] {
  * becomes a canonical `{ name, developer? }`. Invalid entries are dropped.
  */
 export function sanitizeRowsList(values: unknown): ImportedAppRow[] {
-  if (!Array.isArray(values)) return [];
+  if (!Array.isArray(values)) {
+    return [];
+  }
   const cleaned: ImportedAppRow[] = [];
   for (const raw of values) {
-    if (!raw || typeof raw !== 'object') continue;
-    const anyRaw = raw as { name?: unknown; developer?: unknown; likelyWebClip?: unknown };
-    if (typeof anyRaw.name !== 'string') continue;
+    if (!raw || typeof raw !== "object") {
+      continue;
+    }
+    const anyRaw = raw as {
+      name?: unknown;
+      developer?: unknown;
+      likelyWebClip?: unknown;
+    };
+    if (typeof anyRaw.name !== "string") {
+      continue;
+    }
     const name = normalizeAppName(anyRaw.name);
-    if (!name) continue;
-    const developer = typeof anyRaw.developer === 'string'
-      ? sanitizeDeveloperCell(anyRaw.developer)
-      : undefined;
+    if (!name) {
+      continue;
+    }
+    const developer =
+      typeof anyRaw.developer === "string"
+        ? sanitizeDeveloperCell(anyRaw.developer)
+        : undefined;
     const entry: ImportedAppRow = developer ? { name, developer } : { name };
-    if (anyRaw.likelyWebClip === true) entry.likelyWebClip = true;
+    if (anyRaw.likelyWebClip === true) {
+      entry.likelyWebClip = true;
+    }
     cleaned.push(entry);
   }
   return dedupeRows(cleaned).slice(0, MAX_IMPORT_ROWS);
@@ -678,7 +826,9 @@ function dedupeNames(values: string[]): string[] {
 
   for (const value of values) {
     const key = value.toLocaleLowerCase();
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     next.push(value);
   }

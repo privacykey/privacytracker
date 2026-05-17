@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Cross-page handler for the developer panel's "Show me where" link.
@@ -15,30 +15,30 @@
  * `prefers-reduced-motion`.
  */
 
-import { useEffect, useState } from 'react';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
-const HIGHLIGHT_DURATION_MS = 6_000;
+const HIGHLIGHT_DURATION_MS = 6000;
 const CONFETTI_COUNT = 10;
-const CONFETTI_COLORS = ['#a855f7', '#3b82f6', '#34c759', '#ff9f0a', '#ff453a'];
+const CONFETTI_COLORS = ["#a855f7", "#3b82f6", "#34c759", "#ff9f0a", "#ff453a"];
 
-type ArrowDirection = 'up' | 'down' | 'left' | 'right';
+type ArrowDirection = "up" | "down" | "left" | "right";
 
 interface ActiveHighlight {
+  confetti: ConfettiParticle[];
   /** First match — used as the pin for the off-screen arrow. */
   el: HTMLElement;
-  confetti: ConfettiParticle[];
   /** Sonar ping; CSS handles the three staggered rings via animation-delay. */
   ping: boolean;
 }
 
 interface ConfettiParticle {
-  id: number;
+  color: string;
   /** Final viewport translation in pixels. */
   dx: number;
   dy: number;
+  id: number;
   rotation: number;
-  color: string;
   /** Width × height (px). */
   size: number;
 }
@@ -52,10 +52,13 @@ export default function FlagHighlightHandler() {
   // `null` direction means the target is on-screen (no arrow).
   const [arrowDir, setArrowDir] = useState<ArrowDirection | null>(null);
   // Viewport coordinates so the arrow tracks the target as the user scrolls.
-  const [arrowPos, setArrowPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [arrowPos, setArrowPos] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
 
   useEffect(() => {
-    const key = searchParams?.get('flag-highlight');
+    const key = searchParams?.get("flag-highlight");
     if (!key) {
       setActive(null);
       setArrowDir(null);
@@ -69,39 +72,51 @@ export default function FlagHighlightHandler() {
 
     // Defer one frame so hydration has flushed before we query.
     const raf = requestAnimationFrame(() => {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       const selector = `[data-flag-target="${cssEscape(key)}"], [data-flag-key="${cssEscape(key)}"]`;
-      const matches = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+      const matches = Array.from(
+        document.querySelectorAll(selector)
+      ) as HTMLElement[];
       if (matches.length === 0) {
         // Nothing to highlight; strip the param so refresh doesn't re-trigger.
         stripParam(router, pathname, searchParams);
         return;
       }
       activeMatches = matches;
-      for (const el of matches) el.classList.add('flag-highlight-target');
+      for (const el of matches) {
+        el.classList.add("flag-highlight-target");
+      }
       const primary = matches[0];
-      primary.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      primary.scrollIntoView({ behavior: "smooth", block: "center" });
 
       // Build the confetti bag once with stable IDs for React keys.
-      const confetti: ConfettiParticle[] = Array.from({ length: CONFETTI_COUNT }, (_, i) => {
-        const angle = (Math.PI * 2 * i) / CONFETTI_COUNT + Math.random() * 0.4;
-        const distance = 70 + Math.random() * 60;
-        return {
-          id: i,
-          dx: Math.cos(angle) * distance,
-          dy: Math.sin(angle) * distance,
-          rotation: (Math.random() - 0.5) * 360,
-          color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-          size: 6 + Math.random() * 4,
-        };
-      });
+      const confetti: ConfettiParticle[] = Array.from(
+        { length: CONFETTI_COUNT },
+        (_, i) => {
+          const angle =
+            (Math.PI * 2 * i) / CONFETTI_COUNT + Math.random() * 0.4;
+          const distance = 70 + Math.random() * 60;
+          return {
+            id: i,
+            dx: Math.cos(angle) * distance,
+            dy: Math.sin(angle) * distance,
+            rotation: (Math.random() - 0.5) * 360,
+            color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            size: 6 + Math.random() * 4,
+          };
+        }
+      );
 
       setActive({ el: primary, confetti, ping: true });
 
       // Track scroll/resize so the arrow follows the target and fades out
       // the moment the target scrolls into view.
       const updateArrow = () => {
-        if (!primary.isConnected) return;
+        if (!primary.isConnected) {
+          return;
+        }
         const rect = primary.getBoundingClientRect();
         const placement = computeArrowPlacement(rect);
         setArrowDir(placement.dir);
@@ -109,11 +124,13 @@ export default function FlagHighlightHandler() {
       };
       updateArrow();
       scrollHandler = updateArrow;
-      window.addEventListener('scroll', updateArrow, true);
-      window.addEventListener('resize', updateArrow);
+      window.addEventListener("scroll", updateArrow, true);
+      window.addEventListener("resize", updateArrow);
 
       cleanupTimer = setTimeout(() => {
-        for (const el of activeMatches) el.classList.remove('flag-highlight-target');
+        for (const el of activeMatches) {
+          el.classList.remove("flag-highlight-target");
+        }
         setActive(null);
         setArrowDir(null);
         stripParam(router, pathname, searchParams);
@@ -123,16 +140,22 @@ export default function FlagHighlightHandler() {
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
-      if (cleanupTimer) clearTimeout(cleanupTimer);
-      if (scrollHandler) {
-        window.removeEventListener('scroll', scrollHandler, true);
-        window.removeEventListener('resize', scrollHandler);
+      if (cleanupTimer) {
+        clearTimeout(cleanupTimer);
       }
-      for (const el of activeMatches) el.classList.remove('flag-highlight-target');
+      if (scrollHandler) {
+        window.removeEventListener("scroll", scrollHandler, true);
+        window.removeEventListener("resize", scrollHandler);
+      }
+      for (const el of activeMatches) {
+        el.classList.remove("flag-highlight-target");
+      }
     };
   }, [pathname, searchParams, router]);
 
-  if (!active) return null;
+  if (!active) {
+    return null;
+  }
 
   // Position confetti + sonar ping at the target's centre via position:fixed.
   const rect = active.el.getBoundingClientRect();
@@ -145,9 +168,9 @@ export default function FlagHighlightHandler() {
           pointer-events:none so they never block interaction. */}
       {active.ping && (
         <div
+          aria-hidden="true"
           className="flag-highlight-ping"
           style={{ top: cy, left: cx }}
-          aria-hidden="true"
         >
           <span className="flag-highlight-ping-ring" />
           <span className="flag-highlight-ping-ring" />
@@ -158,18 +181,18 @@ export default function FlagHighlightHandler() {
       {/* Confetti burst — final translation set as a CSS custom property
           so the keyframe can read it without reflow. */}
       <div
+        aria-hidden="true"
         className="flag-highlight-confetti"
         style={{ top: cy, left: cx }}
-        aria-hidden="true"
       >
-        {active.confetti.map(p => (
+        {active.confetti.map((p) => (
           <span
-            key={p.id}
             className="flag-highlight-confetti-piece"
+            key={p.id}
             style={{
-              ['--dx' as string]: `${p.dx}px`,
-              ['--dy' as string]: `${p.dy}px`,
-              ['--rot' as string]: `${p.rotation}deg`,
+              ["--dx" as string]: `${p.dx}px`,
+              ["--dy" as string]: `${p.dy}px`,
+              ["--rot" as string]: `${p.rotation}deg`,
               background: p.color,
               width: `${p.size}px`,
               height: `${p.size * 0.4}px`,
@@ -182,19 +205,26 @@ export default function FlagHighlightHandler() {
           target sits outside the viewport, hides when on-screen. */}
       {arrowDir && (
         <div
+          aria-hidden="true"
           className={`flag-highlight-arrow flag-highlight-arrow-${arrowDir}`}
           style={{ top: arrowPos.y, left: arrowPos.x }}
-          aria-hidden="true"
         >
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="15" fill="var(--bg-2)" stroke="currentColor" strokeWidth="2" />
+          <svg fill="none" height="32" viewBox="0 0 32 32" width="32">
+            <circle
+              cx="16"
+              cy="16"
+              fill="var(--bg-2)"
+              r="15"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
             <path
               d="M10 16 L22 16 M16 10 L22 16 L16 22"
+              fill="none"
               stroke="currentColor"
-              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              fill="none"
+              strokeWidth="2.5"
             />
           </svg>
         </div>
@@ -219,10 +249,18 @@ function computeArrowPlacement(rect: DOMRect): {
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
 
-  if (rect.bottom < 0) return { dir: 'up', x: clamp(cx, PAD, vw - PAD), y: PAD };
-  if (rect.top > vh) return { dir: 'down', x: clamp(cx, PAD, vw - PAD), y: vh - PAD };
-  if (rect.right < 0) return { dir: 'left', x: PAD, y: clamp(cy, PAD, vh - PAD) };
-  if (rect.left > vw) return { dir: 'right', x: vw - PAD, y: clamp(cy, PAD, vh - PAD) };
+  if (rect.bottom < 0) {
+    return { dir: "up", x: clamp(cx, PAD, vw - PAD), y: PAD };
+  }
+  if (rect.top > vh) {
+    return { dir: "down", x: clamp(cx, PAD, vw - PAD), y: vh - PAD };
+  }
+  if (rect.right < 0) {
+    return { dir: "left", x: PAD, y: clamp(cy, PAD, vh - PAD) };
+  }
+  if (rect.left > vw) {
+    return { dir: "right", x: vw - PAD, y: clamp(cy, PAD, vh - PAD) };
+  }
   return { dir: null, x: 0, y: 0 };
 }
 
@@ -234,12 +272,16 @@ function clamp(n: number, min: number, max: number): number {
 function stripParam(
   router: ReturnType<typeof useRouter>,
   pathname: string | null,
-  searchParams: ReturnType<typeof useSearchParams>,
+  searchParams: ReturnType<typeof useSearchParams>
 ): void {
-  if (!pathname) return;
-  const params = new URLSearchParams(searchParams?.toString() ?? '');
-  if (!params.has('flag-highlight')) return;
-  params.delete('flag-highlight');
+  if (!pathname) {
+    return;
+  }
+  const params = new URLSearchParams(searchParams?.toString() ?? "");
+  if (!params.has("flag-highlight")) {
+    return;
+  }
+  params.delete("flag-highlight");
   const qs = params.toString();
   router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
 }
@@ -249,7 +291,7 @@ function stripParam(
  * replace pass when CSS.escape isn't available (older webviews).
  */
 function cssEscape(value: string): string {
-  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
   }
   return value.replace(/["\\]/g, (m) => `\\${m}`);

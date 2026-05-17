@@ -1,21 +1,23 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
 import {
-  readBoundedJson,
+  buildInitialPolicyQueue,
+  canStartPolicyManualRun,
+  describeCurrentPolicyRun,
+  type PolicyBulkPhase,
+  type PolicyStreamWriter,
+  runBulkPolicySync,
+} from "../../../../lib/policy-bulk-runner";
+import { zeroPolicyTotals } from "../../../../lib/policy-bulk-state";
+import { getSetting } from "../../../../lib/scheduler";
+import {
   checkRateLimit,
   rateLimitKeyForRequest,
+  readBoundedJson,
   recordAudit,
   requestActorIp,
-} from '../../../../lib/security';
-import {
-  runBulkPolicySync,
-  canStartPolicyManualRun,
-  buildInitialPolicyQueue,
-  describeCurrentPolicyRun,
-  type PolicyStreamWriter,
-  type PolicyBulkPhase,
-} from '../../../../lib/policy-bulk-runner';
-import { zeroPolicyTotals } from '../../../../lib/policy-bulk-state';
+} from "../../../../lib/security";
 
 /**
  * Bulk privacy-policy sync across every app that exposes a developer
@@ -45,7 +47,7 @@ import { zeroPolicyTotals } from '../../../../lib/policy-bulk-state';
  * make sense in bulk. The single-app regenerate route still exposes
  * the full set.
  */
-const VALID_PHASES: PolicyBulkPhase[] = ['fetch', 'all'];
+const VALID_PHASES: PolicyBulkPhase[] = ["fetch", "all"];
 
 /**
  * GET — live status of the bulk policy sync for SettingsView + TaskCenter.
@@ -78,50 +80,81 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   // Rate-limit the endpoint itself — the inner loop is the real cost gate
   // (sequential, one app at a time) but we don't want 50 tabs hammering the
   // mutex check either.
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'policy.sync-all'),
+    key: rateLimitKeyForRequest(request, "policy.sync-all"),
     limit: 4,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Rate limit exceeded for bulk policy sync. Try again shortly.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
+      { error: "Rate limit exceeded for bulk policy sync. Try again shortly." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) },
+      }
     );
   }
 
-  let body: { phase?: unknown; force?: unknown; stream?: unknown } | null = null;
+  let body: { phase?: unknown; force?: unknown; stream?: unknown } | null =
+    null;
   try {
-    body = await readBoundedJson<{ phase?: unknown; force?: unknown; stream?: unknown }>(
-      request,
-      2 * 1024,
-    );
+    body = await readBoundedJson<{
+      phase?: unknown;
+      force?: unknown;
+      stream?: unknown;
+    }>(request, 2 * 1024);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid request body' },
-      { status: 400 },
+      {
+        error: error instanceof Error ? error.message : "Invalid request body",
+      },
+      { status: 400 }
     );
   }
 
-  const rawPhase = typeof body?.phase === 'string' ? body.phase.trim() : 'fetch';
-  const phase: PolicyBulkPhase = VALID_PHASES.includes(rawPhase as PolicyBulkPhase)
+  const rawPhase =
+    typeof body?.phase === "string" ? body.phase.trim() : "fetch";
+  const phase: PolicyBulkPhase = VALID_PHASES.includes(
+    rawPhase as PolicyBulkPhase
+  )
     ? (rawPhase as PolicyBulkPhase)
-    : 'fetch';
+    : "fetch";
   const force = body?.force === true;
   const wantStream = body?.stream === true;
+
+  // Global kill-switch — refuse the bulk run up-front when the user has
+  // disabled policy scraping in Settings. The deep gate in
+  // `fetchAndStorePolicySource` would also skip each app individually, but
+  // returning 409 here saves a pointless queue-build + activity row and
+  // gives the SettingsView caller a clear "this is off" message to surface.
+  const scrapeDisabled =
+    getSetting("policy_scrape_disabled", "false") === "true";
+  if (scrapeDisabled) {
+    return NextResponse.json(
+      {
+        error:
+          "Policy scraping is disabled in Settings. Re-enable to run a bulk sync.",
+        code: "policy_scrape_disabled",
+      },
+      { status: 409 }
+    );
+  }
 
   // Pre-flight: checks both the mutex and the persisted state blob — either
   // one being set means a previous/active run still owns the resource.
   const canStart = canStartPolicyManualRun();
   if (!canStart.ok) {
     return NextResponse.json(
-      { error: 'A bulk policy sync is already running. Wait for it to finish before starting another.' },
-      { status: 409 },
+      {
+        error:
+          "A bulk policy sync is already running. Wait for it to finish before starting another.",
+      },
+      { status: 409 }
     );
   }
 
@@ -132,17 +165,17 @@ export async function POST(request: Request) {
   if (appCount === 0) {
     return NextResponse.json(
       {
-        error: 'No apps have a developer privacy-policy link to sync.',
+        error: "No apps have a developer privacy-policy link to sync.",
         totals: zeroPolicyTotals(),
         phase,
         force,
       },
-      { status: 200 },
+      { status: 200 }
     );
   }
 
   recordAudit({
-    action: 'policy.sync-all.start',
+    action: "policy.sync-all.start",
     actorIp,
     userAgent,
     success: true,
@@ -155,7 +188,7 @@ export async function POST(request: Request) {
       async start(controller) {
         const writer: PolicyStreamWriter = (obj: unknown) => {
           try {
-            controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+            controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
           } catch {
             /* client disconnected — ignore */
           }
@@ -163,7 +196,7 @@ export async function POST(request: Request) {
 
         try {
           await runBulkPolicySync({
-            initiator: 'manual',
+            initiator: "manual",
             phase,
             force,
             streamWriter: writer,
@@ -188,8 +221,8 @@ export async function POST(request: Request) {
     return new Response(stream, {
       status: 200,
       headers: {
-        'Content-Type': 'application/x-ndjson; charset=utf-8',
-        'Cache-Control': 'no-store, no-transform',
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-store, no-transform",
       },
     });
   }
@@ -198,7 +231,7 @@ export async function POST(request: Request) {
   // leaves state+mutex in place if it throws so the next startup can resume.
   try {
     const result = await runBulkPolicySync({
-      initiator: 'manual',
+      initiator: "manual",
       phase,
       force,
       actorIp,
@@ -212,10 +245,11 @@ export async function POST(request: Request) {
       durationMs: result.durationMs,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Bulk policy sync failed';
+    const message =
+      error instanceof Error ? error.message : "Bulk policy sync failed";
     return NextResponse.json(
       { error: message, totals: zeroPolicyTotals(), phase, force },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

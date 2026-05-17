@@ -9,20 +9,20 @@
  * Settings / grid / Compare wiring stays symmetrical.
  */
 
-// `-server.ts` filename convention keeps this module out of the client bundle,
-// same pattern as lib/privacy-profile-server.ts.
-import db from './db';
-import { getSetting, setSetting } from './scheduler';
 import {
-  type A11yProfileBadge,
   type A11yMismatchResult,
+  type A11yProfileBadge,
   type AccessibilityFootprint,
   type AccessibilityProfile,
   computeA11yMismatch,
   parseStoredA11yProfile,
   sanitizeA11yProfile,
   summariseA11yBadge,
-} from './accessibility-profile';
+} from "./accessibility-profile";
+// `-server.ts` filename convention keeps this module out of the client bundle,
+// same pattern as lib/privacy-profile-server.ts.
+import db from "./db";
+import { getSetting, setSetting } from "./scheduler";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Profile read / write via app_settings. A single JSON blob keeps the DB
@@ -30,18 +30,20 @@ import {
 // by existing backup tooling that round-trips the settings table.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PROFILE_SETTING_KEY = 'accessibility_profile';
+const PROFILE_SETTING_KEY = "accessibility_profile";
 
 /** Returns null when no profile has ever been saved, or when the stored JSON is unusable. */
 export function getAccessibilityProfile(): AccessibilityProfile | null {
-  const raw = getSetting(PROFILE_SETTING_KEY, '');
+  const raw = getSetting(PROFILE_SETTING_KEY, "");
   return parseStoredA11yProfile(raw);
 }
 
 /** Overwrite the profile. Pass `null` to clear ("no profile"). */
-export function saveAccessibilityProfile(profile: AccessibilityProfile | null): void {
+export function saveAccessibilityProfile(
+  profile: AccessibilityProfile | null
+): void {
   if (profile === null) {
-    setSetting(PROFILE_SETTING_KEY, '');
+    setSetting(PROFILE_SETTING_KEY, "");
     return;
   }
   const clean = sanitizeA11yProfile(profile);
@@ -51,8 +53,10 @@ export function saveAccessibilityProfile(profile: AccessibilityProfile | null): 
 /** `true` when the user has at least one explicit per-feature preference set. */
 export function hasAccessibilityProfile(): boolean {
   const profile = getAccessibilityProfile();
-  if (!profile) return false;
-  return Object.values(profile).some(v => typeof v === 'string');
+  if (!profile) {
+    return false;
+  }
+  return Object.values(profile).some((v) => typeof v === "string");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,15 +72,15 @@ interface FootprintRow {
 /** Build a footprint for a single app. Returns an empty footprint when the app has no accessibility rows. */
 export function buildAppA11yFootprint(appId: string): AccessibilityFootprint {
   const rows = db
-    .prepare(`SELECT identifier FROM accessibility_features WHERE app_id = ?`)
+    .prepare("SELECT identifier FROM accessibility_features WHERE app_id = ?")
     .all(appId) as FootprintRow[];
-  return { declared: new Set(rows.map(r => r.identifier)) };
+  return { declared: new Set(rows.map((r) => r.identifier)) };
 }
 
 /** Build footprints for every tracked app in a single SQL query. */
 export function buildAllA11yFootprints(): Map<string, AccessibilityFootprint> {
   const rows = db
-    .prepare(`SELECT app_id, identifier FROM accessibility_features`)
+    .prepare("SELECT app_id, identifier FROM accessibility_features")
     .all() as Array<FootprintRow & { app_id: string }>;
 
   const byApp = new Map<string, Set<string>>();
@@ -100,8 +104,8 @@ export function buildAllA11yFootprints(): Map<string, AccessibilityFootprint> {
 export interface AppA11yMismatchSummary {
   appId: string;
   appName: string;
-  iconUrl?: string;
   developer?: string;
+  iconUrl?: string;
   mismatch: A11yMismatchResult;
 }
 
@@ -112,18 +116,27 @@ export interface AppA11yMismatchSummary {
  */
 export function getA11yMismatchedApps(): AppA11yMismatchSummary[] {
   const profile = getAccessibilityProfile();
-  if (!profile) return [];
+  if (!profile) {
+    return [];
+  }
 
   const apps = db
-    .prepare(`SELECT id, name, iconUrl, developer FROM apps`)
-    .all() as Array<{ id: string; name: string; iconUrl?: string; developer?: string }>;
+    .prepare("SELECT id, name, iconUrl, developer FROM apps")
+    .all() as Array<{
+    id: string;
+    name: string;
+    iconUrl?: string;
+    developer?: string;
+  }>;
   const footprints = buildAllA11yFootprints();
 
   const out: AppA11yMismatchSummary[] = [];
   for (const app of apps) {
     const footprint = footprints.get(app.id) ?? { declared: new Set<string>() };
     const mismatch = computeA11yMismatch(profile, footprint);
-    if (mismatch.count === 0) continue;
+    if (mismatch.count === 0) {
+      continue;
+    }
     out.push({
       appId: app.id,
       appName: app.name,
@@ -133,7 +146,11 @@ export function getA11yMismatchedApps(): AppA11yMismatchSummary[] {
     });
   }
 
-  out.sort((a, b) => b.mismatch.totalGap - a.mismatch.totalGap || a.appName.localeCompare(b.appName));
+  out.sort(
+    (a, b) =>
+      b.mismatch.totalGap - a.mismatch.totalGap ||
+      a.appName.localeCompare(b.appName)
+  );
   return out;
 }
 
@@ -147,13 +164,17 @@ export function computeAppA11yMismatch(appId: string): A11yMismatchResult {
 /** Map of appId → mismatch count — lightweight accessor for list views / badges. */
 export function getA11yMismatchCountsByApp(): Map<string, number> {
   const profile = getAccessibilityProfile();
-  if (!profile) return new Map();
+  if (!profile) {
+    return new Map();
+  }
 
   const footprints = buildAllA11yFootprints();
   const out = new Map<string, number>();
   for (const [appId, footprint] of footprints) {
     const result = computeA11yMismatch(profile, footprint);
-    if (result.count > 0) out.set(appId, result.count);
+    if (result.count > 0) {
+      out.set(appId, result.count);
+    }
   }
   return out;
 }
@@ -167,9 +188,11 @@ export function getA11yMismatchCountsByApp(): Map<string, number> {
  */
 export function getA11yBadgesByApp(): Record<string, A11yProfileBadge> {
   const profile = getAccessibilityProfile();
-  if (!profile) return {};
+  if (!profile) {
+    return {};
+  }
 
-  const apps = db.prepare(`SELECT id FROM apps`).all() as Array<{ id: string }>;
+  const apps = db.prepare("SELECT id FROM apps").all() as Array<{ id: string }>;
   const footprints = buildAllA11yFootprints();
 
   const out: Record<string, A11yProfileBadge> = {};
@@ -179,7 +202,9 @@ export function getA11yBadgesByApp(): Record<string, A11yProfileBadge> {
     // `summariseA11yBadge` returns a "No profile" placeholder when no
     // preferences are active — the grid would never want to surface that, so
     // drop those rows and let callers treat "missing key" as "hide the badge".
-    if (!result.profileActive) continue;
+    if (!result.profileActive) {
+      continue;
+    }
     out[id] = summariseA11yBadge(result);
   }
   return out;

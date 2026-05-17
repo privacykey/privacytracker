@@ -9,17 +9,20 @@
  * lib/feature-flag-storage.ts.
  */
 
-import { NextResponse } from 'next/server';
-import { setWelcomedAt } from '@/lib/feature-flag-storage';
+import { NextResponse } from "next/server";
+import { setWelcomedAt } from "@/lib/feature-flag-storage";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST() {
   try {
     setWelcomedAt();
   } catch (e) {
-    console.error('[/api/welcomed-at] write failed:', e);
-    return NextResponse.json({ error: 'Failed to mark onboarding complete' }, { status: 500 });
+    console.error("[/api/welcomed-at] write failed:", e);
+    return NextResponse.json(
+      { error: "Failed to mark onboarding complete" },
+      { status: 500 }
+    );
   }
   return NextResponse.json({ welcomedAt: Date.now() });
 }

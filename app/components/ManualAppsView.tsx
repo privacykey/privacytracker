@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   isManualAppSource,
   type ManualApp,
   type ManualAppInput,
   type ManualAppSource,
   type ManualAppSourceMeta,
-} from '../../lib/manual-apps';
-import Favicon from './Favicon';
+} from "../../lib/manual-apps";
+import Favicon from "./Favicon";
 
 interface Props {
   initialApps: ManualApp[];
@@ -21,21 +21,21 @@ interface Props {
 // Shape matches ManualAppInput but all fields are strings (including source)
 // so the form state plays nicely with controlled <input> / <select>.
 interface FormState {
-  name: string;
-  source: ManualAppSource;
   developer: string;
-  privacyPolicyUrl: string;
-  sourceUrl: string;
+  name: string;
   notes: string;
+  privacyPolicyUrl: string;
+  source: ManualAppSource;
+  sourceUrl: string;
 }
 
 const EMPTY_FORM = (defaultSource: ManualAppSource): FormState => ({
-  name: '',
+  name: "",
   source: defaultSource,
-  developer: '',
-  privacyPolicyUrl: '',
-  sourceUrl: '',
-  notes: '',
+  developer: "",
+  privacyPolicyUrl: "",
+  sourceUrl: "",
+  notes: "",
 });
 
 function toInput(form: FormState): ManualAppInput {
@@ -45,7 +45,9 @@ function toInput(form: FormState): ManualAppInput {
     name: form.name,
     source: form.source,
     developer: form.developer.trim() ? form.developer : null,
-    privacyPolicyUrl: form.privacyPolicyUrl.trim() ? form.privacyPolicyUrl : null,
+    privacyPolicyUrl: form.privacyPolicyUrl.trim()
+      ? form.privacyPolicyUrl
+      : null,
     sourceUrl: form.sourceUrl.trim() ? form.sourceUrl : null,
     notes: form.notes.trim() ? form.notes : null,
   };
@@ -55,43 +57,43 @@ function fromApp(app: ManualApp): FormState {
   return {
     name: app.name,
     source: app.source,
-    developer: app.developer ?? '',
-    privacyPolicyUrl: app.privacyPolicyUrl ?? '',
-    sourceUrl: app.sourceUrl ?? '',
-    notes: app.notes ?? '',
+    developer: app.developer ?? "",
+    privacyPolicyUrl: app.privacyPolicyUrl ?? "",
+    sourceUrl: app.sourceUrl ?? "",
+    notes: app.notes ?? "",
   };
 }
 
 function formatDate(ms: number): string {
   try {
     return new Date(ms).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   } catch {
-    return '';
+    return "";
   }
 }
 
 export default function ManualAppsView({ initialApps, sources }: Props) {
   // i18n — page title, form titles, empty state. Per-row chrome and the
   // form field labels stay English in v1; tracked under the sweep.
-  const tManual = useTranslations('manual_apps');
+  const tManual = useTranslations("manual_apps");
   // Source-meta labels (web app / TestFlight / personal / sideloaded)
   // come from `manual_app_source.<value>_{label,short,desc}` so the
   // picker buttons and the per-row badge translate.
-  const tSource = useTranslations('manual_app_source');
+  const tSource = useTranslations("manual_app_source");
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<ManualApp[]>(initialApps);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(() =>
-    EMPTY_FORM((sources[0]?.value as ManualAppSource) ?? 'sideloaded'),
+    EMPTY_FORM((sources[0]?.value as ManualAppSource) ?? "sideloaded")
   );
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [flash, setFlash] = useState('');
+  const [error, setError] = useState("");
+  const [flash, setFlash] = useState("");
   /**
    * Confirm-modal state for the manual-app delete flow. Mirrors the
    * `.modal-overlay` / `.modal-card` pattern used in SettingsView's
@@ -108,7 +110,9 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
   // Keyed for O(1) label lookup in the list.
   const sourceMeta = useMemo(() => {
     const map = new Map<ManualAppSource, ManualAppSourceMeta>();
-    for (const s of sources) map.set(s.value, s);
+    for (const s of sources) {
+      map.set(s.value, s);
+    }
     return map;
   }, [sources]);
 
@@ -117,21 +121,21 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
   const openCreate = useCallback(() => {
     setEditingId(null);
     setCreating(true);
-    setError('');
-    setForm(EMPTY_FORM((sources[0]?.value as ManualAppSource) ?? 'sideloaded'));
+    setError("");
+    setForm(EMPTY_FORM((sources[0]?.value as ManualAppSource) ?? "sideloaded"));
   }, [sources]);
 
   const openEdit = useCallback((app: ManualApp) => {
     setCreating(false);
     setEditingId(app.id);
-    setError('');
+    setError("");
     setForm(fromApp(app));
   }, []);
 
   const closeForm = useCallback(() => {
     setCreating(false);
     setEditingId(null);
-    setError('');
+    setError("");
   }, []);
 
   // Deep-link support: Settings → Import history → "Mark as manual app" sends
@@ -139,21 +143,28 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
   // detail page also links back here with ?editId=<id> to reuse the editor
   // form. We auto-open whichever flow the URL encodes, once per page load.
   useEffect(() => {
-    if (prefilledRef.current) return;
-    if (!searchParams) return;
+    if (prefilledRef.current) {
+      return;
+    }
+    if (!searchParams) {
+      return;
+    }
 
     // Edit deep link — takes precedence over prefillName since opening a
     // blank create form for an existing app would be confusing.
-    const editId = searchParams.get('editId')?.trim() ?? '';
+    const editId = searchParams.get("editId")?.trim() ?? "";
     if (editId) {
-      const match = apps.find(a => a.id === editId);
+      const match = apps.find((a) => a.id === editId);
       if (match) {
         prefilledRef.current = true;
         openEdit(match);
         window.setTimeout(() => {
-          const el = document.querySelector('.manual-apps-form-card');
-          if (el && 'scrollIntoView' in el) {
-            (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+          const el = document.querySelector(".manual-apps-form-card");
+          if (el && "scrollIntoView" in el) {
+            (el as HTMLElement).scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
           }
         }, 0);
         return;
@@ -162,18 +173,20 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       // stale. We still honour prefillName if present.
     }
 
-    const name = searchParams.get('prefillName')?.trim() ?? '';
-    const rawSource = searchParams.get('source');
-    if (!name) return;
+    const name = searchParams.get("prefillName")?.trim() ?? "";
+    const rawSource = searchParams.get("source");
+    if (!name) {
+      return;
+    }
     prefilledRef.current = true;
 
     const source: ManualAppSource = isManualAppSource(rawSource)
       ? rawSource
-      : (sources[0]?.value as ManualAppSource) ?? 'web_clip';
+      : ((sources[0]?.value as ManualAppSource) ?? "web_clip");
 
     setCreating(true);
     setEditingId(null);
-    setError('');
+    setError("");
     setForm({
       ...EMPTY_FORM(source),
       name,
@@ -181,53 +194,69 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
     // Scroll the new form into view after React commits — otherwise on a
     // page with existing entries the user might miss that it opened.
     window.setTimeout(() => {
-      const el = document.querySelector('.manual-apps-form-card');
-      if (el && 'scrollIntoView' in el) {
-        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const el = document.querySelector(".manual-apps-form-card");
+      if (el && "scrollIntoView" in el) {
+        (el as HTMLElement).scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       }
     }, 0);
   }, [searchParams, sources, apps, openEdit]);
 
-  const update = (patch: Partial<FormState>) => setForm(prev => ({ ...prev, ...patch }));
+  const update = (patch: Partial<FormState>) =>
+    setForm((prev) => ({ ...prev, ...patch }));
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (busy) return;
+    if (busy) {
+      return;
+    }
 
     if (!form.name.trim()) {
-      setError(tManual('errors.name_required'));
+      setError(tManual("errors.name_required"));
       return;
     }
 
     setBusy(true);
-    setError('');
-    setFlash('');
+    setError("");
+    setFlash("");
     try {
       const body = toInput(form);
-      const endpoint = editingId ? `/api/manual-apps/${editingId}` : '/api/manual-apps';
-      const method = editingId ? 'PUT' : 'POST';
+      const endpoint = editingId
+        ? `/api/manual-apps/${editingId}`
+        : "/api/manual-apps";
+      const method = editingId ? "PUT" : "POST";
       const res = await fetch(endpoint, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json().catch(() => ({} as any));
+      const data = await res.json().catch(() => ({}) as any);
       if (!res.ok) {
-        throw new Error(data?.error ?? tManual('errors.request_failed'));
+        throw new Error(data?.error ?? tManual("errors.request_failed"));
       }
       const saved: ManualApp | undefined = data?.app;
-      if (!saved) throw new Error(tManual('errors.malformed_response'));
+      if (!saved) {
+        throw new Error(tManual("errors.malformed_response"));
+      }
 
-      setApps(prev => {
+      setApps((prev) => {
         if (editingId) {
-          return prev.map(a => (a.id === saved.id ? saved : a));
+          return prev.map((a) => (a.id === saved.id ? saved : a));
         }
         return [saved, ...prev];
       });
-      setFlash(editingId ? tManual('flash_saved') : tManual('flash_added', { name: saved.name }));
+      setFlash(
+        editingId
+          ? tManual("flash_saved")
+          : tManual("flash_added", { name: saved.name })
+      );
       closeForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : tManual('errors.save_failed'));
+      setError(
+        err instanceof Error ? err.message : tManual("errors.save_failed")
+      );
     } finally {
       setBusy(false);
     }
@@ -238,9 +267,11 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
    * inside `confirmDelete` once the user clicks Confirm in the modal.
    */
   const onDelete = (app: ManualApp) => {
-    if (busy) return;
-    setError('');
-    setFlash('');
+    if (busy) {
+      return;
+    }
+    setError("");
+    setFlash("");
     setPendingDelete(app);
   };
 
@@ -264,13 +295,17 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
 
   const pushManualUndo = useCallback((snapshot: ManualApp) => {
     const next = [...manualUndoStackRef.current, snapshot];
-    if (next.length > MAX_MANUAL_UNDO_OPS) next.shift();
+    if (next.length > MAX_MANUAL_UNDO_OPS) {
+      next.shift();
+    }
     manualUndoStackRef.current = next;
   }, []);
 
   const handleManualUndo = useCallback(async () => {
     const prev = manualUndoStackRef.current;
-    if (prev.length === 0) return;
+    if (prev.length === 0) {
+      return;
+    }
     const target = prev[prev.length - 1];
     manualUndoStackRef.current = prev.slice(0, -1);
 
@@ -278,17 +313,17 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       const res = await fetch(
         `/api/manual-apps/${encodeURIComponent(target.id)}/restore`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(target),
-        },
+        }
       );
       if (res.status === 409) {
         // Already exists — a sibling tab restored it, or the user
         // double-pressed Cmd+Z. Drop the op without an error toast.
         // Hardcoded string for now; the surface is small and adding
         // an i18n key per locale for "nothing to undo" can come later.
-        setFlash('↶ Nothing to undo');
+        setFlash("↶ Nothing to undo");
         return;
       }
       if (!res.ok) {
@@ -306,17 +341,21 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       // existing useEffect sort handle the rest if any sort logic
       // re-runs; if not, it shows up at the bottom which is still
       // a clear "this was just restored" signal.
-      setApps(prevApps => {
+      setApps((prevApps) => {
         // Defensive: don't double-insert if it raced into state from
         // somewhere else.
-        if (prevApps.some(a => a.id === body.app.id)) return prevApps;
+        if (prevApps.some((a) => a.id === body.app.id)) {
+          return prevApps;
+        }
         return [...prevApps, body.app];
       });
       setFlash(`Restored “${body.app.name}”.`);
-      setError('');
+      setError("");
     } catch (err) {
-      console.error('[manual-apps] undo failed:', err);
-      setError(err instanceof Error ? err.message : tManual('errors.delete_failed'));
+      console.error("[manual-apps] undo failed:", err);
+      setError(
+        err instanceof Error ? err.message : tManual("errors.delete_failed")
+      );
     }
     // tManual is the only outer dep we touch (for the error-fallback
     // string); ESLint can't tell it's stable across renders. The async
@@ -325,9 +364,11 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
   }, [tManual]);
 
   useEffect(() => {
-    const handler = () => { void handleManualUndo(); };
-    window.addEventListener('app:undo', handler);
-    return () => window.removeEventListener('app:undo', handler);
+    const handler = () => {
+      void handleManualUndo();
+    };
+    window.addEventListener("app:undo", handler);
+    return () => window.removeEventListener("app:undo", handler);
   }, [handleManualUndo]);
 
   /**
@@ -336,17 +377,21 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
    */
   const confirmDelete = async () => {
     const app = pendingDelete;
-    if (!app || busy) return;
+    if (!app || busy) {
+      return;
+    }
     setBusy(true);
-    setError('');
-    setFlash('');
+    setError("");
+    setFlash("");
     try {
-      const res = await fetch(`/api/manual-apps/${app.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/manual-apps/${app.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? tManual('errors.delete_failed'));
+        throw new Error(data?.error ?? tManual("errors.delete_failed"));
       }
-      setApps(prev => prev.filter(a => a.id !== app.id));
+      setApps((prev) => prev.filter((a) => a.id !== app.id));
       setPendingDelete(null);
       // Push the FULL deleted row onto the undo stack so Cmd+Z can
       // restore everything the user typed (name, developer, privacy
@@ -355,9 +400,13 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       // restoration.
       pushManualUndo(app);
       setFlash(`Removed “${app.name}”. Press ⌘Z to undo.`);
-      if (editingId === app.id) closeForm();
+      if (editingId === app.id) {
+        closeForm();
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : tManual('errors.delete_failed'));
+      setError(
+        err instanceof Error ? err.message : tManual("errors.delete_failed")
+      );
     } finally {
       setBusy(false);
     }
@@ -367,22 +416,27 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
     <main className="page manual-apps-page">
       <header className="manual-apps-header">
         <div>
-          <div className="manual-apps-eyebrow">{tManual('eyebrow')}</div>
-          <h1 className="manual-apps-title">{tManual('page_title')}</h1>
+          <div className="manual-apps-eyebrow">{tManual("eyebrow")}</div>
+          <h1 className="manual-apps-title">{tManual("page_title")}</h1>
           <p className="manual-apps-intro">
-            Track installs that don’t have an App Store listing — Safari web apps, TestFlight
-            betas, personal Xcode builds, and sideloaded apps from third-party marketplaces.
-            The App Store privacy labels won’t apply to these, so record what you know
-            (privacy policy link, developer, notes) and keep them in one place.
+            Track installs that don’t have an App Store listing — Safari web
+            apps, TestFlight betas, personal Xcode builds, and sideloaded apps
+            from third-party marketplaces. The App Store privacy labels won’t
+            apply to these, so record what you know (privacy policy link,
+            developer, notes) and keep them in one place.
           </p>
         </div>
 
-        {!creating && !editingId && (
+        {!(creating || editingId) && (
           <div className="manual-apps-actions">
-            <button type="button" className="btn btn-primary" onClick={openCreate}>
+            <button
+              className="btn btn-primary"
+              onClick={openCreate}
+              type="button"
+            >
               + Add manual app
             </button>
-            <Link href="/dashboard" className="btn btn-ghost">
+            <Link className="btn btn-ghost" href="/dashboard">
               Back to dashboard
             </Link>
           </div>
@@ -396,46 +450,63 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       )}
 
       {(creating || editingId) && (
-        <section className="manual-apps-form-card" aria-label={editingId ? tManual('form_title_edit') : tManual('form_title_add')}>
+        <section
+          aria-label={
+            editingId ? tManual("form_title_edit") : tManual("form_title_add")
+          }
+          className="manual-apps-form-card"
+        >
           <h2 className="manual-apps-form-title">
-            {editingId ? tManual('form_title_edit') : tManual('form_title_add')}
+            {editingId ? tManual("form_title_edit") : tManual("form_title_add")}
           </h2>
 
-          <form onSubmit={onSubmit} className="manual-apps-form">
+          <form className="manual-apps-form" onSubmit={onSubmit}>
             <label className="manual-apps-field">
               <span className="manual-apps-label">Name</span>
               <input
-                type="text"
                 className="settings-input"
-                required
-                maxLength={120}
-                value={form.name}
-                onChange={e => update({ name: e.target.value })}
-                placeholder="e.g. News of the World (web app)"
                 disabled={busy}
+                maxLength={120}
+                onChange={(e) => update({ name: e.target.value })}
+                placeholder="e.g. News of the World (web app)"
+                required
+                type="text"
+                value={form.name}
               />
             </label>
 
-            <fieldset className="manual-apps-source-group" aria-label={tManual('source_group_aria')}>
-              <legend className="manual-apps-label">{tManual('source_legend')}</legend>
+            <fieldset
+              aria-label={tManual("source_group_aria")}
+              className="manual-apps-source-group"
+            >
+              <legend className="manual-apps-label">
+                {tManual("source_legend")}
+              </legend>
               <div className="manual-apps-source-grid">
-                {sources.map(src => {
+                {sources.map((src) => {
                   const active = form.source === src.value;
                   return (
                     <button
-                      key={src.value}
-                      type="button"
-                      role="radio"
                       aria-checked={active}
-                      className={`manual-apps-source-card ${active ? 'active' : ''}`}
-                      onClick={() => update({ source: src.value })}
+                      className={`manual-apps-source-card ${active ? "active" : ""}`}
                       disabled={busy}
+                      key={src.value}
+                      onClick={() => update({ source: src.value })}
+                      role="radio"
+                      type="button"
                     >
-                      <span className="manual-apps-source-icon" aria-hidden="true">
+                      <span
+                        aria-hidden="true"
+                        className="manual-apps-source-icon"
+                      >
                         {src.icon}
                       </span>
-                      <span className="manual-apps-source-label">{tSource(`${src.value}_label`)}</span>
-                      <span className="manual-apps-source-copy">{tSource(`${src.value}_desc`)}</span>
+                      <span className="manual-apps-source-label">
+                        {tSource(`${src.value}_label`)}
+                      </span>
+                      <span className="manual-apps-source-copy">
+                        {tSource(`${src.value}_desc`)}
+                      </span>
                     </button>
                   );
                 })}
@@ -443,50 +514,56 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
             </fieldset>
 
             <label className="manual-apps-field">
-              <span className="manual-apps-label">{tManual('developer_label')}</span>
+              <span className="manual-apps-label">
+                {tManual("developer_label")}
+              </span>
               <input
-                type="text"
                 className="settings-input"
-                maxLength={120}
-                value={form.developer}
-                onChange={e => update({ developer: e.target.value })}
-                placeholder={tManual('developer_placeholder')}
                 disabled={busy}
+                maxLength={120}
+                onChange={(e) => update({ developer: e.target.value })}
+                placeholder={tManual("developer_placeholder")}
+                type="text"
+                value={form.developer}
               />
             </label>
 
             <label className="manual-apps-field">
-              <span className="manual-apps-label">{tManual('policy_url_label')}</span>
+              <span className="manual-apps-label">
+                {tManual("policy_url_label")}
+              </span>
               <input
-                type="url"
                 className="settings-input"
-                maxLength={512}
-                value={form.privacyPolicyUrl}
-                onChange={e => update({ privacyPolicyUrl: e.target.value })}
-                placeholder="https://example.com/privacy"
                 disabled={busy}
+                maxLength={512}
+                onChange={(e) => update({ privacyPolicyUrl: e.target.value })}
+                placeholder="https://example.com/privacy"
+                type="url"
+                value={form.privacyPolicyUrl}
               />
               <span className="manual-apps-hint">
-                Since there’s no App Store listing, paste the developer’s privacy policy
-                link if one exists.
+                Since there’s no App Store listing, paste the developer’s
+                privacy policy link if one exists.
               </span>
             </label>
 
             {currentSourceMeta?.supportsSourceUrl && (
               <label className="manual-apps-field">
-                <span className="manual-apps-label">{tManual('source_link_label')}</span>
+                <span className="manual-apps-label">
+                  {tManual("source_link_label")}
+                </span>
                 <input
-                  type="url"
                   className="settings-input"
-                  maxLength={512}
-                  value={form.sourceUrl}
-                  onChange={e => update({ sourceUrl: e.target.value })}
-                  placeholder={currentSourceMeta.sourceUrlPlaceholder}
                   disabled={busy}
+                  maxLength={512}
+                  onChange={(e) => update({ sourceUrl: e.target.value })}
+                  placeholder={currentSourceMeta.sourceUrlPlaceholder}
+                  type="url"
+                  value={form.sourceUrl}
                 />
                 <span className="manual-apps-hint">
-                  Optional. TestFlight invite, GitHub repository, marketplace listing — whatever
-                  lets a reviewer look it up.
+                  Optional. TestFlight invite, GitHub repository, marketplace
+                  listing — whatever lets a reviewer look it up.
                 </span>
               </label>
             )}
@@ -495,12 +572,12 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
               <span className="manual-apps-label">Notes</span>
               <textarea
                 className="settings-input manual-apps-textarea"
-                rows={3}
-                maxLength={2000}
-                value={form.notes}
-                onChange={e => update({ notes: e.target.value })}
-                placeholder={tManual('notes_placeholder')}
                 disabled={busy}
+                maxLength={2000}
+                onChange={(e) => update({ notes: e.target.value })}
+                placeholder={tManual("notes_placeholder")}
+                rows={3}
+                value={form.notes}
               />
             </label>
 
@@ -511,26 +588,32 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
             )}
 
             <div className="manual-apps-form-actions">
-              <button type="submit" className="btn btn-primary" disabled={busy}>
-                {busy ? tManual('saving') : editingId ? tManual('save_changes') : tManual('add_app')}
+              <button className="btn btn-primary" disabled={busy} type="submit">
+                {busy
+                  ? tManual("saving")
+                  : editingId
+                    ? tManual("save_changes")
+                    : tManual("add_app")}
               </button>
               <button
-                type="button"
                 className="btn btn-ghost"
-                onClick={closeForm}
                 disabled={busy}
+                onClick={closeForm}
+                type="button"
               >
                 Cancel
               </button>
               {editingId && (
                 <button
-                  type="button"
                   className="btn btn-danger manual-apps-delete"
-                  onClick={() => {
-                    const target = apps.find(a => a.id === editingId);
-                    if (target) onDelete(target);
-                  }}
                   disabled={busy}
+                  onClick={() => {
+                    const target = apps.find((a) => a.id === editingId);
+                    if (target) {
+                      onDelete(target);
+                    }
+                  }}
+                  type="button"
                 >
                   Delete
                 </button>
@@ -542,23 +625,26 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
 
       {apps.length === 0 ? (
         <section className="manual-apps-empty">
-          <div className="manual-apps-empty-icon" aria-hidden="true">📭</div>
-          <h2>{tManual('empty_title')}</h2>
+          <div aria-hidden="true" className="manual-apps-empty-icon">
+            📭
+          </div>
+          <h2>{tManual("empty_title")}</h2>
           <p>
-            Add a Safari web app, TestFlight beta, personal build, or sideloaded install to track
-            it alongside your App Store apps. Use <strong>+ Add manual app</strong> above to start.
+            Add a Safari web app, TestFlight beta, personal build, or sideloaded
+            install to track it alongside your App Store apps. Use{" "}
+            <strong>+ Add manual app</strong> above to start.
           </p>
         </section>
       ) : (
-        <ul className="manual-apps-list" aria-label={tManual('list_aria')}>
-          {apps.map(app => {
+        <ul aria-label={tManual("list_aria")} className="manual-apps-list">
+          {apps.map((app) => {
             const meta = sourceMeta.get(app.source);
             return (
-              <li key={app.id} className="manual-apps-row">
+              <li className="manual-apps-row" key={app.id}>
                 <div className="manual-apps-row-main">
                   <div className="manual-apps-row-heading">
-                    <span className="manual-apps-row-icon" aria-hidden="true">
-                      {meta?.icon ?? '📦'}
+                    <span aria-hidden="true" className="manual-apps-row-icon">
+                      {meta?.icon ?? "📦"}
                     </span>
                     <div className="manual-apps-row-titleblock">
                       <div className="manual-apps-row-name">{app.name}</div>
@@ -569,7 +655,9 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                         {app.developer && (
                           <>
                             <span aria-hidden="true"> · </span>
-                            <span className="manual-apps-row-developer">{app.developer}</span>
+                            <span className="manual-apps-row-developer">
+                              {app.developer}
+                            </span>
                           </>
                         )}
                         <span aria-hidden="true"> · </span>
@@ -584,57 +672,63 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                     <div className="manual-apps-row-body">
                       {app.privacyPolicyUrl && (
                         <div className="manual-apps-row-link">
-                          <span className="manual-apps-row-linklabel">{tManual('row_policy_label')}</span>{' '}
+                          <span className="manual-apps-row-linklabel">
+                            {tManual("row_policy_label")}
+                          </span>{" "}
                           <a
-                            href={app.privacyPolicyUrl}
-                            target="_blank"
-                            rel="noreferrer noopener"
                             className="manual-apps-row-linkbody"
+                            href={app.privacyPolicyUrl}
+                            rel="noreferrer noopener"
+                            target="_blank"
                           >
-                            <Favicon url={app.privacyPolicyUrl} size={16} />
+                            <Favicon size={16} url={app.privacyPolicyUrl} />
                             <span>{app.privacyPolicyUrl}</span>
                           </a>
                         </div>
                       )}
                       {app.sourceUrl && (
                         <div className="manual-apps-row-link">
-                          <span className="manual-apps-row-linklabel">{tManual('row_source_label')}</span>{' '}
+                          <span className="manual-apps-row-linklabel">
+                            {tManual("row_source_label")}
+                          </span>{" "}
                           <a
-                            href={app.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer noopener"
                             className="manual-apps-row-linkbody"
+                            href={app.sourceUrl}
+                            rel="noreferrer noopener"
+                            target="_blank"
                           >
-                            <Favicon url={app.sourceUrl} size={16} />
+                            <Favicon size={16} url={app.sourceUrl} />
                             <span>{app.sourceUrl}</span>
                           </a>
                         </div>
                       )}
-                      {app.notes && <p className="manual-apps-row-notes">{app.notes}</p>}
+                      {app.notes && (
+                        <p className="manual-apps-row-notes">{app.notes}</p>
+                      )}
                     </div>
                   )}
                 </div>
 
                 <div className="manual-apps-row-actions">
                   <Link
-                    href={`/manual-apps/${encodeURIComponent(app.id)}`}
                     className="btn btn-sm btn-secondary"
+                    href={`/manual-apps/${encodeURIComponent(app.id)}`}
                   >
                     View
                   </Link>
                   <button
-                    type="button"
                     className="btn btn-sm btn-ghost"
-                    onClick={() => openEdit(app)}
                     disabled={busy}
+                    onClick={() => openEdit(app)}
+                    type="button"
                   >
                     Edit
                   </button>
                   <button
-                    type="button"
                     className="btn btn-sm btn-danger"
-                    onClick={() => onDelete(app)}
                     disabled={busy}
+                    onClick={() => onDelete(app)}
+                    type="button"
                   >
                     Remove
                   </button>
@@ -654,47 +748,58 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       {pendingDelete && (
         <div
           className="modal-overlay"
-          onClick={() => { if (!busy) setPendingDelete(null); }}
+          onClick={() => {
+            if (!busy) {
+              setPendingDelete(null);
+            }
+          }}
         >
           <div
-            className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="manual-delete-title"
             aria-describedby="manual-delete-copy"
-            onClick={event => event.stopPropagation()}
-            onKeyDown={event => {
-              if (event.key === 'Escape' && !busy) setPendingDelete(null);
+            aria-labelledby="manual-delete-title"
+            aria-modal="true"
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !busy) {
+                setPendingDelete(null);
+              }
             }}
+            role="dialog"
           >
-            <div className="modal-badge">{tManual('remove_modal_badge')}</div>
-            <h2 id="manual-delete-title" className="modal-title">
+            <div className="modal-badge">{tManual("remove_modal_badge")}</div>
+            <h2 className="modal-title" id="manual-delete-title">
               Remove {pendingDelete.name}?
             </h2>
-            <p id="manual-delete-copy" className="modal-copy">
-              This deletes the manual app entry along with its source
-              URL, developer field, and any notes you&rsquo;ve attached.
-              You can recreate the entry later if you change your mind.
+            <p className="modal-copy" id="manual-delete-copy">
+              This deletes the manual app entry along with its source URL,
+              developer field, and any notes you&rsquo;ve attached. You can
+              recreate the entry later if you change your mind.
             </p>
             <div className="modal-actions">
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => setPendingDelete(null)}
                 disabled={busy}
+                onClick={() => setPendingDelete(null)}
+                type="button"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() => void confirmDelete()}
-                disabled={busy}
                 autoFocus
+                className="btn btn-danger"
+                disabled={busy}
+                onClick={() => void confirmDelete()}
+                type="button"
               >
-                {busy
-                  ? <><span className="spinner-sm" aria-hidden="true" /> {tManual('removing')}</>
-                  : tManual('remove_app')}
+                {busy ? (
+                  <>
+                    <span aria-hidden="true" className="spinner-sm" />{" "}
+                    {tManual("removing")}
+                  </>
+                ) : (
+                  tManual("remove_app")
+                )}
               </button>
             </div>
           </div>

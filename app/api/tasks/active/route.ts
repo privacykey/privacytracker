@@ -1,9 +1,10 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import db from '../../../../lib/db';
-import { describeCurrentRun as describeWaybackRun } from '../../../../lib/wayback-bulk-runner';
-import { describeCurrentSyncRun } from '../../../../lib/sync-bulk-runner';
-import { describeCurrentPolicyRun } from '../../../../lib/policy-bulk-runner';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import db from "../../../../lib/db";
+import { describeCurrentPolicyRun } from "../../../../lib/policy-bulk-runner";
+import { describeCurrentSyncRun } from "../../../../lib/sync-bulk-runner";
+import { describeCurrentRun as describeWaybackRun } from "../../../../lib/wayback-bulk-runner";
 
 /**
  * Unified snapshot of every crash-safe bulk job currently in flight.
@@ -32,12 +33,15 @@ import { describeCurrentPolicyRun } from '../../../../lib/policy-bulk-runner';
  */
 
 interface ActiveJobView {
-  running: boolean;
-  mutexHeld: boolean;
-  stale: boolean;
-  status?: string;
-  initiator: 'manual' | 'scheduled' | 'automatic' | 'resume' | null;
   currentAppName: string | null;
+  initiator: "manual" | "scheduled" | "automatic" | "resume" | null;
+  mutexHeld: boolean;
+  /** Run UUID so clients can tell a fresh run apart from the previous one. */
+  runId: string | null;
+  running: boolean;
+  stale: boolean;
+  startedAt: number | null;
+  status?: string;
   /** Same shape as each runner's per-status counts. */
   summary: {
     total: number;
@@ -49,19 +53,16 @@ interface ActiveJobView {
   } | null;
   /** Rolling totals when a state blob exists, otherwise null. */
   totals: unknown | null;
-  /** Run UUID so clients can tell a fresh run apart from the previous one. */
-  runId: string | null;
-  startedAt: number | null;
   updatedAt: number | null;
 }
 
 interface ActivePolicyRunView {
   appId: string;
   appName: string | null;
-  runStartedAt: number | null;
-  updatedAt: number | null;
   lastPhase: string | null;
   lastPhaseNote: string | null;
+  runStartedAt: number | null;
+  updatedAt: number | null;
 }
 
 function viewWayback(): ActiveJobView {
@@ -121,26 +122,28 @@ function viewPolicyRuns(): ActivePolicyRunView[] {
          LEFT JOIN apps a ON a.id = p.app_id
         WHERE p.run_status = 'running'
         ORDER BY COALESCE(p.run_started_at, p.updated_at) ASC
-        LIMIT 10`,
+        LIMIT 10`
     )
     .all() as Array<{
-      app_id: string;
-      app_name: string | null;
-      run_started_at: number | null;
-      updated_at: number | null;
-      last_run_log: string | null;
-    }>;
+    app_id: string;
+    app_name: string | null;
+    run_started_at: number | null;
+    updated_at: number | null;
+    last_run_log: string | null;
+  }>;
 
-  return rows.map(row => {
+  return rows.map((row) => {
     let lastPhase: string | null = null;
     let lastPhaseNote: string | null = null;
     if (row.last_run_log) {
       try {
         const parsed = JSON.parse(row.last_run_log);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const tail = parsed[parsed.length - 1] as { phase?: unknown; note?: unknown } | undefined;
-          lastPhase = typeof tail?.phase === 'string' ? tail.phase : null;
-          lastPhaseNote = typeof tail?.note === 'string' ? tail.note : null;
+          const tail = parsed.at(-1) as
+            | { phase?: unknown; note?: unknown }
+            | undefined;
+          lastPhase = typeof tail?.phase === "string" ? tail.phase : null;
+          lastPhaseNote = typeof tail?.note === "string" ? tail.note : null;
         }
       } catch {
         // Corrupt run logs should not break the task center poll.

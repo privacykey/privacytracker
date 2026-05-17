@@ -1,11 +1,11 @@
-import db from '../lib/db';
-import { START_OVER_TABLES_TO_TRUNCATE } from '../lib/reset-tables';
+import db from "../lib/db";
+import { START_OVER_TABLES_TO_TRUNCATE } from "../lib/reset-tables";
 
 export function resetTestDb(): void {
   for (const table of START_OVER_TABLES_TO_TRUNCATE) {
     db.prepare(`DELETE FROM ${table}`).run();
   }
-  db.prepare('DELETE FROM app_settings').run();
+  db.prepare("DELETE FROM app_settings").run();
 }
 
 export function seedTrackedApp(input: {
@@ -23,12 +23,12 @@ export function seedTrackedApp(input: {
     VALUES (?, ?, ?, '', ?, ?, ?, ?, 0)
   `).run(
     input.id,
-    input.name ?? 'Fixture App',
+    input.name ?? "Fixture App",
     input.url ?? `https://apps.apple.com/us/app/fixture/id${input.id}`,
-    input.developer ?? 'Fixture Developer',
-    input.privacyPolicyUrl ?? '',
+    input.developer ?? "Fixture Developer",
+    input.privacyPolicyUrl ?? "",
     now,
-    now,
+    now
   );
 }
 
@@ -52,7 +52,7 @@ export function seedPrivacyCategory(input: {
     `${typeId}_${input.categoryIdentifier}`,
     typeId,
     input.categoryIdentifier,
-    input.categoryTitle,
+    input.categoryTitle
   );
 }
 
@@ -72,6 +72,6 @@ export function seedAccessibilityFeature(input: {
     input.identifier,
     input.title,
     input.description ?? null,
-    input.iconTemplate ?? null,
+    input.iconTemplate ?? null
   );
 }

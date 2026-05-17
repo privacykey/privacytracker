@@ -10,15 +10,16 @@
  * is meant to be reachable even when the DB is in a weird state, since
  * "weird state" is exactly when the user wants to look at it.
  */
-import type { Metadata } from 'next';
-import Nav from '../../components/Nav';
-import DiagnosticsView from '../../components/DiagnosticsView';
+import type { Metadata } from "next";
+import DiagnosticsView from "../../components/DiagnosticsView";
+import Nav from "../../components/Nav";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: 'Diagnostics · privacytracker',
-  description: 'Live runtime metrics for the Node sidecar — memory, event-loop lag, slow queries.',
+  title: "Diagnostics · privacytracker",
+  description:
+    "Live runtime metrics for the Node sidecar — memory, event-loop lag, slow queries.",
 };
 
 export default function DiagnosticsPage() {

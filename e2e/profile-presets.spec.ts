@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from "@playwright/test";
 
 /**
  * E2E coverage for the privacy-profile preset row introduced alongside
@@ -24,7 +24,7 @@ import { expect, test } from '@playwright/test';
  */
 
 const sameOriginHeaders = {
-  origin: 'http://127.0.0.1:3000',
+  origin: "http://127.0.0.1:3000",
 };
 
 const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
@@ -38,10 +38,10 @@ test.beforeEach(async ({ request }) => {
   // fix, declutter also flips privacy_profile_setup on — but we leave it
   // off here so the first-time-user path runs against the same gate
   // onboarding-clock.spec.ts uses.)
-  const focus = await request.post('/api/focus', {
+  const focus = await request.post("/api/focus", {
     headers: sameOriginHeaders,
     data: {
-      audience: 'self',
+      audience: "self",
       understand: true,
       declutter: false,
       minimal: false,
@@ -52,7 +52,7 @@ test.beforeEach(async ({ request }) => {
 
   // Clear any saved profile so the test runs against a first-time
   // user (the only path where preset clicks apply without a confirm).
-  const cleared = await request.put('/api/privacy-profile', {
+  const cleared = await request.put("/api/privacy-profile", {
     headers: sameOriginHeaders,
     data: { profile: null },
   });
@@ -69,71 +69,86 @@ test.beforeEach(async ({ request }) => {
   // The first test (`/onboard/profile` preset flow) doesn't care
   // whether apps exist, so the extra seed is harmless to it.
   const seed = await request.post(
-    '/api/dev/seed-sample-data?source=canned&limit=1',
-    { headers: sameOriginHeaders },
+    "/api/dev/seed-sample-data?source=canned&limit=1",
+    { headers: sameOriginHeaders }
   );
   await expect(seed).toBeOK();
 });
 
-browserFlow('Strict preset fills every row, edits drop the highlight', async ({ page }) => {
-  await page.goto('/onboard/profile');
+browserFlow(
+  "Strict preset fills every row, edits drop the highlight",
+  async ({ page }) => {
+    await page.goto("/onboard/profile");
 
-  // The toggle starts off for first-time users (PrivacyProfileSetup wires
-  // enabled-state to hasExistingProfile, which is false on a cleared DB).
-  // /onboard/profile renders only the privacy-profile setup card, so a
-  // page-wide switch role lookup is unambiguous here.
-  const toggle = page.getByRole('switch');
-  await expect(toggle).toBeVisible();
-  if ((await toggle.getAttribute('aria-checked')) !== 'true') {
-    await toggle.click();
+    // The toggle starts off for first-time users (PrivacyProfileSetup wires
+    // enabled-state to hasExistingProfile, which is false on a cleared DB).
+    // /onboard/profile renders only the privacy-profile setup card, so a
+    // page-wide switch role lookup is unambiguous here.
+    const toggle = page.getByRole("switch");
+    await expect(toggle).toBeVisible();
+    if ((await toggle.getAttribute("aria-checked")) !== "true") {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    const strictPreset = page.locator(
+      '.privacy-profile-preset-pill[data-preset="strict"]'
+    );
+    const balancedPreset = page.locator(
+      '.privacy-profile-preset-pill[data-preset="balanced"]'
+    );
+    await expect(strictPreset).toBeVisible();
+
+    // Click Strict and verify it becomes the active preset. We deliberately
+    // don't pre-assert which preset (if any) is highlighted on first mount —
+    // the editor's local state seeds from DEFAULT_PROFILE which equals
+    // PROFILE_PRESETS.balanced, so in theory Balanced lights up immediately,
+    // but the user-visible contract is "click a preset → it activates", and
+    // that's what matters. Initial-mount highlighting is exercised by the
+    // unit tests in tests/profile-presets.test.ts.
+    await strictPreset.click();
+
+    // Strict picks up `.is-active`. No inline confirm bubble appears because
+    // PrivacyProfileSetup passes `confirmOnPresetApply={hasExistingProfile}`,
+    // which is false for first-time users.
+    await expect(strictPreset).toHaveClass(/is-active/);
+    await expect(strictPreset).toHaveAttribute("aria-checked", "true");
+    await expect(balancedPreset).not.toHaveClass(/is-active/);
+    await expect(page.locator(".privacy-profile-preset-confirm")).toHaveCount(
+      0
+    );
+
+    // Spot-check two rows from the Strict preset constants — LOCATION sits
+    // at not_collected and CONTACT_INFO sits at not_linked. The row's
+    // selected pill picks up `.is-selected`.
+    const locationRow = page.locator(".privacy-profile-strip-row").filter({
+      has: page.getByRole("radiogroup", { name: /Location/i }),
+    });
+    await expect(
+      locationRow.locator(
+        '.privacy-profile-pill[data-tier="not_collected"].is-selected'
+      )
+    ).toHaveCount(1);
+
+    const contactRow = page.locator(".privacy-profile-strip-row").filter({
+      has: page.getByRole("radiogroup", { name: /Contact Info/i }),
+    });
+    await expect(
+      contactRow.locator(
+        '.privacy-profile-pill[data-tier="not_linked"].is-selected'
+      )
+    ).toHaveCount(1);
+
+    // Now edit a single row — bump LOCATION up to 'tracking'. The Strict
+    // pill should drop its highlight; matchPreset returns null for the
+    // resulting custom profile.
+    await locationRow
+      .locator('.privacy-profile-pill[data-tier="tracking"]')
+      .click();
+    await expect(strictPreset).not.toHaveClass(/is-active/);
+    await expect(strictPreset).toHaveAttribute("aria-checked", "false");
   }
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
-
-  const strictPreset = page.locator('.privacy-profile-preset-pill[data-preset="strict"]');
-  const balancedPreset = page.locator('.privacy-profile-preset-pill[data-preset="balanced"]');
-  await expect(strictPreset).toBeVisible();
-
-  // Click Strict and verify it becomes the active preset. We deliberately
-  // don't pre-assert which preset (if any) is highlighted on first mount —
-  // the editor's local state seeds from DEFAULT_PROFILE which equals
-  // PROFILE_PRESETS.balanced, so in theory Balanced lights up immediately,
-  // but the user-visible contract is "click a preset → it activates", and
-  // that's what matters. Initial-mount highlighting is exercised by the
-  // unit tests in tests/profile-presets.test.ts.
-  await strictPreset.click();
-
-  // Strict picks up `.is-active`. No inline confirm bubble appears because
-  // PrivacyProfileSetup passes `confirmOnPresetApply={hasExistingProfile}`,
-  // which is false for first-time users.
-  await expect(strictPreset).toHaveClass(/is-active/);
-  await expect(strictPreset).toHaveAttribute('aria-checked', 'true');
-  await expect(balancedPreset).not.toHaveClass(/is-active/);
-  await expect(page.locator('.privacy-profile-preset-confirm')).toHaveCount(0);
-
-  // Spot-check two rows from the Strict preset constants — LOCATION sits
-  // at not_collected and CONTACT_INFO sits at not_linked. The row's
-  // selected pill picks up `.is-selected`.
-  const locationRow = page.locator('.privacy-profile-strip-row').filter({
-    has: page.getByRole('radiogroup', { name: /Location/i }),
-  });
-  await expect(
-    locationRow.locator('.privacy-profile-pill[data-tier="not_collected"].is-selected'),
-  ).toHaveCount(1);
-
-  const contactRow = page.locator('.privacy-profile-strip-row').filter({
-    has: page.getByRole('radiogroup', { name: /Contact Info/i }),
-  });
-  await expect(
-    contactRow.locator('.privacy-profile-pill[data-tier="not_linked"].is-selected'),
-  ).toHaveCount(1);
-
-  // Now edit a single row — bump LOCATION up to 'tracking'. The Strict
-  // pill should drop its highlight; matchPreset returns null for the
-  // resulting custom profile.
-  await locationRow.locator('.privacy-profile-pill[data-tier="tracking"]').click();
-  await expect(strictPreset).not.toHaveClass(/is-active/);
-  await expect(strictPreset).toHaveAttribute('aria-checked', 'false');
-});
+);
 
 // ---------------------------------------------------------------------------
 // Spec: Settings → Privacy Profile preset confirm-and-replace
@@ -145,104 +160,117 @@ browserFlow('Strict preset fills every row, edits drop the highlight', async ({ 
 // a preset pill that doesn't match their saved profile, the editor must
 // pop the inline confirm bubble before applying.
 
-browserFlow('Settings preset click on a saved custom profile shows the confirm bubble', async ({ page, request }) => {
-  // Save a custom (non-preset) profile via API so the editor mounts in
-  // a state where matchPreset returns null. Two-category sparse profile
-  // is enough — applying any preset must replace it wholesale.
-  const seedSparse = await request.put('/api/privacy-profile', {
-    headers: sameOriginHeaders,
-    data: {
-      profile: {
-        LOCATION: 'tracking',
-        CONTACT_INFO: 'tracking',
+browserFlow(
+  "Settings preset click on a saved custom profile shows the confirm bubble",
+  async ({ page, request }) => {
+    // Save a custom (non-preset) profile via API so the editor mounts in
+    // a state where matchPreset returns null. Two-category sparse profile
+    // is enough — applying any preset must replace it wholesale.
+    const seedSparse = await request.put("/api/privacy-profile", {
+      headers: sameOriginHeaders,
+      data: {
+        profile: {
+          LOCATION: "tracking",
+          CONTACT_INFO: "tracking",
+        },
       },
-    },
-  });
-  await expect(seedSparse).toBeOK();
+    });
+    await expect(seedSparse).toBeOK();
 
-  // Navigate via the deep-link hash so Settings auto-scrolls to the
-  // privacy-profile section. The page also has a one-shot pulse for
-  // hash deep-links — we don't assert on it, just confirm the section
-  // is reachable and the editor is mounted with the saved profile.
-  await page.goto('/dashboard/settings#privacy-profile');
+    // Navigate via the deep-link hash so Settings auto-scrolls to the
+    // privacy-profile section. The page also has a one-shot pulse for
+    // hash deep-links — we don't assert on it, just confirm the section
+    // is reachable and the editor is mounted with the saved profile.
+    await page.goto("/dashboard/settings#privacy-profile");
 
-  const section = page.locator('#privacy-profile');
-  await expect(section).toBeVisible();
+    const section = page.locator("#privacy-profile");
+    await expect(section).toBeVisible();
 
-  // The toggle should already be ON because there's a saved profile.
-  const toggle = section.locator('[role="switch"]').first();
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    // The toggle should already be ON because there's a saved profile.
+    const toggle = section.locator('[role="switch"]').first();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
 
-  const strictPreset = section.locator('.privacy-profile-preset-pill[data-preset="strict"]');
-  await expect(strictPreset).toBeVisible();
+    const strictPreset = section.locator(
+      '.privacy-profile-preset-pill[data-preset="strict"]'
+    );
+    await expect(strictPreset).toBeVisible();
 
-  // Pre-state: matchPreset(saved profile) returns null because the saved
-  // profile is sparse (only 2 of 14 categories). No preset pill is active.
-  await expect(section.locator('.privacy-profile-preset-pill.is-active')).toHaveCount(0);
+    // Pre-state: matchPreset(saved profile) returns null because the saved
+    // profile is sparse (only 2 of 14 categories). No preset pill is active.
+    await expect(
+      section.locator(".privacy-profile-preset-pill.is-active")
+    ).toHaveCount(0);
 
-  // Click Strict — Settings keeps confirmOnPresetApply at its default
-  // (true), so the inline bubble must appear before the profile is
-  // replaced. The pill's aria-checked stays false until confirm.
-  await strictPreset.click();
+    // Click Strict — Settings keeps confirmOnPresetApply at its default
+    // (true), so the inline bubble must appear before the profile is
+    // replaced. The pill's aria-checked stays false until confirm.
+    await strictPreset.click();
 
-  const confirmBubble = section.locator('.privacy-profile-preset-confirm');
-  await expect(confirmBubble).toBeVisible();
-  await expect(strictPreset).not.toHaveClass(/is-active/);
+    const confirmBubble = section.locator(".privacy-profile-preset-confirm");
+    await expect(confirmBubble).toBeVisible();
+    await expect(strictPreset).not.toHaveClass(/is-active/);
 
-  // Click Replace inside the bubble — the editor's Replace button
-  // shares the bubble container, so locate it relative to the bubble
-  // to avoid matching any other "Replace" buttons on the page.
-  await confirmBubble.getByRole('button', { name: /replace/i }).click();
+    // Click Replace inside the bubble — the editor's Replace button
+    // shares the bubble container, so locate it relative to the bubble
+    // to avoid matching any other "Replace" buttons on the page.
+    await confirmBubble.getByRole("button", { name: /replace/i }).click();
 
-  // Bubble dismisses, Strict becomes active, and the per-row pills
-  // update to Strict's tier map. Spot-check LOCATION (not_collected)
-  // and CONTACT_INFO (not_linked) to prove the wholesale replace happened.
-  await expect(confirmBubble).toHaveCount(0);
-  await expect(strictPreset).toHaveClass(/is-active/);
+    // Bubble dismisses, Strict becomes active, and the per-row pills
+    // update to Strict's tier map. Spot-check LOCATION (not_collected)
+    // and CONTACT_INFO (not_linked) to prove the wholesale replace happened.
+    await expect(confirmBubble).toHaveCount(0);
+    await expect(strictPreset).toHaveClass(/is-active/);
 
-  const locationRow = section.locator('.privacy-profile-strip-row').filter({
-    has: page.getByRole('radiogroup', { name: /Location/i }),
-  });
-  await expect(
-    locationRow.locator('.privacy-profile-pill[data-tier="not_collected"].is-selected'),
-  ).toHaveCount(1);
+    const locationRow = section.locator(".privacy-profile-strip-row").filter({
+      has: page.getByRole("radiogroup", { name: /Location/i }),
+    });
+    await expect(
+      locationRow.locator(
+        '.privacy-profile-pill[data-tier="not_collected"].is-selected'
+      )
+    ).toHaveCount(1);
 
-  const contactRow = section.locator('.privacy-profile-strip-row').filter({
-    has: page.getByRole('radiogroup', { name: /Contact Info/i }),
-  });
-  await expect(
-    contactRow.locator('.privacy-profile-pill[data-tier="not_linked"].is-selected'),
-  ).toHaveCount(1);
+    const contactRow = section.locator(".privacy-profile-strip-row").filter({
+      has: page.getByRole("radiogroup", { name: /Contact Info/i }),
+    });
+    await expect(
+      contactRow.locator(
+        '.privacy-profile-pill[data-tier="not_linked"].is-selected'
+      )
+    ).toHaveCount(1);
 
-  // Final round-trip: the saved profile on the server should now be
-  // a complete Strict profile (14 categories), not the sparse seed.
-  // The editor debounces saves at 500 ms — wait that out plus a small
-  // safety margin before reading the server state.
-  await page.waitForTimeout(900);
-  const verify = await request.get('/api/privacy-profile');
-  await expect(verify).toBeOK();
-  const body = (await verify.json()) as { profile: Record<string, string> | null };
-  expect(body.profile).not.toBeNull();
-  expect(body.profile?.LOCATION).toBe('not_collected');
-  expect(body.profile?.CONTACT_INFO).toBe('not_linked');
-  expect(Object.keys(body.profile ?? {})).toHaveLength(14);
+    // Final round-trip: the saved profile on the server should now be
+    // a complete Strict profile (14 categories), not the sparse seed.
+    // The editor debounces saves at 500 ms — wait that out plus a small
+    // safety margin before reading the server state.
+    await page.waitForTimeout(900);
+    const verify = await request.get("/api/privacy-profile");
+    await expect(verify).toBeOK();
+    const body = (await verify.json()) as {
+      profile: Record<string, string> | null;
+    };
+    expect(body.profile).not.toBeNull();
+    expect(body.profile?.LOCATION).toBe("not_collected");
+    expect(body.profile?.CONTACT_INFO).toBe("not_linked");
+    expect(Object.keys(body.profile ?? {})).toHaveLength(14);
 
-  // The save also writes a `profile_preset_applied` activity row so
-  // users can trace why their mismatch counts shifted overnight. The
-  // sparse seed in beforeEach didn't match a preset (so no row from
-  // that PUT), and Strict definitely does — verify the top row of
-  // the type-filtered feed captures the transition.
-  const activityRes = await request.get(
-    '/api/activity?type=profile_preset_applied&limit=5',
-  );
-  await expect(activityRes).toBeOK();
-  const activity = (await activityRes.json()) as {
-    rows: Array<{
-      summary: string | null;
-      detail: Record<string, unknown> | null;
-    }>;
-  };
-  expect(activity.rows.length).toBeGreaterThan(0);
-  expect(activity.rows[0].summary).toBe('Privacy profile changed to Strict');
-  expect(activity.rows[0].detail).toMatchObject({ from: null, to: 'strict' });
-});
+    // The save also writes a `profile_preset_applied` activity row so
+    // users can trace why their mismatch counts shifted overnight. The
+    // sparse seed in beforeEach didn't match a preset (so no row from
+    // that PUT), and Strict definitely does — verify the top row of
+    // the type-filtered feed captures the transition.
+    const activityRes = await request.get(
+      "/api/activity?type=profile_preset_applied&limit=5"
+    );
+    await expect(activityRes).toBeOK();
+    const activity = (await activityRes.json()) as {
+      rows: Array<{
+        summary: string | null;
+        detail: Record<string, unknown> | null;
+      }>;
+    };
+    expect(activity.rows.length).toBeGreaterThan(0);
+    expect(activity.rows[0].summary).toBe("Privacy profile changed to Strict");
+    expect(activity.rows[0].detail).toMatchObject({ from: null, to: "strict" });
+  }
+);

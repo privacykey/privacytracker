@@ -1,77 +1,106 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-import InfoTooltip from './InfoTooltip';
-import { categoryLabel, severityLabel } from '../../lib/i18n-meta';
-
-import { CATEGORY_META, SEVERITY_CONFIG } from '../../lib/privacy-meta';
+import Image from "next/image";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
+import { categoryLabel, severityLabel } from "../../lib/i18n-meta";
+import { CATEGORY_META, SEVERITY_CONFIG } from "../../lib/privacy-meta";
+import InfoTooltip from "./InfoTooltip";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
-interface AppRef { id: string; name: string; iconUrl?: string; }
-interface CategoryEntry { identifier: string; title: string; apps: AppRef[]; riskWeight?: number; }
-interface PrivacyGroup { identifier: string; title: string; detail?: string; categories: CategoryEntry[]; }
+interface AppRef {
+  iconUrl?: string;
+  id: string;
+  name: string;
+}
+interface CategoryEntry {
+  apps: AppRef[];
+  identifier: string;
+  riskWeight?: number;
+  title: string;
+}
+interface PrivacyGroup {
+  categories: CategoryEntry[];
+  detail?: string;
+  identifier: string;
+  title: string;
+}
 
 // ── Main component ────────────────────────────────────────────────────
 
-export default function PrivacyGroupedView({ initialData }: { initialData: PrivacyGroup[] }) {
-  const tMap = useTranslations('privacy_map');
-  const [search, setSearch] = useState('');
+export default function PrivacyGroupedView({
+  initialData,
+}: {
+  initialData: PrivacyGroup[];
+}) {
+  const tMap = useTranslations("privacy_map");
+  const [search, setSearch] = useState("");
 
   // If the user landed here via a deep-link like
   // `/dashboard/privacy#cat-DATA_LINKED_TO_YOU-USER_CONTENT` we capture both
   // the privacy-type id and the category id so sibling categories with the
   // same identifier under a different privacy type (e.g. Usage Data appears
   // under both Linked and Not Linked) are disambiguated.
-  const [target, setTarget] = useState<{ typeId: string; catId: string } | null>(null);
+  const [target, setTarget] = useState<{
+    typeId: string;
+    catId: string;
+  } | null>(null);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") {
+      return;
+    }
     const readHash = () => {
       const hash = window.location.hash;
-      if (!hash.startsWith('#cat-')) {
+      if (!hash.startsWith("#cat-")) {
         setTarget(null);
         return;
       }
-      const rest = decodeURIComponent(hash.slice('#cat-'.length));
+      const rest = decodeURIComponent(hash.slice("#cat-".length));
       // Privacy-type identifiers (DATA_USED_TO_TRACK_YOU, DATA_LINKED_TO_YOU,
       // DATA_NOT_LINKED_TO_YOU) use underscores only — no hyphens — so the
       // first hyphen reliably separates the type id from the category id.
-      const sep = rest.indexOf('-');
+      const sep = rest.indexOf("-");
       if (sep > 0 && sep < rest.length - 1) {
         setTarget({ typeId: rest.slice(0, sep), catId: rest.slice(sep + 1) });
       } else {
         // Back-compat: if there's no scope prefix, treat the whole string as
         // a bare category id (first match wins).
-        setTarget({ typeId: '', catId: rest });
+        setTarget({ typeId: "", catId: rest });
       }
     };
     readHash();
-    window.addEventListener('hashchange', readHash);
-    return () => window.removeEventListener('hashchange', readHash);
+    window.addEventListener("hashchange", readHash);
+    return () => window.removeEventListener("hashchange", readHash);
   }, []);
 
   const filtered = initialData
-    .map(group => ({
+    .map((group) => ({
       ...group,
-      categories: group.categories.filter(c =>
-        !search ||
-        c.title.toLowerCase().includes(search.toLowerCase()) ||
-        c.apps.some(a => a.name.toLowerCase().includes(search.toLowerCase()))
+      categories: group.categories.filter(
+        (c) =>
+          !search ||
+          c.title.toLowerCase().includes(search.toLowerCase()) ||
+          c.apps.some((a) =>
+            a.name.toLowerCase().includes(search.toLowerCase())
+          )
       ),
     }))
-    .filter(group => group.categories.length > 0);
+    .filter((group) => group.categories.length > 0);
 
   if (initialData.length === 0) {
     return (
       <div className="page-container">
         <div className="empty-state">
           <div className="empty-state-icon">🗺</div>
-          <div className="empty-state-title">{tMap('empty_no_data_title')}</div>
+          <div className="empty-state-title">{tMap("empty_no_data_title")}</div>
           <p className="empty-state-text">
-            {tMap('empty_no_data_pre')}<Link href="/onboard" style={{ color: 'var(--blue)' }}>{tMap('empty_no_data_link')}</Link>{tMap('empty_no_data_post')}
+            {tMap("empty_no_data_pre")}
+            <Link href="/onboard" style={{ color: "var(--blue)" }}>
+              {tMap("empty_no_data_link")}
+            </Link>
+            {tMap("empty_no_data_post")}
           </p>
         </div>
       </div>
@@ -82,8 +111,8 @@ export default function PrivacyGroupedView({ initialData }: { initialData: Priva
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">{tMap('page_title')}</h1>
-          <p className="page-subtitle">{tMap('page_subtitle')}</p>
+          <h1 className="page-title">{tMap("page_title")}</h1>
+          <p className="page-subtitle">{tMap("page_subtitle")}</p>
         </div>
       </div>
 
@@ -91,11 +120,11 @@ export default function PrivacyGroupedView({ initialData }: { initialData: Priva
         <div className="search-input-wrap">
           <span className="search-icon">⌕</span>
           <input
-            type="search"
             className="search-input"
-            placeholder={tMap('filter_placeholder')}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={tMap("filter_placeholder")}
+            type="search"
             value={search}
-            onChange={e => setSearch(e.target.value)}
           />
         </div>
       </div>
@@ -103,13 +132,13 @@ export default function PrivacyGroupedView({ initialData }: { initialData: Priva
       {filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">🔍</div>
-          <div className="empty-state-title">{tMap('empty_no_match')}</div>
+          <div className="empty-state-title">{tMap("empty_no_match")}</div>
         </div>
       ) : (
-        filtered.map(group => (
+        filtered.map((group) => (
           <PrivacySection
-            key={group.identifier}
             group={group}
+            key={group.identifier}
             target={target}
           />
         ))
@@ -128,12 +157,15 @@ function PrivacySection({
   // Localised severity label — falls back to the English meta label
   // (then the group's own title) when the identifier hasn't been
   // mapped into the `severity.*` namespace yet.
-  const tSev = useTranslations('severity');
+  const tSev = useTranslations("severity");
   const config = SEVERITY_CONFIG[group.identifier];
-  const cls   = config?.cls  ?? 'severity-none';
-  const label = severityLabel(tSev, group.identifier) ?? config?.label ?? group.title;
-  const icon  = config?.icon ?? '🔍';
-  const totalApps = new Set(group.categories.flatMap(c => c.apps.map(a => a.id))).size;
+  const cls = config?.cls ?? "severity-none";
+  const label =
+    severityLabel(tSev, group.identifier) ?? config?.label ?? group.title;
+  const icon = config?.icon ?? "🔍";
+  const totalApps = new Set(
+    group.categories.flatMap((c) => c.apps.map((a) => a.id))
+  ).size;
 
   // A card is the deep-link target when:
   //   (a) the hash specified this section's privacy type AND the category id
@@ -141,8 +173,12 @@ function PrivacySection({
   //   (b) the hash is the legacy bare-category form with no type prefix, in
   //       which case any section's matching card can claim it.
   const isCardTarget = (catIdentifier: string): boolean => {
-    if (!target) return false;
-    if (target.typeId && target.typeId !== group.identifier) return false;
+    if (!target) {
+      return false;
+    }
+    if (target.typeId && target.typeId !== group.identifier) {
+      return false;
+    }
     return target.catId === catIdentifier;
   };
 
@@ -150,24 +186,26 @@ function PrivacySection({
     <section className="privacy-section">
       <div className="pmap-section-header">
         <div className="pmap-section-header-main">
-          <span className={`severity-badge ${cls}`}>{icon} {label}</span>
+          <span className={`severity-badge ${cls}`}>
+            {icon} {label}
+          </span>
           {config?.description && <InfoTooltip text={config.description} />}
         </div>
         <span className="pmap-section-count">
-          {group.categories.length} categor{group.categories.length !== 1 ? 'ies' : 'y'} · {totalApps} app{totalApps !== 1 ? 's' : ''}
+          {group.categories.length} categor
+          {group.categories.length === 1 ? "y" : "ies"} · {totalApps} app
+          {totalApps === 1 ? "" : "s"}
         </span>
-        {group.detail && (
-          <p className="pmap-section-detail">{group.detail}</p>
-        )}
+        {group.detail && <p className="pmap-section-detail">{group.detail}</p>}
       </div>
 
       <div className="pmap-grid">
-        {group.categories.map(cat => (
+        {group.categories.map((cat) => (
           <CategoryCard
-            key={cat.identifier}
-            category={cat}
             anchorId={`cat-${group.identifier}-${cat.identifier}`}
+            category={cat}
             isTarget={isCardTarget(cat.identifier)}
+            key={cat.identifier}
           />
         ))}
       </div>
@@ -184,14 +222,14 @@ function CategoryCard({
   anchorId: string;
   isTarget: boolean;
 }) {
-  const tMap = useTranslations('privacy_map');
+  const tMap = useTranslations("privacy_map");
   // Open the card automatically when it is the deep-link target so the user
   // immediately sees the full app list they came for.
   const [expanded, setExpanded] = useState(isTarget);
   const [pulsing, setPulsing] = useState(false);
   // Category card's localised label — same fallback chain as the
   // severity badge above. Local meta still drives icon + colour.
-  const tCat = useTranslations('category');
+  const tCat = useTranslations("category");
   const meta = CATEGORY_META[category.identifier];
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -199,16 +237,20 @@ function CategoryCard({
   // through React state (rather than classList.add) so the reconciler can't
   // accidentally strip the class during a concurrent re-render.
   useEffect(() => {
-    if (!isTarget) return;
+    if (!isTarget) {
+      return;
+    }
     const el = cardRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     setExpanded(true);
     setPulsing(false);
     // One-frame delay: gives the browser time to paint the neutral state
     // before we flip to `pulsing=true`, which guarantees the keyframes
     // animate from 0% instead of skipping straight to the settled values.
     const rafId = requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
       setPulsing(true);
     });
     const timer = window.setTimeout(() => setPulsing(false), 1900);
@@ -222,8 +264,9 @@ function CategoryCard({
   const shown = category.apps.slice(0, MAX_ICONS);
   const extra = category.apps.length - MAX_ICONS;
 
-  const label = categoryLabel(tCat, category.identifier) ?? meta?.label ?? category.title;
-  const icon = meta?.icon ?? '📂';
+  const label =
+    categoryLabel(tCat, category.identifier) ?? meta?.label ?? category.title;
+  const icon = meta?.icon ?? "📂";
 
   // Intrinsically sensitive categories (Sensitive Info / Location / Identifiers / Health)
   // are flagged beside the app count via a small muted chip that picks up colour on hover.
@@ -231,9 +274,9 @@ function CategoryCard({
 
   return (
     <div
+      className={`pmap-card ${expanded ? "is-expanded" : ""} ${isTarget ? "pmap-card-target" : ""} ${pulsing ? "pmap-card-pulse" : ""}`}
       id={anchorId}
       ref={cardRef}
-      className={`pmap-card ${expanded ? 'is-expanded' : ''} ${isTarget ? 'pmap-card-target' : ''} ${pulsing ? 'pmap-card-pulse' : ''}`}
     >
       {/*
         Card header — used to be a `<button>` but it nested another
@@ -251,38 +294,43 @@ function CategoryCard({
         depend on the element being a `<button>`.
       */}
       <div
-        role="button"
-        tabIndex={0}
-        className="pmap-card-header"
         aria-expanded={expanded}
-        onClick={() => setExpanded(v => !v)}
+        className="pmap-card-header"
+        onClick={() => setExpanded((v) => !v)}
         onKeyDown={(e) => {
           // Mirror the native <button> keyboard contract: Enter and
           // Space both activate. preventDefault on Space stops the
           // page from scrolling alongside our toggle.
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            setExpanded(v => !v);
+            setExpanded((v) => !v);
           }
         }}
+        role="button"
+        tabIndex={0}
       >
-        <span className="pmap-card-icon" aria-hidden="true">{icon}</span>
+        <span aria-hidden="true" className="pmap-card-icon">
+          {icon}
+        </span>
 
         <span className="pmap-card-title-block">
           <span className="pmap-card-title-row">
             <span className="pmap-card-title">{label}</span>
             {meta?.description && (
-              <span className="pmap-card-info" onClick={(e) => e.stopPropagation()}>
+              <span
+                className="pmap-card-info"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <InfoTooltip text={meta.description} />
               </span>
             )}
           </span>
           <span className="pmap-card-subtitle">
-            {category.apps.length} app{category.apps.length !== 1 ? 's' : ''}
+            {category.apps.length} app{category.apps.length === 1 ? "" : "s"}
             {isSensitive && (
               <span
                 className="pmap-card-sensitive-chip"
-                title={tMap('sensitive_category_title')}
+                title={tMap("sensitive_category_title")}
               >
                 sensitive
               </span>
@@ -290,9 +338,15 @@ function CategoryCard({
           </span>
         </span>
 
-        <span className="pmap-card-chevron" aria-hidden="true">
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2.5 4.25L6 7.75L9.5 4.25" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <span aria-hidden="true" className="pmap-card-chevron">
+          <svg fill="none" height="12" viewBox="0 0 12 12" width="12">
+            <path
+              d="M2.5 4.25L6 7.75L9.5 4.25"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.6"
+            />
           </svg>
         </span>
       </div>
@@ -303,44 +357,55 @@ function CategoryCard({
            an aria-label that makes its purpose unambiguous and keyboard
            users can reach it via Tab. */
         <button
-          type="button"
+          aria-label={`Show all ${category.apps.length} app${category.apps.length === 1 ? "" : "s"} in ${label}`}
           className="pmap-card-preview"
           onClick={() => setExpanded(true)}
-          aria-label={`Show all ${category.apps.length} app${category.apps.length !== 1 ? 's' : ''} in ${label}`}
+          type="button"
         >
-          <div className="pmap-preview-stack" aria-hidden="true">
+          <div aria-hidden="true" className="pmap-preview-stack">
             {shown.map((app, i) => (
-              <AppMiniIcon key={app.id} app={app} index={i} />
+              <AppMiniIcon app={app} index={i} key={app.id} />
             ))}
             {extra > 0 && (
-              <div className="pmap-preview-stack-item pmap-preview-more" style={{ zIndex: 10 }}>
+              <div
+                className="pmap-preview-stack-item pmap-preview-more"
+                style={{ zIndex: 10 }}
+              >
                 +{extra}
               </div>
             )}
           </div>
-          <span className="pmap-preview-hint">{tMap('preview_hint_tap')}</span>
+          <span className="pmap-preview-hint">{tMap("preview_hint_tap")}</span>
         </button>
       )}
 
       {expanded && (
         <div className="pmap-card-apps">
-          {category.apps.map(app => (
-            <Link key={app.id} href={`/apps/${app.id}`} className="pmap-app-row">
+          {category.apps.map((app) => (
+            <Link
+              className="pmap-app-row"
+              href={`/apps/${app.id}`}
+              key={app.id}
+            >
               {app.iconUrl ? (
                 <Image
-                  src={app.iconUrl}
                   alt=""
-                  width={32}
-                  height={32}
                   className="pmap-app-icon"
+                  height={32}
+                  src={app.iconUrl}
+                  style={{ objectFit: "cover" }}
                   unoptimized
-                  style={{ objectFit: 'cover' }}
+                  width={32}
                 />
               ) : (
-                <div className="pmap-app-icon pmap-app-icon-placeholder">{app.name[0]}</div>
+                <div className="pmap-app-icon pmap-app-icon-placeholder">
+                  {app.name[0]}
+                </div>
               )}
               <span className="pmap-app-name">{app.name}</span>
-              <span className="pmap-app-arrow" aria-hidden="true">→</span>
+              <span aria-hidden="true" className="pmap-app-arrow">
+                →
+              </span>
             </Link>
           ))}
         </div>
@@ -353,17 +418,17 @@ function AppMiniIcon({ app, index }: { app: AppRef; index: number }) {
   return (
     <div
       className="pmap-preview-stack-item"
-      title={app.name}
       style={{ zIndex: 5 - index }}
+      title={app.name}
     >
       {app.iconUrl ? (
         <Image
-          src={app.iconUrl}
           alt={app.name}
-          width={28}
           height={28}
-          style={{ borderRadius: 6, objectFit: 'cover' }}
+          src={app.iconUrl}
+          style={{ borderRadius: 6, objectFit: "cover" }}
           unoptimized
+          width={28}
         />
       ) : (
         <span className="pmap-preview-initial">{app.name[0]}</span>

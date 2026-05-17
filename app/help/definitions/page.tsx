@@ -1,27 +1,31 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { getLocale, getTranslations } from 'next-intl/server';
-import { CATEGORY_META, SEVERITY_CONFIG } from '../../../lib/privacy-meta';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getLocale, getTranslations } from "next-intl/server";
+import { resolveFlagFromDb } from "@/lib/feature-flags-server";
 import {
   categoryDescription,
   categoryLabel,
   severityLabel,
-} from '../../../lib/i18n-meta';
-import { countryLabel, DEFAULT_COUNTRY, normalizeCountry } from '../../../lib/region';
-import { getSetting } from '../../../lib/scheduler';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
+} from "../../../lib/i18n-meta";
+import { CATEGORY_META, SEVERITY_CONFIG } from "../../../lib/privacy-meta";
+import {
+  countryLabel,
+  DEFAULT_COUNTRY,
+  normalizeCountry,
+} from "../../../lib/region";
+import { getSetting } from "../../../lib/scheduler";
 
 export const metadata: Metadata = {
-  title: 'Privacy Label Definitions — privacytracker',
+  title: "Privacy Label Definitions — privacytracker",
   description:
-    'Definitions of Apple App Store privacy label terms — Data Used to Track You, Data Linked to You, Data Not Linked to You — and the data types developers may collect, with links to Apple\u2019s authoritative sources.',
+    "Definitions of Apple App Store privacy label terms — Data Used to Track You, Data Linked to You, Data Not Linked to You — and the data types developers may collect, with links to Apple\u2019s authoritative sources.",
 };
 
 // The page reads the stored storefront country from SQLite to build a
 // country-specific transparency report link, so it must not be statically
 // rendered at build time.
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // External Apple references. Apple maintains parallel localised pages
 // at /cn/ paths for the Chinese mainland audience — the App Privacy
@@ -49,20 +53,21 @@ export const dynamic = 'force-dynamic';
 // flattens them to plain `string` properties so the per-locale picker
 // can return either one without TS rejecting the assignment.
 interface AppleLinks {
+  accessibilityLabels: string;
+  appStoreStory: string;
+  developerDetails: string;
   labelsOverview: string;
   labelsSupport: string;
-  developerDetails: string;
-  appStoreStory: string;
   transparencyIndex: string;
-  accessibilityLabels: string;
 }
 
 const APPLE_LINKS_BASE: AppleLinks = {
-  labelsOverview: 'https://www.apple.com/au/privacy/labels/',
-  labelsSupport: 'https://support.apple.com/en-us/102399',
-  developerDetails: 'https://developer.apple.com/app-store/app-privacy-details/',
-  appStoreStory: 'https://apps.apple.com/us/story/id1539235847',
-  transparencyIndex: 'https://www.apple.com/legal/transparency/',
+  labelsOverview: "https://www.apple.com/au/privacy/labels/",
+  labelsSupport: "https://support.apple.com/en-us/102399",
+  developerDetails:
+    "https://developer.apple.com/app-store/app-privacy-details/",
+  appStoreStory: "https://apps.apple.com/us/story/id1539235847",
+  transparencyIndex: "https://www.apple.com/legal/transparency/",
   // Apple's "Overview of Accessibility Nutrition Labels" help page on
   // App Store Connect — the accessibility analogue of the App Privacy
   // Details page above. Surfaced at the top of this definitions page so
@@ -71,24 +76,25 @@ const APPLE_LINKS_BASE: AppleLinks = {
   // documents the actual per-label definitions developers must fill in,
   // which is the parallel of this page.
   accessibilityLabels:
-    'https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels',
+    "https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels",
 };
 
 const APPLE_LINKS_ZH: AppleLinks = {
   // /au/privacy/labels/ → /cn/privacy/labels/ — same page, Chinese
   // copy with mainland storefront examples.
-  labelsOverview: 'https://www.apple.com/cn/privacy/labels/',
+  labelsOverview: "https://www.apple.com/cn/privacy/labels/",
   // support.apple.com uses a `zh-cn/` locale segment; the article id
   // (102399) is the same across locales.
-  labelsSupport: 'https://support.apple.com/zh-cn/102399',
+  labelsSupport: "https://support.apple.com/zh-cn/102399",
   // /app-store/app-privacy-details/ → /cn/app-store/app-privacy-details/
   // — Apple's developer site treats /cn/ as a locale prefix.
-  developerDetails: 'https://developer.apple.com/cn/app-store/app-privacy-details/',
+  developerDetails:
+    "https://developer.apple.com/cn/app-store/app-privacy-details/",
   // apps.apple.com routes /us/story/<id> → /cn/story/<id> for the same
   // editorial. We don't strip the trailing id segment because Apple
   // tolerates either form and the canonical link from the App Store
   // editor uses the id-suffixed shape.
-  appStoreStory: 'https://apps.apple.com/cn/story/id1539235847',
+  appStoreStory: "https://apps.apple.com/cn/story/id1539235847",
   // Apple publishes the transparency report per *country* (not per
   // language) — `/legal/transparency/<country>.html`. For ZH users
   // we point the global-fallback at the China page (`cn.html`) so a
@@ -98,11 +104,11 @@ const APPLE_LINKS_ZH: AppleLinks = {
   // resolveTransparencyLink() still produces the same path for any
   // storefront that has its own page; this base only kicks in when
   // the storefront isn't in TRANSPARENCY_COUNTRY_CODES.
-  transparencyIndex: 'https://www.apple.com/legal/transparency/cn.html',
+  transparencyIndex: "https://www.apple.com/legal/transparency/cn.html",
   // /help/... → /cn/help/... — Apple's developer help inserts the
   // locale segment after the host.
   accessibilityLabels:
-    'https://developer.apple.com/cn/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels',
+    "https://developer.apple.com/cn/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels",
 };
 
 /**
@@ -111,7 +117,9 @@ const APPLE_LINKS_ZH: AppleLinks = {
  * additional locales can join by extending the switch.
  */
 function appleLinksForLocale(locale: string): AppleLinks {
-  if (locale === 'zh') return APPLE_LINKS_ZH;
+  if (locale === "zh") {
+    return APPLE_LINKS_ZH;
+  }
   return APPLE_LINKS_BASE;
 }
 
@@ -128,19 +136,56 @@ function appleLinksForLocale(locale: string): AppleLinks {
  * storefront the user could have selected.
  */
 const TRANSPARENCY_COUNTRY_CODES: ReadonlySet<string> = new Set([
-  'us', 'au', 'gb', 'ca', 'nz', 'ie', 'de', 'fr', 'it', 'es', 'nl', 'se',
-  'no', 'dk', 'fi', 'pl', 'ch', 'at', 'be', 'pt', 'jp', 'kr', 'hk', 'tw',
-  'sg', 'in', 'id', 'ph', 'my', 'th', 'vn', 'ae', 'sa', 'il', 'tr', 'za',
-  'mx', 'br', 'ar', 'cl', 'co',
+  "us",
+  "au",
+  "gb",
+  "ca",
+  "nz",
+  "ie",
+  "de",
+  "fr",
+  "it",
+  "es",
+  "nl",
+  "se",
+  "no",
+  "dk",
+  "fi",
+  "pl",
+  "ch",
+  "at",
+  "be",
+  "pt",
+  "jp",
+  "kr",
+  "hk",
+  "tw",
+  "sg",
+  "in",
+  "id",
+  "ph",
+  "my",
+  "th",
+  "vn",
+  "ae",
+  "sa",
+  "il",
+  "tr",
+  "za",
+  "mx",
+  "br",
+  "ar",
+  "cl",
+  "co",
   // Mainland China — Apple publishes the report at /legal/transparency/cn.html.
   // Without 'cn' in this set, cn-storefront users would fall through to the
   // global index even though a country-specific page exists.
-  'cn',
+  "cn",
 ]);
 
 function resolveTransparencyLink(
   country: string,
-  appleLinks: AppleLinks,
+  appleLinks: AppleLinks
 ): {
   url: string;
   label: string;
@@ -171,7 +216,9 @@ function resolveTransparencyLink(
  * unexpected falls back to `/dashboard`, matching the previous behaviour.
  */
 function resolveBackLink(
-  searchParams: { from?: string | string[]; label?: string | string[] } | undefined,
+  searchParams:
+    | { from?: string | string[]; label?: string | string[] }
+    | undefined
 ): { href: string; label: string } {
   const rawFrom = Array.isArray(searchParams?.from)
     ? searchParams?.from[0]
@@ -181,36 +228,48 @@ function resolveBackLink(
     : searchParams?.label;
 
   const fromIsSafe =
-    typeof rawFrom === 'string' &&
+    typeof rawFrom === "string" &&
     rawFrom.length > 0 &&
     rawFrom.length < 200 &&
-    rawFrom.startsWith('/') &&
-    !rawFrom.startsWith('//') &&
-    !rawFrom.startsWith('/\\') &&
+    rawFrom.startsWith("/") &&
+    !rawFrom.startsWith("//") &&
+    !rawFrom.startsWith("/\\") &&
     !/[\s<>]/.test(rawFrom) &&
     // Reject anything that smells like a scheme (e.g. "/javascript:…"):
     !/[a-z][a-z0-9+.-]*:/i.test(rawFrom);
 
-  const href = fromIsSafe ? (rawFrom as string) : '/dashboard';
+  const href = fromIsSafe ? (rawFrom as string) : "/dashboard";
 
   let label: string;
-  if (typeof rawLabel === 'string' && rawLabel.trim().length > 0) {
+  if (typeof rawLabel === "string" && rawLabel.trim().length > 0) {
     label = rawLabel.trim().slice(0, 60);
   } else if (fromIsSafe) {
-    const path = (rawFrom as string).split('?')[0];
-    if (path.startsWith('/apps/')) label = 'app';
-    else if (path === '/dashboard/apps') label = 'Apps';
-    else if (path === '/dashboard/privacy') label = 'Privacy Map';
-    else if (path === '/dashboard/stats') label = 'Stats';
-    else if (path === '/dashboard/manual-apps') label = 'Manual apps';
-    else if (path === '/dashboard/settings') label = 'Settings';
-    else if (path === '/onboard') label = 'Onboarding';
-    else if (path === '/welcome') label = 'Welcome';
-    else if (path === '/privacy-policy') label = 'Privacy Policy';
-    else if (path === '/legal') label = 'Legal';
-    else label = 'Dashboard';
+    const path = (rawFrom as string).split("?")[0];
+    if (path.startsWith("/apps/")) {
+      label = "app";
+    } else if (path === "/dashboard/apps") {
+      label = "Apps";
+    } else if (path === "/dashboard/privacy") {
+      label = "Privacy Map";
+    } else if (path === "/dashboard/stats") {
+      label = "Stats";
+    } else if (path === "/dashboard/manual-apps") {
+      label = "Manual apps";
+    } else if (path === "/dashboard/settings") {
+      label = "Settings";
+    } else if (path === "/onboard") {
+      label = "Onboarding";
+    } else if (path === "/welcome") {
+      label = "Welcome";
+    } else if (path === "/privacy-policy") {
+      label = "Privacy Policy";
+    } else if (path === "/legal") {
+      label = "Legal";
+    } else {
+      label = "Dashboard";
+    }
   } else {
-    label = 'Dashboard';
+    label = "Dashboard";
   }
 
   return { href, label };
@@ -221,14 +280,21 @@ interface DefinitionsHelpPageProps {
   // must be awaited. Without the Promise type, TS lets us read `.from`/`.label`
   // off an unresolved Promise at runtime, which silently returns `undefined`
   // and means the contextual back-link never resolves.
-  searchParams?: Promise<{ from?: string | string[]; label?: string | string[] }>;
+  searchParams?: Promise<{
+    from?: string | string[];
+    label?: string | string[];
+  }>;
 }
 
-export default async function DefinitionsHelpPage({ searchParams }: DefinitionsHelpPageProps) {
-  if (resolveFlagFromDb('flag.help.label_definitions') !== 'on') notFound();
+export default async function DefinitionsHelpPage({
+  searchParams,
+}: DefinitionsHelpPageProps) {
+  if (resolveFlagFromDb("flag.help.label_definitions") !== "on") {
+    notFound();
+  }
 
   const resolvedSearchParams = (await searchParams) ?? undefined;
-  const country = normalizeCountry(getSetting('app_country', DEFAULT_COUNTRY));
+  const country = normalizeCountry(getSetting("app_country", DEFAULT_COUNTRY));
   // Resolve Apple link variants per active UI locale — `zh` users get
   // Apple's Simplified-Chinese pages, every other locale gets the
   // canonical English-language ones. The country-specific transparency
@@ -251,13 +317,13 @@ export default async function DefinitionsHelpPage({ searchParams }: DefinitionsH
   // developer.apple.com/cn/app-store/app-privacy-details/ — kept
   // verbatim so the page reads as the same vocabulary users see on
   // a real Chinese-store App Store listing.
-  const t = await getTranslations('help_definitions_page');
-  const tSec = await getTranslations('help_definitions_page.sections');
-  const tBody = await getTranslations('help_definitions_page.severity_bodies');
-  const tSrc = await getTranslations('help_definitions_page.sources');
-  const tCategory = await getTranslations('category');
-  const tCategoryDesc = await getTranslations('category_descriptions');
-  const tSeverity = await getTranslations('severity');
+  const t = await getTranslations("help_definitions_page");
+  const tSec = await getTranslations("help_definitions_page.sections");
+  const tBody = await getTranslations("help_definitions_page.severity_bodies");
+  const tSrc = await getTranslations("help_definitions_page.sources");
+  const tCategory = await getTranslations("category");
+  const tCategoryDesc = await getTranslations("category_descriptions");
+  const tSeverity = await getTranslations("severity");
 
   // Severity card-render data — pairs each SEVERITY_CONFIG entry with
   // its localised label + body so the JSX stays scannable. The body
@@ -267,18 +333,18 @@ export default async function DefinitionsHelpPage({ searchParams }: DefinitionsH
   const severityCards = [
     {
       cfg: SEVERITY_CONFIG.DATA_USED_TO_TRACK_YOU,
-      key: 'DATA_USED_TO_TRACK_YOU',
-      bodyKey: 'track' as const,
+      key: "DATA_USED_TO_TRACK_YOU",
+      bodyKey: "track" as const,
     },
     {
       cfg: SEVERITY_CONFIG.DATA_LINKED_TO_YOU,
-      key: 'DATA_LINKED_TO_YOU',
-      bodyKey: 'linked' as const,
+      key: "DATA_LINKED_TO_YOU",
+      bodyKey: "linked" as const,
     },
     {
       cfg: SEVERITY_CONFIG.DATA_NOT_LINKED_TO_YOU,
-      key: 'DATA_NOT_LINKED_TO_YOU',
-      bodyKey: 'unlinked' as const,
+      key: "DATA_NOT_LINKED_TO_YOU",
+      bodyKey: "unlinked" as const,
     },
   ];
 
@@ -291,252 +357,276 @@ export default async function DefinitionsHelpPage({ searchParams }: DefinitionsH
           /app/privacy-policy/page.tsx for the shared pattern. */}
       <header className="definitions-page-hero">
         <div className="definitions-hero-top">
-          <Link href={back.href} className="priv-back-link">
-            {t('back_to', { target: back.label })}
+          <Link className="priv-back-link" href={back.href}>
+            {t("back_to", { target: back.label })}
           </Link>
           {/* Apple's own accessibility-label reference, aligned opposite
               the back link so the page advertises the privacy ↔ accessibility
               parallel without crowding the title. */}
           <a
-            href={appleLinks.accessibilityLabels}
-            target="_blank"
-            rel="noopener noreferrer"
+            aria-label={t("apple_accessibility_aria")}
             className="definitions-external-link"
-            aria-label={t('apple_accessibility_aria')}
+            href={appleLinks.accessibilityLabels}
+            rel="noopener noreferrer"
+            target="_blank"
           >
-            {t('apple_accessibility')}
+            {t("apple_accessibility")}
           </a>
         </div>
-        <p className="priv-eyebrow">{t('eyebrow')}</p>
-        <h1 className="priv-page-title">{t('title')}</h1>
-        <p className="priv-page-sub">{t('subtitle')}</p>
+        <p className="priv-eyebrow">{t("eyebrow")}</p>
+        <h1 className="priv-page-title">{t("title")}</h1>
+        <p className="priv-page-sub">{t("subtitle")}</p>
       </header>
 
       <div className="definitions-content">
-          {/* ── Severity (data-handling) buckets ───────────────────────── */}
-          <section className="help-section help-section-wide">
-            <h2 className="help-section-title">{tSec('how_developers_declare')}</h2>
-            <p className="help-section-copy">
-              {tSec.rich('how_developers_intro', { em: (chunks) => <em>{chunks}</em> })}
-            </p>
+        {/* ── Severity (data-handling) buckets ───────────────────────── */}
+        <section className="help-section help-section-wide">
+          <h2 className="help-section-title">
+            {tSec("how_developers_declare")}
+          </h2>
+          <p className="help-section-copy">
+            {tSec.rich("how_developers_intro", {
+              em: (chunks) => <em>{chunks}</em>,
+            })}
+          </p>
 
-            <div className="definitions-grid">
-              {severityCards.map(({ cfg, key, bodyKey }) => (
-                <article
-                  key={key}
-                  className={`definitions-card definitions-card-${cfg.cls}`}
-                >
-                  <header className="definitions-card-header">
-                    <span className={`severity-badge ${cfg.cls}`}>
-                      <span aria-hidden="true">{cfg.icon}</span>{' '}
-                      {severityLabel(tSeverity, key) ?? cfg.label}
-                    </span>
-                  </header>
-                  <p className="definitions-card-copy">{tBody(bodyKey)}</p>
-                </article>
-              ))}
-            </div>
-
-            <p className="help-section-copy" style={{ marginTop: 18 }}>
-              {t('labels_support_lead')}{' '}
-              <a
-                href={appleLinks.labelsSupport}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="definitions-inline-link"
+          <div className="definitions-grid">
+            {severityCards.map(({ cfg, key, bodyKey }) => (
+              <article
+                className={`definitions-card definitions-card-${cfg.cls}`}
+                key={key}
               >
-                {t('labels_support_link')}
-              </a>
-              .
-            </p>
-          </section>
-
-          {/* ── Data categories ───────────────────────────────────────── */}
-          <section className="help-section help-section-wide">
-            <h2 className="help-section-title">{tSec('data_categories')}</h2>
-            <p className="help-section-copy">{t('categories_intro')}</p>
-
-            <ul className="definitions-category-list">
-              {Object.entries(CATEGORY_META).map(([key, meta]) => (
-                <li key={key} className="definitions-category-item">
-                  <span className="definitions-category-icon" aria-hidden="true">
-                    {meta.icon}
+                <header className="definitions-card-header">
+                  <span className={`severity-badge ${cfg.cls}`}>
+                    <span aria-hidden="true">{cfg.icon}</span>{" "}
+                    {severityLabel(tSeverity, key) ?? cfg.label}
                   </span>
-                  <div>
-                    <div className="definitions-category-label">
-                      {categoryLabel(tCategory, key) ?? meta.label}
-                    </div>
-                    <p className="definitions-category-copy">
-                      {categoryDescription(tCategoryDesc, key) ?? meta.description}
-                    </p>
+                </header>
+                <p className="definitions-card-copy">{tBody(bodyKey)}</p>
+              </article>
+            ))}
+          </div>
+
+          <p className="help-section-copy" style={{ marginTop: 18 }}>
+            {t("labels_support_lead")}{" "}
+            <a
+              className="definitions-inline-link"
+              href={appleLinks.labelsSupport}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t("labels_support_link")}
+            </a>
+            .
+          </p>
+        </section>
+
+        {/* ── Data categories ───────────────────────────────────────── */}
+        <section className="help-section help-section-wide">
+          <h2 className="help-section-title">{tSec("data_categories")}</h2>
+          <p className="help-section-copy">{t("categories_intro")}</p>
+
+          <ul className="definitions-category-list">
+            {Object.entries(CATEGORY_META).map(([key, meta]) => (
+              <li className="definitions-category-item" key={key}>
+                <span aria-hidden="true" className="definitions-category-icon">
+                  {meta.icon}
+                </span>
+                <div>
+                  <div className="definitions-category-label">
+                    {categoryLabel(tCategory, key) ?? meta.label}
                   </div>
-                </li>
-              ))}
-            </ul>
-
-            <p className="help-section-copy" style={{ marginTop: 18 }}>
-              {t('categories_outro_lead')}{' '}
-              <a
-                href={appleLinks.developerDetails}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="definitions-inline-link"
-              >
-                {t('developer_details_link')}
-              </a>
-              {t('categories_outro_mid')}{' '}
-              <a
-                href={appleLinks.appStoreStory}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="definitions-inline-link"
-              >
-                {t('app_store_story_link')}
-              </a>
-              .
-            </p>
-          </section>
-
-          {/* ── Apple / built-in apps ──────────────────────────────────── */}
-          <section className="help-section help-section-wide">
-            <h2 className="help-section-title">{tSec('apple_own_apps')}</h2>
-            <p className="help-section-copy">{t('apple_apps_body')}</p>
-            <p className="help-section-copy">
-              <a
-                href={appleLinks.labelsOverview}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="definitions-inline-link"
-              >
-                {t('apple_apps_link')}
-              </a>
-            </p>
-          </section>
-
-          {/* ── Apple Transparency Report (country-specific) ──────────── */}
-          <section className="help-section help-section-wide">
-            <h2 className="help-section-title">{tSec('transparency_report')}</h2>
-            <p className="help-section-copy">{t('transparency_intro')}</p>
-            <p className="help-section-copy">
-              {t('transparency_storefront_lead')}{' '}
-              <strong>{countryLabel(country)}</strong>
-              {' '}
-              <span className="definitions-country-code">
-                ({country.toUpperCase()})
-              </span>
-              {t('transparency_storefront_settings_lead')}{' '}
-              <Link href="/dashboard/settings" className="definitions-inline-link">
-                {t('transparency_storefront_settings_link')}
-              </Link>
-              .
-            </p>
-            <p className="help-section-copy">
-              {transparency.countrySpecific ? (
-                <>
-                  <a
-                    href={transparency.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="definitions-inline-link"
-                  >
-                    {t('transparency_country_link', { country: transparency.label })}
-                  </a>
-                  <span className="definitions-source-copy">
-                    {' '}{t('transparency_country_outro', { country: transparency.label })}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <a
-                    href={transparency.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="definitions-inline-link"
-                  >
-                    {t('transparency_global_link')}
-                  </a>
-                  <span className="definitions-source-copy">
-                    {' '}{t('transparency_global_outro', { country: transparency.label })}
-                  </span>
-                </>
-              )}
-            </p>
-          </section>
-
-          {/* ── Authoritative sources ─────────────────────────────────── */}
-          <section className="help-section help-section-wide">
-            <h2 className="help-section-title">{tSec('authoritative_sources')}</h2>
-            <p className="help-section-copy">{t('sources_intro')}</p>
-            <ul className="definitions-source-list">
-              <li>
-                <a
-                  href={appleLinks.labelsSupport}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="definitions-inline-link"
-                >
-                  {tSrc('labels_support_link')}
-                </a>
-                <span className="definitions-source-copy">
-                  {' '}{tSrc('labels_support_outro')}
-                </span>
+                  <p className="definitions-category-copy">
+                    {categoryDescription(tCategoryDesc, key) ??
+                      meta.description}
+                  </p>
+                </div>
               </li>
-              <li>
+            ))}
+          </ul>
+
+          <p className="help-section-copy" style={{ marginTop: 18 }}>
+            {t("categories_outro_lead")}{" "}
+            <a
+              className="definitions-inline-link"
+              href={appleLinks.developerDetails}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t("developer_details_link")}
+            </a>
+            {t("categories_outro_mid")}{" "}
+            <a
+              className="definitions-inline-link"
+              href={appleLinks.appStoreStory}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t("app_store_story_link")}
+            </a>
+            .
+          </p>
+        </section>
+
+        {/* ── Apple / built-in apps ──────────────────────────────────── */}
+        <section className="help-section help-section-wide">
+          <h2 className="help-section-title">{tSec("apple_own_apps")}</h2>
+          <p className="help-section-copy">{t("apple_apps_body")}</p>
+          <p className="help-section-copy">
+            <a
+              className="definitions-inline-link"
+              href={appleLinks.labelsOverview}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t("apple_apps_link")}
+            </a>
+          </p>
+        </section>
+
+        {/* ── Apple Transparency Report (country-specific) ──────────── */}
+        <section className="help-section help-section-wide">
+          <h2 className="help-section-title">{tSec("transparency_report")}</h2>
+          <p className="help-section-copy">{t("transparency_intro")}</p>
+          <p className="help-section-copy">
+            {t("transparency_storefront_lead")}{" "}
+            <strong>{countryLabel(country)}</strong>{" "}
+            <span className="definitions-country-code">
+              ({country.toUpperCase()})
+            </span>
+            {t("transparency_storefront_settings_lead")}{" "}
+            <Link
+              className="definitions-inline-link"
+              href="/dashboard/settings"
+            >
+              {t("transparency_storefront_settings_link")}
+            </Link>
+            .
+          </p>
+          <p className="help-section-copy">
+            {transparency.countrySpecific ? (
+              <>
                 <a
-                  href={appleLinks.developerDetails}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="definitions-inline-link"
-                >
-                  {tSrc('developer_details_link')}
-                </a>
-                <span className="definitions-source-copy">
-                  {' '}{tSrc('developer_details_outro')}
-                </span>
-              </li>
-              <li>
-                <a
-                  href={appleLinks.labelsOverview}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="definitions-inline-link"
-                >
-                  {tSrc('labels_overview_link')}
-                </a>
-                <span className="definitions-source-copy">
-                  {' '}{tSrc('labels_overview_outro')}
-                </span>
-              </li>
-              <li>
-                <a
-                  href={appleLinks.appStoreStory}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="definitions-inline-link"
-                >
-                  {tSrc('story_link')}
-                </a>
-                <span className="definitions-source-copy">
-                  {' '}{tSrc('story_outro')}
-                </span>
-              </li>
-              <li>
-                <a
                   href={transparency.url}
-                  target="_blank"
                   rel="noopener noreferrer"
-                  className="definitions-inline-link"
+                  target="_blank"
                 >
-                  {transparency.countrySpecific
-                    ? tSrc('transparency_country_link', { country: transparency.label })
-                    : tSrc('transparency_global_link')}
+                  {t("transparency_country_link", {
+                    country: transparency.label,
+                  })}
                 </a>
                 <span className="definitions-source-copy">
-                  {' '}{tSrc('transparency_outro')}
+                  {" "}
+                  {t("transparency_country_outro", {
+                    country: transparency.label,
+                  })}
                 </span>
-              </li>
-            </ul>
-          </section>
+              </>
+            ) : (
+              <>
+                <a
+                  className="definitions-inline-link"
+                  href={transparency.url}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {t("transparency_global_link")}
+                </a>
+                <span className="definitions-source-copy">
+                  {" "}
+                  {t("transparency_global_outro", {
+                    country: transparency.label,
+                  })}
+                </span>
+              </>
+            )}
+          </p>
+        </section>
+
+        {/* ── Authoritative sources ─────────────────────────────────── */}
+        <section className="help-section help-section-wide">
+          <h2 className="help-section-title">
+            {tSec("authoritative_sources")}
+          </h2>
+          <p className="help-section-copy">{t("sources_intro")}</p>
+          <ul className="definitions-source-list">
+            <li>
+              <a
+                className="definitions-inline-link"
+                href={appleLinks.labelsSupport}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {tSrc("labels_support_link")}
+              </a>
+              <span className="definitions-source-copy">
+                {" "}
+                {tSrc("labels_support_outro")}
+              </span>
+            </li>
+            <li>
+              <a
+                className="definitions-inline-link"
+                href={appleLinks.developerDetails}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {tSrc("developer_details_link")}
+              </a>
+              <span className="definitions-source-copy">
+                {" "}
+                {tSrc("developer_details_outro")}
+              </span>
+            </li>
+            <li>
+              <a
+                className="definitions-inline-link"
+                href={appleLinks.labelsOverview}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {tSrc("labels_overview_link")}
+              </a>
+              <span className="definitions-source-copy">
+                {" "}
+                {tSrc("labels_overview_outro")}
+              </span>
+            </li>
+            <li>
+              <a
+                className="definitions-inline-link"
+                href={appleLinks.appStoreStory}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {tSrc("story_link")}
+              </a>
+              <span className="definitions-source-copy">
+                {" "}
+                {tSrc("story_outro")}
+              </span>
+            </li>
+            <li>
+              <a
+                className="definitions-inline-link"
+                href={transparency.url}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {transparency.countrySpecific
+                  ? tSrc("transparency_country_link", {
+                      country: transparency.label,
+                    })
+                  : tSrc("transparency_global_link")}
+              </a>
+              <span className="definitions-source-copy">
+                {" "}
+                {tSrc("transparency_outro")}
+              </span>
+            </li>
+          </ul>
+        </section>
       </div>
     </div>
   );

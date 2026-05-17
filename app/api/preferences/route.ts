@@ -1,15 +1,19 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import {
+  INTENT_META,
+  isUserIntent,
+  USER_INTENTS,
+} from "../../../lib/preferences";
 import {
   clearUserIntent,
   getManualAppsBannerDismissed,
   getUserIntent,
   setManualAppsBannerDismissed,
   setUserIntent,
-} from '../../../lib/preferences-server';
-import { INTENT_META, USER_INTENTS, isUserIntent } from '../../../lib/preferences';
-import { readBoundedJson } from '../../../lib/security';
+} from "../../../lib/preferences-server";
+import { readBoundedJson } from "../../../lib/security";
 
 /**
  * Read the user's onboarding preferences. Currently just the `userIntent`
@@ -24,7 +28,7 @@ export async function GET() {
   return NextResponse.json({
     userIntent: getUserIntent(),
     manualAppsBannerDismissed: getManualAppsBannerDismissed(),
-    options: USER_INTENTS.map(value => ({ ...INTENT_META[value] })),
+    options: USER_INTENTS.map((value) => ({ ...INTENT_META[value] })),
   });
 }
 
@@ -39,10 +43,10 @@ export async function PUT(request: Request) {
   try {
     body = await readBoundedJson(request, 4 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (body && Object.prototype.hasOwnProperty.call(body, 'userIntent')) {
+  if (body && Object.hasOwn(body, "userIntent")) {
     const value = body.userIntent;
     if (value === null) {
       clearUserIntent();
@@ -51,9 +55,9 @@ export async function PUT(request: Request) {
     } else {
       return NextResponse.json(
         {
-          error: `userIntent must be one of: ${USER_INTENTS.join(', ')} or null`,
+          error: `userIntent must be one of: ${USER_INTENTS.join(", ")} or null`,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
   }
@@ -62,12 +66,12 @@ export async function PUT(request: Request) {
   // flag. `true` dismisses, `false` (or `null`) resurfaces it — both
   // directions are useful so a future "Show onboarding tips again"
   // Settings control can flip it back.
-  if (body && Object.prototype.hasOwnProperty.call(body, 'dismissManualAppsBanner')) {
+  if (body && Object.hasOwn(body, "dismissManualAppsBanner")) {
     const value = body.dismissManualAppsBanner;
-    if (typeof value !== 'boolean' && value !== null) {
+    if (typeof value !== "boolean" && value !== null) {
       return NextResponse.json(
-        { error: 'dismissManualAppsBanner must be a boolean or null' },
-        { status: 400 },
+        { error: "dismissManualAppsBanner must be a boolean or null" },
+        { status: 400 }
       );
     }
     setManualAppsBannerDismissed(value === true);

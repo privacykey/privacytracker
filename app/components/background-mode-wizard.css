@@ -7,17 +7,17 @@
 
 /* ── Dashboard callout ─────────────────────── */
 .bg-mode-callout {
+  position: relative;
   display: inline-flex;
-  align-items: center;
   gap: 10px;
+  align-items: center;
+  max-width: 100%;
   padding: 10px 12px 10px 14px;
-  border-radius: 12px;
-  background: var(--blue-dim, #eff6ff);
-  border: 1px solid var(--blue, #2563eb);
   font-size: 13px;
   color: var(--text, #1f2937);
-  max-width: 100%;
-  position: relative;
+  background: var(--blue-dim, #eff6ff);
+  border: 1px solid var(--blue, #2563eb);
+  border-radius: 12px;
 }
 .bg-mode-callout-icon {
   font-size: 18px;
@@ -30,8 +30,8 @@
   min-width: 0;
 }
 .bg-mode-callout-title {
-  font-weight: 600;
   font-size: 13px;
+  font-weight: 600;
   color: var(--text, #1f2937);
 }
 .bg-mode-callout-body {
@@ -40,27 +40,29 @@
   opacity: 0.85;
 }
 .bg-mode-callout-dismiss {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text, #6b7280);
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   margin-left: 2px;
-  transition: background 120ms, color 120ms;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text, #6b7280);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  transition:
+    background 120ms,
+    color 120ms;
 }
 .bg-mode-callout-dismiss:hover {
-  background: #fee2e2;
   color: #b91c1c;
+  background: #fee2e2;
 }
 
 /* ── Wizard modal ──────────────────────────── */
@@ -68,63 +70,65 @@
   z-index: 60;
 }
 .bg-wizard-card {
-  max-width: 580px;
-  width: min(580px, calc(100vw - 32px));
-  padding: 0;
   display: flex;
   flex-direction: column;
+  width: min(580px, calc(100vw - 32px));
+  max-width: 580px;
   max-height: calc(100vh - 64px);
+  padding: 0;
   overflow: hidden;
 }
 .bg-wizard-header {
   display: flex;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
   padding: 18px 22px 12px;
   border-bottom: 1px solid var(--border, #e5e7eb);
 }
 .bg-wizard-title {
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
-  margin: 0;
 }
 .bg-wizard-close {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--border, #e5e7eb);
-  background: var(--surface, #fff);
-  color: var(--text, #1f2937);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text, #1f2937);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 50%;
 }
 .bg-wizard-close:hover:not(:disabled) {
+  color: #b91c1c;
   background: #fee2e2;
   border-color: #ef4444;
-  color: #b91c1c;
 }
 
 /* Stepper — four dots showing current step / completed steps. */
 .bg-wizard-stepper {
   display: flex;
-  align-items: center;
   gap: 6px;
+  align-items: center;
   padding: 10px 22px;
   border-bottom: 1px solid var(--border, #e5e7eb);
 }
 .bg-wizard-stepper-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
   background: var(--border-strong, #c7cdd6);
-  transition: background 160ms, transform 160ms;
+  border-radius: 50%;
+  transition:
+    background 160ms,
+    transform 160ms;
 }
 .bg-wizard-stepper-dot.is-done {
   background: var(--blue, #2563eb);
@@ -135,9 +139,9 @@
 }
 
 .bg-wizard-body {
+  flex: 1;
   padding: 18px 22px;
   overflow-y: auto;
-  flex: 1;
 }
 
 .bg-wizard-step {
@@ -146,9 +150,9 @@
   gap: 12px;
 }
 .bg-wizard-step-title {
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
-  margin: 0;
   color: var(--text, #1f2937);
 }
 .bg-wizard-step-body {
@@ -168,18 +172,20 @@
   display: flex;
   gap: 10px;
   padding: 10px 12px;
-  border: 1.5px solid var(--border, #e5e7eb);
-  border-radius: 10px;
   cursor: pointer;
   background: var(--surface, #fff);
-  transition: border-color 120ms, background 120ms;
+  border: 1.5px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  transition:
+    border-color 120ms,
+    background 120ms;
 }
 .bg-wizard-option:hover {
   border-color: var(--border-strong, #9ca3af);
 }
 .bg-wizard-option.is-active {
-  border-color: var(--blue, #2563eb);
   background: var(--blue-dim, #eff6ff);
+  border-color: var(--blue, #2563eb);
 }
 .bg-wizard-option input[type="radio"] {
   margin-top: 2px;
@@ -207,10 +213,10 @@
   display: flex;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 10px;
   cursor: pointer;
   background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
 }
 .bg-wizard-toggle input[type="checkbox"] {
   margin-top: 3px;
@@ -237,9 +243,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
+  background: var(--surface, #f9fafb);
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 10px;
-  background: var(--surface, #f9fafb);
 }
 .bg-wizard-webhook-label {
   font-size: 13px;
@@ -257,24 +263,29 @@
 }
 .bg-wizard-input,
 .bg-wizard-select {
-  appearance: none;
-  -webkit-appearance: none;
   padding: 7px 10px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
-  background: var(--surface, #fff);
   font: inherit;
   font-size: 13px;
   color: var(--text, #1f2937);
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
 }
-.bg-wizard-input { flex: 1; min-width: 0; }
-.bg-wizard-select { flex: 0 0 130px; }
+.bg-wizard-input {
+  flex: 1;
+  min-width: 0;
+}
+.bg-wizard-select {
+  flex: 0 0 130px;
+}
 
 .bg-wizard-webhook-frequency {
   display: flex;
-  align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 .bg-wizard-webhook-frequency-label {
   font-size: 12px;
@@ -291,20 +302,20 @@
 }
 .bg-wizard-pill {
   display: inline-flex;
-  align-items: center;
   gap: 4px;
+  align-items: center;
   padding: 4px 11px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 999px;
-  background: var(--surface, #fff);
   font-size: 12px;
   cursor: pointer;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
 }
 .bg-wizard-pill.is-active {
-  border-color: var(--blue, #2563eb);
-  background: var(--blue-dim, #eff6ff);
-  color: var(--blue, #1d4ed8);
   font-weight: 600;
+  color: var(--blue, #1d4ed8);
+  background: var(--blue-dim, #eff6ff);
+  border-color: var(--blue, #2563eb);
 }
 .bg-wizard-pill input[type="radio"] {
   display: none;
@@ -312,15 +323,19 @@
 
 .bg-wizard-webhook-test {
   display: flex;
-  align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 .bg-wizard-test-result {
   font-size: 12px;
 }
-.bg-wizard-test-result.is-success { color: #15803d; }
-.bg-wizard-test-result.is-failure { color: #b91c1c; }
+.bg-wizard-test-result.is-success {
+  color: #15803d;
+}
+.bg-wizard-test-result.is-failure {
+  color: #b91c1c;
+}
 
 /* Quiet-hours time fields. */
 .bg-wizard-time-row {
@@ -337,27 +352,32 @@
 }
 
 .bg-wizard-error {
-  margin: 0 22px;
   padding: 8px 12px;
-  border-radius: 8px;
-  background: #fef2f2;
-  color: #b91c1c;
+  margin: 0 22px;
   font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 8px;
 }
 
 .bg-wizard-footer {
   display: flex;
-  justify-content: space-between;
   gap: 8px;
+  justify-content: space-between;
   padding: 12px 22px 18px;
   border-top: 1px solid var(--border, #e5e7eb);
 }
 
 @media (max-width: 640px) {
   .bg-wizard-card {
-    max-height: calc(100vh - 24px);
     width: calc(100vw - 16px);
+    max-height: calc(100vh - 24px);
   }
-  .bg-wizard-webhook-row { flex-direction: column; }
-  .bg-wizard-select { flex: none; width: 100%; }
+  .bg-wizard-webhook-row {
+    flex-direction: column;
+  }
+  .bg-wizard-select {
+    flex: none;
+    width: 100%;
+  }
 }

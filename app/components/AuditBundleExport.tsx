@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * AuditBundleExport — counterpart to AuditBundleImport. Lets a
@@ -22,17 +22,17 @@
  * Content-Disposition header (handles localised dates etc.).
  */
 
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 export default function AuditBundleExport() {
-  const t = useTranslations('settings.audit_bundle_export');
-  const tFallback = useTranslations('settings.audit_bundle_import');
+  const t = useTranslations("settings.audit_bundle_export");
+  const tFallback = useTranslations("settings.audit_bundle_import");
 
   // null = still probing, false = flag off (render null), true = render UI.
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
-  const [recommenderName, setRecommenderName] = useState('');
+  const [recommenderName, setRecommenderName] = useState("");
   const [includeProfile, setIncludeProfile] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,17 +44,23 @@ export default function AuditBundleExport() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/feature-flags');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetch("/api/feature-flags");
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         const data = (await res.json()) as {
           flags: Array<{ key: string; currentValue: string }>;
         };
         const row = data.flags.find(
-          (f) => f.key === 'flag.settings.admin.export.audit_bundle',
+          (f) => f.key === "flag.settings.admin.export.audit_bundle"
         );
-        if (!cancelled) setEnabled(row?.currentValue === 'on');
+        if (!cancelled) {
+          setEnabled(row?.currentValue === "on");
+        }
       } catch {
-        if (!cancelled) setEnabled(false);
+        if (!cancelled) {
+          setEnabled(false);
+        }
       }
     })();
     return () => {
@@ -62,34 +68,38 @@ export default function AuditBundleExport() {
     };
   }, []);
 
-  if (enabled !== true) return null;
+  if (enabled !== true) {
+    return null;
+  }
 
   async function handleExport() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/export/audit-bundle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/export/audit-bundle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recommenderName: recommenderName.trim() || null,
           includeRecommenderProfile: includeProfile,
         }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(body?.error ?? `HTTP ${res.status}`);
       }
 
       // Read the blob FIRST so we can release the response stream before
       // touching the DOM. The filename comes from the server-generated
       // Content-Disposition header.
-      const filenameHeader = res.headers.get('content-disposition') ?? '';
+      const filenameHeader = res.headers.get("content-disposition") ?? "";
       const filenameMatch = filenameHeader.match(/filename="([^"]+)"/);
-      const filename = filenameMatch?.[1] ?? 'audit.audit.json';
+      const filename = filenameMatch?.[1] ?? "audit.audit.json";
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       a.click();
@@ -99,9 +109,9 @@ export default function AuditBundleExport() {
       // user export again with different settings, but we collapse it
       // so the next visit defaults to the lighter button view.
       setOpen(false);
-      setRecommenderName('');
+      setRecommenderName("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error_generic'));
+      setError(err instanceof Error ? err.message : t("error_generic"));
     } finally {
       setSubmitting(false);
     }
@@ -110,11 +120,11 @@ export default function AuditBundleExport() {
   if (!open) {
     return (
       <button
-        type="button"
         className="btn btn-secondary audit-bundle-export__open-btn"
         onClick={() => setOpen(true)}
+        type="button"
       >
-        {t('open_button')}
+        {t("open_button")}
       </button>
     );
   }
@@ -122,64 +132,74 @@ export default function AuditBundleExport() {
   return (
     <div className="audit-bundle-export">
       <div className="audit-bundle-export__heading">
-        <h3 className="audit-bundle-export__title">{t('panel_title')}</h3>
-        <p className="audit-bundle-export__subtitle">{t('panel_description')}</p>
+        <h3 className="audit-bundle-export__title">{t("panel_title")}</h3>
+        <p className="audit-bundle-export__subtitle">
+          {t("panel_description")}
+        </p>
       </div>
 
       <label className="audit-bundle-export__field">
-        <span className="audit-bundle-export__field-label">{t('recommender_label')}</span>
+        <span className="audit-bundle-export__field-label">
+          {t("recommender_label")}
+        </span>
         <input
-          type="text"
           className="audit-bundle-export__field-input"
-          value={recommenderName}
-          onChange={(event) => setRecommenderName(event.target.value)}
-          placeholder={t('recommender_placeholder')}
           disabled={submitting}
+          onChange={(event) => setRecommenderName(event.target.value)}
+          placeholder={t("recommender_placeholder")}
+          type="text"
+          value={recommenderName}
         />
         <span className="audit-bundle-export__field-hint">
-          {t('recommender_hint', { fallback: tFallback('fallback_recommender') })}
+          {t("recommender_hint", {
+            fallback: tFallback("fallback_recommender"),
+          })}
         </span>
       </label>
 
       <label className="audit-bundle-export__checkbox-row">
         <input
-          type="checkbox"
-          className="settings-checkbox"
           checked={includeProfile}
-          onChange={(event) => setIncludeProfile(event.target.checked)}
+          className="settings-checkbox"
           disabled={submitting}
+          onChange={(event) => setIncludeProfile(event.target.checked)}
+          type="checkbox"
         />
         <span>
-          <span className="audit-bundle-export__checkbox-label">{t('include_profile_label')}</span>
-          <span className="audit-bundle-export__field-hint">{t('include_profile_hint')}</span>
+          <span className="audit-bundle-export__checkbox-label">
+            {t("include_profile_label")}
+          </span>
+          <span className="audit-bundle-export__field-hint">
+            {t("include_profile_hint")}
+          </span>
         </span>
       </label>
 
       {error && (
-        <div role="alert" className="audit-bundle-export__error">
+        <div className="audit-bundle-export__error" role="alert">
           {error}
         </div>
       )}
 
       <div className="audit-bundle-export__actions">
         <button
-          type="button"
           className="btn btn-primary"
-          onClick={() => void handleExport()}
           disabled={submitting}
+          onClick={() => void handleExport()}
+          type="button"
         >
-          {submitting ? t('submit_busy') : t('submit')}
+          {submitting ? t("submit_busy") : t("submit")}
         </button>
         <button
-          type="button"
           className="btn btn-ghost"
+          disabled={submitting}
           onClick={() => {
             setOpen(false);
             setError(null);
           }}
-          disabled={submitting}
+          type="button"
         >
-          {t('cancel')}
+          {t("cancel")}
         </button>
       </div>
     </div>

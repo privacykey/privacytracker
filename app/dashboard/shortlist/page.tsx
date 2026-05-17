@@ -1,20 +1,22 @@
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { notFound } from 'next/navigation';
-import Nav from '../../components/Nav';
-import ShortlistView, { type ShortlistFlagState } from '../../components/ShortlistView';
-import { listShortlistGroups } from '../../../lib/shortlist';
-import { getPrivacyProfile } from '../../../lib/privacy-profile-server';
-import type { PrivacyProfile } from '../../../lib/privacy-profile';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import type { PrivacyProfile } from "../../../lib/privacy-profile";
+import { getPrivacyProfile } from "../../../lib/privacy-profile-server";
+import { listShortlistGroups } from "../../../lib/shortlist";
+import Nav from "../../components/Nav";
+import ShortlistView, {
+  type ShortlistFlagState,
+} from "../../components/ShortlistView";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   return {
-    title: t('shortlist_title'),
-    description: t('shortlist_description'),
+    title: t("shortlist_title"),
+    description: t("shortlist_description"),
   };
 }
 
@@ -25,7 +27,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * drawer preview).
  */
 export default function ShortlistPage() {
-  if (resolveFlagFromDb('flag.page.shortlist') !== 'on') notFound();
+  if (resolveFlagFromDb("flag.page.shortlist") !== "on") {
+    notFound();
+  }
 
   let initialGroups: ReturnType<typeof listShortlistGroups> = [];
   let initialProfile: PrivacyProfile | null = null;
@@ -33,14 +37,14 @@ export default function ShortlistPage() {
     initialGroups = listShortlistGroups();
   } catch (error) {
     // DB not ready (first boot) — render the empty state rather than 500.
-    console.warn('[shortlist-page] listShortlistGroups failed:', error);
+    console.warn("[shortlist-page] listShortlistGroups failed:", error);
   }
   try {
     // Profile hydration is best-effort — if the settings row isn't there
     // yet (fresh install) we still want to render groups.
     initialProfile = getPrivacyProfile();
   } catch (error) {
-    console.warn('[shortlist-page] getPrivacyProfile failed:', error);
+    console.warn("[shortlist-page] getPrivacyProfile failed:", error);
   }
 
   // Round 3 wave I: resolve every flag.shortlist.* into a single object so
@@ -51,23 +55,23 @@ export default function ShortlistPage() {
   const flags: ShortlistFlagState | undefined = (() => {
     try {
       const r = (k: Parameters<typeof resolveFlagFromDb>[0]) =>
-        resolveFlagFromDb(k) === 'on';
+        resolveFlagFromDb(k) === "on";
       return {
-        actionsRemove: r('flag.shortlist.actions.remove'),
-        actionsPreview: r('flag.shortlist.actions.preview'),
-        actionsShare: r('flag.shortlist.actions.share'),
-        actionsExport: r('flag.shortlist.actions.export'),
-        actionsPrint: r('flag.shortlist.actions.print'),
-        actionsReset: r('flag.shortlist.actions.reset'),
-        actionsUndo: r('flag.shortlist.actions.undo'),
-        detailedView: r('flag.shortlist.detailed_view'),
-        liveBadgePrefetch: r('flag.shortlist.live_badge_prefetch'),
-        profileMismatchPill: r('flag.shortlist.profile_mismatch_pill'),
-        installedGrouping: r('flag.shortlist.installed_grouping'),
+        actionsRemove: r("flag.shortlist.actions.remove"),
+        actionsPreview: r("flag.shortlist.actions.preview"),
+        actionsShare: r("flag.shortlist.actions.share"),
+        actionsExport: r("flag.shortlist.actions.export"),
+        actionsPrint: r("flag.shortlist.actions.print"),
+        actionsReset: r("flag.shortlist.actions.reset"),
+        actionsUndo: r("flag.shortlist.actions.undo"),
+        detailedView: r("flag.shortlist.detailed_view"),
+        liveBadgePrefetch: r("flag.shortlist.live_badge_prefetch"),
+        profileMismatchPill: r("flag.shortlist.profile_mismatch_pill"),
+        installedGrouping: r("flag.shortlist.installed_grouping"),
       };
     } catch (e) {
-      console.warn('[shortlist-page] flag resolution failed:', e);
-      return undefined;
+      console.warn("[shortlist-page] flag resolution failed:", e);
+      return;
     }
   })();
 
@@ -75,9 +79,9 @@ export default function ShortlistPage() {
     <>
       <Nav />
       <ShortlistView
+        flags={flags}
         initialGroups={initialGroups}
         initialProfile={initialProfile}
-        flags={flags}
       />
     </>
   );

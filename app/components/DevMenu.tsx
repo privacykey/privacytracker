@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * DevMenu — bottom-right footer-anchored developer overlay.
@@ -44,35 +44,40 @@
  *     Settings updates the trigger without a reload.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { useFlag } from '../../lib/feature-flags-hooks';
-import type { FlagValue } from '../../lib/feature-flag-rules';
-import { getFlagUsage } from '../../lib/feature-flag-usage';
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FlagValue } from "../../lib/feature-flag-rules";
+import { getFlagUsage } from "../../lib/feature-flag-usage";
+import { useFlag } from "../../lib/feature-flags-hooks";
 
 // localStorage key — exported so the Settings panel can write to the
 // same key from its toggle. Renamed from FLOATING_FLAGS_STORAGE_KEY but
 // kept under that const-name as an alias for back-compat.
-export const DEV_MENU_STORAGE_KEY = 'dev-menu-on';
+export const DEV_MENU_STORAGE_KEY = "dev-menu-on";
 /** @deprecated alias retained while DevOptionsFeatureFlagPanel still imports the old name. */
 export const FLOATING_FLAGS_STORAGE_KEY = DEV_MENU_STORAGE_KEY;
 
 interface FlagRow {
-  key: string;
-  surface: string;
-  hardDefault: FlagValue;
   currentValue: FlagValue;
+  hardDefault: FlagValue;
+  key: string;
   override: FlagValue | null;
+  surface: string;
   wired: boolean;
 }
 
 interface ActiveTaskInfo {
-  running: boolean;
-  initiator: string | null;
   currentAppName: string | null;
-  summary: { total: number; done: number; failed: number; remaining: number } | null;
+  initiator: string | null;
+  running: boolean;
+  summary: {
+    total: number;
+    done: number;
+    failed: number;
+    remaining: number;
+  } | null;
 }
 
 interface LocaleInfo {
@@ -86,12 +91,12 @@ interface LocaleInfo {
  * a second translation step.
  */
 interface FocusInfo {
-  audience: 'self' | 'loved_one' | 'guardian';
-  understand: boolean;
-  declutter: boolean;
-  minimal: boolean;
   accessibility: boolean;
   aiConfigured: boolean;
+  audience: "self" | "loved_one" | "guardian";
+  declutter: boolean;
+  minimal: boolean;
+  understand: boolean;
 }
 
 /**
@@ -102,21 +107,27 @@ interface FocusInfo {
  * means the API hasn't returned yet.
  */
 interface ProfilesState {
-  privacyEnabled: boolean | null;
   accessibilityEnabled: boolean | null;
+  privacyEnabled: boolean | null;
 }
 
-const AUDIENCE_OPTIONS: Array<{ value: FocusInfo['audience']; labelKey: string }> = [
-  { value: 'self', labelKey: 'audience_self' },
-  { value: 'loved_one', labelKey: 'audience_loved_one' },
-  { value: 'guardian', labelKey: 'audience_guardian' },
+const AUDIENCE_OPTIONS: Array<{
+  value: FocusInfo["audience"];
+  labelKey: string;
+}> = [
+  { value: "self", labelKey: "audience_self" },
+  { value: "loved_one", labelKey: "audience_loved_one" },
+  { value: "guardian", labelKey: "audience_guardian" },
 ];
 
-const GOAL_OPTIONS: Array<{ key: 'understand' | 'declutter' | 'minimal' | 'accessibility'; labelKey: string }> = [
-  { key: 'understand', labelKey: 'goal_understand' },
-  { key: 'declutter', labelKey: 'goal_declutter' },
-  { key: 'minimal', labelKey: 'goal_minimal' },
-  { key: 'accessibility', labelKey: 'goal_accessibility' },
+const GOAL_OPTIONS: Array<{
+  key: "understand" | "declutter" | "minimal" | "accessibility";
+  labelKey: string;
+}> = [
+  { key: "understand", labelKey: "goal_understand" },
+  { key: "declutter", labelKey: "goal_declutter" },
+  { key: "minimal", labelKey: "goal_minimal" },
+  { key: "accessibility", labelKey: "goal_accessibility" },
 ];
 
 /**
@@ -125,31 +136,59 @@ const GOAL_OPTIONS: Array<{ key: 'understand' | 'declutter' | 'minimal' | 'acces
  * when a release misbehaves; surfacing it here so devs can flip it
  * without opening the full Settings → Developer Options panel.
  */
-const KILL_SWITCH_KEY = 'flag.devopts.feature_flag_system.enabled';
+const KILL_SWITCH_KEY = "flag.devopts.feature_flag_system.enabled";
 
 const ALWAYS_VISIBLE_SURFACES = new Set([
-  'global',
-  'nav',
-  'notifications',
-  'taskcenter',
-  'devopts',
+  "global",
+  "nav",
+  "notifications",
+  "taskcenter",
+  "devopts",
 ]);
 
 function primarySurfacesForPath(pathname: string): string[] {
-  if (pathname.startsWith('/apps/')) return ['detail'];
-  if (pathname.startsWith('/manual-apps/')) return ['detail'];
-  if (pathname.startsWith('/onboard')) return ['onboarding'];
-  if (pathname.startsWith('/help')) return ['help'];
-  if (pathname.startsWith('/legal')) return ['legal'];
-  if (pathname.startsWith('/privacy-policy')) return ['legal'];
-  if (pathname.startsWith('/dashboard/apps')) return ['appgrid'];
-  if (pathname.startsWith('/dashboard/privacy')) return ['stats', 'page'];
-  if (pathname.startsWith('/dashboard/stats')) return ['stats'];
-  if (pathname.startsWith('/dashboard/shortlist')) return ['shortlist'];
-  if (pathname.startsWith('/dashboard/settings')) return ['settings', 'devopts'];
-  if (pathname.startsWith('/dashboard/compare')) return ['page'];
-  if (pathname.startsWith('/dashboard/review-recommendations')) return ['page'];
-  if (pathname === '/dashboard' || pathname === '/dashboard/') return ['dashboard'];
+  if (pathname.startsWith("/apps/")) {
+    return ["detail"];
+  }
+  if (pathname.startsWith("/manual-apps/")) {
+    return ["detail"];
+  }
+  if (pathname.startsWith("/onboard")) {
+    return ["onboarding"];
+  }
+  if (pathname.startsWith("/help")) {
+    return ["help"];
+  }
+  if (pathname.startsWith("/legal")) {
+    return ["legal"];
+  }
+  if (pathname.startsWith("/privacy-policy")) {
+    return ["legal"];
+  }
+  if (pathname.startsWith("/dashboard/apps")) {
+    return ["appgrid"];
+  }
+  if (pathname.startsWith("/dashboard/privacy")) {
+    return ["stats", "page"];
+  }
+  if (pathname.startsWith("/dashboard/stats")) {
+    return ["stats"];
+  }
+  if (pathname.startsWith("/dashboard/shortlist")) {
+    return ["shortlist"];
+  }
+  if (pathname.startsWith("/dashboard/settings")) {
+    return ["settings", "devopts"];
+  }
+  if (pathname.startsWith("/dashboard/compare")) {
+    return ["page"];
+  }
+  if (pathname.startsWith("/dashboard/review-recommendations")) {
+    return ["page"];
+  }
+  if (pathname === "/dashboard" || pathname === "/dashboard/") {
+    return ["dashboard"];
+  }
   return [];
 }
 
@@ -170,60 +209,67 @@ function primarySurfacesForPath(pathname: string): string[] {
  * flag appears once, in the primary section, with the rest of the
  * page-relevant flags.
  */
-const PAGE_PRIMARY_FLAG_KEYS: Array<{ prefix: string; keys: readonly string[] }> = [
+const PAGE_PRIMARY_FLAG_KEYS: Array<{
+  prefix: string;
+  keys: readonly string[];
+}> = [
   {
-    prefix: '/dashboard/review-recommendations',
-    keys: ['flag.devopts.cfgutil_uninstall'],
+    prefix: "/dashboard/review-recommendations",
+    keys: ["flag.devopts.cfgutil_uninstall"],
   },
 ];
 
 function pagePrimaryFlagKeysFor(pathname: string): readonly string[] {
   for (const o of PAGE_PRIMARY_FLAG_KEYS) {
-    if (pathname.startsWith(o.prefix)) return o.keys;
+    if (pathname.startsWith(o.prefix)) {
+      return o.keys;
+    }
   }
   return [];
 }
 
 const SURFACE_LABEL_KEYS: Record<string, string> = {
-  about: 'subsystem_about',
-  appgrid: 'subsystem_appgrid',
-  dashboard: 'subsystem_dashboard',
-  desktop: 'subsystem_desktop',
-  detail: 'subsystem_detail',
-  devopts: 'subsystem_devopts',
-  global: 'subsystem_global',
-  help: 'subsystem_help',
-  legal: 'subsystem_legal',
-  nav: 'subsystem_nav',
-  notifications: 'subsystem_notifications',
-  onboarding: 'subsystem_onboarding',
-  page: 'subsystem_page',
-  settings: 'subsystem_settings',
-  shortlist: 'subsystem_shortlist',
-  stats: 'subsystem_stats',
-  taskcenter: 'subsystem_taskcenter',
+  about: "subsystem_about",
+  appgrid: "subsystem_appgrid",
+  dashboard: "subsystem_dashboard",
+  desktop: "subsystem_desktop",
+  detail: "subsystem_detail",
+  devopts: "subsystem_devopts",
+  global: "subsystem_global",
+  help: "subsystem_help",
+  legal: "subsystem_legal",
+  nav: "subsystem_nav",
+  notifications: "subsystem_notifications",
+  onboarding: "subsystem_onboarding",
+  page: "subsystem_page",
+  settings: "subsystem_settings",
+  shortlist: "subsystem_shortlist",
+  stats: "subsystem_stats",
+  taskcenter: "subsystem_taskcenter",
 };
 
-const VALUE_OPTIONS: FlagValue[] = ['on', 'off', 'collapsed'];
+const VALUE_OPTIONS: FlagValue[] = ["on", "off", "collapsed"];
 
 const LOCALE_LABELS: Record<string, string> = {
-  en: 'English',
-  zh: '中文',
+  en: "English",
+  zh: "中文",
 };
 
 function readInitialEnabled(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === "undefined") {
+    return false;
+  }
   try {
-    return localStorage.getItem(DEV_MENU_STORAGE_KEY) === 'true';
+    return localStorage.getItem(DEV_MENU_STORAGE_KEY) === "true";
   } catch {
     return false;
   }
 }
 
 export default function DevMenu() {
-  const tDev = useTranslations('dev_menu_panel');
-  const devOptsVisible = useFlag('flag.devopts.visible') === 'on';
-  const pathname = usePathname() || '/';
+  const tDev = useTranslations("dev_menu_panel");
+  const devOptsVisible = useFlag("flag.devopts.visible") === "on";
+  const pathname = usePathname() || "/";
   const router = useRouter();
 
   const [enabled, setEnabled] = useState<boolean>(false);
@@ -245,41 +291,49 @@ export default function DevMenu() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/dev-menu-state');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetch("/api/dev-menu-state");
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         const data = (await res.json()) as { enabled?: boolean };
-        if (cancelled || data.enabled !== true) return;
+        if (cancelled || data.enabled !== true) {
+          return;
+        }
         // Server says enabled — mirror to localStorage and broadcast
         // so the panel's matching toggle UI flips on without a manual
         // re-flip from the user.
         try {
-          localStorage.setItem(DEV_MENU_STORAGE_KEY, 'true');
+          localStorage.setItem(DEV_MENU_STORAGE_KEY, "true");
         } catch {
           /* localStorage unavailable in some private modes */
         }
         setEnabled(true);
-        window.dispatchEvent(new CustomEvent('dev-menu:changed'));
+        window.dispatchEvent(new CustomEvent("dev-menu:changed"));
       } catch (err) {
-        console.warn('[dev-menu] failed to read state from API:', err);
+        console.warn("[dev-menu] failed to read state from API:", err);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== DEV_MENU_STORAGE_KEY) return;
-      setEnabled(e.newValue === 'true');
+      if (e.key !== DEV_MENU_STORAGE_KEY) {
+        return;
+      }
+      setEnabled(e.newValue === "true");
     };
     const onSameTab = () => setEnabled(readInitialEnabled());
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('dev-menu:changed', onSameTab);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("dev-menu:changed", onSameTab);
     // Backwards-compat alias used by older callers.
-    window.addEventListener('floating-flags:changed', onSameTab);
+    window.addEventListener("floating-flags:changed", onSameTab);
     return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('dev-menu:changed', onSameTab);
-      window.removeEventListener('floating-flags:changed', onSameTab);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("dev-menu:changed", onSameTab);
+      window.removeEventListener("floating-flags:changed", onSameTab);
     };
   }, []);
 
@@ -300,7 +354,9 @@ export default function DevMenu() {
   // state — otherwise the stale highlight would persist into the
   // next session.
   useEffect(() => {
-    if (!open) setSelectedFlagKey(null);
+    if (!open) {
+      setSelectedFlagKey(null);
+    }
   }, [open]);
 
   // Closing the menu after a "Show me where" click is the last bit of
@@ -317,18 +373,22 @@ export default function DevMenu() {
   // misconfigured environment can't pop the menu open for end users.
   useEffect(() => {
     const onRequestOpen = () => {
-      if (!devOptsVisible) return;
-      if (!enabled) return;
+      if (!devOptsVisible) {
+        return;
+      }
+      if (!enabled) {
+        return;
+      }
       setOpen(true);
       requestAnimationFrame(() => {
         const closeBtn = popoverRef.current?.querySelector<HTMLButtonElement>(
-          '.dev-menu-popover-close',
+          ".dev-menu-popover-close"
         );
         closeBtn?.focus();
       });
     };
-    window.addEventListener('dev-menu:open', onRequestOpen);
-    return () => window.removeEventListener('dev-menu:open', onRequestOpen);
+    window.addEventListener("dev-menu:open", onRequestOpen);
+    return () => window.removeEventListener("dev-menu:open", onRequestOpen);
   }, [devOptsVisible, enabled]);
 
   // ── Flags state (same plumbing as the old panel) ─────────────────────
@@ -337,21 +397,27 @@ export default function DevMenu() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchFlags = useCallback(
-    async (mode: 'initial' | 'silent' = 'initial') => {
-      if (mode === 'initial') setLoading(true);
+    async (mode: "initial" | "silent" = "initial") => {
+      if (mode === "initial") {
+        setLoading(true);
+      }
       setError(null);
       try {
-        const res = await fetch('/api/feature-flags', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetch("/api/feature-flags", { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         const body = (await res.json()) as { flags: FlagRow[] };
         setRows(body.flags);
       } catch (e) {
-        setError(e instanceof Error ? e.message : tDev('load_flags_failed'));
+        setError(e instanceof Error ? e.message : tDev("load_flags_failed"));
       } finally {
-        if (mode === 'initial') setLoading(false);
+        if (mode === "initial") {
+          setLoading(false);
+        }
       }
     },
-    [tDev],
+    [tDev]
   );
 
   // ── Quick-action state ───────────────────────────────────────────────
@@ -369,8 +435,10 @@ export default function DevMenu() {
 
   const fetchLocale = useCallback(async () => {
     try {
-      const res = await fetch('/api/locale', { cache: 'no-store' });
-      if (!res.ok) return;
+      const res = await fetch("/api/locale", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
       const body = (await res.json()) as LocaleInfo;
       setLocale(body);
     } catch {
@@ -380,8 +448,10 @@ export default function DevMenu() {
 
   const fetchTask = useCallback(async () => {
     try {
-      const res = await fetch('/api/tasks/active', { cache: 'no-store' });
-      if (!res.ok) return;
+      const res = await fetch("/api/tasks/active", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
       const body = (await res.json()) as { sync?: ActiveTaskInfo };
       setTask(body.sync ?? null);
     } catch {
@@ -399,8 +469,10 @@ export default function DevMenu() {
 
   const fetchFocus = useCallback(async () => {
     try {
-      const res = await fetch('/api/focus', { cache: 'no-store' });
-      if (!res.ok) return;
+      const res = await fetch("/api/focus", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
       const body = (await res.json()) as FocusInfo;
       setFocus(body);
     } catch {
@@ -417,22 +489,29 @@ export default function DevMenu() {
     privacyEnabled: null,
     accessibilityEnabled: null,
   });
-  const [profileBusy, setProfileBusy] = useState<'privacy' | 'accessibility' | null>(null);
+  const [profileBusy, setProfileBusy] = useState<
+    "privacy" | "accessibility" | null
+  >(null);
 
   const fetchProfiles = useCallback(async () => {
     try {
       const [privRes, a11yRes] = await Promise.all([
-        fetch('/api/privacy-profile', { cache: 'no-store' }),
-        fetch('/api/accessibility-profile', { cache: 'no-store' }),
+        fetch("/api/privacy-profile", { cache: "no-store" }),
+        fetch("/api/accessibility-profile", { cache: "no-store" }),
       ]);
-      const next: ProfilesState = { privacyEnabled: null, accessibilityEnabled: null };
+      const next: ProfilesState = {
+        privacyEnabled: null,
+        accessibilityEnabled: null,
+      };
       if (privRes.ok) {
         const body = (await privRes.json()) as { profile: unknown };
-        next.privacyEnabled = body.profile !== null && body.profile !== undefined;
+        next.privacyEnabled =
+          body.profile !== null && body.profile !== undefined;
       }
       if (a11yRes.ok) {
         const body = (await a11yRes.json()) as { profile: unknown };
-        next.accessibilityEnabled = body.profile !== null && body.profile !== undefined;
+        next.accessibilityEnabled =
+          body.profile !== null && body.profile !== undefined;
       }
       setProfiles(next);
     } catch {
@@ -449,8 +528,10 @@ export default function DevMenu() {
   // open so the "Run sync" button updates from "Run sync" to "Stop" the
   // moment a sync starts, even when triggered elsewhere.
   useEffect(() => {
-    if (!open) return;
-    fetchFlags(rows ? 'silent' : 'initial');
+    if (!open) {
+      return;
+    }
+    fetchFlags(rows ? "silent" : "initial");
     fetchLocale();
     fetchTask();
     fetchFocus();
@@ -458,35 +539,53 @@ export default function DevMenu() {
     const id = setInterval(fetchTask, 4000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, pathname, fetchFlags, fetchLocale, fetchTask, fetchFocus, fetchProfiles]);
+  }, [
+    open,
+    pathname,
+    fetchFlags,
+    fetchLocale,
+    fetchTask,
+    fetchFocus,
+    fetchProfiles,
+  ]);
 
   // Outside-click + Escape to dismiss.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onClick = (e: MouseEvent) => {
       const target = e.target as Node | null;
-      if (!target) return;
-      if (popoverRef.current?.contains(target)) return;
-      if (triggerRef.current?.contains(target)) return;
+      if (!target) {
+        return;
+      }
+      if (popoverRef.current?.contains(target)) {
+        return;
+      }
+      if (triggerRef.current?.contains(target)) {
+        return;
+      }
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         setOpen(false);
         triggerRef.current?.focus();
       }
     };
-    window.addEventListener('mousedown', onClick);
-    window.addEventListener('keydown', onKey);
+    window.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener('mousedown', onClick);
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
   // ── Confirmation timeout helpers ─────────────────────────────────────
   const armConfirm = useCallback((action: string) => {
-    if (confirmTimer.current) clearTimeout(confirmTimer.current);
+    if (confirmTimer.current) {
+      clearTimeout(confirmTimer.current);
+    }
     setConfirming(action);
     confirmTimer.current = setTimeout(() => {
       setConfirming(null);
@@ -501,17 +600,20 @@ export default function DevMenu() {
     setConfirming(null);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (confirmTimer.current) clearTimeout(confirmTimer.current);
-    };
-  }, []);
+  useEffect(
+    () => () => {
+      if (confirmTimer.current) {
+        clearTimeout(confirmTimer.current);
+      }
+    },
+    []
+  );
 
   // ── Toast helper for action feedback ─────────────────────────────────
   const flashToast = useCallback((message: string) => {
     setActionToast(message);
     setTimeout(() => {
-      setActionToast(prev => (prev === message ? null : prev));
+      setActionToast((prev) => (prev === message ? null : prev));
     }, 3500);
   }, []);
 
@@ -524,50 +626,73 @@ export default function DevMenu() {
   // can reference `flashToast` and `router` without hitting their
   // temporal dead zone — both are declared just above.
   const toggleProfile = useCallback(
-    async (kind: 'privacy' | 'accessibility') => {
-      if (profileBusy) return;
-      const url = kind === 'privacy' ? '/api/privacy-profile' : '/api/accessibility-profile';
+    async (kind: "privacy" | "accessibility") => {
+      if (profileBusy) {
+        return;
+      }
+      const url =
+        kind === "privacy"
+          ? "/api/privacy-profile"
+          : "/api/accessibility-profile";
       const currentlyOn =
-        kind === 'privacy' ? profiles.privacyEnabled : profiles.accessibilityEnabled;
-      if (currentlyOn === null) return; // still loading — ignore clicks
+        kind === "privacy"
+          ? profiles.privacyEnabled
+          : profiles.accessibilityEnabled;
+      if (currentlyOn === null) {
+        return; // still loading — ignore clicks
+      }
       const nextOn = !currentlyOn;
       setProfileBusy(kind);
-      setProfiles(p => ({
+      setProfiles((p) => ({
         ...p,
-        [kind === 'privacy' ? 'privacyEnabled' : 'accessibilityEnabled']: nextOn,
+        [kind === "privacy" ? "privacyEnabled" : "accessibilityEnabled"]:
+          nextOn,
       }));
       try {
         const res = await fetch(url, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ profile: nextOn ? {} : null }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         flashToast(
-          '✓ ' +
-            tDev('profile_toast_saved', {
-              kind: tDev(kind === 'privacy' ? 'profile_kind_privacy' : 'profile_kind_a11y'),
-              action: tDev(nextOn ? 'profile_action_enabled' : 'profile_action_disabled'),
-            }),
+          "✓ " +
+            tDev("profile_toast_saved", {
+              kind: tDev(
+                kind === "privacy"
+                  ? "profile_kind_privacy"
+                  : "profile_kind_a11y"
+              ),
+              action: tDev(
+                nextOn ? "profile_action_enabled" : "profile_action_disabled"
+              ),
+            })
         );
         router.refresh();
       } catch (e) {
         flashToast(
-          '✗ ' +
-            tDev('profile_toast_failed', {
-              kind: tDev(kind === 'privacy' ? 'profile_kind_privacy' : 'profile_kind_a11y'),
-              message: e instanceof Error ? e.message : tDev('failed_word'),
-            }),
+          "✗ " +
+            tDev("profile_toast_failed", {
+              kind: tDev(
+                kind === "privacy"
+                  ? "profile_kind_privacy"
+                  : "profile_kind_a11y"
+              ),
+              message: e instanceof Error ? e.message : tDev("failed_word"),
+            })
         );
-        setProfiles(p => ({
+        setProfiles((p) => ({
           ...p,
-          [kind === 'privacy' ? 'privacyEnabled' : 'accessibilityEnabled']: currentlyOn,
+          [kind === "privacy" ? "privacyEnabled" : "accessibilityEnabled"]:
+            currentlyOn,
         }));
       } finally {
         setProfileBusy(null);
       }
     },
-    [profiles, profileBusy, flashToast, router, tDev],
+    [profiles, profileBusy, flashToast, router, tDev]
   );
 
   // ── Generic POST helper used by every quick action ──────────────────
@@ -576,14 +701,15 @@ export default function DevMenu() {
       action: string,
       url: string,
       init: RequestInit,
-      onSuccess: (body: unknown) => string,
+      onSuccess: (body: unknown) => string
     ) => {
       setActionBusy(action);
       try {
         const res = await fetch(url, init);
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const msg = (body as { error?: string }).error ?? `HTTP ${res.status}`;
+          const msg =
+            (body as { error?: string }).error ?? `HTTP ${res.status}`;
           flashToast(`✗ ${action}: ${msg}`);
           return;
         }
@@ -592,101 +718,115 @@ export default function DevMenu() {
         // Refresh task status so the sync chip updates.
         fetchTask();
       } catch (e) {
-        flashToast(`✗ ${action}: ${e instanceof Error ? e.message : tDev('failed_word')}`);
+        flashToast(
+          `✗ ${action}: ${e instanceof Error ? e.message : tDev("failed_word")}`
+        );
       } finally {
         setActionBusy(null);
         clearConfirm();
       }
     },
-    [router, flashToast, fetchTask, clearConfirm, tDev],
+    [router, flashToast, fetchTask, clearConfirm, tDev]
   );
 
   // ── Specific actions ─────────────────────────────────────────────────
   const setLocaleTo = useCallback(
     async (next: string) => {
       callAction(
-        'locale',
-        '/api/locale',
+        "locale",
+        "/api/locale",
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ locale: next }),
         },
-        body => tDev('language_changed', { locale: (body as LocaleInfo).locale }),
+        (body) =>
+          tDev("language_changed", { locale: (body as LocaleInfo).locale })
       );
       // Optimistic update so the picker reflects immediately.
-      setLocale(prev => (prev ? { ...prev, locale: next } : prev));
+      setLocale((prev) => (prev ? { ...prev, locale: next } : prev));
     },
-    [callAction, tDev],
+    [callAction, tDev]
   );
 
   const startSync = useCallback(() => {
     callAction(
-      'sync-start',
-      '/api/sync/trigger',
-      { method: 'POST' },
-      body => {
-        const b = body as { synced?: number; changes?: number; skipped?: boolean };
-        if (b.skipped) return tDev('sync_already_running');
-        return tDev('synced_summary', { synced: b.synced ?? 0, changes: b.changes ?? 0 });
-      },
+      "sync-start",
+      "/api/sync/trigger",
+      { method: "POST" },
+      (body) => {
+        const b = body as {
+          synced?: number;
+          changes?: number;
+          skipped?: boolean;
+        };
+        if (b.skipped) {
+          return tDev("sync_already_running");
+        }
+        return tDev("synced_summary", {
+          synced: b.synced ?? 0,
+          changes: b.changes ?? 0,
+        });
+      }
     );
   }, [callAction, tDev]);
 
   const stopSync = useCallback(() => {
-    callAction(
-      'sync-stop',
-      '/api/dev/sync-stop',
-      { method: 'POST' },
-      () => tDev('sync_stop_requested'),
+    callAction("sync-stop", "/api/dev/sync-stop", { method: "POST" }, () =>
+      tDev("sync_stop_requested")
     );
   }, [callAction, tDev]);
 
   const wipeApps = useCallback(() => {
     callAction(
-      'wipe-apps',
-      '/api/dev/wipe-apps',
-      { method: 'POST' },
-      body => {
+      "wipe-apps",
+      "/api/dev/wipe-apps",
+      { method: "POST" },
+      (body) => {
         const b = body as { rowsRemoved?: number };
-        return tDev('wiped_summary', { count: b.rowsRemoved ?? 0 });
-      },
+        return tDev("wiped_summary", { count: b.rowsRemoved ?? 0 });
+      }
     );
   }, [callAction, tDev]);
 
   const resetChangelog = useCallback(() => {
     callAction(
-      'reset-changelog',
-      '/api/dev/reset-changelog',
-      { method: 'POST' },
-      body => {
+      "reset-changelog",
+      "/api/dev/reset-changelog",
+      { method: "POST" },
+      (body) => {
         const b = body as { snapshotsRemoved?: number };
-        return tDev('reset_changelog_summary', { count: b.snapshotsRemoved ?? 0 });
-      },
+        return tDev("reset_changelog_summary", {
+          count: b.snapshotsRemoved ?? 0,
+        });
+      }
     );
   }, [callAction, tDev]);
 
   const deleteShortlists = useCallback(() => {
     callAction(
-      'delete-shortlists',
-      '/api/shortlist?all=1',
-      { method: 'DELETE' },
-      body => {
+      "delete-shortlists",
+      "/api/shortlist?all=1",
+      { method: "DELETE" },
+      (body) => {
         const b = body as { removed?: number };
-        return tDev('removed_shortlist_summary', { count: b.removed ?? 0 });
-      },
+        return tDev("removed_shortlist_summary", { count: b.removed ?? 0 });
+      }
     );
   }, [callAction, tDev]);
 
   const seedSampleData = useCallback(() => {
     callAction(
-      'seed',
-      '/api/dev/seed-sample-data',
-      { method: 'POST' },
-      body => {
+      "seed",
+      "/api/dev/seed-sample-data",
+      { method: "POST" },
+      (body) => {
         const b = body as { inserted?: number; skipped?: number };
-        return tDev('seeded_summary', { inserted: b.inserted ?? 0, skipped: b.skipped ?? 0 });
-      },
+        return tDev("seeded_summary", {
+          inserted: b.inserted ?? 0,
+          skipped: b.skipped ?? 0,
+        });
+      }
     );
   }, [callAction, tDev]);
 
@@ -699,14 +839,16 @@ export default function DevMenu() {
   // without a full reload.
   const writeFocus = useCallback(
     async (next: FocusInfo) => {
-      if (focusBusy) return;
+      if (focusBusy) {
+        return;
+      }
       const previous = focus;
       setFocusBusy(true);
       setFocus(next); // optimistic
       try {
-        const res = await fetch('/api/focus', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/focus", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             audience: next.audience,
             understand: next.understand,
@@ -717,65 +859,77 @@ export default function DevMenu() {
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const msg = (body as { error?: string }).error ?? `HTTP ${res.status}`;
-          flashToast('✗ ' + tDev('focus_failed', { message: msg }));
+          const msg =
+            (body as { error?: string }).error ?? `HTTP ${res.status}`;
+          flashToast(`✗ ${tDev("focus_failed", { message: msg })}`);
           setFocus(previous); // rollback
           return;
         }
         // The server normalises (e.g. promotes `understand=true` when
         // both primary goals are unset); adopt its echo so the picker
         // never drifts from what's actually persisted.
-        setFocus({ ...(body as FocusInfo), aiConfigured: previous?.aiConfigured ?? false });
+        setFocus({
+          ...(body as FocusInfo),
+          aiConfigured: previous?.aiConfigured ?? false,
+        });
         const audienceLabel = tDev(
-          AUDIENCE_OPTIONS.find(o => o.value === next.audience)?.labelKey ?? 'audience_self',
+          AUDIENCE_OPTIONS.find((o) => o.value === next.audience)?.labelKey ??
+            "audience_self"
         );
         const goalsSummary = describeGoalsForToast(tDev, next);
         flashToast(
-          '✓ ' +
+          "✓ " +
             (goalsSummary
-              ? tDev('focus_saved_with_goals', { audience: audienceLabel, goals: goalsSummary })
-              : tDev('focus_saved', { audience: audienceLabel })),
+              ? tDev("focus_saved_with_goals", {
+                  audience: audienceLabel,
+                  goals: goalsSummary,
+                })
+              : tDev("focus_saved", { audience: audienceLabel }))
         );
         router.refresh();
       } catch (e) {
         flashToast(
-          '✗ ' +
-            tDev('focus_failed', {
-              message: e instanceof Error ? e.message : tDev('failed_word'),
-            }),
+          "✗ " +
+            tDev("focus_failed", {
+              message: e instanceof Error ? e.message : tDev("failed_word"),
+            })
         );
         setFocus(previous);
       } finally {
         setFocusBusy(false);
       }
     },
-    [focus, focusBusy, flashToast, router, tDev],
+    [focus, focusBusy, flashToast, router, tDev]
   );
 
   const setAudienceTo = useCallback(
-    (next: FocusInfo['audience']) => {
-      if (!focus || focus.audience === next) return;
+    (next: FocusInfo["audience"]) => {
+      if (!focus || focus.audience === next) {
+        return;
+      }
       writeFocus({ ...focus, audience: next });
     },
-    [focus, writeFocus],
+    [focus, writeFocus]
   );
 
   const toggleGoal = useCallback(
-    (goal: 'understand' | 'declutter' | 'minimal' | 'accessibility') => {
-      if (!focus) return;
+    (goal: "understand" | "declutter" | "minimal" | "accessibility") => {
+      if (!focus) {
+        return;
+      }
       const current = focus[goal];
       // Mutual exclusion mirrors the /api/focus normaliser: picking
       // `minimal` clears understand + declutter; checking either of
       // those clears `minimal`. Accessibility is independent.
       let next: FocusInfo = { ...focus, [goal]: !current };
-      if (goal === 'minimal' && !current) {
+      if (goal === "minimal" && !current) {
         next = { ...next, understand: false, declutter: false };
-      } else if ((goal === 'understand' || goal === 'declutter') && !current) {
+      } else if ((goal === "understand" || goal === "declutter") && !current) {
         next = { ...next, minimal: false };
       }
       writeFocus(next);
     },
-    [focus, writeFocus],
+    [focus, writeFocus]
   );
 
   // ── Kill switch — flag.devopts.feature_flag_system.enabled ────────────
@@ -784,8 +938,8 @@ export default function DevMenu() {
   // override API so it persists, shows up in the regular flag list, and
   // can be cleared from anywhere that interacts with overrides.
   const killSwitchRow = useMemo(
-    () => rows?.find(r => r.key === KILL_SWITCH_KEY) ?? null,
-    [rows],
+    () => rows?.find((r) => r.key === KILL_SWITCH_KEY) ?? null,
+    [rows]
   );
   // We deliberately read the *override* field rather than `currentValue`
   // here. When the kill switch is engaged, resolveFlag short-circuits
@@ -793,7 +947,7 @@ export default function DevMenu() {
   // `currentValue` reads as 'on' even though the override is 'off'.
   // The override field is the only reliable signal that the user has
   // actively pinned the system to disabled.
-  const killSwitchActive = killSwitchRow?.override === 'off';
+  const killSwitchActive = killSwitchRow?.override === "off";
   const [killBusy, setKillBusy] = useState(false);
 
   // ── Export overrides as JSON ─────────────────────────────────────────
@@ -807,17 +961,17 @@ export default function DevMenu() {
   // shared doc without juggling a download dialog.
   const exportOverridesJson = useCallback(async () => {
     if (!rows) {
-      flashToast('✗ ' + tDev('flags_loading_toast'));
+      flashToast(`✗ ${tDev("flags_loading_toast")}`);
       return;
     }
-    const overridden = rows.filter(r => r.override !== null);
+    const overridden = rows.filter((r) => r.override !== null);
     if (overridden.length === 0) {
-      flashToast(tDev('no_overrides_to_export'));
+      flashToast(tDev("no_overrides_to_export"));
       return;
     }
     const blob = {
       generatedAt: new Date().toISOString(),
-      flags: overridden.map(r => ({
+      flags: overridden.map((r) => ({
         key: r.key,
         override: r.override,
         // Resolved value at export time — handy as a sanity check when
@@ -828,22 +982,24 @@ export default function DevMenu() {
     const text = JSON.stringify(blob, null, 2);
     try {
       await navigator.clipboard.writeText(text);
-      flashToast('✓ ' + tDev('copied_overrides', { count: overridden.length }));
+      flashToast(`✓ ${tDev("copied_overrides", { count: overridden.length })}`);
     } catch {
       // Fallback for environments without async clipboard. We emit a
       // textarea, select-and-copy, then remove it. Won't survive a
       // strict CSP, but is enough for the in-app dev menu.
-      const ta = document.createElement('textarea');
+      const ta = document.createElement("textarea");
       ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
       document.body.appendChild(ta);
       ta.select();
       try {
-        document.execCommand('copy');
-        flashToast('✓ ' + tDev('copied_overrides_short', { count: overridden.length }));
+        document.execCommand("copy");
+        flashToast(
+          `✓ ${tDev("copied_overrides_short", { count: overridden.length })}`
+        );
       } catch {
-        flashToast('✗ ' + tDev('clipboard_unavailable'));
+        flashToast(`✗ ${tDev("clipboard_unavailable")}`);
       } finally {
         document.body.removeChild(ta);
       }
@@ -851,57 +1007,69 @@ export default function DevMenu() {
   }, [rows, flashToast, tDev]);
 
   const writeKillSwitch = useCallback(
-    async (mode: 'disable' | 'enable') => {
-      if (killBusy) return;
+    async (mode: "disable" | "enable") => {
+      if (killBusy) {
+        return;
+      }
       setKillBusy(true);
       try {
         let res: Response;
-        if (mode === 'disable') {
-          res = await fetch('/api/feature-flags/overrides', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: KILL_SWITCH_KEY, value: 'off' }),
+        if (mode === "disable") {
+          res = await fetch("/api/feature-flags/overrides", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key: KILL_SWITCH_KEY, value: "off" }),
           });
         } else {
           // Clearing the override snaps the flag back to its hard
           // default ('on'), which re-enables the rule engine.
           res = await fetch(
             `/api/feature-flags/overrides/${encodeURIComponent(KILL_SWITCH_KEY)}`,
-            { method: 'DELETE' },
+            { method: "DELETE" }
           );
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         flashToast(
-          '✓ ' + (mode === 'disable' ? tDev('kill_disabled_toast') : tDev('kill_enabled_toast')),
+          "✓ " +
+            (mode === "disable"
+              ? tDev("kill_disabled_toast")
+              : tDev("kill_enabled_toast"))
         );
-        await fetchFlags('silent');
+        await fetchFlags("silent");
         router.refresh();
       } catch (e) {
         flashToast(
-          '✗ ' +
-            tDev('kill_failed', {
-              message: e instanceof Error ? e.message : tDev('failed_word'),
-            }),
+          "✗ " +
+            tDev("kill_failed", {
+              message: e instanceof Error ? e.message : tDev("failed_word"),
+            })
         );
       } finally {
         setKillBusy(false);
       }
     },
-    [killBusy, fetchFlags, flashToast, router, tDev],
+    [killBusy, fetchFlags, flashToast, router, tDev]
   );
 
   // ── Flag preference (same as before) ─────────────────────────────────
-  const primarySurfaces = useMemo(() => primarySurfacesForPath(pathname), [pathname]);
+  const primarySurfaces = useMemo(
+    () => primarySurfacesForPath(pathname),
+    [pathname]
+  );
   const primarySet = useMemo(() => new Set(primarySurfaces), [primarySurfaces]);
   // Per-page key promotions — see `PAGE_PRIMARY_FLAG_KEYS`. Memoised
   // as a Set so the bucket loop below is a fixed lookup per row.
   const pagePrimaryKeys = useMemo(
     () => new Set(pagePrimaryFlagKeysFor(pathname)),
-    [pathname],
+    [pathname]
   );
 
   const grouped = useMemo(() => {
-    if (!rows) return { primary: [], chrome: [], other: [] };
+    if (!rows) {
+      return { primary: [], chrome: [], other: [] };
+    }
     const primary: FlagRow[] = [];
     const chrome: FlagRow[] = [];
     const other: FlagRow[] = [];
@@ -912,98 +1080,124 @@ export default function DevMenu() {
       // `flag.devopts.cfgutil_uninstall` would always sit in the
       // chrome group on the review-recommendations page since
       // `devopts` is in ALWAYS_VISIBLE_SURFACES.
-      if (pagePrimaryKeys.has(row.key)) primary.push(row);
-      else if (primarySet.has(row.surface)) primary.push(row);
-      else if (ALWAYS_VISIBLE_SURFACES.has(row.surface)) chrome.push(row);
-      else other.push(row);
+      if (pagePrimaryKeys.has(row.key)) {
+        primary.push(row);
+      } else if (primarySet.has(row.surface)) {
+        primary.push(row);
+      } else if (ALWAYS_VISIBLE_SURFACES.has(row.surface)) {
+        chrome.push(row);
+      } else {
+        other.push(row);
+      }
     }
     return { primary, chrome, other };
   }, [rows, primarySet, pagePrimaryKeys]);
 
   const setOverride = useCallback(
     async (key: string, value: FlagValue | null) => {
-      setRows(prev =>
+      setRows((prev) =>
         prev
-          ? prev.map(r =>
+          ? prev.map((r) =>
               r.key === key
-                ? { ...r, override: value, currentValue: value ?? r.hardDefault }
-                : r,
+                ? {
+                    ...r,
+                    override: value,
+                    currentValue: value ?? r.hardDefault,
+                  }
+                : r
             )
-          : prev,
+          : prev
       );
       try {
         if (value === null) {
-          const res = await fetch(`/api/feature-flags/overrides/${encodeURIComponent(key)}`, {
-            method: 'DELETE',
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const res = await fetch(
+            `/api/feature-flags/overrides/${encodeURIComponent(key)}`,
+            {
+              method: "DELETE",
+            }
+          );
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
         } else {
-          const res = await fetch('/api/feature-flags/overrides', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const res = await fetch("/api/feature-flags/overrides", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ key, value }),
           });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
         }
-        fetchFlags('silent');
+        fetchFlags("silent");
         router.refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : tDev('set_override_failed'));
-        fetchFlags('silent');
+        setError(e instanceof Error ? e.message : tDev("set_override_failed"));
+        fetchFlags("silent");
       }
     },
-    [fetchFlags, router, tDev],
+    [fetchFlags, router, tDev]
   );
 
-  if (!mounted) return null;
-  if (!devOptsVisible) return null;
-  if (!enabled) return null;
+  if (!mounted) {
+    return null;
+  }
+  if (!devOptsVisible) {
+    return null;
+  }
+  if (!enabled) {
+    return null;
+  }
 
   const primaryLabel =
     primarySurfaces.length === 0
-      ? tDev('default_primary_label')
-      : primarySurfaces.map(s => (SURFACE_LABEL_KEYS[s] ? tDev(SURFACE_LABEL_KEYS[s]) : s)).join(' + ');
+      ? tDev("default_primary_label")
+      : primarySurfaces
+          .map((s) => (SURFACE_LABEL_KEYS[s] ? tDev(SURFACE_LABEL_KEYS[s]) : s))
+          .join(" + ");
 
   const syncRunning = task?.running ?? false;
 
   return (
     <div className="dev-menu">
       <button
-        ref={triggerRef}
-        type="button"
-        className={`dev-menu-trigger${open ? ' is-open' : ''}${syncRunning ? ' is-busy' : ''}`}
-        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={open ? tDev('close_aria') : tDev('open_aria')}
-        title={tDev('trigger_title')}
-        onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog"
+        aria-label={open ? tDev("close_aria") : tDev("open_aria")}
+        className={`dev-menu-trigger${open ? "is-open" : ""}${syncRunning ? "is-busy" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+        ref={triggerRef}
+        title={tDev("trigger_title")}
+        type="button"
       >
         {/* Wrench glyph, matched in size to the AccessibilityQuickToggles
             trigger (18px stroke icon inside a 36px button) so the two
             sit visually balanced in the bottom-right stack. */}
         <svg
+          aria-hidden="true"
           className="dev-menu-trigger-glyph"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
           fill="none"
+          height="18"
           stroke="currentColor"
-          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+          width="18"
         >
           <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-2.5z" />
         </svg>
-        {syncRunning && <span className="dev-menu-trigger-busy-dot" aria-hidden="true" />}
+        {syncRunning && (
+          <span aria-hidden="true" className="dev-menu-trigger-busy-dot" />
+        )}
       </button>
 
       {open && (
         <div
+          aria-label={tDev("popover_aria")}
+          className="dev-menu-popover"
           ref={popoverRef}
           role="dialog"
-          aria-label={tDev('popover_aria')}
-          className="dev-menu-popover"
         >
           {/* Header: row 1 = title + kill-switch toggle + close,
               row 2 = subtitle ("Highlighting flags for ..."). The
@@ -1012,7 +1206,9 @@ export default function DevMenu() {
               wrap into the close button. */}
           <div className="dev-menu-popover-header">
             <div className="dev-menu-popover-header-top">
-              <strong className="dev-menu-popover-title">{tDev('title')}</strong>
+              <strong className="dev-menu-popover-title">
+                {tDev("title")}
+              </strong>
               <div className="dev-menu-popover-header-controls">
                 {/* Kill switch sits in the header so it's reachable
                     without scrolling and visually distinct from the
@@ -1021,64 +1217,80 @@ export default function DevMenu() {
                     when ON to flag warning state. ON = system enabled;
                     OFF = every flag forced to its hard default. */}
                 <button
-                  type="button"
-                  role="switch"
                   aria-checked={!killSwitchActive}
                   aria-label={
                     killSwitchActive
-                      ? tDev('killswitch_label_off')
-                      : tDev('killswitch_label_on')
+                      ? tDev("killswitch_label_off")
+                      : tDev("killswitch_label_on")
                   }
+                  className={`dev-menu-killswitch-toggle${killSwitchActive ? "is-off" : ""}`}
+                  disabled={killBusy || !rows}
+                  onClick={() =>
+                    writeKillSwitch(killSwitchActive ? "enable" : "disable")
+                  }
+                  role="switch"
                   title={
                     killSwitchActive
-                      ? tDev('killswitch_title_off')
-                      : tDev('killswitch_title_on')
+                      ? tDev("killswitch_title_off")
+                      : tDev("killswitch_title_on")
                   }
-                  className={`dev-menu-killswitch-toggle${killSwitchActive ? ' is-off' : ''}`}
-                  onClick={() => writeKillSwitch(killSwitchActive ? 'enable' : 'disable')}
-                  disabled={killBusy || !rows}
+                  type="button"
                 >
-                  <span className="dev-menu-killswitch-track" aria-hidden="true">
+                  <span
+                    aria-hidden="true"
+                    className="dev-menu-killswitch-track"
+                  >
                     <span className="dev-menu-killswitch-thumb" />
                   </span>
-                  <span className="dev-menu-killswitch-label" aria-hidden="true">
-                    {killSwitchActive ? tDev('flags_off_short') : tDev('flags_on_short')}
+                  <span
+                    aria-hidden="true"
+                    className="dev-menu-killswitch-label"
+                  >
+                    {killSwitchActive
+                      ? tDev("flags_off_short")
+                      : tDev("flags_on_short")}
                   </span>
                 </button>
                 <button
-                  type="button"
+                  aria-label={tDev("close_button_aria")}
                   className="dev-menu-popover-close"
-                  aria-label={tDev('close_button_aria')}
                   onClick={() => setOpen(false)}
+                  type="button"
                 >
                   ✕
                 </button>
               </div>
             </div>
             <div className="dev-menu-popover-subtitle">
-              {tDev.rich('highlighting_for', {
+              {tDev.rich("highlighting_for", {
                 label: primaryLabel,
-                strong: chunks => <strong>{chunks}</strong>,
+                strong: (chunks) => <strong>{chunks}</strong>,
               })}
             </div>
           </div>
 
           <div className="dev-menu-popover-body">
             {/* ── Quick actions ─────────────────────────────────────── */}
-            <section className="dev-menu-quick-section" aria-label={tDev('section_quick_actions_aria')}>
+            <section
+              aria-label={tDev("section_quick_actions_aria")}
+              className="dev-menu-quick-section"
+            >
               {/* Language */}
               <div className="dev-menu-quick-row">
-                <label className="dev-menu-quick-label" htmlFor="dev-menu-locale">
-                  {tDev('label_language')}
+                <label
+                  className="dev-menu-quick-label"
+                  htmlFor="dev-menu-locale"
+                >
+                  {tDev("label_language")}
                 </label>
                 <select
-                  id="dev-menu-locale"
                   className="dev-menu-select"
-                  value={locale?.locale ?? 'en'}
-                  onChange={e => setLocaleTo(e.target.value)}
-                  disabled={actionBusy === 'locale' || !locale}
+                  disabled={actionBusy === "locale" || !locale}
+                  id="dev-menu-locale"
+                  onChange={(e) => setLocaleTo(e.target.value)}
+                  value={locale?.locale ?? "en"}
                 >
-                  {(locale?.supported ?? ['en']).map(code => (
+                  {(locale?.supported ?? ["en"]).map((code) => (
                     <option key={code} value={code}>
                       {LOCALE_LABELS[code] ?? code} ({code})
                     </option>
@@ -1096,43 +1308,54 @@ export default function DevMenu() {
                   sublabel ("syncing 3/10 · Instagram"). */}
               <div className="dev-menu-quick-row dev-menu-quick-row-stack">
                 <span className="dev-menu-quick-label">
-                  {tDev('label_app_data')}
+                  {tDev("label_app_data")}
                   {syncRunning && task?.summary && (
                     <span className="dev-menu-quick-sublabel">
-                      {' '}· {tDev('syncing_progress', { done: task.summary.done, total: task.summary.total })}
-                      {task.currentAppName ? ` · ${task.currentAppName}` : ''}
+                      {" "}
+                      ·{" "}
+                      {tDev("syncing_progress", {
+                        done: task.summary.done,
+                        total: task.summary.total,
+                      })}
+                      {task.currentAppName ? ` · ${task.currentAppName}` : ""}
                     </span>
                   )}
                 </span>
                 <div
+                  aria-label={tDev("app_data_actions_aria")}
                   className="dev-menu-pill-group"
                   role="group"
-                  aria-label={tDev('app_data_actions_aria')}
                 >
                   <button
-                    type="button"
                     className="dev-menu-action-btn"
+                    disabled={actionBusy === "sync-start" || syncRunning}
                     onClick={startSync}
-                    disabled={actionBusy === 'sync-start' || syncRunning}
+                    type="button"
                   >
-                    {actionBusy === 'sync-start' ? tDev('btn_starting') : tDev('btn_run_sync')}
+                    {actionBusy === "sync-start"
+                      ? tDev("btn_starting")
+                      : tDev("btn_run_sync")}
                   </button>
                   <button
-                    type="button"
                     className="dev-menu-action-btn dev-menu-action-btn-warn"
+                    disabled={actionBusy === "sync-stop" || !syncRunning}
                     onClick={stopSync}
-                    disabled={actionBusy === 'sync-stop' || !syncRunning}
+                    type="button"
                   >
-                    {actionBusy === 'sync-stop' ? tDev('btn_stopping') : tDev('btn_stop')}
+                    {actionBusy === "sync-stop"
+                      ? tDev("btn_stopping")
+                      : tDev("btn_stop")}
                   </button>
                   <button
-                    type="button"
                     className="dev-menu-action-btn"
+                    disabled={actionBusy === "seed"}
                     onClick={seedSampleData}
-                    disabled={actionBusy === 'seed'}
-                    title={tDev('btn_seed_title')}
+                    title={tDev("btn_seed_title")}
+                    type="button"
                   >
-                    {actionBusy === 'seed' ? tDev('btn_seeding') : tDev('btn_seed_populate')}
+                    {actionBusy === "seed"
+                      ? tDev("btn_seeding")
+                      : tDev("btn_seed_populate")}
                   </button>
                   {/* Onboarding preview — opens /onboard with
                       ?preview=fresh so the wizard renders as a
@@ -1142,12 +1365,12 @@ export default function DevMenu() {
                       through without committing changes. Useful for
                       screenshots + UX review without wiping the DB. */}
                   <Link
-                    href="/onboard?preview=fresh"
                     className="dev-menu-action-btn"
+                    href="/onboard?preview=fresh"
                     onClick={() => setOpen(false)}
-                    title={tDev('btn_fresh_user_title')}
+                    title={tDev("btn_fresh_user_title")}
                   >
-                    {tDev('btn_onboarding')}
+                    {tDev("btn_onboarding")}
                   </Link>
                 </div>
               </div>
@@ -1166,32 +1389,36 @@ export default function DevMenu() {
                     the flag system. */}
                 <details className="dev-menu-config-row">
                   <summary className="dev-menu-config-summary">
-                    <span className="dev-menu-config-label">{tDev('config_audience')}</span>
+                    <span className="dev-menu-config-label">
+                      {tDev("config_audience")}
+                    </span>
                     <span className="dev-menu-config-value">
                       {focus
                         ? (() => {
-                            const opt = AUDIENCE_OPTIONS.find(o => o.value === focus.audience);
-                            return opt ? tDev(opt.labelKey) : tDev('dash');
+                            const opt = AUDIENCE_OPTIONS.find(
+                              (o) => o.value === focus.audience
+                            );
+                            return opt ? tDev(opt.labelKey) : tDev("dash");
                           })()
-                        : '…'}
+                        : "…"}
                     </span>
                   </summary>
                   <div
+                    aria-label={tDev("audience_aria")}
                     className="dev-menu-pill-group"
                     role="radiogroup"
-                    aria-label={tDev('audience_aria')}
                   >
-                    {AUDIENCE_OPTIONS.map(opt => {
+                    {AUDIENCE_OPTIONS.map((opt) => {
                       const active = focus?.audience === opt.value;
                       return (
                         <button
-                          key={opt.value}
-                          type="button"
-                          role="radio"
                           aria-checked={active}
-                          className={`dev-menu-pick${active ? ' is-active' : ''}`}
-                          onClick={() => setAudienceTo(opt.value)}
+                          className={`dev-menu-pick${active ? "is-active" : ""}`}
                           disabled={!focus || focusBusy}
+                          key={opt.value}
+                          onClick={() => setAudienceTo(opt.value)}
+                          role="radio"
+                          type="button"
                         >
                           {tDev(opt.labelKey)}
                         </button>
@@ -1207,29 +1434,29 @@ export default function DevMenu() {
                     Minimal. Accessibility is independent. */}
                 <details className="dev-menu-config-row">
                   <summary className="dev-menu-config-summary">
-                    <span className="dev-menu-config-label">{tDev('config_goals')}</span>
+                    <span className="dev-menu-config-label">
+                      {tDev("config_goals")}
+                    </span>
                     <span className="dev-menu-config-value">
-                      {focus ? summariseGoals(tDev, focus) : '…'}
+                      {focus ? summariseGoals(tDev, focus) : "…"}
                     </span>
                   </summary>
-                  <p className="dev-menu-config-hint">
-                    {tDev('goals_hint')}
-                  </p>
+                  <p className="dev-menu-config-hint">{tDev("goals_hint")}</p>
                   <div
+                    aria-label={tDev("goals_aria")}
                     className="dev-menu-pill-group"
                     role="group"
-                    aria-label={tDev('goals_aria')}
                   >
-                    {GOAL_OPTIONS.map(opt => {
+                    {GOAL_OPTIONS.map((opt) => {
                       const active = !!focus && focus[opt.key];
                       return (
                         <button
-                          key={opt.key}
-                          type="button"
                           aria-pressed={active}
-                          className={`dev-menu-pick${active ? ' is-active' : ''}`}
-                          onClick={() => toggleGoal(opt.key)}
+                          className={`dev-menu-pick${active ? "is-active" : ""}`}
                           disabled={!focus || focusBusy}
+                          key={opt.key}
+                          onClick={() => toggleGoal(opt.key)}
+                          type="button"
                         >
                           {tDev(opt.labelKey)}
                         </button>
@@ -1246,39 +1473,47 @@ export default function DevMenu() {
                     thresholds yet. */}
                 <details className="dev-menu-config-row">
                   <summary className="dev-menu-config-summary">
-                    <span className="dev-menu-config-label">{tDev('config_privacy_profile')}</span>
+                    <span className="dev-menu-config-label">
+                      {tDev("config_privacy_profile")}
+                    </span>
                     <span
                       className={`dev-menu-config-value${
-                        profiles.privacyEnabled ? ' is-on' : ''
+                        profiles.privacyEnabled ? "is-on" : ""
                       }`}
                     >
                       {profiles.privacyEnabled === null
-                        ? '…'
+                        ? "…"
                         : profiles.privacyEnabled
-                          ? tDev('value_on')
-                          : tDev('value_off')}
+                          ? tDev("value_on")
+                          : tDev("value_off")}
                     </span>
                   </summary>
                   <p className="dev-menu-config-hint">
-                    {tDev('privacy_profile_hint')}
+                    {tDev("privacy_profile_hint")}
                   </p>
                   <div className="dev-menu-config-actions">
                     <button
-                      type="button"
-                      role="switch"
                       aria-checked={!!profiles.privacyEnabled}
-                      className={`switch-toggle${profiles.privacyEnabled ? ' is-on' : ''}`}
-                      onClick={() => toggleProfile('privacy')}
-                      disabled={profiles.privacyEnabled === null || profileBusy === 'privacy'}
+                      className={`switch-toggle${profiles.privacyEnabled ? "is-on" : ""}`}
+                      disabled={
+                        profiles.privacyEnabled === null ||
+                        profileBusy === "privacy"
+                      }
+                      onClick={() => toggleProfile("privacy")}
+                      role="switch"
+                      type="button"
                     >
-                      <span className="switch-toggle-thumb" aria-hidden="true" />
+                      <span
+                        aria-hidden="true"
+                        className="switch-toggle-thumb"
+                      />
                     </button>
                     <Link
-                      href="/dashboard/settings#privacy-profile"
                       className="dev-menu-config-link"
+                      href="/dashboard/settings#privacy-profile"
                       onClick={() => setOpen(false)}
                     >
-                      {tDev('edit_in_settings')}
+                      {tDev("edit_in_settings")}
                     </Link>
                   </div>
                 </details>
@@ -1286,41 +1521,47 @@ export default function DevMenu() {
                 {/* Accessibility profile — same pattern as privacy. */}
                 <details className="dev-menu-config-row">
                   <summary className="dev-menu-config-summary">
-                    <span className="dev-menu-config-label">{tDev('config_a11y_profile')}</span>
+                    <span className="dev-menu-config-label">
+                      {tDev("config_a11y_profile")}
+                    </span>
                     <span
                       className={`dev-menu-config-value${
-                        profiles.accessibilityEnabled ? ' is-on' : ''
+                        profiles.accessibilityEnabled ? "is-on" : ""
                       }`}
                     >
                       {profiles.accessibilityEnabled === null
-                        ? '…'
+                        ? "…"
                         : profiles.accessibilityEnabled
-                          ? tDev('value_on')
-                          : tDev('value_off')}
+                          ? tDev("value_on")
+                          : tDev("value_off")}
                     </span>
                   </summary>
                   <p className="dev-menu-config-hint">
-                    {tDev('a11y_profile_hint')}
+                    {tDev("a11y_profile_hint")}
                   </p>
                   <div className="dev-menu-config-actions">
                     <button
-                      type="button"
-                      role="switch"
                       aria-checked={!!profiles.accessibilityEnabled}
-                      className={`switch-toggle${profiles.accessibilityEnabled ? ' is-on' : ''}`}
-                      onClick={() => toggleProfile('accessibility')}
+                      className={`switch-toggle${profiles.accessibilityEnabled ? "is-on" : ""}`}
                       disabled={
-                        profiles.accessibilityEnabled === null || profileBusy === 'accessibility'
+                        profiles.accessibilityEnabled === null ||
+                        profileBusy === "accessibility"
                       }
+                      onClick={() => toggleProfile("accessibility")}
+                      role="switch"
+                      type="button"
                     >
-                      <span className="switch-toggle-thumb" aria-hidden="true" />
+                      <span
+                        aria-hidden="true"
+                        className="switch-toggle-thumb"
+                      />
                     </button>
                     <Link
-                      href="/dashboard/settings#accessibility-profile"
                       className="dev-menu-config-link"
+                      href="/dashboard/settings#accessibility-profile"
                       onClick={() => setOpen(false)}
                     >
-                      {tDev('edit_in_settings')}
+                      {tDev("edit_in_settings")}
                     </Link>
                   </div>
                 </details>
@@ -1333,56 +1574,72 @@ export default function DevMenu() {
                   characters by three side-by-side confirm buttons. */}
               <div className="dev-menu-quick-row dev-menu-quick-row-stack dev-menu-quick-row-destructive">
                 <span className="dev-menu-quick-label">
-                  {tDev('label_reset')}
-                  <span className="dev-menu-quick-sublabel">{tDev('confirm_hint')}</span>
+                  {tDev("label_reset")}
+                  <span className="dev-menu-quick-sublabel">
+                    {tDev("confirm_hint")}
+                  </span>
                 </span>
-                <div className="dev-menu-pill-group" role="group" aria-label={tDev('destructive_resets_aria')}>
+                <div
+                  aria-label={tDev("destructive_resets_aria")}
+                  className="dev-menu-pill-group"
+                  role="group"
+                >
                   <ConfirmButton
                     action="wipe-apps"
-                    label={tDev('wipe_apps')}
-                    confirmLabel={tDev('wipe_apps_confirm')}
-                    workingLabel={tDev('btn_working')}
-                    busy={actionBusy === 'wipe-apps'}
-                    confirming={confirming === 'wipe-apps'}
-                    onArm={() => armConfirm('wipe-apps')}
+                    busy={actionBusy === "wipe-apps"}
+                    confirming={confirming === "wipe-apps"}
+                    confirmLabel={tDev("wipe_apps_confirm")}
+                    label={tDev("wipe_apps")}
+                    onArm={() => armConfirm("wipe-apps")}
                     onConfirm={wipeApps}
+                    workingLabel={tDev("btn_working")}
                   />
                   <ConfirmButton
                     action="reset-changelog"
-                    label={tDev('reset_changelog')}
-                    confirmLabel={tDev('confirm')}
-                    workingLabel={tDev('btn_working')}
-                    busy={actionBusy === 'reset-changelog'}
-                    confirming={confirming === 'reset-changelog'}
-                    onArm={() => armConfirm('reset-changelog')}
+                    busy={actionBusy === "reset-changelog"}
+                    confirming={confirming === "reset-changelog"}
+                    confirmLabel={tDev("confirm")}
+                    label={tDev("reset_changelog")}
+                    onArm={() => armConfirm("reset-changelog")}
                     onConfirm={resetChangelog}
+                    workingLabel={tDev("btn_working")}
                   />
                   <ConfirmButton
                     action="delete-shortlists"
-                    label={tDev('delete_shortlists')}
-                    confirmLabel={tDev('confirm')}
-                    workingLabel={tDev('btn_working')}
-                    busy={actionBusy === 'delete-shortlists'}
-                    confirming={confirming === 'delete-shortlists'}
-                    onArm={() => armConfirm('delete-shortlists')}
+                    busy={actionBusy === "delete-shortlists"}
+                    confirming={confirming === "delete-shortlists"}
+                    confirmLabel={tDev("confirm")}
+                    label={tDev("delete_shortlists")}
+                    onArm={() => armConfirm("delete-shortlists")}
                     onConfirm={deleteShortlists}
+                    workingLabel={tDev("btn_working")}
                   />
                 </div>
               </div>
 
               {actionToast && (
-                <div className="dev-menu-action-toast" role="status" aria-live="polite">
+                <div
+                  aria-live="polite"
+                  className="dev-menu-action-toast"
+                  role="status"
+                >
                   {actionToast}
                 </div>
               )}
             </section>
 
             {/* ── Feature flags ─────────────────────────────────────── */}
-            <section className="dev-menu-flags-section" aria-label={tDev('feature_flags_aria')}>
-              <div className="dev-menu-section-heading">{tDev('section_feature_flags')}</div>
+            <section
+              aria-label={tDev("feature_flags_aria")}
+              className="dev-menu-flags-section"
+            >
+              <div className="dev-menu-section-heading">
+                {tDev("section_feature_flags")}
+              </div>
               {loading && !rows && (
                 <div className="dev-menu-empty">
-                  <span className="spinner-sm" aria-hidden="true" /> {tDev('loading_flags')}
+                  <span aria-hidden="true" className="spinner-sm" />{" "}
+                  {tDev("loading_flags")}
                 </div>
               )}
               {error && !rows && (
@@ -1393,45 +1650,47 @@ export default function DevMenu() {
               {rows && (
                 <>
                   <FlagsSection
-                    title={
-                      primarySurfaces.length > 0
-                        ? tDev('on_this_page_with_label', { label: primaryLabel })
-                        : tDev('on_this_page')
-                    }
-                    rows={grouped.primary}
                     emptyHint={
                       primarySurfaces.length > 0
-                        ? tDev('no_flags_for_surface')
-                        : tDev('no_surface_mapping')
+                        ? tDev("no_flags_for_surface")
+                        : tDev("no_surface_mapping")
                     }
                     highlight
-                    onSetOverride={setOverride}
-                    selectedKey={selectedFlagKey}
-                    onSelectKey={setSelectedFlagKey}
                     onCloseMenu={closeMenu}
+                    onSelectKey={setSelectedFlagKey}
+                    onSetOverride={setOverride}
+                    rows={grouped.primary}
+                    selectedKey={selectedFlagKey}
+                    title={
+                      primarySurfaces.length > 0
+                        ? tDev("on_this_page_with_label", {
+                            label: primaryLabel,
+                          })
+                        : tDev("on_this_page")
+                    }
                   />
                   <FlagsSection
-                    title={tDev('global_chrome_title')}
-                    rows={grouped.chrome}
+                    collapsedByDefault
                     emptyHint={null}
                     highlight={false}
-                    onSetOverride={setOverride}
-                    selectedKey={selectedFlagKey}
-                    onSelectKey={setSelectedFlagKey}
                     onCloseMenu={closeMenu}
-                    collapsedByDefault
+                    onSelectKey={setSelectedFlagKey}
+                    onSetOverride={setOverride}
+                    rows={grouped.chrome}
+                    selectedKey={selectedFlagKey}
+                    title={tDev("global_chrome_title")}
                   />
                   {grouped.other.length > 0 && (
                     <FlagsSection
-                      title={tDev('other_surfaces_title')}
-                      rows={grouped.other}
+                      collapsedByDefault
                       emptyHint={null}
                       highlight={false}
-                      onSetOverride={setOverride}
-                      selectedKey={selectedFlagKey}
-                      onSelectKey={setSelectedFlagKey}
                       onCloseMenu={closeMenu}
-                      collapsedByDefault
+                      onSelectKey={setSelectedFlagKey}
+                      onSetOverride={setOverride}
+                      rows={grouped.other}
+                      selectedKey={selectedFlagKey}
+                      title={tDev("other_surfaces_title")}
                     />
                   )}
                 </>
@@ -1441,11 +1700,11 @@ export default function DevMenu() {
 
           <div className="dev-menu-popover-footer">
             <Link
-              href="/dashboard/settings#developer"
               className="dev-menu-deep-link"
+              href="/dashboard/settings#developer"
               onClick={() => setOpen(false)}
             >
-              {tDev('open_full_panel')}
+              {tDev("open_full_panel")}
             </Link>
             {/* Diagnostics dashboard — live runtime metrics (event-loop
                 lag, V8 heap usage, slow-query log, page-fault counts)
@@ -1455,8 +1714,8 @@ export default function DevMenu() {
                 deep-link into Settings because it's a self-contained
                 page, not a Settings section. */}
             <Link
-              href="/dashboard/diagnostics"
               className="dev-menu-deep-link"
+              href="/dashboard/diagnostics"
               onClick={() => setOpen(false)}
               title="Live runtime metrics: memory, event-loop lag, slow queries"
             >
@@ -1472,39 +1731,40 @@ export default function DevMenu() {
                 The {n} count next to "Export overrides" gives a hint
                 that something's actually been authored. */}
             <button
-              type="button"
               className="dev-menu-deep-link"
-              onClick={exportOverridesJson}
               disabled={!rows}
-              title={tDev('export_overrides_title')}
+              onClick={exportOverridesJson}
               style={{
-                background: 'transparent',
+                background: "transparent",
                 border: 0,
                 padding: 0,
-                cursor: rows ? 'pointer' : 'not-allowed',
-                font: 'inherit',
-                color: 'inherit',
+                cursor: rows ? "pointer" : "not-allowed",
+                font: "inherit",
+                color: "inherit",
               }}
+              title={tDev("export_overrides_title")}
+              type="button"
             >
-              {tDev('export_overrides')}
-              {rows && rows.some(r => r.override !== null) && (
+              {tDev("export_overrides")}
+              {rows?.some((r) => r.override !== null) && (
                 <span
                   aria-hidden="true"
                   style={{
                     marginLeft: 4,
-                    padding: '0 5px',
+                    padding: "0 5px",
                     fontSize: 10,
-                    background: 'rgba(99, 102, 241, 0.18)',
+                    background: "rgba(99, 102, 241, 0.18)",
                     borderRadius: 999,
                   }}
                 >
-                  {rows.filter(r => r.override !== null).length}
+                  {rows.filter((r) => r.override !== null).length}
                 </span>
-              )}{' '}
+              )}{" "}
               ⧉
             </button>
             <span className="dev-menu-footer-hint">
-              {tDev('press_word')} <kbd className="kbd">g</kbd> {tDev('then_word')} <kbd className="kbd">f</kbd>
+              {tDev("press_word")} <kbd className="kbd">g</kbd>{" "}
+              {tDev("then_word")} <kbd className="kbd">f</kbd>
             </span>
           </div>
         </div>
@@ -1519,14 +1779,25 @@ export default function DevMenu() {
  * skip the separator entirely. Translator-typed first arg keeps the helper
  * locale-aware without becoming React-aware.
  */
-type DevT = (key: string, values?: Record<string, string | number | Date>) => string;
+type DevT = (
+  key: string,
+  values?: Record<string, string | number | Date>
+) => string;
 function describeGoalsForToast(t: DevT, focus: FocusInfo): string {
   const parts: string[] = [];
-  if (focus.minimal) parts.push(t('goal_minimal'));
-  if (focus.understand) parts.push(t('goal_understand'));
-  if (focus.declutter) parts.push(t('goal_declutter'));
-  if (focus.accessibility) parts.push(t('goal_accessibility'));
-  return parts.join(' · ');
+  if (focus.minimal) {
+    parts.push(t("goal_minimal"));
+  }
+  if (focus.understand) {
+    parts.push(t("goal_understand"));
+  }
+  if (focus.declutter) {
+    parts.push(t("goal_declutter"));
+  }
+  if (focus.accessibility) {
+    parts.push(t("goal_accessibility"));
+  }
+  return parts.join(" · ");
 }
 
 /**
@@ -1536,7 +1807,7 @@ function describeGoalsForToast(t: DevT, focus: FocusInfo): string {
  */
 function summariseGoals(t: DevT, focus: FocusInfo): string {
   const summary = describeGoalsForToast(t, focus);
-  return summary || t('dash');
+  return summary || t("dash");
 }
 
 /** Two-step confirm button shared across destructive quick actions. */
@@ -1560,12 +1831,12 @@ function ConfirmButton({
 }) {
   return (
     <button
-      type="button"
       className={`dev-menu-action-btn dev-menu-action-btn-danger${
-        confirming ? ' is-confirming' : ''
+        confirming ? "is-confirming" : ""
       }`}
       disabled={busy}
       onClick={confirming ? onConfirm : onArm}
+      type="button"
     >
       {busy ? workingLabel : confirming ? confirmLabel : label}
     </button>
@@ -1597,7 +1868,7 @@ function FlagsSection({
 }) {
   return (
     <details
-      className={`dev-menu-section${highlight ? ' is-highlighted' : ''}`}
+      className={`dev-menu-section${highlight ? "is-highlighted" : ""}`}
       open={!collapsedByDefault}
     >
       <summary className="dev-menu-section-summary">
@@ -1608,14 +1879,16 @@ function FlagsSection({
         emptyHint && <div className="dev-menu-section-empty">{emptyHint}</div>
       ) : (
         <ul className="dev-menu-list">
-          {rows.map(row => (
+          {rows.map((row) => (
             <DevFlagRow
-              key={row.key}
-              row={row}
-              onSetOverride={onSetOverride}
               isSelected={selectedKey === row.key}
-              onSelect={() => onSelectKey(selectedKey === row.key ? null : row.key)}
+              key={row.key}
               onCloseMenu={onCloseMenu}
+              onSelect={() =>
+                onSelectKey(selectedKey === row.key ? null : row.key)
+              }
+              onSetOverride={onSetOverride}
+              row={row}
             />
           ))}
         </ul>
@@ -1637,7 +1910,7 @@ function DevFlagRow({
   onSelect: () => void;
   onCloseMenu: () => void;
 }) {
-  const tDev = useTranslations('dev_menu_panel');
+  const tDev = useTranslations("dev_menu_panel");
   const isOverridden = row.override !== null;
   // Where-used metadata for the inline preview. Looks the same as the
   // dev panel popover, just sized for the cramped DevMenu layout. Null
@@ -1654,18 +1927,18 @@ function DevFlagRow({
   return (
     <li
       className={
-        `dev-menu-row` +
-        (isOverridden ? ' is-overridden' : '') +
-        (isSelected ? ' is-selected' : '')
+        "dev-menu-row" +
+        (isOverridden ? "is-overridden" : "") +
+        (isSelected ? "is-selected" : "")
       }
-      onMouseEnter={() => usage && setHoverPreviewOpen(true)}
-      onMouseLeave={() => setHoverPreviewOpen(false)}
-      onFocusCapture={() => usage && setHoverPreviewOpen(true)}
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
           setHoverPreviewOpen(false);
         }
       }}
+      onFocusCapture={() => usage && setHoverPreviewOpen(true)}
+      onMouseEnter={() => usage && setHoverPreviewOpen(true)}
+      onMouseLeave={() => setHoverPreviewOpen(false)}
     >
       {/*
         Click target for selecting the row. Clicking the key area
@@ -1676,48 +1949,57 @@ function DevFlagRow({
         unchanged; `dev-menu-row-select` adds button-reset styles.
       */}
       <button
-        type="button"
-        className="dev-menu-row-meta dev-menu-row-select"
         aria-pressed={isSelected}
+        className="dev-menu-row-meta dev-menu-row-select"
         onClick={onSelect}
         title={
-          isSelected
-            ? tDev('click_to_deselect')
-            : tDev('click_to_highlight')
+          isSelected ? tDev("click_to_deselect") : tDev("click_to_highlight")
         }
+        type="button"
       >
-        <code className="dev-menu-row-key" title={row.key}>{row.key}</code>
+        <code className="dev-menu-row-key" title={row.key}>
+          {row.key}
+        </code>
         <span className="dev-menu-row-tags">
           {!row.wired && (
-            <span className="dev-menu-row-tag" title={tDev('no_component_reads')}>
-              {tDev('tag_no_effect')}
+            <span
+              className="dev-menu-row-tag"
+              title={tDev("no_component_reads")}
+            >
+              {tDev("tag_no_effect")}
             </span>
           )}
           {isOverridden && (
-            <span className="dev-menu-row-tag dev-menu-row-tag-override">{tDev('tag_override')}</span>
+            <span className="dev-menu-row-tag dev-menu-row-tag-override">
+              {tDev("tag_override")}
+            </span>
           )}
         </span>
       </button>
-      <div className="dev-menu-row-picker" role="group" aria-label={tDev('set_key_aria', { key: row.key })}>
+      <div
+        aria-label={tDev("set_key_aria", { key: row.key })}
+        className="dev-menu-row-picker"
+        role="group"
+      >
         <button
-          type="button"
-          className={`dev-menu-pick${row.override === null ? ' is-active' : ''}`}
-          onClick={() => row.override !== null && onSetOverride(row.key, null)}
           aria-pressed={row.override === null}
-          title={tDev('pick_default_title', { default: row.hardDefault })}
+          className={`dev-menu-pick${row.override === null ? "is-active" : ""}`}
+          onClick={() => row.override !== null && onSetOverride(row.key, null)}
+          title={tDev("pick_default_title", { default: row.hardDefault })}
+          type="button"
         >
-          {tDev('pick_default')}
+          {tDev("pick_default")}
         </button>
-        {VALUE_OPTIONS.map(value => {
+        {VALUE_OPTIONS.map((value) => {
           const active = row.override === value;
           return (
             <button
-              key={value}
-              type="button"
-              className={`dev-menu-pick dev-menu-pick-${value}${active ? ' is-active' : ''}`}
-              onClick={() => !active && onSetOverride(row.key, value)}
               aria-pressed={active}
-              title={tDev('pick_value_title', { value })}
+              className={`dev-menu-pick dev-menu-pick-${value}${active ? "is-active" : ""}`}
+              key={value}
+              onClick={() => !active && onSetOverride(row.key, value)}
+              title={tDev("pick_value_title", { value })}
+              type="button"
             >
               {value}
             </button>
@@ -1747,14 +2029,14 @@ function DevFlagRow({
           )}
           {usage.route && (
             <Link
+              className="dev-menu-row-preview-link"
               href={{
                 pathname: usage.route,
-                query: { 'flag-highlight': usage.target ?? row.key },
+                query: { "flag-highlight": usage.target ?? row.key },
               }}
-              className="dev-menu-row-preview-link"
               onClick={onCloseMenu}
             >
-              {tDev('show_me_where')}
+              {tDev("show_me_where")}
             </Link>
           )}
         </div>

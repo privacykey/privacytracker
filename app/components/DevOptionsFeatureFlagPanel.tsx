@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Developer Options → Feature flags panel (round 3 PR 5).
@@ -13,21 +13,28 @@
  * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import type { FlagValue } from '@/lib/feature-flag-rules';
-import { useFlag } from '../../lib/feature-flags-hooks';
-import { DEV_MENU_STORAGE_KEY } from './DevMenu';
-import { getFlagUsage } from '../../lib/feature-flag-usage';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { FlagValue } from "@/lib/feature-flag-rules";
+import { getFlagUsage } from "../../lib/feature-flag-usage";
+import { useFlag } from "../../lib/feature-flags-hooks";
+import { DEV_MENU_STORAGE_KEY } from "./DevMenu";
 
 interface FlagRow {
-  key: string;
-  surface: string;
-  hardDefault: FlagValue;
   currentValue: FlagValue;
+  hardDefault: FlagValue;
+  key: string;
   override: FlagValue | null;
+  surface: string;
   /** True when at least one component / route reads this flag today. */
   wired: boolean;
 }
@@ -36,26 +43,26 @@ interface ApiList {
   flags: FlagRow[];
 }
 
-const VALUE_OPTIONS: FlagValue[] = ['on', 'off', 'collapsed'];
+const VALUE_OPTIONS: FlagValue[] = ["on", "off", "collapsed"];
 
 const SURFACE_LABELS: Record<string, string> = {
-  about: 'About',
-  appgrid: 'App grid',
-  dashboard: 'Dashboard',
-  desktop: 'Desktop (Tauri)',
-  detail: 'App detail',
-  devopts: 'Developer options',
-  global: 'Global',
-  help: 'Help',
-  legal: 'Legal',
-  nav: 'Navigation',
-  notifications: 'Notifications',
-  onboarding: 'Onboarding',
-  page: 'Secondary pages',
-  settings: 'Settings',
-  shortlist: 'Shortlist',
-  stats: 'Stats',
-  taskcenter: 'Task center',
+  about: "About",
+  appgrid: "App grid",
+  dashboard: "Dashboard",
+  desktop: "Desktop (Tauri)",
+  detail: "App detail",
+  devopts: "Developer options",
+  global: "Global",
+  help: "Help",
+  legal: "Legal",
+  nav: "Navigation",
+  notifications: "Notifications",
+  onboarding: "Onboarding",
+  page: "Secondary pages",
+  settings: "Settings",
+  shortlist: "Shortlist",
+  stats: "Stats",
+  taskcenter: "Task center",
 };
 
 /**
@@ -75,14 +82,14 @@ const SURFACE_LABELS: Record<string, string> = {
  */
 type UndoEntry =
   | {
-      kind: 'single';
+      kind: "single";
       key: string;
       label: string;
       previous: FlagValue | null;
       next: FlagValue | null;
     }
   | {
-      kind: 'category';
+      kind: "category";
       surface: string;
       label: string;
       /** Pre-bulk overrides per row (`null` = no override). */
@@ -106,10 +113,12 @@ export default function DevOptionsFeatureFlagPanel() {
   // the reset-all confirmation modal copy). Per-flag descriptions in
   // FLAG_REGISTRY remain English in v1; tracked separately because
   // the registry has 200+ entries and warrants its own pass.
-  const tDev = useTranslations('dev_options.feature_flags');
-  const tDevReset = useTranslations('dev_options.feature_flags.reset_all_modal');
-  const tDevCat = useTranslations('dev_options.feature_flags.category');
-  const tDevUndo = useTranslations('dev_options.feature_flags.undo');
+  const tDev = useTranslations("dev_options.feature_flags");
+  const tDevReset = useTranslations(
+    "dev_options.feature_flags.reset_all_modal"
+  );
+  const tDevCat = useTranslations("dev_options.feature_flags.category");
+  const tDevUndo = useTranslations("dev_options.feature_flags.undo");
 
   // Live-apply support. Every successful override write triggers a
   // `router.refresh()` so server-rendered surfaces (the dashboard,
@@ -122,12 +131,12 @@ export default function DevOptionsFeatureFlagPanel() {
   // The panel is the chief surface for inspecting + overriding flags;
   // hiding it is what guardian/loved_one focus uses to keep developer
   // tooling out of curated configurations.
-  const panelOn = useFlag('flag.devopts.feature_flag_panel') === 'on';
+  const panelOn = useFlag("flag.devopts.feature_flag_panel") === "on";
 
   const [rows, setRows] = useState<FlagRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [showOverriddenOnly, setShowOverriddenOnly] = useState(false);
   const [showWiredOnly, setShowWiredOnly] = useState(false);
   const [openSurfaces, setOpenSurfaces] = useState<Set<string>>(new Set());
@@ -141,8 +150,8 @@ export default function DevOptionsFeatureFlagPanel() {
    */
   const [importStatus, setImportStatus] = useState<
     | null
-    | { tone: 'success'; message: string }
-    | { tone: 'error'; message: string }
+    | { tone: "success"; message: string }
+    | { tone: "error"; message: string }
   >(null);
   const importFileRef = useRef<HTMLInputElement | null>(null);
   /**
@@ -192,8 +201,13 @@ export default function DevOptionsFeatureFlagPanel() {
   // preferences get the browser's default jump, which is what we
   // want.
   useEffect(() => {
-    if (!selectedKey) return;
-    selectedRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!selectedKey) {
+      return;
+    }
+    selectedRowRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
   }, [selectedKey]);
 
   // Selecting a row inside a collapsed surface is a dead end — the
@@ -201,12 +215,18 @@ export default function DevOptionsFeatureFlagPanel() {
   // surface that contains the selected key so the row's actually
   // visible to scroll into.
   useEffect(() => {
-    if (!selectedKey) return;
+    if (!selectedKey) {
+      return;
+    }
     const surfaceMatch = selectedKey.match(/^flag\.([^.]+)\./);
-    if (!surfaceMatch) return;
+    if (!surfaceMatch) {
+      return;
+    }
     const surface = surfaceMatch[1];
-    setOpenSurfaces(prev => {
-      if (prev.has(surface)) return prev;
+    setOpenSurfaces((prev) => {
+      if (prev.has(surface)) {
+        return prev;
+      }
       const next = new Set(prev);
       next.add(surface);
       return next;
@@ -225,7 +245,9 @@ export default function DevOptionsFeatureFlagPanel() {
   const [floatingOverlayOn, setFloatingOverlayOn] = useState(false);
   useEffect(() => {
     try {
-      setFloatingOverlayOn(localStorage.getItem(DEV_MENU_STORAGE_KEY) === 'true');
+      setFloatingOverlayOn(
+        localStorage.getItem(DEV_MENU_STORAGE_KEY) === "true"
+      );
     } catch {
       /* localStorage may be unavailable in private mode */
     }
@@ -237,30 +259,38 @@ export default function DevOptionsFeatureFlagPanel() {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/dev-menu-state');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetch("/api/dev-menu-state");
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         const data = (await res.json()) as { enabled?: boolean };
-        if (cancelled || data.enabled !== true) return;
+        if (cancelled || data.enabled !== true) {
+          return;
+        }
         try {
-          localStorage.setItem(DEV_MENU_STORAGE_KEY, 'true');
+          localStorage.setItem(DEV_MENU_STORAGE_KEY, "true");
         } catch {
           /* private mode */
         }
         setFloatingOverlayOn(true);
-        window.dispatchEvent(new CustomEvent('dev-menu:changed'));
+        window.dispatchEvent(new CustomEvent("dev-menu:changed"));
       } catch (err) {
-        console.warn('[dev-menu] failed to read state from API:', err);
+        console.warn("[dev-menu] failed to read state from API:", err);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== DEV_MENU_STORAGE_KEY) return;
-      setFloatingOverlayOn(e.newValue === 'true');
+      if (e.key !== DEV_MENU_STORAGE_KEY) {
+        return;
+      }
+      setFloatingOverlayOn(e.newValue === "true");
     };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
   const toggleFloatingOverlay = useCallback(() => {
     // Side effects MUST stay outside the setState updater. React invokes
@@ -273,30 +303,35 @@ export default function DevOptionsFeatureFlagPanel() {
     const next = !floatingOverlayOn;
     setFloatingOverlayOn(next);
     try {
-      if (next) localStorage.setItem(DEV_MENU_STORAGE_KEY, 'true');
-      else localStorage.removeItem(DEV_MENU_STORAGE_KEY);
+      if (next) {
+        localStorage.setItem(DEV_MENU_STORAGE_KEY, "true");
+      } else {
+        localStorage.removeItem(DEV_MENU_STORAGE_KEY);
+      }
     } catch {
       /* localStorage may be unavailable */
     }
     // Same-tab broadcast — DevMenu listens for this so toggling here
     // updates the footer trigger immediately without a reload.
-    window.dispatchEvent(new CustomEvent('dev-menu:changed'));
+    window.dispatchEvent(new CustomEvent("dev-menu:changed"));
     // Persist server-side too so the next Tauri launch picks the
     // flag back up — localStorage alone is per-origin and the
     // sidecar port (and thus the origin) changes on every quit.
     // Fire-and-forget; failures are logged but don't block the UI.
-    fetch('/api/dev-menu-state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    fetch("/api/dev-menu-state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: next }),
-    }).catch(err => {
-      console.warn('[dev-menu] failed to persist toggle:', err);
+    }).catch((err) => {
+      console.warn("[dev-menu] failed to persist toggle:", err);
     });
   }, [floatingOverlayOn]);
 
   // Auto-dismiss toast after 4s. Cleared if a new toast lands first.
   useEffect(() => {
-    if (!toast) return;
+    if (!toast) {
+      return;
+    }
     const id = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(id);
   }, [toast]);
@@ -310,13 +345,15 @@ export default function DevOptionsFeatureFlagPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/feature-flags');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch("/api/feature-flags");
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = (await res.json()) as ApiList;
       setRows(data.flags ?? []);
     } catch (e) {
-      console.error('[DevOpts] load failed:', e);
-      setError(e instanceof Error ? e.message : 'Failed to load flags');
+      console.error("[DevOpts] load failed:", e);
+      setError(e instanceof Error ? e.message : "Failed to load flags");
     } finally {
       setLoading(false);
     }
@@ -329,8 +366,10 @@ export default function DevOptionsFeatureFlagPanel() {
   const overrideCount = rows.filter((r) => r.override !== null).length;
 
   const killSwitchOff = useMemo(() => {
-    const killSwitch = rows.find((r) => r.key === 'flag.devopts.feature_flag_system.enabled');
-    return killSwitch?.currentValue === 'off';
+    const killSwitch = rows.find(
+      (r) => r.key === "flag.devopts.feature_flag_system.enabled"
+    );
+    return killSwitch?.currentValue === "off";
   }, [rows]);
 
   const wiredCount = useMemo(() => rows.filter((r) => r.wired).length, [rows]);
@@ -340,10 +379,18 @@ export default function DevOptionsFeatureFlagPanel() {
     const needle = search.trim().toLowerCase();
     const groups = new Map<string, FlagRow[]>();
     for (const row of rows) {
-      if (showOverriddenOnly && row.override === null) continue;
-      if (showWiredOnly && !row.wired) continue;
-      if (needle && !row.key.toLowerCase().includes(needle)) continue;
-      if (!groups.has(row.surface)) groups.set(row.surface, []);
+      if (showOverriddenOnly && row.override === null) {
+        continue;
+      }
+      if (showWiredOnly && !row.wired) {
+        continue;
+      }
+      if (needle && !row.key.toLowerCase().includes(needle)) {
+        continue;
+      }
+      if (!groups.has(row.surface)) {
+        groups.set(row.surface, []);
+      }
       groups.get(row.surface)!.push(row);
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -352,8 +399,11 @@ export default function DevOptionsFeatureFlagPanel() {
   function toggleSurface(prefix: string) {
     setOpenSurfaces((prev) => {
       const next = new Set(prev);
-      if (next.has(prefix)) next.delete(prefix);
-      else next.add(prefix);
+      if (next.has(prefix)) {
+        next.delete(prefix);
+      } else {
+        next.add(prefix);
+      }
       return next;
     });
   }
@@ -363,10 +413,13 @@ export default function DevOptionsFeatureFlagPanel() {
    * touch local state — `setOverride` / `applyCategory` / undo all
    * compose this with their own bookkeeping.
    */
-  async function writeOverride(key: string, value: FlagValue): Promise<boolean> {
-    const res = await fetch('/api/feature-flags/overrides', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+  async function writeOverride(
+    key: string,
+    value: FlagValue
+  ): Promise<boolean> {
+    const res = await fetch("/api/feature-flags/overrides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key, value }),
     });
     return res.ok;
@@ -374,9 +427,12 @@ export default function DevOptionsFeatureFlagPanel() {
 
   /** Low-level DELETE for a single key. */
   async function deleteOverride(key: string): Promise<boolean> {
-    const res = await fetch(`/api/feature-flags/overrides/${encodeURIComponent(key)}`, {
-      method: 'DELETE',
-    });
+    const res = await fetch(
+      `/api/feature-flags/overrides/${encodeURIComponent(key)}`,
+      {
+        method: "DELETE",
+      }
+    );
     return res.ok;
   }
 
@@ -396,10 +452,12 @@ export default function DevOptionsFeatureFlagPanel() {
     const prev = rows.find((r) => r.key === key)?.override ?? null;
     try {
       const ok = await writeOverride(key, value);
-      if (!ok) throw new Error('write failed');
+      if (!ok) {
+        throw new Error("write failed");
+      }
       if (recordUndo) {
         setUndoEntry({
-          kind: 'single',
+          kind: "single",
           key,
           label: key,
           previous: prev,
@@ -408,7 +466,7 @@ export default function DevOptionsFeatureFlagPanel() {
       }
       await refreshAfterChange();
     } catch (e) {
-      console.error('[DevOpts] setOverride failed:', e);
+      console.error("[DevOpts] setOverride failed:", e);
     } finally {
       setBusyKey(null);
     }
@@ -419,10 +477,12 @@ export default function DevOptionsFeatureFlagPanel() {
     const prev = rows.find((r) => r.key === key)?.override ?? null;
     try {
       const ok = await deleteOverride(key);
-      if (!ok) throw new Error('delete failed');
+      if (!ok) {
+        throw new Error("delete failed");
+      }
       if (recordUndo) {
         setUndoEntry({
-          kind: 'single',
+          kind: "single",
           key,
           label: key,
           previous: prev,
@@ -431,7 +491,7 @@ export default function DevOptionsFeatureFlagPanel() {
       }
       await refreshAfterChange();
     } catch (e) {
-      console.error('[DevOpts] clearOverride failed:', e);
+      console.error("[DevOpts] clearOverride failed:", e);
     } finally {
       setBusyKey(null);
     }
@@ -442,21 +502,28 @@ export default function DevOptionsFeatureFlagPanel() {
     // Snapshot before so undo can replay.
     const surfaceRows = rows.filter((r) => r.surface === surface);
     const before = new Map<string, FlagValue | null>();
-    for (const r of surfaceRows) before.set(r.key, r.override);
+    for (const r of surfaceRows) {
+      before.set(r.key, r.override);
+    }
     try {
-      const res = await fetch(`/api/feature-flags/overrides?surface=${encodeURIComponent(surface)}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch(
+        `/api/feature-flags/overrides?surface=${encodeURIComponent(surface)}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       setUndoEntry({
-        kind: 'category',
+        kind: "category",
         surface,
         label: SURFACE_LABELS[surface] ?? surface,
         before,
       });
       await refreshAfterChange();
     } catch (e) {
-      console.error('[DevOpts] resetSurface failed:', e);
+      console.error("[DevOpts] resetSurface failed:", e);
     } finally {
       setBusyKey(null);
     }
@@ -476,22 +543,28 @@ export default function DevOptionsFeatureFlagPanel() {
     setBusyKey(`__surface:${surface}`);
     const surfaceRows = rows.filter((r) => r.surface === surface);
     const before = new Map<string, FlagValue | null>();
-    for (const r of surfaceRows) before.set(r.key, r.override);
+    for (const r of surfaceRows) {
+      before.set(r.key, r.override);
+    }
     try {
       for (const r of surfaceRows) {
-        if (r.override === value) continue; // already there, skip the round-trip
+        if (r.override === value) {
+          continue; // already there, skip the round-trip
+        }
         const ok = await writeOverride(r.key, value);
-        if (!ok) throw new Error(`write failed for ${r.key}`);
+        if (!ok) {
+          throw new Error(`write failed for ${r.key}`);
+        }
       }
       setUndoEntry({
-        kind: 'category',
+        kind: "category",
         surface,
         label: SURFACE_LABELS[surface] ?? surface,
         before,
       });
       await refreshAfterChange();
     } catch (e) {
-      console.error('[DevOpts] applyCategory failed:', e);
+      console.error("[DevOpts] applyCategory failed:", e);
     } finally {
       setBusyKey(null);
     }
@@ -505,13 +578,13 @@ export default function DevOptionsFeatureFlagPanel() {
    */
   const undoLastChange = useCallback(async () => {
     if (!undoEntry) {
-      showToast(tDevUndo('toast_nothing'));
+      showToast(tDevUndo("toast_nothing"));
       return;
     }
     const entry = undoEntry;
     setUndoEntry(null);
     try {
-      if (entry.kind === 'single') {
+      if (entry.kind === "single") {
         if (entry.previous === null) {
           await deleteOverride(entry.key);
         } else {
@@ -519,8 +592,11 @@ export default function DevOptionsFeatureFlagPanel() {
         }
         showToast(
           entry.previous === null
-            ? tDevUndo('toast_undone_cleared', { key: entry.label })
-            : tDevUndo('toast_undone', { key: entry.label, value: entry.previous }),
+            ? tDevUndo("toast_undone_cleared", { key: entry.label })
+            : tDevUndo("toast_undone", {
+                key: entry.label,
+                value: entry.previous,
+              })
         );
       } else {
         // Category: replay each row's pre-bulk override (or clear when
@@ -533,17 +609,17 @@ export default function DevOptionsFeatureFlagPanel() {
           }
         }
         showToast(
-          tDevUndo('toast_undone', {
+          tDevUndo("toast_undone", {
             key: entry.label,
-            value: tDevCat('reset'),
-          }),
+            value: tDevCat("reset"),
+          })
         );
       }
       await refreshAfterChange();
     } catch (e) {
-      console.error('[DevOpts] undo failed:', e);
+      console.error("[DevOpts] undo failed:", e);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshAfterChange is stable from parent
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshAfterChange is stable from parent
   }, [undoEntry, tDevUndo, tDevCat]);
 
   // Cmd/Ctrl+Z shortcut. Bound to the document so users can hit it
@@ -553,24 +629,34 @@ export default function DevOptionsFeatureFlagPanel() {
   // don't fight the browser's own undo for the search field.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'z' && event.key !== 'Z') return;
-      if (!(event.metaKey || event.ctrlKey)) return;
+      if (event.key !== "z" && event.key !== "Z") {
+        return;
+      }
+      if (!(event.metaKey || event.ctrlKey)) {
+        return;
+      }
       // Shift+Cmd/Ctrl+Z is left to the browser / OS — we return before
       // calling preventDefault so an editable element that holds focus
       // can run its native redo. There is no panel-level redo stack to
       // pair with this handler's single-step undo, by design.
-      if (event.shiftKey) return;
+      if (event.shiftKey) {
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target) {
         const tag = target.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) {
+          return;
+        }
       }
-      if (resetAllOpen || pendingImport) return;
+      if (resetAllOpen || pendingImport) {
+        return;
+      }
       event.preventDefault();
       void undoLastChange();
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [undoLastChange, resetAllOpen, pendingImport]);
 
   /**
@@ -583,25 +669,31 @@ export default function DevOptionsFeatureFlagPanel() {
    * spans every surface).
    */
   async function resetAllConfirmed() {
-    setBusyKey('__all');
+    setBusyKey("__all");
     const before = new Map<string, FlagValue | null>();
-    for (const r of rows) before.set(r.key, r.override);
+    for (const r of rows) {
+      before.set(r.key, r.override);
+    }
     try {
-      const res = await fetch('/api/feature-flags/overrides', { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch("/api/feature-flags/overrides", {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       setResetAllOpen(false);
       // Stamp the undo as a synthetic "all surfaces" category so the
       // existing replay path applies — replaying every row at once is
       // exactly what reverting "reset all" needs.
       setUndoEntry({
-        kind: 'category',
-        surface: '__all__',
-        label: tDevReset('title').replace(/\?$/, ''),
+        kind: "category",
+        surface: "__all__",
+        label: tDevReset("title").replace(/\?$/, ""),
         before,
       });
       await refreshAfterChange();
     } catch (e) {
-      console.error('[DevOpts] resetAll failed:', e);
+      console.error("[DevOpts] resetAll failed:", e);
     } finally {
       setBusyKey(null);
     }
@@ -609,10 +701,10 @@ export default function DevOptionsFeatureFlagPanel() {
 
   function exportJson() {
     const blob = new Blob([JSON.stringify({ flags: rows }, null, 2)], {
-      type: 'application/json',
+      type: "application/json",
     });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `feature-flag-state-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
@@ -629,7 +721,7 @@ export default function DevOptionsFeatureFlagPanel() {
   function triggerImportPicker() {
     setImportStatus(null);
     if (importFileRef.current) {
-      importFileRef.current.value = '';
+      importFileRef.current.value = "";
       importFileRef.current.click();
     }
   }
@@ -645,8 +737,10 @@ export default function DevOptionsFeatureFlagPanel() {
     // Always reset the input so picking the same file again later
     // re-triggers onChange. Without this, a user who imports → re-edits
     // the file → re-imports gets nothing on the second click.
-    event.target.value = '';
-    if (!file) return;
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
     setImportStatus(null);
     setPendingImport(file);
   }
@@ -659,9 +753,11 @@ export default function DevOptionsFeatureFlagPanel() {
    */
   async function importConfirmed() {
     const file = pendingImport;
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
-    setBusyKey('__import');
+    setBusyKey("__import");
     setImportStatus(null);
     try {
       const text = await file.text();
@@ -669,36 +765,46 @@ export default function DevOptionsFeatureFlagPanel() {
       try {
         parsed = JSON.parse(text);
       } catch {
-        throw new Error('File is not valid JSON.');
+        throw new Error("File is not valid JSON.");
       }
-      if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as { flags?: unknown }).flags)) {
-        throw new Error('File is missing a top-level `flags` array. Use a file produced by "Export current flag state as JSON".');
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        !Array.isArray((parsed as { flags?: unknown }).flags)
+      ) {
+        throw new Error(
+          'File is missing a top-level `flags` array. Use a file produced by "Export current flag state as JSON".'
+        );
       }
-      const res = await fetch('/api/feature-flags/overrides', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/feature-flags/overrides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ flags: (parsed as { flags: unknown[] }).flags }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
         throw new Error(data?.error ?? `HTTP ${res.status}`);
       }
       const data = (await res.json()) as { applied?: number; skipped?: number };
       const applied = data.applied ?? 0;
       const skipped = data.skipped ?? 0;
       setImportStatus({
-        tone: 'success',
+        tone: "success",
         message:
-          `Imported ${applied} override${applied === 1 ? '' : 's'}` +
-          (skipped > 0 ? ` · skipped ${skipped} unknown row${skipped === 1 ? '' : 's'}` : ''),
+          `Imported ${applied} override${applied === 1 ? "" : "s"}` +
+          (skipped > 0
+            ? ` · skipped ${skipped} unknown row${skipped === 1 ? "" : "s"}`
+            : ""),
       });
       setPendingImport(null);
       await load();
     } catch (e) {
-      console.error('[DevOpts] import failed:', e);
+      console.error("[DevOpts] import failed:", e);
       setImportStatus({
-        tone: 'error',
-        message: e instanceof Error ? e.message : 'Import failed.',
+        tone: "error",
+        message: e instanceof Error ? e.message : "Import failed.",
       });
       setPendingImport(null);
     } finally {
@@ -706,23 +812,27 @@ export default function DevOptionsFeatureFlagPanel() {
     }
   }
 
-  if (!panelOn) return null;
+  if (!panelOn) {
+    return null;
+  }
 
   return (
     <section
+      aria-busy={loading || busyKey !== null}
+      aria-labelledby="feature-flags-title"
       className="dev-options-flag-panel"
       id="feature-flags"
-      aria-labelledby="feature-flags-title"
-      aria-busy={loading || busyKey !== null}
     >
       <header className="dev-options-flag-panel__header">
-        <h3 className="dev-options-flag-panel__title" id="feature-flags-title">{tDev('title')}</h3>
-        <p className="dev-options-flag-panel__subtitle" aria-live="polite">
+        <h3 className="dev-options-flag-panel__title" id="feature-flags-title">
+          {tDev("title")}
+        </h3>
+        <p aria-live="polite" className="dev-options-flag-panel__subtitle">
           {loading
-            ? 'Loading…'
+            ? "Loading…"
             : overrideCount === 0
-            ? 'No overrides — every flag is using its computed default.'
-            : `${overrideCount} flag${overrideCount === 1 ? '' : 's'} overridden`}
+              ? "No overrides — every flag is using its computed default."
+              : `${overrideCount} flag${overrideCount === 1 ? "" : "s"} overridden`}
         </p>
       </header>
 
@@ -736,38 +846,51 @@ export default function DevOptionsFeatureFlagPanel() {
         <div className="dev-options-flag-panel__floating-toggle-text">
           <strong>Dev menu trigger</strong>
           <span className="dev-options-flag-panel__floating-toggle-hint">
-            Pin a 🛠 button to the bottom-right of every page (next to
-            the accessibility quick-toggle) so you can inspect +
-            override the flags relevant to the current page, run quick
-            admin actions (sync, wipe apps, reset changelog, seed test
-            data), switch language, audience, and goals without leaving
-            the page. Press <kbd className="kbd">g</kbd> then{' '}
-            <kbd className="kbd">f</kbd> anywhere to jump back here.
+            Pin a 🛠 button to the bottom-right of every page (next to the
+            accessibility quick-toggle) so you can inspect + override the flags
+            relevant to the current page, run quick admin actions (sync, wipe
+            apps, reset changelog, seed test data), switch language, audience,
+            and goals without leaving the page. Press{" "}
+            <kbd className="kbd">g</kbd> then <kbd className="kbd">f</kbd>{" "}
+            anywhere to jump back here.
           </span>
         </div>
         <button
-          type="button"
-          role="switch"
           aria-checked={floatingOverlayOn}
-          className={`switch-toggle${floatingOverlayOn ? ' is-on' : ''}`}
+          className={`switch-toggle${floatingOverlayOn ? "is-on" : ""}`}
           onClick={toggleFloatingOverlay}
+          role="switch"
+          type="button"
         >
-          <span className="switch-toggle-thumb" aria-hidden="true" />
+          <span aria-hidden="true" className="switch-toggle-thumb" />
         </button>
       </div>
 
       {killSwitchOff && (
-        <div role="alert" className="dev-options-flag-panel__kill-switch-banner">
-          <span className="dev-options-flag-panel__banner-icon" aria-hidden="true">⚠</span>
+        <div
+          className="dev-options-flag-panel__kill-switch-banner"
+          role="alert"
+        >
+          <span
+            aria-hidden="true"
+            className="dev-options-flag-panel__banner-icon"
+          >
+            ⚠
+          </span>
           <div className="dev-options-flag-panel__banner-copy">
-            <strong>Feature flag system is disabled.</strong>{' '}
-            <span>Hard defaults are active. Your overrides aren&rsquo;t being applied.</span>
+            <strong>Feature flag system is disabled.</strong>{" "}
+            <span>
+              Hard defaults are active. Your overrides aren&rsquo;t being
+              applied.
+            </span>
           </div>
           <button
-            type="button"
-            onClick={() => setOverride('flag.devopts.feature_flag_system.enabled', 'on')}
-            disabled={busyKey !== null}
             className="btn btn-primary btn-sm"
+            disabled={busyKey !== null}
+            onClick={() =>
+              setOverride("flag.devopts.feature_flag_system.enabled", "on")
+            }
+            type="button"
           >
             Re-enable
           </button>
@@ -775,10 +898,14 @@ export default function DevOptionsFeatureFlagPanel() {
       )}
 
       {error && (
-        <div role="alert" className="dev-options-flag-panel__error">
+        <div className="dev-options-flag-panel__error" role="alert">
           <span aria-hidden="true">⚠</span>
           <span>Couldn&rsquo;t load flags: {error}</span>
-          <button type="button" onClick={() => void load()} className="btn btn-secondary btn-sm">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => void load()}
+            type="button"
+          >
             Retry
           </button>
         </div>
@@ -786,52 +913,67 @@ export default function DevOptionsFeatureFlagPanel() {
 
       <div className="dev-options-flag-panel__controls">
         <input
+          aria-label={tDev("search_aria")}
+          className="dev-options-flag-panel__search"
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setSearch(e.target.value)
+          }
+          placeholder={tDev("search_placeholder")}
           type="search"
           value={search}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-          placeholder={tDev('search_placeholder')}
-          className="dev-options-flag-panel__search"
-          aria-label={tDev('search_aria')}
         />
         <label className="dev-options-flag-panel__filter">
           <input
-            type="checkbox"
             checked={showOverriddenOnly}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setShowOverriddenOnly(e.target.checked)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setShowOverriddenOnly(e.target.checked)
+            }
+            type="checkbox"
           />
-          <span>{tDev('show_only_overridden')}</span>
+          <span>{tDev("show_only_overridden")}</span>
         </label>
         <label
           className="dev-options-flag-panel__filter"
           title={`${wiredCount} of ${rows.length} flags are currently consumed by component code; the rest are placeholder.`}
         >
           <input
-            type="checkbox"
             checked={showWiredOnly}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setShowWiredOnly(e.target.checked)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setShowWiredOnly(e.target.checked)
+            }
+            type="checkbox"
           />
-          <span>{tDev('show_wired_only', { count: wiredCount })}</span>
+          <span>{tDev("show_wired_only", { count: wiredCount })}</span>
         </label>
       </div>
 
-      {!loading && rows.length > 0 && wiredCount < rows.length && !showWiredOnly && (
-        <p className="dev-options-flag-panel__note" style={{ fontSize: 12, color: 'var(--text-3)' }}>
-          {wiredCount} of {rows.length} flags currently produce a visible change when toggled.
-          Unwired flags are marked &ldquo;<em>no effect yet</em>&rdquo; — they exist in the
-          registry but their consuming components ship in subsequent PRs.
-        </p>
-      )}
+      {!loading &&
+        rows.length > 0 &&
+        wiredCount < rows.length &&
+        !showWiredOnly && (
+          <p
+            className="dev-options-flag-panel__note"
+            style={{ fontSize: 12, color: "var(--text-3)" }}
+          >
+            {wiredCount} of {rows.length} flags currently produce a visible
+            change when toggled. Unwired flags are marked &ldquo;
+            <em>no effect yet</em>&rdquo; — they exist in the registry but their
+            consuming components ship in subsequent PRs.
+          </p>
+        )}
 
       <div className="dev-options-flag-panel__surfaces" role="list">
         {grouped.map(([surface, surfaceRows]) => {
           const isOpen = openSurfaces.has(surface);
-          const overriddenInGroup = surfaceRows.filter((r) => r.override !== null).length;
+          const overriddenInGroup = surfaceRows.filter(
+            (r) => r.override !== null
+          ).length;
           return (
             <details
-              key={surface}
-              role="listitem"
-              open={isOpen}
               className="dev-options-flag-panel__accordion"
+              key={surface}
+              open={isOpen}
+              role="listitem"
             >
               <summary
                 className="dev-options-flag-panel__accordion-summary"
@@ -844,8 +986,9 @@ export default function DevOptionsFeatureFlagPanel() {
                   {SURFACE_LABELS[surface] ?? surface}
                 </span>
                 <span className="dev-options-flag-panel__accordion-count">
-                  {surfaceRows.length} flag{surfaceRows.length === 1 ? '' : 's'}
-                  {overriddenInGroup > 0 && ` · ${overriddenInGroup} overridden`}
+                  {surfaceRows.length} flag{surfaceRows.length === 1 ? "" : "s"}
+                  {overriddenInGroup > 0 &&
+                    ` · ${overriddenInGroup} overridden`}
                 </span>
               </summary>
 
@@ -860,59 +1003,61 @@ export default function DevOptionsFeatureFlagPanel() {
                   on the snapshot mid-write.
                 */}
                 <div
+                  aria-label={SURFACE_LABELS[surface] ?? surface}
                   className="dev-options-flag-panel__category-actions"
                   role="group"
-                  aria-label={SURFACE_LABELS[surface] ?? surface}
                 >
                   <button
-                    type="button"
                     className="btn btn-secondary btn-sm"
                     disabled={busyKey !== null}
-                    onClick={() => void applyCategory(surface, 'on')}
-                    title={tDevCat('all_on_title')}
+                    onClick={() => void applyCategory(surface, "on")}
+                    title={tDevCat("all_on_title")}
+                    type="button"
                   >
-                    {tDevCat('all_on')}
+                    {tDevCat("all_on")}
                   </button>
                   <button
-                    type="button"
                     className="btn btn-secondary btn-sm"
                     disabled={busyKey !== null}
-                    onClick={() => void applyCategory(surface, 'off')}
-                    title={tDevCat('all_off_title')}
+                    onClick={() => void applyCategory(surface, "off")}
+                    title={tDevCat("all_off_title")}
+                    type="button"
                   >
-                    {tDevCat('all_off')}
+                    {tDevCat("all_off")}
                   </button>
                   <button
-                    type="button"
                     className="btn btn-secondary btn-sm"
                     disabled={busyKey !== null}
-                    onClick={() => void applyCategory(surface, 'collapsed')}
-                    title={tDevCat('all_collapsed_title')}
+                    onClick={() => void applyCategory(surface, "collapsed")}
+                    title={tDevCat("all_collapsed_title")}
+                    type="button"
                   >
-                    {tDevCat('all_collapsed')}
+                    {tDevCat("all_collapsed")}
                   </button>
                   <button
-                    type="button"
                     className="btn btn-ghost btn-sm"
                     disabled={busyKey !== null || overriddenInGroup === 0}
                     onClick={() => void resetSurface(surface)}
-                    title={tDevCat('reset_title')}
+                    title={tDevCat("reset_title")}
+                    type="button"
                   >
-                    {tDevCat('reset')}
+                    {tDevCat("reset")}
                   </button>
                 </div>
 
                 <ul className="dev-options-flag-panel__flag-list">
                   {surfaceRows.map((row) => (
                     <FlagListItem
-                      key={row.key}
-                      row={row}
                       busy={busyKey === row.key}
                       isSelected={selectedKey === row.key}
-                      onSelect={() => setSelectedKey(row.key)}
-                      selectedRowRef={selectedKey === row.key ? selectedRowRef : null}
+                      key={row.key}
                       onChange={(next) => void setOverride(row.key, next)}
                       onClear={() => void clearOverride(row.key)}
+                      onSelect={() => setSelectedKey(row.key)}
+                      row={row}
+                      selectedRowRef={
+                        selectedKey === row.key ? selectedRowRef : null
+                      }
                     />
                   ))}
                 </ul>
@@ -925,7 +1070,7 @@ export default function DevOptionsFeatureFlagPanel() {
           <p className="dev-options-flag-panel__empty">
             {search.trim()
               ? `No flags match "${search}".`
-              : 'No flags to show.'}
+              : "No flags to show."}
           </p>
         )}
       </div>
@@ -936,17 +1081,19 @@ export default function DevOptionsFeatureFlagPanel() {
           even if focus has moved off the button. */}
       {importStatus && (
         <div
-          role="status"
           aria-live="polite"
           className={`dev-options-flag-panel__import-status dev-options-flag-panel__import-status--${importStatus.tone}`}
+          role="status"
         >
-          <span aria-hidden="true">{importStatus.tone === 'success' ? '✓' : '⚠'}</span>
+          <span aria-hidden="true">
+            {importStatus.tone === "success" ? "✓" : "⚠"}
+          </span>
           <span>{importStatus.message}</span>
           <button
-            type="button"
+            aria-label={tDev("dismiss_import_aria")}
             className="dev-options-flag-panel__import-status-dismiss"
             onClick={() => setImportStatus(null)}
-            aria-label={tDev('dismiss_import_aria')}
+            type="button"
           >
             <span aria-hidden="true">✕</span>
           </button>
@@ -958,16 +1105,21 @@ export default function DevOptionsFeatureFlagPanel() {
           and discoverable. The toast itself sits in an aria-live
           region so screen readers hear "Undone — flag.foo restored
           to on" without needing to refocus the panel. */}
-      <div className="dev-options-flag-panel__undo-strip" role="status" aria-live="polite">
+      <div
+        aria-live="polite"
+        className="dev-options-flag-panel__undo-strip"
+        role="status"
+      >
         <span className="dev-options-flag-panel__undo-hint">
           {/* Mac vs non-Mac shortcut hint — checked at render so it
               flips correctly when the user moves their cursor across
               the OS. `navigator.platform` is deprecated but still the
               most reliable cross-browser signal for "is this a Mac
               keyboard layout"; userAgentData isn't widely shipped. */}
-          {typeof navigator !== 'undefined' && /Mac|iPad|iPhone/.test(navigator.platform)
-            ? tDevUndo('shortcut_hint')
-            : tDevUndo('shortcut_hint_ctrl')}
+          {typeof navigator !== "undefined" &&
+          /Mac|iPad|iPhone/.test(navigator.platform)
+            ? tDevUndo("shortcut_hint")
+            : tDevUndo("shortcut_hint_ctrl")}
         </span>
         {toast && (
           <span
@@ -981,17 +1133,17 @@ export default function DevOptionsFeatureFlagPanel() {
 
       <footer className="dev-options-flag-panel__footer">
         <button
-          type="button"
           className="btn btn-secondary btn-sm"
           disabled={busyKey !== null || overrideCount === 0}
           onClick={() => setResetAllOpen(true)}
+          type="button"
         >
           Reset all to defaults
         </button>
         <button
-          type="button"
           className="btn btn-secondary btn-sm"
           onClick={exportJson}
+          type="button"
         >
           Export current flag state as JSON
         </button>
@@ -1003,26 +1155,30 @@ export default function DevOptionsFeatureFlagPanel() {
           warns that the import overwrites every existing override.
         */}
         <button
-          type="button"
           className="btn btn-secondary btn-sm"
-          onClick={triggerImportPicker}
           disabled={busyKey !== null}
+          onClick={triggerImportPicker}
+          type="button"
         >
-          {busyKey === '__import'
-            ? <><span className="spinner-sm" aria-hidden="true" /> Importing…</>
-            : 'Import flag state from JSON'}
+          {busyKey === "__import" ? (
+            <>
+              <span aria-hidden="true" className="spinner-sm" /> Importing…
+            </>
+          ) : (
+            "Import flag state from JSON"
+          )}
         </button>
         <input
-          ref={importFileRef}
-          type="file"
           accept="application/json,.json"
+          aria-hidden="true"
           className="sr-only"
+          onChange={handleImportFile}
+          ref={importFileRef}
           // Tabbable input would let keyboard users land on a hidden
           // control, which is confusing — we control the focus story
           // entirely through the visible button above.
           tabIndex={-1}
-          aria-hidden="true"
-          onChange={handleImportFile}
+          type="file"
         />
       </footer>
 
@@ -1036,45 +1192,56 @@ export default function DevOptionsFeatureFlagPanel() {
       {resetAllOpen && (
         <div
           className="modal-overlay"
-          onClick={() => { if (busyKey === null) setResetAllOpen(false); }}
+          onClick={() => {
+            if (busyKey === null) {
+              setResetAllOpen(false);
+            }
+          }}
         >
           <div
-            className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dev-flag-reset-title"
             aria-describedby="dev-flag-reset-copy"
+            aria-labelledby="dev-flag-reset-title"
+            aria-modal="true"
+            className="modal-card"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => {
-              if (event.key === 'Escape' && busyKey === null) setResetAllOpen(false);
+              if (event.key === "Escape" && busyKey === null) {
+                setResetAllOpen(false);
+              }
             }}
+            role="dialog"
           >
-            <div className="modal-badge">{tDevReset('badge')}</div>
-            <h2 id="dev-flag-reset-title" className="modal-title">
-              {tDevReset('title')}
+            <div className="modal-badge">{tDevReset("badge")}</div>
+            <h2 className="modal-title" id="dev-flag-reset-title">
+              {tDevReset("title")}
             </h2>
-            <p id="dev-flag-reset-copy" className="modal-copy">
-              {tDevReset('copy', { count: overrideCount })}
+            <p className="modal-copy" id="dev-flag-reset-copy">
+              {tDevReset("copy", { count: overrideCount })}
             </p>
             <div className="modal-actions">
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => setResetAllOpen(false)}
                 disabled={busyKey !== null}
+                onClick={() => setResetAllOpen(false)}
+                type="button"
               >
-                {tDevReset('cancel')}
+                {tDevReset("cancel")}
               </button>
               <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() => void resetAllConfirmed()}
-                disabled={busyKey !== null}
                 autoFocus
+                className="btn btn-danger"
+                disabled={busyKey !== null}
+                onClick={() => void resetAllConfirmed()}
+                type="button"
               >
-                {busyKey === '__all'
-                  ? <><span className="spinner-sm" aria-hidden="true" /> {tDevReset('resetting')}</>
-                  : tDevReset('confirm', { count: overrideCount })}
+                {busyKey === "__all" ? (
+                  <>
+                    <span aria-hidden="true" className="spinner-sm" />{" "}
+                    {tDevReset("resetting")}
+                  </>
+                ) : (
+                  tDevReset("confirm", { count: overrideCount })
+                )}
               </button>
             </div>
           </div>
@@ -1091,48 +1258,61 @@ export default function DevOptionsFeatureFlagPanel() {
       {pendingImport && (
         <div
           className="modal-overlay"
-          onClick={() => { if (busyKey === null) setPendingImport(null); }}
+          onClick={() => {
+            if (busyKey === null) {
+              setPendingImport(null);
+            }
+          }}
         >
           <div
-            className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dev-flag-import-title"
             aria-describedby="dev-flag-import-copy"
+            aria-labelledby="dev-flag-import-title"
+            aria-modal="true"
+            className="modal-card"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => {
-              if (event.key === 'Escape' && busyKey === null) setPendingImport(null);
+              if (event.key === "Escape" && busyKey === null) {
+                setPendingImport(null);
+              }
             }}
+            role="dialog"
           >
             <div className="modal-badge">Destructive action</div>
-            <h2 id="dev-flag-import-title" className="modal-title">
+            <h2 className="modal-title" id="dev-flag-import-title">
               Import flag state?
             </h2>
-            <p id="dev-flag-import-copy" className="modal-copy">
-              Importing <code>{pendingImport.name}</code> will <strong>overwrite every existing
-              flag override</strong> with the contents of the file. Flags whose entry has{' '}
-              <code>override: null</code> revert to their computed default. The quarantine table
-              and your focus + audience are preserved; only per-flag overrides change.
+            <p className="modal-copy" id="dev-flag-import-copy">
+              Importing <code>{pendingImport.name}</code> will{" "}
+              <strong>overwrite every existing flag override</strong> with the
+              contents of the file. Flags whose entry has{" "}
+              <code>override: null</code> revert to their computed default. The
+              quarantine table and your focus + audience are preserved; only
+              per-flag overrides change.
             </p>
             <div className="modal-actions">
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => setPendingImport(null)}
                 disabled={busyKey !== null}
+                onClick={() => setPendingImport(null)}
+                type="button"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void importConfirmed()}
-                disabled={busyKey !== null}
                 autoFocus
+                className="btn btn-primary"
+                disabled={busyKey !== null}
+                onClick={() => void importConfirmed()}
+                type="button"
               >
-                {busyKey === '__import'
-                  ? <><span className="spinner-sm" aria-hidden="true" /> Importing…</>
-                  : 'Import & overwrite'}
+                {busyKey === "__import" ? (
+                  <>
+                    <span aria-hidden="true" className="spinner-sm" />{" "}
+                    Importing…
+                  </>
+                ) : (
+                  "Import & overwrite"
+                )}
               </button>
             </div>
           </div>
@@ -1147,28 +1327,28 @@ export default function DevOptionsFeatureFlagPanel() {
 // ---------------------------------------------------------------------------
 
 interface FlagListItemProps {
-  row: FlagRow;
   busy: boolean;
   /** True when this row is the currently-selected one (drives purple ring). */
   isSelected: boolean;
+  onChange: (next: FlagValue) => void;
+  onClear: () => void;
   /** Click handler for the row chrome (anywhere outside the toggle controls). */
   onSelect: () => void;
+  row: FlagRow;
   /**
    * Ref handed back to the parent for scroll-into-view. Only populated
    * when `isSelected` is true so the parent doesn't end up holding stale
    * refs to every row in the list.
    */
   selectedRowRef: React.RefObject<HTMLLIElement | null> | null;
-  onChange: (next: FlagValue) => void;
-  onClear: () => void;
 }
 
 // Per-value labels for the segmented toggle. Spelled out so screen
 // readers announce "On selected" rather than the bare token "on".
 const VALUE_LABEL: Record<FlagValue, string> = {
-  on: 'On',
-  off: 'Off',
-  collapsed: 'Collapsed',
+  on: "On",
+  off: "Off",
+  collapsed: "Collapsed",
 };
 
 function FlagListItem({
@@ -1181,7 +1361,7 @@ function FlagListItem({
   onClear,
 }: FlagListItemProps) {
   // i18n — for the per-row reset button's screen-reader-only label.
-  const tDev = useTranslations('dev_options.feature_flags');
+  const tDev = useTranslations("dev_options.feature_flags");
   const isOverridden = row.override !== null;
   const selectedValue = row.override ?? row.currentValue;
   // Where-used metadata for the hover popover + the "Show me where"
@@ -1192,16 +1372,12 @@ function FlagListItem({
 
   return (
     <li
-      ref={selectedRowRef}
       className={
-        `dev-options-flag-panel__flag-row` +
-        (isOverridden ? ' is-overridden' : '') +
-        (row.wired ? '' : ' is-unwired') +
-        (isSelected ? ' is-selected' : '')
+        "dev-options-flag-panel__flag-row" +
+        (isOverridden ? "is-overridden" : "") +
+        (row.wired ? "" : "is-unwired") +
+        (isSelected ? "is-selected" : "")
       }
-      onMouseEnter={() => usage && setHoverPreviewOpen(true)}
-      onMouseLeave={() => setHoverPreviewOpen(false)}
-      onFocusCapture={() => usage && setHoverPreviewOpen(true)}
       onBlurCapture={(e) => {
         // Keep the popover open while focus moves between children
         // inside the row (e.g. tabbing from the row click target into
@@ -1211,6 +1387,10 @@ function FlagListItem({
           setHoverPreviewOpen(false);
         }
       }}
+      onFocusCapture={() => usage && setHoverPreviewOpen(true)}
+      onMouseEnter={() => usage && setHoverPreviewOpen(true)}
+      onMouseLeave={() => setHoverPreviewOpen(false)}
+      ref={selectedRowRef}
     >
       {/*
         Click target for "select this row". Clicking the key string or
@@ -1220,11 +1400,11 @@ function FlagListItem({
         events) so they can be activated without selecting first.
       */}
       <button
-        type="button"
+        aria-label={`Select ${row.key} for highlight`}
+        aria-pressed={isSelected}
         className="dev-options-flag-panel__flag-meta dev-options-flag-panel__flag-select"
         onClick={onSelect}
-        aria-pressed={isSelected}
-        aria-label={`Select ${row.key} for highlight`}
+        type="button"
       >
         <code className="dev-options-flag-panel__flag-key">{row.key}</code>
         <span className="dev-options-flag-panel__flag-status">
@@ -1241,7 +1421,9 @@ function FlagListItem({
           ) : (
             <>
               <strong>{VALUE_LABEL[row.currentValue]}</strong>
-              <span className="dev-options-flag-panel__flag-default">default</span>
+              <span className="dev-options-flag-panel__flag-default">
+                default
+              </span>
             </>
           )}
           {!row.wired && (
@@ -1277,11 +1459,11 @@ function FlagListItem({
           )}
           {usage.route && (
             <Link
+              className="dev-options-flag-preview-link"
               href={{
                 pathname: usage.route,
-                query: { 'flag-highlight': usage.target ?? row.key },
+                query: { "flag-highlight": usage.target ?? row.key },
               }}
-              className="dev-options-flag-preview-link"
             >
               Show me where →
             </Link>
@@ -1299,21 +1481,21 @@ function FlagListItem({
           submit doesn't fire from inside the Settings page.
         */}
         <div
+          aria-label={`Override value for ${row.key}`}
           className="segmented-toggle dev-options-flag-panel__flag-toggle"
           role="radiogroup"
-          aria-label={`Override value for ${row.key}`}
         >
           {VALUE_OPTIONS.map((v) => {
             const checked = selectedValue === v;
             return (
               <button
-                key={v}
-                type="button"
-                role="radio"
                 aria-checked={checked}
-                className={`segmented-toggle-btn${checked ? ' is-active' : ''}`}
+                className={`segmented-toggle-btn${checked ? "is-active" : ""}`}
                 disabled={busy}
+                key={v}
                 onClick={() => onChange(v)}
+                role="radio"
+                type="button"
               >
                 {VALUE_LABEL[v]}
               </button>
@@ -1323,15 +1505,15 @@ function FlagListItem({
 
         {isOverridden && (
           <button
-            type="button"
-            className="dev-options-flag-panel__flag-reset"
-            onClick={onClear}
-            disabled={busy}
-            title="Clear override (revert to computed default)"
             aria-label={`Clear override for ${row.key}`}
+            className="dev-options-flag-panel__flag-reset"
+            disabled={busy}
+            onClick={onClear}
+            title="Clear override (revert to computed default)"
+            type="button"
           >
             <span aria-hidden="true">↺</span>
-            <span className="sr-only">{tDev('row_reset_sr')}</span>
+            <span className="sr-only">{tDev("row_reset_sr")}</span>
           </button>
         )}
       </div>

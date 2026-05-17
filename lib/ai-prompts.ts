@@ -77,12 +77,15 @@ Avoid:
 // Hand-written summaries for the sample apps so demo mode doesn't need a
 // configured AI provider.
 
-export const SAMPLE_DATA_SUMMARIES: Record<string, {
-  summary: string;
-  highlights: string[];
-  lenses: Record<string, 'concerning' | 'mixed' | 'unclear' | 'favorable'>;
-  prompt_version: number;
-}> = {};
+export const SAMPLE_DATA_SUMMARIES: Record<
+  string,
+  {
+    summary: string;
+    highlights: string[];
+    lenses: Record<string, "concerning" | "mixed" | "unclear" | "favorable">;
+    prompt_version: number;
+  }
+> = {};
 
 // ============================================================================
 // Helpers
@@ -90,17 +93,21 @@ export const SAMPLE_DATA_SUMMARIES: Record<string, {
 
 /** Returns the prompt text with `{policy_text}` interpolated. */
 export function buildPolicyPrompt(policyText: string): string {
-  return POLICY_SUMMARY_PROMPT.template.replace('{policy_text}', policyText);
+  return POLICY_SUMMARY_PROMPT.template.replace("{policy_text}", policyText);
 }
 
 export function buildSafetyPrompt(policyText: string): string {
-  return SAFETY_SUMMARY_PROMPT.template.replace('{policy_text}', policyText);
+  return SAFETY_SUMMARY_PROMPT.template.replace("{policy_text}", policyText);
 }
 
 /** Returns the current prompt version for the named template. */
-export function getPromptVersion(name: 'policy_summary' | 'safety_summary'): number {
+export function getPromptVersion(
+  name: "policy_summary" | "safety_summary"
+): number {
   switch (name) {
-    case 'policy_summary': return POLICY_SUMMARY_PROMPT.version;
-    case 'safety_summary': return SAFETY_SUMMARY_PROMPT.version;
+    case "policy_summary":
+      return POLICY_SUMMARY_PROMPT.version;
+    case "safety_summary":
+      return SAFETY_SUMMARY_PROMPT.version;
   }
 }

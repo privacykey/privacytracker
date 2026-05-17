@@ -20,14 +20,14 @@
  * the row survives.
  */
 
-import { NextResponse } from 'next/server';
-import db from '@/lib/db';
-import { recordActivity } from '@/lib/activity';
-import { requireMutationGuard } from '@/lib/api-guards';
-import { START_OVER_TABLES_TO_TRUNCATE } from '@/lib/reset-tables';
-import { recordAudit } from '@/lib/security';
+import { NextResponse } from "next/server";
+import { recordActivity } from "@/lib/activity";
+import { requireMutationGuard } from "@/lib/api-guards";
+import db from "@/lib/db";
+import { START_OVER_TABLES_TO_TRUNCATE } from "@/lib/reset-tables";
+import { recordAudit } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // app_settings keys that survive Start Over. Currently nothing — the user
 // is starting completely fresh. If we ever need to keep e.g. a debug flag
@@ -37,15 +37,17 @@ const SETTINGS_KEYS_TO_PRESERVE: readonly string[] = [];
 export async function POST(request: Request) {
   const startedAt = Date.now();
   const guard = requireMutationGuard(request, {
-    action: 'admin.start_over',
+    action: "admin.start_over",
     rateLimit: {
-      keyPrefix: 'admin.start_over',
+      keyPrefix: "admin.start_over",
       limit: 3,
       windowMs: 10 * 60_000,
-      message: 'Rate limit exceeded for Start Over. Try again later.',
+      message: "Rate limit exceeded for Start Over. Try again later.",
     },
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   try {
     const wipe = db.transaction(() => {
@@ -61,28 +63,30 @@ export async function POST(request: Request) {
 
       // Wipe app_settings except any keys we want to preserve.
       if (SETTINGS_KEYS_TO_PRESERVE.length === 0) {
-        db.prepare('DELETE FROM app_settings').run();
+        db.prepare("DELETE FROM app_settings").run();
       } else {
-        const placeholders = SETTINGS_KEYS_TO_PRESERVE.map(() => '?').join(', ');
-        db.prepare(`DELETE FROM app_settings WHERE key NOT IN (${placeholders})`).run(
-          ...SETTINGS_KEYS_TO_PRESERVE,
+        const placeholders = SETTINGS_KEYS_TO_PRESERVE.map(() => "?").join(
+          ", "
         );
+        db.prepare(
+          `DELETE FROM app_settings WHERE key NOT IN (${placeholders})`
+        ).run(...SETTINGS_KEYS_TO_PRESERVE);
       }
     });
 
     wipe();
   } catch (e) {
-    console.error('[/api/admin/start-over] failed:', e);
+    console.error("[/api/admin/start-over] failed:", e);
     recordAudit({
-      action: 'admin.start_over.failed',
+      action: "admin.start_over.failed",
       actorIp: guard.actorIp,
       userAgent: guard.userAgent,
       success: false,
       detail: e instanceof Error ? e.message : String(e),
     });
     return NextResponse.json(
-      { error: 'Start Over failed; database left untouched' },
-      { status: 500 },
+      { error: "Start Over failed; database left untouched" },
+      { status: 500 }
     );
   }
 
@@ -91,17 +95,17 @@ export async function POST(request: Request) {
   // fails for some reason.
   try {
     recordActivity({
-      type: 'reset',
-      status: 'ok',
-      summary: 'Started over — all user data wiped, schema preserved',
-      detail: { mode: 'start-over' },
+      type: "reset",
+      status: "ok",
+      summary: "Started over — all user data wiped, schema preserved",
+      detail: { mode: "start-over" },
       startedAt,
     });
   } catch (e) {
-    console.warn('[/api/admin/start-over] activity-log failed:', e);
+    console.warn("[/api/admin/start-over] activity-log failed:", e);
   }
   recordAudit({
-    action: 'admin.start_over.success',
+    action: "admin.start_over.success",
     actorIp: guard.actorIp,
     userAgent: guard.userAgent,
     success: true,

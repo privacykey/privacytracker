@@ -8,30 +8,35 @@
  * without pulling `better-sqlite3` into its bundle.
  */
 
-import db from './db';
-import { getSetting, setSetting } from './scheduler';
-import { getActiveFocus } from './feature-flag-storage';
-import { getPrivacyProfile } from './privacy-profile-server';
+import db from "./db";
+import { getActiveFocus } from "./feature-flag-storage";
+import { getPrivacyProfile } from "./privacy-profile-server";
+import { getSetting, setSetting } from "./scheduler";
 import {
-  TASK_DEFS,
   getOptInCandidates,
-  resolveTasks,
   type OptInCandidate,
   type ResolvedTask,
+  resolveTasks,
+  TASK_DEFS,
   type TaskCompletionContext,
   type UserTaskId,
-} from './tasks';
+} from "./tasks";
 
-const STORAGE_KEY = 'user_tasks_state';
-const TASK_IDS = new Set<UserTaskId>(TASK_DEFS.map(d => d.id));
+const STORAGE_KEY = "user_tasks_state";
+const TASK_IDS = new Set<UserTaskId>(TASK_DEFS.map((d) => d.id));
 
 export interface UserTasksStateBlob {
+  tasks: Partial<
+    Record<
+      UserTaskId,
+      {
+        started_at?: number;
+        dismissed_at?: number;
+        opted_in_at?: number;
+      }
+    >
+  >;
   version: 1;
-  tasks: Partial<Record<UserTaskId, {
-    started_at?: number;
-    dismissed_at?: number;
-    opted_in_at?: number;
-  }>>;
 }
 
 const EMPTY_BLOB: UserTasksStateBlob = { version: 1, tasks: {} };
@@ -43,35 +48,60 @@ const EMPTY_BLOB: UserTasksStateBlob = { version: 1, tasks: {} };
  * `feature-flag-storage.ts`.
  */
 export function getUserTasksState(): UserTasksStateBlob {
-  const raw = getSetting(STORAGE_KEY, '');
-  if (!raw) return EMPTY_BLOB;
+  const raw = getSetting(STORAGE_KEY, "");
+  if (!raw) {
+    return EMPTY_BLOB;
+  }
   try {
     const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== 'object') return EMPTY_BLOB;
+    if (!parsed || typeof parsed !== "object") {
+      return EMPTY_BLOB;
+    }
     const obj = parsed as { version?: unknown; tasks?: unknown };
-    if (obj.version !== 1) return EMPTY_BLOB;
-    if (!obj.tasks || typeof obj.tasks !== 'object') return EMPTY_BLOB;
+    if (obj.version !== 1) {
+      return EMPTY_BLOB;
+    }
+    if (!obj.tasks || typeof obj.tasks !== "object") {
+      return EMPTY_BLOB;
+    }
     // Sanitize: drop unknown task ids and non-numeric timestamps.
-    const cleanTasks: UserTasksStateBlob['tasks'] = {};
-    for (const [id, entry] of Object.entries(obj.tasks as Record<string, unknown>)) {
-      if (!TASK_IDS.has(id as UserTaskId)) continue;
-      if (!entry || typeof entry !== 'object') continue;
-      const e = entry as { started_at?: unknown; dismissed_at?: unknown; opted_in_at?: unknown };
-      const cleaned: { started_at?: number; dismissed_at?: number; opted_in_at?: number } = {};
-      if (typeof e.started_at === 'number' && Number.isFinite(e.started_at)) {
+    const cleanTasks: UserTasksStateBlob["tasks"] = {};
+    for (const [id, entry] of Object.entries(
+      obj.tasks as Record<string, unknown>
+    )) {
+      if (!TASK_IDS.has(id as UserTaskId)) {
+        continue;
+      }
+      if (!entry || typeof entry !== "object") {
+        continue;
+      }
+      const e = entry as {
+        started_at?: unknown;
+        dismissed_at?: unknown;
+        opted_in_at?: unknown;
+      };
+      const cleaned: {
+        started_at?: number;
+        dismissed_at?: number;
+        opted_in_at?: number;
+      } = {};
+      if (typeof e.started_at === "number" && Number.isFinite(e.started_at)) {
         cleaned.started_at = e.started_at;
       }
-      if (typeof e.dismissed_at === 'number' && Number.isFinite(e.dismissed_at)) {
+      if (
+        typeof e.dismissed_at === "number" &&
+        Number.isFinite(e.dismissed_at)
+      ) {
         cleaned.dismissed_at = e.dismissed_at;
       }
-      if (typeof e.opted_in_at === 'number' && Number.isFinite(e.opted_in_at)) {
+      if (typeof e.opted_in_at === "number" && Number.isFinite(e.opted_in_at)) {
         cleaned.opted_in_at = e.opted_in_at;
       }
       cleanTasks[id as UserTaskId] = cleaned;
     }
     return { version: 1, tasks: cleanTasks };
   } catch (error) {
-    console.warn('[tasks-server] user_tasks_state corrupt, resetting:', error);
+    console.warn("[tasks-server] user_tasks_state corrupt, resetting:", error);
     return EMPTY_BLOB;
   }
 }
@@ -84,12 +114,16 @@ export function setUserTasksState(next: UserTasksStateBlob): void {
  * Build the completion context in one DB pass. Per-task `completionCheck`
  * predicates are pure over this snapshot — no I/O inside the predicates.
  */
-export function buildTaskCompletionContext(focus = getActiveFocus()): TaskCompletionContext {
+export function buildTaskCompletionContext(
+  focus = getActiveFocus()
+): TaskCompletionContext {
   const hasProfile = (() => {
     try {
       const p = getPrivacyProfile();
-      if (!p) return false;
-      return Object.values(p).some(v => typeof v === 'string');
+      if (!p) {
+        return false;
+      }
+      return Object.values(p).some((v) => typeof v === "string");
     } catch {
       return false;
     }
@@ -118,25 +152,42 @@ export function buildTaskCompletionContext(focus = getActiveFocus()): TaskComple
     }
   })();
 
-  const syncScheduleRaw = getSetting('sync_schedule', '');
-  const syncSchedule = syncScheduleRaw === '' ? null : syncScheduleRaw;
+  const syncScheduleRaw = getSetting("sync_schedule", "");
+  const syncSchedule = syncScheduleRaw === "" ? null : syncScheduleRaw;
+
+  // Has any device with at least one app linked? Cheap existence check.
+  const hasDeviceWithApps = (() => {
+    try {
+      const row = db.prepare("SELECT 1 FROM app_devices LIMIT 1").get();
+      return Boolean(row);
+    } catch {
+      return false;
+    }
+  })();
+  const lastResyncAt = numericSetting("device_resync.last_committed_at") ?? 0;
 
   return {
     focus,
     hasPrivacyProfile: hasProfile,
-    anyAppDetailVisitedAt: numericSetting('task_visit.app_detail_at'),
-    privacyMapVisitedAt: numericSetting('task_visit.privacy_map_at'),
-    compareVisitedAt: numericSetting('task_visit.compare_at'),
+    anyAppDetailVisitedAt: numericSetting("task_visit.app_detail_at"),
+    privacyMapVisitedAt: numericSetting("task_visit.privacy_map_at"),
+    compareVisitedAt: numericSetting("task_visit.compare_at"),
     verdictCount,
     uninstallVerdictCount,
-    backgroundWizardCompletedAt: numericSetting('background_wizard_completed_at'),
+    backgroundWizardCompletedAt: numericSetting(
+      "background_wizard_completed_at"
+    ),
     syncSchedule,
+    hasDeviceWithApps,
+    lastResyncAt,
   };
 }
 
 function numericSetting(key: string): number | null {
-  const raw = getSetting(key, '');
-  if (!raw) return null;
+  const raw = getSetting(key, "");
+  if (!raw) {
+    return null;
+  }
   const n = Number.parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
@@ -148,7 +199,7 @@ function numericSetting(key: string): number | null {
  */
 export function resolveAllTasks(
   focus = getActiveFocus(),
-  isDesktop = false,
+  isDesktop = false
 ): ResolvedTask[] {
   const ctx = buildTaskCompletionContext(focus);
   const blob = getUserTasksState();
@@ -159,21 +210,25 @@ export function resolveAllTasks(
  *  surface? Computed against the same focus + blob to stay consistent. */
 export function resolveOptInCandidates(
   focus = getActiveFocus(),
-  isDesktop = false,
+  isDesktop = false
 ): OptInCandidate[] {
   const ctx = buildTaskCompletionContext(focus);
   const blob = getUserTasksState();
   return getOptInCandidates(focus, ctx, blob, { isDesktop });
 }
 
-function mutateBlob(mutator: (blob: UserTasksStateBlob) => UserTasksStateBlob): void {
+function mutateBlob(
+  mutator: (blob: UserTasksStateBlob) => UserTasksStateBlob
+): void {
   const current = getUserTasksState();
   setUserTasksState(mutator(current));
 }
 
 export function startTask(id: UserTaskId): void {
-  if (!TASK_IDS.has(id)) return;
-  mutateBlob(blob => {
+  if (!TASK_IDS.has(id)) {
+    return;
+  }
+  mutateBlob((blob) => {
     const existing = blob.tasks[id] ?? {};
     return {
       version: 1,
@@ -186,8 +241,10 @@ export function startTask(id: UserTaskId): void {
 }
 
 export function dismissTask(id: UserTaskId): void {
-  if (!TASK_IDS.has(id)) return;
-  mutateBlob(blob => {
+  if (!TASK_IDS.has(id)) {
+    return;
+  }
+  mutateBlob((blob) => {
     const existing = blob.tasks[id] ?? {};
     return {
       version: 1,
@@ -200,8 +257,10 @@ export function dismissTask(id: UserTaskId): void {
 }
 
 export function resetTask(id: UserTaskId): void {
-  if (!TASK_IDS.has(id)) return;
-  mutateBlob(blob => {
+  if (!TASK_IDS.has(id)) {
+    return;
+  }
+  mutateBlob((blob) => {
     const next = { ...blob.tasks };
     delete next[id];
     return { version: 1, tasks: next };
@@ -212,12 +271,18 @@ export function resetTask(id: UserTaskId): void {
  *  `optInOnly` (we don't gate non-opt-in tasks behind this) or if it
  *  was already opted in. */
 export function optInTask(id: UserTaskId): void {
-  if (!TASK_IDS.has(id)) return;
-  const def = TASK_DEFS.find(d => d.id === id);
-  if (!def?.optInOnly) return;
-  mutateBlob(blob => {
+  if (!TASK_IDS.has(id)) {
+    return;
+  }
+  const def = TASK_DEFS.find((d) => d.id === id);
+  if (!def?.optInOnly) {
+    return;
+  }
+  mutateBlob((blob) => {
     const existing = blob.tasks[id] ?? {};
-    if (existing.opted_in_at) return blob;
+    if (existing.opted_in_at) {
+      return blob;
+    }
     return {
       version: 1,
       tasks: {

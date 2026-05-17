@@ -26,37 +26,50 @@
  * Load-more affordance is needed and to render an "N of M" footer.
  */
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 import {
   listUniversalChangelog,
   type UniversalChangelogFilters,
-} from '../../../lib/changelog';
-import type { ChangeEntry } from '../../../lib/changelog-types';
+} from "../../../lib/changelog";
+import type { ChangeEntry } from "../../../lib/changelog-types";
 
-const VALID_TYPES = new Set<ChangeEntry['type']>([
-  'added', 'removed', 'modified', 'policy', 'wayback',
+const VALID_TYPES = new Set<ChangeEntry["type"]>([
+  "added",
+  "removed",
+  "modified",
+  "policy",
+  "wayback",
 ]);
-const VALID_CATEGORIES = new Set<NonNullable<ChangeEntry['category']>>([
-  'privacy-label', 'privacy-policy', 'wayback-attempt', 'accessibility',
+const VALID_CATEGORIES = new Set<NonNullable<ChangeEntry["category"]>>([
+  "privacy-label",
+  "privacy-policy",
+  "wayback-attempt",
+  "accessibility",
 ]);
 
 function parseCsv<T extends string>(
   raw: string | null,
-  valid: Set<T>,
+  valid: Set<T>
 ): T[] | undefined {
-  if (!raw) return undefined;
+  if (!raw) {
+    return;
+  }
   const out: T[] = [];
-  for (const token of raw.split(',')) {
+  for (const token of raw.split(",")) {
     const t = token.trim() as T;
-    if (t.length > 0 && valid.has(t)) out.push(t);
+    if (t.length > 0 && valid.has(t)) {
+      out.push(t);
+    }
   }
   return out.length > 0 ? out : undefined;
 }
 
 function parseInt32(raw: string | null): number | undefined {
-  if (!raw) return undefined;
+  if (!raw) {
+    return;
+  }
   const n = Number.parseInt(raw, 10);
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
@@ -66,29 +79,40 @@ export async function GET(request: Request) {
   const sp = url.searchParams;
 
   const filters: UniversalChangelogFilters = {};
-  const fromMs = parseInt32(sp.get('from'));
-  if (fromMs !== undefined) filters.fromMs = fromMs;
-  const toMs = parseInt32(sp.get('to'));
-  if (toMs !== undefined) filters.toMs = toMs;
+  const fromMs = parseInt32(sp.get("from"));
+  if (fromMs !== undefined) {
+    filters.fromMs = fromMs;
+  }
+  const toMs = parseInt32(sp.get("to"));
+  if (toMs !== undefined) {
+    filters.toMs = toMs;
+  }
 
-  const appIdRaw = sp.get('appId');
+  const appIdRaw = sp.get("appId");
   if (appIdRaw && /^[A-Za-z0-9_-]+$/.test(appIdRaw)) {
     filters.appId = appIdRaw;
   }
 
-  filters.types = parseCsv(sp.get('type'), VALID_TYPES);
-  filters.categories = parseCsv(sp.get('category'), VALID_CATEGORIES);
+  filters.types = parseCsv(sp.get("type"), VALID_TYPES);
+  filters.categories = parseCsv(sp.get("category"), VALID_CATEGORIES);
 
-  const limit = parseInt32(sp.get('limit'));
-  if (limit !== undefined) filters.limit = limit;
-  const offset = parseInt32(sp.get('offset'));
-  if (offset !== undefined) filters.offset = offset;
+  const limit = parseInt32(sp.get("limit"));
+  if (limit !== undefined) {
+    filters.limit = limit;
+  }
+  const offset = parseInt32(sp.get("offset"));
+  if (offset !== undefined) {
+    filters.offset = offset;
+  }
 
   try {
     const data = listUniversalChangelog(filters);
     return NextResponse.json(data);
   } catch (e) {
-    console.error('[/api/changelog] failed:', e);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("[/api/changelog] failed:", e);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

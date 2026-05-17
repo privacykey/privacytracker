@@ -1,0 +1,83 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/next"
+  ],
+  "files": {
+    "includes": [
+      "!!**/.claude",
+      "!!**/.next-test",
+      "!!**/.next-build-check",
+      "!!**/sessions",
+      "!!**/src-tauri/target",
+      "!!**/src-tauri/binaries",
+      "!!**/src-tauri/resources/standalone",
+      "!!**/tools/__pycache__",
+      "!!**/tools/out",
+      "!!**/playwright-report",
+      "!!**/test-results",
+      "!!**/public/fonts"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "a11y": {
+        "noNoninteractiveElementInteractions": "warn",
+        "noStaticElementInteractions": "warn",
+        "useSemanticElements": "warn",
+        "useKeyWithClickEvents": "warn",
+        "useAriaPropsSupportedByRole": "warn",
+        "useAriaPropsForRole": "warn",
+        "useButtonType": "warn",
+        "useFocusableInteractive": "warn",
+        "noSvgWithoutTitle": "warn",
+        "useValidAnchor": "warn",
+        "noLabelWithoutControl": "warn",
+        "useHtmlLang": "warn"
+      },
+      "complexity": {
+        "noVoid": "off",
+        "noExcessiveCognitiveComplexity": "off",
+        "noForEach": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      },
+      "performance": {
+        "noImgElement": "off",
+        "useTopLevelRegex": "off",
+        "noBarrelFile": "off",
+        "noNamespaceImport": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "style": {
+        "noNestedTernary": "off",
+        "useFilenamingConvention": "off",
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "off",
+        "noParameterProperties": "off",
+        "useAtIndex": "off",
+        "useConsistentMemberAccessibility": "off",
+        "useDefaultSwitchClause": "off",
+        "noDescendingSpecificity": "off",
+        "noExportedImports": "off",
+        "useNumericSeparators": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "useAwait": "off",
+        "noBitwiseOperators": "off",
+        "noArrayIndexKey": "off",
+        "noAssignInExpressions": "off",
+        "noEvolvingTypes": "off",
+        "noControlCharactersInRegex": "off",
+        "noDuplicateProperties": "off",
+        "noEmptyBlockStatements": "off"
+      }
+    }
+  }
+}

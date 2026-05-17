@@ -22,11 +22,11 @@
  * schema tweak.
  */
 
-import crypto from 'crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import db from './db';
-import { recordAudit, sanitizePolicyUrl } from './security';
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import db from "./db";
+import { recordAudit, sanitizePolicyUrl } from "./security";
 
 export const CURRENT_BACKUP_VERSION = 1;
 
@@ -47,22 +47,25 @@ export const CURRENT_BACKUP_VERSION = 1;
  * (different key); restoring them requires the explicit
  * `allowUntrusted: true` opt-in.
  */
-const BACKUP_HMAC_ALG = 'HMAC-SHA256';
-const BACKUP_KEY_FILENAME = 'backup-signing.key';
+const BACKUP_HMAC_ALG = "HMAC-SHA256";
+const BACKUP_KEY_FILENAME = "backup-signing.key";
 
 function backupKeyPath(): string {
   // Match lib/db.ts's resolution rule: env var wins, otherwise <cwd>/data.
-  const dataDir = process.env.PRIVACYTRACKER_DATA_DIR || path.join(process.cwd(), 'data');
+  const dataDir =
+    process.env.PRIVACYTRACKER_DATA_DIR || path.join(process.cwd(), "data");
   return path.join(dataDir, BACKUP_KEY_FILENAME);
 }
 
 function getOrCreateSigningKey(): Buffer {
   const file = backupKeyPath();
   try {
-    const raw = fs.readFileSync(file, 'utf8').trim();
+    const raw = fs.readFileSync(file, "utf8").trim();
     if (raw) {
-      const buf = Buffer.from(raw, 'base64');
-      if (buf.length >= 16) return buf;
+      const buf = Buffer.from(raw, "base64");
+      if (buf.length >= 16) {
+        return buf;
+      }
     }
   } catch {
     // Missing file or read error — fall through to generate.
@@ -72,32 +75,44 @@ function getOrCreateSigningKey(): Buffer {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     // 0600 — owner read/write only. Anyone who can read this can forge
     // signed envelopes targeting this install.
-    fs.writeFileSync(file, fresh.toString('base64') + '\n', { mode: 0o600 });
+    fs.writeFileSync(file, `${fresh.toString("base64")}\n`, { mode: 0o600 });
   } catch (err) {
-    console.warn('[backup] failed to persist signing key:', err);
+    console.warn("[backup] failed to persist signing key:", err);
   }
   return fresh;
 }
 
 /** Stable string representation for HMAC input — order of object keys matters. */
 function canonicalize(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return '[' + value.map(canonicalize).join(',') + ']';
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalize).join(",")}]`;
+  }
   const keys = Object.keys(value as Record<string, unknown>).sort();
   return (
-    '{' +
+    "{" +
     keys
-      .map(k => JSON.stringify(k) + ':' + canonicalize((value as Record<string, unknown>)[k]))
-      .join(',') +
-    '}'
+      .map(
+        (k) =>
+          JSON.stringify(k) +
+          ":" +
+          canonicalize((value as Record<string, unknown>)[k])
+      )
+      .join(",") +
+    "}"
   );
 }
 
-function computeEnvelopeMac(envelopeWithoutSignature: object, key: Buffer): string {
+function computeEnvelopeMac(
+  envelopeWithoutSignature: object,
+  key: Buffer
+): string {
   return crypto
-    .createHmac('sha256', key)
+    .createHmac("sha256", key)
     .update(canonicalize(envelopeWithoutSignature))
-    .digest('base64');
+    .digest("base64");
 }
 
 /**
@@ -107,29 +122,29 @@ function computeEnvelopeMac(envelopeWithoutSignature: object, key: Buffer): stri
  * consume a backup taken from a newer install.
  */
 export const TABLES_IN_INSERT_ORDER: readonly string[] = [
-  'apps',
-  'privacy_types',
-  'privacy_purposes',
-  'privacy_categories',
-  'privacy_data_types',
-  'accessibility_features',
-  'privacy_snapshots',
-  'privacy_policy_analyses',
-  'privacy_policy_versions',
-  'annotations',
-  'app_verdicts',
-  'manual_apps',
-  'manual_app_events',
-  'manual_app_policy_versions',
-  'shortlist_entries',
-  'notifications',
-  'imports',
-  'import_items',
-  'audit_bundle_imports',
-  'app_settings',
-  'feature_flag_overrides',
-  'ai_debug_log',
-  'audit_log',
+  "apps",
+  "privacy_types",
+  "privacy_purposes",
+  "privacy_categories",
+  "privacy_data_types",
+  "accessibility_features",
+  "privacy_snapshots",
+  "privacy_policy_analyses",
+  "privacy_policy_versions",
+  "annotations",
+  "app_verdicts",
+  "manual_apps",
+  "manual_app_events",
+  "manual_app_policy_versions",
+  "shortlist_entries",
+  "notifications",
+  "imports",
+  "import_items",
+  "audit_bundle_imports",
+  "app_settings",
+  "feature_flag_overrides",
+  "ai_debug_log",
+  "audit_log",
 ];
 
 export interface BackupTable {
@@ -145,16 +160,16 @@ export interface BackupSignature {
 }
 
 export interface BackupEnvelope {
-  version: number;
-  exportedAt: number | null;
   appName: string;
-  tables: Record<string, BackupTable>;
+  exportedAt: number | null;
   /**
    * Optional. Present when the envelope was produced by `exportBackup()` on
    * an install with a signing key. Absence is treated as "untrusted" by
    * default (cross-device / hand-crafted bundles).
    */
   signature?: BackupSignature;
+  tables: Record<string, BackupTable>;
+  version: number;
 }
 
 /**
@@ -174,7 +189,7 @@ export interface BackupEnvelope {
  * point that catches every code path — current and future.
  */
 export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
-  'ai_api_key',
+  "ai_api_key",
 ]);
 
 /**
@@ -188,16 +203,17 @@ export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
  * even a trusted envelope must not replace our key with the
  * sender's — that would let the sender forge future envelopes.
  */
-const RESTORE_SETTING_KEY_DENY_PREFIXES = [
-  'flag.devopts.',
-  'AUDITOR_',
-];
+const RESTORE_SETTING_KEY_DENY_PREFIXES = ["flag.devopts.", "AUDITOR_"];
 const RESTORE_SETTING_KEY_DENY_EXACT = new Set<string>();
 
 function isRestoreSettingKeyDenied(key: unknown): boolean {
-  if (typeof key !== 'string') return false;
-  if (RESTORE_SETTING_KEY_DENY_EXACT.has(key)) return true;
-  return RESTORE_SETTING_KEY_DENY_PREFIXES.some(p => key.startsWith(p));
+  if (typeof key !== "string") {
+    return false;
+  }
+  if (RESTORE_SETTING_KEY_DENY_EXACT.has(key)) {
+    return true;
+  }
+  return RESTORE_SETTING_KEY_DENY_PREFIXES.some((p) => key.startsWith(p));
 }
 
 /**
@@ -211,7 +227,7 @@ function isRestoreSettingKeyDenied(key: unknown): boolean {
  * silently keep its key on a fresh box, which is the opposite of what we
  * want.
  */
-const REDACTED_SETTING_VALUE = '';
+const REDACTED_SETTING_VALUE = "";
 
 /**
  * Strip secret values from `app_settings`-style rows. Pure, deterministic,
@@ -221,12 +237,16 @@ const REDACTED_SETTING_VALUE = '';
  * Mutates a shallow clone — the input rows are not modified.
  */
 export function redactSensitiveSettingsRows(
-  rows: Record<string, unknown>[],
+  rows: Record<string, unknown>[]
 ): Record<string, unknown>[] {
-  return rows.map(row => {
+  return rows.map((row) => {
     const key = row.key;
-    if (typeof key !== 'string') return row;
-    if (!SENSITIVE_SETTING_KEYS.has(key)) return row;
+    if (typeof key !== "string") {
+      return row;
+    }
+    if (!SENSITIVE_SETTING_KEYS.has(key)) {
+      return row;
+    }
     return { ...row, value: REDACTED_SETTING_VALUE };
   });
 }
@@ -246,12 +266,16 @@ export function exportBackup(): BackupEnvelope {
 
   const runReads = db.transaction(() => {
     for (const name of TABLES_IN_INSERT_ORDER) {
-      if (!tableExists(name)) continue;
+      if (!tableExists(name)) {
+        continue;
+      }
       const columns = getColumns(name);
-      const rows = db.prepare(`SELECT * FROM ${name}`).all() as Record<string, unknown>[];
-      const safeRows = name === 'app_settings'
-        ? redactSensitiveSettingsRows(rows)
-        : rows;
+      const rows = db.prepare(`SELECT * FROM ${name}`).all() as Record<
+        string,
+        unknown
+      >[];
+      const safeRows =
+        name === "app_settings" ? redactSensitiveSettingsRows(rows) : rows;
       tables[name] = { columns, rows: safeRows };
     }
   });
@@ -260,7 +284,7 @@ export function exportBackup(): BackupEnvelope {
   const unsigned = {
     version: CURRENT_BACKUP_VERSION,
     exportedAt: Date.now(),
-    appName: 'privacytracker',
+    appName: "privacytracker",
     tables,
   };
   const signature: BackupSignature = {
@@ -276,10 +300,10 @@ export function exportBackup(): BackupEnvelope {
  * user confirms the destructive restore.
  */
 export interface RestorePreview {
-  version: number;
   exportedAt: number | null;
   perTable: { name: string; rows: number }[];
   totalRows: number;
+  version: number;
   warnings: string[];
 }
 
@@ -296,7 +320,7 @@ export function summarizeBackup(envelope: BackupEnvelope): RestorePreview {
     totalRows += count;
     if (!TABLES_IN_INSERT_ORDER.includes(name)) {
       warnings.push(
-        `Table "${name}" is in the backup but not recognised by this app version; its ${count} rows will be skipped on restore.`,
+        `Table "${name}" is in the backup but not recognised by this app version; its ${count} rows will be skipped on restore.`
       );
     }
   }
@@ -305,12 +329,24 @@ export function summarizeBackup(envelope: BackupEnvelope): RestorePreview {
   perTable.sort((a, b) => {
     const ai = TABLES_IN_INSERT_ORDER.indexOf(a.name);
     const bi = TABLES_IN_INSERT_ORDER.indexOf(b.name);
-    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
+    if (ai === -1 && bi === -1) {
+      return a.name.localeCompare(b.name);
+    }
+    if (ai === -1) {
+      return 1;
+    }
+    if (bi === -1) {
+      return -1;
+    }
     return ai - bi;
   });
-  return { version: envelope.version, exportedAt: envelope.exportedAt, perTable, totalRows, warnings };
+  return {
+    version: envelope.version,
+    exportedAt: envelope.exportedAt,
+    perTable,
+    totalRows,
+    warnings,
+  };
 }
 
 /**
@@ -323,13 +359,13 @@ export function previewRestore(payload: unknown): RestorePreview {
 }
 
 export interface RestoreResult {
-  inserted: { name: string; rows: number }[];
-  totalRows: number;
-  restoredAt: number;
-  /** 'trusted' if the envelope's signature matched this install's key. */
-  trust: 'trusted' | 'untrusted';
   /** Rows the per-field sanitiser refused to write (e.g. javascript: URLs, blocked settings). */
   blocked: { name: string; rows: number }[];
+  inserted: { name: string; rows: number }[];
+  restoredAt: number;
+  totalRows: number;
+  /** 'trusted' if the envelope's signature matched this install's key. */
+  trust: "trusted" | "untrusted";
 }
 
 /**
@@ -344,10 +380,10 @@ export class BackupUntrustedError extends Error {
   constructor(signaturePresent: boolean) {
     super(
       signaturePresent
-        ? 'Backup signature does not match this install. Pass allowUntrusted=true to restore anyway.'
-        : 'Backup is unsigned (no signature found). Pass allowUntrusted=true to restore anyway.',
+        ? "Backup signature does not match this install. Pass allowUntrusted=true to restore anyway."
+        : "Backup is unsigned (no signature found). Pass allowUntrusted=true to restore anyway."
     );
-    this.name = 'BackupUntrustedError';
+    this.name = "BackupUntrustedError";
     this.signaturePresent = signaturePresent;
   }
 }
@@ -364,15 +400,15 @@ export class BackupUntrustedError extends Error {
  */
 export function restoreBackup(
   payload: unknown,
-  meta?: { actorIp?: string; userAgent?: string; allowUntrusted?: boolean },
+  meta?: { actorIp?: string; userAgent?: string; allowUntrusted?: boolean }
 ): RestoreResult {
   const envelope = parseEnvelope(payload);
   const summary = summarizeBackup(envelope);
 
   // Signature gate. Verify FIRST so we never wipe the DB on a tampered
   // envelope just to find out at the end that it didn't authenticate.
-  const trust: 'trusted' | 'untrusted' = verifyEnvelope(envelope);
-  if (trust === 'untrusted' && !meta?.allowUntrusted) {
+  const trust: "trusted" | "untrusted" = verifyEnvelope(envelope);
+  if (trust === "untrusted" && !meta?.allowUntrusted) {
     throw new BackupUntrustedError(Boolean(envelope.signature));
   }
 
@@ -380,10 +416,11 @@ export function restoreBackup(
   // table itself is part of the wipe (it's in TABLES_IN_INSERT_ORDER so the
   // backup can carry a historical trail forward), so we re-append the
   // restore-event row after the transaction commits.
-  const priorCounts = TABLES_IN_INSERT_ORDER.map(name => ({
+  const priorCounts = TABLES_IN_INSERT_ORDER.map((name) => ({
     name,
     rows: tableExists(name)
-      ? ((db.prepare(`SELECT COUNT(*) AS c FROM ${name}`).get() as { c: number }).c)
+      ? (db.prepare(`SELECT COUNT(*) AS c FROM ${name}`).get() as { c: number })
+          .c
       : 0,
   }));
 
@@ -396,22 +433,26 @@ export function restoreBackup(
   // flip FK enforcement off *around* the transaction block. This is safe
   // because `db.transaction()` is synchronous in better-sqlite3 — no other
   // statements can interleave.
-  const wasFk = db.pragma('foreign_keys', { simple: true }) as number;
+  const wasFk = db.pragma("foreign_keys", { simple: true }) as number;
   try {
-    db.pragma('foreign_keys = OFF');
+    db.pragma("foreign_keys = OFF");
 
     const writeAll = db.transaction(() => {
       // Wipe children-first (reverse of insert order). Some installs may be
       // missing newer tables, so guard with tableExists.
       for (const name of [...TABLES_IN_INSERT_ORDER].reverse()) {
-        if (!tableExists(name)) continue;
+        if (!tableExists(name)) {
+          continue;
+        }
         db.prepare(`DELETE FROM ${name}`).run();
       }
 
       for (const name of TABLES_IN_INSERT_ORDER) {
-        if (!tableExists(name)) continue;
+        if (!tableExists(name)) {
+          continue;
+        }
         const table = envelope.tables[name];
-        if (!table || !Array.isArray(table.rows) || table.rows.length === 0) {
+        if (!(table && Array.isArray(table.rows)) || table.rows.length === 0) {
           inserted.push({ name, rows: 0 });
           continue;
         }
@@ -419,54 +460,69 @@ export function restoreBackup(
         // Only write columns that still exist in the live schema. Dropped
         // columns from the backup are silently ignored; new columns fall back
         // to their DEFAULT.
-        const writableCols = (table.columns ?? Object.keys(table.rows[0] ?? {}))
-          .filter(col => liveColumns.includes(col));
+        const writableCols = (
+          table.columns ?? Object.keys(table.rows[0] ?? {})
+        ).filter((col) => liveColumns.includes(col));
         if (writableCols.length === 0) {
           inserted.push({ name, rows: 0 });
           continue;
         }
 
-        const placeholders = writableCols.map(() => '?').join(', ');
-        const colList = writableCols.map(quoteIdent).join(', ');
-        const stmt = db.prepare(`INSERT INTO ${name} (${colList}) VALUES (${placeholders})`);
+        const placeholders = writableCols.map(() => "?").join(", ");
+        const colList = writableCols.map(quoteIdent).join(", ");
+        const stmt = db.prepare(
+          `INSERT INTO ${name} (${colList}) VALUES (${placeholders})`
+        );
         let n = 0;
         let rejected = 0;
         for (const row of table.rows) {
-          if (!row || typeof row !== 'object') continue;
-          const sanitised = sanitiseRowForRestore(name, row as Record<string, unknown>);
+          if (!row || typeof row !== "object") {
+            continue;
+          }
+          const sanitised = sanitiseRowForRestore(
+            name,
+            row as Record<string, unknown>
+          );
           if (sanitised === null) {
             rejected += 1;
             continue;
           }
-          const values = writableCols.map(col => coerceSqlValue(sanitised[col]));
+          const values = writableCols.map((col) =>
+            coerceSqlValue(sanitised[col])
+          );
           stmt.run(...values);
           n += 1;
         }
         inserted.push({ name, rows: n });
-        if (rejected > 0) blocked.push({ name, rows: rejected });
+        if (rejected > 0) {
+          blocked.push({ name, rows: rejected });
+        }
         totalRows += n;
       }
 
       // Final integrity check — if any FK is dangling this throws, which
       // aborts + rolls back the transaction.
-      const violations = db.prepare('PRAGMA foreign_key_check').all() as unknown[];
+      const violations = db
+        .prepare("PRAGMA foreign_key_check")
+        .all() as unknown[];
       if (violations.length > 0) {
         throw new Error(
           `Backup restore aborted: ${violations.length} foreign-key violation(s) detected. ` +
-            `The backup references rows that no longer exist. No changes were applied.`,
+            "The backup references rows that no longer exist. No changes were applied."
         );
       }
     });
     writeAll();
   } finally {
-    db.pragma(`foreign_keys = ${wasFk ? 'ON' : 'OFF'}`);
+    db.pragma(`foreign_keys = ${wasFk ? "ON" : "OFF"}`);
   }
 
   // Post-restore audit trail entry. Best-effort — if this fails we still
   // succeeded at the restore, so we don't rethrow.
   try {
     recordAudit({
-      action: trust === 'trusted' ? 'backup.restore' : 'backup.restore.untrusted',
+      action:
+        trust === "trusted" ? "backup.restore" : "backup.restore.untrusted",
       actorIp: meta?.actorIp ?? null,
       userAgent: meta?.userAgent ?? null,
       success: true,
@@ -483,7 +539,7 @@ export function restoreBackup(
       }).slice(0, 1024),
     });
   } catch (err) {
-    console.warn('[backup] Failed to write audit log for restore:', err);
+    console.warn("[backup] Failed to write audit log for restore:", err);
   }
 
   return { inserted, totalRows, restoredAt, trust, blocked };
@@ -494,16 +550,18 @@ export function restoreBackup(
  * envelope carries an HMAC-SHA256 signature that matches the local
  * key; otherwise 'untrusted'.
  */
-function verifyEnvelope(envelope: BackupEnvelope): 'trusted' | 'untrusted' {
+function verifyEnvelope(envelope: BackupEnvelope): "trusted" | "untrusted" {
   if (!envelope.signature || envelope.signature.alg !== BACKUP_HMAC_ALG) {
-    return 'untrusted';
+    return "untrusted";
   }
   const { signature, ...withoutSig } = envelope;
   const expectedMac = computeEnvelopeMac(withoutSig, getOrCreateSigningKey());
-  const a = Buffer.from(expectedMac, 'base64');
-  const b = Buffer.from(signature.mac, 'base64');
-  if (a.length === 0 || a.length !== b.length) return 'untrusted';
-  return crypto.timingSafeEqual(a, b) ? 'trusted' : 'untrusted';
+  const a = Buffer.from(expectedMac, "base64");
+  const b = Buffer.from(signature.mac, "base64");
+  if (a.length === 0 || a.length !== b.length) {
+    return "untrusted";
+  }
+  return crypto.timingSafeEqual(a, b) ? "trusted" : "untrusted";
 }
 
 /**
@@ -517,33 +575,37 @@ function verifyEnvelope(envelope: BackupEnvelope): 'trusted' | 'untrusted' {
  */
 function sanitiseRowForRestore(
   table: string,
-  row: Record<string, unknown>,
+  row: Record<string, unknown>
 ): Record<string, unknown> | null {
-  if (table === 'app_settings') {
-    if (isRestoreSettingKeyDenied(row.key)) return null;
+  if (table === "app_settings") {
+    if (isRestoreSettingKeyDenied(row.key)) {
+      return null;
+    }
     return row;
   }
-  if (table === 'apps') {
+  if (table === "apps") {
     return {
       ...row,
-      url: typeof row.url === 'string' ? sanitizePolicyUrl(row.url) || '' : '',
+      url: typeof row.url === "string" ? sanitizePolicyUrl(row.url) || "" : "",
       iconUrl:
-        typeof row.iconUrl === 'string' ? sanitizePolicyUrl(row.iconUrl) || null : null,
+        typeof row.iconUrl === "string"
+          ? sanitizePolicyUrl(row.iconUrl) || null
+          : null,
       privacyPolicyUrl:
-        typeof row.privacyPolicyUrl === 'string'
+        typeof row.privacyPolicyUrl === "string"
           ? sanitizePolicyUrl(row.privacyPolicyUrl) || null
           : null,
     };
   }
-  if (table === 'manual_apps') {
+  if (table === "manual_apps") {
     return {
       ...row,
       privacy_policy_url:
-        typeof row.privacy_policy_url === 'string'
+        typeof row.privacy_policy_url === "string"
           ? sanitizePolicyUrl(row.privacy_policy_url) || null
           : null,
       source_url:
-        typeof row.source_url === 'string'
+        typeof row.source_url === "string"
           ? sanitizePolicyUrl(row.source_url) || null
           : null,
     };
@@ -561,7 +623,9 @@ function tableExists(name: string): boolean {
 }
 
 function getColumns(name: string): string[] {
-  return (db.prepare(`PRAGMA table_info(${name})`).all() as { name: string }[]).map(c => c.name);
+  return (
+    db.prepare(`PRAGMA table_info(${name})`).all() as { name: string }[]
+  ).map((c) => c.name);
 }
 
 function quoteIdent(name: string): string {
@@ -578,40 +642,56 @@ function quoteIdent(name: string): string {
  * boolean type.
  */
 function coerceSqlValue(v: unknown): string | number | bigint | Buffer | null {
-  if (v === undefined || v === null) return null;
-  if (typeof v === 'object') return JSON.stringify(v);
-  if (typeof v === 'boolean') return v ? 1 : 0;
-  if (typeof v === 'number' || typeof v === 'bigint' || typeof v === 'string') return v;
+  if (v === undefined || v === null) {
+    return null;
+  }
+  if (typeof v === "object") {
+    return JSON.stringify(v);
+  }
+  if (typeof v === "boolean") {
+    return v ? 1 : 0;
+  }
+  if (typeof v === "number" || typeof v === "bigint" || typeof v === "string") {
+    return v;
+  }
   // Unknown exotic type — stringify defensively rather than crash.
   return String(v);
 }
 
 function parseEnvelope(payload: unknown): BackupEnvelope {
-  if (!payload || typeof payload !== 'object') {
-    throw new BackupFormatError('Backup payload must be a JSON object.');
+  if (!payload || typeof payload !== "object") {
+    throw new BackupFormatError("Backup payload must be a JSON object.");
   }
   const p = payload as Record<string, unknown>;
-  const version = typeof p.version === 'number' ? p.version : NaN;
+  const version = typeof p.version === "number" ? p.version : Number.NaN;
   if (!Number.isFinite(version) || version < 1) {
-    throw new BackupFormatError('Backup payload is missing a valid `version` field.');
+    throw new BackupFormatError(
+      "Backup payload is missing a valid `version` field."
+    );
   }
   if (version > CURRENT_BACKUP_VERSION) {
     throw new BackupFormatError(
-      `Backup version ${version} is newer than this app supports (max ${CURRENT_BACKUP_VERSION}). Upgrade the app and try again.`,
+      `Backup version ${version} is newer than this app supports (max ${CURRENT_BACKUP_VERSION}). Upgrade the app and try again.`
     );
   }
-  if (!p.tables || typeof p.tables !== 'object') {
-    throw new BackupFormatError('Backup payload is missing a `tables` object.');
+  if (!p.tables || typeof p.tables !== "object") {
+    throw new BackupFormatError("Backup payload is missing a `tables` object.");
   }
 
   const tables: Record<string, BackupTable> = {};
-  for (const [name, value] of Object.entries(p.tables as Record<string, unknown>)) {
-    if (!value || typeof value !== 'object') continue;
+  for (const [name, value] of Object.entries(
+    p.tables as Record<string, unknown>
+  )) {
+    if (!value || typeof value !== "object") {
+      continue;
+    }
     const t = value as Record<string, unknown>;
-    if (!Array.isArray(t.rows)) continue;
+    if (!Array.isArray(t.rows)) {
+      continue;
+    }
     const cols = Array.isArray(t.columns)
-      ? (t.columns.filter(c => typeof c === 'string') as string[])
-      : t.rows[0] && typeof t.rows[0] === 'object'
+      ? (t.columns.filter((c) => typeof c === "string") as string[])
+      : t.rows[0] && typeof t.rows[0] === "object"
         ? Object.keys(t.rows[0] as Record<string, unknown>)
         : [];
     tables[name] = { columns: cols, rows: t.rows as Record<string, unknown>[] };
@@ -622,17 +702,17 @@ function parseEnvelope(payload: unknown): BackupEnvelope {
   // exporter used. Dropping it here was the bug that turned every
   // round-trip into "untrusted".
   let signature: BackupSignature | undefined;
-  if (p.signature && typeof p.signature === 'object') {
+  if (p.signature && typeof p.signature === "object") {
     const sig = p.signature as Record<string, unknown>;
-    if (typeof sig.alg === 'string' && typeof sig.mac === 'string') {
+    if (typeof sig.alg === "string" && typeof sig.mac === "string") {
       signature = { alg: sig.alg, mac: sig.mac };
     }
   }
 
   return {
     version,
-    exportedAt: typeof p.exportedAt === 'number' ? p.exportedAt : null,
-    appName: typeof p.appName === 'string' ? p.appName : 'privacytracker',
+    exportedAt: typeof p.exportedAt === "number" ? p.exportedAt : null,
+    appName: typeof p.appName === "string" ? p.appName : "privacytracker",
     tables,
     ...(signature ? { signature } : {}),
   };
@@ -641,6 +721,6 @@ function parseEnvelope(payload: unknown): BackupEnvelope {
 export class BackupFormatError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'BackupFormatError';
+    this.name = "BackupFormatError";
   }
 }

@@ -12,20 +12,20 @@
 // `server-only` not used here — this codebase relies on the `-server.ts`
 // filename convention plus DB imports to keep the module out of the
 // client bundle.
-import { recordActivity } from './activity';
-import { getSetting, setSetting } from './scheduler';
+import { recordActivity } from "./activity";
 import {
   CANONICAL_ORDER,
   DASHBOARD_PRESETS,
-  DEFAULT_LAYOUT,
   type DashboardLayout,
   type DashboardPresetKey,
+  DEFAULT_LAYOUT,
   describeLayoutTransition,
   matchDashboardPreset,
   reconcileLayout,
-} from './dashboard-layout';
+} from "./dashboard-layout";
+import { getSetting, setSetting } from "./scheduler";
 
-const LAYOUT_SETTING_KEY = 'dashboard.layout';
+const LAYOUT_SETTING_KEY = "dashboard.layout";
 
 /**
  * Read the user's stored layout and reconcile it against the current
@@ -33,8 +33,10 @@ const LAYOUT_SETTING_KEY = 'dashboard.layout';
  * malformed, or missing settings fall through to DEFAULT_LAYOUT.
  */
 export function getDashboardLayout(): DashboardLayout {
-  const raw = getSetting(LAYOUT_SETTING_KEY, '');
-  if (!raw) return { ...DEFAULT_LAYOUT, order: [...CANONICAL_ORDER], hidden: [] };
+  const raw = getSetting(LAYOUT_SETTING_KEY, "");
+  if (!raw) {
+    return { ...DEFAULT_LAYOUT, order: [...CANONICAL_ORDER], hidden: [] };
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -65,15 +67,17 @@ export function setDashboardLayout(layout: DashboardLayout): void {
  * we don't want the activity log to spam every reorder. See
  * `describeLayoutTransition` in lib/dashboard-layout.ts for the rule.
  */
-export function saveDashboardLayoutWithLog(next: DashboardLayout): DashboardLayout {
+export function saveDashboardLayoutWithLog(
+  next: DashboardLayout
+): DashboardLayout {
   const startedAt = Date.now();
   const previous = getDashboardLayout();
   setDashboardLayout(next);
   const transition = describeLayoutTransition(previous, next);
   if (transition) {
     recordActivity({
-      type: 'dashboard_layout_applied',
-      status: 'ok',
+      type: "dashboard_layout_applied",
+      status: "ok",
       summary: transition.summary,
       detail: transition.detail,
       startedAt,
@@ -87,7 +91,9 @@ export function saveDashboardLayoutWithLog(next: DashboardLayout): DashboardLayo
  * Goes through `saveDashboardLayoutWithLog` so a preset POST gets the
  * same activity-log treatment as a PUT.
  */
-export function applyDashboardPreset(preset: DashboardPresetKey): DashboardLayout {
+export function applyDashboardPreset(
+  preset: DashboardPresetKey
+): DashboardLayout {
   const layout = DASHBOARD_PRESETS[preset];
   // Defensive copy so callers can't mutate the in-memory preset table.
   const stored: DashboardLayout = {
@@ -103,7 +109,7 @@ export function applyDashboardPreset(preset: DashboardPresetKey): DashboardLayou
  * but spelled out so route handlers can express intent.
  */
 export function resetDashboardLayout(): DashboardLayout {
-  return applyDashboardPreset('default');
+  return applyDashboardPreset("default");
 }
 
 /**

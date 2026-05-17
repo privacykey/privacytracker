@@ -11,17 +11,17 @@
  *   next few ticks no-op until Apple's rolling-minute window clears.
  */
 
-import db from './db';
+import db from "./db";
 import {
   claimQueuedBatch,
   completeImportIfSettled,
-  recordItemSuccess,
+  getQueueStatus,
+  type ImportItemRow,
   recordItemError,
   recordItemRetry,
-  getQueueStatus,
-  ImportItemRow,
-} from './imports';
-import { getSetting, setSetting } from './scheduler';
+  recordItemSuccess,
+} from "./imports";
+import { getSetting, setSetting } from "./scheduler";
 
 // Queued rows attempted per tick. The soft rate-limit pacer in
 // lib/rate-limit.ts enforces Apple's rolling-minute limit regardless of
@@ -33,18 +33,18 @@ const BATCH_SIZE = 10;
 // generous headroom. instrumentation.ts handles the process-died case.
 const RUNNING_LOCK_STALE_MS = 90 * 1000;
 
-const SETTING_RUNNING = 'import_queue_running';
-const SETTING_RUNNING_SINCE = 'import_queue_running_since';
-const SETTING_PAUSED_UNTIL = 'import_queue_paused_until';
-const SETTING_LAST_RUN = 'import_queue_last_run';
+const SETTING_RUNNING = "import_queue_running";
+const SETTING_RUNNING_SINCE = "import_queue_running_since";
+const SETTING_PAUSED_UNTIL = "import_queue_paused_until";
+const SETTING_LAST_RUN = "import_queue_last_run";
 
 export interface ImportQueueTickResult {
-  skipped?: 'paused' | 'busy' | 'empty';
-  processed: number;
-  succeeded: number;
   failed: number;
-  rateLimited: number;
   pausedUntil?: number;
+  processed: number;
+  rateLimited: number;
+  skipped?: "paused" | "busy" | "empty";
+  succeeded: number;
 }
 
 /**
@@ -55,26 +55,47 @@ export interface ImportQueueTickResult {
  */
 export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
   // Respect a prior 429 pause before touching the mutex.
-  const pausedUntil = Number.parseInt(getSetting(SETTING_PAUSED_UNTIL, '0'), 10) || 0;
+  const pausedUntil =
+    Number.parseInt(getSetting(SETTING_PAUSED_UNTIL, "0"), 10) || 0;
   if (pausedUntil > Date.now()) {
-    console.info(`[ImportQueue] tick skipped — paused for ${Math.round((pausedUntil - Date.now()) / 1000)}s more (Apple 429 cooldown)`);
-    return { skipped: 'paused', processed: 0, succeeded: 0, failed: 0, rateLimited: 0, pausedUntil };
+    console.info(
+      `[ImportQueue] tick skipped — paused for ${Math.round((pausedUntil - Date.now()) / 1000)}s more (Apple 429 cooldown)`
+    );
+    return {
+      skipped: "paused",
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      rateLimited: 0,
+      pausedUntil,
+    };
   }
 
   // Stale-lock: if the running stamp is old, assume the previous tick died
   // and release the lock so a crash-loop doesn't wedge the queue.
-  if (getSetting(SETTING_RUNNING) === 'true') {
-    const runningSince = Number.parseInt(getSetting(SETTING_RUNNING_SINCE, '0'), 10) || 0;
+  if (getSetting(SETTING_RUNNING) === "true") {
+    const runningSince =
+      Number.parseInt(getSetting(SETTING_RUNNING_SINCE, "0"), 10) || 0;
     if (runningSince > 0 && Date.now() - runningSince > RUNNING_LOCK_STALE_MS) {
-      console.warn(`[ImportQueue] Clearing stale running lock (${Math.round((Date.now() - runningSince) / 60_000)}m old)`);
-      setSetting(SETTING_RUNNING, 'false');
+      console.warn(
+        `[ImportQueue] Clearing stale running lock (${Math.round((Date.now() - runningSince) / 60_000)}m old)`
+      );
+      setSetting(SETTING_RUNNING, "false");
     } else {
-      console.info('[ImportQueue] tick skipped — another tick is running (mutex held)');
-      return { skipped: 'busy', processed: 0, succeeded: 0, failed: 0, rateLimited: 0 };
+      console.info(
+        "[ImportQueue] tick skipped — another tick is running (mutex held)"
+      );
+      return {
+        skipped: "busy",
+        processed: 0,
+        succeeded: 0,
+        failed: 0,
+        rateLimited: 0,
+      };
     }
   }
 
-  setSetting(SETTING_RUNNING, 'true');
+  setSetting(SETTING_RUNNING, "true");
   setSetting(SETTING_RUNNING_SINCE, Date.now().toString());
 
   const tickStartedAt = Date.now();
@@ -86,30 +107,38 @@ export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
 
   try {
     // Lazy-import to break any circular init between scraper → policy → db.
-    const { fetchAndParseApp, AppleRateLimitError } = await import('./scraper');
+    const { fetchAndParseApp, AppleRateLimitError } = await import("./scraper");
 
     const claimed = claimQueuedBatch(BATCH_SIZE);
     if (claimed.length === 0) {
-      console.info('[ImportQueue] tick skipped — no due queued rows');
-      return { skipped: 'empty', processed: 0, succeeded: 0, failed: 0, rateLimited: 0 };
+      console.info("[ImportQueue] tick skipped — no due queued rows");
+      return {
+        skipped: "empty",
+        processed: 0,
+        succeeded: 0,
+        failed: 0,
+        rateLimited: 0,
+      };
     }
 
     console.info(
-      `[ImportQueue] tick start — claimed ${claimed.length}/${BATCH_SIZE} rows (importIds: ${
-        Array.from(new Set(claimed.map(c => c.importId))).join(', ')
-      })`,
+      `[ImportQueue] tick start — claimed ${claimed.length}/${BATCH_SIZE} rows (importIds: ${Array.from(
+        new Set(claimed.map((c) => c.importId))
+      ).join(", ")})`
     );
 
     for (const item of claimed) {
       processed += 1;
       const itemStart = Date.now();
-      const itemLabel = `[${item.id} → ${item.url ?? '<no url>'}]`;
+      const itemLabel = `[${item.id} → ${item.url ?? "<no url>"}]`;
 
       if (!item.url) {
         // A queued row without a URL is unfetchable; flip to error so we
         // don't re-claim it every tick.
-        console.warn(`[ImportQueue] item error ${itemLabel} — no URL on row; flipping to error`);
-        recordItemError(item.id, 'Queued item has no URL to scrape');
+        console.warn(
+          `[ImportQueue] item error ${itemLabel} — no URL on row; flipping to error`
+        );
+        recordItemError(item.id, "Queued item has no URL to scrape");
         completeImportIfSettled(item.importId);
         failed += 1;
         continue;
@@ -118,9 +147,14 @@ export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
       try {
         // Tag the snapshot as 'import' so the history timeline can
         // distinguish it from a later manual rescrape.
-        const result = await fetchAndParseApp(item.url, false, false, 'import');
+        const result = await fetchAndParseApp(item.url, false, false, "import");
         // Flip the import_item to imported using the returned id + name.
-        if (result && typeof result === 'object' && 'id' in result && 'name' in result) {
+        if (
+          result &&
+          typeof result === "object" &&
+          "id" in result &&
+          "name" in result
+        ) {
           recordItemSuccess(item.id, {
             id: String(result.id),
             name: String(result.name),
@@ -131,11 +165,14 @@ export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
           completeImportIfSettled(item.importId);
           succeeded += 1;
           console.info(
-            `[ImportQueue] item ok ${itemLabel} — "${String(result.name)}" in ${Date.now() - itemStart}ms`,
+            `[ImportQueue] item ok ${itemLabel} — "${String(result.name)}" in ${Date.now() - itemStart}ms`
           );
         } else {
-          console.warn(`[ImportQueue] item error ${itemLabel} — scraper returned unexpected shape:`, result);
-          recordItemError(item.id, 'Scraper returned an unexpected shape');
+          console.warn(
+            `[ImportQueue] item error ${itemLabel} — scraper returned unexpected shape:`,
+            result
+          );
+          recordItemError(item.id, "Scraper returned an unexpected shape");
           completeImportIfSettled(item.importId);
           failed += 1;
         }
@@ -145,12 +182,15 @@ export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
           // everyone out to the Retry-After fence and set the global pause.
           const retryAfterMs = err.retryAfterMs;
           rateLimited += 1;
-          recordItemRetry(item.id, { retryAfterMs, scrapeError: 'Apple rate-limited the queue; will retry later' });
+          recordItemRetry(item.id, {
+            retryAfterMs,
+            scrapeError: "Apple rate-limited the queue; will retry later",
+          });
           newPausedUntil = Date.now() + retryAfterMs;
           setSetting(SETTING_PAUSED_UNTIL, newPausedUntil.toString());
           console.warn(
             `[ImportQueue] item rate-limit ${itemLabel} — Apple 429; pausing queue for ${Math.round(retryAfterMs / 1000)}s. ` +
-            `Items still queued at this point will resume automatically when the cooldown elapses.`,
+              "Items still queued at this point will resume automatically when the cooldown elapses."
           );
           break;
         }
@@ -166,7 +206,7 @@ export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
 
     console.info(
       `[ImportQueue] tick end — processed ${processed}, succeeded ${succeeded}, failed ${failed}, rateLimited ${rateLimited} ` +
-      `in ${Date.now() - tickStartedAt}ms${newPausedUntil ? ` (paused until ${new Date(newPausedUntil).toISOString()})` : ''}`,
+        `in ${Date.now() - tickStartedAt}ms${newPausedUntil ? ` (paused until ${new Date(newPausedUntil).toISOString()})` : ""}`
     );
 
     return {
@@ -177,7 +217,7 @@ export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
       pausedUntil: newPausedUntil,
     };
   } finally {
-    setSetting(SETTING_RUNNING, 'false');
+    setSetting(SETTING_RUNNING, "false");
     setSetting(SETTING_LAST_RUN, Date.now().toString());
   }
 }
@@ -197,13 +237,15 @@ export function getImportQueueStatus(): {
   lastRunAt: number | null;
 } {
   const base = getQueueStatus();
-  const pausedUntilRaw = Number.parseInt(getSetting(SETTING_PAUSED_UNTIL, '0'), 10) || 0;
-  const lastRunRaw = Number.parseInt(getSetting(SETTING_LAST_RUN, '0'), 10) || 0;
+  const pausedUntilRaw =
+    Number.parseInt(getSetting(SETTING_PAUSED_UNTIL, "0"), 10) || 0;
+  const lastRunRaw =
+    Number.parseInt(getSetting(SETTING_LAST_RUN, "0"), 10) || 0;
   const pausedUntil = pausedUntilRaw > Date.now() ? pausedUntilRaw : null;
   return {
     ...base,
     pausedUntil,
-    running: getSetting(SETTING_RUNNING, 'false') === 'true',
+    running: getSetting(SETTING_RUNNING, "false") === "true",
     lastRunAt: lastRunRaw || null,
   };
 }
@@ -213,8 +255,10 @@ export function getImportQueueStatus(): {
  * Clears the global pause fence and kicks a tick immediately.
  */
 export async function forceImportQueueRun(): Promise<ImportQueueTickResult> {
-  setSetting(SETTING_PAUSED_UNTIL, '0');
+  setSetting(SETTING_PAUSED_UNTIL, "0");
   // Clear item-level backoff so every queued row is eligible now.
-  db.prepare("UPDATE import_items SET next_attempt_at = 0 WHERE status = 'queued'").run();
+  db.prepare(
+    "UPDATE import_items SET next_attempt_at = 0 WHERE status = 'queued'"
+  ).run();
   return runImportQueueTick();
 }

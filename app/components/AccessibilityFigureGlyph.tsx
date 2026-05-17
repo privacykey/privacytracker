@@ -4,18 +4,18 @@
  * stats roll-up). Uses `currentColor` so callers theme it via `color`.
  */
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties } from "react";
 
 interface Props {
-  /** Pixel size on both axes. Defaults to 18. */
-  size?: number | string;
-  /** Optional className passthrough. */
-  className?: string;
-  /** Optional inline style passthrough. */
-  style?: CSSProperties;
   /** Decorative by default. Pass an aria-label when the glyph is the only
    *  element in a button or link without a separate label. */
   ariaLabel?: string;
+  /** Optional className passthrough. */
+  className?: string;
+  /** Pixel size on both axes. Defaults to 18. */
+  size?: number | string;
+  /** Optional inline style passthrough. */
+  style?: CSSProperties;
 }
 
 export default function AccessibilityFigureGlyph({
@@ -27,22 +27,22 @@ export default function AccessibilityFigureGlyph({
   const decorative = !ariaLabel;
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
+      aria-hidden={decorative ? true : undefined}
+      aria-label={ariaLabel}
+      className={className}
       fill="none"
+      height={size}
+      role={decorative ? undefined : "img"}
       stroke="currentColor"
-      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
+      strokeWidth={2}
       style={style}
-      aria-hidden={decorative ? true : undefined}
-      role={decorative ? undefined : 'img'}
-      aria-label={ariaLabel}
+      viewBox="0 0 24 24"
+      width={size}
     >
       <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="7.2" r="1.4" fill="currentColor" />
+      <circle cx="12" cy="7.2" fill="currentColor" r="1.4" />
       <path d="M6.5 10.5h11" />
       <path d="M12 10.5v4" />
       <path d="M9 18l3-3.5L15 18" />

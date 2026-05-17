@@ -4,13 +4,13 @@
  * bundles. Client components use `lib/feature-flags-hooks.ts` instead.
  */
 
-import 'server-only';
+import "server-only";
 
-import { getActiveFocus, getAllOverrides } from './feature-flag-storage';
-import { getSetting } from './scheduler';
-import { HARD_DEFAULTS } from './feature-flag-rules';
-import { resolveFlag, type ResolverContext } from './feature-flags';
-import type { FlagKey, FlagValue } from './feature-flag-rules';
+import type { FlagKey, FlagValue } from "./feature-flag-rules";
+import { HARD_DEFAULTS } from "./feature-flag-rules";
+import { getActiveFocus, getAllOverrides } from "./feature-flag-storage";
+import { type ResolverContext, resolveFlag } from "./feature-flags";
+import { getSetting } from "./scheduler";
 
 /**
  * Build a ResolverContext from the live SQLite state. Each call hits the DB
@@ -22,16 +22,14 @@ import type { FlagKey, FlagValue } from './feature-flag-rules';
 export function getResolverContextFromDb(): ResolverContext {
   const focus = getActiveFocus();
   const overrides = getAllOverrides();
-  const killSwitchOff = (
-    overrides.get('flag.devopts.feature_flag_system.enabled')
-    ?? HARD_DEFAULTS['flag.devopts.feature_flag_system.enabled']
-  ) === 'off';
-  const runtimeEnvironment = (
-    getSetting('runtime_environment', '') === 'desktop' ||
-    process.env.PRIVACYTRACKER_RUNTIME === 'desktop'
-  )
-    ? 'desktop'
-    : undefined;
+  const killSwitchOff =
+    (overrides.get("flag.devopts.feature_flag_system.enabled") ??
+      HARD_DEFAULTS["flag.devopts.feature_flag_system.enabled"]) === "off";
+  const runtimeEnvironment =
+    getSetting("runtime_environment", "") === "desktop" ||
+    process.env.PRIVACYTRACKER_RUNTIME === "desktop"
+      ? "desktop"
+      : undefined;
   return { focus, overrides, killSwitchOff, runtimeEnvironment };
 }
 

@@ -15,7 +15,7 @@
  */
 
 /** Hard cap on lines per side before we fall back to a truncated diff. */
-const MAX_LINES = 2_000;
+const MAX_LINES = 2000;
 
 /**
  * Hard cap on words per line before we skip word-level refinement for
@@ -25,14 +25,14 @@ const MAX_LINES = 2_000;
 const MAX_WORDS_PER_LINE = 400;
 
 export interface PolicyDiffWord {
-  type: 'unchanged' | 'added' | 'removed';
   text: string;
+  type: "unchanged" | "added" | "removed";
 }
 
 export interface PolicyDiffLine {
-  type: 'unchanged' | 'added' | 'removed';
   /** Raw line text (no trailing newline). */
   text: string;
+  type: "unchanged" | "added" | "removed";
   /**
    * Populated for `added` / `removed` lines when the diff detected a
    * close counterpart on the other side: holds the word-level split so
@@ -45,9 +45,9 @@ export interface PolicyDiffLine {
 export interface PolicyDiffStats {
   added: number;
   removed: number;
-  unchanged: number;
   /** True when at least one side hit MAX_LINES and the diff is lossy. */
   truncated: boolean;
+  unchanged: number;
 }
 
 export interface PolicyDiffResult {
@@ -61,11 +61,15 @@ export interface PolicyDiffResult {
  * empty; the result is well-formed in every case (including "both
  * empty", which returns `{ lines: [], stats: all zeros }`).
  */
-export function diffPolicyTexts(oldText: string, newText: string): PolicyDiffResult {
+export function diffPolicyTexts(
+  oldText: string,
+  newText: string
+): PolicyDiffResult {
   const oldLinesAll = splitLines(oldText);
   const newLinesAll = splitLines(newText);
 
-  const truncated = oldLinesAll.length > MAX_LINES || newLinesAll.length > MAX_LINES;
+  const truncated =
+    oldLinesAll.length > MAX_LINES || newLinesAll.length > MAX_LINES;
   const oldLines = oldLinesAll.slice(0, MAX_LINES);
   const newLines = newLinesAll.slice(0, MAX_LINES);
 
@@ -82,8 +86,8 @@ export function diffPolicyTexts(oldText: string, newText: string): PolicyDiffRes
   let i = 0;
   while (i < rawOps.length) {
     const op = rawOps[i];
-    if (op.type === 'unchanged') {
-      lines.push({ type: 'unchanged', text: op.text });
+    if (op.type === "unchanged") {
+      lines.push({ type: "unchanged", text: op.text });
       unchanged++;
       i++;
       continue;
@@ -92,10 +96,13 @@ export function diffPolicyTexts(oldText: string, newText: string): PolicyDiffRes
     // Collect the full run of non-unchanged ops.
     const runRemoved: string[] = [];
     const runAdded: string[] = [];
-    while (i < rawOps.length && rawOps[i].type !== 'unchanged') {
+    while (i < rawOps.length && rawOps[i].type !== "unchanged") {
       const o = rawOps[i];
-      if (o.type === 'removed') runRemoved.push(o.text);
-      else runAdded.push(o.text);
+      if (o.type === "removed") {
+        runRemoved.push(o.text);
+      } else {
+        runAdded.push(o.text);
+      }
       i++;
     }
 
@@ -107,24 +114,24 @@ export function diffPolicyTexts(oldText: string, newText: string): PolicyDiffRes
       const newLine = runAdded[k];
       const words = refineWordDiff(oldLine, newLine);
       lines.push({
-        type: 'removed',
+        type: "removed",
         text: oldLine,
-        words: words ? words.filter(w => w.type !== 'added') : undefined,
+        words: words ? words.filter((w) => w.type !== "added") : undefined,
       });
       lines.push({
-        type: 'added',
+        type: "added",
         text: newLine,
-        words: words ? words.filter(w => w.type !== 'removed') : undefined,
+        words: words ? words.filter((w) => w.type !== "removed") : undefined,
       });
       removed++;
       added++;
     }
     for (let k = pairs; k < runRemoved.length; k++) {
-      lines.push({ type: 'removed', text: runRemoved[k] });
+      lines.push({ type: "removed", text: runRemoved[k] });
       removed++;
     }
     for (let k = pairs; k < runAdded.length; k++) {
-      lines.push({ type: 'added', text: runAdded[k] });
+      lines.push({ type: "added", text: runAdded[k] });
       added++;
     }
   }
@@ -137,15 +144,17 @@ export function diffPolicyTexts(oldText: string, newText: string): PolicyDiffRes
 /* -------------------------------------------------------------------------- */
 
 function splitLines(text: string): string[] {
-  if (!text) return [];
+  if (!text) {
+    return [];
+  }
   // Normalise CRLF so diffs don't light up every line just because the
   // file switched newline styles between captures.
-  return text.replace(/\r\n/g, '\n').split('\n');
+  return text.replace(/\r\n/g, "\n").split("\n");
 }
 
 interface DiffOp {
-  type: 'unchanged' | 'added' | 'removed';
   text: string;
+  type: "unchanged" | "added" | "removed";
 }
 
 /**
@@ -159,7 +168,7 @@ function lcsDiff(a: string[], b: string[]): DiffOp[] {
 
   let prefix = 0;
   while (prefix < a.length && prefix < b.length && a[prefix] === b[prefix]) {
-    ops.push({ type: 'unchanged', text: a[prefix] });
+    ops.push({ type: "unchanged", text: a[prefix] });
     prefix++;
   }
 
@@ -167,7 +176,7 @@ function lcsDiff(a: string[], b: string[]): DiffOp[] {
   while (
     suffix < a.length - prefix &&
     suffix < b.length - prefix &&
-    a[a.length - 1 - suffix] === b[b.length - 1 - suffix]
+    a.at(1 + suffix) === b.at(1 + suffix)
   ) {
     suffix++;
   }
@@ -175,12 +184,14 @@ function lcsDiff(a: string[], b: string[]): DiffOp[] {
   const aMid = a.slice(prefix, a.length - suffix);
   const bMid = b.slice(prefix, b.length - suffix);
   const midOps = lcsDiffCore(aMid, bMid);
-  for (const op of midOps) ops.push(op);
+  for (const op of midOps) {
+    ops.push(op);
+  }
 
   for (let k = b.length - suffix; k < b.length; k++) {
     // Using b for the trailing block since it matches a in every position
     // by construction; picking b keeps the data self-consistent.
-    ops.push({ type: 'unchanged', text: b[k] });
+    ops.push({ type: "unchanged", text: b[k] });
   }
 
   return ops;
@@ -190,9 +201,15 @@ function lcsDiffCore(a: string[], b: string[]): DiffOp[] {
   const n = a.length;
   const m = b.length;
 
-  if (n === 0 && m === 0) return [];
-  if (n === 0) return b.map(t => ({ type: 'added' as const, text: t }));
-  if (m === 0) return a.map(t => ({ type: 'removed' as const, text: t }));
+  if (n === 0 && m === 0) {
+    return [];
+  }
+  if (n === 0) {
+    return b.map((t) => ({ type: "added" as const, text: t }));
+  }
+  if (m === 0) {
+    return a.map((t) => ({ type: "removed" as const, text: t }));
+  }
 
   // Flat Int32Array DP to keep GC pressure low. dp[i*(m+1) + j] holds the
   // LCS length of a[i..] vs b[j..]. Walking from the bottom-right lets us
@@ -218,19 +235,23 @@ function lcsDiffCore(a: string[], b: string[]): DiffOp[] {
     j = 0;
   while (i < n && j < m) {
     if (a[i] === b[j]) {
-      ops.push({ type: 'unchanged', text: a[i] });
+      ops.push({ type: "unchanged", text: a[i] });
       i++;
       j++;
     } else if (dp[(i + 1) * stride + j] >= dp[i * stride + j + 1]) {
-      ops.push({ type: 'removed', text: a[i] });
+      ops.push({ type: "removed", text: a[i] });
       i++;
     } else {
-      ops.push({ type: 'added', text: b[j] });
+      ops.push({ type: "added", text: b[j] });
       j++;
     }
   }
-  while (i < n) ops.push({ type: 'removed', text: a[i++] });
-  while (j < m) ops.push({ type: 'added', text: b[j++] });
+  while (i < n) {
+    ops.push({ type: "removed", text: a[i++] });
+  }
+  while (j < m) {
+    ops.push({ type: "added", text: b[j++] });
+  }
   return ops;
 }
 
@@ -244,20 +265,26 @@ function lcsDiffCore(a: string[], b: string[]): DiffOp[] {
  * tokens — that way "word → word " doesn't spuriously flag trailing
  * whitespace changes, and re-joining `.text` restores the original line.
  */
-function refineWordDiff(oldLine: string, newLine: string): PolicyDiffWord[] | null {
+function refineWordDiff(
+  oldLine: string,
+  newLine: string
+): PolicyDiffWord[] | null {
   const oldTokens = tokeniseLine(oldLine);
   const newTokens = tokeniseLine(newLine);
-  if (oldTokens.length > MAX_WORDS_PER_LINE || newTokens.length > MAX_WORDS_PER_LINE) {
+  if (
+    oldTokens.length > MAX_WORDS_PER_LINE ||
+    newTokens.length > MAX_WORDS_PER_LINE
+  ) {
     return null;
   }
 
   const ops = lcsDiff(oldTokens, newTokens);
-  return ops.map(op => ({ type: op.type, text: op.text }));
+  return ops.map((op) => ({ type: op.type, text: op.text }));
 }
 
 function tokeniseLine(line: string): string[] {
   // Capture groups keep the separators in the output, so we get an
   // interleaved [word, ws, word, ws, ...] stream.
   const parts = line.split(/(\s+)/);
-  return parts.filter(p => p.length > 0);
+  return parts.filter((p) => p.length > 0);
 }

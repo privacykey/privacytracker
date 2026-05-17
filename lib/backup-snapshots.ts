@@ -1,39 +1,39 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { exportBackup, CURRENT_BACKUP_VERSION } from './backup';
-import { recordActivity } from './activity';
-import { dataDir } from './db';
-import { getSetting, setSetting } from './scheduler';
+import fs from "node:fs";
+import path from "node:path";
+import { recordActivity } from "./activity";
+import { CURRENT_BACKUP_VERSION, exportBackup } from "./backup";
+import { dataDir } from "./db";
+import { getSetting, setSetting } from "./scheduler";
 
-const SNAPSHOT_DIR = path.join(dataDir, 'backups');
-const SNAPSHOT_PREFIX = 'privacytracker-snapshot-';
-const SNAPSHOT_SUFFIX = '.json';
+const SNAPSHOT_DIR = path.join(dataDir, "backups");
+const SNAPSHOT_PREFIX = "privacytracker-snapshot-";
+const SNAPSHOT_SUFFIX = ".json";
 
 const SETTINGS = {
-  enabled: 'backup_snapshot_enabled',
-  intervalHours: 'backup_snapshot_interval_hours',
-  retentionCount: 'backup_snapshot_retention_count',
-  lastRunAt: 'backup_snapshot_last_run_at',
+  enabled: "backup_snapshot_enabled",
+  intervalHours: "backup_snapshot_interval_hours",
+  retentionCount: "backup_snapshot_retention_count",
+  lastRunAt: "backup_snapshot_last_run_at",
 };
 
 export interface BackupSnapshotSettings {
   enabled: boolean;
   intervalHours: number;
-  retentionCount: number;
   lastRunAt: number | null;
   nextRunAt: number | null;
+  retentionCount: number;
 }
 
 export interface BackupSnapshotRow {
+  createdAt: number;
   filename: string;
   path: string;
-  createdAt: number;
   sizeBytes: number;
 }
 
 export interface CreateBackupSnapshotResult {
-  snapshot: BackupSnapshotRow;
   pruned: BackupSnapshotRow[];
+  snapshot: BackupSnapshotRow;
 }
 
 export const DEFAULT_BACKUP_SNAPSHOT_SETTINGS = {
@@ -47,12 +47,18 @@ export function getBackupSnapshotDir(): string {
 }
 
 export function getBackupSnapshotSettings(): BackupSnapshotSettings {
-  const enabled = getSetting(SETTINGS.enabled, 'false') === 'true';
-  const intervalHours = sanitizeIntervalHours(getSetting(SETTINGS.intervalHours, '24'));
-  const retentionCount = sanitizeRetentionCount(getSetting(SETTINGS.retentionCount, '10'));
-  const lastRunRaw = parseInt(getSetting(SETTINGS.lastRunAt, '0'), 10);
-  const lastRunAt = Number.isFinite(lastRunRaw) && lastRunRaw > 0 ? lastRunRaw : null;
-  const nextRunAt = enabled && lastRunAt ? lastRunAt + intervalHours * 60 * 60_000 : null;
+  const enabled = getSetting(SETTINGS.enabled, "false") === "true";
+  const intervalHours = sanitizeIntervalHours(
+    getSetting(SETTINGS.intervalHours, "24")
+  );
+  const retentionCount = sanitizeRetentionCount(
+    getSetting(SETTINGS.retentionCount, "10")
+  );
+  const lastRunRaw = Number.parseInt(getSetting(SETTINGS.lastRunAt, "0"), 10);
+  const lastRunAt =
+    Number.isFinite(lastRunRaw) && lastRunRaw > 0 ? lastRunRaw : null;
+  const nextRunAt =
+    enabled && lastRunAt ? lastRunAt + intervalHours * 60 * 60_000 : null;
   return { enabled, intervalHours, retentionCount, lastRunAt, nextRunAt };
 }
 
@@ -62,23 +68,34 @@ export function saveBackupSnapshotSettings(input: {
   retentionCount?: unknown;
 }): BackupSnapshotSettings {
   if (input.enabled !== undefined) {
-    setSetting(SETTINGS.enabled, input.enabled ? 'true' : 'false');
+    setSetting(SETTINGS.enabled, input.enabled ? "true" : "false");
   }
   if (input.intervalHours !== undefined) {
-    setSetting(SETTINGS.intervalHours, String(sanitizeIntervalHours(input.intervalHours)));
+    setSetting(
+      SETTINGS.intervalHours,
+      String(sanitizeIntervalHours(input.intervalHours))
+    );
   }
   if (input.retentionCount !== undefined) {
-    setSetting(SETTINGS.retentionCount, String(sanitizeRetentionCount(input.retentionCount)));
+    setSetting(
+      SETTINGS.retentionCount,
+      String(sanitizeRetentionCount(input.retentionCount))
+    );
   }
   return getBackupSnapshotSettings();
 }
 
 export function listBackupSnapshots(): BackupSnapshotRow[] {
-  if (!fs.existsSync(SNAPSHOT_DIR)) return [];
+  if (!fs.existsSync(SNAPSHOT_DIR)) {
+    return [];
+  }
   return fs
     .readdirSync(SNAPSHOT_DIR)
-    .filter(name => name.startsWith(SNAPSHOT_PREFIX) && name.endsWith(SNAPSHOT_SUFFIX))
-    .map(filename => {
+    .filter(
+      (name) =>
+        name.startsWith(SNAPSHOT_PREFIX) && name.endsWith(SNAPSHOT_SUFFIX)
+    )
+    .map((filename) => {
       const full = path.join(SNAPSHOT_DIR, filename);
       const stat = fs.statSync(full);
       return {
@@ -92,23 +109,31 @@ export function listBackupSnapshots(): BackupSnapshotRow[] {
 }
 
 export function getBackupSnapshotPath(filename: string): string | null {
-  if (!isSnapshotFilename(filename)) return null;
+  if (!isSnapshotFilename(filename)) {
+    return null;
+  }
   const full = path.join(SNAPSHOT_DIR, filename);
   const resolved = path.resolve(full);
   const root = path.resolve(SNAPSHOT_DIR);
-  if (!resolved.startsWith(`${root}${path.sep}`)) return null;
-  if (!fs.existsSync(resolved)) return null;
+  if (!resolved.startsWith(`${root}${path.sep}`)) {
+    return null;
+  }
+  if (!fs.existsSync(resolved)) {
+    return null;
+  }
   return resolved;
 }
 
 export function createBackupSnapshot(
-  triggeredBy: 'manual' | 'scheduled' = 'manual',
+  triggeredBy: "manual" | "scheduled" = "manual"
 ): CreateBackupSnapshotResult {
   fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
 
   const startedAt = Date.now();
   const envelope = exportBackup();
-  const timestamp = new Date(envelope.exportedAt ?? startedAt).toISOString().replace(/[:.]/g, '-');
+  const timestamp = new Date(envelope.exportedAt ?? startedAt)
+    .toISOString()
+    .replace(/[:.]/g, "-");
   let filename = `${SNAPSHOT_PREFIX}${timestamp}${SNAPSHOT_SUFFIX}`;
   let finalPath = path.join(SNAPSHOT_DIR, filename);
   let collision = 1;
@@ -136,14 +161,14 @@ export function createBackupSnapshot(
 
   try {
     recordActivity({
-      type: 'backup_export',
-      status: 'ok',
+      type: "backup_export",
+      status: "ok",
       summary:
-        triggeredBy === 'scheduled'
-          ? 'Automatic local backup snapshot created'
-          : 'Local backup snapshot created',
+        triggeredBy === "scheduled"
+          ? "Automatic local backup snapshot created"
+          : "Local backup snapshot created",
       detail: {
-        mode: 'local-snapshot',
+        mode: "local-snapshot",
         triggeredBy,
         filename,
         bytes: stat.size,
@@ -162,19 +187,27 @@ export function createBackupSnapshot(
 
 export function isBackupSnapshotDue(now = Date.now()): boolean {
   const settings = getBackupSnapshotSettings();
-  if (!settings.enabled) return false;
-  if (!settings.lastRunAt) return true;
+  if (!settings.enabled) {
+    return false;
+  }
+  if (!settings.lastRunAt) {
+    return true;
+  }
   return now >= settings.lastRunAt + settings.intervalHours * 60 * 60_000;
 }
 
 export function runScheduledBackupSnapshotIfDue(
-  now = Date.now(),
+  now = Date.now()
 ): CreateBackupSnapshotResult | null {
-  if (!isBackupSnapshotDue(now)) return null;
-  return createBackupSnapshot('scheduled');
+  if (!isBackupSnapshotDue(now)) {
+    return null;
+  }
+  return createBackupSnapshot("scheduled");
 }
 
-export function pruneBackupSnapshots(retentionCount: number): BackupSnapshotRow[] {
+export function pruneBackupSnapshots(
+  retentionCount: number
+): BackupSnapshotRow[] {
   const keep = sanitizeRetentionCount(retentionCount);
   const snapshots = listBackupSnapshots();
   const extra = snapshots.slice(keep);
@@ -189,14 +222,20 @@ export function pruneBackupSnapshots(retentionCount: number): BackupSnapshotRow[
 }
 
 function sanitizeIntervalHours(raw: unknown): number {
-  const value = typeof raw === 'number' ? raw : parseInt(String(raw ?? ''), 10);
-  if (!Number.isFinite(value)) return DEFAULT_BACKUP_SNAPSHOT_SETTINGS.intervalHours;
+  const value =
+    typeof raw === "number" ? raw : Number.parseInt(String(raw ?? ""), 10);
+  if (!Number.isFinite(value)) {
+    return DEFAULT_BACKUP_SNAPSHOT_SETTINGS.intervalHours;
+  }
   return Math.min(24 * 30, Math.max(1, Math.round(value)));
 }
 
 function sanitizeRetentionCount(raw: unknown): number {
-  const value = typeof raw === 'number' ? raw : parseInt(String(raw ?? ''), 10);
-  if (!Number.isFinite(value)) return DEFAULT_BACKUP_SNAPSHOT_SETTINGS.retentionCount;
+  const value =
+    typeof raw === "number" ? raw : Number.parseInt(String(raw ?? ""), 10);
+  if (!Number.isFinite(value)) {
+    return DEFAULT_BACKUP_SNAPSHOT_SETTINGS.retentionCount;
+  }
   return Math.min(100, Math.max(1, Math.round(value)));
 }
 
@@ -209,11 +248,13 @@ function isSnapshotFilename(filename: string): boolean {
 }
 
 function parseTimestamp(filename: string): number | null {
-  if (!isSnapshotFilename(filename)) return null;
+  if (!isSnapshotFilename(filename)) {
+    return null;
+  }
   const raw = filename.slice(SNAPSHOT_PREFIX.length, -SNAPSHOT_SUFFIX.length);
   const iso = raw.replace(
     /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/,
-    '$1T$2:$3:$4.$5Z',
+    "$1T$2:$3:$4.$5Z"
   );
   const ts = Date.parse(iso);
   return Number.isFinite(ts) ? ts : null;

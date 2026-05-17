@@ -1,0 +1,389 @@
+/*
+ * Device re-sync UI — co-located styles.
+ *
+ * Two top-level surfaces: the diff overlay (modal, shown after an
+ * import finishes when ?resync=<id> is set), and the Devices settings
+ * list. Keep both here for atomic updates.
+ */
+
+/* Overlay shell — full-screen, dimmed, modal card centred. */
+.device-sync-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.5);
+}
+.device-sync-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 640px;
+  max-height: calc(100vh - 48px);
+  padding: 22px;
+  background: var(--surface, #1c1c22);
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.18));
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.device-sync-card-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.device-sync-card-titles h2 {
+  margin: 0 0 2px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.device-sync-card-titles p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.device-sync-close {
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-tertiary, rgba(127, 127, 127, 0.55));
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+}
+.device-sync-close:hover,
+.device-sync-close:focus-visible {
+  color: var(--text-primary, currentColor);
+  outline: none;
+  background: var(--surface-hover, rgba(127, 127, 127, 0.1));
+}
+
+/* Body — scrollable lists of rows. */
+.device-sync-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+.device-sync-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.device-sync-section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  letter-spacing: 0.01em;
+}
+.device-sync-section-title strong {
+  color: var(--text-primary, currentColor);
+}
+.device-sync-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.device-sync-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.15));
+  border-radius: 10px;
+}
+.device-sync-row-check {
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.device-sync-row-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.device-sync-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.device-sync-row-subtitle {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.device-sync-row-warning {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning, #ff9500);
+}
+.device-sync-unchanged {
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+
+/* Footer — buttons. */
+.device-sync-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.device-sync-summary {
+  flex: 1;
+  align-self: center;
+  font-size: 13px;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+
+/* Confirmation step — single big summary, no rows. */
+.device-sync-confirm-summary {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.device-sync-confirm-summary strong {
+  color: var(--accent, #0a84ff);
+}
+.device-sync-orphan-list {
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 13px;
+  background: var(--warning-bg, rgba(255, 149, 0, 0.08));
+  border: 1px solid var(--warning, rgba(255, 149, 0, 0.4));
+  border-radius: 10px;
+}
+.device-sync-orphan-list-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: var(--warning, #ff9500);
+}
+.device-sync-orphan-list ul {
+  padding-left: 20px;
+  margin: 0;
+  list-style: disc;
+}
+
+/* Devices settings page list. */
+.devices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.devices-list-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--card-bg, var(--surface, rgba(127, 127, 127, 0.04)));
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.15));
+  border-radius: 12px;
+}
+.devices-list-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.devices-list-row-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.devices-list-row-meta {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.devices-list-row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.devices-list-row-actions .btn {
+  flex-shrink: 0;
+}
+.devices-empty {
+  padding: 28px 16px;
+  font-size: 14px;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  text-align: center;
+  border: 1px dashed var(--border-subtle, rgba(127, 127, 127, 0.22));
+  border-radius: 12px;
+}
+
+/* 2:1 grid wrapping the App Detail #what-changed panel + its
+ * adjacent "Installed on" side panel. The right column hides itself
+ * via its component contract (no devices to show → returns null);
+ * grid still keeps the left column at its 2fr share so the layout
+ * doesn't shift when the side panel disappears.
+ *
+ * Below 900px the layout collapses to a single column so the side
+ * panel sits beneath what-changed at full width.
+ */
+.what-changed-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .what-changed-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.app-devices-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface, #1c1c22);
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.18));
+  border-radius: var(--r-lg, 14px);
+}
+.app-devices-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.app-devices-panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.app-devices-panel-sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-secondary, var(--text-3, rgba(127, 127, 127, 0.85)));
+}
+.app-devices-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.app-devices-panel-row {
+  padding: 0;
+  margin: 0;
+}
+.app-devices-panel-chip {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--text, currentColor);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.18));
+  border-radius: 10px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+.app-devices-panel-chip:hover,
+.app-devices-panel-chip:focus-visible {
+  outline: none;
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+  border-color: var(--border-strong, rgba(127, 127, 127, 0.35));
+}
+.app-devices-panel-chip-icon {
+  font-size: 20px;
+  line-height: 1;
+  text-align: center;
+}
+.app-devices-panel-chip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.app-devices-panel-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.app-devices-panel-chip-meta {
+  font-size: 12px;
+  color: var(--text-secondary, var(--text-3, rgba(127, 127, 127, 0.85)));
+}
+.app-devices-panel-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.app-devices-panel-manage-link {
+  font-size: 12px;
+  color: var(--blue, #0a84ff);
+  text-decoration: none;
+}
+.app-devices-panel-manage-link:hover,
+.app-devices-panel-manage-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+/* App Detail "Tracked on" chip strip. */
+.tracked-on-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+.tracked-on-strip-label {
+  margin-right: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+}
+.tracked-on-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--text-primary, currentColor);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.22));
+  border-radius: 999px;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+.tracked-on-chip:hover,
+.tracked-on-chip:focus-visible {
+  outline: none;
+  background: var(--surface-hover, rgba(127, 127, 127, 0.08));
+  border-color: var(--border-strong, rgba(127, 127, 127, 0.35));
+}

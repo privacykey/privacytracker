@@ -1,10 +1,11 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import db from '../../../../../lib/db';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import db from "../../../../../lib/db";
 import {
   computeCategoryTrend,
   computeQuarterlyChanges,
-} from '../../../../../lib/historical-import';
+} from "../../../../../lib/historical-import";
 
 /**
  * GET /api/apps/[id]/history-stats
@@ -21,16 +22,16 @@ import {
  */
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   if (!id) {
-    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  const exists = db.prepare('SELECT 1 FROM apps WHERE id = ?').get(id);
+  const exists = db.prepare("SELECT 1 FROM apps WHERE id = ?").get(id);
   if (!exists) {
-    return NextResponse.json({ error: 'App not found' }, { status: 404 });
+    return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
 
   const categoryTrend = computeCategoryTrend(id);

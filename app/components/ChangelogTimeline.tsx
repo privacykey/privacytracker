@@ -1,16 +1,19 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
 import type {
   ChangeEntry,
   ChangelogRow,
   ReviewChangelogRow,
   SnapshotChangelogRow,
-} from '../../lib/changelog-types';
-import { formatDate as formatDateWithMode, type DateFormatMode } from '../../lib/date-format';
-import { useDateFormat } from '../../lib/date-format-hook';
-import AppChangeTimeline from './charts/AppChangeTimeline';
+} from "../../lib/changelog-types";
+import {
+  type DateFormatMode,
+  formatDate as formatDateWithMode,
+} from "../../lib/date-format";
+import { useDateFormat } from "../../lib/date-format-hook";
+import AppChangeTimeline from "./charts/AppChangeTimeline";
 
 // Local aliases so the existing rendering code that references SnapshotRow
 // keeps working without renaming every call-site. The client is now fed a
@@ -25,25 +28,25 @@ type ReviewRow = ReviewChangelogRow;
  * `policy_version_id`, so we can render the captured source text inline.
  */
 interface PolicyVersionResponse {
-  id: string;
   app_id: string;
+  archive_submitted_at?: number | null;
+  /** Internet Archive snapshot URL, populated best-effort after a rescrape. */
+  archive_url?: string | null;
   first_fetched_at: number;
+  id: string;
   last_fetched_at: number;
   policy_url: string | null;
   source_final_url: string | null;
-  source_title: string | null;
   source_origin: string | null;
-  source_word_count: number;
   source_text: string;
-  /** Internet Archive snapshot URL, populated best-effort after a rescrape. */
-  archive_url?: string | null;
-  archive_submitted_at?: number | null;
+  source_title: string | null;
+  source_word_count: number;
 }
 
 type PreviewState =
-  | { status: 'loading' }
-  | { status: 'loaded'; data: PolicyVersionResponse }
-  | { status: 'error'; message: string };
+  | { status: "loading" }
+  | { status: "loaded"; data: PolicyVersionResponse }
+  | { status: "error"; message: string };
 
 /**
  * Wire format for GET /api/policy/version/[id]/diff. Mirrors
@@ -52,36 +55,41 @@ type PreviewState =
  * drag server-only imports into the browser bundle.
  */
 interface PolicyDiffWord {
-  type: 'unchanged' | 'added' | 'removed';
   text: string;
+  type: "unchanged" | "added" | "removed";
 }
 
 interface PolicyDiffLine {
-  type: 'unchanged' | 'added' | 'removed';
   text: string;
+  type: "unchanged" | "added" | "removed";
   words?: PolicyDiffWord[];
 }
 
 interface PolicyDiffResponse {
-  previous: { id: string; first_fetched_at: number; source_word_count: number };
   current: { id: string; first_fetched_at: number; source_word_count: number };
-  stats: { added: number; removed: number; unchanged: number; truncated: boolean };
   lines: PolicyDiffLine[];
+  previous: { id: string; first_fetched_at: number; source_word_count: number };
+  stats: {
+    added: number;
+    removed: number;
+    unchanged: number;
+    truncated: boolean;
+  };
 }
 
 type DiffState =
-  | { status: 'loading' }
-  | { status: 'loaded'; data: PolicyDiffResponse }
-  | { status: 'error'; message: string };
+  | { status: "loading" }
+  | { status: "loaded"; data: PolicyDiffResponse }
+  | { status: "error"; message: string };
 
 /**
  * Cap the preview text so the DOM doesn't have to render a 300 KB policy.
  * Matches the cap in PolicyPreviewBlock on AppDetailView.
  */
-const PREVIEW_MAX_CHARS = 6_000;
+const PREVIEW_MAX_CHARS = 6000;
 
 /** Rendered-diff-line ceiling so an unusually long policy can't freeze the DOM. */
-const DIFF_MAX_LINES = 4_000;
+const DIFF_MAX_LINES = 4000;
 
 /**
  * Date helpers route through `lib/date-format.ts` so every changelog
@@ -112,13 +120,23 @@ function dotClass(row: SnapshotRow, index: number) {
   // important signal we can convey visually on the sparse set of imported
   // rows. The CSS class `wayback` is layered on top of the usual states so
   // the ring/shape rules from `first-sync` / `has-changes` still apply.
-  if (row.source === 'wayback') {
-    if (row.changes_detected) return 'wayback has-changes';
-    return 'wayback no-changes';
+  if (row.source === "wayback") {
+    if (row.changes_detected) {
+      return "wayback has-changes";
+    }
+    return "wayback no-changes";
   }
-  if (index === 0 && row.changes_detected === 0 && row.changes_summary.length === 0) return 'first-sync';
-  if (row.changes_detected) return 'has-changes';
-  return 'no-changes';
+  if (
+    index === 0 &&
+    row.changes_detected === 0 &&
+    row.changes_summary.length === 0
+  ) {
+    return "first-sync";
+  }
+  if (row.changes_detected) {
+    return "has-changes";
+  }
+  return "no-changes";
 }
 
 type WaybackT = (key: string) => string;
@@ -130,10 +148,17 @@ type WaybackT = (key: string) => string;
  * Falls back to the localised `wayback_capture_fallback` string when the
  * URL is missing or doesn't match the standard Wayback format.
  */
-function formatWaybackTimestampLabel(t: WaybackT, url: string | null | undefined): string {
-  if (!url) return t('wayback_capture_fallback');
+function formatWaybackTimestampLabel(
+  t: WaybackT,
+  url: string | null | undefined
+): string {
+  if (!url) {
+    return t("wayback_capture_fallback");
+  }
   const m = url.match(/\/web\/(\d{14})/);
-  if (!m) return t('wayback_capture_fallback');
+  if (!m) {
+    return t("wayback_capture_fallback");
+  }
   const ts = m[1];
   return `Wayback · ${ts.slice(0, 4)}-${ts.slice(4, 6)}-${ts.slice(6, 8)}`;
 }
@@ -149,7 +174,9 @@ function formatWaybackTimestampLabel(t: WaybackT, url: string | null | undefined
  * renders the quarter (badge label, settings card, audit-bundle exports).
  */
 function formatQuarterLabelClient(ms: number): string {
-  if (!Number.isFinite(ms)) return '';
+  if (!Number.isFinite(ms)) {
+    return "";
+  }
   const d = new Date(ms);
   const q = Math.floor(d.getUTCMonth() / 3) + 1;
   return `Q${q} ${d.getUTCFullYear()}`;
@@ -169,7 +196,7 @@ function TriggerPill({
   isWayback,
   appVersion,
 }: {
-  trigger: 'scheduled' | 'manual' | 'import' | 'wayback' | 'sample' | null;
+  trigger: "scheduled" | "manual" | "import" | "wayback" | "sample" | null;
   isWayback: boolean;
   /**
    * App Store version Apple reported at the time of this snapshot.
@@ -185,23 +212,61 @@ function TriggerPill({
   // styling (icon glyph + colour palette) stays inline because it's
   // language-agnostic. The wayback `title` is interpolated with the
   // captured-at app version when present.
-  const t = useTranslations('trigger_pill');
-  type Style = { bg: string; fg: string; border: string; icon: string };
-  const STYLES: Record<'scheduled' | 'manual' | 'import' | 'wayback' | 'sample' | 'legacy', Style> = {
-    scheduled: { bg: 'rgba(37, 99, 235, 0.10)', fg: '#1d4ed8', border: '#1d4ed8', icon: '⏱' },
-    manual:    { bg: 'rgba(245, 158, 11, 0.14)', fg: '#b45309', border: '#b45309', icon: '👆' },
-    import:    { bg: 'rgba(100, 116, 139, 0.14)', fg: '#475569', border: '#475569', icon: '⬇' },
+  const t = useTranslations("trigger_pill");
+  interface Style {
+    bg: string;
+    border: string;
+    fg: string;
+    icon: string;
+  }
+  const STYLES: Record<
+    "scheduled" | "manual" | "import" | "wayback" | "sample" | "legacy",
+    Style
+  > = {
+    scheduled: {
+      bg: "rgba(37, 99, 235, 0.10)",
+      fg: "#1d4ed8",
+      border: "#1d4ed8",
+      icon: "⏱",
+    },
+    manual: {
+      bg: "rgba(245, 158, 11, 0.14)",
+      fg: "#b45309",
+      border: "#b45309",
+      icon: "👆",
+    },
+    import: {
+      bg: "rgba(100, 116, 139, 0.14)",
+      fg: "#475569",
+      border: "#475569",
+      icon: "⬇",
+    },
     // Purple palette mirrors the wayback-badge + wayback timeline dot
     // so all three read as the same family.
-    wayback:   { bg: 'rgba(124, 58, 237, 0.10)', fg: '#7c3aed', border: '#7c3aed', icon: '🕰' },
+    wayback: {
+      bg: "rgba(124, 58, 237, 0.10)",
+      fg: "#7c3aed",
+      border: "#7c3aed",
+      icon: "🕰",
+    },
     // SAMPLE — dev-only seed data. Same purple register as the
     // /onboard preview banner and the dev-tooling family (DevMenu,
     // feature-flag highlights) so it reads as "this came from a
     // developer surface, not a real sync". Distinct icon from
     // wayback's clock so the two purple pills don't read as
     // duplicates on a mixed timeline.
-    sample:    { bg: 'rgba(168, 85, 247, 0.14)', fg: '#a855f7', border: '#a855f7', icon: '🧪' },
-    legacy:    { bg: 'rgba(100, 116, 139, 0.10)', fg: '#64748b', border: '#94a3b8', icon: '◼' },
+    sample: {
+      bg: "rgba(168, 85, 247, 0.14)",
+      fg: "#a855f7",
+      border: "#a855f7",
+      icon: "🧪",
+    },
+    legacy: {
+      bg: "rgba(100, 116, 139, 0.10)",
+      fg: "#64748b",
+      border: "#94a3b8",
+      icon: "◼",
+    },
   };
 
   // Wayback rows wear the 'wayback' pill regardless of what
@@ -213,30 +278,34 @@ function TriggerPill({
   // archive-vs-live distinction. Older rows missing the trigger
   // column still fall back to 'legacy' so the timeline reads
   // consistently.
-  const key = trigger === 'sample'
-    ? 'sample'
-    : isWayback
-      ? 'wayback'
-      : trigger === 'scheduled' || trigger === 'manual' || trigger === 'import'
-        ? trigger
-        : 'legacy';
+  const key =
+    trigger === "sample"
+      ? "sample"
+      : isWayback
+        ? "wayback"
+        : trigger === "scheduled" ||
+            trigger === "manual" ||
+            trigger === "import"
+          ? trigger
+          : "legacy";
   const style = STYLES[key];
   const label = t(`${key}_label`);
   const baseTitle = t(`${key}_title`);
-  const title = key === 'wayback' && appVersion
-    ? t('wayback_with_version', { title: baseTitle, version: appVersion })
-    : baseTitle;
+  const title =
+    key === "wayback" && appVersion
+      ? t("wayback_with_version", { title: baseTitle, version: appVersion })
+      : baseTitle;
 
   return (
     <span
       className={`trigger-pill trigger-pill-${key}`}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
+        display: "inline-flex",
+        alignItems: "center",
         gap: 4,
         fontSize: 11,
         fontWeight: 600,
-        padding: '2px 8px',
+        padding: "2px 8px",
         borderRadius: 999,
         background: style.bg,
         color: style.fg,
@@ -254,14 +323,17 @@ function TriggerPill({
         pills don't bother because the standalone version-chip next
         to them already does the job.
       */}
-      {key === 'wayback' && appVersion && (
+      {key === "wayback" && appVersion && (
         <span style={{ opacity: 0.85 }}>· v{appVersion}</span>
       )}
     </span>
   );
 }
 
-type CardTitleT = (key: string, values?: Record<string, string | number>) => string;
+type CardTitleT = (
+  key: string,
+  values?: Record<string, string | number>
+) => string;
 
 /**
  * Choose a more specific card title for all-policy rows so "first-ever
@@ -271,18 +343,36 @@ type CardTitleT = (key: string, values?: Record<string, string | number>) => str
  * inside a memoised render path that already has `tCt` in scope.
  */
 function policyCardTitle(t: CardTitleT, changes: ChangeEntry[]): string {
-  const events = new Set(changes.map(c => c.policy_event ?? 'changed'));
+  const events = new Set(changes.map((c) => c.policy_event ?? "changed"));
   const count = changes.length;
   const useSuffix = count > 1;
   if (events.size === 1) {
     const only = events.values().next().value;
     const args = { count };
-    if (only === 'first') return useSuffix ? t('policy_card_first_suffix', args) : t('policy_card_first');
-    if (only === 'same') return useSuffix ? t('policy_card_same_suffix', args) : t('policy_card_same');
-    if (only === 'changed') return useSuffix ? t('policy_card_changed_suffix', args) : t('policy_card_changed');
-    if (only === 'error') return useSuffix ? t('policy_card_error_suffix', args) : t('policy_card_error');
+    if (only === "first") {
+      return useSuffix
+        ? t("policy_card_first_suffix", args)
+        : t("policy_card_first");
+    }
+    if (only === "same") {
+      return useSuffix
+        ? t("policy_card_same_suffix", args)
+        : t("policy_card_same");
+    }
+    if (only === "changed") {
+      return useSuffix
+        ? t("policy_card_changed_suffix", args)
+        : t("policy_card_changed");
+    }
+    if (only === "error") {
+      return useSuffix
+        ? t("policy_card_error_suffix", args)
+        : t("policy_card_error");
+    }
   }
-  return useSuffix ? t('policy_card_mixed_suffix', { count }) : t('policy_card_mixed');
+  return useSuffix
+    ? t("policy_card_mixed_suffix", { count })
+    : t("policy_card_mixed");
 }
 
 /**
@@ -291,35 +381,52 @@ function policyCardTitle(t: CardTitleT, changes: ChangeEntry[]): string {
  * "failed to request", "no capture found"); falls back to the neutral
  * "archive activity" label when the row mixes kinds.
  */
-function waybackAttemptCardTitle(t: CardTitleT, changes: ChangeEntry[]): string {
-  const events = new Set(changes.map(c => c.wayback_event ?? 'no_capture'));
+function waybackAttemptCardTitle(
+  t: CardTitleT,
+  changes: ChangeEntry[]
+): string {
+  const events = new Set(changes.map((c) => c.wayback_event ?? "no_capture"));
   const count = changes.length;
   const useSuffix = count > 1;
   if (events.size === 1) {
     const only = events.values().next().value;
     const args = { count };
-    if (only === 'requested_snapshot') return useSuffix ? t('wayback_card_requested_suffix', args) : t('wayback_card_requested');
-    if (only === 'save_now_failed') return useSuffix ? t('wayback_card_save_now_failed_suffix', args) : t('wayback_card_save_now_failed');
-    if (only === 'no_capture') return useSuffix ? t('wayback_card_no_capture_suffix', args) : t('wayback_card_no_capture');
+    if (only === "requested_snapshot") {
+      return useSuffix
+        ? t("wayback_card_requested_suffix", args)
+        : t("wayback_card_requested");
+    }
+    if (only === "save_now_failed") {
+      return useSuffix
+        ? t("wayback_card_save_now_failed_suffix", args)
+        : t("wayback_card_save_now_failed");
+    }
+    if (only === "no_capture") {
+      return useSuffix
+        ? t("wayback_card_no_capture_suffix", args)
+        : t("wayback_card_no_capture");
+    }
   }
-  return useSuffix ? t('wayback_card_mixed_suffix', { count }) : t('wayback_card_mixed');
+  return useSuffix
+    ? t("wayback_card_mixed_suffix", { count })
+    : t("wayback_card_mixed");
 }
 
 export interface ChangelogTimelineFlagState {
-  liveRows: boolean;
-  waybackRows: boolean;
-  waybackToggle: boolean;
-  triggerPills: boolean;
-  versionChip: boolean;
-  matchesLiveSyncBadge: boolean;
-  reviewRows: boolean;
-  reviewSnapshotChips: boolean;
-  policyPreviewToggle: boolean;
-  policyDiffToggle: boolean;
   // Wave I — per-chart gates inside HistoryStatsStrip.
   chartsCategoryTrend: boolean;
-  chartsTrendPresets: boolean;
   chartsTrendLegend: boolean;
+  chartsTrendPresets: boolean;
+  liveRows: boolean;
+  matchesLiveSyncBadge: boolean;
+  policyDiffToggle: boolean;
+  policyPreviewToggle: boolean;
+  reviewRows: boolean;
+  reviewSnapshotChips: boolean;
+  triggerPills: boolean;
+  versionChip: boolean;
+  waybackRows: boolean;
+  waybackToggle: boolean;
 }
 
 export default function ChangelogTimeline({
@@ -352,8 +459,8 @@ export default function ChangelogTimeline({
   // wayback-toggle checkbox label all read from `timeline.*`. Per-row
   // ChangeEntry descriptions are dynamically composed strings stored
   // in the DB and remain English in v1.
-  const tTimeline = useTranslations('timeline');
-  const tCt = useTranslations('changelog_timeline');
+  const tTimeline = useTranslations("timeline");
+  const tCt = useTranslations("changelog_timeline");
 
   const tf: ChangelogTimelineFlagState = {
     liveRows: flags?.liveRows ?? true,
@@ -390,11 +497,13 @@ export default function ChangelogTimeline({
   // bumps the nonce, so the effect inside TimelineSnapshotItem restarts
   // even when the id hasn't changed). Kept at the top-level component so
   // review rows anywhere in the merged feed can pulse any snapshot.
-  const [pulsed, setPulsed] = useState<{ id: string; nonce: number } | null>(null);
+  const [pulsed, setPulsed] = useState<{ id: string; nonce: number } | null>(
+    null
+  );
   const pulseSnapshot = (snapshotId: string) => {
     // Nonce jumps each call so repeated clicks on the same row restart the
     // animation instead of being swallowed by React's identity check.
-    setPulsed(prev => ({
+    setPulsed((prev) => ({
       id: snapshotId,
       nonce: (prev && prev.id === snapshotId ? prev.nonce : 0) + 1,
     }));
@@ -413,71 +522,88 @@ export default function ChangelogTimeline({
   }, [defaultShowImported]);
 
   const waybackCount = useMemo(
-    () => rows.filter(r => r.kind === 'snapshot' && r.source === 'wayback').length,
-    [rows],
+    () =>
+      rows.filter((r) => r.kind === "snapshot" && r.source === "wayback")
+        .length,
+    [rows]
   );
-  const visibleRows = useMemo(
-    () => {
-      // Wave I — apply per-row flags before everything else. Each row is
-      // dropped only when its kind/source's flag explicitly resolves off:
-      //   liveRows         — synthetic "live" rows from scheduled/manual syncs
-      //   waybackRows      — rows whose source = 'wayback' (archive imports)
-      //   reviewRows       — review-action rows (mark reviewed / dismissed / snoozed)
-      // The `showImported` toggle still gates wayback rows on top of the
-      // flag — flipping the toggle off hides them regardless of the flag.
-      const filtered = rows.filter(r => {
-        if (r.kind === 'review') return tf.reviewRows;
-        if (r.kind === 'snapshot') {
-          if (r.source === 'wayback') return tf.waybackRows;
-          return tf.liveRows;
+  const visibleRows = useMemo(() => {
+    // Wave I — apply per-row flags before everything else. Each row is
+    // dropped only when its kind/source's flag explicitly resolves off:
+    //   liveRows         — synthetic "live" rows from scheduled/manual syncs
+    //   waybackRows      — rows whose source = 'wayback' (archive imports)
+    //   reviewRows       — review-action rows (mark reviewed / dismissed / snoozed)
+    // The `showImported` toggle still gates wayback rows on top of the
+    // flag — flipping the toggle off hides them regardless of the flag.
+    const filtered = rows.filter((r) => {
+      if (r.kind === "review") {
+        return tf.reviewRows;
+      }
+      if (r.kind === "snapshot") {
+        if (r.source === "wayback") {
+          return tf.waybackRows;
         }
-        return true;
-      });
-      return showImported
-        ? filtered
-        : filtered.filter(r => !(r.kind === 'snapshot' && r.source === 'wayback'));
-    },
-    [rows, showImported, tf.liveRows, tf.waybackRows, tf.reviewRows],
-  );
+        return tf.liveRows;
+      }
+      return true;
+    });
+    return showImported
+      ? filtered
+      : filtered.filter(
+          (r) => !(r.kind === "snapshot" && r.source === "wayback")
+        );
+  }, [rows, showImported, tf.liveRows, tf.waybackRows, tf.reviewRows]);
 
   const togglePreview = (key: string, versionId: string) => {
-    setExpandedPreview(prev => (prev === key ? null : key));
+    setExpandedPreview((prev) => (prev === key ? null : key));
 
-    if (previews[versionId]) return; // already loaded (or loading/error)
+    if (previews[versionId]) {
+      return; // already loaded (or loading/error)
+    }
 
-    setPreviews(prev => ({ ...prev, [versionId]: { status: 'loading' } }));
+    setPreviews((prev) => ({ ...prev, [versionId]: { status: "loading" } }));
     fetch(`/api/policy/version/${encodeURIComponent(versionId)}`)
-      .then(async res => {
+      .then(async (res) => {
         if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          const data = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
           throw new Error(data?.error ?? `Request failed (${res.status})`);
         }
         return (await res.json()) as PolicyVersionResponse;
       })
-      .then(data => {
-        setPreviews(prev => ({ ...prev, [versionId]: { status: 'loaded', data } }));
+      .then((data) => {
+        setPreviews((prev) => ({
+          ...prev,
+          [versionId]: { status: "loaded", data },
+        }));
       })
-      .catch(error => {
-        setPreviews(prev => ({
+      .catch((error) => {
+        setPreviews((prev) => ({
           ...prev,
           [versionId]: {
-            status: 'error',
-            message: error instanceof Error ? error.message : tCt('load_failed'),
+            status: "error",
+            message:
+              error instanceof Error ? error.message : tCt("load_failed"),
           },
         }));
       });
   };
 
   const toggleDiff = (key: string, versionId: string) => {
-    setExpandedDiff(prev => (prev === key ? null : key));
+    setExpandedDiff((prev) => (prev === key ? null : key));
 
-    if (diffs[versionId]) return;
+    if (diffs[versionId]) {
+      return;
+    }
 
-    setDiffs(prev => ({ ...prev, [versionId]: { status: 'loading' } }));
+    setDiffs((prev) => ({ ...prev, [versionId]: { status: "loading" } }));
     fetch(`/api/policy/version/${encodeURIComponent(versionId)}/diff`)
-      .then(async res => {
+      .then(async (res) => {
         if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          const data = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
           // 404 is expected when there's no earlier version text on file —
           // either this is the first-ever scrape, or the change was
           // detected before the diff feature started persisting full text.
@@ -485,23 +611,25 @@ export default function ChangelogTimeline({
           // here explains what's really going on and sets the expectation
           // that the *next* change will have a full diff.
           if (res.status === 404) {
-            throw new Error(
-              tCt('earlier_not_captured'),
-            );
+            throw new Error(tCt("earlier_not_captured"));
           }
           throw new Error(data?.error ?? `Request failed (${res.status})`);
         }
         return (await res.json()) as PolicyDiffResponse;
       })
-      .then(data => {
-        setDiffs(prev => ({ ...prev, [versionId]: { status: 'loaded', data } }));
+      .then((data) => {
+        setDiffs((prev) => ({
+          ...prev,
+          [versionId]: { status: "loaded", data },
+        }));
       })
-      .catch(error => {
-        setDiffs(prev => ({
+      .catch((error) => {
+        setDiffs((prev) => ({
           ...prev,
           [versionId]: {
-            status: 'error',
-            message: error instanceof Error ? error.message : tCt('load_failed'),
+            status: "error",
+            message:
+              error instanceof Error ? error.message : tCt("load_failed"),
           },
         }));
       });
@@ -509,10 +637,10 @@ export default function ChangelogTimeline({
 
   if (rows.length === 0) {
     return (
-      <div className="empty-state" style={{ padding: '40px 0' }}>
+      <div className="empty-state" style={{ padding: "40px 0" }}>
         <div className="empty-state-icon">📜</div>
-        <div className="empty-state-title">{tCt('empty_no_history_title')}</div>
-        <p className="empty-state-text">{tCt('empty_no_history_body')}</p>
+        <div className="empty-state-title">{tCt("empty_no_history_title")}</div>
+        <p className="empty-state-text">{tCt("empty_no_history_body")}</p>
       </div>
     );
   }
@@ -525,14 +653,20 @@ export default function ChangelogTimeline({
   // legitimately take it.
   let lastSnapshotIndex = -1;
   for (let i = visibleRows.length - 1; i >= 0; i -= 1) {
-    if (visibleRows[i].kind === 'snapshot') { lastSnapshotIndex = i; break; }
+    if (visibleRows[i].kind === "snapshot") {
+      lastSnapshotIndex = i;
+      break;
+    }
   }
   // Same idea for the newest snapshot, so `dotClass` treats only the newest
   // snapshot as the "latest sync" visual anchor regardless of review rows
   // above it in the merged feed.
   let firstSnapshotIndex = -1;
   for (let i = 0; i < visibleRows.length; i += 1) {
-    if (visibleRows[i].kind === 'snapshot') { firstSnapshotIndex = i; break; }
+    if (visibleRows[i].kind === "snapshot") {
+      firstSnapshotIndex = i;
+      break;
+    }
   }
 
   return (
@@ -546,36 +680,39 @@ export default function ChangelogTimeline({
         <div
           className="timeline-controls"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
             gap: 12,
-            flexWrap: 'wrap',
-            padding: '8px 0 12px',
-            borderBottom: '1px solid var(--border)',
+            flexWrap: "wrap",
+            padding: "8px 0 12px",
+            borderBottom: "1px solid var(--border)",
             marginBottom: 12,
           }}
         >
-          <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            <span aria-hidden="true" style={{ marginRight: 6 }}>🕰</span>
-            {waybackCount} Wayback import{waybackCount === 1 ? '' : 's'} in this timeline
+          <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+            <span aria-hidden="true" style={{ marginRight: 6 }}>
+              🕰
+            </span>
+            {waybackCount} Wayback import{waybackCount === 1 ? "" : "s"} in this
+            timeline
           </div>
           <label
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
+              display: "inline-flex",
+              alignItems: "center",
               gap: 6,
               fontSize: 12,
-              color: 'var(--text-2)',
-              cursor: 'pointer',
+              color: "var(--text-2)",
+              cursor: "pointer",
             }}
           >
             <input
-              type="checkbox"
               checked={showImported}
-              onChange={e => setShowImported(e.target.checked)}
+              onChange={(e) => setShowImported(e.target.checked)}
+              type="checkbox"
             />
-            {tTimeline('show_wayback_imports')}
+            {tTimeline("show_wayback_imports")}
           </label>
         </div>
       )}
@@ -585,50 +722,52 @@ export default function ChangelogTimeline({
           trend totals). When off the chart never mounts; when on, the
           inner trend_presets / trend_legend flags fine-tune what's
           rendered. */}
-      {chartsCategoryTrendOn && appId && <HistoryStatsStrip
-        appId={appId}
-        showPresets={chartsTrendPresetsOn}
-        showLegend={chartsTrendLegendOn}
-      />}
+      {chartsCategoryTrendOn && appId && (
+        <HistoryStatsStrip
+          appId={appId}
+          showLegend={chartsTrendLegendOn}
+          showPresets={chartsTrendPresetsOn}
+        />
+      )}
 
-    <div className="timeline">
-      {visibleRows.map((row, i) => {
-        if (row.kind === 'review') {
+      <div className="timeline">
+        {visibleRows.map((row, i) => {
+          if (row.kind === "review") {
+            return (
+              <ReviewTimelineItem
+                key={row.id}
+                onSnapshotClick={pulseSnapshot}
+                row={row}
+                showSnapshotChips={tf.reviewSnapshotChips}
+              />
+            );
+          }
+
+          const isFirst = i === lastSnapshotIndex;
+          const snapshotPosition = i === firstSnapshotIndex ? 0 : 1;
+
           return (
-            <ReviewTimelineItem
+            <TimelineSnapshotItem
+              diffs={diffs}
+              expandedDiff={expandedDiff}
+              expandedPreview={expandedPreview}
+              isFirst={isFirst}
               key={row.id}
-              row={row}
-              onSnapshotClick={pulseSnapshot}
-              showSnapshotChips={tf.reviewSnapshotChips}
+              previews={previews}
+              pulsed={pulsed}
+              showMatchesLiveSyncBadge={tf.matchesLiveSyncBadge}
+              showPolicyDiffToggle={tf.policyDiffToggle}
+              showPolicyPreviewToggle={tf.policyPreviewToggle}
+              showTriggerPills={tf.triggerPills}
+              showVersionChip={tf.versionChip}
+              snapshot={row}
+              snapshotPosition={snapshotPosition}
+              toggleDiff={toggleDiff}
+              togglePreview={togglePreview}
             />
           );
-        }
-
-        const isFirst = i === lastSnapshotIndex;
-        const snapshotPosition = i === firstSnapshotIndex ? 0 : 1;
-
-        return (
-          <TimelineSnapshotItem
-            key={row.id}
-            snapshot={row}
-            isFirst={isFirst}
-            snapshotPosition={snapshotPosition}
-            pulsed={pulsed}
-            previews={previews}
-            diffs={diffs}
-            expandedPreview={expandedPreview}
-            expandedDiff={expandedDiff}
-            togglePreview={togglePreview}
-            toggleDiff={toggleDiff}
-            showTriggerPills={tf.triggerPills}
-            showVersionChip={tf.versionChip}
-            showMatchesLiveSyncBadge={tf.matchesLiveSyncBadge}
-            showPolicyPreviewToggle={tf.policyPreviewToggle}
-            showPolicyDiffToggle={tf.policyDiffToggle}
-          />
-        );
-      })}
-    </div>
+        })}
+      </div>
     </>
   );
 }
@@ -689,14 +828,14 @@ function TimelineSnapshotItem({
   // (matches_live_sync, preview_text_button, etc.) resolves at runtime.
   // Hooks rules: must run unconditionally on every render of this
   // component, which is fine — this is the component's first line.
-  const tTimeline = useTranslations('timeline');
-  const tCt = useTranslations('changelog_timeline');
+  const tTimeline = useTranslations("timeline");
+  const tCt = useTranslations("changelog_timeline");
   // Settings → Appearance → Date format. Routes through useDateFormat
   // so date strings re-render reactively when the user changes the
   // preference in another tab/session.
   const dateMode = useDateFormat();
   const changes = snapshot.changes_summary ?? [];
-  const isWayback = snapshot.source === 'wayback';
+  const isWayback = snapshot.source === "wayback";
   // Reusing the row's own id as the dependency key: when `pulsed.id` is us,
   // we run the scroll+flash effect; the monotonic `nonce` is what restarts
   // the animation on repeat clicks of the same review → snapshot link.
@@ -705,12 +844,14 @@ function TimelineSnapshotItem({
   const [pulsing, setPulsing] = useState(false);
 
   useEffect(() => {
-    if (!isTarget || pulseNonce === 0) return;
+    if (!isTarget || pulseNonce === 0) {
+      return;
+    }
     const el = document.getElementById(`snapshot-${snapshot.id}`);
     setPulsing(false);
     const raf = requestAnimationFrame(() => {
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
       setPulsing(true);
     });
@@ -723,48 +864,52 @@ function TimelineSnapshotItem({
 
   return (
     <div
+      className={`timeline-item${isWayback ? "timeline-item-wayback" : ""}`}
       id={`snapshot-${snapshot.id}`}
-      className={`timeline-item${isWayback ? ' timeline-item-wayback' : ''}`}
     >
       <div className={`timeline-dot ${dotClass(snapshot, snapshotPosition)}`} />
 
-      <div className="timeline-date">{formatDate(snapshot.scraped_at, dateMode)}</div>
+      <div className="timeline-date">
+        {formatDate(snapshot.scraped_at, dateMode)}
+      </div>
 
       <div
-        className={`timeline-card${isWayback ? ' timeline-card-wayback' : ''}${
-          pulsing ? ' timeline-card-pulse' : ''
+        className={`timeline-card${isWayback ? "timeline-card-wayback" : ""}${
+          pulsing ? "timeline-card-pulse" : ""
         }`}
       >
         <div
           className="timeline-badges"
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}
+          style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}
         >
           {isWayback && (
             <span
               className="wayback-badge"
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
+                display: "inline-flex",
+                alignItems: "center",
                 gap: 4,
                 fontSize: 11,
                 fontWeight: 600,
-                padding: '2px 8px',
+                padding: "2px 8px",
                 borderRadius: 999,
-                background: 'var(--wayback-badge-bg, rgba(124, 58, 237, 0.12))',
-                color: 'var(--wayback-accent, #7c3aed)',
-                border: '1px solid var(--wayback-accent, #7c3aed)',
+                background: "var(--wayback-badge-bg, rgba(124, 58, 237, 0.12))",
+                color: "var(--wayback-accent, #7c3aed)",
+                border: "1px solid var(--wayback-accent, #7c3aed)",
               }}
-              title={tCt('wayback_dot_title')}
+              title={tCt("wayback_dot_title")}
             >
               <span aria-hidden="true">🕰</span>
               {formatWaybackTimestampLabel(tCt, snapshot.wayback_snapshot_url)}
             </span>
           )}
-          {showTriggerPills && <TriggerPill
-            trigger={snapshot.triggered_by ?? null}
-            isWayback={isWayback}
-            appVersion={snapshot.app_version ?? null}
-          />}
+          {showTriggerPills && (
+            <TriggerPill
+              appVersion={snapshot.app_version ?? null}
+              isWayback={isWayback}
+              trigger={snapshot.triggered_by ?? null}
+            />
+          )}
           {/*
             Per-snapshot App Store version chip. Captures what Apple reported
             at the time of the sync so a privacy-label change can be
@@ -785,71 +930,79 @@ function TimelineSnapshotItem({
           {showVersionChip && snapshot.app_version && !isWayback && (
             <span
               className="version-chip"
-              title={tCt('version_chip_title')}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
+                display: "inline-flex",
+                alignItems: "center",
                 gap: 4,
                 fontSize: 11,
                 fontWeight: 600,
-                padding: '2px 8px',
+                padding: "2px 8px",
                 borderRadius: 999,
-                background: 'rgba(15, 118, 110, 0.10)',
-                color: '#0f766e',
-                border: '1px solid #0f766e',
+                background: "rgba(15, 118, 110, 0.10)",
+                color: "#0f766e",
+                border: "1px solid #0f766e",
               }}
+              title={tCt("version_chip_title")}
             >
-              <span aria-hidden="true">📱</span>
-              v{snapshot.app_version}
+              <span aria-hidden="true">📱</span>v{snapshot.app_version}
               {snapshot.app_version_updated_at
                 ? ` · released ${formatShortDate(snapshot.app_version_updated_at, dateMode)}`
-                : ''}
+                : ""}
             </span>
           )}
-          {showMatchesLiveSyncBadge && isWayback && snapshot.matches_live_sync && (
-            <span
-              className="match-live-sync-badge"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: 999,
-                background: 'rgba(5, 150, 105, 0.12)',
-                color: '#047857',
-                border: '1px solid #047857',
-              }}
-              title={tCt('matches_live_sync_title')}
-            >
-              <span aria-hidden="true">✓</span>
-              {tTimeline('matches_live_sync')}
-            </span>
-          )}
+          {showMatchesLiveSyncBadge &&
+            isWayback &&
+            snapshot.matches_live_sync && (
+              <span
+                className="match-live-sync-badge"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  background: "rgba(5, 150, 105, 0.12)",
+                  color: "#047857",
+                  border: "1px solid #047857",
+                }}
+                title={tCt("matches_live_sync_title")}
+              >
+                <span aria-hidden="true">✓</span>
+                {tTimeline("matches_live_sync")}
+              </span>
+            )}
         </div>
         {isFirst && changes.length === 0 ? (
           <div className="timeline-card-title">
-            {isWayback ? '🕰 Wayback baseline imported' : '🆕 First scan recorded'}
+            {isWayback
+              ? "🕰 Wayback baseline imported"
+              : "🆕 First scan recorded"}
           </div>
         ) : changes.length === 0 ? (
-          <div className="timeline-card-title" style={{ color: 'var(--text-2)' }}>
-            {isWayback ? '🕰 Wayback snapshot — no differences from previous' : '✓ No changes detected'}
+          <div
+            className="timeline-card-title"
+            style={{ color: "var(--text-2)" }}
+          >
+            {isWayback
+              ? "🕰 Wayback snapshot — no differences from previous"
+              : "✓ No changes detected"}
           </div>
         ) : (
           <>
             <div className="timeline-card-title">
               {isWayback
-                ? `🕰 Wayback reconstruction · ${changes.length} change${changes.length !== 1 ? 's' : ''}`
-                : changes.every(c => c.category === 'privacy-policy')
+                ? `🕰 Wayback reconstruction · ${changes.length} change${changes.length === 1 ? "" : "s"}`
+                : changes.every((c) => c.category === "privacy-policy")
                   ? policyCardTitle(tCt, changes)
-                  : changes.every(c => c.category === 'wayback-attempt')
+                  : changes.every((c) => c.category === "wayback-attempt")
                     ? waybackAttemptCardTitle(tCt, changes)
-                    : `⚡ ${changes.length} change${changes.length !== 1 ? 's' : ''} detected`}
+                    : `⚡ ${changes.length} change${changes.length === 1 ? "" : "s"} detected`}
             </div>
             {changes.map((c, ci) => {
-              const isPolicyEntry = c.category === 'privacy-policy';
-              const isWaybackAttempt = c.category === 'wayback-attempt';
+              const isPolicyEntry = c.category === "privacy-policy";
+              const isWaybackAttempt = c.category === "wayback-attempt";
               const hasVersion = isPolicyEntry && !!c.policy_version_id;
               const entryKey = `${snapshot.id}:${ci}`;
               const isPreviewOpen = expandedPreview === entryKey;
@@ -861,39 +1014,39 @@ function TimelineSnapshotItem({
                 ? diffs[c.policy_version_id as string]
                 : undefined;
 
-              const isPolicyError = isPolicyEntry && c.policy_event === 'error';
+              const isPolicyError = isPolicyEntry && c.policy_event === "error";
               const isWaybackFailed =
-                isWaybackAttempt && c.wayback_event === 'save_now_failed';
-              const showDiffToggle = hasVersion && c.policy_event === 'changed';
+                isWaybackAttempt && c.wayback_event === "save_now_failed";
+              const showDiffToggle = hasVersion && c.policy_event === "changed";
               return (
-                <div key={ci} className="timeline-change">
+                <div className="timeline-change" key={ci}>
                   <span
-                    className={`timeline-change-icon ${c.type}${isPolicyError ? ' policy-error' : ''}${isWaybackFailed ? ' wayback-failed' : ''}`}
+                    className={`timeline-change-icon ${c.type}${isPolicyError ? "policy-error" : ""}${isWaybackFailed ? "wayback-failed" : ""}`}
                     title={
                       isPolicyError
-                        ? tCt('policy_rescrape_failed')
+                        ? tCt("policy_rescrape_failed")
                         : isPolicyEntry
-                          ? tCt('policy_change')
+                          ? tCt("policy_change")
                           : isWaybackFailed
-                            ? tCt('wayback_save_now_failed')
+                            ? tCt("wayback_save_now_failed")
                             : isWaybackAttempt
-                              ? tCt('wayback_save_now')
+                              ? tCt("wayback_save_now")
                               : undefined
                     }
                   >
                     {isPolicyError
-                      ? '⚠'
+                      ? "⚠"
                       : isPolicyEntry
-                        ? '📄'
+                        ? "📄"
                         : isWaybackFailed
-                          ? '⚠'
+                          ? "⚠"
                           : isWaybackAttempt
-                            ? '🕰'
-                            : c.type === 'added'
-                              ? '＋'
-                              : c.type === 'removed'
-                                ? '−'
-                                : '~'}
+                            ? "🕰"
+                            : c.type === "added"
+                              ? "＋"
+                              : c.type === "removed"
+                                ? "−"
+                                : "~"}
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div>
@@ -906,45 +1059,55 @@ function TimelineSnapshotItem({
                         // fall through to the stored description.
                         if (isWaybackAttempt && c.wayback_event) {
                           const quarter =
-                            typeof c.target_date === 'number'
+                            typeof c.target_date === "number"
                               ? formatQuarterLabelClient(c.target_date)
-                              : tCt('wayback_attempt_quarter_fallback');
-                          if (c.wayback_event === 'requested_snapshot') {
-                            return tCt('wayback_attempt_requested', { quarter });
-                          }
-                          if (c.wayback_event === 'save_now_failed') {
-                            return tCt('wayback_attempt_save_now_failed', {
+                              : tCt("wayback_attempt_quarter_fallback");
+                          if (c.wayback_event === "requested_snapshot") {
+                            return tCt("wayback_attempt_requested", {
                               quarter,
-                              error:
-                                (c.details && c.details[0]) ||
-                                tCt('wayback_attempt_save_now_failed_default'),
                             });
                           }
-                          if (c.wayback_event === 'no_capture') {
-                            return tCt('wayback_attempt_no_capture', { quarter });
+                          if (c.wayback_event === "save_now_failed") {
+                            return tCt("wayback_attempt_save_now_failed", {
+                              quarter,
+                              error:
+                                c.details?.[0] ||
+                                tCt("wayback_attempt_save_now_failed_default"),
+                            });
+                          }
+                          if (c.wayback_event === "no_capture") {
+                            return tCt("wayback_attempt_no_capture", {
+                              quarter,
+                            });
                           }
                         }
                         return c.description;
                       })()}
                     </div>
                     {c.details && c.details.length > 0 && (
-                      <div style={{ color: 'var(--text-3)', fontSize: 11, marginTop: 2 }}>
-                        {c.details.join(', ')}
+                      <div
+                        style={{
+                          color: "var(--text-3)",
+                          fontSize: 11,
+                          marginTop: 2,
+                        }}
+                      >
+                        {c.details.join(", ")}
                       </div>
                     )}
                     {isWaybackAttempt && c.save_now_url && (
                       <div style={{ marginTop: 4 }}>
                         <a
                           href={c.save_now_url}
-                          target="_blank"
                           rel="noopener noreferrer"
                           style={{
                             fontSize: 12,
-                            color: 'var(--wayback-accent, #7c3aed)',
-                            textDecoration: 'underline dotted',
+                            color: "var(--wayback-accent, #7c3aed)",
+                            textDecoration: "underline dotted",
                           }}
+                          target="_blank"
                         >
-                          {tCt('view_requested_capture')}
+                          {tCt("view_requested_capture")}
                         </a>
                       </div>
                     )}
@@ -952,48 +1115,56 @@ function TimelineSnapshotItem({
                     {hasVersion && (
                       <div
                         style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
+                          display: "flex",
+                          flexWrap: "wrap",
                           gap: 12,
                           marginTop: 6,
                         }}
                       >
-                        {showPolicyPreviewToggle && <button
-                          type="button"
-                          onClick={() =>
-                            togglePreview(entryKey, c.policy_version_id as string)
-                          }
-                          aria-expanded={isPreviewOpen}
-                          style={{
-                            all: 'unset',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            color: 'var(--accent, #2563eb)',
-                            textDecoration: 'underline dotted',
-                          }}
-                        >
-                          {isPreviewOpen
-                            ? tCt('hide_captured_text')
-                            : tTimeline('preview_text_button') + ' ▾'}
-                        </button>}
+                        {showPolicyPreviewToggle && (
+                          <button
+                            aria-expanded={isPreviewOpen}
+                            onClick={() =>
+                              togglePreview(
+                                entryKey,
+                                c.policy_version_id as string
+                              )
+                            }
+                            style={{
+                              all: "unset",
+                              cursor: "pointer",
+                              fontSize: 12,
+                              color: "var(--accent, #2563eb)",
+                              textDecoration: "underline dotted",
+                            }}
+                            type="button"
+                          >
+                            {isPreviewOpen
+                              ? tCt("hide_captured_text")
+                              : `${tTimeline("preview_text_button")} ▾`}
+                          </button>
+                        )}
                         {showPolicyDiffToggle && showDiffToggle && (
                           <button
-                            type="button"
-                            onClick={() =>
-                              toggleDiff(entryKey, c.policy_version_id as string)
-                            }
                             aria-expanded={isDiffOpen}
+                            onClick={() =>
+                              toggleDiff(
+                                entryKey,
+                                c.policy_version_id as string
+                              )
+                            }
                             style={{
-                              all: 'unset',
-                              cursor: 'pointer',
+                              all: "unset",
+                              cursor: "pointer",
                               fontSize: 12,
-                              color: 'var(--accent, #2563eb)',
-                              textDecoration: 'underline dotted',
+                              color: "var(--accent, #2563eb)",
+                              textDecoration: "underline dotted",
                             }}
+                            type="button"
                           >
                             {isDiffOpen
-                              ? tTimeline('hide_diff_button') + ' ▲'
-                              : tTimeline('show_diff_button') + ' ▾'}
+                              ? `${tTimeline("hide_diff_button")} ▲`
+                              : `${tTimeline("show_diff_button")} ▾`}
                           </button>
                         )}
                       </div>
@@ -1015,15 +1186,15 @@ function TimelineSnapshotItem({
           <div style={{ marginTop: 8 }}>
             <a
               href={snapshot.wayback_snapshot_url}
-              target="_blank"
               rel="noopener noreferrer"
               style={{
                 fontSize: 12,
-                color: 'var(--wayback-accent, #7c3aed)',
-                textDecoration: 'underline dotted',
+                color: "var(--wayback-accent, #7c3aed)",
+                textDecoration: "underline dotted",
               }}
+              target="_blank"
             >
-              {tTimeline('wayback_link')} ↗
+              {tTimeline("wayback_link")} ↗
             </a>
           </div>
         )}
@@ -1043,13 +1214,13 @@ function TimelineSnapshotItem({
  * no-changes state; explicit reviews use the accent first-sync ring.
  */
 const REVIEW_ACTION_META: Record<
-  ReviewRow['action'],
+  ReviewRow["action"],
   { icon: string; titleKey: string; dotClass: string }
 > = {
-  reviewed:  { icon: '✓', titleKey: 'ack_reviewed', dotClass: 'first-sync' },
-  dismissed: { icon: '✕', titleKey: 'ack_dismissed', dotClass: 'no-changes' },
-  snoozed:   { icon: '🔔', titleKey: 'ack_snoozed', dotClass: 'no-changes' },
-  unsnoozed: { icon: '↻', titleKey: 'ack_unsnoozed', dotClass: 'no-changes' },
+  reviewed: { icon: "✓", titleKey: "ack_reviewed", dotClass: "first-sync" },
+  dismissed: { icon: "✕", titleKey: "ack_dismissed", dotClass: "no-changes" },
+  snoozed: { icon: "🔔", titleKey: "ack_snoozed", dotClass: "no-changes" },
+  unsnoozed: { icon: "↻", titleKey: "ack_unsnoozed", dotClass: "no-changes" },
 };
 
 function formatSnoozeUntil(ts: number, mode: DateFormatMode) {
@@ -1084,7 +1255,7 @@ function ReviewTimelineItem({
    */
   showSnapshotChips?: boolean;
 }) {
-  const tCt = useTranslations('changelog_timeline');
+  const tCt = useTranslations("changelog_timeline");
   // Settings → Appearance → Date format. Read once per render, used
   // by both the snooze-resume line and the timeline-date column below.
   const dateMode = useDateFormat();
@@ -1092,57 +1263,61 @@ function ReviewTimelineItem({
   const coveredIds = row.covered_snapshot_ids ?? [];
   const coveredBlurb =
     row.covered_count > 0
-      ? ` · covered ${row.covered_count} pending change${row.covered_count === 1 ? '' : 's'}`
-      : '';
+      ? ` · covered ${row.covered_count} pending change${row.covered_count === 1 ? "" : "s"}`
+      : "";
 
   let extra: string | null = null;
-  if (row.action === 'snoozed' && row.snooze_until) {
+  if (row.action === "snoozed" && row.snooze_until) {
     extra = `Reminders resume on ${formatSnoozeUntil(row.snooze_until, dateMode)}`;
   }
 
   return (
     <div className="timeline-item">
       <div className={`timeline-dot ${meta.dotClass}`} />
-      <div className="timeline-date">{formatDate(row.scraped_at, dateMode)}</div>
+      <div className="timeline-date">
+        {formatDate(row.scraped_at, dateMode)}
+      </div>
       <div className="timeline-card">
-        <div className="timeline-card-title" style={{ color: 'var(--text-2)' }}>
-          <span aria-hidden="true" style={{ marginRight: 6 }}>{meta.icon}</span>
+        <div className="timeline-card-title" style={{ color: "var(--text-2)" }}>
+          <span aria-hidden="true" style={{ marginRight: 6 }}>
+            {meta.icon}
+          </span>
           {tCt(meta.titleKey)}
-          <span style={{ color: 'var(--text-3)', fontWeight: 'normal' }}>
+          <span style={{ color: "var(--text-3)", fontWeight: "normal" }}>
             {coveredBlurb}
           </span>
         </div>
         {showSnapshotChips && coveredIds.length > 0 && (
           <div
             style={{
-              display: 'flex',
-              flexWrap: 'wrap',
+              display: "flex",
+              flexWrap: "wrap",
               gap: 6,
               marginTop: 6,
-              alignItems: 'center',
+              alignItems: "center",
             }}
           >
-            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>
               Linked to:
             </span>
             {coveredIds.map((id, idx) => (
               <button
-                key={id}
-                type="button"
-                onClick={() => onSnapshotClick(id)}
                 className="review-snapshot-chip"
-                title={tCt('ack_jump_title')}
+                key={id}
+                onClick={() => onSnapshotClick(id)}
                 style={{
-                  all: 'unset',
-                  cursor: 'pointer',
+                  all: "unset",
+                  cursor: "pointer",
                   fontSize: 11,
                   fontWeight: 600,
-                  padding: '2px 8px',
+                  padding: "2px 8px",
                   borderRadius: 999,
-                  background: 'var(--accent-soft, rgba(37, 99, 235, 0.10))',
-                  color: 'var(--accent, #2563eb)',
-                  border: '1px solid var(--accent, #2563eb)',
+                  background: "var(--accent-soft, rgba(37, 99, 235, 0.10))",
+                  color: "var(--accent, #2563eb)",
+                  border: "1px solid var(--accent, #2563eb)",
                 }}
+                title={tCt("ack_jump_title")}
+                type="button"
               >
                 ↳ change #{idx + 1}
               </button>
@@ -1150,12 +1325,19 @@ function ReviewTimelineItem({
           </div>
         )}
         {extra && (
-          <div style={{ color: 'var(--text-3)', fontSize: 12, marginTop: 4 }}>
+          <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 4 }}>
             {extra}
           </div>
         )}
         {row.note && (
-          <div style={{ color: 'var(--text-3)', fontSize: 12, marginTop: 4, fontStyle: 'italic' }}>
+          <div
+            style={{
+              color: "var(--text-3)",
+              fontSize: 12,
+              marginTop: 4,
+              fontStyle: "italic",
+            }}
+          >
             “{row.note}”
           </div>
         )}
@@ -1165,27 +1347,36 @@ function ReviewTimelineItem({
 }
 
 function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
-  const tCt = useTranslations('changelog_timeline');
+  const tCt = useTranslations("changelog_timeline");
   // Settings-aware date format for the "First seen: …" line below.
   const dateMode = useDateFormat();
-  if (!state || state.status === 'loading') {
+  if (!state || state.status === "loading") {
     return (
-      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: "var(--text-3)",
+          marginTop: 8,
+          display: "flex",
+          gap: 6,
+          alignItems: "center",
+        }}
+      >
         <span className="spinner-sm" /> Loading captured text…
       </div>
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === "error") {
     return (
-      <div style={{ fontSize: 12, color: 'var(--red, #c03)', marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: "var(--red, #c03)", marginTop: 8 }}>
         ⚠ {state.message}
       </div>
     );
   }
 
   const { data } = state;
-  const text = data.source_text ?? '';
+  const text = data.source_text ?? "";
   const truncated = text.length > PREVIEW_MAX_CHARS;
   const shown = truncated ? text.slice(0, PREVIEW_MAX_CHARS) : text;
 
@@ -1194,23 +1385,23 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
       <div
         style={{
           fontSize: 11,
-          color: 'var(--text-3)',
+          color: "var(--text-3)",
           marginBottom: 4,
-          display: 'flex',
+          display: "flex",
           gap: 8,
-          flexWrap: 'wrap',
+          flexWrap: "wrap",
         }}
       >
         <span>
           {data.source_word_count.toLocaleString()} words
-          {data.source_origin ? ` · via ${data.source_origin}` : ''}
+          {data.source_origin ? ` · via ${data.source_origin}` : ""}
         </span>
         {data.source_final_url && (
           <a
             href={data.source_final_url}
-            target="_blank"
             rel="noopener noreferrer"
-            style={{ color: 'var(--text-3)', textDecoration: 'underline' }}
+            style={{ color: "var(--text-3)", textDecoration: "underline" }}
+            target="_blank"
           >
             source URL ↗
           </a>
@@ -1218,10 +1409,10 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
         {data.archive_url && (
           <a
             href={data.archive_url}
-            target="_blank"
             rel="noopener noreferrer"
-            title={tCt('open_archive_title')}
-            style={{ color: 'var(--text-3)', textDecoration: 'underline' }}
+            style={{ color: "var(--text-3)", textDecoration: "underline" }}
+            target="_blank"
+            title={tCt("open_archive_title")}
           >
             Wayback backup ↗
           </a>
@@ -1232,22 +1423,23 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
         style={{
           margin: 0,
           padding: 10,
-          background: 'var(--surface-1)',
-          border: '1px solid var(--border)',
+          background: "var(--surface-1)",
+          border: "1px solid var(--border)",
           borderRadius: 6,
           fontSize: 12,
           lineHeight: 1.45,
           maxHeight: 320,
-          overflow: 'auto',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
+          overflow: "auto",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
         }}
       >
-        {shown || '(empty)'}
+        {shown || "(empty)"}
       </pre>
       {truncated && (
-        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-          Showing first {PREVIEW_MAX_CHARS.toLocaleString()} of {text.length.toLocaleString()} characters.
+        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
+          Showing first {PREVIEW_MAX_CHARS.toLocaleString()} of{" "}
+          {text.length.toLocaleString()} characters.
         </div>
       )}
     </div>
@@ -1262,19 +1454,19 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
  * rewrites don't drown the view in whole-paragraph flips.
  */
 function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
-  const tCt = useTranslations('changelog_timeline');
+  const tCt = useTranslations("changelog_timeline");
   // Settings-aware date format for the "Comparing X → Y" line below.
   const dateMode = useDateFormat();
-  if (!state || state.status === 'loading') {
+  if (!state || state.status === "loading") {
     return (
       <div
         style={{
           fontSize: 12,
-          color: 'var(--text-3)',
+          color: "var(--text-3)",
           marginTop: 8,
-          display: 'flex',
+          display: "flex",
           gap: 6,
-          alignItems: 'center',
+          alignItems: "center",
         }}
       >
         <span className="spinner-sm" /> Computing diff…
@@ -1282,9 +1474,9 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === "error") {
     return (
-      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
         ⚠ {state.message}
       </div>
     );
@@ -1292,12 +1484,13 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
 
   const { data } = state;
   const { stats, lines } = data;
-  const shown = lines.length > DIFF_MAX_LINES ? lines.slice(0, DIFF_MAX_LINES) : lines;
+  const shown =
+    lines.length > DIFF_MAX_LINES ? lines.slice(0, DIFF_MAX_LINES) : lines;
   const overflow = lines.length > DIFF_MAX_LINES;
 
   if (stats.added === 0 && stats.removed === 0) {
     return (
-      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
         No differences detected between the two captures.
       </div>
     );
@@ -1308,51 +1501,64 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
       <div
         style={{
           fontSize: 11,
-          color: 'var(--text-3)',
+          color: "var(--text-3)",
           marginBottom: 4,
-          display: 'flex',
+          display: "flex",
           gap: 10,
-          flexWrap: 'wrap',
+          flexWrap: "wrap",
         }}
       >
         <span>
-          <span className="policy-diff-added-chip">+{stats.added}</span>{' '}
-          <span className="policy-diff-removed-chip">−{stats.removed}</span>{' '}
+          <span className="policy-diff-added-chip">+{stats.added}</span>{" "}
+          <span className="policy-diff-removed-chip">−{stats.removed}</span>{" "}
           {stats.unchanged.toLocaleString()} unchanged
         </span>
         <span>
-          Comparing {formatDate(data.previous.first_fetched_at, dateMode)} → {formatDate(data.current.first_fetched_at, dateMode)}
+          Comparing {formatDate(data.previous.first_fetched_at, dateMode)} →{" "}
+          {formatDate(data.current.first_fetched_at, dateMode)}
         </span>
         {stats.truncated && (
-          <span style={{ color: 'var(--orange, #c85c27)' }}>
+          <span style={{ color: "var(--orange, #c85c27)" }}>
             Diff truncated — one side exceeded the line cap.
           </span>
         )}
       </div>
-      <div className="policy-diff-view" role="region" aria-label={tCt('diff_view_aria')}>
+      <div
+        aria-label={tCt("diff_view_aria")}
+        className="policy-diff-view"
+        role="region"
+      >
         {shown.map((line, idx) => (
           <div
-            key={idx}
             className={`policy-diff-line policy-diff-line-${line.type}`}
+            key={idx}
           >
-            <span className="policy-diff-gutter" aria-hidden="true">
-              {line.type === 'added' ? '+' : line.type === 'removed' ? '−' : ' '}
+            <span aria-hidden="true" className="policy-diff-gutter">
+              {line.type === "added"
+                ? "+"
+                : line.type === "removed"
+                  ? "−"
+                  : " "}
             </span>
             <span className="policy-diff-content">
               {line.words
                 ? line.words.map((w, wi) => (
-                    <span key={wi} className={`policy-diff-word policy-diff-word-${w.type}`}>
+                    <span
+                      className={`policy-diff-word policy-diff-word-${w.type}`}
+                      key={wi}
+                    >
                       {w.text}
                     </span>
                   ))
-                : line.text || '\u00A0'}
+                : line.text || "\u00A0"}
             </span>
           </div>
         ))}
       </div>
       {overflow && (
-        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-          Showing first {DIFF_MAX_LINES.toLocaleString()} of {lines.length.toLocaleString()} diff lines.
+        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
+          Showing first {DIFF_MAX_LINES.toLocaleString()} of{" "}
+          {lines.length.toLocaleString()} diff lines.
         </div>
       )}
     </div>
@@ -1392,9 +1598,9 @@ interface HistoryStatsResponse {
 }
 
 type HistoryStatsState =
-  | { status: 'loading' }
-  | { status: 'loaded'; data: HistoryStatsResponse }
-  | { status: 'error'; message: string };
+  | { status: "loading" }
+  | { status: "loaded"; data: HistoryStatsResponse }
+  | { status: "error"; message: string };
 
 /**
  * Aggregated history widgets rendered above the timeline:
@@ -1416,51 +1622,70 @@ function HistoryStatsStrip({
   /** Wave I — toggle the chart legend. */
   showLegend?: boolean;
 }) {
-  const tCt = useTranslations('changelog_timeline');
-  const [state, setState] = useState<HistoryStatsState>({ status: 'loading' });
+  const tCt = useTranslations("changelog_timeline");
+  const [state, setState] = useState<HistoryStatsState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
-    setState({ status: 'loading' });
+    setState({ status: "loading" });
     fetch(`/api/apps/${encodeURIComponent(appId)}/history-stats`)
-      .then(async res => {
+      .then(async (res) => {
         if (!res.ok) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          const data = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
           throw new Error(data?.error ?? `Request failed (${res.status})`);
         }
         return (await res.json()) as HistoryStatsResponse;
       })
-      .then(data => {
-        if (!cancelled) setState({ status: 'loaded', data });
+      .then((data) => {
+        if (!cancelled) {
+          setState({ status: "loaded", data });
+        }
       })
-      .catch(error => {
+      .catch((error) => {
         if (!cancelled) {
           setState({
-            status: 'error',
-            message: error instanceof Error ? error.message : tCt('load_stats_failed'),
+            status: "error",
+            message:
+              error instanceof Error ? error.message : tCt("load_stats_failed"),
           });
         }
       });
     return () => {
       cancelled = true;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, [appId]);
 
-  if (state.status === 'loading') {
+  if (state.status === "loading") {
     return (
-      <div className="history-stats history-stats-loading" style={{ margin: '0 0 16px' }}>
-        <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', gap: 6, alignItems: 'center' }}>
+      <div
+        className="history-stats history-stats-loading"
+        style={{ margin: "0 0 16px" }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--text-3)",
+            display: "flex",
+            gap: 6,
+            alignItems: "center",
+          }}
+        >
           <span className="spinner-sm" /> Loading quarterly stats…
         </div>
       </div>
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === "error") {
     return (
-      <div className="history-stats history-stats-error" style={{ margin: '0 0 16px' }}>
-        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+      <div
+        className="history-stats history-stats-error"
+        style={{ margin: "0 0 16px" }}
+      >
+        <div style={{ fontSize: 12, color: "var(--text-3)" }}>
           Could not load quarterly stats: {state.message}
         </div>
       </div>
@@ -1488,19 +1713,18 @@ function HistoryStatsStrip({
         // already showed more clearly — you could already see
         // added/removed by bucket on the timeline, and the rollup by
         // quarter just added visual noise below it.
-        margin: '0 0 16px',
+        margin: "0 0 16px",
         padding: 12,
-        border: '1px solid var(--border)',
+        border: "1px solid var(--border)",
         borderRadius: 8,
-        background: 'var(--surface-1)',
+        background: "var(--surface-1)",
       }}
     >
       <AppChangeTimeline
         appId={appId}
-        showPresets={showPresets}
         showLegend={showLegend}
+        showPresets={showPresets}
       />
     </div>
   );
 }
-

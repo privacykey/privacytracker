@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * ShortlistView — the /dashboard/shortlist page.
@@ -21,38 +21,38 @@
  *                         to hide chrome and lay the groups out continuously.
  */
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { useTranslations } from 'next-intl';
-import type { ShortlistEntry, ShortlistGroup } from '../../lib/shortlist-types';
-import type { PrivacyTypeSnapshot } from '../../lib/changelog-types';
-import { formatPriceLine, priceTooltip } from '../../lib/price-display';
-import { CATEGORY_META, SEVERITY_CONFIG } from '../../lib/privacy-meta';
-import AccessibilityFigureGlyph from './AccessibilityFigureGlyph';
+import Image from "next/image";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import type { PrivacyTypeSnapshot } from "../../lib/changelog-types";
+import {
+  categoryLabel as i18nCategoryLabel,
+  localiseBadgeDescription,
+  localiseBadgeLabel,
+} from "../../lib/i18n-meta";
+import { formatPriceLine, priceTooltip } from "../../lib/price-display";
+import { CATEGORY_META, SEVERITY_CONFIG } from "../../lib/privacy-meta";
 import type {
   AppProfileBadge,
   AppProfileFootprint,
   PrivacyProfile,
   ProfileMismatchResult,
   ProfileTier,
-} from '../../lib/privacy-profile';
+} from "../../lib/privacy-profile";
 import {
-  TIER_META,
-  TIER_RANK,
-  TYPE_IDENTIFIER_TO_TIER,
   computeProfileMismatch,
   describeWorstMismatchLocalised,
   summariseBadge,
-} from '../../lib/privacy-profile';
-import {
-  categoryLabel as i18nCategoryLabel,
-  localiseBadgeLabel,
-  localiseBadgeDescription,
-} from '../../lib/i18n-meta';
-import { useTaskCenter } from './TaskCenter';
-import { SocialShareModal } from './SocialShareModal';
+  TIER_META,
+  TIER_RANK,
+  TYPE_IDENTIFIER_TO_TIER,
+} from "../../lib/privacy-profile";
+import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
+import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
+import { SocialShareModal } from "./SocialShareModal";
+import { useTaskCenter } from "./TaskCenter";
 
 /**
  * Per-surface flag state for the shortlist view. All `flag.shortlist.*`
@@ -62,20 +62,25 @@ import { SocialShareModal } from './SocialShareModal';
  * before.
  */
 export interface ShortlistFlagState {
-  actionsRemove: boolean;
-  actionsPreview: boolean;
-  actionsShare: boolean;
   actionsExport: boolean;
+  actionsPreview: boolean;
   actionsPrint: boolean;
+  actionsRemove: boolean;
   actionsReset: boolean;
+  actionsShare: boolean;
   actionsUndo: boolean;
   detailedView: boolean;
+  installedGrouping: boolean;
   liveBadgePrefetch: boolean;
   profileMismatchPill: boolean;
-  installedGrouping: boolean;
 }
 
 interface ShortlistViewProps {
+  /**
+   * Wave-I flag state. Pass undefined to render every surface visible
+   * (legacy default). Each key flips a single button / row affordance.
+   */
+  flags?: ShortlistFlagState;
   initialGroups: ShortlistGroup[];
   /**
    * Currently-saved privacy profile, hydrated server-side on the page so
@@ -84,11 +89,6 @@ interface ShortlistViewProps {
    * to the generic privacy-labels view.
    */
   initialProfile: PrivacyProfile | null;
-  /**
-   * Wave-I flag state. Pass undefined to render every surface visible
-   * (legacy default). Each key flips a single button / row affordance.
-   */
-  flags?: ShortlistFlagState;
 }
 
 /**
@@ -99,16 +99,18 @@ interface ShortlistViewProps {
  * the match for candidates that aren't in the tracked DB.
  */
 function footprintFromPreviewTypes(
-  privacyTypes: PrivacyTypeSnapshot[],
+  privacyTypes: PrivacyTypeSnapshot[]
 ): AppProfileFootprint {
-  const worst: Record<string, Exclude<ProfileTier, 'not_collected'>> = {};
+  const worst: Record<string, Exclude<ProfileTier, "not_collected">> = {};
   for (const type of privacyTypes) {
     const tier = TYPE_IDENTIFIER_TO_TIER[type.identifier];
-    if (!tier || tier === 'not_collected') continue;
+    if (!tier || tier === "not_collected") {
+      continue;
+    }
     for (const cat of type.categories) {
       const existing = worst[cat.identifier];
       if (!existing || TIER_RANK[tier] > TIER_RANK[existing]) {
-        worst[cat.identifier] = tier as Exclude<ProfileTier, 'not_collected'>;
+        worst[cat.identifier] = tier as Exclude<ProfileTier, "not_collected">;
       }
     }
   }
@@ -117,20 +119,20 @@ function footprintFromPreviewTypes(
 
 interface PreviewPayload {
   appleId: string;
-  name: string;
-  iconUrl: string;
   developer: string;
-  privacyPolicyUrl: string;
-  url: string;
-  privacyTypes: PrivacyTypeSnapshot[];
   hasPrivacyDetails: number | null;
+  iconUrl: string;
+  name: string;
+  privacyPolicyUrl: string;
+  privacyTypes: PrivacyTypeSnapshot[];
+  url: string;
 }
 
 type PreviewState =
-  | { kind: 'idle' }
-  | { kind: 'loading'; entry: ShortlistEntry }
-  | { kind: 'ready'; entry: ShortlistEntry; preview: PreviewPayload }
-  | { kind: 'error'; entry: ShortlistEntry; message: string };
+  | { kind: "idle" }
+  | { kind: "loading"; entry: ShortlistEntry }
+  | { kind: "ready"; entry: ShortlistEntry; preview: PreviewPayload }
+  | { kind: "error"; entry: ShortlistEntry; message: string };
 
 /**
  * Per-entry state for the inline match pill on untracked candidates.
@@ -146,9 +148,9 @@ type PreviewState =
  *                 into a page-wide failure mode.
  */
 type LiveBadgeEntry =
-  | { kind: 'loading' }
-  | { kind: 'done'; badge: AppProfileBadge | null }
-  | { kind: 'error' };
+  | { kind: "loading" }
+  | { kind: "done"; badge: AppProfileBadge | null }
+  | { kind: "error" };
 type LiveBadgeMap = Record<string, LiveBadgeEntry>;
 
 /**
@@ -159,16 +161,22 @@ type LiveBadgeMap = Record<string, LiveBadgeEntry>;
  */
 function formatRateWait(ms: number): string {
   const clamped = Math.max(0, Math.ceil(ms / 1000));
-  if (clamped < 60) return `${clamped}s`;
+  if (clamped < 60) {
+    return `${clamped}s`;
+  }
   const mins = Math.floor(clamped / 60);
   const secs = clamped % 60;
-  return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+  return `${mins}m ${secs.toString().padStart(2, "0")}s`;
 }
 
-export default function ShortlistView({ initialGroups, initialProfile, flags }: ShortlistViewProps) {
+export default function ShortlistView({
+  initialGroups,
+  initialProfile,
+  flags,
+}: ShortlistViewProps) {
   // i18n — page title only on this pass. Per-row chrome and group
   // labels stay English; tracked under the broader sweep.
-  const tShortlist = useTranslations('shortlist');
+  const tShortlist = useTranslations("shortlist");
 
   // Resolve effective flags with legacy "all-on" defaults so callers that
   // haven't been wired yet still render every affordance.
@@ -188,21 +196,29 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   const taskCenter = useTaskCenter();
   const [groups, setGroups] = useState<ShortlistGroup[]>(initialGroups);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewState>({ kind: 'idle' });
+  const [preview, setPreview] = useState<PreviewState>({ kind: "idle" });
   // Profile is stable within a page life, so the server-rendered value is
   // usually all we need. We still refetch on mount in case the user just
   // edited it in another tab.
   const [profile, setProfile] = useState<PrivacyProfile | null>(initialProfile);
   useEffect(() => {
     let live = true;
-    fetch('/api/privacy-profile')
-      .then(r => r.ok ? r.json() as Promise<{ profile: PrivacyProfile | null }> : null)
-      .then(body => {
-        if (!live || !body) return;
+    fetch("/api/privacy-profile")
+      .then((r) =>
+        r.ok ? (r.json() as Promise<{ profile: PrivacyProfile | null }>) : null
+      )
+      .then((body) => {
+        if (!(live && body)) {
+          return;
+        }
         setProfile(body.profile);
       })
-      .catch(() => { /* optional — keep the server-hydrated value */ });
-    return () => { live = false; };
+      .catch(() => {
+        /* optional — keep the server-hydrated value */
+      });
+    return () => {
+      live = false;
+    };
   }, []);
 
   // Pull fresh groups on mount so a print-preview reload picks up new adds.
@@ -215,18 +231,28 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   // re-run finds an empty todo list.
   const refresh = useCallback(async () => {
     try {
-      const r = await fetch('/api/shortlist');
-      if (!r.ok) return;
-      const body = await r.json() as { groups?: ShortlistGroup[] };
+      const r = await fetch("/api/shortlist");
+      if (!r.ok) {
+        return;
+      }
+      const body = (await r.json()) as { groups?: ShortlistGroup[] };
       const nextGroups = body.groups ?? [];
-      setGroups(prev => {
-        const prevIds = prev.flatMap(g => g.entries.map(e => e.id)).join('|');
-        const nextIds = nextGroups.flatMap(g => g.entries.map(e => e.id)).join('|');
+      setGroups((prev) => {
+        const prevIds = prev
+          .flatMap((g) => g.entries.map((e) => e.id))
+          .join("|");
+        const nextIds = nextGroups
+          .flatMap((g) => g.entries.map((e) => e.id))
+          .join("|");
         return prevIds === nextIds ? prev : nextGroups;
       });
-    } catch { /* leave previous state in place */ }
+    } catch {
+      /* leave previous state in place */
+    }
   }, []);
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   // ── Live-badge prefetch for untracked entries ──
   // Tracked candidates already arrive with `profileBadge` populated from the
@@ -268,15 +294,18 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   // just-in-time prefetch inside handlePrint is waiting for any rows
   // still missing from the cache.
   const [detailedView, setDetailedView] = useState(false);
-  const [previewCache, setPreviewCache] = useState<Record<string, PreviewPayload>>({});
+  const [previewCache, setPreviewCache] = useState<
+    Record<string, PreviewPayload>
+  >({});
   const [preparingPrint, setPreparingPrint] = useState(false);
   // Drives the SocialShareModal. When non-null, the modal renders an
   // OG-style head-to-head PNG for that specific (group, entry) pair — so
   // if a group has three alternatives, each row has its own share button
   // that paints that particular head-to-head. `null` = modal closed.
-  const [shareTarget, setShareTarget] = useState<
-    { group: ShortlistGroup; entry: ShortlistEntry } | null
-  >(null);
+  const [shareTarget, setShareTarget] = useState<{
+    group: ShortlistGroup;
+    entry: ShortlistEntry;
+  } | null>(null);
   // Dedupe set for the detailed-view prefetch below — we only want to
   // attempt each entry once per page lifetime, even if the user toggles
   // the checkbox off and back on.
@@ -284,30 +313,48 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   useEffect(() => {
     // Wave I: bail entirely when the live-badge prefetch is gated off. The
     // detailed-view prefetch below is a separate effect and stays untouched.
-    if (!f.liveBadgePrefetch) return;
+    if (!f.liveBadgePrefetch) {
+      return;
+    }
     // No profile ⇒ no badges to compute. Also bail if the profile has no
     // explicit preferences — `computeProfileMismatch` would return
     // `profileActive: false` for every row, so there's nothing to show.
-    if (!profile) return;
-    const hasAnyPref = Object.values(profile).some(v => typeof v === 'string');
-    if (!hasAnyPref) return;
+    if (!profile) {
+      return;
+    }
+    const hasAnyPref = Object.values(profile).some(
+      (v) => typeof v === "string"
+    );
+    if (!hasAnyPref) {
+      return;
+    }
 
     const todo: ShortlistEntry[] = [];
     for (const group of groups) {
       for (const entry of group.entries) {
-        if (entry.candidateIsTracked) continue;          // already has a badge
-        if (prefetchedRef.current.has(entry.id)) continue; // already fetched
+        if (entry.candidateIsTracked) {
+          continue; // already has a badge
+        }
+        if (prefetchedRef.current.has(entry.id)) {
+          continue; // already fetched
+        }
         todo.push(entry);
       }
     }
-    if (todo.length === 0) return;
+    if (todo.length === 0) {
+      return;
+    }
 
     // Mark everything as in-flight up front so the UI immediately shows the
     // "Checking…" pill instead of a blank gap that would flicker to a badge.
-    for (const entry of todo) prefetchedRef.current.add(entry.id);
-    setLiveBadges(prev => {
+    for (const entry of todo) {
+      prefetchedRef.current.add(entry.id);
+    }
+    setLiveBadges((prev) => {
       const next: LiveBadgeMap = { ...prev };
-      for (const entry of todo) next[entry.id] = { kind: 'loading' };
+      for (const entry of todo) {
+        next[entry.id] = { kind: "loading" };
+      }
       return next;
     });
 
@@ -332,10 +379,10 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
     let completed = 0;
 
     const task = taskCenter.startTask({
-      title: tShortlist('task_check_title'),
+      title: tShortlist("task_check_title"),
       subtitle: `0 of ${todo.length}`,
-      kind: 'scrape',
-      href: '/dashboard/shortlist',
+      kind: "scrape",
+      href: "/dashboard/shortlist",
       progress: { current: 0, total: todo.length },
       onCancel: () => {
         userCancelled = true;
@@ -388,17 +435,25 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
     const waitForRateGate = async () => {
       while (!cancelled) {
         const remaining = pauseUntilMs - Date.now();
-        if (remaining <= 0) return;
-        await new Promise(resolve => setTimeout(resolve, Math.min(remaining, 500)));
+        if (remaining <= 0) {
+          return;
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.min(remaining, 500))
+        );
       }
     };
 
     async function runOne(entry: ShortlistEntry): Promise<void> {
       await waitForRateGate();
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       try {
         const qs = new URLSearchParams({ url: entry.candidateStoreUrl });
-        const r = await fetch(`/api/preview?${qs}`, { signal: abortController.signal });
+        const r = await fetch(`/api/preview?${qs}`, {
+          signal: abortController.signal,
+        });
         if (r.status === 429) {
           // Pull retryAfterMs from the JSON body first (richer precision —
           // our server reports the exact remaining window). Fall back to
@@ -406,41 +461,55 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
           // 30s if neither is usable so we still make forward progress.
           let retryAfterMs: number | null = null;
           try {
-            const body = await r.clone().json() as { retryAfterMs?: number };
-            if (typeof body.retryAfterMs === 'number' && body.retryAfterMs > 0) {
+            const body = (await r.clone().json()) as { retryAfterMs?: number };
+            if (
+              typeof body.retryAfterMs === "number" &&
+              body.retryAfterMs > 0
+            ) {
               retryAfterMs = body.retryAfterMs;
             }
           } catch {
             /* non-JSON body — fall through to header */
           }
           if (retryAfterMs === null) {
-            const headerSecs = Number(r.headers.get('Retry-After'));
+            const headerSecs = Number(r.headers.get("Retry-After"));
             if (Number.isFinite(headerSecs) && headerSecs > 0) {
               retryAfterMs = headerSecs * 1000;
             }
           }
-          if (retryAfterMs === null) retryAfterMs = 30_000;
-          if (cancelled) return;
+          if (retryAfterMs === null) {
+            retryAfterMs = 30_000;
+          }
+          if (cancelled) {
+            return;
+          }
           setRatePause(retryAfterMs);
           // Requeue so this entry is retried after the pause window. We
           // don't mark it as errored — the pill stays in "loading" state.
           queue.push(entry);
           return;
         }
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const body = await r.json() as { preview?: PreviewPayload };
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        }
+        const body = (await r.json()) as { preview?: PreviewPayload };
         const preview = body.preview;
-        if (cancelled || !preview) return;
+        if (cancelled || !preview) {
+          return;
+        }
         // Cache the full preview payload so the detailed-view printout can
         // render the app's privacy labels without refetching. Marked as
         // already-prefetched so the detailed-view effect below doesn't
         // redundantly re-request this entry.
-        setPreviewCache(prev => ({ ...prev, [entry.id]: preview }));
+        setPreviewCache((prev) => ({ ...prev, [entry.id]: preview }));
         detailedPrefetchedRef.current.add(entry.id);
         const footprint = footprintFromPreviewTypes(preview.privacyTypes);
         const result = computeProfileMismatch(profile, footprint);
         const badge = result.profileActive ? summariseBadge(result) : null;
-        setLiveBadges(prev => ({ ...prev, [entry.id]: { kind: 'done', badge } }));
+        setLiveBadges((prev) => ({
+          ...prev,
+          [entry.id]: { kind: "done", badge },
+        }));
         completed += 1;
         task.setProgress(completed, todo.length);
         // Only push a fresh progress subtitle while we aren't rate-paused —
@@ -449,42 +518,55 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
           task.update({ subtitle: `${completed} of ${todo.length}` });
         }
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         // AbortError means the user cancelled or the effect re-ran; don't
         // log spam and don't flip the badge to error — the effect cleanup
         // handles both.
-        if ((err as Error)?.name === 'AbortError') return;
-        setLiveBadges(prev => ({ ...prev, [entry.id]: { kind: 'error' } }));
+        if ((err as Error)?.name === "AbortError") {
+          return;
+        }
+        setLiveBadges((prev) => ({ ...prev, [entry.id]: { kind: "error" } }));
       }
     }
 
     async function worker() {
       while (!cancelled) {
         const next = queue.shift();
-        if (!next) return;
+        if (!next) {
+          return;
+        }
         await runOne(next);
       }
     }
 
-    const workers = Array.from({ length: Math.min(CONCURRENCY, todo.length) }, worker);
+    const workers = Array.from(
+      { length: Math.min(CONCURRENCY, todo.length) },
+      worker
+    );
     Promise.all(workers)
-      .catch(() => { /* per-row errors already handled */ })
+      .catch(() => {
+        /* per-row errors already handled */
+      })
       .finally(() => {
         stopPauseTicker();
         // User-cancel: TaskCenter already flipped status to 'cancelled'; don't
         // override it. Effect-cleanup (groups/profile changed, or navigate
         // away): mark the stale task as cancelled so it doesn't hang on the
         // "Running" list forever — a fresh run will start its own task.
-        if (userCancelled) return;
+        if (userCancelled) {
+          return;
+        }
         if (cancelled) {
-          task.complete('cancelled', tShortlist('task_superseded'));
+          task.complete("cancelled", tShortlist("task_superseded"));
           return;
         }
         task.complete(
-          'done',
+          "done",
           completed === todo.length
-            ? `Checked ${completed} shortlist match${completed === 1 ? '' : 'es'}`
-            : `Checked ${completed} of ${todo.length} matches`,
+            ? `Checked ${completed} shortlist match${completed === 1 ? "" : "es"}`
+            : `Checked ${completed} of ${todo.length} matches`
         );
       });
 
@@ -498,7 +580,7 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
 
   const totalCount = useMemo(
     () => groups.reduce((n, g) => n + g.entries.length, 0),
-    [groups],
+    [groups]
   );
 
   // ── Undo stack ──
@@ -513,17 +595,19 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   // back with a new uuid but the same user-facing content. This is fine —
   // nothing downstream cares about identity across the delete→undo boundary.
   type UndoOp =
-    | { kind: 'delete-one'; entry: ShortlistEntry }
-    | { kind: 'delete-all'; entries: ShortlistEntry[] };
+    | { kind: "delete-one"; entry: ShortlistEntry }
+    | { kind: "delete-all"; entries: ShortlistEntry[] };
   const MAX_UNDO = 20;
   const [undoStack, setUndoStack] = useState<UndoOp[]>([]);
   const [undoToast, setUndoToast] = useState<string | null>(null);
 
   const pushUndo = useCallback((op: UndoOp) => {
-    setUndoStack(prev => {
+    setUndoStack((prev) => {
       const next = [...prev, op];
       // Drop oldest when we blow past the cap so the stack stays bounded.
-      if (next.length > MAX_UNDO) next.shift();
+      if (next.length > MAX_UNDO) {
+        next.shift();
+      }
       return next;
     });
   }, []);
@@ -533,43 +617,57 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   const showUndoToast = useCallback((message: string) => {
     setUndoToast(message);
     window.setTimeout(() => {
-      setUndoToast(current => (current === message ? null : current));
+      setUndoToast((current) => (current === message ? null : current));
     }, 3500);
   }, []);
 
-  const handleRemove = useCallback(async (entry: ShortlistEntry) => {
-    setBusyId(entry.id);
-    try {
-      await fetch(`/api/shortlist?id=${encodeURIComponent(entry.id)}`, { method: 'DELETE' });
-      pushUndo({ kind: 'delete-one', entry });
-      await refresh();
-      // If the removed entry was open in the drawer, close it.
-      setPreview(prev => (prev.kind !== 'idle' && prev.entry.id === entry.id)
-        ? { kind: 'idle' } : prev);
-    } finally {
-      setBusyId(null);
-    }
-  }, [refresh, pushUndo]);
+  const handleRemove = useCallback(
+    async (entry: ShortlistEntry) => {
+      setBusyId(entry.id);
+      try {
+        await fetch(`/api/shortlist?id=${encodeURIComponent(entry.id)}`, {
+          method: "DELETE",
+        });
+        pushUndo({ kind: "delete-one", entry });
+        await refresh();
+        // If the removed entry was open in the drawer, close it.
+        setPreview((prev) =>
+          prev.kind !== "idle" && prev.entry.id === entry.id
+            ? { kind: "idle" }
+            : prev
+        );
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [refresh, pushUndo]
+  );
 
   const handlePreview = useCallback(async (entry: ShortlistEntry) => {
-    setPreview({ kind: 'loading', entry });
+    setPreview({ kind: "loading", entry });
     try {
       const qs = new URLSearchParams({ url: entry.candidateStoreUrl });
       const r = await fetch(`/api/preview?${qs}`);
       const body = await r.json();
-      if (!r.ok) throw new Error(body?.error ?? `HTTP ${r.status}`);
-      setPreview({ kind: 'ready', entry, preview: body.preview as PreviewPayload });
+      if (!r.ok) {
+        throw new Error(body?.error ?? `HTTP ${r.status}`);
+      }
+      setPreview({
+        kind: "ready",
+        entry,
+        preview: body.preview as PreviewPayload,
+      });
     } catch (e) {
       setPreview({
-        kind: 'error',
+        kind: "error",
         entry,
-        message: e instanceof Error ? e.message : tShortlist('preview_failed'),
+        message: e instanceof Error ? e.message : tShortlist("preview_failed"),
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, []);
 
-  const closePreview = useCallback(() => setPreview({ kind: 'idle' }), []);
+  const closePreview = useCallback(() => setPreview({ kind: "idle" }), []);
 
   /**
    * Cache-aware preview loader used by the SocialShareModal. Returns the
@@ -580,21 +678,30 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
    * on any error so the modal can render a "data pending" placeholder
    * without hanging on a never-resolving promise.
    */
-  const loadPreviewForShare = useCallback(async (entry: ShortlistEntry) => {
-    const cached = previewCache[entry.id];
-    if (cached) return cached;
-    try {
-      const qs = new URLSearchParams({ url: entry.candidateStoreUrl });
-      const r = await fetch(`/api/preview?${qs}`);
-      if (!r.ok) return null;
-      const body = await r.json() as { preview?: PreviewPayload };
-      if (!body.preview) return null;
-      setPreviewCache(prev => ({ ...prev, [entry.id]: body.preview! }));
-      return body.preview;
-    } catch {
-      return null;
-    }
-  }, [previewCache]);
+  const loadPreviewForShare = useCallback(
+    async (entry: ShortlistEntry) => {
+      const cached = previewCache[entry.id];
+      if (cached) {
+        return cached;
+      }
+      try {
+        const qs = new URLSearchParams({ url: entry.candidateStoreUrl });
+        const r = await fetch(`/api/preview?${qs}`);
+        if (!r.ok) {
+          return null;
+        }
+        const body = (await r.json()) as { preview?: PreviewPayload };
+        if (!body.preview) {
+          return null;
+        }
+        setPreviewCache((prev) => ({ ...prev, [entry.id]: body.preview! }));
+        return body.preview;
+      } catch {
+        return null;
+      }
+    },
+    [previewCache]
+  );
 
   // ── Detailed-view prefetch ──
   // Runs in the background whenever detailedView is on. Picks up any
@@ -606,30 +713,42 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   // best-effort warm-up — handlePrint will do a just-in-time fetch for
   // any entry the background pass missed.
   useEffect(() => {
-    if (!detailedView) return;
+    if (!detailedView) {
+      return;
+    }
     const todo: ShortlistEntry[] = [];
     for (const group of groups) {
       for (const entry of group.entries) {
-        if (detailedPrefetchedRef.current.has(entry.id)) continue;
+        if (detailedPrefetchedRef.current.has(entry.id)) {
+          continue;
+        }
         detailedPrefetchedRef.current.add(entry.id);
         todo.push(entry);
       }
     }
-    if (todo.length === 0) return;
+    if (todo.length === 0) {
+      return;
+    }
 
     let cancelled = false;
     const ctrl = new AbortController();
     const queue = [...todo];
 
     async function fetchOne(entry: ShortlistEntry) {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       try {
         const qs = new URLSearchParams({ url: entry.candidateStoreUrl });
         const r = await fetch(`/api/preview?${qs}`, { signal: ctrl.signal });
-        if (!r.ok) return;
-        const body = await r.json() as { preview?: PreviewPayload };
-        if (cancelled || !body.preview) return;
-        setPreviewCache(prev => ({ ...prev, [entry.id]: body.preview! }));
+        if (!r.ok) {
+          return;
+        }
+        const body = (await r.json()) as { preview?: PreviewPayload };
+        if (cancelled || !body.preview) {
+          return;
+        }
+        setPreviewCache((prev) => ({ ...prev, [entry.id]: body.preview! }));
       } catch {
         /* per-row errors silently drop — handlePrint retries if needed */
       }
@@ -638,13 +757,17 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
     async function worker() {
       while (!cancelled) {
         const next = queue.shift();
-        if (!next) return;
+        if (!next) {
+          return;
+        }
         await fetchOne(next);
       }
     }
 
     const workers = Array.from({ length: Math.min(2, todo.length) }, worker);
-    Promise.all(workers).catch(() => { /* per-row handled */ });
+    Promise.all(workers).catch(() => {
+      /* per-row handled */
+    });
 
     return () => {
       cancelled = true;
@@ -662,8 +785,8 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
       window.print();
       return;
     }
-    const allEntries = groups.flatMap(g => g.entries);
-    const missing = allEntries.filter(e => !(e.id in previewCache));
+    const allEntries = groups.flatMap((g) => g.entries);
+    const missing = allEntries.filter((e) => !(e.id in previewCache));
     if (missing.length === 0) {
       window.print();
       return;
@@ -671,23 +794,29 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
     setPreparingPrint(true);
     const fetched: Record<string, PreviewPayload> = {};
     try {
-      await Promise.all(missing.map(async entry => {
-        try {
-          const qs = new URLSearchParams({ url: entry.candidateStoreUrl });
-          const r = await fetch(`/api/preview?${qs}`);
-          if (!r.ok) return;
-          const body = await r.json() as { preview?: PreviewPayload };
-          if (body.preview) fetched[entry.id] = body.preview;
-        } catch {
-          /* best-effort — entry will render a "no labels" placeholder */
-        }
-      }));
+      await Promise.all(
+        missing.map(async (entry) => {
+          try {
+            const qs = new URLSearchParams({ url: entry.candidateStoreUrl });
+            const r = await fetch(`/api/preview?${qs}`);
+            if (!r.ok) {
+              return;
+            }
+            const body = (await r.json()) as { preview?: PreviewPayload };
+            if (body.preview) {
+              fetched[entry.id] = body.preview;
+            }
+          } catch {
+            /* best-effort — entry will render a "no labels" placeholder */
+          }
+        })
+      );
     } finally {
       // flushSync so the new cache entries are committed to the DOM before
       // we trigger window.print(). Without it, print might fire on a DOM
       // that's still missing the rows we just fetched.
       flushSync(() => {
-        setPreviewCache(prev => ({ ...prev, ...fetched }));
+        setPreviewCache((prev) => ({ ...prev, ...fetched }));
         setPreparingPrint(false);
       });
       window.print();
@@ -706,12 +835,14 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
       // Snapshot the current list *before* hitting the server so Cmd+Z can
       // restore every row. We flatten across groups — the POST path re-hangs
       // each entry off its sourceAppId independently anyway.
-      const snapshot = groups.flatMap(g => g.entries);
-      await fetch('/api/shortlist?all=1', { method: 'DELETE' });
-      if (snapshot.length > 0) pushUndo({ kind: 'delete-all', entries: snapshot });
+      const snapshot = groups.flatMap((g) => g.entries);
+      await fetch("/api/shortlist?all=1", { method: "DELETE" });
+      if (snapshot.length > 0) {
+        pushUndo({ kind: "delete-all", entries: snapshot });
+      }
       await refresh();
       // Close any drawer that was showing a now-deleted entry.
-      setPreview({ kind: 'idle' });
+      setPreview({ kind: "idle" });
     } finally {
       setResetting(false);
       setConfirmingReset(false);
@@ -724,49 +855,56 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   // duplicate rows — the server absorbs the redundant add. Errors are logged
   // and silently skipped; the toast still fires with whatever did succeed.
   const handleUndo = useCallback(async () => {
-    const target = undoStack[undoStack.length - 1];
+    const target = undoStack.at(-1);
     if (!target) {
-      showUndoToast(tShortlist('undo_nothing'));
+      showUndoToast(tShortlist("undo_nothing"));
       return;
     }
     // Pop immediately so rapid Cmd+Z taps march through the stack rather than
     // replaying the same op twice. Pure slice — no reducer funny business.
-    setUndoStack(prev => prev.slice(0, -1));
+    setUndoStack((prev) => prev.slice(0, -1));
 
-    const toReadd = target.kind === 'delete-one' ? [target.entry] : target.entries;
+    const toReadd =
+      target.kind === "delete-one" ? [target.entry] : target.entries;
     let restored = 0;
     for (const entry of toReadd) {
       try {
-        const r = await fetch('/api/shortlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const r = await fetch("/api/shortlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sourceAppId:         entry.sourceAppId,
-            candidateAppleId:    entry.candidateAppleId,
-            candidateName:       entry.candidateName,
-            candidateDeveloper:  entry.candidateDeveloper || '',
-            candidateIconUrl:    entry.candidateIconUrl || '',
-            candidateStoreUrl:   entry.candidateStoreUrl,
-            candidateBundleId:   entry.candidateBundleId || '',
-            note:                entry.note || undefined,
+            sourceAppId: entry.sourceAppId,
+            candidateAppleId: entry.candidateAppleId,
+            candidateName: entry.candidateName,
+            candidateDeveloper: entry.candidateDeveloper || "",
+            candidateIconUrl: entry.candidateIconUrl || "",
+            candidateStoreUrl: entry.candidateStoreUrl,
+            candidateBundleId: entry.candidateBundleId || "",
+            note: entry.note || undefined,
           }),
         });
-        if (r.ok) restored += 1;
+        if (r.ok) {
+          restored += 1;
+        }
       } catch {
         /* non-fatal — move on to the next entry */
       }
     }
     await refresh();
-    if (target.kind === 'delete-one') {
-      showUndoToast(restored > 0
-        ? `Restored “${target.entry.candidateName}”`
-        : tShortlist('undo_restore_failed_one'));
+    if (target.kind === "delete-one") {
+      showUndoToast(
+        restored > 0
+          ? `Restored “${target.entry.candidateName}”`
+          : tShortlist("undo_restore_failed_one")
+      );
     } else {
-      showUndoToast(restored > 0
-        ? `Restored ${restored} shortlisted app${restored === 1 ? '' : 's'}`
-        : tShortlist('undo_restore_failed_all'));
+      showUndoToast(
+        restored > 0
+          ? `Restored ${restored} shortlisted app${restored === 1 ? "" : "s"}`
+          : tShortlist("undo_restore_failed_all")
+      );
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, [refresh, showUndoToast, undoStack]);
 
   // Listen for Cmd/Ctrl+Z at the window level. KeyboardShortcuts.tsx
@@ -775,61 +913,76 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
   // still fire a toast — that's nicer than the action doing nothing with
   // no signal.
   useEffect(() => {
-    const handler = () => { void handleUndo(); };
-    window.addEventListener('app:undo', handler);
-    return () => window.removeEventListener('app:undo', handler);
+    const handler = () => {
+      void handleUndo();
+    };
+    window.addEventListener("app:undo", handler);
+    return () => window.removeEventListener("app:undo", handler);
   }, [handleUndo]);
 
   return (
     <div className="page-container shortlist-page">
       <div className="page-header shortlist-toolbar">
         <div>
-          <h1 className="page-title">{tShortlist('page_title')}</h1>
+          <h1 className="page-title">{tShortlist("page_title")}</h1>
           <p className="page-subtitle">
             {totalCount === 0
-              ? tShortlist('subtitle_empty')
-              : tShortlist('subtitle_with_counts', { count: totalCount, appsCount: groups.length })}
+              ? tShortlist("subtitle_empty")
+              : tShortlist("subtitle_with_counts", {
+                  count: totalCount,
+                  appsCount: groups.length,
+                })}
           </p>
         </div>
         <div className="shortlist-toolbar-actions">
-          {f.actionsExport && <a
-            href="/api/shortlist/export?format=md"
-            className="btn btn-secondary"
-            download
-          >
-            {tShortlist('download_md')}
-          </a>}
+          {f.actionsExport && (
+            <a
+              className="btn btn-secondary"
+              download
+              href="/api/shortlist/export?format=md"
+            >
+              {tShortlist("download_md")}
+            </a>
+          )}
           {/* Detailed-view toggle. Styled as a pill-y checkbox label that
               sits immediately left of the Print button so the two controls
               read as a group ("print this, with detail"). The label is
               interactive — clicking anywhere on it toggles the checkbox —
               and carries a title so hover users see what "detailed" means
               without us needing an inline helper paragraph. */}
-          {f.detailedView && <label
-            className={`shortlist-detailed-toggle${detailedView ? ' is-on' : ''}`}
-            title={tShortlist('detailed_toggle_title')}
-          >
-            <input
-              type="checkbox"
-              checked={detailedView}
-              onChange={e => setDetailedView(e.target.checked)}
-              disabled={totalCount === 0}
-            />
-            <span>{tShortlist('detailed_label')}</span>
-          </label>}
-          {f.actionsPrint && <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => { void handlePrint(); }}
-            disabled={totalCount === 0 || preparingPrint}
-          >
-            {preparingPrint ? (
-              <><span className="spinner" /> {tShortlist('preparing')}</>
-            ) : (
-              '🖨 Print / PDF'
-            )}
-          </button>}
-          <Link href="/dashboard/compare" className="btn btn-primary">
+          {f.detailedView && (
+            <label
+              className={`shortlist-detailed-toggle${detailedView ? "is-on" : ""}`}
+              title={tShortlist("detailed_toggle_title")}
+            >
+              <input
+                checked={detailedView}
+                disabled={totalCount === 0}
+                onChange={(e) => setDetailedView(e.target.checked)}
+                type="checkbox"
+              />
+              <span>{tShortlist("detailed_label")}</span>
+            </label>
+          )}
+          {f.actionsPrint && (
+            <button
+              className="btn btn-secondary"
+              disabled={totalCount === 0 || preparingPrint}
+              onClick={() => {
+                void handlePrint();
+              }}
+              type="button"
+            >
+              {preparingPrint ? (
+                <>
+                  <span className="spinner" /> {tShortlist("preparing")}
+                </>
+              ) : (
+                "🖨 Print / PDF"
+              )}
+            </button>
+          )}
+          <Link className="btn btn-primary" href="/dashboard/compare">
             + Add more
           </Link>
         </div>
@@ -837,38 +990,41 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
 
       {totalCount === 0 ? (
         <div className="empty-state" style={{ padding: 32 }}>
-          <div style={{ fontSize: 15, color: 'var(--text)', marginBottom: 6 }}>
-            {tShortlist('empty_lead')}
+          <div style={{ fontSize: 15, color: "var(--text)", marginBottom: 6 }}>
+            {tShortlist("empty_lead")}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            {tShortlist.rich('empty_body', {
-              compare: chunks => (
-                <Link href="/dashboard/compare" className="definitions-inline-link">
+          <div style={{ fontSize: 13, color: "var(--text-2)" }}>
+            {tShortlist.rich("empty_body", {
+              compare: (chunks) => (
+                <Link
+                  className="definitions-inline-link"
+                  href="/dashboard/compare"
+                >
                   {chunks}
                 </Link>
               ),
-              shortlist: chunks => <strong>{chunks}</strong>,
+              shortlist: (chunks) => <strong>{chunks}</strong>,
             })}
           </div>
         </div>
       ) : (
         <div className="shortlist-groups">
-          {groups.map(group => (
+          {groups.map((group) => (
             <ShortlistGroupCard
-              key={group.sourceApp.id}
-              group={group}
               busyId={busyId}
-              onRemove={handleRemove}
-              onPreview={handlePreview}
-              onShare={(g, e) => setShareTarget({ group: g, entry: e })}
-              liveBadges={liveBadges}
               detailedView={detailedView && f.detailedView}
+              group={group}
+              key={group.sourceApp.id}
+              liveBadges={liveBadges}
+              onPreview={handlePreview}
+              onRemove={handleRemove}
+              onShare={(g, e) => setShareTarget({ group: g, entry: e })}
               previewCache={previewCache}
-              showRemove={f.actionsRemove}
-              showPreview={f.actionsPreview}
-              showShare={f.actionsShare}
-              showProfileMismatchPill={f.profileMismatchPill}
               showInstalledGrouping={f.installedGrouping}
+              showPreview={f.actionsPreview}
+              showProfileMismatchPill={f.profileMismatchPill}
+              showRemove={f.actionsRemove}
+              showShare={f.actionsShare}
             />
           ))}
         </div>
@@ -881,50 +1037,68 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
           `shortlist-reset-footer` so the print stylesheet can hide it
           alongside the rest of the chrome. */}
       {f.actionsReset && totalCount > 0 && (
-        <div className="shortlist-reset-footer" role="region" aria-label={tShortlist('reset_aria')}>
-          {!confirmingReset ? (
-            <button
-              type="button"
-              className="btn btn-ghost shortlist-reset-btn"
-              onClick={() => setConfirmingReset(true)}
-              title={tShortlist('reset_title')}
+        <div
+          aria-label={tShortlist("reset_aria")}
+          className="shortlist-reset-footer"
+          role="region"
+        >
+          {confirmingReset ? (
+            <div
+              aria-live="polite"
+              className="shortlist-reset-confirm"
+              role="alertdialog"
             >
-              <span aria-hidden="true">🗑</span>
-              <span>{tShortlist('reset_label')}</span>
-            </button>
-          ) : (
-            <div className="shortlist-reset-confirm" role="alertdialog" aria-live="polite">
               <span className="shortlist-reset-confirm-msg">
-                {tShortlist.rich('reset_confirm_msg', {
+                {tShortlist.rich("reset_confirm_msg", {
                   count: totalCount,
-                  strong: chunks => <strong>{chunks}</strong>,
+                  strong: (chunks) => <strong>{chunks}</strong>,
                 })}
               </span>
               <div className="shortlist-reset-confirm-actions">
                 <button
-                  type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => setConfirmingReset(false)}
                   disabled={resetting}
+                  onClick={() => setConfirmingReset(false)}
+                  type="button"
                 >
-                  {tShortlist('reset_cancel')}
+                  {tShortlist("reset_cancel")}
                 </button>
                 <button
-                  type="button"
                   className="btn btn-danger btn-sm"
-                  onClick={() => void handleReset()}
                   disabled={resetting}
+                  onClick={() => void handleReset()}
+                  type="button"
                 >
-                  {resetting ? <><span className="spinner" /> {tShortlist('clearing')}</> : tShortlist('clear_confirm')}
+                  {resetting ? (
+                    <>
+                      <span className="spinner" /> {tShortlist("clearing")}
+                    </>
+                  ) : (
+                    tShortlist("clear_confirm")
+                  )}
                 </button>
               </div>
             </div>
+          ) : (
+            <button
+              className="btn btn-ghost shortlist-reset-btn"
+              onClick={() => setConfirmingReset(true)}
+              title={tShortlist("reset_title")}
+              type="button"
+            >
+              <span aria-hidden="true">🗑</span>
+              <span>{tShortlist("reset_label")}</span>
+            </button>
           )}
         </div>
       )}
 
-      {preview.kind !== 'idle' && (
-        <PreviewDrawer state={preview} onClose={closePreview} profile={profile} />
+      {preview.kind !== "idle" && (
+        <PreviewDrawer
+          onClose={closePreview}
+          profile={profile}
+          state={preview}
+        />
       )}
 
       {/* Social share modal — renders a 1200×630 OG-style PNG comparing the
@@ -936,10 +1110,10 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
           the user has already scrolled through detailed rows. */}
       {shareTarget && (
         <SocialShareModal
-          group={shareTarget.group}
           entry={shareTarget.entry}
-          onClose={() => setShareTarget(null)}
+          group={shareTarget.group}
           loadPreview={loadPreviewForShare}
+          onClose={() => setShareTarget(null)}
         />
       )}
 
@@ -949,7 +1123,7 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
           announced without stealing focus; the polite channel is correct
           because the action already completed. Hidden in print. */}
       {f.actionsUndo && undoToast && (
-        <div className="shortlist-undo-toast" role="status" aria-live="polite">
+        <div aria-live="polite" className="shortlist-undo-toast" role="status">
           {undoToast}
         </div>
       )}
@@ -958,8 +1132,19 @@ export default function ShortlistView({ initialGroups, initialProfile, flags }: 
 }
 
 function ShortlistGroupCard({
-  group, busyId, onRemove, onPreview, onShare, liveBadges, detailedView, previewCache,
-  showRemove, showPreview, showShare, showProfileMismatchPill, showInstalledGrouping,
+  group,
+  busyId,
+  onRemove,
+  onPreview,
+  onShare,
+  liveBadges,
+  detailedView,
+  previewCache,
+  showRemove,
+  showPreview,
+  showShare,
+  showProfileMismatchPill,
+  showInstalledGrouping,
 }: {
   group: ShortlistGroup;
   busyId: string | null;
@@ -982,7 +1167,7 @@ function ShortlistGroupCard({
   showProfileMismatchPill: boolean;
   showInstalledGrouping: boolean;
 }) {
-  const tShortlist = useTranslations('shortlist');
+  const tShortlist = useTranslations("shortlist");
   // Split the group's entries into "Installed" (tracked candidates — apps the
   // user already has in their library) and "Not installed" (App Store
   // previews). Keeping them as two sections reads more naturally than one
@@ -993,8 +1178,11 @@ function ShortlistGroupCard({
   const installed: ShortlistEntry[] = [];
   const notInstalled: ShortlistEntry[] = [];
   for (const entry of group.entries) {
-    if (entry.candidateIsTracked) installed.push(entry);
-    else notInstalled.push(entry);
+    if (entry.candidateIsTracked) {
+      installed.push(entry);
+    } else {
+      notInstalled.push(entry);
+    }
   }
   // Only split visually when both buckets have rows — a group that only
   // contains tracked (or only untracked) entries stays as a single list, so
@@ -1002,23 +1190,24 @@ function ShortlistGroupCard({
   // Wave I: collapsing the installed/notInstalled split into a single list
   // is also what `flag.shortlist.installed_grouping = off` delivers — turn
   // it off for users who find the two-section layout noisy on small lists.
-  const showSections = showInstalledGrouping && installed.length > 0 && notInstalled.length > 0;
+  const showSections =
+    showInstalledGrouping && installed.length > 0 && notInstalled.length > 0;
 
   const renderRow = (entry: ShortlistEntry) => (
     <ShortlistEntryRow
-      key={entry.id}
-      entry={entry}
       busy={busyId === entry.id}
-      onRemove={onRemove}
-      onPreview={onPreview}
-      onShare={() => onShare(group, entry)}
-      liveBadge={liveBadges[entry.id]}
       detailedView={detailedView}
+      entry={entry}
+      key={entry.id}
+      liveBadge={liveBadges[entry.id]}
+      onPreview={onPreview}
+      onRemove={onRemove}
+      onShare={() => onShare(group, entry)}
       preview={previewCache[entry.id]}
-      showRemove={showRemove}
       showPreview={showPreview}
-      showShare={showShare}
       showProfileMismatchPill={showProfileMismatchPill}
+      showRemove={showRemove}
+      showShare={showShare}
     />
   );
 
@@ -1027,29 +1216,46 @@ function ShortlistGroupCard({
       <div className="shortlist-group-header">
         {group.sourceApp.iconUrl ? (
           <Image
-            src={group.sourceApp.iconUrl}
             alt=""
-            width={32}
             height={32}
-            style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }}
+            src={group.sourceApp.iconUrl}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 7,
+              objectFit: "cover",
+              flexShrink: 0,
+            }}
             unoptimized
+            width={32}
           />
         ) : (
-          <div style={{ width: 32, height: 32, borderRadius: 7, background: 'var(--bg-3)', flexShrink: 0 }} />
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 7,
+              background: "var(--bg-3)",
+              flexShrink: 0,
+            }}
+          />
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="shortlist-group-title">
-            {tShortlist.rich('group_title', {
+            {tShortlist.rich("group_title", {
               name: group.sourceApp.name,
-              link: chunks => (
-                <Link href={`/apps/${group.sourceApp.id}`} className="definitions-inline-link">
+              link: (chunks) => (
+                <Link
+                  className="definitions-inline-link"
+                  href={`/apps/${group.sourceApp.id}`}
+                >
                   {chunks}
                 </Link>
               ),
             })}
           </div>
           <div className="shortlist-group-subtitle">
-            {group.sourceApp.developer || '—'} · {group.entries.length} saved
+            {group.sourceApp.developer || "—"} · {group.entries.length} saved
             {/*
               Source app's own price + IAP next to the saved-count.
               Lets users do an at-a-glance side-by-side: "I currently
@@ -1064,10 +1270,12 @@ function ShortlistGroupCard({
                 priceCurrency: group.sourceApp.priceCurrency,
                 hasIap: group.sourceApp.hasIap,
               });
-              if (!line) return null;
+              if (!line) {
+                return null;
+              }
               return (
                 <>
-                  {' · '}
+                  {" · "}
                   <span
                     className="shortlist-source-price"
                     title={priceTooltip({
@@ -1106,13 +1314,16 @@ function ShortlistGroupCard({
       {detailedView && (
         <div className="shortlist-source-snapshot">
           <div className="shortlist-source-snapshot-label">
-            {tShortlist('source_snapshot_label', { name: group.sourceApp.name })}
+            {tShortlist("source_snapshot_label", {
+              name: group.sourceApp.name,
+            })}
           </div>
-          {group.sourceApp.privacyTypes && group.sourceApp.privacyTypes.length > 0 ? (
+          {group.sourceApp.privacyTypes &&
+          group.sourceApp.privacyTypes.length > 0 ? (
             <PrivacyLabelsStack privacyTypes={group.sourceApp.privacyTypes} />
           ) : (
             <div className="shortlist-source-snapshot-empty">
-              {tShortlist('source_snapshot_empty')}
+              {tShortlist("source_snapshot_empty")}
             </div>
           )}
         </div>
@@ -1121,17 +1332,19 @@ function ShortlistGroupCard({
         <>
           <div className="shortlist-entries-section">
             <div className="shortlist-entries-section-heading">
-              <span>{tShortlist('installed')}</span>
-              <span className="shortlist-entries-section-count">{installed.length}</span>
+              <span>{tShortlist("installed")}</span>
+              <span className="shortlist-entries-section-count">
+                {installed.length}
+              </span>
             </div>
-            <div className="shortlist-entries">
-              {installed.map(renderRow)}
-            </div>
+            <div className="shortlist-entries">{installed.map(renderRow)}</div>
           </div>
           <div className="shortlist-entries-section">
             <div className="shortlist-entries-section-heading">
-              <span>{tShortlist('not_installed')}</span>
-              <span className="shortlist-entries-section-count">{notInstalled.length}</span>
+              <span>{tShortlist("not_installed")}</span>
+              <span className="shortlist-entries-section-count">
+                {notInstalled.length}
+              </span>
             </div>
             <div className="shortlist-entries">
               {notInstalled.map(renderRow)}
@@ -1139,17 +1352,25 @@ function ShortlistGroupCard({
           </div>
         </>
       ) : (
-        <div className="shortlist-entries">
-          {group.entries.map(renderRow)}
-        </div>
+        <div className="shortlist-entries">{group.entries.map(renderRow)}</div>
       )}
     </section>
   );
 }
 
 function ShortlistEntryRow({
-  entry, busy, onRemove, onPreview, onShare, liveBadge, detailedView, preview,
-  showRemove, showPreview, showShare, showProfileMismatchPill,
+  entry,
+  busy,
+  onRemove,
+  onPreview,
+  onShare,
+  liveBadge,
+  detailedView,
+  preview,
+  showRemove,
+  showPreview,
+  showShare,
+  showProfileMismatchPill,
 }: {
   entry: ShortlistEntry;
   busy: boolean;
@@ -1188,69 +1409,89 @@ function ShortlistEntryRow({
    */
   preview: PreviewPayload | undefined;
 }) {
-  const tShortlist = useTranslations('shortlist');
-  const tBadge = useTranslations('profile_badge');
+  const tShortlist = useTranslations("shortlist");
+  const tBadge = useTranslations("profile_badge");
   // Prefer the server-computed badge when present (tracked candidates).
   // Otherwise fall back to the client-side prefetch result. Tracked rows
   // never set `liveBadge`, so there's no conflict to worry about.
   const resolvedBadge: AppProfileBadge | null =
     entry.profileBadge ??
-    (liveBadge && liveBadge.kind === 'done' ? liveBadge.badge : null);
+    (liveBadge && liveBadge.kind === "done" ? liveBadge.badge : null);
 
   return (
     <>
-    <div
-      className={`shortlist-entry${detailedView ? ' has-detailed' : ''}`}
-    >
-      {/* Entry-row icon: 40px (mid step in the 32 / 40 / 48 ladder).
+      <div className={`shortlist-entry${detailedView ? "has-detailed" : ""}`}>
+        {/* Entry-row icon: 40px (mid step in the 32 / 40 / 48 ladder).
           Group headers use 32 (small/inline-with-text), drawer previews
           use 48 (hero-sized). Stepping by 8 keeps the visual hierarchy
           obvious without micro-decisions per surface. */}
-      {entry.candidateIconUrl ? (
-        <Image
-          src={entry.candidateIconUrl}
-          alt=""
-          width={40}
-          height={40}
-          style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
-          unoptimized
-        />
-      ) : (
-        <div style={{ width: 40, height: 40, borderRadius: 8, background: 'var(--bg-3)', flexShrink: 0 }} />
-      )}
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className="shortlist-entry-name">
-          {entry.candidateName}
-          {entry.candidateIsTracked && (
-            <span className="shortlist-chip shortlist-chip-tracked">{tShortlist('tracked_chip')}</span>
-          )}
-          {/* "Saved for" badges — one per compare mode the user was in when
+        {entry.candidateIconUrl ? (
+          <Image
+            alt=""
+            height={40}
+            src={entry.candidateIconUrl}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 8,
+              objectFit: "cover",
+              flexShrink: 0,
+            }}
+            unoptimized
+            width={40}
+          />
+        ) : (
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 8,
+              background: "var(--bg-3)",
+              flexShrink: 0,
+            }}
+          />
+        )}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="shortlist-entry-name">
+            {entry.candidateName}
+            {entry.candidateIsTracked && (
+              <span className="shortlist-chip shortlist-chip-tracked">
+                {tShortlist("tracked_chip")}
+              </span>
+            )}
+            {/* "Saved for" badges — one per compare mode the user was in when
               they shortlisted this candidate. Privacy badges reuse the same
               severity-neutral slate palette the stats page uses for the
               privacy series; accessibility badges use the blue the a11y
               filter/chart uses. A candidate saved from both tabs renders
               both pills so the reason for shortlisting stays legible.
               Legacy rows (pre-migration) fall through as `['privacy']`. */}
-          {entry.modes?.map(mode => (
-            <span
-              key={mode}
-              className={`shortlist-chip shortlist-chip-mode shortlist-chip-mode-${mode}`}
-              title={mode === 'accessibility'
-                ? tShortlist('saved_a11y_compare')
-                : tShortlist('saved_privacy_compare')}
-            >
+            {entry.modes?.map((mode) => (
               <span
-                aria-hidden="true"
-                style={{ display: 'inline-flex', alignItems: 'center' }}
+                className={`shortlist-chip shortlist-chip-mode shortlist-chip-mode-${mode}`}
+                key={mode}
+                title={
+                  mode === "accessibility"
+                    ? tShortlist("saved_a11y_compare")
+                    : tShortlist("saved_privacy_compare")
+                }
               >
-                {mode === 'accessibility'
-                  ? <AccessibilityFigureGlyph size={14} />
-                  : '🔒'}
+                <span
+                  aria-hidden="true"
+                  style={{ display: "inline-flex", alignItems: "center" }}
+                >
+                  {mode === "accessibility" ? (
+                    <AccessibilityFigureGlyph size={14} />
+                  ) : (
+                    "🔒"
+                  )}
+                </span>
+                {mode === "accessibility"
+                  ? tShortlist("chip_a11y")
+                  : tShortlist("chip_privacy")}
               </span>
-              {mode === 'accessibility' ? tShortlist('chip_a11y') : tShortlist('chip_privacy')}
-            </span>
-          ))}
-          {/* Profile-match pill — reuses the same tone palette as the Apps
+            ))}
+            {/* Profile-match pill — reuses the same tone palette as the Apps
               grid badge so the language stays consistent. Tracked
               candidates get one from the server (entry.profileBadge).
               Untracked candidates get one from the client-side prefetch
@@ -1258,28 +1499,40 @@ function ShortlistEntryRow({
               opening the preview drawer. While the prefetch is in flight
               we render a muted "Checking…" placeholder so the row doesn't
               flicker from empty → badge. */}
-          {showProfileMismatchPill && resolvedBadge && (() => {
-            const localisedDescription = localiseBadgeDescription(tBadge, resolvedBadge);
-            const localisedLabel = localiseBadgeLabel(tBadge, resolvedBadge);
-            return (
-              <span
-                className={`app-card-profile-badge match-${resolvedBadge.tone}`}
-                title={localisedDescription}
-                aria-label={tShortlist('privacy_profile_aria', { description: localisedDescription })}
-              >
-                {localisedLabel}
-              </span>
-            );
-          })()}
-          {showProfileMismatchPill && !resolvedBadge && liveBadge?.kind === 'loading' && (
-            <span
-              className="shortlist-chip shortlist-chip-checking"
-              aria-label={tShortlist('checking_profile_match_aria')}
-            >
-              Checking…
-            </span>
-          )}
-          {/*
+            {showProfileMismatchPill &&
+              resolvedBadge &&
+              (() => {
+                const localisedDescription = localiseBadgeDescription(
+                  tBadge,
+                  resolvedBadge
+                );
+                const localisedLabel = localiseBadgeLabel(
+                  tBadge,
+                  resolvedBadge
+                );
+                return (
+                  <span
+                    aria-label={tShortlist("privacy_profile_aria", {
+                      description: localisedDescription,
+                    })}
+                    className={`app-card-profile-badge match-${resolvedBadge.tone}`}
+                    title={localisedDescription}
+                  >
+                    {localisedLabel}
+                  </span>
+                );
+              })()}
+            {showProfileMismatchPill &&
+              !resolvedBadge &&
+              liveBadge?.kind === "loading" && (
+                <span
+                  aria-label={tShortlist("checking_profile_match_aria")}
+                  className="shortlist-chip shortlist-chip-checking"
+                >
+                  Checking…
+                </span>
+              )}
+            {/*
             Phase 2 price + IAP chip. Only renders for tracked
             candidates (the JOIN populates these fields when the
             candidate has an apps row). For untracked candidates the
@@ -1289,77 +1542,87 @@ function ShortlistEntryRow({
             anyway. The tooltip explains what "IAP" means in plain
             English so non-technical recipients aren't left guessing.
           */}
-          {(() => {
-            const line = formatPriceLine({
-              priceFormatted: entry.candidatePriceFormatted,
-              priceCurrency: entry.candidatePriceCurrency,
-              hasIap: entry.candidateHasIap,
-            });
-            if (!line) return null;
-            return (
-              <span
-                className="shortlist-chip shortlist-chip-price"
-                title={priceTooltip({
-                  priceFormatted: entry.candidatePriceFormatted,
-                  priceCurrency: entry.candidatePriceCurrency,
-                  hasIap: entry.candidateHasIap,
-                })}
-              >
-                <span aria-hidden="true">💲</span>
-                {line}
+            {(() => {
+              const line = formatPriceLine({
+                priceFormatted: entry.candidatePriceFormatted,
+                priceCurrency: entry.candidatePriceCurrency,
+                hasIap: entry.candidateHasIap,
+              });
+              if (!line) {
+                return null;
+              }
+              return (
+                <span
+                  className="shortlist-chip shortlist-chip-price"
+                  title={priceTooltip({
+                    priceFormatted: entry.candidatePriceFormatted,
+                    priceCurrency: entry.candidatePriceCurrency,
+                    hasIap: entry.candidateHasIap,
+                  })}
+                >
+                  <span aria-hidden="true">💲</span>
+                  {line}
+                </span>
+              );
+            })()}
+          </div>
+          <div className="shortlist-entry-developer">
+            {entry.candidateDeveloper || "—"}
+          </div>
+        </div>
+        <div className="shortlist-entry-actions">
+          {showPreview && (
+            <button
+              aria-label={`Preview ${entry.candidateName}`}
+              className="shortlist-preview-pill"
+              onClick={() => onPreview(entry)}
+              title={`Open a quick privacy preview for ${entry.candidateName}`}
+              type="button"
+            >
+              <span aria-hidden="true" className="shortlist-preview-pill-icon">
+                👁
               </span>
-            );
-          })()}
-        </div>
-        <div className="shortlist-entry-developer">
-          {entry.candidateDeveloper || '—'}
-        </div>
-      </div>
-      <div className="shortlist-entry-actions">
-        {showPreview && <button
-          type="button"
-          className="shortlist-preview-pill"
-          onClick={() => onPreview(entry)}
-          title={`Open a quick privacy preview for ${entry.candidateName}`}
-          aria-label={`Preview ${entry.candidateName}`}
-        >
-          <span aria-hidden="true" className="shortlist-preview-pill-icon">👁</span>
-          <span>{tShortlist('preview_app')}</span>
-        </button>}
-        {/* Per-entry social share trigger. Each alternative row gets its
+              <span>{tShortlist("preview_app")}</span>
+            </button>
+          )}
+          {/* Per-entry social share trigger. Each alternative row gets its
             own button so a group with multiple shortlisted candidates
             produces a distinct head-to-head image per pair, rather than
             every row sharing a single top-alternative picker. Hidden in
             print via .shortlist-entry-actions display rules. */}
-        {showShare && <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          onClick={onShare}
-          title={`Generate a social share image comparing against ${entry.candidateName}`}
-          aria-label={`Share comparison with ${entry.candidateName}`}
-        >
-          ↗ Share
-        </button>}
-        <a
-          href={entry.candidateStoreUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-ghost btn-sm"
-        >
-          App Store ↗
-        </a>
-        {showRemove && <button
-          type="button"
-          className="btn btn-ghost btn-sm shortlist-remove-btn"
-          onClick={() => onRemove(entry)}
-          disabled={busy}
-          aria-label={`Remove ${entry.candidateName} from shortlist`}
-        >
-          {busy ? '…' : '✕'}
-        </button>}
+          {showShare && (
+            <button
+              aria-label={`Share comparison with ${entry.candidateName}`}
+              className="btn btn-ghost btn-sm"
+              onClick={onShare}
+              title={`Generate a social share image comparing against ${entry.candidateName}`}
+              type="button"
+            >
+              ↗ Share
+            </button>
+          )}
+          <a
+            className="btn btn-ghost btn-sm"
+            href={entry.candidateStoreUrl}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            App Store ↗
+          </a>
+          {showRemove && (
+            <button
+              aria-label={`Remove ${entry.candidateName} from shortlist`}
+              className="btn btn-ghost btn-sm shortlist-remove-btn"
+              disabled={busy}
+              onClick={() => onRemove(entry)}
+              type="button"
+            >
+              {busy ? "…" : "✕"}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-    {detailedView && <ShortlistEntryDetailed preview={preview} />}
+      {detailedView && <ShortlistEntryDetailed preview={preview} />}
     </>
   );
 }
@@ -1379,8 +1642,12 @@ function ShortlistEntryRow({
  *   - Otherwise → one row per severity tier, ordered by how Apple ranks
  *     them (tracking first, then linked, then not-linked).
  */
-function ShortlistEntryDetailed({ preview }: { preview: PreviewPayload | undefined }) {
-  const tShortlist = useTranslations('shortlist');
+function ShortlistEntryDetailed({
+  preview,
+}: {
+  preview: PreviewPayload | undefined;
+}) {
+  const tShortlist = useTranslations("shortlist");
   if (!preview) {
     return (
       <div className="shortlist-entry-detailed shortlist-entry-detailed--placeholder">
@@ -1392,8 +1659,8 @@ function ShortlistEntryDetailed({ preview }: { preview: PreviewPayload | undefin
     return (
       <div className="shortlist-entry-detailed shortlist-entry-detailed--empty">
         {preview.hasPrivacyDetails === 0
-          ? tShortlist('no_details_short')
-          : tShortlist('no_labels_short')}
+          ? tShortlist("no_details_short")
+          : tShortlist("no_labels_short")}
       </div>
     );
   }
@@ -1417,13 +1684,14 @@ function PrivacyLabelsStack({
 }) {
   return (
     <>
-      {privacyTypes.map(type => {
+      {privacyTypes.map((type) => {
         const sev = SEVERITY_CONFIG[type.identifier];
-        const sevColor = type.identifier === 'DATA_USED_TO_TRACK_YOU'
-          ? 'var(--red)'
-          : type.identifier === 'DATA_LINKED_TO_YOU'
-            ? 'var(--orange)'
-            : 'var(--yellow)';
+        const sevColor =
+          type.identifier === "DATA_USED_TO_TRACK_YOU"
+            ? "var(--red)"
+            : type.identifier === "DATA_LINKED_TO_YOU"
+              ? "var(--orange)"
+              : "var(--yellow)";
         return (
           <div className="shortlist-entry-detailed-row" key={type.identifier}>
             <span className="shortlist-entry-detailed-label">
@@ -1438,11 +1706,14 @@ function PrivacyLabelsStack({
               {type.categories.length === 0 ? (
                 <span className="shortlist-entry-detailed-empty-chip">—</span>
               ) : (
-                type.categories.map(cat => {
+                type.categories.map((cat) => {
                   const meta = CATEGORY_META[cat.identifier];
                   return (
-                    <span key={cat.identifier} className="shortlist-entry-detailed-chip">
-                      <span aria-hidden="true">{meta?.icon ?? '•'}</span>
+                    <span
+                      className="shortlist-entry-detailed-chip"
+                      key={cat.identifier}
+                    >
+                      <span aria-hidden="true">{meta?.icon ?? "•"}</span>
                       <span>{meta?.label ?? cat.title}</span>
                     </span>
                   );
@@ -1482,24 +1753,25 @@ function ShortlistMismatchBanner({
   appName: string;
   mismatch: ProfileMismatchResult;
 }) {
-  const tCategory = useTranslations('category');
-  const tTier = useTranslations('privacy_profile_tier_short');
-  const tMismatch = useTranslations('privacy_profile_mismatch_sentence');
-  const tBadge = useTranslations('profile_badge');
+  const tCategory = useTranslations("category");
+  const tTier = useTranslations("privacy_profile_tier_short");
+  const tMismatch = useTranslations("privacy_profile_mismatch_sentence");
+  const tBadge = useTranslations("profile_badge");
   const top = mismatch.mismatches[0];
   // Defensive: server only attaches profileMismatch when count > 0, so `top`
   // should never be nullish here — but guard anyway so a stale-data edge case
   // can't crash the whole page.
-  if (!top) return null;
+  if (!top) {
+    return null;
+  }
 
   const headline =
     describeWorstMismatchLocalised(
       mismatch,
       (key) => i18nCategoryLabel(tCategory, key),
       (key) => tTier(key),
-      (key, values) => tMismatch(key, values),
-    ) ??
-    tBadge('mismatches_description', { count: mismatch.count });
+      (key, values) => tMismatch(key, values)
+    ) ?? tBadge("mismatches_description", { count: mismatch.count });
   const tierCls = TIER_META[top.observed].severityCls;
 
   const remainder = mismatch.count - 1;
@@ -1508,19 +1780,19 @@ function ShortlistMismatchBanner({
   // hover users — mirrors the compare view's mismatch summary.
   const tooltip = [
     `${appName} vs your privacy profile:`,
-    ...mismatch.mismatches.map(m => {
+    ...mismatch.mismatches.map((m) => {
       const label = CATEGORY_META[m.category]?.label ?? m.category;
       return `• ${label}: ${TIER_META[m.observed].shortLabel} (you allow ${TIER_META[m.allowed].shortLabel})`;
     }),
-  ].join('\n');
+  ].join("\n");
 
   return (
     <div
       className={`shortlist-mismatch-banner ${tierCls}`}
-      title={tooltip}
       role="note"
+      title={tooltip}
     >
-      <span className="shortlist-mismatch-banner-icon" aria-hidden="true">
+      <span aria-hidden="true" className="shortlist-mismatch-banner-icon">
         {TIER_META[top.observed].icon}
       </span>
       <div className="shortlist-mismatch-banner-body">
@@ -1531,7 +1803,7 @@ function ShortlistMismatchBanner({
           {headline}
           {remainder > 0 && (
             <span className="shortlist-mismatch-banner-more">
-              {' · '}+{remainder} more
+              {" · "}+{remainder} more
             </span>
           )}
         </div>
@@ -1541,25 +1813,31 @@ function ShortlistMismatchBanner({
 }
 
 function PreviewDrawer({
-  state, onClose, profile,
+  state,
+  onClose,
+  profile,
 }: {
   state: PreviewState;
   onClose: () => void;
   profile: PrivacyProfile | null;
 }) {
-  const tShortlist = useTranslations('shortlist');
+  const tShortlist = useTranslations("shortlist");
   // Close on Escape — the drawer is modal-ish (overlays everything, is the
   // primary focus target), so Escape is the expected keyboard exit.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") {
+        onClose();
+      }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const entry = state.kind === 'idle' ? null : state.entry;
-  if (!entry) return null;
+  const entry = state.kind === "idle" ? null : state.entry;
+  if (!entry) {
+    return null;
+  }
 
   return (
     <div
@@ -1568,70 +1846,116 @@ function PreviewDrawer({
       role="presentation"
     >
       <aside
-        className="shortlist-drawer"
-        role="dialog"
-        aria-modal="true"
         aria-label={`Preview of ${entry.candidateName}`}
+        aria-modal="true"
+        className="shortlist-drawer"
         // Stop clicks bubbling to the backdrop (which would close).
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
       >
         <header className="shortlist-drawer-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
             {/* Drawer preview icon: 48px (the hero size in the 32 / 40 / 48
                 ladder — see ShortlistEntryRow above for the rationale). */}
             {entry.candidateIconUrl ? (
               <Image
-                src={entry.candidateIconUrl}
                 alt=""
-                width={48}
                 height={48}
-                style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}
+                src={entry.candidateIconUrl}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 10,
+                  objectFit: "cover",
+                  flexShrink: 0,
+                }}
                 unoptimized
+                width={48}
               />
             ) : (
-              <div style={{ width: 48, height: 48, borderRadius: 10, background: 'var(--bg-3)', flexShrink: 0 }} />
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 10,
+                  background: "var(--bg-3)",
+                  flexShrink: 0,
+                }}
+              />
             )}
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--text)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
                 {entry.candidateName}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {entry.candidateDeveloper || '—'}
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-2)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {entry.candidateDeveloper || "—"}
               </div>
             </div>
           </div>
           <button
-            type="button"
-            onClick={onClose}
+            aria-label={tShortlist("close_preview_aria")}
             className="btn btn-ghost btn-sm"
-            aria-label={tShortlist('close_preview_aria')}
+            onClick={onClose}
+            type="button"
           >
             ✕
           </button>
         </header>
 
         <div className="shortlist-drawer-body">
-          {state.kind === 'loading' && (
+          {state.kind === "loading" && (
             <div className="empty-state" style={{ padding: 24 }}>
               <span className="spinner-sm" /> Fetching live App Store data…
             </div>
           )}
-          {state.kind === 'error' && (
-            <div className="empty-state" style={{ padding: 24, color: 'var(--red)' }}>
+          {state.kind === "error" && (
+            <div
+              className="empty-state"
+              style={{ padding: 24, color: "var(--red)" }}
+            >
               Preview failed: {state.message}
             </div>
           )}
-          {state.kind === 'ready' && (
-            <PreviewBody preview={state.preview} entry={state.entry} profile={profile} />
+          {state.kind === "ready" && (
+            <PreviewBody
+              entry={state.entry}
+              preview={state.preview}
+              profile={profile}
+            />
           )}
         </div>
 
         <footer className="shortlist-drawer-footer">
           <a
-            href={entry.candidateStoreUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             className="btn btn-primary"
+            href={entry.candidateStoreUrl}
+            rel="noopener noreferrer"
+            target="_blank"
           >
             Open in App Store ↗
           </a>
@@ -1642,23 +1966,25 @@ function PreviewDrawer({
 }
 
 function PreviewBody({
-  preview, entry, profile,
+  preview,
+  entry,
+  profile,
 }: {
   preview: PreviewPayload;
   entry: ShortlistEntry;
   profile: PrivacyProfile | null;
 }) {
-  const tShortlist = useTranslations('shortlist');
-  const tBadge = useTranslations('profile_badge');
+  const tShortlist = useTranslations("shortlist");
+  const tBadge = useTranslations("profile_badge");
   const hasLabels = preview.privacyTypes.length > 0;
-  const policyUrl = preview.privacyPolicyUrl || '';
+  const policyUrl = preview.privacyPolicyUrl || "";
 
   // Rebuild the footprint from the live preview rather than trusting the
   // stashed candidate entry — the App Store labels may have changed since
   // the user shortlisted the app, and the drawer should reflect today's
   // verdict.
   const { matchBadge, matchResult } = useMemo(() => {
-    if (!profile || !hasLabels) {
+    if (!(profile && hasLabels)) {
       return { matchBadge: null as AppProfileBadge | null, matchResult: null };
     }
     const footprint = footprintFromPreviewTypes(preview.privacyTypes);
@@ -1671,74 +1997,103 @@ function PreviewBody({
 
   return (
     <div>
-      {matchBadge && (() => {
-        const localisedDescription = localiseBadgeDescription(tBadge, matchBadge);
-        const localisedLabel = localiseBadgeLabel(tBadge, matchBadge);
-        return (
-        <div className="shortlist-match-panel" aria-live="polite">
-          <div className="shortlist-match-header">
-            <span
-              className={`app-card-profile-badge match-${matchBadge.tone}`}
-              aria-label={tShortlist('privacy_profile_aria', { description: localisedDescription })}
-            >
-              {localisedLabel}
-            </span>
-            <span className="shortlist-match-headline">{localisedDescription}</span>
-          </div>
-          {matchResult && matchResult.mismatches.length > 0 && (
-            <ul className="shortlist-match-list">
-              {matchResult.mismatches.slice(0, 5).map(m => {
-                const catLabel = CATEGORY_META[m.category]?.label ?? m.category;
-                const catIcon = CATEGORY_META[m.category]?.icon ?? '•';
-                const observed = TIER_META[m.observed];
-                const allowed = TIER_META[m.allowed];
-                return (
-                  <li key={m.category} className="shortlist-match-row">
-                    <span aria-hidden="true" className="shortlist-match-icon">{catIcon}</span>
-                    <span className="shortlist-match-category">{catLabel}</span>
-                    <span className="shortlist-match-tiers">
-                      <span className={`shortlist-match-tier ${observed.severityCls}`}>
-                        {observed.shortLabel}
-                      </span>
-                      <span aria-hidden="true" className="shortlist-match-arrow">›</span>
-                      <span className="shortlist-match-tier shortlist-match-tier-allowed">
-                        you allow {allowed.shortLabel.toLowerCase()}
-                      </span>
-                    </span>
-                  </li>
-                );
-              })}
-              {matchResult.mismatches.length > 5 && (
-                <li className="shortlist-match-more">
-                  +{matchResult.mismatches.length - 5} more
-                </li>
+      {matchBadge &&
+        (() => {
+          const localisedDescription = localiseBadgeDescription(
+            tBadge,
+            matchBadge
+          );
+          const localisedLabel = localiseBadgeLabel(tBadge, matchBadge);
+          return (
+            <div aria-live="polite" className="shortlist-match-panel">
+              <div className="shortlist-match-header">
+                <span
+                  aria-label={tShortlist("privacy_profile_aria", {
+                    description: localisedDescription,
+                  })}
+                  className={`app-card-profile-badge match-${matchBadge.tone}`}
+                >
+                  {localisedLabel}
+                </span>
+                <span className="shortlist-match-headline">
+                  {localisedDescription}
+                </span>
+              </div>
+              {matchResult && matchResult.mismatches.length > 0 && (
+                <ul className="shortlist-match-list">
+                  {matchResult.mismatches.slice(0, 5).map((m) => {
+                    const catLabel =
+                      CATEGORY_META[m.category]?.label ?? m.category;
+                    const catIcon = CATEGORY_META[m.category]?.icon ?? "•";
+                    const observed = TIER_META[m.observed];
+                    const allowed = TIER_META[m.allowed];
+                    return (
+                      <li className="shortlist-match-row" key={m.category}>
+                        <span
+                          aria-hidden="true"
+                          className="shortlist-match-icon"
+                        >
+                          {catIcon}
+                        </span>
+                        <span className="shortlist-match-category">
+                          {catLabel}
+                        </span>
+                        <span className="shortlist-match-tiers">
+                          <span
+                            className={`shortlist-match-tier ${observed.severityCls}`}
+                          >
+                            {observed.shortLabel}
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className="shortlist-match-arrow"
+                          >
+                            ›
+                          </span>
+                          <span className="shortlist-match-tier shortlist-match-tier-allowed">
+                            you allow {allowed.shortLabel.toLowerCase()}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {matchResult.mismatches.length > 5 && (
+                    <li className="shortlist-match-more">
+                      +{matchResult.mismatches.length - 5} more
+                    </li>
+                  )}
+                </ul>
               )}
-            </ul>
-          )}
-        </div>
-        );
-      })()}
+            </div>
+          );
+        })()}
       {!hasLabels && (
         <div
           role="status"
           style={{
-            display: 'flex', gap: 12, padding: '12px 14px', borderRadius: 10,
-            border: '1px solid rgba(255, 214, 10, 0.35)',
-            background: 'rgba(255, 214, 10, 0.08)',
-            marginBottom: 14, alignItems: 'flex-start',
+            display: "flex",
+            gap: 12,
+            padding: "12px 14px",
+            borderRadius: 10,
+            border: "1px solid rgba(255, 214, 10, 0.35)",
+            background: "rgba(255, 214, 10, 0.08)",
+            marginBottom: 14,
+            alignItems: "flex-start",
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1.3 }}>⚠️</span>
-          <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5 }}>
+          <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1.3 }}>
+            ⚠️
+          </span>
+          <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>
               {preview.hasPrivacyDetails === 0
-                ? tShortlist('no_details_apple')
-                : tShortlist('no_labels_short')}
+                ? tShortlist("no_details_apple")
+                : tShortlist("no_labels_short")}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-2)' }}>
+            <div style={{ fontSize: 12, color: "var(--text-2)" }}>
               {preview.hasPrivacyDetails === 0
-                ? tShortlist('no_details_dev')
-                : tShortlist('no_section_recognised')}
+                ? tShortlist("no_details_dev")
+                : tShortlist("no_section_recognised")}
             </div>
           </div>
         </div>
@@ -1746,37 +2101,50 @@ function PreviewBody({
 
       {hasLabels && (
         <div style={{ marginBottom: 18 }}>
-          <div className="shortlist-section-header">{tShortlist('section_privacy_labels')}</div>
+          <div className="shortlist-section-header">
+            {tShortlist("section_privacy_labels")}
+          </div>
           <div className="shortlist-types-list">
-            {preview.privacyTypes.map(type => {
+            {preview.privacyTypes.map((type) => {
               const sev = SEVERITY_CONFIG[type.identifier];
-              const sevColor = type.identifier === 'DATA_USED_TO_TRACK_YOU'
-                ? 'var(--red)' : type.identifier === 'DATA_LINKED_TO_YOU'
-                ? 'var(--orange)' : 'var(--yellow)';
+              const sevColor =
+                type.identifier === "DATA_USED_TO_TRACK_YOU"
+                  ? "var(--red)"
+                  : type.identifier === "DATA_LINKED_TO_YOU"
+                    ? "var(--orange)"
+                    : "var(--yellow)";
               return (
-                <div key={type.identifier} className="shortlist-type-card">
+                <div className="shortlist-type-card" key={type.identifier}>
                   <div className="shortlist-type-header">
                     <span
                       aria-hidden="true"
                       style={{
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: sevColor, display: 'inline-block',
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: sevColor,
+                        display: "inline-block",
                       }}
                     />
                     <span>{sev?.label ?? type.title}</span>
                   </div>
                   <div className="shortlist-type-categories">
-                    {type.categories.length === 0
-                      ? <span className="shortlist-empty-inline">—</span>
-                      : type.categories.map(cat => {
-                          const meta = CATEGORY_META[cat.identifier];
-                          return (
-                            <span key={cat.identifier} className="shortlist-category-chip">
-                              <span aria-hidden="true">{meta?.icon ?? '•'}</span>
-                              <span>{meta?.label ?? cat.title}</span>
-                            </span>
-                          );
-                        })}
+                    {type.categories.length === 0 ? (
+                      <span className="shortlist-empty-inline">—</span>
+                    ) : (
+                      type.categories.map((cat) => {
+                        const meta = CATEGORY_META[cat.identifier];
+                        return (
+                          <span
+                            className="shortlist-category-chip"
+                            key={cat.identifier}
+                          >
+                            <span aria-hidden="true">{meta?.icon ?? "•"}</span>
+                            <span>{meta?.label ?? cat.title}</span>
+                          </span>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               );
@@ -1786,19 +2154,21 @@ function PreviewBody({
       )}
 
       <div>
-        <div className="shortlist-section-header">{tShortlist('section_privacy_policy')}</div>
+        <div className="shortlist-section-header">
+          {tShortlist("section_privacy_policy")}
+        </div>
         {policyUrl ? (
           <a
-            href={policyUrl}
-            target="_blank"
-            rel="noopener noreferrer"
             className="definitions-inline-link"
-            style={{ wordBreak: 'break-all', fontSize: 13 }}
+            href={policyUrl}
+            rel="noopener noreferrer"
+            style={{ wordBreak: "break-all", fontSize: 13 }}
+            target="_blank"
           >
             {policyUrl}
           </a>
         ) : (
-          <div style={{ fontSize: 13, color: 'var(--text-3)' }}>
+          <div style={{ fontSize: 13, color: "var(--text-3)" }}>
             Developer has not linked a privacy policy on the App Store page.
           </div>
         )}
@@ -1806,8 +2176,12 @@ function PreviewBody({
 
       {entry.note && (
         <div style={{ marginTop: 18 }}>
-          <div className="shortlist-section-header">{tShortlist('section_your_note')}</div>
-          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{entry.note}</div>
+          <div className="shortlist-section-header">
+            {tShortlist("section_your_note")}
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-2)" }}>
+            {entry.note}
+          </div>
         </div>
       )}
     </div>

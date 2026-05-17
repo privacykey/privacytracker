@@ -1,5 +1,5 @@
 export async function register() {
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
     // Parent-process watchdog. When the Tauri shell launches us it sets
     // PRIVACYTRACKER_PARENT_PID to its own PID; this watcher polls that
     // PID every few seconds and self-exits if it disappears. Closes the
@@ -13,10 +13,10 @@ export async function register() {
     // zero dependencies on the rest of the boot path and we want it
     // active as early as possible.
     try {
-      const { installParentWatchdog } = await import('./lib/parent-watchdog');
+      const { installParentWatchdog } = await import("./lib/parent-watchdog");
       installParentWatchdog();
     } catch (e) {
-      console.error('[parent-watchdog] install failed:', e);
+      console.error("[parent-watchdog] install failed:", e);
       // Never fatal — the cleanup-on-exit Rust path still works for
       // graceful quits even if the watchdog can't start.
     }
@@ -27,13 +27,13 @@ export async function register() {
     // captured into the ring the diagnostics page reads from.
     // Idempotent under hot-reload — see lib/error-log-ring.ts.
     try {
-      const { installErrorLogRing } = await import('./lib/error-log-ring');
+      const { installErrorLogRing } = await import("./lib/error-log-ring");
       installErrorLogRing();
     } catch (e) {
       // Best-effort: never block boot just because the ring couldn't
       // install. The original console.error/warn still work; we just
       // won't have a tail to render on the diagnostics page.
-      console.error('[error-log-ring] install failed:', e);
+      console.error("[error-log-ring] install failed:", e);
     }
 
     // Runtime diagnostics: start the event-loop-delay histogram and patch
@@ -45,11 +45,13 @@ export async function register() {
     // process. Idempotent; safe under hot reload. See
     // `lib/runtime-diagnostics.ts` for the full design notes.
     try {
-      const { default: db } = await import('./lib/db');
-      const { installRuntimeDiagnostics } = await import('./lib/runtime-diagnostics');
+      const { default: db } = await import("./lib/db");
+      const { installRuntimeDiagnostics } = await import(
+        "./lib/runtime-diagnostics"
+      );
       installRuntimeDiagnostics(db);
     } catch (e) {
-      console.error('[Diagnostics] install failed:', e);
+      console.error("[Diagnostics] install failed:", e);
       // Never fatal — diagnostics are observability, not correctness.
     }
 
@@ -60,44 +62,50 @@ export async function register() {
     // the server still comes up; the in-app error UI surfaces the failure
     // when the user opens the app.
     try {
-      const { runFeatureFlagMigration } = await import('./lib/migrations/v1_feature_flags');
+      const { runFeatureFlagMigration } = await import(
+        "./lib/migrations/v1_feature_flags"
+      );
       const results = runFeatureFlagMigration();
       if (results.length > 0) {
         const totalMs = results.reduce((sum, r) => sum + r.durationMs, 0);
         console.log(
-          `[Migration] feature-flag v1 complete — ${results.length} steps in ${totalMs}ms`,
+          `[Migration] feature-flag v1 complete — ${results.length} steps in ${totalMs}ms`
         );
       }
     } catch (e) {
-      console.error('[Migration] feature-flag v1 failed:', e);
+      console.error("[Migration] feature-flag v1 failed:", e);
       // Don't rethrow — let the rest of the server come up so the user can
       // see the error UI rendered by app/layout.tsx (PR 1 adds that surface).
     }
 
-    const { getSchedulerStatus, runScheduledSync, setSetting } = await import('./lib/scheduler');
+    const { getSchedulerStatus, runScheduledSync, setSetting } = await import(
+      "./lib/scheduler"
+    );
     try {
       setSetting(
-        'runtime_environment',
-        process.env.PRIVACYTRACKER_RUNTIME === 'desktop' ? 'desktop' : '',
+        "runtime_environment",
+        process.env.PRIVACYTRACKER_RUNTIME === "desktop" ? "desktop" : ""
       );
     } catch (e) {
-      console.error('[Runtime] Failed to persist runtime environment:', e);
+      console.error("[Runtime] Failed to persist runtime environment:", e);
     }
-    const { runImportQueueTick } = await import('./lib/import-queue');
-    const { runScheduledBackupSnapshotIfDue } = await import('./lib/backup-snapshots');
+    const { runImportQueueTick } = await import("./lib/import-queue");
+    const { runScheduledBackupSnapshotIfDue } = await import(
+      "./lib/backup-snapshots"
+    );
     const {
       readBulkState,
       isBulkMutexHeld,
-	      releaseBulkMutex,
-	      clearBulkState,
-	      writeBulkState,
-	      hasPendingWork,
-	      isBulkStateCancellationRequested,
-	      isBulkStatePaused,
-	      shouldAutoResumeBulkState,
-	      summariseState,
-	    } = await import('./lib/wayback-bulk-state');
-    const { runBulkWaybackImport } = await import('./lib/wayback-bulk-runner');
+      releaseBulkMutex,
+      clearBulkState,
+      writeBulkState,
+      hasPendingWork,
+      isBulkStateCancellationRequested,
+      isBulkStatePaused,
+      shouldAutoResumeBulkState,
+      summariseState,
+    } = await import("./lib/wayback-bulk-state");
+    const { runBulkWaybackImport } = await import("./lib/wayback-bulk-runner");
     const {
       readSyncBulkState,
       isSyncBulkMutexHeld,
@@ -105,8 +113,8 @@ export async function register() {
       clearSyncBulkState,
       hasSyncPendingWork,
       summariseSyncState,
-    } = await import('./lib/sync-bulk-state');
-    const { runBulkSync } = await import('./lib/sync-bulk-runner');
+    } = await import("./lib/sync-bulk-state");
+    const { runBulkSync } = await import("./lib/sync-bulk-runner");
     const {
       readPolicyBulkState,
       isPolicyBulkMutexHeld,
@@ -114,14 +122,14 @@ export async function register() {
       clearPolicyBulkState,
       hasPolicyPendingWork,
       summarisePolicyState,
-    } = await import('./lib/policy-bulk-state');
-    const { runBulkPolicySync } = await import('./lib/policy-bulk-runner');
-    const { recordActivity } = await import('./lib/activity');
+    } = await import("./lib/policy-bulk-state");
+    const { runBulkPolicySync } = await import("./lib/policy-bulk-runner");
+    const { recordActivity } = await import("./lib/activity");
     const {
       createWaybackResumeNotification,
       createSyncResumeNotification,
       createPolicyResumeNotification,
-    } = await import('./lib/notifications');
+    } = await import("./lib/notifications");
 
     const CHECK_INTERVAL_MS = 30 * 60 * 1000; // check every 30 min
     const IMPORT_QUEUE_INTERVAL_MS = 60 * 1000; // drain queue every 60s
@@ -142,11 +150,11 @@ export async function register() {
       try {
         const { isDue } = getSchedulerStatus();
         if (isDue) {
-          console.log('[AutoSync] Starting scheduled sync…');
+          console.log("[AutoSync] Starting scheduled sync…");
           const result = await runScheduledSync();
           if (!result.skipped) {
             console.log(
-              `[AutoSync] Done — ${result.synced} apps synced, ${result.changes} changed`,
+              `[AutoSync] Done — ${result.synced} apps synced, ${result.changes} changed`
             );
           }
           // Any successful run resets the backoff window.
@@ -156,16 +164,19 @@ export async function register() {
         consecutiveFailures += 1;
         console.error(
           `[AutoSync] Error during sync (${consecutiveFailures} in a row):`,
-          e,
+          e
         );
         if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-          const step = BACKOFF_STEPS_MS[Math.min(
-            consecutiveFailures - MAX_CONSECUTIVE_FAILURES,
-            BACKOFF_STEPS_MS.length - 1,
-          )];
+          const step =
+            BACKOFF_STEPS_MS[
+              Math.min(
+                consecutiveFailures - MAX_CONSECUTIVE_FAILURES,
+                BACKOFF_STEPS_MS.length - 1
+              )
+            ];
           pauseUntil = Date.now() + step;
           console.warn(
-            `[AutoSync] Pausing auto-sync for ${Math.round(step / 60_000)}m after repeated failures`,
+            `[AutoSync] Pausing auto-sync for ${Math.round(step / 60_000)}m after repeated failures`
           );
         }
       }
@@ -174,7 +185,7 @@ export async function register() {
     // Initial check 15s after server start, then every 30 min
     setTimeout(check, 15_000);
     setInterval(check, CHECK_INTERVAL_MS);
-    console.log('[AutoSync] Scheduler initialised');
+    console.log("[AutoSync] Scheduler initialised");
 
     // ── Stale import-queue mutex clear ──────────────────────────────
     //
@@ -188,20 +199,27 @@ export async function register() {
     // here and start with a clean slate. Same pattern the wayback / sync /
     // policy bulk runners already use for their own mutexes.
     try {
-      const { getSetting, setSetting } = await import('./lib/scheduler');
-      const wasStuck = getSetting('import_queue_running', 'false') === 'true';
+      const { getSetting, setSetting } = await import("./lib/scheduler");
+      const wasStuck = getSetting("import_queue_running", "false") === "true";
       if (wasStuck) {
-        const stuckSince = Number.parseInt(getSetting('import_queue_running_since', '0'), 10) || 0;
+        const stuckSince =
+          Number.parseInt(getSetting("import_queue_running_since", "0"), 10) ||
+          0;
         const stuckFor = stuckSince > 0 ? Date.now() - stuckSince : 0;
-        setSetting('import_queue_running', 'false');
+        setSetting("import_queue_running", "false");
         console.warn(
           `[ImportQueue] Cleared stale running lock from previous process${
-            stuckFor > 0 ? ` (held for ${Math.round(stuckFor / 1000)}s before this boot)` : ''
-          }`,
+            stuckFor > 0
+              ? ` (held for ${Math.round(stuckFor / 1000)}s before this boot)`
+              : ""
+          }`
         );
       }
     } catch (e) {
-      console.error('[ImportQueue] Failed to clear stale running lock at startup:', e);
+      console.error(
+        "[ImportQueue] Failed to clear stale running lock at startup:",
+        e
+      );
     }
 
     // Independent ticker for the import queue. Runs on a tight 60s cadence
@@ -214,16 +232,16 @@ export async function register() {
         const result = await runImportQueueTick();
         if (result.processed > 0 || result.rateLimited > 0) {
           console.log(
-            `[ImportQueue] Tick — processed ${result.processed}, succeeded ${result.succeeded}, failed ${result.failed}, rate-limited ${result.rateLimited}`,
+            `[ImportQueue] Tick — processed ${result.processed}, succeeded ${result.succeeded}, failed ${result.failed}, rate-limited ${result.rateLimited}`
           );
         }
       } catch (e) {
-        console.error('[ImportQueue] Tick failed:', e);
+        console.error("[ImportQueue] Tick failed:", e);
       }
     };
     setTimeout(drainImportQueue, 20_000); // first kick shortly after boot
     setInterval(drainImportQueue, IMPORT_QUEUE_INTERVAL_MS);
-    console.log('[ImportQueue] Worker initialised');
+    console.log("[ImportQueue] Worker initialised");
 
     // Automatic local backup snapshots. The helper owns the user-configured
     // interval + retention policy, so this ticker only needs to wake up
@@ -233,16 +251,16 @@ export async function register() {
         const result = runScheduledBackupSnapshotIfDue();
         if (result) {
           console.log(
-            `[BackupSnapshots] Created ${result.snapshot.filename}; pruned ${result.pruned.length}`,
+            `[BackupSnapshots] Created ${result.snapshot.filename}; pruned ${result.pruned.length}`
           );
         }
       } catch (e) {
-        console.error('[BackupSnapshots] Tick failed:', e);
+        console.error("[BackupSnapshots] Tick failed:", e);
       }
     };
     setTimeout(tickBackupSnapshots, 35_000);
     setInterval(tickBackupSnapshots, CHECK_INTERVAL_MS);
-    console.log('[BackupSnapshots] Scheduler initialised');
+    console.log("[BackupSnapshots] Scheduler initialised");
 
     // Webhook summary tick. Same 30-min cadence as the sync scheduler,
     // but it's a no-op unless the user has configured a webhook with
@@ -253,13 +271,15 @@ export async function register() {
     // include.
     const tickWebhookSummary = async () => {
       try {
-        const { maybePostSummaryWebhook } = await import('./lib/notification-webhooks');
+        const { maybePostSummaryWebhook } = await import(
+          "./lib/notification-webhooks"
+        );
         const count = await maybePostSummaryWebhook();
         if (count > 0) {
           console.log(`[Webhook] Posted summary with ${count} notifications`);
         }
       } catch (e) {
-        console.error('[Webhook] Summary tick failed:', e);
+        console.error("[Webhook] Summary tick failed:", e);
       }
     };
     // Offset the first run so it doesn't fight with backup snapshots
@@ -267,7 +287,7 @@ export async function register() {
     // both jobs fire.
     setTimeout(tickWebhookSummary, 45_000);
     setInterval(tickWebhookSummary, CHECK_INTERVAL_MS);
-    console.log('[Webhook] Summary scheduler initialised');
+    console.log("[Webhook] Summary scheduler initialised");
 
     // Wayback bulk-import resume. Runs exactly once per server boot, a few
     // seconds after startup so we don't compete with Next's initial
@@ -291,44 +311,53 @@ export async function register() {
         const mutexHeld = isBulkMutexHeld();
 
         // Case 1 — clean state, nothing to do.
-        if (!state && !mutexHeld) return;
+        if (!(state || mutexHeld)) {
+          return;
+        }
 
-	        // Paused queues are intentionally user-controlled. Keep the state
-	        // blob around so Settings can resume/cancel/restart it, but make
-	        // sure a leftover mutex from a crash does not make it look active.
-	        if (isBulkStatePaused(state)) {
-	          if (mutexHeld) releaseBulkMutex();
-	          if (state?.status === 'pause_requested') {
-	            writeBulkState({
-	              ...state,
-	              status: 'paused',
-	              pausedAt: state.pausedAt ?? Date.now(),
-	              currentAppId: null,
-	            });
-	          }
-	          return;
-	        }
+        // Paused queues are intentionally user-controlled. Keep the state
+        // blob around so Settings can resume/cancel/restart it, but make
+        // sure a leftover mutex from a crash does not make it look active.
+        if (isBulkStatePaused(state)) {
+          if (mutexHeld) {
+            releaseBulkMutex();
+          }
+          if (state?.status === "pause_requested") {
+            writeBulkState({
+              ...state,
+              status: "paused",
+              pausedAt: state.pausedAt ?? Date.now(),
+              currentAppId: null,
+            });
+          }
+          return;
+        }
 
-	        // A cancel-requested queue left by a crash should not resume.
-	        // Clear it so future manual imports are unblocked.
-	        if (isBulkStateCancellationRequested(state)) {
-	          if (mutexHeld) releaseBulkMutex();
-	          if (state) clearBulkState();
-	          recordActivity({
-	            type: 'wayback_import',
-	            status: 'cancelled',
-	            summary: 'Cleared cancelled Wayback import queue from a previous server run',
-	            detail: { mode: 'bulk-cancelled-stale' },
-	            startedAt: Date.now(),
-	          });
-	          return;
-	        }
+        // A cancel-requested queue left by a crash should not resume.
+        // Clear it so future manual imports are unblocked.
+        if (isBulkStateCancellationRequested(state)) {
+          if (mutexHeld) {
+            releaseBulkMutex();
+          }
+          if (state) {
+            clearBulkState();
+          }
+          recordActivity({
+            type: "wayback_import",
+            status: "cancelled",
+            summary:
+              "Cleared cancelled Wayback import queue from a previous server run",
+            detail: { mode: "bulk-cancelled-stale" },
+            startedAt: Date.now(),
+          });
+          return;
+        }
 
-	        // Case 2 — stale lock with no pending work. Heal it.
-	        if (!hasPendingWork(state)) {
-	          if (mutexHeld) {
-	            console.warn('[WaybackResume] Clearing stale bulk-import mutex');
-	            releaseBulkMutex();
+        // Case 2 — stale lock with no pending work. Heal it.
+        if (!hasPendingWork(state)) {
+          if (mutexHeld) {
+            console.warn("[WaybackResume] Clearing stale bulk-import mutex");
+            releaseBulkMutex();
           }
           if (state) {
             clearBulkState();
@@ -340,27 +369,33 @@ export async function register() {
               staleHealed: true,
             });
           } catch (e) {
-            console.warn('[WaybackResume] Failed to raise stale-heal notification:', e);
+            console.warn(
+              "[WaybackResume] Failed to raise stale-heal notification:",
+              e
+            );
           }
           recordActivity({
-            type: 'wayback_import',
-            status: 'ok',
-            summary: 'Cleared stuck Wayback import lock from a previous server run',
-            detail: { mode: 'bulk-stale-healed' },
+            type: "wayback_import",
+            status: "ok",
+            summary:
+              "Cleared stuck Wayback import lock from a previous server run",
+            detail: { mode: "bulk-stale-healed" },
             startedAt: Date.now(),
           });
           return;
         }
 
-	        // Case 3 — resume the run. `state` is guaranteed non-null here
-	        // because shouldAutoResumeBulkState(null) returns false.
-	        if (!shouldAutoResumeBulkState(state)) return;
-	        const summary = summariseState(state!);
+        // Case 3 — resume the run. `state` is guaranteed non-null here
+        // because shouldAutoResumeBulkState(null) returns false.
+        if (!shouldAutoResumeBulkState(state)) {
+          return;
+        }
+        const summary = summariseState(state!);
         const remaining = summary.remaining;
         const total = summary.total;
 
         console.log(
-          `[WaybackResume] Resuming bulk import — ${remaining} of ${total} apps remaining`,
+          `[WaybackResume] Resuming bulk import — ${remaining} of ${total} apps remaining`
         );
 
         try {
@@ -369,17 +404,20 @@ export async function register() {
             totalApps: total,
           });
         } catch (e) {
-          console.warn('[WaybackResume] Failed to raise resume notification:', e);
+          console.warn(
+            "[WaybackResume] Failed to raise resume notification:",
+            e
+          );
         }
 
         recordActivity({
-          type: 'wayback_import',
-          status: 'ok',
+          type: "wayback_import",
+          status: "ok",
           summary:
-            `Wayback import resumed after server restart — ` +
-            `${remaining} of ${total} app${total === 1 ? '' : 's'} left`,
+            "Wayback import resumed after server restart — " +
+            `${remaining} of ${total} app${total === 1 ? "" : "s"} left`,
           detail: {
-            mode: 'bulk-resume-start',
+            mode: "bulk-resume-start",
             runId: state!.runId,
             remaining,
             total,
@@ -393,20 +431,20 @@ export async function register() {
         // runner handles its own logging + state cleanup; we only need
         // to catch stray rejections so they don't become unhandled.
         runBulkWaybackImport({
-          initiator: 'resume',
+          initiator: "resume",
           streamRequested: state!.streamRequested,
           resumeState: state!,
-        }).catch(e => {
-          console.error('[WaybackResume] Resumed run failed:', e);
+        }).catch((e) => {
+          console.error("[WaybackResume] Resumed run failed:", e);
         });
       } catch (e) {
-        console.error('[WaybackResume] Startup check failed:', e);
+        console.error("[WaybackResume] Startup check failed:", e);
       }
     };
     // Delay a touch longer than the other tickers so the first DB hits
     // land after better-sqlite3 finishes its initial page-cache warmup.
-    setTimeout(resumeWaybackImport, 8_000);
-    console.log('[WaybackResume] Startup check scheduled');
+    setTimeout(resumeWaybackImport, 8000);
+    console.log("[WaybackResume] Startup check scheduled");
 
     // Bulk App Store sync resume. Same three-case structure as the
     // wayback resume above — see that block's comment for the full
@@ -419,11 +457,13 @@ export async function register() {
         const state = readSyncBulkState();
         const mutexHeld = isSyncBulkMutexHeld();
 
-        if (!state && !mutexHeld) return;
+        if (!(state || mutexHeld)) {
+          return;
+        }
 
         if (!hasSyncPendingWork(state)) {
           if (mutexHeld) {
-            console.warn('[SyncResume] Clearing stale bulk-sync mutex');
+            console.warn("[SyncResume] Clearing stale bulk-sync mutex");
             releaseSyncBulkMutex();
           }
           if (state) {
@@ -436,13 +476,17 @@ export async function register() {
               staleHealed: true,
             });
           } catch (e) {
-            console.warn('[SyncResume] Failed to raise stale-heal notification:', e);
+            console.warn(
+              "[SyncResume] Failed to raise stale-heal notification:",
+              e
+            );
           }
           recordActivity({
-            type: 'scheduled_sync',
-            status: 'ok',
-            summary: 'Cleared stuck App Store sync lock from a previous server run',
-            detail: { mode: 'bulk-stale-healed' },
+            type: "scheduled_sync",
+            status: "ok",
+            summary:
+              "Cleared stuck App Store sync lock from a previous server run",
+            detail: { mode: "bulk-stale-healed" },
             startedAt: Date.now(),
           });
           return;
@@ -453,7 +497,7 @@ export async function register() {
         const total = summary.total;
 
         console.log(
-          `[SyncResume] Resuming bulk App Store sync — ${remaining} of ${total} apps remaining`,
+          `[SyncResume] Resuming bulk App Store sync — ${remaining} of ${total} apps remaining`
         );
 
         try {
@@ -462,17 +506,17 @@ export async function register() {
             totalApps: total,
           });
         } catch (e) {
-          console.warn('[SyncResume] Failed to raise resume notification:', e);
+          console.warn("[SyncResume] Failed to raise resume notification:", e);
         }
 
         recordActivity({
-          type: 'scheduled_sync',
-          status: 'ok',
+          type: "scheduled_sync",
+          status: "ok",
           summary:
-            `App Store sync resumed after server restart — ` +
-            `${remaining} of ${total} app${total === 1 ? '' : 's'} left`,
+            "App Store sync resumed after server restart — " +
+            `${remaining} of ${total} app${total === 1 ? "" : "s"} left`,
           detail: {
-            mode: 'bulk-resume-start',
+            mode: "bulk-resume-start",
             runId: state!.runId,
             remaining,
             total,
@@ -481,17 +525,17 @@ export async function register() {
         });
 
         runBulkSync({
-          initiator: 'resume',
+          initiator: "resume",
           resumeState: state!,
-        }).catch(e => {
-          console.error('[SyncResume] Resumed run failed:', e);
+        }).catch((e) => {
+          console.error("[SyncResume] Resumed run failed:", e);
         });
       } catch (e) {
-        console.error('[SyncResume] Startup check failed:', e);
+        console.error("[SyncResume] Startup check failed:", e);
       }
     };
     setTimeout(resumeAppStoreSync, 10_000);
-    console.log('[SyncResume] Startup check scheduled');
+    console.log("[SyncResume] Startup check scheduled");
 
     // Bulk privacy-policy sync resume. Same shape again. The runner
     // reads `phase` + `force` off the state blob so a "Summarise all"
@@ -501,11 +545,47 @@ export async function register() {
         const state = readPolicyBulkState();
         const mutexHeld = isPolicyBulkMutexHeld();
 
-        if (!state && !mutexHeld) return;
+        if (!(state || mutexHeld)) {
+          return;
+        }
+
+        // Honour the global "Disable policy scraping" kill-switch. If the
+        // user flipped it on between the crash and reboot, we DON'T resume
+        // — clear the state + mutex cleanly and log an activity row so the
+        // user knows what happened. They can flip the setting back off and
+        // trigger a manual sync if they want to finish the queue.
+        // Dynamic import matches the pattern used by the import-queue
+        // resume above; instrumentation.ts intentionally avoids top-level
+        // DB-touching imports so a build-time eval doesn't open the DB.
+        const { getSetting } = await import("./lib/scheduler");
+        const scrapeDisabled =
+          getSetting("policy_scrape_disabled", "false") === "true";
+        if (scrapeDisabled) {
+          console.log(
+            "[PolicyResume] Skipping resume — policy scraping is disabled in Settings"
+          );
+          if (mutexHeld) {
+            releasePolicyBulkMutex();
+          }
+          if (state) {
+            clearPolicyBulkState();
+          }
+          recordActivity({
+            type: "policy_summary",
+            status: "cancelled",
+            summary:
+              "Skipped resuming a privacy-policy sync — scraping is disabled in Settings",
+            detail: { mode: "bulk-skipped-disabled" },
+            startedAt: Date.now(),
+          });
+          return;
+        }
 
         if (!hasPolicyPendingWork(state)) {
           if (mutexHeld) {
-            console.warn('[PolicyResume] Clearing stale bulk-policy-sync mutex');
+            console.warn(
+              "[PolicyResume] Clearing stale bulk-policy-sync mutex"
+            );
             releasePolicyBulkMutex();
           }
           if (state) {
@@ -518,13 +598,17 @@ export async function register() {
               staleHealed: true,
             });
           } catch (e) {
-            console.warn('[PolicyResume] Failed to raise stale-heal notification:', e);
+            console.warn(
+              "[PolicyResume] Failed to raise stale-heal notification:",
+              e
+            );
           }
           recordActivity({
-            type: 'policy_summary',
-            status: 'ok',
-            summary: 'Cleared stuck privacy-policy sync lock from a previous server run',
-            detail: { mode: 'bulk-stale-healed' },
+            type: "policy_summary",
+            status: "ok",
+            summary:
+              "Cleared stuck privacy-policy sync lock from a previous server run",
+            detail: { mode: "bulk-stale-healed" },
             startedAt: Date.now(),
           });
           return;
@@ -535,7 +619,7 @@ export async function register() {
         const total = summary.total;
 
         console.log(
-          `[PolicyResume] Resuming bulk policy sync — ${remaining} of ${total} apps remaining`,
+          `[PolicyResume] Resuming bulk policy sync — ${remaining} of ${total} apps remaining`
         );
 
         try {
@@ -544,17 +628,20 @@ export async function register() {
             totalApps: total,
           });
         } catch (e) {
-          console.warn('[PolicyResume] Failed to raise resume notification:', e);
+          console.warn(
+            "[PolicyResume] Failed to raise resume notification:",
+            e
+          );
         }
 
         recordActivity({
-          type: 'policy_summary',
-          status: 'ok',
+          type: "policy_summary",
+          status: "ok",
           summary:
-            `Privacy-policy sync resumed after server restart — ` +
-            `${remaining} of ${total} app${total === 1 ? '' : 's'} left`,
+            "Privacy-policy sync resumed after server restart — " +
+            `${remaining} of ${total} app${total === 1 ? "" : "s"} left`,
           detail: {
-            mode: 'bulk-resume-start',
+            mode: "bulk-resume-start",
             runId: state!.runId,
             remaining,
             total,
@@ -565,20 +652,20 @@ export async function register() {
         });
 
         runBulkPolicySync({
-          initiator: 'resume',
+          initiator: "resume",
           phase: state!.phase,
           force: state!.force,
           streamRequested: state!.streamRequested,
           resumeState: state!,
-        }).catch(e => {
-          console.error('[PolicyResume] Resumed run failed:', e);
+        }).catch((e) => {
+          console.error("[PolicyResume] Resumed run failed:", e);
         });
       } catch (e) {
-        console.error('[PolicyResume] Startup check failed:', e);
+        console.error("[PolicyResume] Startup check failed:", e);
       }
     };
     setTimeout(resumePolicySync, 12_000);
-    console.log('[PolicyResume] Startup check scheduled');
+    console.log("[PolicyResume] Startup check scheduled");
 
     // Update check. Polls GitHub Releases on a daily cadence and caches
     // the result in `app_settings`. The UI reads from cache via
@@ -596,17 +683,17 @@ export async function register() {
     // showing whatever it was already showing, and the next tick tries
     // again. We intentionally do NOT trip the auto-sync backoff here —
     // GitHub being down shouldn't pause the App Store sync.
-    const { checkForUpdate } = await import('./lib/update-check');
+    const { checkForUpdate } = await import("./lib/update-check");
     const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h tick, 24h actual cache
     const tickUpdateCheck = async () => {
       try {
         const result = await checkForUpdate();
         if (result.performed) {
           if (result.error) {
-            console.warn('[UpdateCheck] Check failed:', result.error);
+            console.warn("[UpdateCheck] Check failed:", result.error);
           } else if (result.status.updateAvailable) {
             console.log(
-              `[UpdateCheck] Update available — ${result.status.currentVersion} → ${result.status.latestVersion}`,
+              `[UpdateCheck] Update available — ${result.status.currentVersion} → ${result.status.latestVersion}`
             );
           }
         }
@@ -614,11 +701,11 @@ export async function register() {
         // Belt-and-braces: checkForUpdate already swallows errors into
         // result.error, but a misbehaving DB or a missing settings table
         // could throw out of the cache read. Don't let it climb the stack.
-        console.warn('[UpdateCheck] Tick threw:', e);
+        console.warn("[UpdateCheck] Tick threw:", e);
       }
     };
     setTimeout(tickUpdateCheck, 25_000);
     setInterval(tickUpdateCheck, UPDATE_CHECK_INTERVAL_MS);
-    console.log('[UpdateCheck] Ticker initialised (6h cadence, 24h cache)');
+    console.log("[UpdateCheck] Ticker initialised (6h cadence, 24h cache)");
   }
 }

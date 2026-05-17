@@ -14,38 +14,41 @@
 
 /* ── Slot card ─────────────────────────────── */
 .compare-slot-card {
-  appearance: none;
-  -webkit-appearance: none;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
+  width: 100%;
   min-height: 148px;
   padding: 18px 16px;
-  border-radius: 16px;
-  background: var(--surface, #fff);
-  color: var(--text, #1f2937);
   font: inherit;
+  color: var(--text, #1f2937);
   text-align: left;
+  -webkit-appearance: none;
+  appearance: none;
   cursor: pointer;
-  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
-              box-shadow 160ms, background 140ms, border-color 140ms;
-  position: relative;
-  width: 100%;
+  background: var(--surface, #fff);
+  border-radius: 16px;
+  transition:
+    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 160ms,
+    background 140ms,
+    border-color 140ms;
 }
 .compare-slot-card.is-empty {
-  border: 2px dashed var(--border-strong, #c7cdd6);
   background: var(--surface, #fff);
+  border: 2px dashed var(--border-strong, #c7cdd6);
 }
 .compare-slot-card.is-picked {
-  border: 1px solid var(--border, #e5e7eb);
   background: var(--surface, #fff);
-  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+  border: 1px solid var(--border, #e5e7eb);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
 }
 .compare-slot-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12));
   border-color: var(--blue, #2563eb);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.12));
+  transform: translateY(-2px);
 }
 .compare-slot-card:focus-visible {
   outline: 2px solid var(--blue, #2563eb);
@@ -53,37 +56,37 @@
 }
 
 .compare-slot-card-label {
+  margin-bottom: 8px;
   font-size: 11px;
   font-weight: 700;
+  color: var(--text, #6b7280);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text, #6b7280);
   opacity: 0.7;
-  margin-bottom: 8px;
 }
 
 /* Empty card content */
 .compare-slot-card-empty-body {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 6px;
-  text-align: center;
+  align-items: center;
   padding: 4px 0;
+  text-align: center;
 }
 .compare-slot-card-plus {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--blue-dim, #eff6ff);
-  color: var(--blue, #2563eb);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
   font-size: 24px;
   font-weight: 600;
   line-height: 1;
-  margin-bottom: 4px;
+  color: var(--blue, #2563eb);
+  background: var(--blue-dim, #eff6ff);
+  border-radius: 50%;
 }
 .compare-slot-card-cta {
   font-size: 15px;
@@ -99,51 +102,51 @@
 /* Picked card content */
 .compare-slot-card-picked-body {
   display: flex;
-  align-items: center;
   gap: 12px;
+  align-items: center;
 }
 .compare-slot-card-icon {
+  flex-shrink: 0;
   width: 56px;
   height: 56px;
-  border-radius: 13px;
   object-fit: cover;
-  flex-shrink: 0;
+  border-radius: 13px;
 }
 .compare-slot-card-icon-placeholder {
+  flex-shrink: 0;
   width: 56px;
   height: 56px;
-  border-radius: 13px;
   background: var(--surface-hover, #f3f4f6);
-  flex-shrink: 0;
+  border-radius: 13px;
 }
 .compare-slot-card-text {
-  min-width: 0;
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .compare-slot-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 15px;
   font-weight: 600;
   color: var(--text, #1f2937);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .compare-slot-card-developer {
-  font-size: 12px;
-  color: var(--text, #6b7280);
-  opacity: 0.85;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--text, #6b7280);
+  white-space: nowrap;
+  opacity: 0.85;
 }
 .compare-slot-card-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 6px;
-  flex-wrap: wrap;
 }
 
 /* Inline actions inside the picked card — small text-style affordances
@@ -157,27 +160,30 @@
   gap: 4px;
 }
 .compare-slot-card-action {
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 999px;
   padding: 3px 9px;
   font: inherit;
   font-size: 11px;
-  color: var(--text, #6b7280);
-  cursor: pointer;
   line-height: 1.4;
-  transition: background 120ms, border-color 120ms, color 120ms;
+  color: var(--text, #6b7280);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
 }
 .compare-slot-card-action:hover {
   background: var(--surface-hover, #f3f4f6);
   border-color: var(--border-strong, #9ca3af);
 }
 .compare-slot-card-action.is-clear:hover {
+  color: #b91c1c;
   background: #fee2e2;
   border-color: #ef4444;
-  color: #b91c1c;
 }
 
 /* ── Modal-specific overrides ──────────────── */
@@ -185,8 +191,8 @@
    default (460px) when used by the slot picker so the inline search +
    results have breathing room. */
 .compare-slot-modal-card {
-  max-width: 560px;
   width: min(560px, calc(100vw - 32px));
+  max-width: 560px;
   padding: 22px;
 }
 .compare-slot-modal-header {
@@ -196,52 +202,55 @@
   margin-bottom: 12px;
 }
 .compare-slot-modal-title {
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
-  margin: 0;
 }
 .compare-slot-modal-close {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--border, #e5e7eb);
-  background: var(--surface, #fff);
-  color: var(--text, #1f2937);
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text, #1f2937);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 50%;
 }
 .compare-slot-modal-close:hover {
+  color: #b91c1c;
   background: #fee2e2;
   border-color: #ef4444;
-  color: #b91c1c;
 }
 
 /* Slot Clear button inside the modal — was previously inline-styled in
    SlotPicker. Same pill chrome as the card actions for consistency. */
 .compare-slot-clear-btn {
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  border: 1px solid var(--border, #e5e7eb);
-  color: var(--text, #6b7280);
-  border-radius: 999px;
+  padding: 2px 10px;
   font: inherit;
   font-size: 11px;
-  padding: 2px 10px;
-  cursor: pointer;
   line-height: 1.4;
-  transition: background 120ms, border-color 120ms, color 120ms;
+  color: var(--text, #6b7280);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 999px;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
 }
 .compare-slot-clear-btn:hover {
+  color: #b91c1c;
   background: #fee2e2;
   border-color: #ef4444;
-  color: #b91c1c;
 }
 
 /* ── "Not scraped yet" empty state for the may-also-like panel ─ */
@@ -251,8 +260,8 @@
 .compare-related-not-scraped {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 10px;
+  align-items: flex-start;
   padding: 12px 0;
 }
 .compare-related-not-scraped p {
@@ -275,9 +284,9 @@
      in the parent <div style={...}> is fine. We only need the modal to
      go near-full-screen on phones. */
   .compare-slot-modal-card {
-    max-width: 100%;
     width: calc(100vw - 16px);
-    margin: 8px;
+    max-width: 100%;
     padding: 16px;
+    margin: 8px;
   }
 }

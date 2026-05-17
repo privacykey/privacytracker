@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { useTranslations } from 'next-intl';
-import type { ResolvedTask, UserTaskId } from '../../lib/tasks';
+import { useTranslations } from "next-intl";
+import { useEffect, useRef } from "react";
+import type { ResolvedTask, UserTaskId } from "../../lib/tasks";
 
 /**
  * Soft-gate modal. Shown when the user clicks a task whose prerequisite
@@ -16,17 +16,17 @@ import type { ResolvedTask, UserTaskId } from '../../lib/tasks';
  */
 
 export interface TaskGateModalProps {
-  open: boolean;
-  /** The task the user tried to start. */
-  task: ResolvedTask | null;
-  /** The first unmet prerequisite — what we recommend doing first. */
-  prerequisiteId: UserTaskId | null;
-  /** Take-me-to-prereq path. */
-  onGotoPrerequisite: () => void;
-  /** Continue-anyway path. */
-  onContinueAnyway: () => void;
   /** Close without taking action (Esc, overlay click, ✕). */
   onCancel: () => void;
+  /** Continue-anyway path. */
+  onContinueAnyway: () => void;
+  /** Take-me-to-prereq path. */
+  onGotoPrerequisite: () => void;
+  open: boolean;
+  /** The first unmet prerequisite — what we recommend doing first. */
+  prerequisiteId: UserTaskId | null;
+  /** The task the user tried to start. */
+  task: ResolvedTask | null;
 }
 
 export default function TaskGateModal({
@@ -37,15 +37,19 @@ export default function TaskGateModal({
   onContinueAnyway,
   onCancel,
 }: TaskGateModalProps) {
-  const t = useTranslations('tasks');
-  const tGate = useTranslations('tasks.gate');
+  const t = useTranslations("tasks");
+  const tGate = useTranslations("tasks.gate");
   const primaryRef = useRef<HTMLButtonElement | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     previouslyFocusedRef.current =
-      typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
+      typeof document === "undefined"
+        ? null
+        : (document.activeElement as HTMLElement | null);
     // Defer focus to next tick so the modal is mounted.
     const id = window.setTimeout(() => primaryRef.current?.focus(), 0);
     return () => {
@@ -55,18 +59,22 @@ export default function TaskGateModal({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         onCancel();
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, onCancel]);
 
-  if (!open || !task || !prerequisiteId) return null;
+  if (!(open && task && prerequisiteId)) {
+    return null;
+  }
 
   // Resolve copy for both the gated task and the missing prereq.
   // The `tasks.<id>.title` lookups exist for every task id.
@@ -76,42 +84,48 @@ export default function TaskGateModal({
   return (
     <div
       className="modal-overlay"
-      role="presentation"
-      onMouseDown={e => {
-        if (e.target === e.currentTarget) onCancel();
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          onCancel();
+        }
       }}
+      role="presentation"
     >
       <div
+        aria-labelledby="task-gate-title"
+        aria-modal="true"
         className="modal-card task-gate-modal"
         role="dialog"
-        aria-modal="true"
-        aria-labelledby="task-gate-title"
       >
         <header className="modal-card-header">
-          <h2 id="task-gate-title">{tGate('title')}</h2>
+          <h2 id="task-gate-title">{tGate("title")}</h2>
           <button
-            type="button"
+            aria-label={tGate("close_aria")}
             className="modal-close"
             onClick={onCancel}
-            aria-label={tGate('close_aria')}
+            type="button"
           >
             ✕
           </button>
         </header>
         <div className="modal-card-body">
-          <p>{tGate('body', { prerequisite: prereqTitle, task: taskTitle })}</p>
+          <p>{tGate("body", { prerequisite: prereqTitle, task: taskTitle })}</p>
         </div>
         <footer className="modal-card-footer">
           <button
-            type="button"
-            ref={primaryRef}
             className="btn btn-primary"
             onClick={onGotoPrerequisite}
+            ref={primaryRef}
+            type="button"
           >
-            {tGate('primary', { prerequisite: prereqTitle })}
+            {tGate("primary", { prerequisite: prereqTitle })}
           </button>
-          <button type="button" className="btn btn-secondary" onClick={onContinueAnyway}>
-            {tGate('secondary')}
+          <button
+            className="btn btn-secondary"
+            onClick={onContinueAnyway}
+            type="button"
+          >
+            {tGate("secondary")}
           </button>
         </footer>
       </div>

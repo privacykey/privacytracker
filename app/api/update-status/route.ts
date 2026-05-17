@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkForUpdate, getCachedUpdateStatus } from '@/lib/update-check';
+import { type NextRequest, NextResponse } from "next/server";
+import { checkForUpdate, getCachedUpdateStatus } from "@/lib/update-check";
 
 /**
  * GET /api/update-status
@@ -18,11 +18,11 @@ import { checkForUpdate, getCachedUpdateStatus } from '@/lib/update-check';
  * `force-dynamic` because we read mutable settings on every call — same
  * pattern as /api/sync/status, /api/notifications, etc.
  */
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const force = url.searchParams.get('refresh') === '1';
+  const force = url.searchParams.get("refresh") === "1";
 
   if (force) {
     const result = await checkForUpdate({ force: true });
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     ...status,
     meta: {
       refreshed: false,
-      skipReason: 'cache_only',
+      skipReason: "cache_only",
       error: status.lastError,
     },
   });

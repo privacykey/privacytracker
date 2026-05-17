@@ -3,54 +3,56 @@
  * interfaces in lib/shortlist.ts with no runtime imports so client
  * components don't pull better-sqlite3 into the browser bundle.
  */
-import type { AppProfileBadge, ProfileMismatchResult } from './privacy-profile';
-import type { PrivacyTypeSnapshot } from './changelog-types';
+
+import type { PrivacyTypeSnapshot } from "./changelog-types";
+import type { AppProfileBadge, ProfileMismatchResult } from "./privacy-profile";
 
 /**
  * Which Compare-view mode the user was in when they shortlisted this entry.
  * A candidate saved from both modes carries both values; stored as a
  * comma-separated string in the `mode` column.
  */
-export type ShortlistMode = 'privacy' | 'accessibility';
+export type ShortlistMode = "privacy" | "accessibility";
 
 export interface ShortlistEntry {
-  id: string;
-  sourceAppId: string;
-  candidateAppleId: string;
-  candidateName: string;
-  candidateDeveloper: string;
-  candidateIconUrl: string;
-  candidateStoreUrl: string;
-  candidateBundleId: string;
-  note: string;
   addedAt: number;
+  candidateAppleId: string;
+  candidateBundleId: string;
+  candidateDeveloper: string;
+  /**
+   * 1 = candidate offers in-app purchases, 0 = doesn't, null = unknown.
+   * Drives the "· IAP" tail on the candidate's price chip.
+   */
+  candidateHasIap?: number | null;
+  candidateIconUrl: string;
   candidateIsTracked: boolean;
-  /**
-   * Which comparison lens(es) this candidate was shortlisted under. Always
-   * at least one entry; clients render a coloured badge per mode.
-   */
-  modes: ShortlistMode[];
-  /**
-   * Pre-computed privacy-profile match for this candidate. `null` / absent
-   * when the candidate isn't tracked or no profile is active.
-   */
-  profileBadge?: AppProfileBadge | null;
+  candidateName: string;
+  /** ISO currency code; companion to candidatePriceFormatted. */
+  candidatePriceCurrency?: string | null;
   /**
    * Pricing snapshot for the candidate. Populated only when the candidate
    * is already tracked locally; untracked candidates land here as null and
    * the renderer hides the price chip.
    */
   candidatePriceFormatted?: string | null;
-  /** ISO currency code; companion to candidatePriceFormatted. */
-  candidatePriceCurrency?: string | null;
+  candidateStoreUrl: string;
+  id: string;
   /**
-   * 1 = candidate offers in-app purchases, 0 = doesn't, null = unknown.
-   * Drives the "· IAP" tail on the candidate's price chip.
+   * Which comparison lens(es) this candidate was shortlisted under. Always
+   * at least one entry; clients render a coloured badge per mode.
    */
-  candidateHasIap?: number | null;
+  modes: ShortlistMode[];
+  note: string;
+  /**
+   * Pre-computed privacy-profile match for this candidate. `null` / absent
+   * when the candidate isn't tracked or no profile is active.
+   */
+  profileBadge?: AppProfileBadge | null;
+  sourceAppId: string;
 }
 
 export interface ShortlistGroup {
+  entries: ShortlistEntry[];
   sourceApp: {
     id: string;
     name: string;
@@ -73,5 +75,4 @@ export interface ShortlistGroup {
     priceCurrency?: string | null;
     hasIap?: number | null;
   };
-  entries: ShortlistEntry[];
 }

@@ -16,38 +16,38 @@
 const RING_SIZE = 50;
 
 export interface ScrapePhaseMark {
-  phase: string;
   /** Milliseconds since the scrape started. */
   atOffsetMs: number;
+  phase: string;
 }
 
 export interface InProgressScrape {
   id: string;
-  url: string;
-  startedAt: number;
-  /** Wall-clock duration so far at read time. */
-  runningMs: number;
   phases: ScrapePhaseMark[];
   resync: boolean;
+  /** Wall-clock duration so far at read time. */
+  runningMs: number;
+  startedAt: number;
+  url: string;
 }
 
 export interface ScrapeRecord {
-  id: string;
-  startedAt: number;
-  url: string;
   appName?: string;
-  totalMs: number;
-  phases: ScrapePhaseMark[];
-  outcome: 'success' | 'error' | 'rate_limited';
   error?: string;
+  id: string;
+  outcome: "success" | "error" | "rate_limited";
+  phases: ScrapePhaseMark[];
   resync: boolean;
+  startedAt: number;
+  totalMs: number;
+  url: string;
 }
 
 interface InProgressEntry {
-  url: string;
-  startedAt: number;
   phases: ScrapePhaseMark[];
   resync: boolean;
+  startedAt: number;
+  url: string;
 }
 
 const inProgress = new Map<string, InProgressEntry>();
@@ -79,18 +79,22 @@ export function beginScrape(id: string, url: string, resync: boolean): void {
  */
 export function markScrapePhase(id: string, phase: string): void {
   const entry = inProgress.get(id);
-  if (!entry) return;
+  if (!entry) {
+    return;
+  }
   entry.phases.push({ phase, atOffsetMs: Date.now() - entry.startedAt });
 }
 
 /** Move an in-progress scrape into the ring. */
 export function endScrape(
   id: string,
-  outcome: 'success' | 'error' | 'rate_limited',
-  extra?: { appName?: string; error?: string },
+  outcome: "success" | "error" | "rate_limited",
+  extra?: { appName?: string; error?: string }
 ): void {
   const entry = inProgress.get(id);
-  if (!entry) return;
+  if (!entry) {
+    return;
+  }
   inProgress.delete(id);
   const record: ScrapeRecord = {
     id,
@@ -109,15 +113,17 @@ export function endScrape(
 }
 
 export interface ScrapeActivitySnapshot {
-  /** Number of scrapes captured since process start. */
-  totalSinceStart: number;
   /** Live, currently-running scrapes — read time computes runningMs. */
   inProgress: InProgressScrape[];
   /** Completed scrapes, newest first. */
   recent: ScrapeRecord[];
+  /** Number of scrapes captured since process start. */
+  totalSinceStart: number;
 }
 
-export function snapshotScrapeActivity(limit = RING_SIZE): ScrapeActivitySnapshot {
+export function snapshotScrapeActivity(
+  limit = RING_SIZE
+): ScrapeActivitySnapshot {
   const now = Date.now();
   const inProgressList: InProgressScrape[] = Array.from(inProgress.entries())
     .map(([id, v]) => ({
@@ -138,7 +144,9 @@ export function snapshotScrapeActivity(limit = RING_SIZE): ScrapeActivitySnapsho
   const recent: ScrapeRecord[] = [];
   for (let i = liveCount - 1; i >= liveCount - want; i--) {
     const slot = ring[(start + i) % RING_SIZE];
-    if (slot) recent.push(slot);
+    if (slot) {
+      recent.push(slot);
+    }
   }
 
   return {

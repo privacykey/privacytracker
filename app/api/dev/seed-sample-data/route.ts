@@ -22,36 +22,39 @@
  *   - `limit=N`        — cap the number of apps (default 10, max 25)
  */
 
-import { NextResponse } from 'next/server';
-import crypto from 'node:crypto';
-import db from '@/lib/db';
-import { recordActivity } from '@/lib/activity';
-import { requireMutationGuard, type MutationGuardContext } from '@/lib/api-guards';
-import { getSetting } from '@/lib/scheduler';
-import { normalizeCountry } from '@/lib/region';
-import { recordAudit, safeFetch } from '@/lib/security';
-import { AppleRateLimitError, fetchAndParseApp } from '@/lib/scraper';
-import { CATEGORY_META } from '@/lib/privacy-meta';
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+import { recordActivity } from "@/lib/activity";
+import {
+  type MutationGuardContext,
+  requireMutationGuard,
+} from "@/lib/api-guards";
+import {
+  buildSnapshot,
+  diffSnapshots,
+  type PrivacyTypeSnapshot,
+  saveSnapshot,
+} from "@/lib/changelog";
+import db from "@/lib/db";
+import { CATEGORY_META } from "@/lib/privacy-meta";
+import { normalizeCountry } from "@/lib/region";
 import {
   SAMPLE_APPS,
   type SampleApp,
   type SampleAppPrivacyType,
   type SampleHistoryStep,
-} from '@/lib/sample-apps';
-import {
-  saveSnapshot,
-  buildSnapshot,
-  diffSnapshots,
-  type PrivacyTypeSnapshot,
-} from '@/lib/changelog';
+} from "@/lib/sample-apps";
+import { getSetting } from "@/lib/scheduler";
+import { AppleRateLimitError, fetchAndParseApp } from "@/lib/scraper";
+import { recordAudit, safeFetch } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // Default region when no `app_country` setting is configured. Per the
 // dev request — Australia is the most useful default for the local
 // dev/test loop because the team is AU-based, so the App Store data
 // matches what they'd see opening a real device.
-const DEFAULT_DEV_REGION = 'au';
+const DEFAULT_DEV_REGION = "au";
 
 // Hard ceiling on how many apps the seed can write in one call. Each
 // app is one full live scrape (HTML + privacy + a11y + optional policy
@@ -70,44 +73,48 @@ interface RssEntry {
   // The legacy /rss/topfreeapplications/limit=N/json shape is wordy:
   // every field is wrapped in a { label, attributes } envelope. We type
   // the bits we actually read; everything else stays `unknown`.
-  id?: { label?: string; attributes?: { 'im:id'?: string } };
+  id?: { label?: string; attributes?: { "im:id"?: string } };
+  "im:artist"?: { label?: string };
+  "im:name"?: { label?: string };
   link?: Array<{ attributes?: { rel?: string; href?: string } } | undefined>;
-  'im:name'?: { label?: string };
-  'im:artist'?: { label?: string };
 }
 
 interface SeedAppResult {
   id: string;
-  name: string;
-  status: 'inserted' | 'skipped' | 'error';
-  source: 'live' | 'canned';
   message?: string;
+  name: string;
   snapshotsWritten: number;
+  source: "live" | "canned";
+  status: "inserted" | "skipped" | "error";
 }
 
 interface RssFetchOutcome {
-  rateLimited: boolean;
-  retryAfterMs?: number;
   /** Track-id → product URL pairs in chart order. */
   apps: Array<{ id: string; name: string; url: string; developer: string }>;
+  rateLimited: boolean;
+  retryAfterMs?: number;
 }
 
 /** Fetch the iTunes top-free-apps RSS for a given country code. */
-async function fetchTopFreeApps(country: string, limit: number): Promise<RssFetchOutcome> {
-  const url =
-    `https://itunes.apple.com/${country}/rss/topfreeapplications/limit=${limit}/json`;
+async function fetchTopFreeApps(
+  country: string,
+  limit: number
+): Promise<RssFetchOutcome> {
+  const url = `https://itunes.apple.com/${country}/rss/topfreeapplications/limit=${limit}/json`;
 
   const { response: res, body: bodyBuf } = await safeFetch(url, {
-    allowedHosts: ['itunes.apple.com'],
-    headers: { Accept: 'application/json' },
+    allowedHosts: ["itunes.apple.com"],
+    headers: { Accept: "application/json" },
     timeoutMs: 8000,
     maxBytes: 1 * 1024 * 1024,
-    redirect: 'follow',
+    redirect: "follow",
   });
 
   if (res.status === 429) {
-    const retryAfterHeader = res.headers.get('retry-after');
-    const parsed = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) * 1000 : NaN;
+    const retryAfterHeader = res.headers.get("retry-after");
+    const parsed = retryAfterHeader
+      ? Number.parseInt(retryAfterHeader, 10) * 1000
+      : Number.NaN;
     return {
       rateLimited: true,
       retryAfterMs: Number.isFinite(parsed) && parsed > 0 ? parsed : 70_000,
@@ -115,24 +122,28 @@ async function fetchTopFreeApps(country: string, limit: number): Promise<RssFetc
     };
   }
   if (!res.ok) {
-    throw new Error(`iTunes RSS returned HTTP ${res.status} for country=${country}`);
+    throw new Error(
+      `iTunes RSS returned HTTP ${res.status} for country=${country}`
+    );
   }
 
   let data: { feed?: { entry?: RssEntry[] } };
   try {
-    data = JSON.parse(bodyBuf.toString('utf8'));
+    data = JSON.parse(bodyBuf.toString("utf8"));
   } catch {
-    throw new Error('iTunes RSS returned non-JSON body');
+    throw new Error("iTunes RSS returned non-JSON body");
   }
 
   const entries = data.feed?.entry ?? [];
-  const apps: RssFetchOutcome['apps'] = [];
+  const apps: RssFetchOutcome["apps"] = [];
   for (const entry of entries) {
-    const trackId = entry.id?.attributes?.['im:id'] ?? '';
-    const productUrl = entry.id?.label ?? '';
-    const name = entry['im:name']?.label ?? '';
-    const developer = entry['im:artist']?.label ?? '';
-    if (!trackId || !productUrl) continue;
+    const trackId = entry.id?.attributes?.["im:id"] ?? "";
+    const productUrl = entry.id?.label ?? "";
+    const name = entry["im:name"]?.label ?? "";
+    const developer = entry["im:artist"]?.label ?? "";
+    if (!(trackId && productUrl)) {
+      continue;
+    }
     apps.push({ id: trackId, name, url: productUrl, developer });
   }
   return { rateLimited: false, apps };
@@ -146,10 +157,17 @@ async function fetchTopFreeApps(country: string, limit: number): Promise<RssFetc
  * `apps.changeCount` for these rows because they're history, not fresh
  * drift the user should be alerted on.
  */
-function backfillFakeHistory(appId: string, currentSnapshot: PrivacyTypeSnapshot[]): number {
-  if (currentSnapshot.length === 0) return 0;
+function backfillFakeHistory(
+  appId: string,
+  currentSnapshot: PrivacyTypeSnapshot[]
+): number {
+  if (currentSnapshot.length === 0) {
+    return 0;
+  }
   // No types with at least 2 categories → nothing meaningful to trim.
-  if (!currentSnapshot.some(t => t.categories.length >= 2)) return 0;
+  if (!currentSnapshot.some((t) => t.categories.length >= 2)) {
+    return 0;
+  }
 
   const now = Date.now();
   let written = 0;
@@ -178,7 +196,7 @@ function backfillFakeHistory(appId: string, currentSnapshot: PrivacyTypeSnapshot
       // Always 'sample' — the changelog timeline renders a purple
       // SAMPLE pill on these rows so devs can tell synthesised
       // history apart from real syncs at a glance.
-      triggeredBy: 'sample',
+      triggeredBy: "sample",
     });
     written++;
     prev = synthesised;
@@ -193,9 +211,9 @@ function backfillFakeHistory(appId: string, currentSnapshot: PrivacyTypeSnapshot
 // ─────────────────────────────────────────────────────────────────────
 
 function syntheticIdFor(slug: string): string {
-  const hash = crypto.createHash('sha1').update(slug).digest('hex');
-  const numeric = parseInt(hash.slice(0, 6), 16) % 9_000_000;
-  return `9${String(numeric).padStart(7, '0')}`;
+  const hash = crypto.createHash("sha1").update(slug).digest("hex");
+  const numeric = Number.parseInt(hash.slice(0, 6), 16) % 9_000_000;
+  return `9${String(numeric).padStart(7, "0")}`;
 }
 
 function appUrlFor(sample: SampleApp): string {
@@ -203,17 +221,19 @@ function appUrlFor(sample: SampleApp): string {
   return `https://apps.apple.com/us/app/${slug}/id${syntheticIdFor(sample.id)}`;
 }
 
-function sampleStepToSnapshot(types: SampleAppPrivacyType[]): PrivacyTypeSnapshot[] {
+function sampleStepToSnapshot(
+  types: SampleAppPrivacyType[]
+): PrivacyTypeSnapshot[] {
   // Each `t.categories` entry is a canonical CATEGORY_META key (e.g.
   // 'CONTACT_INFO'), not a human title. Look up the human label from
   // CATEGORY_META so the snapshot's `title` matches what the live
   // scraper would produce; fall back to the key when an unknown
   // category slips in (defensive — shouldn't happen with the typed
   // fixture, but keeps the seeder running rather than throwing).
-  return types.map(t => ({
+  return types.map((t) => ({
     identifier: t.identifier,
     title: t.title,
-    categories: t.categories.map(key => ({
+    categories: t.categories.map((key) => ({
       identifier: key,
       title: CATEGORY_META[key]?.label ?? key,
     })),
@@ -225,13 +245,13 @@ function seedFromCanned(): SeedAppResult[] {
   const seedTx = db.transaction(() => {
     for (const sample of SAMPLE_APPS) {
       const appId = syntheticIdFor(sample.id);
-      const existing = db.prepare('SELECT 1 FROM apps WHERE id = ?').get(appId);
+      const existing = db.prepare("SELECT 1 FROM apps WHERE id = ?").get(appId);
       if (existing) {
         results.push({
           id: appId,
           name: sample.name,
-          status: 'skipped',
-          source: 'canned',
+          status: "skipped",
+          source: "canned",
           snapshotsWritten: 0,
         });
         continue;
@@ -243,13 +263,13 @@ function seedFromCanned(): SeedAppResult[] {
            firstSeen, lastSynced, changeCount,
            changes_acknowledged_at, changes_snoozed_until,
            hasPrivacyDetails, hasAccessibilityLabels
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         appId,
         sample.name,
         appUrlFor(sample),
-        '',
-        `com.sample.${sample.id.replace(/^sample-/, '')}`,
+        "",
+        `com.sample.${sample.id.replace(/^sample-/, "")}`,
         sample.developer,
         now - 14 * 24 * 60 * 60 * 1000,
         now,
@@ -257,13 +277,13 @@ function seedFromCanned(): SeedAppResult[] {
         0,
         0,
         sample.hasPrivacyDetails ? 1 : 0,
-        sample.hasAccessibilityLabels ? 1 : 0,
+        sample.hasAccessibilityLabels ? 1 : 0
       );
       for (const type of sample.privacyTypes) {
         const typeRowId = crypto.randomUUID();
         db.prepare(
           `INSERT INTO privacy_types (id, app_id, identifier, title)
-           VALUES (?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?)`
         ).run(typeRowId, appId, type.identifier, type.title);
         // `type.categories` entries are canonical CATEGORY_META keys
         // (e.g. 'CONTACT_INFO'). Use the key as the DB identifier so
@@ -276,24 +296,18 @@ function seedFromCanned(): SeedAppResult[] {
           const catId = crypto.randomUUID();
           db.prepare(
             `INSERT INTO privacy_categories (id, type_id, identifier, title)
-             VALUES (?, ?, ?, ?)`,
-          ).run(
-            catId,
-            typeRowId,
-            categoryKey,
-            meta?.label ?? categoryKey,
-          );
+             VALUES (?, ?, ?, ?)`
+          ).run(catId, typeRowId, categoryKey, meta?.label ?? categoryKey);
         }
       }
       const currentSnapshot = buildSnapshot(appId);
       let snapshotsWritten = 0;
       if (currentSnapshot.length > 0) {
         const history: SampleHistoryStep[] = [...(sample.history ?? [])].sort(
-          (a, b) => b.daysAgo - a.daysAgo,
+          (a, b) => b.daysAgo - a.daysAgo
         );
         let prevSnapshot: PrivacyTypeSnapshot[] = [];
-        for (let i = 0; i < history.length; i++) {
-          const step = history[i];
+        for (const step of history) {
           const stepSnapshot = sampleStepToSnapshot(step.privacyTypes);
           const changes = diffSnapshots(prevSnapshot, stepSnapshot);
           saveSnapshot(appId, stepSnapshot, changes, {
@@ -303,8 +317,8 @@ function seedFromCanned(): SeedAppResult[] {
             // Wayback rows still set source: 'wayback' so the timeline
             // dot/badge stays visually correct; the trigger pill is
             // suppressed for wayback rows in the renderer anyway.
-            triggeredBy: 'sample',
-            source: step.waybackUrl ? 'wayback' : 'live',
+            triggeredBy: "sample",
+            source: step.waybackUrl ? "wayback" : "live",
             waybackUrl: step.waybackUrl ?? null,
             appVersion: step.version ?? null,
           });
@@ -315,15 +329,15 @@ function seedFromCanned(): SeedAppResult[] {
         saveSnapshot(appId, currentSnapshot, todaysChanges, {
           scrapedAt: now,
           skipChangeCountBump: true,
-          triggeredBy: 'sample',
+          triggeredBy: "sample",
         });
         snapshotsWritten++;
       }
       results.push({
         id: appId,
         name: sample.name,
-        status: 'inserted',
-        source: 'canned',
+        status: "inserted",
+        source: "canned",
         snapshotsWritten,
       });
     }
@@ -339,9 +353,9 @@ function seedFromCanned(): SeedAppResult[] {
 export async function POST(request: Request) {
   const startedAt = Date.now();
   const guard = requireMutationGuard(request, {
-    action: 'dev.seed_sample_data',
+    action: "dev.seed_sample_data",
     rateLimit: {
-      keyPrefix: 'dev.seed_sample_data',
+      keyPrefix: "dev.seed_sample_data",
       // Limit lifted from 6 to 30 per 10 min for the same reason as
       // /api/reset's: the E2E suite calls this from ~7 specs per run
       // (see e2e/*.spec.ts), and the original cap was tight enough
@@ -351,22 +365,26 @@ export async function POST(request: Request) {
       // runaway loop, and a runaway loop trips any threshold instantly.
       limit: 30,
       windowMs: 10 * 60_000,
-      message: 'Rate limit exceeded for dev sample seeding. Try again later.',
+      message: "Rate limit exceeded for dev sample seeding. Try again later.",
     },
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   const url = new URL(request.url);
 
   // Parse query params.
-  const sourceParam = url.searchParams.get('source');
-  const useCanned = sourceParam === 'canned';
-  const limitParam = parseInt(url.searchParams.get('limit') ?? '', 10);
+  const sourceParam = url.searchParams.get("source");
+  const useCanned = sourceParam === "canned";
+  const limitParam = Number.parseInt(url.searchParams.get("limit") ?? "", 10);
   const limit = Math.min(
     SEED_MAX_LIMIT,
-    Number.isFinite(limitParam) && limitParam > 0 ? limitParam : SEED_DEFAULT_LIMIT,
+    Number.isFinite(limitParam) && limitParam > 0
+      ? limitParam
+      : SEED_DEFAULT_LIMIT
   );
-  const requestedCountry = url.searchParams.get('country');
+  const requestedCountry = url.searchParams.get("country");
 
   // Region resolution:
   //   1. Explicit ?country=<iso2> wins (lets devs test other regions
@@ -378,18 +396,18 @@ export async function POST(request: Request) {
   //      collapsing them onto the system DEFAULT_COUNTRY ('us'); we want
   //      'au' for unset, so we check for blank ourselves before calling.
   let country: string;
-  let regionSource: 'query' | 'setting' | 'default';
+  let regionSource: "query" | "setting" | "default";
   if (requestedCountry) {
     country = normalizeCountry(requestedCountry);
-    regionSource = 'query';
+    regionSource = "query";
   } else {
-    const stored = (getSetting('app_country', '') ?? '').trim();
+    const stored = (getSetting("app_country", "") ?? "").trim();
     if (stored) {
       country = normalizeCountry(stored);
-      regionSource = 'setting';
+      regionSource = "setting";
     } else {
       country = DEFAULT_DEV_REGION;
-      regionSource = 'default';
+      regionSource = "default";
     }
   }
 
@@ -399,17 +417,17 @@ export async function POST(request: Request) {
     try {
       results = seedFromCanned();
     } catch (e) {
-      console.error('[/api/dev/seed-sample-data] canned seed failed:', e);
+      console.error("[/api/dev/seed-sample-data] canned seed failed:", e);
       recordAudit({
-        action: 'dev.seed_sample_data.failed',
+        action: "dev.seed_sample_data.failed",
         actorIp: guard.actorIp,
         userAgent: guard.userAgent,
         success: false,
         detail: e instanceof Error ? e.message : String(e),
       });
       return NextResponse.json(
-        { error: e instanceof Error ? e.message : 'Canned seed failed' },
-        { status: 500 },
+        { error: e instanceof Error ? e.message : "Canned seed failed" },
+        { status: 500 }
       );
     }
     return finishResponse({
@@ -417,7 +435,7 @@ export async function POST(request: Request) {
       results,
       regionSource,
       country,
-      mode: 'canned',
+      mode: "canned",
       auditContext: guard,
     });
   }
@@ -427,9 +445,9 @@ export async function POST(request: Request) {
   try {
     rss = await fetchTopFreeApps(country, limit);
   } catch (e) {
-    console.error('[/api/dev/seed-sample-data] RSS fetch failed:', e);
+    console.error("[/api/dev/seed-sample-data] RSS fetch failed:", e);
     recordAudit({
-      action: 'dev.seed_sample_data.failed',
+      action: "dev.seed_sample_data.failed",
       actorIp: guard.actorIp,
       userAgent: guard.userAgent,
       success: false,
@@ -437,20 +455,20 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(
       {
-        error: e instanceof Error ? e.message : 'Top-charts fetch failed',
+        error: e instanceof Error ? e.message : "Top-charts fetch failed",
         hint:
-          'Try `?source=canned` to seed the canned SAMPLE_APPS instead, ' +
-          'or pick a different `?country=<iso2>`.',
+          "Try `?source=canned` to seed the canned SAMPLE_APPS instead, " +
+          "or pick a different `?country=<iso2>`.",
         country,
         regionSource,
       },
-      { status: 502 },
+      { status: 502 }
     );
   }
 
   if (rss.rateLimited) {
     recordAudit({
-      action: 'dev.seed_sample_data.rate_limited_upstream',
+      action: "dev.seed_sample_data.rate_limited_upstream",
       actorIp: guard.actorIp,
       userAgent: guard.userAgent,
       success: false,
@@ -458,24 +476,24 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(
       {
-        error: 'Apple iTunes RSS rate-limited the request',
+        error: "Apple iTunes RSS rate-limited the request",
         retryAfterMs: rss.retryAfterMs,
-        hint: 'Wait a minute and retry, or use `?source=canned` to seed offline data.',
+        hint: "Wait a minute and retry, or use `?source=canned` to seed offline data.",
         country,
         regionSource,
       },
       {
         status: 429,
         headers: {
-          'Retry-After': String(Math.ceil((rss.retryAfterMs ?? 60_000) / 1000)),
+          "Retry-After": String(Math.ceil((rss.retryAfterMs ?? 60_000) / 1000)),
         },
-      },
+      }
     );
   }
 
   if (rss.apps.length === 0) {
     recordAudit({
-      action: 'dev.seed_sample_data.failed',
+      action: "dev.seed_sample_data.failed",
       actorIp: guard.actorIp,
       userAgent: guard.userAgent,
       success: false,
@@ -484,11 +502,11 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: `iTunes RSS returned zero entries for country=${country}`,
-        hint: 'The country code may be valid but unsupported by the chart feed.',
+        hint: "The country code may be valid but unsupported by the chart feed.",
         country,
         regionSource,
       },
-      { status: 502 },
+      { status: 502 }
     );
   }
 
@@ -497,20 +515,21 @@ export async function POST(request: Request) {
   // bursts anyway). On the first AppleRateLimitError we bail and return
   // whatever we've managed to seed.
   const results: SeedAppResult[] = [];
-  let stoppedEarly: { reason: 'rate-limited'; retryAfterMs: number } | null = null;
+  let stoppedEarly: { reason: "rate-limited"; retryAfterMs: number } | null =
+    null;
 
   for (const entry of rss.apps) {
     // Skip apps that are already tracked — no re-scrape, no fake history.
     const existing = db
-      .prepare('SELECT 1 FROM apps WHERE id = ?')
+      .prepare("SELECT 1 FROM apps WHERE id = ?")
       .get(entry.id);
     if (existing) {
       results.push({
         id: entry.id,
         name: entry.name,
-        status: 'skipped',
-        source: 'live',
-        message: 'already tracked',
+        status: "skipped",
+        source: "live",
+        message: "already tracked",
         snapshotsWritten: 0,
       });
       continue;
@@ -537,20 +556,20 @@ export async function POST(request: Request) {
       results.push({
         id: entry.id,
         name: entry.name,
-        status: 'inserted',
-        source: 'live',
+        status: "inserted",
+        source: "live",
         snapshotsWritten,
       });
     } catch (e) {
       if (e instanceof AppleRateLimitError) {
-        stoppedEarly = { reason: 'rate-limited', retryAfterMs: e.retryAfterMs };
+        stoppedEarly = { reason: "rate-limited", retryAfterMs: e.retryAfterMs };
         break;
       }
       results.push({
         id: entry.id,
         name: entry.name,
-        status: 'error',
-        source: 'live',
+        status: "error",
+        source: "live",
         message: e instanceof Error ? e.message : String(e),
         snapshotsWritten: 0,
       });
@@ -558,7 +577,7 @@ export async function POST(request: Request) {
 
     // Polite spacer — lets Apple's per-IP counters relax between hits.
     if (PER_APP_DELAY_MS > 0) {
-      await new Promise(resolve => setTimeout(resolve, PER_APP_DELAY_MS));
+      await new Promise((resolve) => setTimeout(resolve, PER_APP_DELAY_MS));
     }
   }
 
@@ -567,7 +586,7 @@ export async function POST(request: Request) {
     results,
     regionSource,
     country,
-    mode: 'live',
+    mode: "live",
     stoppedEarly,
     auditContext: guard,
   });
@@ -584,39 +603,46 @@ function finishResponse({
 }: {
   startedAt: number;
   results: SeedAppResult[];
-  regionSource: 'query' | 'setting' | 'default';
+  regionSource: "query" | "setting" | "default";
   country: string;
-  mode: 'live' | 'canned';
-  stoppedEarly?: { reason: 'rate-limited'; retryAfterMs: number } | null;
+  mode: "live" | "canned";
+  stoppedEarly?: { reason: "rate-limited"; retryAfterMs: number } | null;
   auditContext?: MutationGuardContext;
 }): NextResponse {
-  const insertedCount = results.filter(r => r.status === 'inserted').length;
-  const skippedCount = results.filter(r => r.status === 'skipped').length;
-  const errorCount = results.filter(r => r.status === 'error').length;
+  const insertedCount = results.filter((r) => r.status === "inserted").length;
+  const skippedCount = results.filter((r) => r.status === "skipped").length;
+  const errorCount = results.filter((r) => r.status === "error").length;
 
   // Activity row so the seed shows up in the dev log alongside scrape /
   // resync events. Best-effort — never fail the response on log issues.
   try {
     recordActivity({
-      type: 'reset',
-      status: errorCount > 0 || stoppedEarly ? 'partial' : 'ok',
+      type: "reset",
+      status: errorCount > 0 || stoppedEarly ? "partial" : "ok",
       summary:
-        mode === 'live'
+        mode === "live"
           ? `Dev seed (live, ${country}/${regionSource}) — inserted ${insertedCount}, skipped ${skippedCount}${
-              errorCount ? `, ${errorCount} errored` : ''
-            }${stoppedEarly ? `, stopped early (${stoppedEarly.reason})` : ''}`
+              errorCount ? `, ${errorCount} errored` : ""
+            }${stoppedEarly ? `, stopped early (${stoppedEarly.reason})` : ""}`
           : `Dev seed (canned) — inserted ${insertedCount}, skipped ${skippedCount}`,
-      detail: { mode: `dev-seed-${mode}`, country, regionSource, results, stoppedEarly },
+      detail: {
+        mode: `dev-seed-${mode}`,
+        country,
+        regionSource,
+        results,
+        stoppedEarly,
+      },
       startedAt,
     });
   } catch (e) {
-    console.warn('[/api/dev/seed-sample-data] activity-log failed:', e);
+    console.warn("[/api/dev/seed-sample-data] activity-log failed:", e);
   }
   if (auditContext) {
     recordAudit({
-      action: stoppedEarly || errorCount > 0
-        ? 'dev.seed_sample_data.partial'
-        : 'dev.seed_sample_data.success',
+      action:
+        stoppedEarly || errorCount > 0
+          ? "dev.seed_sample_data.partial"
+          : "dev.seed_sample_data.success",
       actorIp: auditContext.actorIp,
       userAgent: auditContext.userAgent,
       success: errorCount === 0 && !stoppedEarly,

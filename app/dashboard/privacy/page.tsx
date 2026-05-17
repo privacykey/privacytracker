@@ -1,23 +1,25 @@
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { redirect, notFound } from 'next/navigation';
-import { getAllApps, getGroupedPrivacyView } from '../../../lib/scraper';
-import PrivacyGroupedView from '../../components/PrivacyGroupedView';
-import Nav from '../../components/Nav';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
-import { setSettingIfUnset } from '@/lib/scheduler';
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { setSettingIfUnset } from "@/lib/scheduler";
+import { getAllApps, getGroupedPrivacyView } from "../../../lib/scraper";
+import Nav from "../../components/Nav";
+import PrivacyGroupedView from "../../components/PrivacyGroupedView";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   return {
-    title: t('privacy_map_title'),
+    title: t("privacy_map_title"),
   };
 }
 
 export default function PrivacyPage() {
-  if (resolveFlagFromDb('flag.page.privacy_map') !== 'on') notFound();
+  if (resolveFlagFromDb("flag.page.privacy_map") !== "on") {
+    notFound();
+  }
 
   let apps: any[] = [];
   let grouped: any[] = [];
@@ -26,20 +28,20 @@ export default function PrivacyPage() {
     grouped = getGroupedPrivacyView() as any[];
   } catch (error) {
     // DB not ready
-    console.warn('[privacy] getAllApps/getGroupedPrivacyView failed:', error);
+    console.warn("[privacy] getAllApps/getGroupedPrivacyView failed:", error);
   }
 
   if (apps.length === 0) {
-    redirect('/onboard');
+    redirect("/onboard");
   }
 
   // First-visit marker for the user-tasks `view_privacy_map` completion
   // check. Idempotent: once set, every subsequent render is a single
   // SELECT no-op. Swallows DB errors — the page must render.
   try {
-    setSettingIfUnset('task_visit.privacy_map_at', String(Date.now()));
+    setSettingIfUnset("task_visit.privacy_map_at", String(Date.now()));
   } catch (e) {
-    console.warn('[privacy] task visit marker failed:', e);
+    console.warn("[privacy] task visit marker failed:", e);
   }
 
   return (

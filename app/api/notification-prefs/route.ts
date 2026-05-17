@@ -1,20 +1,17 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
-import { getSetting, setSetting } from '../../../lib/scheduler';
-import {
-  setOverride,
-  clearOverride,
-} from '../../../lib/feature-flag-storage';
-import { resolveFlagFromDb } from '../../../lib/feature-flags-server';
+import { NextResponse } from "next/server";
+import type { FlagKey } from "../../../lib/feature-flag-rules";
+import { clearOverride, setOverride } from "../../../lib/feature-flag-storage";
+import { resolveFlagFromDb } from "../../../lib/feature-flags-server";
 import {
   DEFAULT_NOTIFICATION_PREFS,
+  type NotificationPrefs,
   parseStoredPrefs,
   sanitizePrefs,
-  type NotificationPrefs,
-} from '../../../lib/notification-prefs';
-import type { FlagKey } from '../../../lib/feature-flag-rules';
-import { readBoundedJson } from '../../../lib/security';
+} from "../../../lib/notification-prefs";
+import { getSetting, setSetting } from "../../../lib/scheduler";
+import { readBoundedJson } from "../../../lib/security";
 
 /**
  * The flag system tracks four notification types — see the
@@ -25,10 +22,10 @@ import { readBoundedJson } from '../../../lib/security';
  * here and only the four below project through to flag overrides.
  */
 type FlagNotificationTypeKey =
-  | 'label_changes'
-  | 'policy_updates'
-  | 'accessibility_changes'
-  | 'new_privacy_types';
+  | "label_changes"
+  | "policy_updates"
+  | "accessibility_changes"
+  | "new_privacy_types";
 
 /**
  * Round 3 wave I: per-type notification preferences are now backed by the
@@ -40,10 +37,10 @@ type FlagNotificationTypeKey =
  * in sync.
  */
 const TYPE_TO_FLAG: Record<FlagNotificationTypeKey, FlagKey> = {
-  label_changes: 'flag.notifications.types.label_changes',
-  policy_updates: 'flag.notifications.types.policy_updates',
-  accessibility_changes: 'flag.notifications.types.accessibility_changes',
-  new_privacy_types: 'flag.notifications.types.new_privacy_types',
+  label_changes: "flag.notifications.types.label_changes",
+  policy_updates: "flag.notifications.types.policy_updates",
+  accessibility_changes: "flag.notifications.types.accessibility_changes",
+  new_privacy_types: "flag.notifications.types.new_privacy_types",
 };
 
 /**
@@ -63,10 +60,10 @@ const TYPE_TO_FLAG: Record<FlagNotificationTypeKey, FlagKey> = {
  *   values are dropped by `sanitizePrefs` before the DB write.
  */
 
-const PREFS_KEY = 'notification_prefs';
+const PREFS_KEY = "notification_prefs";
 
 function readStored(): NotificationPrefs {
-  const raw = getSetting(PREFS_KEY, '');
+  const raw = getSetting(PREFS_KEY, "");
   return parseStoredPrefs(raw);
 }
 
@@ -76,7 +73,9 @@ function readStored(): NotificationPrefs {
  * default, otherwise the hard default — exactly the layered cascade the
  * UI wants. Falls back to the legacy stored blob if the resolver fails.
  */
-function readResolvedPrefs(): Record<FlagNotificationTypeKey, boolean> | NotificationPrefs {
+function readResolvedPrefs():
+  | Record<FlagNotificationTypeKey, boolean>
+  | NotificationPrefs {
   try {
     const out: Record<FlagNotificationTypeKey, boolean> = {
       label_changes: false,
@@ -84,8 +83,11 @@ function readResolvedPrefs(): Record<FlagNotificationTypeKey, boolean> | Notific
       accessibility_changes: false,
       new_privacy_types: false,
     };
-    for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as Array<[FlagNotificationTypeKey, FlagKey]>) {
-      out[type] = resolveFlagFromDb(flag) === 'on';
+    for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as [
+      FlagNotificationTypeKey,
+      FlagKey,
+    ][]) {
+      out[type] = resolveFlagFromDb(flag) === "on";
     }
     return out;
   } catch {
@@ -107,18 +109,23 @@ export async function PUT(request: Request) {
   try {
     body = await readBoundedJson(request, 8 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body || typeof body !== 'object') {
-    return NextResponse.json({ error: 'Body must be an object' }, { status: 400 });
+  if (!body || typeof body !== "object") {
+    return NextResponse.json(
+      { error: "Body must be an object" },
+      { status: 400 }
+    );
   }
 
   const raw = (body as { prefs?: unknown }).prefs;
   if (raw === null) {
     // Clear all four flag overrides + the legacy blob (belt and braces).
-    setSetting(PREFS_KEY, '');
-    for (const flag of Object.values(TYPE_TO_FLAG)) clearOverride(flag);
+    setSetting(PREFS_KEY, "");
+    for (const flag of Object.values(TYPE_TO_FLAG)) {
+      clearOverride(flag);
+    }
     const prefs = readResolvedPrefs();
     return NextResponse.json({
       prefs,
@@ -128,8 +135,11 @@ export async function PUT(request: Request) {
   }
   if (raw === undefined) {
     return NextResponse.json(
-      { error: 'Missing `prefs` key. Pass null to clear, or an object of booleans to save.' },
-      { status: 400 },
+      {
+        error:
+          "Missing `prefs` key. Pass null to clear, or an object of booleans to save.",
+      },
+      { status: 400 }
     );
   }
 
@@ -140,19 +150,29 @@ export async function PUT(request: Request) {
   // both shapes into the flag override layer: a `true` value for the
   // matching key flips the flag override to `on`, `false` to `off`, and
   // a missing key clears the override so the focus default wins again.
-  const cleanRaw = (raw && typeof raw === 'object' && !Array.isArray(raw))
-    ? (raw as Record<string, unknown>)
-    : {};
+  const cleanRaw =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
   function readBool(key: FlagNotificationTypeKey): boolean | undefined {
     const v = cleanRaw[key];
-    if (typeof v === 'boolean') return v;
-    return undefined;
+    if (typeof v === "boolean") {
+      return v;
+    }
+    return;
   }
-  for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as Array<[FlagNotificationTypeKey, FlagKey]>) {
+  for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as [
+    FlagNotificationTypeKey,
+    FlagKey,
+  ][]) {
     const value = readBool(type);
-    if (value === true) setOverride(flag, 'on');
-    else if (value === false) setOverride(flag, 'off');
-    else clearOverride(flag);
+    if (value === true) {
+      setOverride(flag, "on");
+    } else if (value === false) {
+      setOverride(flag, "off");
+    } else {
+      clearOverride(flag);
+    }
   }
   // Keep the legacy blob in sync as a back-compat read path; nothing in
   // the new flow reads it but pre-migration code paths might.
