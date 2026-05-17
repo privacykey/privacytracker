@@ -1164,7 +1164,7 @@ export default function DevMenu() {
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label={open ? tDev("close_aria") : tDev("open_aria")}
-        className={`dev-menu-trigger${open ? "is-open" : ""}${syncRunning ? "is-busy" : ""}`}
+        className={`dev-menu-trigger${open ? " is-open" : ""}${syncRunning ? " is-busy" : ""}`}
         onClick={() => setOpen((o) => !o)}
         ref={triggerRef}
         title={tDev("trigger_title")}
@@ -1223,7 +1223,7 @@ export default function DevMenu() {
                       ? tDev("killswitch_label_off")
                       : tDev("killswitch_label_on")
                   }
-                  className={`dev-menu-killswitch-toggle${killSwitchActive ? "is-off" : ""}`}
+                  className={`dev-menu-killswitch-toggle${killSwitchActive ? " is-off" : ""}`}
                   disabled={killBusy || !rows}
                   onClick={() =>
                     writeKillSwitch(killSwitchActive ? "enable" : "disable")
@@ -1413,7 +1413,7 @@ export default function DevMenu() {
                       return (
                         <button
                           aria-checked={active}
-                          className={`dev-menu-pick${active ? "is-active" : ""}`}
+                          className={`dev-menu-pick${active ? " is-active" : ""}`}
                           disabled={!focus || focusBusy}
                           key={opt.value}
                           onClick={() => setAudienceTo(opt.value)}
@@ -1452,7 +1452,7 @@ export default function DevMenu() {
                       return (
                         <button
                           aria-pressed={active}
-                          className={`dev-menu-pick${active ? "is-active" : ""}`}
+                          className={`dev-menu-pick${active ? " is-active" : ""}`}
                           disabled={!focus || focusBusy}
                           key={opt.key}
                           onClick={() => toggleGoal(opt.key)}
@@ -1494,7 +1494,7 @@ export default function DevMenu() {
                   <div className="dev-menu-config-actions">
                     <button
                       aria-checked={!!profiles.privacyEnabled}
-                      className={`switch-toggle${profiles.privacyEnabled ? "is-on" : ""}`}
+                      className={`switch-toggle${profiles.privacyEnabled ? " is-on" : ""}`}
                       disabled={
                         profiles.privacyEnabled === null ||
                         profileBusy === "privacy"
@@ -1542,7 +1542,7 @@ export default function DevMenu() {
                   <div className="dev-menu-config-actions">
                     <button
                       aria-checked={!!profiles.accessibilityEnabled}
-                      className={`switch-toggle${profiles.accessibilityEnabled ? "is-on" : ""}`}
+                      className={`switch-toggle${profiles.accessibilityEnabled ? " is-on" : ""}`}
                       disabled={
                         profiles.accessibilityEnabled === null ||
                         profileBusy === "accessibility"
@@ -1868,7 +1868,7 @@ function FlagsSection({
 }) {
   return (
     <details
-      className={`dev-menu-section${highlight ? "is-highlighted" : ""}`}
+      className={`dev-menu-section${highlight ? " is-highlighted" : ""}`}
       open={!collapsedByDefault}
     >
       <summary className="dev-menu-section-summary">
@@ -1983,7 +1983,7 @@ function DevFlagRow({
       >
         <button
           aria-pressed={row.override === null}
-          className={`dev-menu-pick${row.override === null ? "is-active" : ""}`}
+          className={`dev-menu-pick${row.override === null ? " is-active" : ""}`}
           onClick={() => row.override !== null && onSetOverride(row.key, null)}
           title={tDev("pick_default_title", { default: row.hardDefault })}
           type="button"
@@ -1995,7 +1995,7 @@ function DevFlagRow({
           return (
             <button
               aria-pressed={active}
-              className={`dev-menu-pick dev-menu-pick-${value}${active ? "is-active" : ""}`}
+              className={`dev-menu-pick dev-menu-pick-${value}${active ? " is-active" : ""}`}
               key={value}
               onClick={() => !active && onSetOverride(row.key, value)}
               title={tDev("pick_value_title", { value })}

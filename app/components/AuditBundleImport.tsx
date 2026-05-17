@@ -223,7 +223,7 @@ export default function AuditBundleImport() {
       ) : (
         <div
           aria-label={t("dropzone_aria")}
-          className={`audit-bundle-import__dropzone${dragOver ? "is-drag-over" : ""}${busy ? "is-busy" : ""}`}
+          className={`audit-bundle-import__dropzone${dragOver ? " is-drag-over" : ""}${busy ? " is-busy" : ""}`}
           onClick={() => {
             if (!busy) {
               fileRef.current?.click();

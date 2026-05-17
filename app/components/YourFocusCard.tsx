@@ -225,7 +225,7 @@ export default async function YourFocusCard() {
         <ul className="your-focus-card__enables-list">
           {enableRows.map((row) => (
             <li
-              className={`your-focus-card__enable${row.on ? "is-on" : "is-off"}`}
+              className={`your-focus-card__enable ${row.on ? "is-on" : "is-off"}`}
               key={row.key}
             >
               <span className="your-focus-card__enable-name">

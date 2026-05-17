@@ -1048,7 +1048,10 @@ export default function ReviewRecommendationsView({
                         bundle the user accepted, surfaced as muted
                         one-liners below the editor */}
                 <div className="review-rec-row-notes">
-                  <label className="review-rec-row-notes-label">
+                  <label
+                    className="review-rec-row-notes-label"
+                    htmlFor={`review-rec-notes-${row.id}`}
+                  >
                     {tReview("notes_label")}
                     {!row.userVerdict && (
                       <span className="review-rec-row-notes-hint">
@@ -1059,6 +1062,7 @@ export default function ReviewRecommendationsView({
                   <textarea
                     className="review-rec-row-notes-input"
                     disabled={!row.userVerdict}
+                    id={`review-rec-notes-${row.id}`}
                     maxLength={400}
                     onChange={(e) => onRationaleChange(row, e.target.value)}
                     placeholder={
@@ -1209,7 +1213,7 @@ export default function ReviewRecommendationsView({
                             return (
                               <li key={candidate.id}>
                                 <button
-                                  className={`review-rec-shortlist-chip${isPicked ? "is-picked" : ""}`}
+                                  className={`review-rec-shortlist-chip${isPicked ? " is-picked" : ""}`}
                                   onClick={() =>
                                     pickShortlistCandidate(
                                       row.id,
@@ -1588,7 +1592,7 @@ export default function ReviewRecommendationsView({
             ) : (
               devices.map((d) => (
                 <label
-                  className={`review-rec-device-row${selectedEcid === d.ecid ? "is-selected" : ""}`}
+                  className={`review-rec-device-row${selectedEcid === d.ecid ? " is-selected" : ""}`}
                   key={d.ecid}
                 >
                   <input

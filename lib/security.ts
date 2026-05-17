@@ -409,7 +409,19 @@ export async function safeFetch(
   const redirect: RequestRedirect = options.redirect ?? "manual";
   const signal = withTimeoutSignal(timeoutMs, options.signal);
 
-  let currentUrl = url.toString();
+  // `currentUrl` holds the *validated* URL we're about to fetch — never the
+  // raw caller input. It starts life as `validation.url` (which has already
+  // passed protocol / hostname / metadata / private-IP / allowlist gates in
+  // `validateExternalUrl`, plus the optional DNS-rebinding check via
+  // `hostResolvesToPublic` above). Every 3xx redirect target is re-run
+  // through *both* gates below before being reassigned here, so the loop
+  // invariant is "currentUrl has cleared every SSRF check the caller asked
+  // for". Keeping this typed as a URL object (rather than a string) makes
+  // the validated-not-raw distinction visible at the fetch site to both
+  // human reviewers and static analysers — CodeQL's js/request-forgery flag
+  // on the fetch call here is a known false positive because the analyser
+  // can't trace through `validateExternalUrl`'s branching return shape.
+  let currentUrl: URL = url;
   let redirectsUsed = 0;
 
   // We follow redirects manually so we can re-validate every hop's hostname.
@@ -425,41 +437,42 @@ export async function safeFetch(
     if (redirect === "follow" && res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
       if (!location) {
-        return readBounded(res, currentUrl, maxBytes);
+        return readBounded(res, currentUrl.toString(), maxBytes);
       }
       redirectsUsed += 1;
       if (redirectsUsed > maxRedirects) {
         throw new Error(`safeFetch: too many redirects (${redirectsUsed})`);
       }
-      let nextUrl: string;
+      let nextCandidate: URL;
       try {
-        nextUrl = new URL(location, currentUrl).toString();
+        nextCandidate = new URL(location, currentUrl);
       } catch {
         throw new Error(`safeFetch: invalid redirect target: ${location}`);
       }
-      const nextValidation = validateExternalUrl(nextUrl, {
+      const nextValidation = validateExternalUrl(nextCandidate.toString(), {
         allowedHosts: options.allowedHosts,
         allowPrivateHosts: options.allowPrivateHosts,
         maxLength: options.maxUrlLength,
       });
-      if (!nextValidation.ok) {
+      if (!(nextValidation.ok && nextValidation.url)) {
         throw new Error(
           `safeFetch: redirect rejected — ${nextValidation.error}: ${nextValidation.detail}`
         );
       }
+      const nextValidatedUrl = nextValidation.url;
       if (resolveAndCheck && !options.allowPrivateHosts) {
-        const ok = await hostResolvesToPublic(nextValidation.url!.hostname);
+        const ok = await hostResolvesToPublic(nextValidatedUrl.hostname);
         if (!ok) {
           throw new Error(
-            `safeFetch: redirect host ${nextValidation.url!.hostname} is private`
+            `safeFetch: redirect host ${nextValidatedUrl.hostname} is private`
           );
         }
       }
-      currentUrl = nextUrl;
+      currentUrl = nextValidatedUrl;
       continue;
     }
 
-    return readBounded(res, currentUrl, maxBytes);
+    return readBounded(res, currentUrl.toString(), maxBytes);
   }
 }
 

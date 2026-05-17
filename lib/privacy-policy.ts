@@ -2380,8 +2380,14 @@ function extractScriptLocationTarget(
   baseUrl: string
 ): string | null {
   // Only look inside <script> bodies — a naked "window.location = " in a
-  // tutorial blob shouldn't count.
-  const scriptBlocks = html.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? [];
+  // tutorial blob shouldn't count. The closing tag explicitly tolerates
+  // whitespace before the `>` (`</script >`, `</script\n>`, etc.) because
+  // those are valid HTML5 end-tag forms; a tighter `</script>` literal
+  // would let attacker-crafted pages hide their redirect inside what
+  // looks (to our regex) like one giant unterminated script block.
+  // Flagged by CodeQL rule `js/bad-tag-filter`.
+  const scriptBlocks =
+    html.match(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi) ?? [];
   for (const block of scriptBlocks) {
     const m =
       block.match(
@@ -2468,7 +2474,29 @@ function detectGoogleConsentHandoff(
   let target: string;
   if (continueUrl && /^https?:\/\//i.test(continueUrl)) {
     target = continueUrl;
-  } else if (host.endsWith("google.com")) {
+    // Reject the `continue` redirect if it points at a host that ISN'T
+    // a Google property — an attacker who controls a meta-refresh
+    // chain into `consent.google.com?continue=https://evil.example`
+    // would otherwise see us treat their URL as a recovered policy
+    // page. The destination ultimately flows back into the policy
+    // scraper which already validates via `safeFetch`, but blocking
+    // here gives a clearer "not Google → drop" signal rather than
+    // relying on the broader SSRF guard to refuse it downstream.
+    try {
+      const targetHost = new URL(target).hostname.toLowerCase();
+      const targetIsGoogle =
+        targetHost === "google.com" || targetHost.endsWith(".google.com");
+      if (!targetIsGoogle) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+  } else if (host === "google.com" || host.endsWith(".google.com")) {
+    // Exact host match OR `.google.com` subdomain only — `host.endsWith(
+    // "google.com")` alone would also accept attacker-controlled hosts
+    // like `evil-google.com`, which is what CodeQL flagged (rule
+    // `js/incomplete-url-substring-sanitization`).
     target = `${parsed.protocol}//${parsed.hostname}${parsed.pathname}`;
   } else {
     return null;
@@ -2666,22 +2694,29 @@ const CHROME_CLASS_PATTERN =
   /(cookie|consent|banner|navbar|nav-|menu|footer|subscribe|signup|breadcrumb|hero-|cta-|sidebar|social|related|share|toolbar|modal|popup)/i;
 
 function stripChromeTags(html: string): string {
+  // Every closing tag below uses `<\/tagname\s*>` rather than `<\/tagname>`.
+  // HTML5 end tags allow whitespace before the `>` (`</script >`,
+  // `</style\n>`, etc.), and an attacker-crafted policy page could use
+  // that form to keep its `<script>…</script >` block from being
+  // stripped before the text reaches the AI summariser — script bodies
+  // are prime prompt-injection fodder. Same fix CodeQL flagged on the
+  // redirect extractor above (rule `js/bad-tag-filter`).
   return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ")
-    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, " ")
-    .replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, " ")
-    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside>/gi, " ")
-    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, " ")
-    .replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\s*>/gi, " ")
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg\s*>/gi, " ")
+    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav\s*>/gi, " ")
+    .replace(/<header\b[^>]*>[\s\S]*?<\/header\s*>/gi, " ")
+    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside\s*>/gi, " ")
+    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer\s*>/gi, " ")
+    .replace(/<form\b[^>]*>[\s\S]*?<\/form\s*>/gi, " ")
     .replace(
-      /<[^>]+\srole="(navigation|banner|contentinfo|complementary|search)"[^>]*>[\s\S]*?<\/[^>]+>/gi,
+      /<[^>]+\srole="(navigation|banner|contentinfo|complementary|search)"[^>]*>[\s\S]*?<\/[^>]+\s*>/gi,
       " "
     )
     .replace(
-      /<(div|section|aside|header|footer|ul|ol)\b[^>]*\sclass="[^"]*"[^>]*>[\s\S]*?<\/\1>/gi,
+      /<(div|section|aside|header|footer|ul|ol)\b[^>]*\sclass="[^"]*"[^>]*>[\s\S]*?<\/\1\s*>/gi,
       (full) => {
         const classMatch = full.match(/\sclass="([^"]*)"/i);
         if (classMatch && CHROME_CLASS_PATTERN.test(classMatch[1])) {
@@ -2709,15 +2744,19 @@ function htmlBlockToText(html: string): string {
 }
 
 function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
+  // Closing tags below tolerate whitespace before the `>` for the same
+  // reason as `stripChromeTags`: HTML5 end tags are valid with trailing
+  // whitespace (`</main >`) and a strict literal would otherwise fail
+  // to extract the policy text from spec-compliant but unusual markup.
   const title =
     decodeHtmlEntities(
-      html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? ""
+      html.match(/<title[^>]*>([\s\S]*?)<\/title\s*>/i)?.[1] ?? ""
     ).trim() || fallbackTitle;
 
   const primaryHtml =
-    html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i)?.[1] ??
-    html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1] ??
-    html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ??
+    html.match(/<main\b[^>]*>([\s\S]*?)<\/main\s*>/i)?.[1] ??
+    html.match(/<article\b[^>]*>([\s\S]*?)<\/article\s*>/i)?.[1] ??
+    html.match(/<body\b[^>]*>([\s\S]*?)<\/body\s*>/i)?.[1] ??
     html;
 
   const firstPassText = htmlBlockToText(stripChromeTags(primaryHtml));

@@ -823,6 +823,7 @@ export default function StatsView({
                   className="btn btn-secondary btn-sm"
                   disabled={reSyncing === app.id}
                   onClick={() => reSyncApp(app.url, app.name, app.id)}
+                  type="button"
                 >
                   {reSyncing === app.id ? <span className="spinner-sm" /> : "↻"}{" "}
                   Sync

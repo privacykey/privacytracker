@@ -864,7 +864,7 @@ function TimelineSnapshotItem({
 
   return (
     <div
-      className={`timeline-item${isWayback ? "timeline-item-wayback" : ""}`}
+      className={`timeline-item${isWayback ? " timeline-item-wayback" : ""}`}
       id={`snapshot-${snapshot.id}`}
     >
       <div className={`timeline-dot ${dotClass(snapshot, snapshotPosition)}`} />
@@ -874,8 +874,8 @@ function TimelineSnapshotItem({
       </div>
 
       <div
-        className={`timeline-card${isWayback ? "timeline-card-wayback" : ""}${
-          pulsing ? "timeline-card-pulse" : ""
+        className={`timeline-card${isWayback ? " timeline-card-wayback" : ""}${
+          pulsing ? " timeline-card-pulse" : ""
         }`}
       >
         <div
@@ -1021,7 +1021,7 @@ function TimelineSnapshotItem({
               return (
                 <div className="timeline-change" key={ci}>
                   <span
-                    className={`timeline-change-icon ${c.type}${isPolicyError ? "policy-error" : ""}${isWaybackFailed ? "wayback-failed" : ""}`}
+                    className={`timeline-change-icon ${c.type}${isPolicyError ? " policy-error" : ""}${isWaybackFailed ? " wayback-failed" : ""}`}
                     title={
                       isPolicyError
                         ? tCt("policy_rescrape_failed")
@@ -1523,11 +1523,7 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
           </span>
         )}
       </div>
-      <div
-        aria-label={tCt("diff_view_aria")}
-        className="policy-diff-view"
-        role="region"
-      >
+      <section aria-label={tCt("diff_view_aria")} className="policy-diff-view">
         {shown.map((line, idx) => (
           <div
             className={`policy-diff-line policy-diff-line-${line.type}`}
@@ -1554,7 +1550,7 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
             </span>
           </div>
         ))}
-      </div>
+      </section>
       {overflow && (
         <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
           Showing first {DIFF_MAX_LINES.toLocaleString()} of{" "}

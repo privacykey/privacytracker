@@ -209,7 +209,13 @@ export default function FlagHighlightHandler() {
           className={`flag-highlight-arrow flag-highlight-arrow-${arrowDir}`}
           style={{ top: arrowPos.y, left: arrowPos.x }}
         >
-          <svg fill="none" height="32" viewBox="0 0 32 32" width="32">
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="32"
+            viewBox="0 0 32 32"
+            width="32"
+          >
             <circle
               cx="16"
               cy="16"

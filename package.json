@@ -14,6 +14,7 @@
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
     "lint:i18n": "node scripts/check-i18n-parity.mjs",
+    "pretypecheck": "next typegen",
     "typecheck": "tsc --noEmit",
     "test": "node --conditions=react-server --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",
     "test:coverage": "rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --conditions=react-server --experimental-test-coverage --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",

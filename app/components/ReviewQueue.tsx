@@ -1150,7 +1150,7 @@ function ReviewCard({
 
   return (
     <div
-      className={`review-queue-card-stage${dragDirection ? `is-${dragDirection}` : ""}${isDragging ? "is-dragging" : ""}${exitDir ? "is-exiting" : ""}${prefersReducedMotion ? "is-reduced-motion" : ""}`}
+      className={`review-queue-card-stage${dragDirection ? ` is-${dragDirection}` : ""}${isDragging ? " is-dragging" : ""}${exitDir ? " is-exiting" : ""}${prefersReducedMotion ? " is-reduced-motion" : ""}`}
     >
       <div
         className="review-queue-card"
@@ -1244,10 +1244,9 @@ function ReviewCard({
         </div>
 
         {noteOpen && (
-          <div
+          <section
             aria-label={t("note_overlay.title")}
             className="review-queue-note-overlay"
-            role="region"
           >
             <textarea
               className="review-queue-note-textarea"
@@ -1260,7 +1259,7 @@ function ReviewCard({
             <p className="review-queue-note-hint">
               {t("note_overlay.submit_hint")}
             </p>
-          </div>
+          </section>
         )}
       </div>
 

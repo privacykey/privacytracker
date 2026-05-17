@@ -76,6 +76,15 @@ jobs:
             librsvg2-dev \
             patchelf
 
+      # tauri-build (run by `cargo test` via the build script) reads
+      # `src-tauri/resources/standalone.tar` and panics if it doesn't
+      # exist. The real tarball is the standalone Next.js bundle and
+      # is only produced by `pnpm build:standalone` (~30s). For test
+      # purposes a 0-byte placeholder is enough — cargo's resource-
+      # path validator only does Path::exists().
+      - name: Stub standalone.tar for tauri-build
+        run: node scripts/ensure-standalone-stub.mjs
+
       - name: Test Tauri Rust helpers
         run: pnpm test:tauri
 
@@ -142,6 +151,19 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             patchelf
+
+      - name: Setup Node
+        # Needed only to run the `ensure-standalone-stub.mjs` placeholder
+        # script below. Doesn't need pnpm or a node_modules install.
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        with:
+          node-version: '24'
+
+      # See the matching note in the `quality` job — tauri-build needs
+      # `resources/standalone.tar` to exist before `cargo check` will
+      # even start compiling, so write a 0-byte placeholder.
+      - name: Stub standalone.tar for tauri-build
+        run: node scripts/ensure-standalone-stub.mjs
 
       - name: Install stable Rust toolchain
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable as of 2026-05

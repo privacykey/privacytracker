@@ -533,7 +533,7 @@ export default function KeyboardShortcuts() {
       {(sequenceVisible || activation) && !helpOpen && (
         <div
           aria-live="polite"
-          className={`kbd-sequence-indicator${activation ? "kbd-sequence-indicator-activated" : ""}`}
+          className={`kbd-sequence-indicator${activation ? " kbd-sequence-indicator-activated" : ""}`}
           role="status"
         >
           <kbd className="kbd">g</kbd>

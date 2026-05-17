@@ -115,11 +115,7 @@ export default function FocusPreviewBanner() {
   const summary = [audienceLabel, ...goalLabels].join(" · ");
 
   return (
-    <div
-      aria-label={t("controls_aria")}
-      className="focus-preview-banner"
-      role="region"
-    >
+    <section aria-label={t("controls_aria")} className="focus-preview-banner">
       <div className="focus-preview-banner__inner">
         <div className="focus-preview-banner__copy">
           <span className="focus-preview-banner__label">{t("label")}</span>{" "}
@@ -159,7 +155,7 @@ export default function FocusPreviewBanner() {
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

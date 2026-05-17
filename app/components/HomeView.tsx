@@ -704,11 +704,7 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
   }, [router]);
 
   return (
-    <div
-      aria-label={t("toolbar_aria")}
-      className="home-edit-toolbar"
-      role="region"
-    >
+    <section aria-label={t("toolbar_aria")} className="home-edit-toolbar">
       <div className="home-edit-toolbar-status">
         <span className="home-edit-toolbar-title">{t("toolbar_title")}</span>
         {saver.savingState === "saving" && (
@@ -810,7 +806,7 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
           {t("done_button")}
         </button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -866,9 +862,9 @@ function SortableEditCard({
 
   return (
     <div
-      className={`home-edit-card${isDragging ? "is-dragging" : ""}${
-        showAsGhost ? "is-ghost" : ""
-      }${hidden ? "is-hidden" : ""}${isCallout ? "is-callout" : ""}`}
+      className={`home-edit-card${isDragging ? " is-dragging" : ""}${
+        showAsGhost ? " is-ghost" : ""
+      }${hidden ? " is-hidden" : ""}${isCallout ? " is-callout" : ""}`}
       data-card-id={id}
       ref={setNodeRef}
       style={style}
@@ -1725,7 +1721,7 @@ function StaleSection({
   const tRel = useTranslations("dashboard.relative_time");
   return (
     <section
-      className={`home-section home-section-stale${elevated ? "home-section-stale-elevated" : ""}`}
+      className={`home-section home-section-stale${elevated ? " home-section-stale-elevated" : ""}`}
       id={id}
     >
       <div className="home-section-header">

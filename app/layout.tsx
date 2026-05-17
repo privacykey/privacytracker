@@ -93,7 +93,7 @@ export default async function RootLayout({
     // smooth scrolling. Without it Next logs a dev warning and the
     // smooth-scroll animation can fight route-transition scroll-to-top.
     <html data-scroll-behavior="smooth" lang={locale} suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         {/* Self-hosted Inter (v4.1, SIL OFL-1.1) — see /public/fonts/ +
             @font-face in app/globals.css. Italic loads lazily. */}
         <link
@@ -308,7 +308,7 @@ export default async function RootLayout({
           `}</style>
           <div aria-live="assertive" className="nojs-root" role="alert">
             <main aria-labelledby="nojs-title" className="nojs-card">
-              <div className="nojs-brand">
+              <section className="nojs-brand">
                 {/* Regenerated via tools/build_icons.py → public/brand-icon.png. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -319,7 +319,7 @@ export default async function RootLayout({
                   width={44}
                 />
                 <span className="nojs-brand-name">privacytracker</span>
-              </div>
+              </section>
               <span className="nojs-eyebrow">JavaScript required</span>
               <h1 className="nojs-title" id="nojs-title">
                 This app needs JavaScript to run
@@ -428,10 +428,10 @@ export default async function RootLayout({
           {/* Global overlay portals — dialogs that render outside the main
             landmark when open. The region wrapper keeps axe happy even
             when both overlays are flag-off. */}
-          <div aria-label="Global overlays" role="region">
+          <section aria-label="Global overlays">
             {flags.keyboardShortcuts && <KeyboardShortcuts />}
             {flags.aboutModal && <AboutModal />}
-          </div>
+          </section>
         </NextIntlClientProvider>
       </body>
     </html>

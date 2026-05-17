@@ -19141,9 +19141,13 @@ button.import-history-stat.is-active {
   gap: 6px;
 }
 
-@media (max-width: 720px) {
-  /* Two-by-two grid on tablets and smaller — four-across becomes too
-     cramped for the title + description text. */
+@media (max-width: 960px) {
+  /* Two-by-two grid below ~960px — at the settings page width on
+     non-desktop viewports (or desktop with the settings sidebar
+     consuming space), four-across overflows because each pill needs
+     ~180px to fit emoji + title + 3-line description. The earlier
+     720px breakpoint left a window where 4-col was forced into a
+     ~700px container and clipped on both edges. */
   .privacy-profile-presets-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

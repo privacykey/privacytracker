@@ -774,7 +774,7 @@ export default function NotificationBell({
                     aria-disabled={
                       isStale && linkHref === "#" ? true : undefined
                     }
-                    className={`notif-item ${n.read === 0 ? "unread" : ""}${isStale ? "is-stale" : ""}`}
+                    className={`notif-item ${n.read === 0 ? "unread" : ""}${isStale ? " is-stale" : ""}`}
                     href={linkHref}
                     key={n.id}
                     onClick={() => setOpen(false)}

@@ -1136,6 +1136,7 @@ export default function AppGrid({
                 disabled={syncingAll}
                 onClick={() => syncFiltered(sorted)}
                 title={tGrid("resync_filter_title", { count: sorted.length })}
+                type="button"
               >
                 {syncingAll ? <span className="spinner" /> : "↻"}
                 {syncingAll
@@ -1148,6 +1149,7 @@ export default function AppGrid({
               className="btn btn-secondary"
               disabled={syncingAll || apps.length === 0}
               onClick={syncAll}
+              type="button"
             >
               {syncingAll ? <span className="spinner" /> : "↻"}
               {syncingAll ? tGrid("syncing") : tGrid("sync_all")}
@@ -1702,7 +1704,7 @@ export default function AppGrid({
             const isTourCard = idx === 0;
             return (
               <div
-                className={`app-card app-card-risk-${risk}${isSelected ? "app-card-selected" : ""}${compareMode ? "app-card-selectable" : ""}${pageMode === "select" ? "app-card-bulk-selectable" : ""}${isBulkSelected ? "app-card-bulk-selected" : ""}${
+                className={`app-card app-card-risk-${risk}${isSelected ? " app-card-selected" : ""}${compareMode ? " app-card-selectable" : ""}${pageMode === "select" ? " app-card-bulk-selectable" : ""}${isBulkSelected ? " app-card-bulk-selected" : ""}${
                   // Wave I — gold-border treatment for apps with at least
                   // one non-deleted annotation. Annotation count isn't
                   // threaded into the grid yet, so the class is reserved on
@@ -1710,7 +1712,7 @@ export default function AppGrid({
                   // styling hook for when the data lands.
                   f.cardAnnotationHighlight &&
                   (app as { annotationCount?: number }).annotationCount
-                    ? "app-card-annotated"
+                    ? " app-card-annotated"
                     : ""
                 }`}
                 data-tour={isTourCard ? "app-card-first" : undefined}
@@ -2151,11 +2153,10 @@ export default function AppGrid({
           don't fight; the toast auto-dismisses after 3s, the dock sticks
           until the user acts on it. */}
       {(selectedIds.length > 0 || compareMode) && (
-        <div
+        <section
           aria-label={tGrid("compare_selection_aria")}
           aria-live="polite"
           className="compare-dock"
-          role="region"
         >
           <div className="compare-dock-info">
             <span className="compare-dock-count">
@@ -2239,7 +2240,7 @@ export default function AppGrid({
               {tGrid("compare_dock_compare")}
             </button>
           </div>
-        </div>
+        </section>
       )}
 
       {pendingDelete && (
