@@ -1,11 +1,11 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 export const metadata: Metadata = {
-  title: 'Your Focus — privacytracker',
+  title: "Your Focus — privacytracker",
   description:
-    'How the audience and goal model tailors the dashboard, what each option means, and how to change it.',
+    "How the audience and goal model tailors the dashboard, what each option means, and how to change it.",
 };
 
 /**
@@ -32,15 +32,15 @@ interface SidebarSection {
   /** Translation key under `help_focus_page.sections.*` so the sidebar
    *  localises with the active locale. Each id below intentionally
    *  matches an existing section heading id in the page body. */
-  labelKey: 'what_is' | 'audiences' | 'goals' | 'accessibility' | 'tour';
+  labelKey: "what_is" | "audiences" | "goals" | "accessibility" | "tour";
 }
 
 const SIDEBAR_SECTIONS: SidebarSection[] = [
-  { id: 'what-is',       labelKey: 'what_is' },
-  { id: 'audiences',     labelKey: 'audiences' },
-  { id: 'goals',         labelKey: 'goals' },
-  { id: 'accessibility', labelKey: 'accessibility' },
-  { id: 'tour',          labelKey: 'tour' },
+  { id: "what-is", labelKey: "what_is" },
+  { id: "audiences", labelKey: "audiences" },
+  { id: "goals", labelKey: "goals" },
+  { id: "accessibility", labelKey: "accessibility" },
+  { id: "tour", labelKey: "tour" },
 ];
 
 export default async function HelpFocusPage() {
@@ -48,26 +48,30 @@ export default async function HelpFocusPage() {
   // aria + heading list). Section bodies remain English for now;
   // they're dense explanatory copy that warrants a careful content
   // pass, tracked separately under deferred long-form translations.
-  const t = await getTranslations('help_focus_page');
-  const tSec = await getTranslations('help_focus_page.sections');
+  const t = await getTranslations("help_focus_page");
+  const tSec = await getTranslations("help_focus_page.sections");
   return (
     <div className="legal-page">
       <header className="legal-page-hero">
-        <Link href="/dashboard" className="priv-back-link">{t('back_to_dashboard')}</Link>
-        <p className="priv-eyebrow">{t('eyebrow')}</p>
-        <h1 className="legal-page-title">{t('title')}</h1>
+        <Link className="priv-back-link" href="/dashboard">
+          {t("back_to_dashboard")}
+        </Link>
+        <p className="priv-eyebrow">{t("eyebrow")}</p>
+        <h1 className="legal-page-title">{t("title")}</h1>
         <p className="legal-page-sub">
-          {t.rich('subtitle', { strong: (chunks) => <strong>{chunks}</strong> })}
+          {t.rich("subtitle", {
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </p>
       </header>
 
       <div className="legal-layout">
-        <aside className="legal-sidebar" aria-label={t('sidebar_aria')}>
-          <p className="legal-sidebar-title">{t('sidebar_jump')}</p>
+        <aside aria-label={t("sidebar_aria")} className="legal-sidebar">
+          <p className="legal-sidebar-title">{t("sidebar_jump")}</p>
           <ul className="legal-sidebar-list">
-            {SIDEBAR_SECTIONS.map(s => (
+            {SIDEBAR_SECTIONS.map((s) => (
               <li key={s.id}>
-                <a href={`#${s.id}`} className="legal-sidebar-link">
+                <a className="legal-sidebar-link" href={`#${s.id}`}>
                   <span>{tSec(s.labelKey)}</span>
                 </a>
               </li>
@@ -77,32 +81,32 @@ export default async function HelpFocusPage() {
 
         <div className="legal-content">
           <section
-            id="what-is"
-            className="legal-license-group"
             aria-labelledby="what-is-heading"
+            className="legal-license-group"
+            id="what-is"
           >
             <header className="legal-license-head">
-              <h2 id="what-is-heading" className="legal-license-name">
-                {tSec('what_is')}
+              <h2 className="legal-license-name" id="what-is-heading">
+                {tSec("what_is")}
               </h2>
               <p className="legal-license-blurb">
-                A small bundle of preferences — an audience plus a set
-                of goals — that the app uses to decide what to show,
-                what to hide, and what to highlight.
+                A small bundle of preferences — an audience plus a set of goals
+                — that the app uses to decide what to show, what to hide, and
+                what to highlight.
               </p>
             </header>
             <p>
-              You pick it during onboarding (or skip and accept the
-              defaults), and you can change it any time from{' '}
+              You pick it during onboarding (or skip and accept the defaults),
+              and you can change it any time from{" "}
               <Link href="/dashboard/settings#focus">
                 Settings → Your focus
               </Link>
               .
             </p>
             <p>
-              Every individual feature is also user-overridable. If your
-              focus hides something you actually want, you can flip the
-              underlying flag on under{' '}
+              Every individual feature is also user-overridable. If your focus
+              hides something you actually want, you can flip the underlying
+              flag on under{" "}
               <Link href="/dashboard/settings#feature-flags">
                 Developer Options → Feature flags
               </Link>
@@ -111,93 +115,88 @@ export default async function HelpFocusPage() {
           </section>
 
           <section
-            id="audiences"
-            className="legal-license-group"
             aria-labelledby="audiences-heading"
+            className="legal-license-group"
+            id="audiences"
           >
             <header className="legal-license-head">
-              <h2 id="audiences-heading" className="legal-license-name">
-                {tSec('audiences')}
+              <h2 className="legal-license-name" id="audiences-heading">
+                {tSec("audiences")}
               </h2>
               <p className="legal-license-blurb">
-                Who the apps you&rsquo;re auditing belong to. Picks the
-                default surface area — power-user controls vs. simpler
-                maintenance view.
+                Who the apps you&rsquo;re auditing belong to. Picks the default
+                surface area — power-user controls vs. simpler maintenance view.
               </p>
             </header>
             <ul className="legal-bullets">
               <li>
-                <strong>For me</strong> — you&rsquo;re auditing your own
-                apps and you&rsquo;ll act on what you find. Default:
-                full surface, all power-user controls available.
+                <strong>For me</strong> — you&rsquo;re auditing your own apps
+                and you&rsquo;ll act on what you find. Default: full surface,
+                all power-user controls available.
               </li>
               <li>
-                <strong>For someone I care about</strong> —
-                you&rsquo;re checking apps for another adult who&rsquo;ll
-                make their own call. Default: share/export features
-                elevated so you can hand recommendations over; the
-                audit-bundle export is enabled, letting you ship findings
-                as a JSON file the recipient imports into their own copy
-                of the app.
+                <strong>For someone I care about</strong> — you&rsquo;re
+                checking apps for another adult who&rsquo;ll make their own
+                call. Default: share/export features elevated so you can hand
+                recommendations over; the audit-bundle export is enabled,
+                letting you ship findings as a JSON file the recipient imports
+                into their own copy of the app.
               </li>
               <li>
-                <strong>For a child or dependant</strong> —
-                you&rsquo;re responsible for someone else&rsquo;s
-                device. Default: simpler surface — keyboard shortcuts,
-                the Compare page, debug logs, and the technical-feeling
-                parts of the app are hidden so casual maintenance is
-                straightforward. None of it is locked, though; flip
-                anything back on via Developer Options.
+                <strong>For a child or dependant</strong> — you&rsquo;re
+                responsible for someone else&rsquo;s device. Default: simpler
+                surface — keyboard shortcuts, the Compare page, debug logs, and
+                the technical-feeling parts of the app are hidden so casual
+                maintenance is straightforward. None of it is locked, though;
+                flip anything back on via Developer Options.
               </li>
             </ul>
           </section>
 
           <section
-            id="goals"
-            className="legal-license-group"
             aria-labelledby="goals-heading"
+            className="legal-license-group"
+            id="goals"
           >
             <header className="legal-license-head">
-              <h2 id="goals-heading" className="legal-license-name">
-                {tSec('goals')}
+              <h2 className="legal-license-name" id="goals-heading">
+                {tSec("goals")}
               </h2>
               <p className="legal-license-blurb">
-                What you want out of the app. Pick more than one if you
-                like — except &ldquo;just the basics&rdquo;, which is
-                mutually exclusive with the others.
+                What you want out of the app. Pick more than one if you like —
+                except &ldquo;just the basics&rdquo;, which is mutually
+                exclusive with the others.
               </p>
             </header>
             <ul className="legal-bullets">
               <li>
-                <strong>Understand my apps and track over time</strong>{' '}
-                — turns on the timeline, AI policy summaries, history
-                charts, and notifications.
+                <strong>Understand my apps and track over time</strong> — turns
+                on the timeline, AI policy summaries, history charts, and
+                notifications.
               </li>
               <li>
-                <strong>Find and remove the worst offenders</strong> —
-                surfaces risk classification, profile-mismatch badges,
-                and delete shortcuts. Low-severity apps collapse by
-                default so the decisions you need to make are visible
-                up top.
+                <strong>Find and remove the worst offenders</strong> — surfaces
+                risk classification, profile-mismatch badges, and delete
+                shortcuts. Low-severity apps collapse by default so the
+                decisions you need to make are visible up top.
               </li>
               <li>
-                <strong>Just the basics</strong> — a deliberately
-                stripped-down audit surface. Hides Compare, Privacy
-                Map, Manual Apps, the Task Center, and most of the
-                chrome. Useful when you just want a quick health check,
-                not a deep dive.
+                <strong>Just the basics</strong> — a deliberately stripped-down
+                audit surface. Hides Compare, Privacy Map, Manual Apps, the Task
+                Center, and most of the chrome. Useful when you just want a
+                quick health check, not a deep dive.
               </li>
             </ul>
           </section>
 
           <section
-            id="accessibility"
-            className="legal-license-group"
             aria-labelledby="accessibility-heading"
+            className="legal-license-group"
+            id="accessibility"
           >
             <header className="legal-license-head">
-              <h2 id="accessibility-heading" className="legal-license-name">
-                {tSec('accessibility')}
+              <h2 className="legal-license-name" id="accessibility-heading">
+                {tSec("accessibility")}
               </h2>
               <p className="legal-license-blurb">
                 Sits on top of any goal combination above and elevates
@@ -206,31 +205,30 @@ export default async function HelpFocusPage() {
             </header>
             <p>
               Tick <strong>I also need accessibility info for my apps</strong>.
-              This elevates the accessibility panel on app detail pages,
-              turns on the accessibility filter row in the app grid,
-              auto-shows the accessibility-profile setup step in
-              onboarding, and enables the accessibility-changes
-              notification type. It works alongside any primary goal,
-              and accessibility wins locally even when &ldquo;just the
-              basics&rdquo; would otherwise hide it.
+              This elevates the accessibility panel on app detail pages, turns
+              on the accessibility filter row in the app grid, auto-shows the
+              accessibility-profile setup step in onboarding, and enables the
+              accessibility-changes notification type. It works alongside any
+              primary goal, and accessibility wins locally even when &ldquo;just
+              the basics&rdquo; would otherwise hide it.
             </p>
           </section>
 
           <section
-            id="tour"
-            className="legal-license-group"
             aria-labelledby="tour-heading"
+            className="legal-license-group"
+            id="tour"
           >
             <header className="legal-license-head">
-              <h2 id="tour-heading" className="legal-license-name">
-                {tSec('tour')}
+              <h2 className="legal-license-name" id="tour-heading">
+                {tSec("tour")}
               </h2>
               <p className="legal-license-blurb">
                 Want a refresher on what you&rsquo;re looking at?
               </p>
             </header>
             <p>
-              <Link href="/dashboard?tour=1" className="welcome-link">
+              <Link className="welcome-link" href="/dashboard?tour=1">
                 Replay the dashboard tour →
               </Link>
             </p>

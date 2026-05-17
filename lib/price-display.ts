@@ -6,15 +6,15 @@
  */
 
 export interface PriceFields {
+  hasIap?: number | null;
   priceAmount?: number | null;
   priceCurrency?: string | null;
   priceFormatted?: string | null;
-  hasIap?: number | null;
 }
 
 /** Has the lookup successfully populated a price string? */
 export function hasPriceData(p: PriceFields): boolean {
-  return typeof p.priceFormatted === 'string' && p.priceFormatted.length > 0;
+  return typeof p.priceFormatted === "string" && p.priceFormatted.length > 0;
 }
 
 /**
@@ -24,25 +24,33 @@ export function hasPriceData(p: PriceFields): boolean {
  * suffix — IAP detection is best-effort, so absence is silent.
  */
 export function formatPriceLine(p: PriceFields): string | null {
-  if (!hasPriceData(p)) return null;
+  if (!hasPriceData(p)) {
+    return null;
+  }
   const base = p.priceFormatted!;
-  if (p.hasIap === 1) return `${base} · IAP`;
+  if (p.hasIap === 1) {
+    return `${base} · IAP`;
+  }
   return base;
 }
 
 /** Tooltip copy for the price chip, spelling out each part in plain English. */
 export function priceTooltip(p: PriceFields): string {
-  if (!hasPriceData(p)) return 'No pricing data captured yet.';
+  if (!hasPriceData(p)) {
+    return "No pricing data captured yet.";
+  }
   const parts: string[] = [];
   parts.push(
     p.priceAmount && p.priceAmount > 0
       ? `Costs ${p.priceFormatted} on the App Store.`
-      : 'Free to download from the App Store.',
+      : "Free to download from the App Store."
   );
   if (p.hasIap === 1) {
-    parts.push('Offers in-app purchases — features or content can be unlocked for additional payment.');
+    parts.push(
+      "Offers in-app purchases — features or content can be unlocked for additional payment."
+    );
   } else if (p.hasIap === 0) {
-    parts.push('No in-app purchases reported on the listing.');
+    parts.push("No in-app purchases reported on the listing.");
   }
-  return parts.join(' ');
+  return parts.join(" ");
 }

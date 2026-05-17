@@ -112,6 +112,8 @@
       "share": "📲 分享到 iPhone",
       "share_title": "通过 iPhone 分享 — 打开 AirDrop、iMessage、邮件等系统分享目标",
       "continue_to_backup": "继续到备份 →",
+      "remove_apps_from_phone": "从手机移除 {count, plural, one {# 个应用} other {# 个应用}} →",
+      "resync_from_device": "重新同步该设备",
       "share_status_shared": "✓ 已分享",
       "share_status_copied": "✓ 已复制 — 在「信息」或「邮件」中粘贴即可",
       "share_app_store_link": "App Store ↗",
@@ -142,7 +144,7 @@
     },
     "backup": {
       "heading": "请先备份你的设备",
-      "subtitle": "在目标设备的最近一次备份落到此 Mac 上不超过 24 小时之前，我们不会允许卸载步骤运行。从备份中恢复被误删的应用很简单；如果完全没有备份就卸载了，则几乎无法恢复。",
+      "subtitle": "强烈建议先备份设备再删除应用。从备份中恢复被误删的应用很简单；完全没有备份就卸载则几乎无法恢复。",
       "device_list_empty": "用 USB 数据线把 iPhone 或 iPad 接到此 Mac。在设备的锁屏上「信任」这台电脑，列表会自动刷新。",
       "ios_device_fallback": "iOS 设备",
       "run_backup": "开始备份",
@@ -151,13 +153,18 @@
       "continue_to_uninstall": "继续到卸载",
       "saved_at": "备份已保存到 <code>{path}</code>，时间 {time}。",
       "saved_no_time": "备份已保存到 <code>{path}</code>。",
-      "default_error": "备份失败。"
+      "default_error": "备份失败。",
+      "skip_backup": "跳过备份（自担风险）",
+      "skip_backup_title": "不备份直接继续。在任何应用被移除之前，我们仍会要求你再次输入 DELETE。",
+      "mismatch_heading": "提示 — 这可能不是正确的设备",
+      "mismatch_body": "{count, plural, one {你即将删除的应用中有 # 个不是从该设备导入的。cfgutil 不会移除未安装的应用。} other {你即将删除的应用中有 # 个不是从该设备导入的。cfgutil 不会移除未安装的应用。}}",
+      "mismatch_more": "…还有 {count} 个"
     },
     "act": {
-      "heading": "逐个应用卸载",
-      "subtitle_lead": "每次卸载都是单独运行，先要求你输入",
-      "subtitle_keyword": "DELETE",
-      "subtitle_after": "确认。这是有意为之 — 没有批量路径。",
+      "heading": "从手机移除应用",
+      "subtitle_lead": "请检查下方列表，然后点击",
+      "subtitle_keyword": "删除应用",
+      "subtitle_after": "。我们会展示即将发生的操作，然后要求你输入 DELETE 才会真正移除。",
       "empty": "此列表中没有标记为卸载的应用。如需标记，请返回第一步。",
       "removing": "正在移除…",
       "removed": "✓ 已移除",
@@ -165,7 +172,16 @@
       "no_bundle_id_title": "未存储此应用的 bundle ID — 无法通过 cfgutil 卸载。",
       "default_uninstall_error": "卸载失败。",
       "default_backup_error": "备份失败。",
-      "default_export_error": "导出失败"
+      "default_export_error": "导出失败",
+      "delete_apps_button": "删除 {count, plural, one {# 个应用} other {# 个应用}}",
+      "deleting_bulk": "删除中…",
+      "all_done": "此列表中的每个应用都已从你的手机移除。",
+      "pending": "待处理",
+      "failed": "失败",
+      "backup_ok": "已于 {time} 备份 {device}",
+      "backup_missing_warn": "该设备没有最近的备份。",
+      "backup_missing_action": "先备份",
+      "default_device_name": "已连接的设备"
     },
     "saved_notes": {
       "heading": "你的备注",
@@ -187,7 +203,17 @@
       "cancel": "取消",
       "uninstall_confirm": "卸载 {appName}",
       "type_placeholder": "DELETE",
-      "no_backup_time": "—"
+      "no_backup_time": "—",
+      "list_heading": "确定要删除 {count, plural, one {# 个应用} other {# 个应用}}？",
+      "list_body": "这些应用将通过 Apple Configurator 从你的手机移除。点击应用名称可返回并更改判断。",
+      "list_no_bundle": "（无 bundle ID — 将被跳过）",
+      "list_continue": "继续",
+      "final_heading": "最后一步 — 请输入 DELETE",
+      "final_body": "即将从 {device} 移除这些应用。你于 {time} 进行了备份，重要内容应可恢复。",
+      "final_no_backup_heading": "在没有备份的情况下继续？",
+      "final_no_backup_body": "该设备没有最近的备份。如果你删除了不该删的应用，将无法从任何地方恢复。你可以返回先备份 — 强烈建议这样做 — 或在下方输入 DELETE 自担风险继续。",
+      "final_confirm": "删除应用",
+      "final_confirm_no_backup": "无备份删除应用"
     },
     "share_modal": {
       "title_aria": "分享清单",
@@ -389,7 +415,9 @@
     "step2": {
       "subtitle_screenshots": "上传「设置 → 通用 → iPhone 储存空间」或 App 资源库 A–Z 列表的截图。我们会在你的浏览器中提取应用名称，再供你检查。",
       "subtitle_file": "从电脑上拖入一个 .csv 或 .txt 导出文件。我们会先把应用名整理成可检查的列表，再去匹配。",
-      "subtitle_configurator": "按下方步骤用 Apple Configurator 导出设备上的应用列表，然后将 CSV 拖到此处。仅读取应用名一列，其他字段全部忽略。",
+      "subtitle_configurator": "通过 Apple Configurator 直接导入 — 接上设备后点击「导入」即可。我们会通过 cfgutil 命令行工具直接读取应用列表，无需 CSV。如果不奏效，可以在下方切换到文件上传。",
+      "configurator_switch_to_file": "改用 CSV / TXT 文件导入 →",
+      "configurator_switch_to_file_aria": "切换到文件上传方式以手动放入 CSV",
       "subtitle_manual": "每行一个应用，或用逗号分隔。我们会自动在 App Store 中进行匹配。",
       "ios_safari_heads_up_lead": "提醒：",
       "ios_safari_heads_up_body_pre": " 截图扫描完全在你的浏览器中运行，iPhone Safari 给它分配的内存与安全头不足，难以可靠地加载 OCR 引擎。短列表有时能跑通，可以一试 — 如果失败，请切换到本机上的「",
@@ -590,11 +618,49 @@
       "see_other_chosen": "{count, plural, one {查看另外 # 个匹配项} other {查看另外 # 个匹配项}}",
       "see_other_unchosen": "{count, plural, one {+ # 个其他匹配项} other {+ # 个其他匹配项}}"
     },
+    "already_tracked": {
+      "summary": "{count, plural, one {{device} 上已跟踪 # 款应用 — 已匹配。} other {{device} 上已跟踪 # 款应用 — 已匹配。}}",
+      "help": "这些应用已经与该设备相关联。我们将跳过重新导入，并在结束时显示差异。",
+      "device_fallback": "该设备"
+    },
+    "step2_diff": {
+      "region_aria": "自上次导入以来该设备的变更",
+      "heading": "{device} 上发生了什么变化？",
+      "device_fallback": "该设备",
+      "summary_counts": "{adds, plural, =0 {无新增} one {新增 #} other {新增 #}} · {removes, plural, =0 {无移除} one {移除 #} other {移除 #}} · {unchanged, plural, =0 {无已跟踪} one {# 已跟踪} other {# 已跟踪}}",
+      "loading": "正在与上次导入对比…",
+      "load_error_title": "无法加载该设备的已跟踪应用",
+      "load_error_body": "已读取 cfgutil 报告，但查询已跟踪应用失败：{error}。可刷新后再试。",
+      "no_changes_title": "该设备没有变化",
+      "no_changes_body": "cfgutil 报告的所有应用都已被跟踪。点击「继续」即可跳过扫描，无需重新抓取。",
+      "adds_heading": "{count, plural, one {该设备上有 # 个新应用} other {该设备上有 # 个新应用}}",
+      "adds_help": "这些应用未在上次导入中出现 — 勾选你想要开始跟踪的项。",
+      "removes_heading": "{count, plural, one {# 个应用已不在该设备上} other {# 个应用已不在该设备上}}",
+      "removes_help": "这些应用之前导入过，但现在不在设备上。勾选要取消跟踪的项 — 没有其他设备关联且没有备注 / 判定 / 候选清单条目的应用会被完全取消跟踪。",
+      "unchanged_heading": "{count, plural, one {# 个应用已跟踪 — 已匹配} other {# 个应用已跟踪 — 已匹配}}",
+      "unchanged_help": "自上次导入以来未变化。无需操作。",
+      "all_tracked_title": "{device} 上的所有应用都已跟踪",
+      "all_tracked_body": "{count, plural, one {该设备上的 # 个应用都在我们已跟踪的列表中 — 没有新增内容。} other {该设备上的 # 个应用都在我们已跟踪的列表中 — 没有新增内容。}}",
+      "all_tracked_summary": "我们会重新关联漂移到其他设备的应用，但不会抓取也不会移除任何内容。",
+      "done": "完成",
+      "selection_summary": "新增 {adds} · 移除 {removes}",
+      "add_check_aria": "把 {name} 加入跟踪",
+      "remove_check_aria": "取消跟踪 {name}",
+      "continue": "继续",
+      "confirm": {
+        "title": "应用这些变更？",
+        "body": "即将从 {device} 移除 <strong>{removes, plural, one {# 款应用} other {# 款应用}}</strong> 的跟踪，并新增 <strong>{adds, plural, one {# 款应用} other {# 款应用}}</strong>。移除会立即生效；新增将进入 App Store 匹配。",
+        "continue": "继续",
+        "back": "返回",
+        "committing": "保存中…",
+        "close_aria": "关闭"
+      }
+    },
     "cfgutil": {
       "panel_aria": "通过 Apple Configurator 自动导入",
       "eyebrow": "桌面自动导入",
-      "title": "直接从已连接的 iPhone 导出应用",
-      "copy": "如果这台 Mac 安装了 Apple Configurator 2，我们可以通过 USB 直接从设备读取完整的应用列表 — 无需导出 CSV，也无需手动拖入文件。如果你更想手动操作或已有现成的 CSV，可以直接跳到下方的文件拖入区。",
+      "title": "通过 Apple Configurator 直接导入",
+      "copy": "通过 USB 接上 iPhone 或 iPad，我们会通过 Apple Configurator 命令行工具直接读取设备上的应用列表 — 无需导出 CSV。传统的手动导出说明会先收起，只有遇到问题时才会展开。",
       "step1_title": "安装 Apple Configurator 2",
       "step1_installed_badge": " · 已安装",
       "step1_copy_pre": "Apple 提供的免费设备管理工具 — 我们只使用其 ",
@@ -625,7 +691,7 @@
       "step3_select_required": "导入前请选择一台设备。",
       "step3_no_devices": "未找到已信任的 iPhone 或 iPad。请连接设备、解锁，并在弹窗中点击「信任」。",
       "step3_no_apps": "cfgutil 找到了设备，但没有返回已安装应用。请解锁设备，稍等片刻后重试。",
-      "step3_imported_count": "已从 {device} 导入 {count, plural, one {# 个应用} other {# 个应用}} — 请检查下方列表，修正明显错误后再搜索 App Store。",
+      "step3_imported_count": "在 {device} 上发现 {count, plural, one {# 个应用} other {# 个应用}} — 请检查下方列表，修正明显错误后再搜索 App Store 开始追踪。",
       "step3_merged_duplicates": "{count, plural, one {（已合并 # 个重复名称用于匹配 — 两个应用使用了相同的显示名。）} other {（已合并 # 个重复名称用于匹配 — 多个应用使用了相同的显示名。）}}",
       "device_fallback": "iOS 设备",
       "device_ios_version": "iOS {version}",
@@ -635,6 +701,7 @@
       "device_picker_selected": "已准备从 {device} 导入。",
       "device_picker_empty": "连接并信任一台 iPhone 或 iPad 后，刷新列表。",
       "device_picker_aria": "已连接设备",
+      "prior_imports_badge": "{count, plural, one {之前已从 {deviceName} 导入过 # 次 — 我们会先显示差异再保存} other {之前已从 {deviceName} 导入过 # 次 — 我们会先显示差异再保存}}",
       "device_refresh": "刷新设备",
       "device_refreshing": "正在刷新…",
       "checking_status_title": "正在查找 cfgutil…",
@@ -718,9 +785,9 @@
         "hint": "录入大量应用最快的方式。"
       },
       "configurator": {
-        "title": "Apple Configurator CSV",
+        "title": "从 Apple 设备直接导入",
         "eyebrow": "最为准确",
-        "blurb": "使用 Apple Configurator 的应用信息导出，从设备直接获取完整、预授权的应用清单。",
+        "blurb": "把 iPhone 或 iPad 接到这台 Mac 上 — 我们会通过 Apple Configurator 的命令行工具直接读取完整应用列表，无需导出 CSV。",
         "hint": "最适合 IT 或安全团队审计受管理的 iPhone。"
       },
       "manual": {
@@ -1047,6 +1114,10 @@
       "title": "从手机上移除应用",
       "body": "标记需要卸载的应用，我们会引导你完成移除 — 需要先有隐私档案，这样我们才知道你想筛掉什么。"
     },
+    "resync_apps_from_device": {
+      "title": "重新同步 iPhone 上的应用",
+      "body": "从你的设备重新导入应用列表，看看自上次以来添加或移除了哪些。"
+    },
     "gate": {
       "title": "要不要先做这个？",
       "body": "建议先完成 {prerequisite}，再去做 {task}。要先做吗？",
@@ -1054,6 +1125,63 @@
       "secondary": "仍然继续",
       "close_aria": "关闭"
     }
+  },
+  "devices": {
+    "page_title": "设备",
+    "page_subtitle": "每台你导入过应用的设备一行。重新同步可查看自上次以来添加或移除了哪些。",
+    "empty": "尚无设备。下次导入后将显示在这里。",
+    "app_count": "{count, plural, one {# 个应用} other {# 个应用}}",
+    "resync": "重新同步",
+    "rename": "重命名",
+    "delete": "删除",
+    "rename_save": "保存",
+    "rename_cancel": "取消",
+    "rename_input_aria": "新设备名称",
+    "delete_confirm": "删除该设备？不在其他设备上的应用将被完全取消追踪。",
+    "delete_modal_badge": "删除设备",
+    "delete_modal_title": "删除 {name}？",
+    "delete_modal_body": "{count, plural, =0 {该设备未关联任何应用 — 删除后将把它从列表移除。} one {该设备关联了 # 个应用。不在其他设备上、且没有备注 / 评级 / 候选名单条目的应用将被完全取消追踪。你添加的备注和评级会保留。} other {该设备关联了 # 个应用。不在其他设备上、且没有备注 / 评级 / 候选名单条目的应用将被完全取消追踪。你添加的备注和评级会保留。}}",
+    "delete_modal_cancel": "取消",
+    "delete_modal_confirm": "删除设备",
+    "delete_modal_deleting": "删除中…",
+    "unknown_placeholder_hint": "默认 — 知道来源后请重命名",
+    "resync_toast": "已重新同步 · 添加 {added} · 移除 {removed} · 完全取消追踪 {orphaned}",
+    "resync_toast_merged": "{count, plural, one {合并了 # 条重复记录} other {合并了 # 条重复记录}}",
+    "tracked_on": {
+      "label": "已在以下设备追踪：",
+      "aria": "该应用所在的设备"
+    },
+    "app_panel": {
+      "heading": "{count, plural, one {已安装在 # 台设备上} other {已安装在 # 台设备上}}",
+      "subtitle": "点击设备可管理或重新同步。",
+      "aria": "该应用已安装的设备",
+      "manage_link": "管理设备 →"
+    }
+  },
+  "device_sync": {
+    "diff_title": "自上次以来变化了什么？",
+    "diff_subtitle": "勾选你想要应用的变更。不想改动的就保持原样。",
+    "confirm_title": "应用这些变更？",
+    "confirm_subtitle": "最后确认 — 不点同意就不会写入。",
+    "loading": "正在计算差异…",
+    "close_aria": "关闭",
+    "cancel": "取消",
+    "continue": "继续",
+    "back": "返回",
+    "looks_good": "确认应用",
+    "committing": "保存中…",
+    "adds_heading": "新增（<strong>{count}</strong>）",
+    "adds_aria": "添加到该设备的应用",
+    "removes_heading": "移除（<strong>{count}</strong>）",
+    "removes_aria": "从该设备移除的应用",
+    "unchanged_count": "未变化：{count, plural, one {# 个应用} other {# 个应用}}",
+    "orphan_badge": "完全取消追踪",
+    "orphan_warning": "不在其他设备上 — 勾选会完全取消追踪该应用。",
+    "orphan_heading": "{count, plural, one {# 个应用将被完全取消追踪} other {# 个应用将被完全取消追踪}}",
+    "selection_summary": "{adds} 项添加 · {removes} 项移除",
+    "confirm_summary": "移除 <strong>{removes}</strong> 项，添加 <strong>{adds}</strong> 项，保留 <strong>{kept}</strong> 项不变。",
+    "add_check_aria": "添加 {name}",
+    "remove_check_aria": "移除 {name}"
   },
   "legal": {
     "audit_bundle_note": "导出审查捆绑包时，包括你正在跟踪的应用、它们的隐私标签、你的 AI 生成摘要以及你撰写的任何注释。还包括你的隐私档案，让接收者了解你为何标记某些应用。除非你主动分享文件，否则不会有任何数据离开你的设备。"
@@ -2356,6 +2484,13 @@
     "clear_mismatch_aria": "清除档案不一致筛选",
     "clear_a11y_title": "清除无障碍筛选",
     "clear_a11y_aria": "清除无障碍筛选",
+    "clear_device_title": "清除设备筛选",
+    "clear_device_aria": "清除设备筛选",
+    "device_filter_aria": "按设备筛选应用",
+    "device_filter_label": "设备",
+    "device_filter_all": "全部设备 · {count}",
+    "device_filter_unattached": "未关联 · {count}",
+    "device_filter_unattached_short": "未关联应用",
     "profile_mismatches_label": "档案不一致",
     "has_features_title": "至少声明一项无障碍功能的应用。",
     "has_features_label": "有功能",
@@ -3289,6 +3424,7 @@
       "privacy_policies": "为每个公开了隐私政策链接的应用抓取（并可选地重新总结）开发者隐私政策。串行运行，避免对发布方和你的 AI 服务造成压力。运行期间可离开本页 — 进度会在后台任务托盘中持续显示。",
       "policy_change_alerts": "当重新抓取检测到某个隐私政策的文本发生变化时，「AI 政策」选项卡会显示一个横幅，链接到「历史」选项卡上逐行对比的差异视图。请选择该横幅在变更被捕获后继续显示的天数。",
       "policy_scrape_throttle": "在冷却时间内跳过对同一隐私政策的重复抓取。适用于手动「重新同步」、计划的后台运行以及导入流程 — 每个应用单独限速，并非全局限速。关闭后每次「重新同步」都会发起网络请求（用于测试时较有用）。",
+      "policy_scrape_disabled": "彻底停止所有后台隐私政策抓取 — 包括每次 App Store 同步后的自动抓取、批量运行，以及崩溃后恢复的同步队列。比节流更彻底，适合完全不想让应用主动联系发布者时使用。",
       "import_history": "你在引导流程中添加的每一批应用都会保存在这里。你可以查看每个应用匹配到的项目、修正错误的匹配，或撤销整批导入。",
       "deployment_diagnostics": "检查此安装是否能正常响应请求、写入 SQLite 数据库，并看到局域网部署中代理应发送的转发头。",
       "backup_restore": "把整个数据库快照导出为可携带的 JSON 文件，或从之前的备份恢复。你的数据始终保留在本机。",
@@ -4048,7 +4184,10 @@
     "policy_throttle": {
       "enabled_label": "启用节流",
       "cooldown_label": "冷却时间（分钟）",
-      "cooldown_help": "默认 60 分钟。设为 <strong>0</strong> 表示每次重新同步都不等待直接放行。最大 10 080（一周）。"
+      "cooldown_help": "默认 60 分钟。设为 <strong>0</strong> 表示每次重新同步都不等待直接放行。最大 10 080（一周）。",
+      "scrape_disabled_label": "禁用隐私政策抓取",
+      "scrape_disabled_help": "开启后，privacytracker <strong>不会在后台抓取任何隐私政策</strong> — 不再在每次 App Store 同步后自动抓取、不再批量运行、不再按计划刷新。手动「重新抓取」按钮也会返回错误。已缓存的政策及其 AI 摘要会保留下来，你仍可从缓存文本重新生成摘要。用此选项可彻底停止后台政策活动。",
+      "throttle_inert_when_disabled": "在上方禁用隐私政策抓取时，节流设置不会生效。"
     },
     "privacy_profile_card": {
       "toggle_title": "使用隐私偏好档案",
@@ -4139,6 +4278,7 @@
       "privacy_policies": "隐私政策",
       "policy_change_alerts": "隐私政策变更提醒",
       "policy_scrape_throttle": "政策抓取限速",
+      "policy_scrape_disabled": "隐私政策抓取",
       "import_history": "导入历史",
       "deployment_diagnostics": "部署诊断",
       "backup_restore": "备份与恢复",

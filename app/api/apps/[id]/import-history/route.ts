@@ -1,18 +1,19 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import db from '../../../../../lib/db';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { recordActivity } from "../../../../../lib/activity";
+import db from "../../../../../lib/db";
 import {
+  type ImportAppHistoryResult,
   importAppHistory,
   removeImportedHistory,
-  type ImportAppHistoryResult,
-} from '../../../../../lib/historical-import';
-import { recordActivity } from '../../../../../lib/activity';
+} from "../../../../../lib/historical-import";
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
   requestActorIp,
-} from '../../../../../lib/security';
+} from "../../../../../lib/security";
 
 /**
  * Per-app historical import from the Wayback Machine.
@@ -34,11 +35,11 @@ import {
  */
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   if (!id) {
-    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
   // Rate-limit per actor + app — a runaway script or accidental double-click
@@ -50,30 +51,33 @@ export async function POST(
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Import throttled — wait before retrying.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
+      { error: "Import throttled — wait before retrying." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) },
+      }
     );
   }
 
   const app = db
-    .prepare('SELECT id, url, name FROM apps WHERE id = ?')
+    .prepare("SELECT id, url, name FROM apps WHERE id = ?")
     .get(id) as { id: string; url: string; name: string } | undefined;
   if (!app) {
-    return NextResponse.json({ error: 'App not found' }, { status: 404 });
+    return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
   if (!app.url) {
     return NextResponse.json(
-      { error: 'App has no App Store URL to import history from.' },
-      { status: 422 },
+      { error: "App has no App Store URL to import history from." },
+      { status: 422 }
     );
   }
 
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
   const startedAt = Date.now();
 
   recordAudit({
-    action: 'wayback.import.app.start',
+    action: "wayback.import.app.start",
     actorIp,
     userAgent,
     success: true,
@@ -84,21 +88,21 @@ export async function POST(
   try {
     result = await importAppHistory(app);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Import failed';
+    const message = error instanceof Error ? error.message : "Import failed";
     recordAudit({
-      action: 'wayback.import.app.failed',
+      action: "wayback.import.app.failed",
       actorIp,
       userAgent,
       success: false,
       detail: `app=${id} ${message.slice(0, 200)}`,
     });
     recordActivity({
-      type: 'wayback_import',
-      status: 'error',
+      type: "wayback_import",
+      status: "error",
       appId: id,
       appName: app.name,
       summary: `Wayback import failed: ${message}`.slice(0, 200),
-      detail: { mode: 'app', errorMessage: message },
+      detail: { mode: "app", errorMessage: message },
       startedAt,
     });
     return NextResponse.json({ error: message }, { status: 500 });
@@ -106,17 +110,17 @@ export async function POST(
 
   const status = pickActivityStatus(result);
   recordActivity({
-    type: 'wayback_import',
+    type: "wayback_import",
     status,
     appId: id,
     appName: app.name,
     summary: buildSummaryLine(app.name, result),
-    detail: { mode: 'app', result },
+    detail: { mode: "app", result },
     startedAt,
   });
 
   recordAudit({
-    action: 'wayback.import.app.success',
+    action: "wayback.import.app.success",
     actorIp,
     userAgent,
     success: true,
@@ -130,27 +134,27 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   if (!id) {
-    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  const app = db
-    .prepare('SELECT id, name FROM apps WHERE id = ?')
-    .get(id) as { id: string; name: string } | undefined;
+  const app = db.prepare("SELECT id, name FROM apps WHERE id = ?").get(id) as
+    | { id: string; name: string }
+    | undefined;
   if (!app) {
-    return NextResponse.json({ error: 'App not found' }, { status: 404 });
+    return NextResponse.json({ error: "App not found" }, { status: 404 });
   }
 
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
   const startedAt = Date.now();
   const deleted = removeImportedHistory(id);
 
   recordAudit({
-    action: 'wayback.import.app.remove',
+    action: "wayback.import.app.remove",
     actorIp,
     userAgent,
     success: true,
@@ -158,12 +162,12 @@ export async function DELETE(
   });
 
   recordActivity({
-    type: 'wayback_import',
-    status: 'ok',
+    type: "wayback_import",
+    status: "ok",
     appId: id,
     appName: app.name,
-    summary: `Removed ${deleted} imported history row${deleted === 1 ? '' : 's'}`,
-    detail: { mode: 'app', removed: true, deleted },
+    summary: `Removed ${deleted} imported history row${deleted === 1 ? "" : "s"}`,
+    detail: { mode: "app", removed: true, deleted },
     startedAt,
   });
 
@@ -178,22 +182,35 @@ export async function DELETE(
  *   - all failures / no success → error
  */
 function pickActivityStatus(result: ImportAppHistoryResult) {
-  if (result.failed === 0) return 'ok' as const;
+  if (result.failed === 0) {
+    return "ok" as const;
+  }
   const anySuccess = result.imported > 0 || result.unchanged > 0;
-  return anySuccess ? ('partial' as const) : ('error' as const);
+  return anySuccess ? ("partial" as const) : ("error" as const);
 }
 
-function buildSummaryLine(appName: string, result: ImportAppHistoryResult): string {
+function buildSummaryLine(
+  appName: string,
+  result: ImportAppHistoryResult
+): string {
   const parts: string[] = [];
-  if (result.imported) parts.push(`${result.imported} imported`);
-  if (result.unchanged) parts.push(`${result.unchanged} no-op`);
-  if (result.skipped) parts.push(`${result.skipped} skipped`);
-  if (result.failed) parts.push(`${result.failed} failed`);
+  if (result.imported) {
+    parts.push(`${result.imported} imported`);
+  }
+  if (result.unchanged) {
+    parts.push(`${result.unchanged} no-op`);
+  }
+  if (result.skipped) {
+    parts.push(`${result.skipped} skipped`);
+  }
+  if (result.failed) {
+    parts.push(`${result.failed} failed`);
+  }
   if (result.snapshotsRequested) {
     parts.push(
-      `${result.snapshotsRequested} snapshot${result.snapshotsRequested === 1 ? '' : 's'} requested`,
+      `${result.snapshotsRequested} snapshot${result.snapshotsRequested === 1 ? "" : "s"} requested`
     );
   }
-  const tail = parts.length ? parts.join(', ') : 'nothing to do';
+  const tail = parts.length ? parts.join(", ") : "nothing to do";
   return `Wayback import for ${appName}: ${tail}`.slice(0, 200);
 }

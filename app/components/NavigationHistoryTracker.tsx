@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 /**
  * Tracks the most recent pathname+search the user visited, stored in
@@ -18,8 +18,8 @@ import { useEffect } from 'react';
  * Mount once in the root layout.
  */
 
-const CURRENT_PATH_KEY = 'pt:nav:current';
-const LAST_NON_APP_PATH_KEY = 'pt:nav:last-non-app';
+const CURRENT_PATH_KEY = "pt:nav:current";
+const LAST_NON_APP_PATH_KEY = "pt:nav:last-non-app";
 
 /** Path patterns considered an app-detail page (skipped from non-app log). */
 function isAppDetailPath(path: string): boolean {
@@ -32,10 +32,14 @@ export default function NavigationHistoryTracker() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!pathname) return;
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (!pathname) {
+      return;
+    }
 
-    const search = window.location.search || '';
+    const search = window.location.search || "";
     const full = search ? `${pathname}${search}` : pathname;
 
     try {
@@ -58,7 +62,9 @@ export default function NavigationHistoryTracker() {
  * change read the previous value. Returns `null` on first hard-load.
  */
 export function getPreviousPath(): string | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
   try {
     return sessionStorage.getItem(CURRENT_PATH_KEY);
   } catch {
@@ -71,7 +77,9 @@ export function getPreviousPath(): string | null {
  * so navigating app-to-app still resolves back to the originating list page.
  */
 export function getLastNonAppPath(): string | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
   try {
     return sessionStorage.getItem(LAST_NON_APP_PATH_KEY);
   } catch {

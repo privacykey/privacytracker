@@ -1,58 +1,56 @@
-import db from './db';
-import crypto from 'crypto';
-import {
-  beginScrape,
-  endScrape,
-  markScrapePhase,
-  newScrapeId,
-} from './scrape-activity';
-import {
-  buildSnapshot,
-  diffSnapshots,
-  getLatestSnapshot,
-  type PrivacyTypeSnapshot,
-  type ChangeEntry,
-  type SyncTrigger,
-} from './changelog';
-import {
-  computeNotBefore,
-  createParserFallthroughNotification,
-  createProfileMismatchNotification,
-  createVersionUpdateNotification,
-} from './notifications';
+import crypto from "node:crypto";
 import {
   type AccessibilityFeatureRecord,
   buildAccessibilitySnapshot,
   diffAccessibility,
   extractAccessibilityFeatures,
-} from './accessibility';
+} from "./accessibility";
+import { recordActivity } from "./activity";
 import {
-  getPrivacyProfile,
-} from './privacy-profile-server';
+  buildSnapshot,
+  type ChangeEntry,
+  diffSnapshots,
+  getLatestSnapshot,
+  type PrivacyTypeSnapshot,
+  type SyncTrigger,
+} from "./changelog";
+import db from "./db";
+import { runBulkWrite } from "./db-worker-client";
+import type { DbWorkerStatement } from "./db-worker-types";
 import {
+  computeNotBefore,
+  createParserFallthroughNotification,
+  createProfileMismatchNotification,
+  createVersionUpdateNotification,
+} from "./notifications";
+import { getPolicyAnalysis, syncPrivacyPolicyAnalysis } from "./privacy-policy";
+import {
+  type AppProfileFootprint,
   computeProfileMismatch,
+  type ProfileTier,
   TIER_RANK,
   TYPE_IDENTIFIER_TO_TIER,
-  type AppProfileFootprint,
-  type ProfileTier,
-} from './privacy-profile';
-import { getPolicyAnalysis, syncPrivacyPolicyAnalysis } from './privacy-policy';
-import { DEFAULT_COUNTRY, normalizeCountry } from './region';
-import { getSetting } from './scheduler';
-import { safeFetch, sanitizePolicyUrl, validateAppStoreUrl } from './security';
-import { recordActivity } from './activity';
-import { runBulkWrite } from './db-worker-client';
-import type { DbWorkerStatement } from './db-worker-types';
+} from "./privacy-profile";
+import { getPrivacyProfile } from "./privacy-profile-server";
 import {
   acquireRateLimitToken,
   getRemainingCooldownMs,
   recordRateLimit,
-} from './rate-limit';
+} from "./rate-limit";
+import { DEFAULT_COUNTRY, normalizeCountry } from "./region";
+import { getSetting } from "./scheduler";
+import {
+  beginScrape,
+  endScrape,
+  markScrapePhase,
+  newScrapeId,
+} from "./scrape-activity";
+import { safeFetch, sanitizePolicyUrl, validateAppStoreUrl } from "./security";
 
 // Apple hosts we will fetch from. Anything else is rejected up front so that
 // `fetchAndParseApp` can't be talked into hitting an internal URL via a rogue
 // redirect or a malformed App Store URL.
-const APPLE_HOSTS = ['apps.apple.com', 'itunes.apple.com'];
+const APPLE_HOSTS = ["apps.apple.com", "itunes.apple.com"];
 // Apple pages are on the order of ~500 KB; give ourselves headroom but don't
 // stream arbitrary binary content.
 const APP_STORE_MAX_BYTES = 4 * 1024 * 1024;
@@ -76,14 +74,21 @@ export class AppleRateLimitError extends Error {
   readonly rateLimited = true as const;
   readonly retryAfterMs: number;
   constructor(retryAfterMs: number, message?: string) {
-    super(message ?? `Apple App Store rate-limited (HTTP 429); retry after ${Math.round(retryAfterMs / 1000)}s`);
-    this.name = 'AppleRateLimitError';
+    super(
+      message ??
+        `Apple App Store rate-limited (HTTP 429); retry after ${Math.round(retryAfterMs / 1000)}s`
+    );
+    this.name = "AppleRateLimitError";
     this.retryAfterMs = retryAfterMs;
   }
 }
 
 function isAppleRateLimitError(value: unknown): value is AppleRateLimitError {
-  return !!value && typeof value === 'object' && (value as { rateLimited?: unknown }).rateLimited === true;
+  return (
+    !!value &&
+    typeof value === "object" &&
+    (value as { rateLimited?: unknown }).rateLimited === true
+  );
 }
 
 /**
@@ -92,7 +97,9 @@ function isAppleRateLimitError(value: unknown): value is AppleRateLimitError {
  * Returns null if the value is unparseable or implausibly large.
  */
 function parseRetryAfterMs(header: string | null): number | null {
-  if (!header) return null;
+  if (!header) {
+    return null;
+  }
   const secs = Number.parseInt(header, 10);
   if (Number.isFinite(secs) && secs > 0) {
     const ms = secs * 1000;
@@ -111,17 +118,17 @@ function parseRetryAfterMs(header: string | null): number | null {
 
 export interface AppCandidate {
   appleId: string;
-  name: string;
+  bundleId: string;
   developer: string;
   iconUrl: string;
-  url: string;
-  bundleId: string;
+  name: string;
   searchQuery: string;
+  url: string;
 }
 
 export interface SearchResult {
-  query: string;
   candidates: AppCandidate[];
+  query: string;
 }
 
 export interface SearchOptions {
@@ -132,9 +139,9 @@ export interface SearchOptions {
 }
 
 export interface SearchQuery {
-  name: string;
   /** Optional developer / seller hint, used to re-rank candidates. */
   developer?: string;
+  name: string;
 }
 
 /**
@@ -144,11 +151,11 @@ export interface SearchQuery {
  * get a chance to run, so the caller can retry them after `retryAfterMs`.
  */
 export interface SearchBatch {
-  results: SearchResult[];
   rateLimited?: {
     retryAfterMs: number;
     queued: SearchQuery[];
   };
+  results: SearchResult[];
 }
 
 /**
@@ -171,17 +178,21 @@ interface ItunesRateLimitSignal {
   retryAfterMs: number;
 }
 
-type ItunesSearchOutcome =
-  | AppCandidate[]
-  | null
-  | ItunesRateLimitSignal;
+type ItunesSearchOutcome = AppCandidate[] | null | ItunesRateLimitSignal;
 
-function isRateLimitSignal(value: ItunesSearchOutcome): value is ItunesRateLimitSignal {
-  return !!value && typeof value === 'object' && !Array.isArray(value) && value.rateLimited === true;
+function isRateLimitSignal(
+  value: ItunesSearchOutcome
+): value is ItunesRateLimitSignal {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    value.rateLimited === true
+  );
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -190,25 +201,40 @@ function sleep(ms: number): Promise<void> {
  * substring overlap so "Meta" matches "Meta Platforms, Inc." and
  * "Apple Inc." matches "Apple".
  */
-function scoreDeveloperMatch(candidateDev: string | undefined, hint: string): number {
-  if (!candidateDev || !hint) return 0;
+function scoreDeveloperMatch(
+  candidateDev: string | undefined,
+  hint: string
+): number {
+  if (!(candidateDev && hint)) {
+    return 0;
+  }
   const a = candidateDev.toLowerCase();
   const b = hint.toLowerCase();
-  if (a === b) return 100;
-  if (a.includes(b) || b.includes(a)) return 50;
+  if (a === b) {
+    return 100;
+  }
+  if (a.includes(b) || b.includes(a)) {
+    return 50;
+  }
 
   // Token overlap: "Meta Platforms, Inc." vs "Meta Platforms" → strong match.
   const aTokens = new Set(a.split(/\W+/).filter(Boolean));
   const bTokens = new Set(b.split(/\W+/).filter(Boolean));
   let overlap = 0;
-  bTokens.forEach(t => { if (aTokens.has(t)) overlap += 1; });
-  if (overlap === 0) return 0;
+  bTokens.forEach((t) => {
+    if (aTokens.has(t)) {
+      overlap += 1;
+    }
+  });
+  if (overlap === 0) {
+    return 0;
+  }
   return Math.min(40, overlap * 12);
 }
 
 async function runItunesSearch(
   name: string,
-  country: string,
+  country: string
 ): Promise<ItunesSearchOutcome> {
   // Hard-cooldown short-circuit: if we already know iTunes is throttling
   // us, don't waste a request that's guaranteed to 429. Return the
@@ -216,7 +242,7 @@ async function runItunesSearch(
   // countdown without burning more of Apple's window. The remaining ms
   // is what the banner displays; it stays accurate because every reader
   // computes `resumeAt - Date.now()`.
-  const cooldownMs = getRemainingCooldownMs('search');
+  const cooldownMs = getRemainingCooldownMs("search");
   if (cooldownMs > 0) {
     return { rateLimited: true, retryAfterMs: cooldownMs };
   }
@@ -225,19 +251,18 @@ async function runItunesSearch(
   // briefly if we're at the burst ceiling — this is the proactive
   // throttle that keeps us under Apple's rolling-minute limit even
   // when bulk runners + interactive search both fire concurrently.
-  await acquireRateLimitToken('search');
+  await acquireRateLimitToken("search");
 
-  const apiUrl =
-    `https://itunes.apple.com/search?term=${encodeURIComponent(name)}&entity=software&country=${country}&limit=5`;
+  const apiUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(name)}&entity=software&country=${country}&limit=5`;
 
   // iTunes Search through safeFetch so (a) a malicious redirect can't
   // pivot us onto an internal host and (b) the response size is capped.
   const { response: res, body: bodyBuf } = await safeFetch(apiUrl, {
     allowedHosts: APPLE_HOSTS,
-    headers: { Accept: 'application/json' },
+    headers: { Accept: "application/json" },
     timeoutMs: 8000,
     maxBytes: 1 * 1024 * 1024,
-    redirect: 'follow',
+    redirect: "follow",
   });
 
   // iTunes Search caps at ~20 requests per minute per client. When that
@@ -246,36 +271,39 @@ async function runItunesSearch(
   // otherwise — rolling-minute limits need a full minute of idle time to
   // fully recover.
   if (res.status === 429) {
-    const retryAfterHeader = res.headers.get('retry-after');
-    const parsed = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) * 1000 : NaN;
-    const retryAfterMs = Number.isFinite(parsed) && parsed > 0 && parsed < 600_000
-      ? parsed
-      : ITUNES_RATE_LIMIT_COOLDOWN_MS;
+    const retryAfterHeader = res.headers.get("retry-after");
+    const parsed = retryAfterHeader
+      ? Number.parseInt(retryAfterHeader, 10) * 1000
+      : Number.NaN;
+    const retryAfterMs =
+      Number.isFinite(parsed) && parsed > 0 && parsed < 600_000
+        ? parsed
+        : ITUNES_RATE_LIMIT_COOLDOWN_MS;
     console.warn(
-      `iTunes search rate-limited (HTTP 429) on "${name}"; cooling down ${Math.round(retryAfterMs / 1000)}s before retry`,
+      `iTunes search rate-limited (HTTP 429) on "${name}"; cooling down ${Math.round(retryAfterMs / 1000)}s before retry`
     );
     // Record the cooldown centrally so every other request (and every
     // UI surface) sees the same expiry window. Without this the next
     // call would re-issue the search and re-trip the ban; with it,
     // the next call hits the short-circuit at the top of this fn.
     recordRateLimit(
-      'search',
+      "search",
       retryAfterMs,
-      `HTTP 429 from iTunes Search at ${new Date().toISOString()}${retryAfterHeader ? ` (Retry-After: ${retryAfterHeader})` : ''}`,
+      `HTTP 429 from iTunes Search at ${new Date().toISOString()}${retryAfterHeader ? ` (Retry-After: ${retryAfterHeader})` : ""}`
     );
     return { rateLimited: true, retryAfterMs };
   }
 
   if (!res.ok) {
     console.warn(
-      `iTunes search returned HTTP ${res.status} for "${name}" (country=${country})`,
+      `iTunes search returned HTTP ${res.status} for "${name}" (country=${country})`
     );
     return null;
   }
 
   let data: any;
   try {
-    data = JSON.parse(bodyBuf.toString('utf8'));
+    data = JSON.parse(bodyBuf.toString("utf8"));
   } catch {
     console.warn(`iTunes search returned non-JSON body for "${name}"`);
     return null;
@@ -284,8 +312,8 @@ async function runItunesSearch(
     appleId: String(r.trackId),
     name: r.trackName,
     developer: r.artistName,
-    iconUrl: r.artworkUrl100?.replace('100x100bb', '200x200bb') ?? '',
-    url: r.trackViewUrl?.split('?')[0] ?? '',
+    iconUrl: r.artworkUrl100?.replace("100x100bb", "200x200bb") ?? "",
+    url: r.trackViewUrl?.split("?")[0] ?? "",
     bundleId: r.bundleId,
     searchQuery: name,
   })) as AppCandidate[];
@@ -307,19 +335,19 @@ async function runItunesSearch(
  */
 export async function searchAppsByName(
   input: Array<string | SearchQuery>,
-  options: SearchOptions = {},
+  options: SearchOptions = {}
 ): Promise<SearchBatch> {
   const results: SearchResult[] = [];
 
   // Resolve once so every name in the batch hits the same storefront.
   const country = normalizeCountry(
-    options.country ?? getSetting('app_country', DEFAULT_COUNTRY),
+    options.country ?? getSetting("app_country", DEFAULT_COUNTRY)
   );
 
   const queries: SearchQuery[] = input
-    .map(raw => (typeof raw === 'string' ? { name: raw } : raw))
-    .filter(q => q && typeof q.name === 'string' && q.name.trim().length > 0)
-    .map(q => ({
+    .map((raw) => (typeof raw === "string" ? { name: raw } : raw))
+    .filter((q) => q && typeof q.name === "string" && q.name.trim().length > 0)
+    .map((q) => ({
       name: q.name.trim(),
       developer: q.developer?.trim() || undefined,
     }));
@@ -347,7 +375,7 @@ export async function searchAppsByName(
       // 429, in which case we also queue the tail.
       if (outcome !== null && outcome.length === 0) {
         console.warn(
-          `iTunes search returned 0 results for "${name}" (country=${country}); retrying in ${ITUNES_RETRY_DELAY_MS}ms`,
+          `iTunes search returned 0 results for "${name}" (country=${country}); retrying in ${ITUNES_RETRY_DELAY_MS}ms`
         );
         await sleep(ITUNES_RETRY_DELAY_MS);
         const retry = await runItunesSearch(name, country);
@@ -360,7 +388,9 @@ export async function searchAppsByName(
             },
           };
         }
-        if (retry && Array.isArray(retry) && retry.length > 0) outcome = retry;
+        if (retry && Array.isArray(retry) && retry.length > 0) {
+          outcome = retry;
+        }
       }
 
       if (outcome === null) {
@@ -380,18 +410,18 @@ export async function searchAppsByName(
           score: scoreDeveloperMatch(cand.developer, developer),
         }));
         scored.sort((a, b) => b.score - a.score || a.idx - b.idx);
-        candidates = scored.map(s => s.cand);
+        candidates = scored.map((s) => s.cand);
       }
 
       if (candidates.length === 0) {
         console.warn(
-          `iTunes search found no match for "${name}" (country=${country}) after retry`,
+          `iTunes search found no match for "${name}" (country=${country}) after retry`
         );
       }
 
       results.push({ query: name, candidates });
     } catch (e) {
-      console.error('iTunes search failed for', name, e);
+      console.error("iTunes search failed for", name, e);
       results.push({ query: name, candidates: [] });
     }
   }
@@ -462,7 +492,6 @@ export interface BundleIdLookupResult {
 }
 
 export interface BundleIdLookupBatch {
-  results: BundleIdLookupResult[];
   /**
    * Mirrors `SearchBatch.rateLimited`. When iTunes 429s mid-batch, we
    * stop and surface the unprocessed tail of bundle IDs so the caller
@@ -472,6 +501,7 @@ export interface BundleIdLookupBatch {
     retryAfterMs: number;
     queued: string[];
   };
+  results: BundleIdLookupResult[];
 }
 
 /**
@@ -494,7 +524,7 @@ export interface BundleIdLookupBatch {
  */
 export async function lookupAppsByBundleId(
   bundleIds: string[],
-  options: SearchOptions = {},
+  options: SearchOptions = {}
 ): Promise<BundleIdLookupBatch> {
   // Normalize + dedupe the input. Lookup is idempotent (same ID twice
   // returns the same record both times) but the dedupe avoids wasting
@@ -502,15 +532,17 @@ export async function lookupAppsByBundleId(
   const cleaned = Array.from(
     new Set(
       bundleIds
-        .map(id => (typeof id === 'string' ? id.trim() : ''))
-        .filter(id => id.length > 0),
-    ),
+        .map((id) => (typeof id === "string" ? id.trim() : ""))
+        .filter((id) => id.length > 0)
+    )
   );
 
-  if (cleaned.length === 0) return { results: [] };
+  if (cleaned.length === 0) {
+    return { results: [] };
+  }
 
   const country = normalizeCountry(
-    options.country ?? getSetting('app_country', DEFAULT_COUNTRY),
+    options.country ?? getSetting("app_country", DEFAULT_COUNTRY)
   );
 
   const results: BundleIdLookupResult[] = [];
@@ -525,7 +557,7 @@ export async function lookupAppsByBundleId(
     // we know will bounce. Surface the remaining cooldown to the
     // caller and queue the full remaining tail (this chunk + every
     // chunk after it).
-    const cooldownMs = getRemainingCooldownMs('search');
+    const cooldownMs = getRemainingCooldownMs("search");
     if (cooldownMs > 0) {
       return {
         results,
@@ -539,16 +571,16 @@ export async function lookupAppsByBundleId(
     // Soft pacer: reserve a token from the shared search bucket so
     // bulk lookups + interactive search both stay under Apple's
     // rolling-minute ceiling.
-    await acquireRateLimitToken('search');
+    await acquireRateLimitToken("search");
 
     const url =
-      `https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(chunk.join(','))}`
-      + `&country=${country}&limit=${ITUNES_LOOKUP_BATCH_SIZE}`;
+      `https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(chunk.join(","))}` +
+      `&country=${country}&limit=${ITUNES_LOOKUP_BATCH_SIZE}`;
 
     try {
       const { response: res, body: bodyBuf } = await safeFetch(url, {
         allowedHosts: APPLE_HOSTS,
-        headers: { Accept: 'application/json' },
+        headers: { Accept: "application/json" },
         timeoutMs: 12_000,
         // Lookup with 200 IDs comes back larger than a search response;
         // bump the cap to 4MB to be safe (search caps at 1MB).
@@ -558,22 +590,25 @@ export async function lookupAppsByBundleId(
         // URL cap. Bump just for this endpoint — every other safeFetch
         // call keeps the default to retain the SSRF surface check.
         maxUrlLength: 16 * 1024,
-        redirect: 'follow',
+        redirect: "follow",
       });
 
       if (res.status === 429) {
-        const retryAfterHeader = res.headers.get('retry-after');
-        const parsed = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) * 1000 : NaN;
-        const retryAfterMs = Number.isFinite(parsed) && parsed > 0 && parsed < 600_000
-          ? parsed
-          : ITUNES_RATE_LIMIT_COOLDOWN_MS;
+        const retryAfterHeader = res.headers.get("retry-after");
+        const parsed = retryAfterHeader
+          ? Number.parseInt(retryAfterHeader, 10) * 1000
+          : Number.NaN;
+        const retryAfterMs =
+          Number.isFinite(parsed) && parsed > 0 && parsed < 600_000
+            ? parsed
+            : ITUNES_RATE_LIMIT_COOLDOWN_MS;
         console.warn(
-          `iTunes lookup rate-limited (HTTP 429); cooling down ${Math.round(retryAfterMs / 1000)}s before retry`,
+          `iTunes lookup rate-limited (HTTP 429); cooling down ${Math.round(retryAfterMs / 1000)}s before retry`
         );
         recordRateLimit(
-          'search',
+          "search",
           retryAfterMs,
-          `HTTP 429 from iTunes Lookup at ${new Date().toISOString()}${retryAfterHeader ? ` (Retry-After: ${retryAfterHeader})` : ''}`,
+          `HTTP 429 from iTunes Lookup at ${new Date().toISOString()}${retryAfterHeader ? ` (Retry-After: ${retryAfterHeader})` : ""}`
         );
         return {
           results,
@@ -592,9 +627,12 @@ export async function lookupAppsByBundleId(
         // upstream-gateway-class errors, and we only split once (each
         // half is processed by the same `runChunk` path which, if
         // somehow still 502s, falls through to "null for the chunk").
-        if ((res.status === 502 || res.status === 503 || res.status === 504) && chunk.length > 1) {
+        if (
+          (res.status === 502 || res.status === 503 || res.status === 504) &&
+          chunk.length > 1
+        ) {
           console.warn(
-            `iTunes lookup returned HTTP ${res.status} for chunk of ${chunk.length} bundle IDs — splitting and retrying`,
+            `iTunes lookup returned HTTP ${res.status} for chunk of ${chunk.length} bundle IDs — splitting and retrying`
           );
           const half = Math.ceil(chunk.length / 2);
           const partA = chunk.slice(0, half);
@@ -615,25 +653,33 @@ export async function lookupAppsByBundleId(
               return { results, rateLimited };
             }
           } catch (splitErr) {
-            console.error('iTunes lookup split-retry failed', splitErr);
-            for (const id of chunk) results.push({ bundleId: id, match: null });
+            console.error("iTunes lookup split-retry failed", splitErr);
+            for (const id of chunk) {
+              results.push({ bundleId: id, match: null });
+            }
           }
           continue;
         }
         // Non-recoverable error — log and skip this chunk. The IDs in
         // this chunk all surface as `null` matches; the caller will
         // fall back to name search for them.
-        console.warn(`iTunes lookup returned HTTP ${res.status} for chunk of ${chunk.length} bundle IDs`);
-        for (const id of chunk) results.push({ bundleId: id, match: null });
+        console.warn(
+          `iTunes lookup returned HTTP ${res.status} for chunk of ${chunk.length} bundle IDs`
+        );
+        for (const id of chunk) {
+          results.push({ bundleId: id, match: null });
+        }
         continue;
       }
 
       let data: any;
       try {
-        data = JSON.parse(bodyBuf.toString('utf8'));
+        data = JSON.parse(bodyBuf.toString("utf8"));
       } catch {
-        console.warn('iTunes lookup returned non-JSON body');
-        for (const id of chunk) results.push({ bundleId: id, match: null });
+        console.warn("iTunes lookup returned non-JSON body");
+        for (const id of chunk) {
+          results.push({ bundleId: id, match: null });
+        }
         continue;
       }
 
@@ -655,14 +701,16 @@ export async function lookupAppsByBundleId(
       // the bundle-lookup match rate.
       const byBundle = new Map<string, AppCandidate>();
       for (const r of (data.results || []) as any[]) {
-        const bundle = typeof r.bundleId === 'string' ? r.bundleId : null;
-        if (!bundle) continue;
+        const bundle = typeof r.bundleId === "string" ? r.bundleId : null;
+        if (!bundle) {
+          continue;
+        }
         byBundle.set(bundle.toLowerCase(), {
           appleId: String(r.trackId),
           name: r.trackName,
           developer: r.artistName,
-          iconUrl: r.artworkUrl100?.replace('100x100bb', '200x200bb') ?? '',
-          url: r.trackViewUrl?.split('?')[0] ?? '',
+          iconUrl: r.artworkUrl100?.replace("100x100bb", "200x200bb") ?? "",
+          url: r.trackViewUrl?.split("?")[0] ?? "",
           // Use Apple's canonical casing in the persisted record so
           // downstream comparisons (audit-bundle import, manual-apps
           // import) always agree with what the App Store has stored.
@@ -676,11 +724,16 @@ export async function lookupAppsByBundleId(
       }
 
       for (const id of chunk) {
-        results.push({ bundleId: id, match: byBundle.get(id.toLowerCase()) ?? null });
+        results.push({
+          bundleId: id,
+          match: byBundle.get(id.toLowerCase()) ?? null,
+        });
       }
     } catch (e) {
-      console.error('iTunes lookup failed for chunk', e);
-      for (const id of chunk) results.push({ bundleId: id, match: null });
+      console.error("iTunes lookup failed for chunk", e);
+      for (const id of chunk) {
+        results.push({ bundleId: id, match: null });
+      }
     }
   }
 
@@ -703,24 +756,38 @@ export async function lookupAppsByBundleId(
  *                              as errored.
  */
 export type ScrapeResult =
-  | { url?: string; id: string; name: string; status: 'success'; isNew: boolean; changesDetected: boolean; changeCount: number }
-  | { url: string; status: 'rate_limited'; retryAfterMs: number; error: string }
-  | { url: string; status: 'error'; error: string };
+  | {
+      url?: string;
+      id: string;
+      name: string;
+      status: "success";
+      isNew: boolean;
+      changesDetected: boolean;
+      changeCount: number;
+    }
+  | { url: string; status: "rate_limited"; retryAfterMs: number; error: string }
+  | { url: string; status: "error"; error: string };
 
 export async function scrapeInitialUrls(
   urls: string[],
   resync = false,
   summarizePolicies = false,
-  options: { stopOnRateLimit?: boolean; trigger?: SyncTrigger } = {},
+  options: { stopOnRateLimit?: boolean; trigger?: SyncTrigger } = {}
 ): Promise<ScrapeResult[]> {
   const results: ScrapeResult[] = [];
   // Default trigger matches the historical meaning of resync vs fresh scrape.
   // Call sites that know better (the scheduler, the onboarding flow, the
   // import queue) can override explicitly via options.trigger.
-  const trigger: SyncTrigger = options.trigger ?? (resync ? 'manual' : 'import');
+  const trigger: SyncTrigger =
+    options.trigger ?? (resync ? "manual" : "import");
   for (const url of urls) {
     try {
-      const result = await fetchAndParseApp(url, resync, summarizePolicies, trigger);
+      const result = await fetchAndParseApp(
+        url,
+        resync,
+        summarizePolicies,
+        trigger
+      );
       results.push(result as ScrapeResult);
     } catch (e: any) {
       if (isAppleRateLimitError(e)) {
@@ -729,7 +796,12 @@ export async function scrapeInitialUrls(
         // let the caller enqueue the tail — that matches the iTunes-search
         // queued-retry flow above and avoids extending the ban.
         const retryAfterMs = e.retryAfterMs;
-        results.push({ url, status: 'rate_limited', retryAfterMs, error: e.message });
+        results.push({
+          url,
+          status: "rate_limited",
+          retryAfterMs,
+          error: e.message,
+        });
         if (options.stopOnRateLimit !== false) {
           // Mark every remaining URL as queued-for-retry so the caller has a
           // complete map of what needs to be picked up later.
@@ -737,17 +809,17 @@ export async function scrapeInitialUrls(
           for (const tailUrl of remaining) {
             results.push({
               url: tailUrl,
-              status: 'rate_limited',
+              status: "rate_limited",
               retryAfterMs,
-              error: 'Queued behind an earlier rate-limited request',
+              error: "Queued behind an earlier rate-limited request",
             });
           }
           return results;
         }
         continue;
       }
-      console.error('Failed to scrape:', url, e);
-      results.push({ url, status: 'error', error: String(e?.message ?? e) });
+      console.error("Failed to scrape:", url, e);
+      results.push({ url, status: "error", error: String(e?.message ?? e) });
     }
   }
   return results;
@@ -757,15 +829,15 @@ export async function fetchAndParseApp(
   url: string,
   resync = false,
   summarizePolicies = false,
-  trigger: SyncTrigger = resync ? 'manual' : 'import',
+  trigger: SyncTrigger = resync ? "manual" : "import"
 ) {
   // Defence-in-depth: even though the API routes validate the URL, the
   // scraper is also called from instrumentation (background sync) and from
   // test code. Re-validate here so every entry point is covered.
   const verdict = validateAppStoreUrl(url);
-  if (!verdict.ok || !verdict.url) {
+  if (!(verdict.ok && verdict.url)) {
     throw new Error(
-      `Refusing to scrape untrusted URL: ${verdict.error ?? 'invalid_url'} (${verdict.detail ?? url})`,
+      `Refusing to scrape untrusted URL: ${verdict.error ?? "invalid_url"} (${verdict.detail ?? url})`
     );
   }
 
@@ -775,374 +847,423 @@ export async function fetchAndParseApp(
   // We wrap the body in a try so any thrown error still produces a row
   // before propagating to the caller.
   const __activityStart = Date.now();
-  const __activityType = resync ? 'resync' : 'scrape';
+  const __activityType = resync ? "resync" : "scrape";
   // Live diagnostics handle — visible on the Diagnostics page while the
   // scrape is still running. The phase marks below sit at the four
   // boundaries that account for most of a scrape's wall-clock cost:
   // Apple HTML fetch, HTML/JSON parse, DB commit, optional policy fetch.
   const __scrapeId = newScrapeId();
   let __scrapeAppName: string | undefined;
-  let __scrapeOutcome: 'success' | 'error' | 'rate_limited' = 'error';
+  let __scrapeOutcome: "success" | "error" | "rate_limited" = "error";
   let __scrapeError: string | undefined;
   beginScrape(__scrapeId, verdict.url.toString(), resync);
   try {
-
-  // Hard-cooldown short-circuit. If a previous request already triggered
-  // a 429/403 that hasn't expired, throw the typed rate-limit error
-  // immediately rather than make Apple re-issue it. The error carries
-  // the *remaining* cooldown so callers see a single consistent
-  // resumeAt timestamp regardless of which request first observed it.
-  const scrapeCooldownMs = getRemainingCooldownMs('scrape');
-  if (scrapeCooldownMs > 0) {
-    console.info(
-      `[scrape] short-circuit (cooldown active) — ${verdict.url.toString()} ` +
-      `would be a no-op for ${Math.round(scrapeCooldownMs / 1000)}s`,
-    );
-    throw new AppleRateLimitError(scrapeCooldownMs);
-  }
-
-  // Soft pacer: bigger bucket than search (App Store HTML accepts a
-  // higher per-minute rate), still keeps a small bulk sync from
-  // tripping the ban out of the gate.
-  await acquireRateLimitToken('scrape');
-
-  const { response: req, body: htmlBuf } = await safeFetch(verdict.url.toString(), {
-    allowedHosts: APPLE_HOSTS,
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-    timeoutMs: 15_000,
-    maxBytes: APP_STORE_MAX_BYTES,
-    redirect: 'follow',
-  });
-
-  // Apple's product-page endpoint rate-limits the same way iTunes Search
-  // does. Surface this as a typed error so the queue worker can back off
-  // rather than flipping the row to a terminal 'error' state.
-  //
-  // Apple uses 429 for explicit rate-limiting, but in practice IP-based
-  // soft throttling arrives as 403 (with no Retry-After) — same effect,
-  // different status. Treating 403 as a rate-limit lets the queue worker
-  // and the onboard wizard's pause-on-rate-limit modal fire consistently
-  // instead of flipping rows to a terminal 'error' state that never
-  // recovers. See the fetchDiagnostics comment in the catch block below
-  // for the historical context on why 403 is a rate signal here.
-  if (req.status === 429 || req.status === 403) {
-    const retryAfter = parseRetryAfterMs(req.headers.get('retry-after'));
-    const retryAfterMs = retryAfter ?? APP_STORE_RATE_LIMIT_COOLDOWN_MS;
-    console.warn(
-      `App Store rate-limited (HTTP ${req.status}) for ${verdict.url.toString()}; retry after ${Math.round(retryAfterMs / 1000)}s`,
-    );
-    // Centrally record so the next request (regardless of caller) and
-    // every UI surface sees the same cooldown window.
-    recordRateLimit(
-      'scrape',
-      retryAfterMs,
-      `HTTP ${req.status} from App Store HTML at ${new Date().toISOString()}${retryAfter ? ' (Retry-After honoured)' : ''}`,
-    );
-    throw new AppleRateLimitError(retryAfterMs);
-  }
-
-  if (!req.ok) throw new Error(`HTTP ${req.status} fetching App Store page`);
-  const html = htmlBuf.toString('utf8');
-  markScrapePhase(__scrapeId, 'apple_fetched');
-
-  // ── Name ──
-  let name = 'Unknown App';
-  const nameMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
-  if (nameMatch) name = nameMatch[1].replace(/ on the App Store$/i, '').trim();
-
-  // ── Icon ──
-  let iconUrl = '';
-  const iconMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i);
-  if (iconMatch) iconUrl = iconMatch[1];
-
-  // ── Apple ID ──
-  let appleId: string = crypto.randomUUID();
-  const idMatch = url.match(/\/id([0-9]+)/i);
-  if (idMatch) appleId = idMatch[1];
-
-  // ── Developer ──
-  let developer = '';
-  const devMatch = html.match(/"author"\s*:\s*\{\s*"@type"[^}]*"name"\s*:\s*"([^"]+)"/);
-  if (devMatch) developer = devMatch[1];
-
-  // ── Privacy Policy URL ──
-  let privacyPolicyUrl = '';
-  
-  // 1. Target by ARIA label (most specific)
-  // Supports both ' (straight) and ’ (curly) apostrophes.
-  //
-  // Bounded `{0,2048}?` repetition rather than `[^]*?` so this regex can't
-  // catastrophically backtrack on a crafted/Wayback page. The match window
-  // is well above Apple's actual `<a>` attribute span (~200 chars) yet
-  // small enough to keep worst-case runtime in milliseconds even on a
-  // 4 MiB body. `[^<>]` instead of `[^>]` blocks the prefix from leaking
-  // across tag boundaries.
-  const ariaMatch =
-    html.match(
-      /<a\s+[^<>]{0,2048}?aria-label="Developer[’']s Privacy Policy"[\s\S]{0,2048}?href="([^"]+)"/i,
-    ) ||
-    html.match(
-      /<a\s+[\s\S]{0,2048}?href="([^"]+)"[\s\S]{0,2048}?aria-label="Developer[’']s Privacy Policy"/i,
-    );
-  
-  if (ariaMatch) {
-    privacyPolicyUrl = ariaMatch[1];
-  } else {
-    // 2. Target within notPurchasedLinks section with a more precise bound match
-    const sectionMatch = html.match(/id="notPurchasedLinks"[\s\S]*?<a\s+[^>]*?href="([^"]+)"[^>]*?>\s*Privacy Policy\s*<\/a>/i);
-    if (sectionMatch) {
-      privacyPolicyUrl = sectionMatch[1];
-    } else {
-      // 3. Last resort fallback (global search for Privacy Policy text link)
-      const finalMatch = html.match(/<a\s+[^>]*?href="([^"]+)"[^>]*?>\s*Privacy Policy\s*<\/a>/i);
-      if (finalMatch) privacyPolicyUrl = finalMatch[1];
-    }
-  }
-
-  // Scrub the scraped privacy-policy URL BEFORE it's persisted. If Apple's
-  // page ever serves a javascript:/data:/file: URI (or a link to an internal
-  // IP), sanitizePolicyUrl drops it on the floor rather than letting it
-  // flow through to the UI, where a target="_blank" <a href> would execute
-  // the scheme when clicked.
-  privacyPolicyUrl = sanitizePolicyUrl(privacyPolicyUrl);
-
-  // ── Privacy JSON ──
-  const jsonMatch = html.match(/<script\b[^>]*\bid\s*=\s*(["'])serialized-server-data\1[^>]*>([\s\S]*?)<\/script>/i);
-  if (!jsonMatch) throw new Error('No serialized-server-data script found in App Store page');
-
-  let data: any;
-  try {
-    const raw = JSON.parse(jsonMatch[2]);
-    // Apple now wraps the payload: { data: [...], userTokenHash: ... }
-    // Fall back gracefully if it's still a plain array
-    data = Array.isArray(raw) ? raw : (raw.data ?? []);
-  } catch {
-    throw new Error('Failed to parse serialized-server-data JSON');
-  }
-
-  // ── Name — prefer clean JSON title over og:title ──
-  // data[0].data.title is just "Instagram"; og:title is "Instagram App - App Store"
-  const jsonTitle: string | undefined = data[0]?.data?.title;
-  if (jsonTitle) {
-    name = jsonTitle.trim();
-  } else if (name !== 'Unknown App') {
-    // Strip trailing " App - App Store" or " - App Store" from og:title
-    name = name
-      .replace(/\s+App\s*[-–]\s*App Store.*/i, '')
-      .replace(/\s*[-–]\s*App Store.*/i, '')
-      .replace(/\s+on the App Store.*/i, '')
-      .trim();
-  }
-
-  // ── Privacy details presence (3-state flag) ──
-  // Apple shows a dedicated "No Details Provided" shelf/disclaimer when the
-  // developer hasn't filled in privacy labels yet. Detect that explicitly so
-  // the UI can show the standard Apple copy instead of a generic empty state.
-  const hasPrivacyDetails = detectPrivacyDetailsFlag(html, data);
-
-  // ── In-app purchases flag (3-state, like hasPrivacyDetails) ──
-  // Detector tries the structured page-data paths first and falls back to
-  // a conservative HTML scan. NULL = couldn't decide; saveToDb treats that
-  // as "leave whatever was already there" so a transient parser miss
-  // doesn't clear a known-true value from a previous sync.
-  const hasIap = detectIapFlag(html, data);
-
-  // ── Version + price metadata from iTunes Lookup (best-effort, non-fatal) ──
-  const versionInfo = await fetchVersionInfo(appleId);
-
-  // Capture snapshot BEFORE overwriting. Also pull the previous version
-  // metadata so a resync that lands a new Apple version can both (a) stamp
-  // the old version onto the outgoing snapshot row for accurate history and
-  // (b) trigger a version-update notification separately from any label
-  // diff that came with the release.
-  const existingApp = db
-    .prepare('SELECT id, currentVersion, versionUpdatedAt FROM apps WHERE id = ?')
-    .get(appleId) as
-    | { id: string; currentVersion: string | null; versionUpdatedAt: number | null }
-    | undefined;
-  let previousSnapshot: PrivacyTypeSnapshot[] | null = null;
-  if (existingApp) {
-    previousSnapshot = getLatestSnapshot(appleId) ?? buildSnapshot(appleId);
-  }
-  // Accessibility features live in their own table but changes flow through
-  // the same changes_summary array as privacy-label diffs (tagged
-  // category:'accessibility'). Capture the pre-scrape DB state BEFORE
-  // saveToDb wipes + re-inserts, mirroring the privacy snapshot pattern.
-  const previousAccessibility: AccessibilityFeatureRecord[] = existingApp
-    ? buildAccessibilitySnapshot(appleId)
-    : [];
-  const previousVersion = existingApp?.currentVersion ?? null;
-  const previousVersionUpdatedAt = existingApp?.versionUpdatedAt ?? null;
-  const writePlan = prepareScrapeWritePlan(data, html);
-  const newSnapshot = writePlan.snapshot;
-  __scrapeAppName = name;
-  markScrapePhase(__scrapeId, 'parsed');
-
-  // ── Parser-fallthrough alert ────────────────────────────────────
-  // Three states for `hasPrivacyDetails`:
-  //   1   — Apple shows shelf items (parser succeeded)
-  //   0   — Apple shows the "No Details Provided" copy (developer
-  //         legitimately hasn't filed labels — not a parser failure)
-  //   null — neither; the parser couldn't decide. Combined with an
-  //         empty snapshot, that's the canonical signal that Apple's
-  //         HTML structure has drifted past every shelf-fallback
-  //         we know how to walk.
-  // We deliberately skip this when the page has no labels for a
-  // legitimate reason: a brand-new app that hasn't yet declared
-  // privacy details produces snapshot.length === 0 AND
-  // hasPrivacyDetails === 0, and we don't want to spam the bell on
-  // those. The cooldown inside createParserFallthroughNotification
-  // also collapses bulk-sync waves into a single visible alert per
-  // 24 hours, so this is safe to call on every scrape.
-  if (hasPrivacyDetails === null && newSnapshot.length === 0) {
-    try {
-      createParserFallthroughNotification({
-        appName: name,
-        appsAffected: 1,
-      });
-    } catch (error) {
-      // Notifications are best-effort. A failure here mustn't take down
-      // the scrape itself — the rest of the pipeline (snapshot, version,
-      // accessibility) is still valuable even if the alert can't land.
-      console.warn('[scraper] parser-fallthrough notification failed:', error);
-    }
-  }
-
-  // Capture the privacy-profile mismatch BEFORE the write so we can detect
-  // *newly* mismatching categories after the scrape. Doing this up-front (off
-  // the old footprint) ensures the diff ignores pre-existing mismatches — we
-  // only want the bell to fire for changes that just landed. When no profile
-  // is set, `profileMismatchBefore` stays empty and the post-scrape branch
-  // short-circuits without work.
-  const privacyProfile = getPrivacyProfile();
-  const profileMismatchBefore = privacyProfile
-    ? existingApp
-      ? computeProfileMismatch(privacyProfile, snapshotToFootprint(previousSnapshot ?? []))
-      : null
-    : null;
-
-  const privacyChanges = previousSnapshot ? diffSnapshots(previousSnapshot, newSnapshot) : [];
-  // Accessibility diff uses the parsed shelf directly. If parsing was
-  // inconclusive (`null`), the commit leaves the old rows untouched, so the
-  // effective post-scrape state is just the previous snapshot.
-  const newAccessibility = writePlan.accessibilityFeatures ?? previousAccessibility;
-  const accessibilityChanges = existingApp
-    ? diffAccessibility(previousAccessibility, newAccessibility)
-    : [];
-  const changes = [...privacyChanges, ...accessibilityChanges];
-
-  await commitScrapedAppToDb({
-    appleId,
-    name,
-    url,
-    iconUrl,
-    developer,
-    privacyPolicyUrl,
-    isNew: !existingApp,
-    hasPrivacyDetails,
-    versionInfo,
-    hasIap,
-    writePlan,
-    changes,
-    trigger,
-    activityType: __activityType,
-    activityStartedAt: __activityStart,
-  });
-  markScrapePhase(__scrapeId, 'committed');
-
-  // Version-update notification. Only fires when:
-  //   - The app already existed (first-ever scrapes don't count as an update).
-  //   - The version string actually moved (not just a non-null → null blip).
-  //   - The user hasn't disabled the versionUpdates notification type.
-  // Debounced per-app inside `createVersionUpdateNotification` so a bulk
-  // resync running through many apps in sequence doesn't spam the bell.
-  if (
-    existingApp &&
-    versionInfo.currentVersion &&
-    previousVersion &&
-    versionInfo.currentVersion !== previousVersion
-  ) {
-    try {
-      createVersionUpdateNotification({
-        appId: appleId,
-        appName: name,
-        previousVersion,
-        currentVersion: versionInfo.currentVersion,
-        previousVersionUpdatedAt,
-        currentVersionUpdatedAt: versionInfo.versionUpdatedAt,
-      });
-    } catch (error) {
-      console.warn('[scraper] version-update notification failed:', error);
-    }
-  }
-
-  // Privacy-profile delta: fire a bell notification when a fresh scrape
-  // introduces NEW mismatched categories against the user's profile. We
-  // specifically diff category-by-category so an app that's been over the
-  // limit since its first import doesn't keep re-alerting, while a resync
-  // that adds (say) "Location → tracking" to a previously-fine app does.
-  // Silently skipped when no profile is set (profileMismatchBefore === null
-  // && we don't re-fetch) so the bell stays quiet for those users.
-  if (privacyProfile) {
-    try {
-      const profileMismatchAfter = computeProfileMismatch(
-        privacyProfile,
-        snapshotToFootprint(newSnapshot),
+    // Hard-cooldown short-circuit. If a previous request already triggered
+    // a 429/403 that hasn't expired, throw the typed rate-limit error
+    // immediately rather than make Apple re-issue it. The error carries
+    // the *remaining* cooldown so callers see a single consistent
+    // resumeAt timestamp regardless of which request first observed it.
+    const scrapeCooldownMs = getRemainingCooldownMs("scrape");
+    if (scrapeCooldownMs > 0) {
+      console.info(
+        `[scrape] short-circuit (cooldown active) — ${verdict.url.toString()} ` +
+          `would be a no-op for ${Math.round(scrapeCooldownMs / 1000)}s`
       );
-      if (profileMismatchAfter.count > 0) {
-        const knownCategories = new Set(
-          (profileMismatchBefore?.mismatches ?? []).map(m => m.category),
+      throw new AppleRateLimitError(scrapeCooldownMs);
+    }
+
+    // Soft pacer: bigger bucket than search (App Store HTML accepts a
+    // higher per-minute rate), still keeps a small bulk sync from
+    // tripping the ban out of the gate.
+    await acquireRateLimitToken("scrape");
+
+    const { response: req, body: htmlBuf } = await safeFetch(
+      verdict.url.toString(),
+      {
+        allowedHosts: APPLE_HOSTS,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        timeoutMs: 15_000,
+        maxBytes: APP_STORE_MAX_BYTES,
+        redirect: "follow",
+      }
+    );
+
+    // Apple's product-page endpoint rate-limits the same way iTunes Search
+    // does. Surface this as a typed error so the queue worker can back off
+    // rather than flipping the row to a terminal 'error' state.
+    //
+    // Apple uses 429 for explicit rate-limiting, but in practice IP-based
+    // soft throttling arrives as 403 (with no Retry-After) — same effect,
+    // different status. Treating 403 as a rate-limit lets the queue worker
+    // and the onboard wizard's pause-on-rate-limit modal fire consistently
+    // instead of flipping rows to a terminal 'error' state that never
+    // recovers. See the fetchDiagnostics comment in the catch block below
+    // for the historical context on why 403 is a rate signal here.
+    if (req.status === 429 || req.status === 403) {
+      const retryAfter = parseRetryAfterMs(req.headers.get("retry-after"));
+      const retryAfterMs = retryAfter ?? APP_STORE_RATE_LIMIT_COOLDOWN_MS;
+      console.warn(
+        `App Store rate-limited (HTTP ${req.status}) for ${verdict.url.toString()}; retry after ${Math.round(retryAfterMs / 1000)}s`
+      );
+      // Centrally record so the next request (regardless of caller) and
+      // every UI surface sees the same cooldown window.
+      recordRateLimit(
+        "scrape",
+        retryAfterMs,
+        `HTTP ${req.status} from App Store HTML at ${new Date().toISOString()}${retryAfter ? " (Retry-After honoured)" : ""}`
+      );
+      throw new AppleRateLimitError(retryAfterMs);
+    }
+
+    if (!req.ok) {
+      throw new Error(`HTTP ${req.status} fetching App Store page`);
+    }
+    const html = htmlBuf.toString("utf8");
+    markScrapePhase(__scrapeId, "apple_fetched");
+
+    // ── Name ──
+    let name = "Unknown App";
+    const nameMatch = html.match(
+      /<meta\s+property="og:title"\s+content="([^"]+)"/i
+    );
+    if (nameMatch) {
+      name = nameMatch[1].replace(/ on the App Store$/i, "").trim();
+    }
+
+    // ── Icon ──
+    let iconUrl = "";
+    const iconMatch = html.match(
+      /<meta\s+property="og:image"\s+content="([^"]+)"/i
+    );
+    if (iconMatch) {
+      iconUrl = iconMatch[1];
+    }
+
+    // ── Apple ID ──
+    let appleId: string = crypto.randomUUID();
+    const idMatch = url.match(/\/id([0-9]+)/i);
+    if (idMatch) {
+      appleId = idMatch[1];
+    }
+
+    // ── Developer ──
+    let developer = "";
+    const devMatch = html.match(
+      /"author"\s*:\s*\{\s*"@type"[^}]*"name"\s*:\s*"([^"]+)"/
+    );
+    if (devMatch) {
+      developer = devMatch[1];
+    }
+
+    // ── Privacy Policy URL ──
+    let privacyPolicyUrl = "";
+
+    // 1. Target by ARIA label (most specific)
+    // Supports both ' (straight) and ’ (curly) apostrophes.
+    //
+    // Bounded `{0,2048}?` repetition rather than `[^]*?` so this regex can't
+    // catastrophically backtrack on a crafted/Wayback page. The match window
+    // is well above Apple's actual `<a>` attribute span (~200 chars) yet
+    // small enough to keep worst-case runtime in milliseconds even on a
+    // 4 MiB body. `[^<>]` instead of `[^>]` blocks the prefix from leaking
+    // across tag boundaries.
+    const ariaMatch =
+      html.match(
+        /<a\s+[^<>]{0,2048}?aria-label="Developer[’']s Privacy Policy"[\s\S]{0,2048}?href="([^"]+)"/i
+      ) ||
+      html.match(
+        /<a\s+[\s\S]{0,2048}?href="([^"]+)"[\s\S]{0,2048}?aria-label="Developer[’']s Privacy Policy"/i
+      );
+
+    if (ariaMatch) {
+      privacyPolicyUrl = ariaMatch[1];
+    } else {
+      // 2. Target within notPurchasedLinks section with a more precise bound match
+      const sectionMatch = html.match(
+        /id="notPurchasedLinks"[\s\S]*?<a\s+[^>]*?href="([^"]+)"[^>]*?>\s*Privacy Policy\s*<\/a>/i
+      );
+      if (sectionMatch) {
+        privacyPolicyUrl = sectionMatch[1];
+      } else {
+        // 3. Last resort fallback (global search for Privacy Policy text link)
+        const finalMatch = html.match(
+          /<a\s+[^>]*?href="([^"]+)"[^>]*?>\s*Privacy Policy\s*<\/a>/i
         );
-        const newMismatches = profileMismatchAfter.mismatches.filter(
-          m => !knownCategories.has(m.category),
-        );
-        if (newMismatches.length > 0) {
-          createProfileMismatchNotification({
-            appId: appleId,
-            appName: name,
-            newMismatches,
-            isNew: !existingApp,
-          });
+        if (finalMatch) {
+          privacyPolicyUrl = finalMatch[1];
         }
       }
-    } catch (error) {
-      // A profile-notification failure must never take down a scrape —
-      // the user cares about the actual privacy-label data landing first.
-      console.warn('[scraper] profile-mismatch notify failed for', name, error);
     }
-  }
 
-  // Optional policy analysis now runs strictly after the App Store label
-  // scrape has committed its app rows, snapshot, notification, and activity.
-  // Import/sync callers pass false and use the dedicated policy step/runner
-  // instead, so a slow developer policy page can't hold the app import open.
-  if (summarizePolicies) {
+    // Scrub the scraped privacy-policy URL BEFORE it's persisted. If Apple's
+    // page ever serves a javascript:/data:/file: URI (or a link to an internal
+    // IP), sanitizePolicyUrl drops it on the floor rather than letting it
+    // flow through to the UI, where a target="_blank" <a href> would execute
+    // the scheme when clicked.
+    privacyPolicyUrl = sanitizePolicyUrl(privacyPolicyUrl);
+
+    // ── Privacy JSON ──
+    const jsonMatch = html.match(
+      /<script\b[^>]*\bid\s*=\s*(["'])serialized-server-data\1[^>]*>([\s\S]*?)<\/script>/i
+    );
+    if (!jsonMatch) {
+      throw new Error(
+        "No serialized-server-data script found in App Store page"
+      );
+    }
+
+    let data: any;
     try {
-      await syncPrivacyPolicyAnalysis({
-        appId: appleId,
-        appName: name,
-        developer,
-        policyUrl: privacyPolicyUrl,
-      });
-    } catch (error) {
-      console.error('Privacy policy analysis failed for', name, error);
+      const raw = JSON.parse(jsonMatch[2]);
+      // Apple now wraps the payload: { data: [...], userTokenHash: ... }
+      // Fall back gracefully if it's still a plain array
+      data = Array.isArray(raw) ? raw : (raw.data ?? []);
+    } catch {
+      throw new Error("Failed to parse serialized-server-data JSON");
     }
-    markScrapePhase(__scrapeId, 'policy_done');
-  }
 
-  __scrapeOutcome = 'success';
-  return {
-    id: appleId,
-    name,
-    status: 'success',
-    isNew: !existingApp,
-    changesDetected: changes.length > 0,
-    changeCount: changes.length,
-  };
+    // ── Name — prefer clean JSON title over og:title ──
+    // data[0].data.title is just "Instagram"; og:title is "Instagram App - App Store"
+    const jsonTitle: string | undefined = data[0]?.data?.title;
+    if (jsonTitle) {
+      name = jsonTitle.trim();
+    } else if (name !== "Unknown App") {
+      // Strip trailing " App - App Store" or " - App Store" from og:title
+      name = name
+        .replace(/\s+App\s*[-–]\s*App Store.*/i, "")
+        .replace(/\s*[-–]\s*App Store.*/i, "")
+        .replace(/\s+on the App Store.*/i, "")
+        .trim();
+    }
+
+    // ── Privacy details presence (3-state flag) ──
+    // Apple shows a dedicated "No Details Provided" shelf/disclaimer when the
+    // developer hasn't filled in privacy labels yet. Detect that explicitly so
+    // the UI can show the standard Apple copy instead of a generic empty state.
+    const hasPrivacyDetails = detectPrivacyDetailsFlag(html, data);
+
+    // ── In-app purchases flag (3-state, like hasPrivacyDetails) ──
+    // Detector tries the structured page-data paths first and falls back to
+    // a conservative HTML scan. NULL = couldn't decide; saveToDb treats that
+    // as "leave whatever was already there" so a transient parser miss
+    // doesn't clear a known-true value from a previous sync.
+    const hasIap = detectIapFlag(html, data);
+
+    // ── Version + price metadata from iTunes Lookup (best-effort, non-fatal) ──
+    const versionInfo = await fetchVersionInfo(appleId);
+
+    // Capture snapshot BEFORE overwriting. Also pull the previous version
+    // metadata so a resync that lands a new Apple version can both (a) stamp
+    // the old version onto the outgoing snapshot row for accurate history and
+    // (b) trigger a version-update notification separately from any label
+    // diff that came with the release.
+    const existingApp = db
+      .prepare(
+        "SELECT id, currentVersion, versionUpdatedAt FROM apps WHERE id = ?"
+      )
+      .get(appleId) as
+      | {
+          id: string;
+          currentVersion: string | null;
+          versionUpdatedAt: number | null;
+        }
+      | undefined;
+    let previousSnapshot: PrivacyTypeSnapshot[] | null = null;
+    if (existingApp) {
+      previousSnapshot = getLatestSnapshot(appleId) ?? buildSnapshot(appleId);
+    }
+    // Accessibility features live in their own table but changes flow through
+    // the same changes_summary array as privacy-label diffs (tagged
+    // category:'accessibility'). Capture the pre-scrape DB state BEFORE
+    // saveToDb wipes + re-inserts, mirroring the privacy snapshot pattern.
+    const previousAccessibility: AccessibilityFeatureRecord[] = existingApp
+      ? buildAccessibilitySnapshot(appleId)
+      : [];
+    const previousVersion = existingApp?.currentVersion ?? null;
+    const previousVersionUpdatedAt = existingApp?.versionUpdatedAt ?? null;
+    const writePlan = prepareScrapeWritePlan(data, html);
+    const newSnapshot = writePlan.snapshot;
+    __scrapeAppName = name;
+    markScrapePhase(__scrapeId, "parsed");
+
+    // ── Parser-fallthrough alert ────────────────────────────────────
+    // Three states for `hasPrivacyDetails`:
+    //   1   — Apple shows shelf items (parser succeeded)
+    //   0   — Apple shows the "No Details Provided" copy (developer
+    //         legitimately hasn't filed labels — not a parser failure)
+    //   null — neither; the parser couldn't decide. Combined with an
+    //         empty snapshot, that's the canonical signal that Apple's
+    //         HTML structure has drifted past every shelf-fallback
+    //         we know how to walk.
+    // We deliberately skip this when the page has no labels for a
+    // legitimate reason: a brand-new app that hasn't yet declared
+    // privacy details produces snapshot.length === 0 AND
+    // hasPrivacyDetails === 0, and we don't want to spam the bell on
+    // those. The cooldown inside createParserFallthroughNotification
+    // also collapses bulk-sync waves into a single visible alert per
+    // 24 hours, so this is safe to call on every scrape.
+    if (hasPrivacyDetails === null && newSnapshot.length === 0) {
+      try {
+        createParserFallthroughNotification({
+          appName: name,
+          appsAffected: 1,
+        });
+      } catch (error) {
+        // Notifications are best-effort. A failure here mustn't take down
+        // the scrape itself — the rest of the pipeline (snapshot, version,
+        // accessibility) is still valuable even if the alert can't land.
+        console.warn(
+          "[scraper] parser-fallthrough notification failed:",
+          error
+        );
+      }
+    }
+
+    // Capture the privacy-profile mismatch BEFORE the write so we can detect
+    // *newly* mismatching categories after the scrape. Doing this up-front (off
+    // the old footprint) ensures the diff ignores pre-existing mismatches — we
+    // only want the bell to fire for changes that just landed. When no profile
+    // is set, `profileMismatchBefore` stays empty and the post-scrape branch
+    // short-circuits without work.
+    const privacyProfile = getPrivacyProfile();
+    const profileMismatchBefore = privacyProfile
+      ? existingApp
+        ? computeProfileMismatch(
+            privacyProfile,
+            snapshotToFootprint(previousSnapshot ?? [])
+          )
+        : null
+      : null;
+
+    const privacyChanges = previousSnapshot
+      ? diffSnapshots(previousSnapshot, newSnapshot)
+      : [];
+    // Accessibility diff uses the parsed shelf directly. If parsing was
+    // inconclusive (`null`), the commit leaves the old rows untouched, so the
+    // effective post-scrape state is just the previous snapshot.
+    const newAccessibility =
+      writePlan.accessibilityFeatures ?? previousAccessibility;
+    const accessibilityChanges = existingApp
+      ? diffAccessibility(previousAccessibility, newAccessibility)
+      : [];
+    const changes = [...privacyChanges, ...accessibilityChanges];
+
+    await commitScrapedAppToDb({
+      appleId,
+      name,
+      url,
+      iconUrl,
+      developer,
+      privacyPolicyUrl,
+      isNew: !existingApp,
+      hasPrivacyDetails,
+      versionInfo,
+      hasIap,
+      writePlan,
+      changes,
+      trigger,
+      activityType: __activityType,
+      activityStartedAt: __activityStart,
+    });
+    markScrapePhase(__scrapeId, "committed");
+
+    // Version-update notification. Only fires when:
+    //   - The app already existed (first-ever scrapes don't count as an update).
+    //   - The version string actually moved (not just a non-null → null blip).
+    //   - The user hasn't disabled the versionUpdates notification type.
+    // Debounced per-app inside `createVersionUpdateNotification` so a bulk
+    // resync running through many apps in sequence doesn't spam the bell.
+    if (
+      existingApp &&
+      versionInfo.currentVersion &&
+      previousVersion &&
+      versionInfo.currentVersion !== previousVersion
+    ) {
+      try {
+        createVersionUpdateNotification({
+          appId: appleId,
+          appName: name,
+          previousVersion,
+          currentVersion: versionInfo.currentVersion,
+          previousVersionUpdatedAt,
+          currentVersionUpdatedAt: versionInfo.versionUpdatedAt,
+        });
+      } catch (error) {
+        console.warn("[scraper] version-update notification failed:", error);
+      }
+    }
+
+    // Privacy-profile delta: fire a bell notification when a fresh scrape
+    // introduces NEW mismatched categories against the user's profile. We
+    // specifically diff category-by-category so an app that's been over the
+    // limit since its first import doesn't keep re-alerting, while a resync
+    // that adds (say) "Location → tracking" to a previously-fine app does.
+    // Silently skipped when no profile is set (profileMismatchBefore === null
+    // && we don't re-fetch) so the bell stays quiet for those users.
+    if (privacyProfile) {
+      try {
+        const profileMismatchAfter = computeProfileMismatch(
+          privacyProfile,
+          snapshotToFootprint(newSnapshot)
+        );
+        if (profileMismatchAfter.count > 0) {
+          const knownCategories = new Set(
+            (profileMismatchBefore?.mismatches ?? []).map((m) => m.category)
+          );
+          const newMismatches = profileMismatchAfter.mismatches.filter(
+            (m) => !knownCategories.has(m.category)
+          );
+          if (newMismatches.length > 0) {
+            createProfileMismatchNotification({
+              appId: appleId,
+              appName: name,
+              newMismatches,
+              isNew: !existingApp,
+            });
+          }
+        }
+      } catch (error) {
+        // A profile-notification failure must never take down a scrape —
+        // the user cares about the actual privacy-label data landing first.
+        console.warn(
+          "[scraper] profile-mismatch notify failed for",
+          name,
+          error
+        );
+      }
+    }
+
+    // Optional policy analysis now runs strictly after the App Store label
+    // scrape has committed its app rows, snapshot, notification, and activity.
+    // Import/sync callers pass false and use the dedicated policy step/runner
+    // instead, so a slow developer policy page can't hold the app import open.
+    if (summarizePolicies) {
+      try {
+        await syncPrivacyPolicyAnalysis({
+          appId: appleId,
+          appName: name,
+          developer,
+          policyUrl: privacyPolicyUrl,
+        });
+      } catch (error) {
+        console.error("Privacy policy analysis failed for", name, error);
+      }
+      markScrapePhase(__scrapeId, "policy_done");
+    }
+
+    __scrapeOutcome = "success";
+    return {
+      id: appleId,
+      name,
+      status: "success",
+      isNew: !existingApp,
+      changesDetected: changes.length > 0,
+      changeCount: changes.length,
+    };
   } catch (error) {
     // Surface the failure in the activity log then rethrow so existing
     // callers (scrapeInitialUrls, import-queue, onboarding wizard) still
@@ -1152,34 +1273,48 @@ export async function fetchAndParseApp(
     // UI can render a troubleshoot panel with actionable hints rather
     // than just the raw "Fetch failed: HTTP 403" string.
     const message =
-      error instanceof Error ? error.message : String(error ?? 'unknown error');
+      error instanceof Error ? error.message : String(error ?? "unknown error");
     const httpMatch = message.match(/HTTP\s+(\d{3})/i);
     const fetchDiagnostics: Record<string, unknown> = { requestedUrl: url };
     if (httpMatch) {
-      const status = parseInt(httpMatch[1], 10);
+      const status = Number.parseInt(httpMatch[1], 10);
       fetchDiagnostics.httpStatus = status;
       const hints: string[] = [];
       if (status === 403) {
-        hints.push('Apple\'s App Store HTML endpoint refused the request.');
-        hints.push('This is often a transient rate-limit — retry in a few minutes before assuming the scraper is broken.');
+        hints.push("Apple's App Store HTML endpoint refused the request.");
+        hints.push(
+          "This is often a transient rate-limit — retry in a few minutes before assuming the scraper is broken."
+        );
       } else if (status === 404) {
-        hints.push('The App Store URL returned Not Found. The app may have been removed from the store.');
+        hints.push(
+          "The App Store URL returned Not Found. The app may have been removed from the store."
+        );
       } else if (status === 429) {
-        hints.push('Apple is rate-limiting us. Stagger re-syncs with a longer delay, or wait a few minutes and retry.');
+        hints.push(
+          "Apple is rate-limiting us. Stagger re-syncs with a longer delay, or wait a few minutes and retry."
+        );
       } else if (status >= 500) {
-        hints.push('App Store is returning an upstream error. Usually transient.');
+        hints.push(
+          "App Store is returning an upstream error. Usually transient."
+        );
       }
-      if (hints.length > 0) fetchDiagnostics.troubleshoot = hints;
+      if (hints.length > 0) {
+        fetchDiagnostics.troubleshoot = hints;
+      }
     } else if (/timeout|aborted|ETIMEDOUT/i.test(message)) {
-      fetchDiagnostics.networkHint = 'timeout';
-      fetchDiagnostics.troubleshoot = ['Request timed out. Retry later; the App Store HTML endpoint occasionally hangs.'];
+      fetchDiagnostics.networkHint = "timeout";
+      fetchDiagnostics.troubleshoot = [
+        "Request timed out. Retry later; the App Store HTML endpoint occasionally hangs.",
+      ];
     } else if (/ENOTFOUND|EAI_AGAIN|network|fetch failed/i.test(message)) {
-      fetchDiagnostics.networkHint = 'network';
-      fetchDiagnostics.troubleshoot = ['Network error reaching apps.apple.com. Check the container has outbound internet access.'];
+      fetchDiagnostics.networkHint = "network";
+      fetchDiagnostics.troubleshoot = [
+        "Network error reaching apps.apple.com. Check the container has outbound internet access.",
+      ];
     }
     recordActivity({
       type: __activityType,
-      status: 'error',
+      status: "error",
       appId: null,
       appName: null,
       summary: message.slice(0, 200),
@@ -1189,7 +1324,7 @@ export async function fetchAndParseApp(
     // A typed AppleRateLimitError lands here too; we want it categorised
     // separately so the diagnostics panel can show "1 rate-limited" vs
     // "1 error" rather than collapsing them together.
-    __scrapeOutcome = isAppleRateLimitError(error) ? 'rate_limited' : 'error';
+    __scrapeOutcome = isAppleRateLimitError(error) ? "rate_limited" : "error";
     __scrapeError = message.slice(0, 200);
     throw error;
   } finally {
@@ -1202,18 +1337,6 @@ export async function fetchAndParseApp(
 
 interface VersionInfo {
   currentVersion: string | null;
-  versionUpdatedAt: number | null;
-  whatsNew: string | null;
-  /**
-   * Phase 2: pricing snapshot from the iTunes Lookup payload. All three
-   * are populated together (or all-null if the lookup failed). The
-   * `formattedPrice` field on the Apple side is already locale-aware —
-   * we render it as-is rather than reformatting client-side, so the
-   * chip on the card matches what users see on the App Store listing.
-   */
-  priceAmount: number | null;
-  priceCurrency: string | null;
-  priceFormatted: string | null;
   /**
    * Apple App Store genre / category. `genreId` is the numeric id Apple
    * uses in its category-chart RSS feeds (`/genre/<id>`); `genreName` is
@@ -1224,6 +1347,18 @@ interface VersionInfo {
    */
   genreId: number | null;
   genreName: string | null;
+  /**
+   * Phase 2: pricing snapshot from the iTunes Lookup payload. All three
+   * are populated together (or all-null if the lookup failed). The
+   * `formattedPrice` field on the Apple side is already locale-aware —
+   * we render it as-is rather than reformatting client-side, so the
+   * chip on the card matches what users see on the App Store listing.
+   */
+  priceAmount: number | null;
+  priceCurrency: string | null;
+  priceFormatted: string | null;
+  versionUpdatedAt: number | null;
+  whatsNew: string | null;
 }
 
 /**
@@ -1245,43 +1380,53 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
     genreId: null,
     genreName: null,
   };
-  if (!/^\d+$/.test(appleId)) return empty;
+  if (!/^\d+$/.test(appleId)) {
+    return empty;
+  }
 
-  const country = normalizeCountry(getSetting('app_country', DEFAULT_COUNTRY));
+  const country = normalizeCountry(getSetting("app_country", DEFAULT_COUNTRY));
   try {
     const { response: res, body: bodyBuf } = await safeFetch(
       `https://itunes.apple.com/lookup?id=${appleId}&country=${country}`,
       {
         allowedHosts: APPLE_HOSTS,
-        headers: { Accept: 'application/json' },
+        headers: { Accept: "application/json" },
         timeoutMs: 8000,
         maxBytes: 1 * 1024 * 1024,
-        redirect: 'follow',
-      },
+        redirect: "follow",
+      }
     );
-    if (!res.ok) return empty;
+    if (!res.ok) {
+      return empty;
+    }
     let payload: any;
     try {
-      payload = JSON.parse(bodyBuf.toString('utf8'));
+      payload = JSON.parse(bodyBuf.toString("utf8"));
     } catch {
       return empty;
     }
     const entry = payload?.results?.[0];
-    if (!entry) return empty;
-
-    const currentVersion = typeof entry.version === 'string' && entry.version.trim()
-      ? entry.version.trim()
-      : null;
-
-    let versionUpdatedAt: number | null = null;
-    if (typeof entry.currentVersionReleaseDate === 'string') {
-      const parsed = Date.parse(entry.currentVersionReleaseDate);
-      if (!Number.isNaN(parsed)) versionUpdatedAt = parsed;
+    if (!entry) {
+      return empty;
     }
 
-    const whatsNew = typeof entry.releaseNotes === 'string' && entry.releaseNotes.trim()
-      ? entry.releaseNotes.trim()
-      : null;
+    const currentVersion =
+      typeof entry.version === "string" && entry.version.trim()
+        ? entry.version.trim()
+        : null;
+
+    let versionUpdatedAt: number | null = null;
+    if (typeof entry.currentVersionReleaseDate === "string") {
+      const parsed = Date.parse(entry.currentVersionReleaseDate);
+      if (!Number.isNaN(parsed)) {
+        versionUpdatedAt = parsed;
+      }
+    }
+
+    const whatsNew =
+      typeof entry.releaseNotes === "string" && entry.releaseNotes.trim()
+        ? entry.releaseNotes.trim()
+        : null;
 
     // Pricing — Apple returns numeric `price`, ISO `currency`, and the
     // localised display string `formattedPrice`. The numeric `price` is
@@ -1289,15 +1434,18 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
     // sort-by-price doesn't lump "free" in with "unknown". Currency +
     // formattedPrice can still be present on free rows ("Free", "USD")
     // — Apple includes them anyway.
-    const priceAmount = typeof entry.price === 'number' && Number.isFinite(entry.price)
-      ? entry.price
-      : null;
-    const priceCurrency = typeof entry.currency === 'string' && entry.currency.trim()
-      ? entry.currency.trim()
-      : null;
-    const priceFormatted = typeof entry.formattedPrice === 'string' && entry.formattedPrice.trim()
-      ? entry.formattedPrice.trim()
-      : null;
+    const priceAmount =
+      typeof entry.price === "number" && Number.isFinite(entry.price)
+        ? entry.price
+        : null;
+    const priceCurrency =
+      typeof entry.currency === "string" && entry.currency.trim()
+        ? entry.currency.trim()
+        : null;
+    const priceFormatted =
+      typeof entry.formattedPrice === "string" && entry.formattedPrice.trim()
+        ? entry.formattedPrice.trim()
+        : null;
 
     // Genre / category. iTunes Lookup returns `primaryGenreId` (numeric)
     // and `primaryGenreName` (human label). The numeric id is what we
@@ -1305,11 +1453,13 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
     // what we render in the Compare page's "Top in {Productivity}"
     // toggle label.
     const genreId =
-      typeof entry.primaryGenreId === 'number' && Number.isFinite(entry.primaryGenreId)
+      typeof entry.primaryGenreId === "number" &&
+      Number.isFinite(entry.primaryGenreId)
         ? entry.primaryGenreId
         : null;
     const genreName =
-      typeof entry.primaryGenreName === 'string' && entry.primaryGenreName.trim()
+      typeof entry.primaryGenreName === "string" &&
+      entry.primaryGenreName.trim()
         ? entry.primaryGenreName.trim()
         : null;
 
@@ -1324,7 +1474,7 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
       genreName,
     };
   } catch (error) {
-    console.error('iTunes lookup failed for', appleId, error);
+    console.error("iTunes lookup failed for", appleId, error);
     return empty;
   }
 }
@@ -1358,7 +1508,9 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
 function detectIapFlag(html: string, rawData: any): number | null {
   try {
     const root = rawData?.[0]?.data;
-    if (!root) return null;
+    if (!root) {
+      return null;
+    }
 
     // Path 1 — dedicated inAppPurchases shelf.
     const iapShelf = root.shelfMapping?.inAppPurchases;
@@ -1372,22 +1524,26 @@ function detectIapFlag(html: string, rawData: any): number | null {
     // Path 2 — information shelf carrying the "In-App Purchases" row.
     const infoItems: unknown = root.shelfMapping?.information?.items;
     if (Array.isArray(infoItems)) {
-      for (const item of infoItems as Array<Record<string, unknown>>) {
-        const title = typeof item?.title === 'string' ? item.title : '';
-        if (/^in[-‑ ]?app\s+purchases$/i.test(title)) return 1;
+      for (const item of infoItems as Record<string, unknown>[]) {
+        const title = typeof item?.title === "string" ? item.title : "";
+        if (/^in[-‑ ]?app\s+purchases$/i.test(title)) {
+          return 1;
+        }
       }
     }
 
     // Path 3 — older `additionalAttributes` schema with attributeKey rows.
     const attrs: unknown = root.additionalAttributes?.attributes;
     if (Array.isArray(attrs)) {
-      for (const a of attrs as Array<Record<string, unknown>>) {
-        const key = typeof a?.attributeKey === 'string' ? a.attributeKey : '';
+      for (const a of attrs as Record<string, unknown>[]) {
+        const key = typeof a?.attributeKey === "string" ? a.attributeKey : "";
         if (/^in[-_‑]?app[-_‑]?purchases$/i.test(key)) {
           // Some payloads carry the boolean here; fall back to "1" if
           // the key is present at all (the row only shows up when IAP
           // is offered).
-          if (typeof a.value === 'boolean') return a.value ? 1 : 0;
+          if (typeof a.value === "boolean") {
+            return a.value ? 1 : 0;
+          }
           return 1;
         }
       }
@@ -1398,7 +1554,9 @@ function detectIapFlag(html: string, rawData: any): number | null {
     // shape specifically (sentence-case, immediately under the title)
     // rather than any mention, so prose like "We disclose in-app
     // purchases in our policy" doesn't trip the detector.
-    if (/Offers\s+In[-‑ ]?App\s+Purchases/i.test(html)) return 1;
+    if (/Offers\s+In[-‑ ]?App\s+Purchases/i.test(html)) {
+      return 1;
+    }
 
     return null;
   } catch {
@@ -1419,19 +1577,25 @@ function detectPrivacyDetailsFlag(html: string, rawData: any): number | null {
     const hasItems =
       !!shelfMap?.privacyTypes?.items?.length ||
       !!shelfMap?.privacyHeader?.seeAllAction?.pageData?.shelves?.some(
-        (s: any) => s?.contentType === 'privacyType' && s?.items?.length,
+        (s: any) => s?.contentType === "privacyType" && s?.items?.length
       );
 
-    if (hasItems) return 1;
+    if (hasItems) {
+      return 1;
+    }
 
     // Apple's disclaimer copy: "The developer will be required to provide
     // privacy details when they submit their next app update." + the header
     // phrase "No Details Provided" (sometimes rendered as "No details provided").
     const hasNoDetailsCopy =
       /No\s+Details\s+Provided/i.test(html) ||
-      /required\s+to\s+provide\s+privacy\s+details\s+when\s+they\s+submit/i.test(html);
+      /required\s+to\s+provide\s+privacy\s+details\s+when\s+they\s+submit/i.test(
+        html
+      );
 
-    if (hasNoDetailsCopy) return 0;
+    if (hasNoDetailsCopy) {
+      return 0;
+    }
 
     return null;
   } catch {
@@ -1445,17 +1609,16 @@ interface ParsedPrivacyCategory {
 }
 
 interface ParsedPrivacyItem {
+  categories: ParsedPrivacyCategory[];
+  detail: string;
   identifier: string;
   title: string;
-  detail: string;
-  categories: ParsedPrivacyCategory[];
 }
 
 interface ScrapeWritePlan {
-  privacyItems: ParsedPrivacyItem[];
   accessibilityFeatures: AccessibilityFeatureRecord[] | null;
   hasAccessibilityLabels: number | null;
-  snapshot: PrivacyTypeSnapshot[];
+  privacyItems: ParsedPrivacyItem[];
   /**
    * "Customers Also Bought" + "More By This Developer" shelves observed
    * on the product page. `null` means "the parser couldn't decide" — we
@@ -1464,6 +1627,7 @@ interface ScrapeWritePlan {
    * existing rows so we don't show stale shelves.
    */
   relatedApps: RelatedAppShelfRecord[] | null;
+  snapshot: PrivacyTypeSnapshot[];
 }
 
 /**
@@ -1476,30 +1640,30 @@ interface ScrapeWritePlan {
  * cycle if scraper imported it directly).
  */
 export interface RelatedAppShelfRecord {
-  relatedAppleId:   string;
-  relatedName:      string;
+  relatedAppleId: string;
   relatedDeveloper: string | null;
-  relatedIconUrl:   string | null;
-  relatedStoreUrl:  string;
-  shelfType:        'may_also_like' | 'more_by_developer';
+  relatedIconUrl: string | null;
+  relatedName: string;
+  relatedStoreUrl: string;
+  shelfType: "may_also_like" | "more_by_developer";
 }
 
 interface CommitScrapedAppInput {
-  appleId: string;
-  name: string;
-  url: string;
-  iconUrl: string;
-  developer: string;
-  privacyPolicyUrl: string;
-  isNew: boolean;
-  hasPrivacyDetails: number | null;
-  versionInfo: VersionInfo;
-  hasIap: number | null;
-  writePlan: ScrapeWritePlan;
-  changes: ChangeEntry[];
-  trigger: SyncTrigger;
-  activityType: 'scrape' | 'resync';
   activityStartedAt: number;
+  activityType: "scrape" | "resync";
+  appleId: string;
+  changes: ChangeEntry[];
+  developer: string;
+  hasIap: number | null;
+  hasPrivacyDetails: number | null;
+  iconUrl: string;
+  isNew: boolean;
+  name: string;
+  privacyPolicyUrl: string;
+  trigger: SyncTrigger;
+  url: string;
+  versionInfo: VersionInfo;
+  writePlan: ScrapeWritePlan;
 }
 
 /**
@@ -1545,7 +1709,8 @@ export function extractFromShoebox(html: string): any[] {
     // `shoebox-uts-api-cache-apps` showed up briefly in 2023). Pulling
     // every shoebox and walking each one for the marker path is more
     // robust than hard-coding the id and missing a window.
-    const SHOEBOX_RE = /<script[^>]*\btype="fastboot\/shoebox"[^>]*\bid="(shoebox-[^"]*)"[^>]*>([\s\S]*?)<\/script>/gi;
+    const SHOEBOX_RE =
+      /<script[^>]*\btype="fastboot\/shoebox"[^>]*\bid="(shoebox-[^"]*)"[^>]*>([\s\S]*?)<\/script>/gi;
     const candidates: string[] = [];
     let match: RegExpExecArray | null;
     while ((match = SHOEBOX_RE.exec(html)) !== null) {
@@ -1553,21 +1718,26 @@ export function extractFromShoebox(html: string): any[] {
       // — the localizer / language-code / global-elements shoeboxes
       // never carry app data and are noise to walk.
       const id = match[1];
-      if (!/media-api|apps/i.test(id)) continue;
+      if (!/media-api|apps/i.test(id)) {
+        continue;
+      }
       candidates.push(match[2]);
     }
-    if (candidates.length === 0) return [];
+    if (candidates.length === 0) {
+      return [];
+    }
 
     // Decode HTML entities. The shoebox body is HTML-escaped JSON
     // (Ember writes `&quot;` for the JSON string delimiters etc.) so
     // a naive JSON.parse on the raw match would fail.
-    const decode = (s: string): string => s
-      .replace(/&quot;/g, '"')
-      .replace(/&#x27;/g, "'")
-      .replace(/&#39;/g, "'")
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&');
+    const decode = (s: string): string =>
+      s
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&");
 
     for (const body of candidates) {
       let outer: Record<string, unknown>;
@@ -1581,44 +1751,57 @@ export function extractFromShoebox(html: string): any[] {
       // .privacyTypes` — that's the historical schema.
       for (const value of Object.values(outer)) {
         let entry: any = value;
-        if (typeof entry === 'string') {
-          try { entry = JSON.parse(entry); }
-          catch { continue; }
+        if (typeof entry === "string") {
+          try {
+            entry = JSON.parse(entry);
+          } catch {
+            continue;
+          }
         }
         const d = entry?.d;
-        if (!Array.isArray(d) || d.length === 0) continue;
+        if (!Array.isArray(d) || d.length === 0) {
+          continue;
+        }
         const attrs = d[0]?.attributes;
         const privacyTypes = attrs?.privacy?.privacyTypes;
-        if (!Array.isArray(privacyTypes) || privacyTypes.length === 0) continue;
+        if (!Array.isArray(privacyTypes) || privacyTypes.length === 0) {
+          continue;
+        }
 
         // Field-rename to the modern shape so `normalizePrivacyItems`
         // can consume the result without a second normaliser. The
         // identifier enums are unchanged so downstream stays single-
         // schema.
         return privacyTypes
-          .filter((t: any) => t && typeof t.identifier === 'string')
+          .filter((t: any) => t && typeof t.identifier === "string")
           .map((t: any) => ({
             identifier: t.identifier,
             // Historical field is `privacyType` (e.g. "Data Linked to
             // You"); the modern parser keys off `title`.
-            title: typeof t.privacyType === 'string' ? t.privacyType
-                 : typeof t.title === 'string' ? t.title
-                 : t.identifier,
+            title:
+              typeof t.privacyType === "string"
+                ? t.privacyType
+                : typeof t.title === "string"
+                  ? t.title
+                  : t.identifier,
             categories: Array.isArray(t.dataCategories)
               ? t.dataCategories
-                  .filter((c: any) => c && typeof c.identifier === 'string')
+                  .filter((c: any) => c && typeof c.identifier === "string")
                   .map((c: any) => ({
                     identifier: c.identifier,
-                    title: typeof c.dataCategory === 'string' ? c.dataCategory
-                         : typeof c.title === 'string' ? c.title
-                         : c.identifier,
+                    title:
+                      typeof c.dataCategory === "string"
+                        ? c.dataCategory
+                        : typeof c.title === "string"
+                          ? c.title
+                          : c.identifier,
                   }))
               : [],
           }));
       }
     }
   } catch (error) {
-    console.warn('[scraper] shoebox privacy extract failed:', error);
+    console.warn("[scraper] shoebox privacy extract failed:", error);
   }
   return [];
 }
@@ -1633,7 +1816,7 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
   try {
     accessibilityFeatures = extractAccessibilityFeatures(rawData);
   } catch (e) {
-    console.error('Could not extract accessibility data from raw JSON', e);
+    console.error("Could not extract accessibility data from raw JSON", e);
     accessibilityFeatures = null;
   }
   const hasAccessibilityLabels: number | null =
@@ -1656,11 +1839,14 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
     // Fallback: detail shelves from privacyHeader (may have nested purposes)
     // We flatten them to extract just the unique categories per type.
     if (!privacyItems.length) {
-      const via_header = shelfMap?.privacyHeader?.seeAllAction?.pageData?.shelves;
+      const via_header =
+        shelfMap?.privacyHeader?.seeAllAction?.pageData?.shelves;
       if (via_header?.length) {
         for (const shelf of via_header) {
-          if (shelf.contentType !== 'privacyType') continue;
-          for (const item of (shelf.items ?? [])) {
+          if (shelf.contentType !== "privacyType") {
+            continue;
+          }
+          for (const item of shelf.items ?? []) {
             // If the item has direct categories, use them
             if (item.categories?.length) {
               privacyItems.push(item);
@@ -1669,9 +1855,12 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
             else if (item.purposes?.length) {
               const catMap = new Map<string, any>();
               for (const p of item.purposes) {
-                for (const c of (p.categories ?? [])) {
+                for (const c of p.categories ?? []) {
                   if (!catMap.has(c.identifier)) {
-                    catMap.set(c.identifier, { identifier: c.identifier, title: c.title });
+                    catMap.set(c.identifier, {
+                      identifier: c.identifier,
+                      title: c.title,
+                    });
                   }
                 }
               }
@@ -1691,7 +1880,7 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
       const pageData = rawData[0]?.data?.pageData;
       if (pageData?.shelves?.length) {
         for (const shelf of pageData.shelves) {
-          if (shelf.contentType === 'privacyType') {
+          if (shelf.contentType === "privacyType") {
             privacyItems.push(...(shelf.items ?? []));
           }
         }
@@ -1711,7 +1900,7 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
       privacyItems = extractFromShoebox(html);
     }
   } catch (e) {
-    console.error('Could not extract privacy data from raw JSON', e);
+    console.error("Could not extract privacy data from raw JSON", e);
   }
 
   const parsedPrivacyItems = normalizePrivacyItems(privacyItems);
@@ -1727,7 +1916,7 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
   try {
     relatedApps = extractRelatedAppShelves(rawData);
   } catch (e) {
-    console.warn('Could not extract related-app shelves from raw JSON', e);
+    console.warn("Could not extract related-app shelves from raw JSON", e);
     relatedApps = null;
   }
 
@@ -1761,43 +1950,56 @@ function prepareScrapeWritePlan(rawData: any, html?: string): ScrapeWritePlan {
  */
 const MAX_RELATED_PER_SHELF = 10;
 
-export function extractRelatedAppShelves(rawData: any): RelatedAppShelfRecord[] {
+export function extractRelatedAppShelves(
+  rawData: any
+): RelatedAppShelfRecord[] {
   const out: RelatedAppShelfRecord[] = [];
   const shelfMap = rawData?.[0]?.data?.shelfMapping;
-  if (!shelfMap || typeof shelfMap !== 'object') return out;
+  if (!shelfMap || typeof shelfMap !== "object") {
+    return out;
+  }
 
   // Candidate (shelfKey → shelfType) pairs. Apple has shipped each of
   // these spellings at various points; checking all of them costs nothing
   // and keeps us forward-compatible.
-  const SHELF_CANDIDATES: Array<{ keys: string[]; shelfType: 'may_also_like' | 'more_by_developer' }> = [
+  const SHELF_CANDIDATES: Array<{
+    keys: string[];
+    shelfType: "may_also_like" | "more_by_developer";
+  }> = [
     {
       keys: [
-        'customersAlsoBoughtAppsCollection',
-        'customersAlsoBoughtApps',
-        'youMightAlsoLike',
-        'youMightAlsoLikeApps',
+        "customersAlsoBoughtAppsCollection",
+        "customersAlsoBoughtApps",
+        "youMightAlsoLike",
+        "youMightAlsoLikeApps",
       ],
-      shelfType: 'may_also_like',
+      shelfType: "may_also_like",
     },
     {
       keys: [
-        'moreByThisDeveloperCollection',
-        'moreByThisDeveloper',
-        'moreByDeveloper',
+        "moreByThisDeveloperCollection",
+        "moreByThisDeveloper",
+        "moreByDeveloper",
       ],
-      shelfType: 'more_by_developer',
+      shelfType: "more_by_developer",
     },
   ];
 
   for (const { keys, shelfType } of SHELF_CANDIDATES) {
     for (const key of keys) {
       const shelf = shelfMap[key];
-      if (!shelf) continue;
+      if (!shelf) {
+        continue;
+      }
       const items = readShelfItems(shelf);
-      if (!items.length) continue;
+      if (!items.length) {
+        continue;
+      }
       let captured = 0;
       for (const item of items) {
-        if (captured >= MAX_RELATED_PER_SHELF) break;
+        if (captured >= MAX_RELATED_PER_SHELF) {
+          break;
+        }
         const rec = normaliseRelatedItem(item, shelfType);
         if (rec) {
           out.push(rec);
@@ -1820,12 +2022,16 @@ export function extractRelatedAppShelves(rawData: any): RelatedAppShelfRecord[] 
  * Returns a flat `unknown[]` of raw item objects; the caller normalises.
  */
 function readShelfItems(shelf: any): any[] {
-  if (Array.isArray(shelf?.items)) return shelf.items;
+  if (Array.isArray(shelf?.items)) {
+    return shelf.items;
+  }
   const nestedShelves = shelf?.seeAllAction?.pageData?.shelves;
   if (Array.isArray(nestedShelves)) {
     const out: any[] = [];
     for (const inner of nestedShelves) {
-      if (Array.isArray(inner?.items)) out.push(...inner.items);
+      if (Array.isArray(inner?.items)) {
+        out.push(...inner.items);
+      }
     }
     return out;
   }
@@ -1834,19 +2040,26 @@ function readShelfItems(shelf: any): any[] {
 
 function normaliseRelatedItem(
   item: any,
-  shelfType: 'may_also_like' | 'more_by_developer',
+  shelfType: "may_also_like" | "more_by_developer"
 ): RelatedAppShelfRecord | null {
-  if (!item || typeof item !== 'object') return null;
+  if (!item || typeof item !== "object") {
+    return null;
+  }
 
   // Apple Apple ID: 'id' (modern) or 'appleId' (older). Coerce to string —
   // it's always numeric on the wire but we store as TEXT for portability
   // with the rest of the apps table.
   const idRaw = item.id ?? item.appleId ?? item.adamId;
-  const relatedAppleId = idRaw === null || idRaw === undefined ? '' : String(idRaw);
-  if (!relatedAppleId) return null;
+  const relatedAppleId =
+    idRaw === null || idRaw === undefined ? "" : String(idRaw);
+  if (!relatedAppleId) {
+    return null;
+  }
 
   const relatedName = pickString(item.name, item.title);
-  if (!relatedName) return null;
+  if (!relatedName) {
+    return null;
+  }
 
   // Store URL is canonical and required (no point recording an entry the
   // user can't click through to).
@@ -1854,15 +2067,17 @@ function normaliseRelatedItem(
     item.url,
     item.appLink,
     item.storeUrl,
-    typeof item.attributes?.url === 'string' ? item.attributes.url : undefined,
+    typeof item.attributes?.url === "string" ? item.attributes.url : undefined
   );
-  if (!relatedStoreUrl) return null;
+  if (!relatedStoreUrl) {
+    return null;
+  }
 
   const relatedDeveloper = pickString(
     item.artistName,
     item.developerName,
     item.subtitle,
-    item.attributes?.artistName,
+    item.attributes?.artistName
   );
 
   // Icon URL: Apple typically wraps in `artwork.url` with a template
@@ -1872,7 +2087,7 @@ function normaliseRelatedItem(
     item.artwork?.url,
     item.artwork?.template,
     item.iconUrl,
-    item.imageUrl,
+    item.imageUrl
   );
 
   return {
@@ -1887,20 +2102,30 @@ function normaliseRelatedItem(
 
 function pickString(...values: unknown[]): string {
   for (const v of values) {
-    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+    if (typeof v === "string" && v.trim().length > 0) {
+      return v.trim();
+    }
   }
-  return '';
+  return "";
 }
 
 function normalizePrivacyItems(items: any[]): ParsedPrivacyItem[] {
   const out: ParsedPrivacyItem[] = [];
   for (const item of items) {
-    if (!item || typeof item.identifier !== 'string' || typeof item.title !== 'string') {
+    if (
+      !item ||
+      typeof item.identifier !== "string" ||
+      typeof item.title !== "string"
+    ) {
       continue;
     }
     const categories = new Map<string, ParsedPrivacyCategory>();
     for (const cat of item.categories ?? []) {
-      if (!cat || typeof cat.identifier !== 'string' || typeof cat.title !== 'string') {
+      if (
+        !cat ||
+        typeof cat.identifier !== "string" ||
+        typeof cat.title !== "string"
+      ) {
         continue;
       }
       if (!categories.has(cat.identifier)) {
@@ -1913,22 +2138,29 @@ function normalizePrivacyItems(items: any[]): ParsedPrivacyItem[] {
     out.push({
       identifier: item.identifier,
       title: item.title,
-      detail: typeof item.detail === 'string' ? item.detail : '',
+      detail: typeof item.detail === "string" ? item.detail : "",
       categories: [...categories.values()],
     });
   }
   return out;
 }
 
-function snapshotToFootprint(snapshot: PrivacyTypeSnapshot[]): AppProfileFootprint {
-  const worst: Record<string, Exclude<ProfileTier, 'not_collected'>> = {};
+function snapshotToFootprint(
+  snapshot: PrivacyTypeSnapshot[]
+): AppProfileFootprint {
+  const worst: Record<string, Exclude<ProfileTier, "not_collected">> = {};
   for (const type of snapshot) {
     const tier = TYPE_IDENTIFIER_TO_TIER[type.identifier];
-    if (!tier || tier === 'not_collected') continue;
+    if (!tier || tier === "not_collected") {
+      continue;
+    }
     for (const category of type.categories) {
       const existing = worst[category.identifier];
       if (!existing || TIER_RANK[tier] > TIER_RANK[existing]) {
-        worst[category.identifier] = tier as Exclude<ProfileTier, 'not_collected'>;
+        worst[category.identifier] = tier as Exclude<
+          ProfileTier,
+          "not_collected"
+        >;
       }
     }
   }
@@ -1938,7 +2170,7 @@ function snapshotToFootprint(snapshot: PrivacyTypeSnapshot[]): AppProfileFootpri
 function pushScrapedAppStatements(
   statements: DbWorkerStatement[],
   input: CommitScrapedAppInput,
-  now: number,
+  now: number
 ): void {
   const {
     appleId: appId,
@@ -1957,7 +2189,7 @@ function pushScrapedAppStatements(
   // Wipe existing privacy tree (will re-insert fresh). The worker connection
   // has foreign_keys=ON, so categories cascade from privacy_types.
   statements.push({
-    sql: 'DELETE FROM privacy_types WHERE app_id = ?',
+    sql: "DELETE FROM privacy_types WHERE app_id = ?",
     params: [appId],
   });
 
@@ -1975,8 +2207,14 @@ function pushScrapedAppStatements(
         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       params: [
-        appId, name, url, iconUrl, developer, privacyPolicyUrl,
-        now, now,
+        appId,
+        name,
+        url,
+        iconUrl,
+        developer,
+        privacyPolicyUrl,
+        now,
+        now,
         versionInfo.currentVersion,
         versionInfo.versionUpdatedAt,
         versionInfo.whatsNew,
@@ -2011,7 +2249,11 @@ function pushScrapedAppStatements(
          WHERE id = ?
       `,
       params: [
-        name, url, iconUrl, developer, privacyPolicyUrl,
+        name,
+        url,
+        iconUrl,
+        developer,
+        privacyPolicyUrl,
         now,
         versionInfo.currentVersion,
         versionInfo.versionUpdatedAt,
@@ -2058,12 +2300,12 @@ function pushScrapedAppStatements(
   // previously-captured feature set).
   if (writePlan.accessibilityFeatures !== null) {
     statements.push({
-      sql: 'DELETE FROM accessibility_features WHERE app_id = ?',
+      sql: "DELETE FROM accessibility_features WHERE app_id = ?",
       params: [appId],
     });
     for (const f of writePlan.accessibilityFeatures) {
       statements.push({
-        sql: 'INSERT INTO accessibility_features (id, app_id, identifier, title, description, icon_template) VALUES (?, ?, ?, ?, ?, ?)',
+        sql: "INSERT INTO accessibility_features (id, app_id, identifier, title, description, icon_template) VALUES (?, ?, ?, ?, ?, ?)",
         params: [
           `${appId}_${f.identifier}`,
           appId,
@@ -2083,7 +2325,7 @@ function pushScrapedAppStatements(
   // shape drift in Apple's JSON.
   if (writePlan.relatedApps !== null) {
     statements.push({
-      sql: 'DELETE FROM related_apps_observed WHERE source_app_id = ?',
+      sql: "DELETE FROM related_apps_observed WHERE source_app_id = ?",
       params: [appId],
     });
     for (const r of writePlan.relatedApps) {
@@ -2107,7 +2349,9 @@ function pushScrapedAppStatements(
   }
 }
 
-async function commitScrapedAppToDb(input: CommitScrapedAppInput): Promise<void> {
+async function commitScrapedAppToDb(
+  input: CommitScrapedAppInput
+): Promise<void> {
   const now = Date.now();
   const statements: DbWorkerStatement[] = [];
   pushScrapedAppStatements(statements, input, now);
@@ -2137,7 +2381,7 @@ async function commitScrapedAppToDb(input: CommitScrapedAppInput): Promise<void>
 
   if (hasChanges) {
     statements.push({
-      sql: 'UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?',
+      sql: "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
       params: [input.appleId],
     });
     statements.push({
@@ -2171,10 +2415,10 @@ async function commitScrapedAppToDb(input: CommitScrapedAppInput): Promise<void>
       input.appleId,
       input.name,
       hasChanges
-        ? `${input.changes.length} change${input.changes.length === 1 ? '' : 's'} detected`
+        ? `${input.changes.length} change${input.changes.length === 1 ? "" : "s"} detected`
         : input.isNew
-          ? 'New app added'
-          : 'No changes',
+          ? "New app added"
+          : "No changes",
       JSON.stringify({
         changeCount: input.changes.length,
         isNew: input.isNew,
@@ -2205,7 +2449,8 @@ async function commitScrapedAppToDb(input: CommitScrapedAppInput): Promise<void>
 // ─────────────────────────────────────────────
 
 export function getAllApps() {
-  return db.prepare(`
+  return db
+    .prepare(`
     WITH privacy_counts AS (
       SELECT
         t.app_id,
@@ -2239,7 +2484,8 @@ export function getAllApps() {
     LEFT JOIN sync_counts sc ON sc.app_id = a.id
     LEFT JOIN accessibility_counts ac ON ac.app_id = a.id
     ORDER BY a.name ASC
-  `).all();
+  `)
+    .all();
 }
 
 /**
@@ -2270,7 +2516,7 @@ export function getPendingChangeCategoriesByApp(): Record<
          FROM privacy_snapshots ps
          JOIN apps a ON a.id = ps.app_id
         WHERE ps.changes_detected = 1
-          AND ps.scraped_at > COALESCE(a.changes_acknowledged_at, 0)`,
+          AND ps.scraped_at > COALESCE(a.changes_acknowledged_at, 0)`
     )
     .all() as Array<{ app_id: string; changes_summary: string | null }>;
 
@@ -2297,10 +2543,14 @@ export function getPendingChangeCategoriesByApp(): Record<
         category?: string;
       }>;
       for (const entry of entries) {
-        const cat = entry.category ?? 'privacy-label';
-        if (cat === 'accessibility') bucket.accessibility = true;
-        else if (cat === 'privacy-policy') bucket.policy = true;
-        else if (cat === 'privacy-label') bucket.privacy = true;
+        const cat = entry.category ?? "privacy-label";
+        if (cat === "accessibility") {
+          bucket.accessibility = true;
+        } else if (cat === "privacy-policy") {
+          bucket.policy = true;
+        } else if (cat === "privacy-label") {
+          bucket.privacy = true;
+        }
         // wayback-attempt rows are skipped here — they shouldn't land in
         // pending bundles (saveSnapshot uses skipChangeCountBump for
         // wayback) but the guard keeps the set honest if some new path
@@ -2314,14 +2564,18 @@ export function getPendingChangeCategoriesByApp(): Record<
 }
 
 export function getAppWithPrivacy(appId: string) {
-  const app = db.prepare('SELECT * FROM apps WHERE id = ?').get(appId) as any;
-  if (!app) return null;
+  const app = db.prepare("SELECT * FROM apps WHERE id = ?").get(appId) as any;
+  if (!app) {
+    return null;
+  }
 
-  const types = db.prepare('SELECT * FROM privacy_types WHERE app_id = ?').all(appId) as any[];
+  const types = db
+    .prepare("SELECT * FROM privacy_types WHERE app_id = ?")
+    .all(appId) as any[];
   for (const t of types) {
-    t.categories = db.prepare(
-      'SELECT * FROM privacy_categories WHERE type_id = ?'
-    ).all(t.id) as any[];
+    t.categories = db
+      .prepare("SELECT * FROM privacy_categories WHERE type_id = ?")
+      .all(t.id) as any[];
   }
 
   app.privacyTypes = types;
@@ -2332,7 +2586,7 @@ export function getAppWithPrivacy(appId: string) {
   // "we haven't been able to scrape this app yet".
   app.accessibilityFeatures = db
     .prepare(
-      'SELECT identifier, title, description, icon_template AS iconTemplate FROM accessibility_features WHERE app_id = ? ORDER BY identifier',
+      "SELECT identifier, title, description, icon_template AS iconTemplate FROM accessibility_features WHERE app_id = ? ORDER BY identifier"
     )
     .all(appId);
   return app;
@@ -2343,10 +2597,13 @@ export function getAppWithPrivacy(appId: string) {
  * every app that has it. Ordered by severity (most serious first).
  */
 export function getGroupedPrivacyView() {
-  const apps = db.prepare('SELECT id, name, iconUrl, developer FROM apps').all() as any[];
-  const appMap = new Map<string, any>(apps.map(a => [a.id, a]));
+  const apps = db
+    .prepare("SELECT id, name, iconUrl, developer FROM apps")
+    .all() as any[];
+  const appMap = new Map<string, any>(apps.map((a) => [a.id, a]));
 
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT
       pt.identifier  AS typeId,
       pt.title       AS typeTitle,
@@ -2356,7 +2613,8 @@ export function getGroupedPrivacyView() {
       pt.app_id
     FROM privacy_types pt
     JOIN privacy_categories pc ON pc.type_id = pt.id
-  `).all() as any[];
+  `)
+    .all() as any[];
 
   const severityOrder: Record<string, number> = {
     DATA_USED_TO_TRACK_YOU: 0,
@@ -2421,10 +2679,16 @@ export function getGroupedPrivacyView() {
         .sort((a: any, b: any) => {
           // Primary: by intrinsic category risk (Sensitive/Location/Identifiers first).
           const weightDiff = (b.riskWeight ?? 0) - (a.riskWeight ?? 0);
-          if (weightDiff !== 0) return weightDiff;
+          if (weightDiff !== 0) {
+            return weightDiff;
+          }
           // Secondary: by how many apps use it.
           return b.apps.length - a.apps.length;
         }),
     }))
-    .sort((a: any, b: any) => (severityOrder[a.identifier] ?? 99) - (severityOrder[b.identifier] ?? 99));
+    .sort(
+      (a: any, b: any) =>
+        (severityOrder[a.identifier] ?? 99) -
+        (severityOrder[b.identifier] ?? 99)
+    );
 }

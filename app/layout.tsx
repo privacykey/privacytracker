@@ -1,76 +1,84 @@
-import type { Metadata, Viewport } from 'next';
-import Script from 'next/script';
-import { headers } from 'next/headers';
-import './globals.css';
-import { TaskCenterProvider } from './components/TaskCenter';
-import { UserTasksProvider } from './components/UserTasksProvider';
-import { QueuedSearchProvider } from './components/QueuedSearchProvider';
-import { ImportQueueProvider } from './components/ImportQueueProvider';
-import ClientDiagnosticsBoot from './components/ClientDiagnosticsBoot';
-import KeyboardShortcuts from './components/KeyboardShortcuts';
-import KeyboardHint from './components/KeyboardHint';
-import SiteInfoHint from './components/SiteInfoHint';
-import AboutModal from './components/AboutModal';
-import AccessibilityQuickToggles from './components/AccessibilityQuickToggles';
-import DevMenu from './components/DevMenu';
-import NextDevIndicatorRepositioner from './components/NextDevIndicatorRepositioner';
-import NavigationHistoryTracker from './components/NavigationHistoryTracker';
-import AdminTokenBridge from './components/AdminTokenBridge';
-import MenuActionsBridge from './components/MenuActionsBridge';
-import FocusPreviewBanner from './components/FocusPreviewBanner';
-import UpdateBanner from './components/UpdateBanner';
-import FlagHighlightHandler from './components/FlagHighlightHandler';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages, getTranslations } from 'next-intl/server';
+import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
+import Script from "next/script";
+import "./globals.css";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import AboutModal from "./components/AboutModal";
+import AccessibilityQuickToggles from "./components/AccessibilityQuickToggles";
+import AdminTokenBridge from "./components/AdminTokenBridge";
+import ClientDiagnosticsBoot from "./components/ClientDiagnosticsBoot";
+import DevMenu from "./components/DevMenu";
+import FlagHighlightHandler from "./components/FlagHighlightHandler";
+import FocusPreviewBanner from "./components/FocusPreviewBanner";
+import { ImportQueueProvider } from "./components/ImportQueueProvider";
+import KeyboardHint from "./components/KeyboardHint";
+import KeyboardShortcuts from "./components/KeyboardShortcuts";
+import MenuActionsBridge from "./components/MenuActionsBridge";
+import NavigationHistoryTracker from "./components/NavigationHistoryTracker";
+import NextDevIndicatorRepositioner from "./components/NextDevIndicatorRepositioner";
+import { QueuedSearchProvider } from "./components/QueuedSearchProvider";
+import SiteInfoHint from "./components/SiteInfoHint";
+import { TaskCenterProvider } from "./components/TaskCenter";
+import UpdateBanner from "./components/UpdateBanner";
+import { UserTasksProvider } from "./components/UserTasksProvider";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: 'privacytracker — iOS App Privacy Labels',
-  description: 'Monitor, track, and get alerted when iOS apps change their privacy labels.',
+  title: "privacytracker — iOS App Privacy Labels",
+  description:
+    "Monitor, track, and get alerted when iOS apps change their privacy labels.",
 };
 
 // maximumScale = 1 stops iOS Safari from auto-zooming on focus, which on
 // dense tables pushed the page into horizontal-scroll mode. Users can
 // still pinch-zoom out and OS-level accessibility zoom is unaffected.
 export const viewport: Viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: 'cover',
+  viewportFit: "cover",
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f2f2f7' },
-    { media: '(prefers-color-scheme: dark)',  color: '#08080f' },
+    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#08080f" },
   ],
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   // next-intl bootstrap. Locale fixed at 'en' in i18n.ts; this primes
   // useTranslations() in client components. Server components call
   // getTranslations() directly.
   const locale = await getLocale();
   const messages = await getMessages();
-  const tFooter = await getTranslations('footer');
+  const tFooter = await getTranslations("footer");
 
   // Per-request CSP nonce, minted by proxy.ts and forwarded via the
   // `x-nonce` request header. Read here and threaded into every inline
   // <Script> we render so the nonce is identical between server-rendered
   // HTML and client hydration — otherwise React 19's hydration check
   // sees `nonce=""` vs `nonce={undefined}` and warns.
-  const nonce = (await headers()).get('x-nonce') ?? undefined;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   // Resolve global-surface flags once per request. Each is wrapped in
   // try/catch so a fresh-install DB or resolver mishap doesn't take down
   // the layout — defaults to 'on' to preserve pre-flag UX on failure.
   const flags = {
-    keyboardShortcuts: safeResolve('flag.global.keyboard_shortcuts', 'on'),
-    siteInfoHint: safeResolve('flag.global.site_info_hint', 'on'),
-    aboutModal: safeResolve('flag.global.about_modal', 'on'),
-    accessibilityToggles: safeResolve('flag.global.accessibility_toggles', 'on'),
-    taskCenterPolling: safeResolve('flag.taskcenter.polling', 'on'),
-    taskCenterAutoDismiss: safeResolve('flag.taskcenter.auto_dismiss', 'on'),
-    taskCenterResumeCards: safeResolve('flag.taskcenter.resume_cards', 'on'),
+    keyboardShortcuts: safeResolve("flag.global.keyboard_shortcuts", "on"),
+    siteInfoHint: safeResolve("flag.global.site_info_hint", "on"),
+    aboutModal: safeResolve("flag.global.about_modal", "on"),
+    accessibilityToggles: safeResolve(
+      "flag.global.accessibility_toggles",
+      "on"
+    ),
+    taskCenterPolling: safeResolve("flag.taskcenter.polling", "on"),
+    taskCenterAutoDismiss: safeResolve("flag.taskcenter.auto_dismiss", "on"),
+    taskCenterResumeCards: safeResolve("flag.taskcenter.resume_cards", "on"),
   };
 
   return (
@@ -84,16 +92,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // data-scroll-behavior="smooth" is Next 16's opt-in for CSS-driven
     // smooth scrolling. Without it Next logs a dev warning and the
     // smooth-scroll animation can fight route-transition scroll-to-top.
-    <html lang={locale} data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html data-scroll-behavior="smooth" lang={locale} suppressHydrationWarning>
       <head>
         {/* Self-hosted Inter (v4.1, SIL OFL-1.1) — see /public/fonts/ +
             @font-face in app/globals.css. Italic loads lazily. */}
         <link
-          rel="preload"
-          href="/fonts/InterVariable.woff2"
           as="font"
-          type="font/woff2"
           crossOrigin="anonymous"
+          href="/fonts/InterVariable.woff2"
+          rel="preload"
+          type="font/woff2"
         />
         {/* Pre-hydration bootstrapper for accessibility quick-toggles.
             MUST run synchronously before any stylesheet to apply persisted
@@ -111,12 +119,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             rendering React" warning that's a false positive — it runs once
             during HTML parsing as intended. */}
         <Script
-          id="a11y-prefs-bootstrap"
-          strategy="beforeInteractive"
-          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var h=document.documentElement;var f=localStorage.getItem('a11y-quick-font');if(f==='dyslexic')h.setAttribute('data-a11y-font','dyslexic');var s=localStorage.getItem('a11y-quick-scale');if(s==='large'||s==='x-large')h.setAttribute('data-a11y-scale',s);var t=localStorage.getItem('a11y-quick-theme');if(t==='light'||t==='dark'||t==='high-contrast')h.setAttribute('data-theme-override',t);var sh=localStorage.getItem('a11y-quick-shapes');if(sh==='on')h.setAttribute('data-a11y-shapes','on');var sd=localStorage.getItem('a11y-quick-solid');if(sd==='on')h.setAttribute('data-a11y-solid','on');}catch(e){}})();`,
           }}
+          id="a11y-prefs-bootstrap"
+          nonce={nonce}
+          strategy="beforeInteractive"
         />
       </head>
       <body>
@@ -298,109 +306,132 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               }
             }
           `}</style>
-          <div className="nojs-root" role="alert" aria-live="assertive">
-            <main className="nojs-card" aria-labelledby="nojs-title">
+          <div aria-live="assertive" className="nojs-root" role="alert">
+            <main aria-labelledby="nojs-title" className="nojs-card">
               <div className="nojs-brand">
                 {/* Regenerated via tools/build_icons.py → public/brand-icon.png. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className="nojs-logo" src="/brand-icon.png" alt="" width={44} height={44} />
+                <img
+                  alt=""
+                  className="nojs-logo"
+                  height={44}
+                  src="/brand-icon.png"
+                  width={44}
+                />
                 <span className="nojs-brand-name">privacytracker</span>
               </div>
               <span className="nojs-eyebrow">JavaScript required</span>
-              <h1 id="nojs-title" className="nojs-title">This app needs JavaScript to run</h1>
+              <h1 className="nojs-title" id="nojs-title">
+                This app needs JavaScript to run
+              </h1>
               <p className="nojs-subtitle">
-                privacytracker renders its dashboard, onboarding wizard, and privacy-label
-                timelines on the client. Without JavaScript there&apos;s nothing to show.
+                privacytracker renders its dashboard, onboarding wizard, and
+                privacy-label timelines on the client. Without JavaScript
+                there&apos;s nothing to show.
               </p>
               <ol className="nojs-list">
                 <li className="nojs-list-item">
-                  <span className="nojs-list-num" aria-hidden="true">1</span>
+                  <span aria-hidden="true" className="nojs-list-num">
+                    1
+                  </span>
                   <span>Re-enable JavaScript in your browser settings.</span>
                 </li>
                 <li className="nojs-list-item">
-                  <span className="nojs-list-num" aria-hidden="true">2</span>
-                  <span>If you use a content blocker, allowlist this domain.</span>
+                  <span aria-hidden="true" className="nojs-list-num">
+                    2
+                  </span>
+                  <span>
+                    If you use a content blocker, allowlist this domain.
+                  </span>
                 </li>
                 <li className="nojs-list-item">
-                  <span className="nojs-list-num" aria-hidden="true">3</span>
+                  <span aria-hidden="true" className="nojs-list-num">
+                    3
+                  </span>
                   <span>Refresh the page.</span>
                 </li>
               </ol>
               <p className="nojs-hint">
                 In most browsers, JavaScript lives under:
-                <span className="nojs-code">Settings → Privacy &amp; security → Site settings → JavaScript</span>
+                <span className="nojs-code">
+                  Settings → Privacy &amp; security → Site settings → JavaScript
+                </span>
               </p>
             </main>
           </div>
         </noscript>
         {/* Banner landmark wraps the skip-link so no content sits outside
             a landmark region (axe "region" rule). */}
-        <header className="app-banner" aria-label={tFooter('skip_landmark')}>
-          <a href="#main-content" className="skip-link">{tFooter('skip_to_content')}</a>
+        <header aria-label={tFooter("skip_landmark")} className="app-banner">
+          <a className="skip-link" href="#main-content">
+            {tFooter("skip_to_content")}
+          </a>
         </header>
         {/* next-intl client provider — primes useTranslations() beneath. */}
         <NextIntlClientProvider locale={locale} messages={messages}>
-        <TaskCenterProvider
-          pollingEnabled={flags.taskCenterPolling}
-          autoDismissEnabled={flags.taskCenterAutoDismiss}
-          resumeCardsEnabled={flags.taskCenterResumeCards}
-        >
-          <UserTasksProvider>
-          <QueuedSearchProvider>
-            <ImportQueueProvider>
-              {/* Boots the client diagnostics module (long-task observer,
+          <TaskCenterProvider
+            autoDismissEnabled={flags.taskCenterAutoDismiss}
+            pollingEnabled={flags.taskCenterPolling}
+            resumeCardsEnabled={flags.taskCenterResumeCards}
+          >
+            <UserTasksProvider>
+              <QueuedSearchProvider>
+                <ImportQueueProvider>
+                  {/* Boots the client diagnostics module (long-task observer,
                   fetch wrapper, import-event ring). Renders nothing —
                   surface is read from the Diagnostics page. */}
-              <ClientDiagnosticsBoot />
-              {/* Path tracker. Writes pathname+search to sessionStorage on
+                  <ClientDiagnosticsBoot />
+                  {/* Path tracker. Writes pathname+search to sessionStorage on
                   every navigation so downstream pages can render a "← Back
                   to X" link (document.referrer alone is unreliable —
                   Next's soft navigations don't update it). */}
-              <NavigationHistoryTracker />
-              <AdminTokenBridge />
-              {/* Listens for menu-bar-driven events (Cmd+F search focus,
+                  <NavigationHistoryTracker />
+                  <AdminTokenBridge />
+                  {/* Listens for menu-bar-driven events (Cmd+F search focus,
                   Help → Copy Diagnostics). The actual menu items live
                   in src-tauri/src/app_menu.rs; this component is the
                   webview-side counterpart. */}
-              <MenuActionsBridge />
-              {/* Focus preview banner — only renders when a preview is staged. */}
-              <FocusPreviewBanner />
-              {/* Update banner — polls /api/update-status; self-gated on
+                  <MenuActionsBridge />
+                  {/* Focus preview banner — only renders when a preview is staged. */}
+                  <FocusPreviewBanner />
+                  {/* Update banner — polls /api/update-status; self-gated on
                   cache state + user-dismissed flag. */}
-              <UpdateBanner />
-              {/* Cross-page flag-highlight handler — reads
+                  <UpdateBanner />
+                  {/* Cross-page flag-highlight handler — reads
                   `?flag-highlight=<key>` and rings the gated element. */}
-              <FlagHighlightHandler />
-              <main id="main-content" tabIndex={-1} className="app-main">
-                {children}
-              </main>
-              {/* Footer landmark (role="contentinfo") groups the bottom-
+                  <FlagHighlightHandler />
+                  <main className="app-main" id="main-content" tabIndex={-1}>
+                    {children}
+                  </main>
+                  {/* Footer landmark (role="contentinfo") groups the bottom-
                   right cluster (About, shortcuts, a11y) under one region.
                   Widgets are flag-gated; the landmark always renders. */}
-              <footer className="app-footer-landmark">
-                {/* Dev menu — gated on flag.devopts.visible + the
+                  <footer className="app-footer-landmark">
+                    {/* Dev menu — gated on flag.devopts.visible + the
                     `dev-menu-on` localStorage opt-in. Renders null when
                     either gate is off. */}
-                <DevMenu />
-                {/* Reposition the Next.js dev indicator above our cluster.
+                    <DevMenu />
+                    {/* Reposition the Next.js dev indicator above our cluster.
                     Renders null in production. */}
-                <NextDevIndicatorRepositioner />
-                {flags.accessibilityToggles && <AccessibilityQuickToggles />}
-                {flags.keyboardShortcuts && <KeyboardHint />}
-                {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
-                {flags.siteInfoHint && <SiteInfoHint />}
-              </footer>
-            </ImportQueueProvider>
-          </QueuedSearchProvider>
-          </UserTasksProvider>
-        </TaskCenterProvider>
-        {/* Global overlay portals — dialogs that render outside the main
+                    <NextDevIndicatorRepositioner />
+                    {flags.accessibilityToggles && (
+                      <AccessibilityQuickToggles />
+                    )}
+                    {flags.keyboardShortcuts && <KeyboardHint />}
+                    {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
+                    {flags.siteInfoHint && <SiteInfoHint />}
+                  </footer>
+                </ImportQueueProvider>
+              </QueuedSearchProvider>
+            </UserTasksProvider>
+          </TaskCenterProvider>
+          {/* Global overlay portals — dialogs that render outside the main
             landmark when open. The region wrapper keeps axe happy even
             when both overlays are flag-off. */}
-        <div role="region" aria-label="Global overlays">
-          {flags.keyboardShortcuts && <KeyboardShortcuts />}
-          {flags.aboutModal && <AboutModal />}
-        </div>
+          <div aria-label="Global overlays" role="region">
+            {flags.keyboardShortcuts && <KeyboardShortcuts />}
+            {flags.aboutModal && <AboutModal />}
+          </div>
         </NextIntlClientProvider>
       </body>
     </html>
@@ -413,11 +444,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
  */
 function safeResolve(
   key: Parameters<typeof resolveFlagFromDb>[0],
-  fallbackOn: 'on' | 'off',
+  fallbackOn: "on" | "off"
 ): boolean {
   try {
-    return resolveFlagFromDb(key) === 'on';
+    return resolveFlagFromDb(key) === "on";
   } catch {
-    return fallbackOn === 'on';
+    return fallbackOn === "on";
   }
 }

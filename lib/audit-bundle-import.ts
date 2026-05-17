@@ -55,18 +55,18 @@
  *                                  surface from onboarding-import history)
  */
 
-import crypto from 'crypto';
-import packageJson from '../package.json';
-import db from './db';
-import { sanitizePolicyUrl, validateAppStoreUrl, validateExternalUrl } from './security';
-import type {
-  AuditBundle,
-  BundleApp,
-  BundleAnnotation,
-} from './audit-bundle';
-import { BUNDLE_VERSION } from './audit-bundle';
-import type { ProfilePresetKey } from './privacy-profile';
-import { getSetting, setSetting } from './scheduler';
+import crypto from "node:crypto";
+import packageJson from "../package.json";
+import type { AuditBundle, BundleAnnotation, BundleApp } from "./audit-bundle";
+import { BUNDLE_VERSION } from "./audit-bundle";
+import db from "./db";
+import type { ProfilePresetKey } from "./privacy-profile";
+import { getSetting, setSetting } from "./scheduler";
+import {
+  sanitizePolicyUrl,
+  validateAppStoreUrl,
+  validateExternalUrl,
+} from "./security";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -91,9 +91,15 @@ export type ValidateResult =
  * produces the exact error string the spec calls out so the client UI
  * can render it verbatim. A `force=true` skips the version check only.
  */
-export function validateBundle(parsed: unknown, opts: ValidateOptions = {}): ValidateResult {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return { ok: false, error: "This file isn't a valid audit bundle (couldn't parse JSON)." };
+export function validateBundle(
+  parsed: unknown,
+  opts: ValidateOptions = {}
+): ValidateResult {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {
+      ok: false,
+      error: "This file isn't a valid audit bundle (couldn't parse JSON).",
+    };
   }
 
   const obj = parsed as Record<string, unknown>;
@@ -101,8 +107,12 @@ export function validateBundle(parsed: unknown, opts: ValidateOptions = {}): Val
   // Step 2 — version check. Forward-compat: refuse newer bundles
   // unless `force=true` (ours, older field-shape checks still run).
   if (!opts.force) {
-    if (typeof obj.version !== 'number') {
-      return { ok: false, error: 'This bundle appears corrupted (missing required field: `version`).' };
+    if (typeof obj.version !== "number") {
+      return {
+        ok: false,
+        error:
+          "This bundle appears corrupted (missing required field: `version`).",
+      };
     }
     if (obj.version > BUNDLE_VERSION) {
       const yours = obj.app_version || `${obj.version}`;
@@ -114,7 +124,7 @@ export function validateBundle(parsed: unknown, opts: ValidateOptions = {}): Val
   }
 
   // Step 3 — required fields.
-  const requiredKeys = ['exported_at', 'apps', 'annotations'];
+  const requiredKeys = ["exported_at", "apps", "annotations"];
   for (const key of requiredKeys) {
     if (!(key in obj)) {
       return {
@@ -123,14 +133,25 @@ export function validateBundle(parsed: unknown, opts: ValidateOptions = {}): Val
       };
     }
   }
-  if (typeof obj.exported_at !== 'string' || obj.exported_at.length === 0) {
-    return { ok: false, error: 'This bundle appears corrupted (missing required field: `exported_at`).' };
+  if (typeof obj.exported_at !== "string" || obj.exported_at.length === 0) {
+    return {
+      ok: false,
+      error:
+        "This bundle appears corrupted (missing required field: `exported_at`).",
+    };
   }
   if (!Array.isArray(obj.apps)) {
-    return { ok: false, error: 'This bundle appears corrupted (missing required field: `apps`).' };
+    return {
+      ok: false,
+      error: "This bundle appears corrupted (missing required field: `apps`).",
+    };
   }
   if (!Array.isArray(obj.annotations)) {
-    return { ok: false, error: 'This bundle appears corrupted (missing required field: `annotations`).' };
+    return {
+      ok: false,
+      error:
+        "This bundle appears corrupted (missing required field: `annotations`).",
+    };
   }
 
   // Step 4 — per-app shape. The spec says "reject the whole bundle with
@@ -138,19 +159,19 @@ export function validateBundle(parsed: unknown, opts: ValidateOptions = {}): Val
   // string so the user can find the bad row in their file.
   for (let i = 0; i < obj.apps.length; i++) {
     const app = obj.apps[i] as Record<string, unknown> | null | undefined;
-    if (!app || typeof app !== 'object') {
+    if (!app || typeof app !== "object") {
       return {
         ok: false,
         error: `This bundle appears corrupted (apps[${i}] isn't an object).`,
       };
     }
-    if (typeof app.id !== 'string' || app.id.length === 0) {
+    if (typeof app.id !== "string" || app.id.length === 0) {
       return {
         ok: false,
         error: `This bundle appears corrupted (apps[${i}] is missing \`id\`).`,
       };
     }
-    if (typeof app.name !== 'string' || app.name.length === 0) {
+    if (typeof app.name !== "string" || app.name.length === 0) {
       return {
         ok: false,
         error: `This bundle appears corrupted (apps[${i}] "${app.id}" is missing \`name\`).`,
@@ -172,13 +193,13 @@ export function validateBundle(parsed: unknown, opts: ValidateOptions = {}): Val
 // ---------------------------------------------------------------------------
 
 export interface ExistingImportInfo {
+  annotationsAdded: number;
+  appsAdded: number;
+  appsSkipped: number;
+  appsTotal: number;
+  appsUpdated: number;
   importedAt: number;
   recommenderName: string | null;
-  appsTotal: number;
-  appsAdded: number;
-  appsUpdated: number;
-  appsSkipped: number;
-  annotationsAdded: number;
 }
 
 /**
@@ -189,7 +210,7 @@ export interface ExistingImportInfo {
  * or when the most recent import is older than `withinMs`.
  */
 export function getMostRecentImport(
-  withinMs: number = 24 * 60 * 60 * 1000,
+  withinMs: number = 24 * 60 * 60 * 1000
 ): ExistingImportInfo | null {
   const cutoff = Date.now() - withinMs;
   const row = db
@@ -199,7 +220,7 @@ export function getMostRecentImport(
          FROM audit_bundle_imports
         WHERE imported_at >= ?
         ORDER BY imported_at DESC
-        LIMIT 1`,
+        LIMIT 1`
     )
     .get(cutoff) as
     | {
@@ -212,7 +233,9 @@ export function getMostRecentImport(
         annotations_added: number;
       }
     | undefined;
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
   return {
     importedAt: row.imported_at,
     recommenderName: row.recommender_name,
@@ -238,33 +261,50 @@ export function getMostRecentImport(
  * direct nav to /dashboard/review-recommendations clears the marker
  * defensively too (called from the wizard's mount).
  */
-export function consumeMigrationFlowMarker(): { targetPath: string; recommenderName: string | null } | null {
+export function consumeMigrationFlowMarker(): {
+  targetPath: string;
+  recommenderName: string | null;
+} | null {
   let raw: string | null;
   try {
-    raw = getSetting('migration_flow_pending');
+    raw = getSetting("migration_flow_pending");
   } catch {
     return null;
   }
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   let parsed: { targetPath?: string; recommenderName?: string | null } = {};
   try {
     parsed = JSON.parse(raw);
   } catch {
     // Corrupt blob — clear it and bail. Better silent than caught in a
     // redirect loop.
-    try { setSetting('migration_flow_pending', ''); } catch { /* ignore */ }
+    try {
+      setSetting("migration_flow_pending", "");
+    } catch {
+      /* ignore */
+    }
     return null;
   }
   // Always clear after read. The marker is one-shot; if the redirect
   // somehow fails to land, the user can re-run the migration wizard.
-  try { setSetting('migration_flow_pending', ''); } catch { /* ignore */ }
+  try {
+    setSetting("migration_flow_pending", "");
+  } catch {
+    /* ignore */
+  }
 
-  const target = typeof parsed.targetPath === 'string' && parsed.targetPath.startsWith('/')
-    ? parsed.targetPath
-    : '/dashboard/review-recommendations';
+  const target =
+    typeof parsed.targetPath === "string" && parsed.targetPath.startsWith("/")
+      ? parsed.targetPath
+      : "/dashboard/review-recommendations";
   return {
     targetPath: target,
-    recommenderName: typeof parsed.recommenderName === 'string' ? parsed.recommenderName : null,
+    recommenderName:
+      typeof parsed.recommenderName === "string"
+        ? parsed.recommenderName
+        : null,
   };
 }
 
@@ -273,13 +313,15 @@ export function consumeMigrationFlowMarker(): { targetPath: string; recommenderN
  * the API to surface the "you already imported this on {date}" prompt
  * before running the merge again.
  */
-export function findExistingImport(exportedAt: string): ExistingImportInfo | null {
+export function findExistingImport(
+  exportedAt: string
+): ExistingImportInfo | null {
   const row = db
     .prepare(
       `SELECT imported_at, recommender_name, apps_total, apps_added,
               apps_updated, apps_skipped, annotations_added
          FROM audit_bundle_imports
-        WHERE exported_at = ?`,
+        WHERE exported_at = ?`
     )
     .get(exportedAt) as
     | {
@@ -292,7 +334,9 @@ export function findExistingImport(exportedAt: string): ExistingImportInfo | nul
         annotations_added: number;
       }
     | undefined;
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
   return {
     importedAt: row.imported_at,
     recommenderName: row.recommender_name,
@@ -309,16 +353,26 @@ export function findExistingImport(exportedAt: string): ExistingImportInfo | nul
 // ---------------------------------------------------------------------------
 
 export interface ImportSummary {
-  /** Total apps in the bundle (added + updated + skipped). */
-  appsTotal: number;
-  /** Apps the loved one didn't have — inserted fresh. */
-  appsAdded: number;
-  /** Apps both sides had — bundle's `lastSynced` was newer, so we updated. */
-  appsUpdated: number;
-  /** Apps both sides had — local data was newer, so we kept it. */
-  appsSkipped: number;
   /** Annotations from the bundle that landed in the local DB. */
   annotationsAdded: number;
+  /** Apps the loved one didn't have — inserted fresh. */
+  appsAdded: number;
+  /** Apps both sides had — local data was newer, so we kept it. */
+  appsSkipped: number;
+  /** Total apps in the bundle (added + updated + skipped). */
+  appsTotal: number;
+  /** Apps both sides had — bundle's `lastSynced` was newer, so we updated. */
+  appsUpdated: number;
+  /** Recommender display name (for the provenance banner). */
+  recommenderName: string;
+  /**
+   * The named preset key the recommender's profile matched at export
+   * time, when the bundle carries one. `null` for v1/v2 bundles (which
+   * predate the field) and for recommenders whose profile was custom.
+   */
+  recommenderProfilePreset: ProfilePresetKey | null;
+  /** Whether the recommender's privacy profile suggestion was stashed. */
+  recommenderProfileStashed: boolean;
   /**
    * Verdicts (recommendations) from the bundle that landed as
    * `source='imported'` rows. Always advisory — the recipient still
@@ -326,16 +380,6 @@ export interface ImportSummary {
    * 0 on v1 bundles (which had no verdicts field).
    */
   verdictsAdded: number;
-  /** Whether the recommender's privacy profile suggestion was stashed. */
-  recommenderProfileStashed: boolean;
-  /**
-   * The named preset key the recommender's profile matched at export
-   * time, when the bundle carries one. `null` for v1/v2 bundles (which
-   * predate the field) and for recommenders whose profile was custom.
-   */
-  recommenderProfilePreset: ProfilePresetKey | null;
-  /** Recommender display name (for the provenance banner). */
-  recommenderName: string;
 }
 
 export interface ImportOptions {
@@ -349,7 +393,7 @@ export interface ImportOptions {
   allowDuplicate?: boolean;
 }
 
-const FALLBACK_RECOMMENDER_NAME = 'your friend';
+const FALLBACK_RECOMMENDER_NAME = "your friend";
 
 /**
  * Run the merge. Single SQLite transaction; either everything lands or
@@ -358,11 +402,12 @@ const FALLBACK_RECOMMENDER_NAME = 'your friend';
  */
 export function importAuditBundle(
   bundle: AuditBundle,
-  opts: ImportOptions = {},
+  opts: ImportOptions = {}
 ): ImportSummary {
-  const recommenderName = (bundle.recommender_name ?? '').trim() || FALLBACK_RECOMMENDER_NAME;
+  const recommenderName =
+    (bundle.recommender_name ?? "").trim() || FALLBACK_RECOMMENDER_NAME;
   const importedAt = Date.now();
-  const importId = `bundle-${crypto.randomBytes(12).toString('hex')}`;
+  const importId = `bundle-${crypto.randomBytes(12).toString("hex")}`;
 
   let appsAdded = 0;
   let appsUpdated = 0;
@@ -374,12 +419,19 @@ export function importAuditBundle(
     // Index existing apps by id + lastSynced so we can decide who wins
     // the merge per app without a DB round-trip per row.
     const existingApps = new Map<string, { lastSynced: number }>(
-      (db.prepare('SELECT id, lastSynced FROM apps').all() as Array<{ id: string; lastSynced: number }>)
-        .map((r) => [r.id, { lastSynced: r.lastSynced }]),
+      (
+        db.prepare("SELECT id, lastSynced FROM apps").all() as Array<{
+          id: string;
+          lastSynced: number;
+        }>
+      ).map((r) => [r.id, { lastSynced: r.lastSynced }])
     );
 
     for (const app of bundle.apps) {
-      const incomingLastSynced = guessIncomingLastSynced(app, bundle.exported_at);
+      const incomingLastSynced = guessIncomingLastSynced(
+        app,
+        bundle.exported_at
+      );
       const existing = existingApps.get(app.id);
       if (!existing) {
         // App isn't tracked locally — insert fresh + label data.
@@ -409,7 +461,7 @@ export function importAuditBundle(
       `INSERT INTO annotations
          (id, app_id, content, source, source_name, visibility, tag,
           created_at, updated_at, deleted_at)
-       VALUES (?, ?, ?, 'imported', ?, ?, ?, ?, ?, NULL)`,
+       VALUES (?, ?, ?, 'imported', ?, ?, ?, ?, ?, NULL)`
     );
     for (const ann of bundle.annotations) {
       // Defensive: the bundle's annotation might point at an app that
@@ -418,8 +470,10 @@ export function importAuditBundle(
       const exists =
         existingApps.has(ann.app_id) ||
         bundle.apps.some((a) => a.id === ann.app_id);
-      if (!exists) continue;
-      const newId = `imp-${crypto.randomBytes(12).toString('hex')}`;
+      if (!exists) {
+        continue;
+      }
+      const newId = `imp-${crypto.randomBytes(12).toString("hex")}`;
       insertAnnotation.run(
         newId,
         ann.app_id,
@@ -428,10 +482,10 @@ export function importAuditBundle(
         // Imported notes are always treated as `export` visibility — a
         // private flag in someone else's bundle wouldn't make sense
         // (private notes never travel; this is a defensive coalesce).
-        'export',
+        "export",
         ann.tag ?? null,
         ann.created_at ?? importedAt,
-        ann.updated_at ?? importedAt,
+        ann.updated_at ?? importedAt
       );
       annotationsAdded++;
     }
@@ -453,9 +507,9 @@ export function importAuditBundle(
          ON CONFLICT(app_id, source, source_name) DO UPDATE SET
            verdict    = excluded.verdict,
            rationale  = excluded.rationale,
-           updated_at = excluded.updated_at`,
+           updated_at = excluded.updated_at`
       );
-      const VALID = new Set(['safe', 'replace', 'uninstall']);
+      const VALID = new Set(["safe", "replace", "uninstall"]);
       for (const v of bundle.verdicts) {
         // Defensive: skip rows for apps that didn't make it into the
         // merged set, and rows with unknown verdict values (forward-
@@ -463,9 +517,13 @@ export function importAuditBundle(
         const exists =
           existingApps.has(v.app_id) ||
           bundle.apps.some((a) => a.id === v.app_id);
-        if (!exists) continue;
-        if (!VALID.has(v.verdict)) continue;
-        const newId = `imp-vrd-${crypto.randomBytes(12).toString('hex')}`;
+        if (!exists) {
+          continue;
+        }
+        if (!VALID.has(v.verdict)) {
+          continue;
+        }
+        const newId = `imp-vrd-${crypto.randomBytes(12).toString("hex")}`;
         upsertVerdict.run(
           newId,
           v.app_id,
@@ -473,7 +531,7 @@ export function importAuditBundle(
           v.rationale ?? null,
           recommenderName,
           v.set_at ?? importedAt,
-          v.updated_at ?? importedAt,
+          v.updated_at ?? importedAt
         );
         verdictsAdded++;
       }
@@ -484,22 +542,31 @@ export function importAuditBundle(
     // app_settings table is plain key/value strings — the consuming UI
     // parses on read.
     let recommenderProfileStashed = false;
-    if (bundle.recommender_profile && Object.keys(bundle.recommender_profile).length > 0) {
+    if (
+      bundle.recommender_profile &&
+      Object.keys(bundle.recommender_profile).length > 0
+    ) {
       try {
-        setSetting('recommender_profile_suggestion', JSON.stringify({
-          profile: bundle.recommender_profile,
-          // Stash the preset key alongside the raw profile so the loved
-          // one's "preview + accept" UI can render "Recommender used the
-          // Strict preset" without recomputing matchPreset() every time.
-          // Falls through as undefined for v1/v2 bundles that predate
-          // the field; the consumer treats undefined the same as null.
-          preset: bundle.recommender_profile_preset ?? null,
-          recommenderName,
-          stashedAt: importedAt,
-        }));
+        setSetting(
+          "recommender_profile_suggestion",
+          JSON.stringify({
+            profile: bundle.recommender_profile,
+            // Stash the preset key alongside the raw profile so the loved
+            // one's "preview + accept" UI can render "Recommender used the
+            // Strict preset" without recomputing matchPreset() every time.
+            // Falls through as undefined for v1/v2 bundles that predate
+            // the field; the consumer treats undefined the same as null.
+            preset: bundle.recommender_profile_preset ?? null,
+            recommenderName,
+            stashedAt: importedAt,
+          })
+        );
         recommenderProfileStashed = true;
       } catch (e) {
-        console.warn('[audit-bundle-import] failed to stash recommender profile:', e);
+        console.warn(
+          "[audit-bundle-import] failed to stash recommender profile:",
+          e
+        );
       }
     }
 
@@ -511,13 +578,19 @@ export function importAuditBundle(
     // extend it without a schema migration.
     if (bundle.migration_flow === true) {
       try {
-        setSetting('migration_flow_pending', JSON.stringify({
-          recommenderName,
-          stashedAt: importedAt,
-          targetPath: '/dashboard/review-recommendations',
-        }));
+        setSetting(
+          "migration_flow_pending",
+          JSON.stringify({
+            recommenderName,
+            stashedAt: importedAt,
+            targetPath: "/dashboard/review-recommendations",
+          })
+        );
       } catch (e) {
-        console.warn('[audit-bundle-import] failed to stash migration flag:', e);
+        console.warn(
+          "[audit-bundle-import] failed to stash migration flag:",
+          e
+        );
       }
     }
 
@@ -538,7 +611,7 @@ export function importAuditBundle(
            apps_added         = excluded.apps_added,
            apps_updated       = excluded.apps_updated,
            apps_skipped       = excluded.apps_skipped,
-           annotations_added  = excluded.annotations_added`,
+           annotations_added  = excluded.annotations_added`
       ).run(
         importId,
         bundle.exported_at,
@@ -549,14 +622,14 @@ export function importAuditBundle(
         appsAdded,
         appsUpdated,
         appsSkipped,
-        annotationsAdded,
+        annotationsAdded
       );
     } else {
       db.prepare(
         `INSERT OR IGNORE INTO audit_bundle_imports
            (id, exported_at, imported_at, recommender_name, bundle_app_version,
             apps_total, apps_added, apps_updated, apps_skipped, annotations_added)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         importId,
         bundle.exported_at,
@@ -567,7 +640,7 @@ export function importAuditBundle(
         appsAdded,
         appsUpdated,
         appsSkipped,
-        annotationsAdded,
+        annotationsAdded
       );
     }
 
@@ -607,7 +680,9 @@ export function importAuditBundle(
  */
 function guessIncomingLastSynced(app: BundleApp, exportedAt: string): number {
   const policyFetchedAt = app.policy_summary?.fetched_at ?? null;
-  if (policyFetchedAt && policyFetchedAt > 0) return policyFetchedAt;
+  if (policyFetchedAt && policyFetchedAt > 0) {
+    return policyFetchedAt;
+  }
   const ms = Date.parse(exportedAt);
   return Number.isFinite(ms) ? ms : Date.now();
 }
@@ -622,13 +697,17 @@ function guessIncomingLastSynced(app: BundleApp, exportedAt: string): number {
  * the whole import for one bad field.
  */
 function safeAppStoreUrl(raw: unknown): string {
-  if (typeof raw !== 'string' || !raw) return '';
+  if (typeof raw !== "string" || !raw) {
+    return "";
+  }
   const v = validateAppStoreUrl(raw);
-  return v.ok && v.url ? v.url.toString() : '';
+  return v.ok && v.url ? v.url.toString() : "";
 }
 
 function safeIconUrl(raw: unknown): string | null {
-  if (typeof raw !== 'string' || !raw) return null;
+  if (typeof raw !== "string" || !raw) {
+    return null;
+  }
   // Apple's icon CDN is *.mzstatic.com but we don't require a host
   // allowlist here — any public http(s) icon URL is acceptable in
   // principle. The validateExternalUrl call blocks `javascript:`,
@@ -669,7 +748,7 @@ function upsertApp(app: BundleApp, lastSynced: number): void {
        priceAmount            = COALESCE(excluded.priceAmount, apps.priceAmount),
        priceCurrency          = COALESCE(excluded.priceCurrency, apps.priceCurrency),
        priceFormatted         = COALESCE(excluded.priceFormatted, apps.priceFormatted),
-       hasIap                 = COALESCE(excluded.hasIap, apps.hasIap)`,
+       hasIap                 = COALESCE(excluded.hasIap, apps.hasIap)`
   ).run(
     app.id,
     app.name,
@@ -686,7 +765,7 @@ function upsertApp(app: BundleApp, lastSynced: number): void {
     app.price_amount ?? null,
     app.price_currency ?? null,
     app.price_formatted ?? null,
-    app.has_iap ?? null,
+    app.has_iap ?? null
   );
 }
 
@@ -694,42 +773,54 @@ function replaceAppLabels(app: BundleApp): void {
   // Wipe + re-insert: privacy_types FKs cascade to privacy_categories,
   // and accessibility_features is keyed solely by app_id. Mirrors the
   // scrape pipeline's transactional replace pattern in lib/scraper.ts.
-  db.prepare('DELETE FROM privacy_types WHERE app_id = ?').run(app.id);
-  db.prepare('DELETE FROM accessibility_features WHERE app_id = ?').run(app.id);
+  db.prepare("DELETE FROM privacy_types WHERE app_id = ?").run(app.id);
+  db.prepare("DELETE FROM accessibility_features WHERE app_id = ?").run(app.id);
 
   for (const type of app.privacy_types) {
-    const typeId = `pt-${crypto.randomBytes(8).toString('hex')}`;
+    const typeId = `pt-${crypto.randomBytes(8).toString("hex")}`;
     db.prepare(
-      'INSERT INTO privacy_types (id, app_id, identifier, title, detail) VALUES (?, ?, ?, ?, ?)',
+      "INSERT INTO privacy_types (id, app_id, identifier, title, detail) VALUES (?, ?, ?, ?, ?)"
     ).run(typeId, app.id, type.identifier, type.title, type.detail ?? null);
 
     for (const cat of type.categories ?? []) {
-      const catId = `pc-${crypto.randomBytes(8).toString('hex')}`;
+      const catId = `pc-${crypto.randomBytes(8).toString("hex")}`;
       db.prepare(
-        'INSERT INTO privacy_categories (id, type_id, identifier, title) VALUES (?, ?, ?, ?)',
+        "INSERT INTO privacy_categories (id, type_id, identifier, title) VALUES (?, ?, ?, ?)"
       ).run(catId, typeId, cat.identifier, cat.title);
     }
   }
 
   for (const feature of app.accessibility_features ?? []) {
-    if (!feature.declared) continue;
-    const featureId = `af-${crypto.randomBytes(8).toString('hex')}`;
+    if (!feature.declared) {
+      continue;
+    }
+    const featureId = `af-${crypto.randomBytes(8).toString("hex")}`;
     db.prepare(
       `INSERT INTO accessibility_features
          (id, app_id, identifier, title, description, icon_template)
-       VALUES (?, ?, ?, ?, ?, NULL)`,
-    ).run(featureId, app.id, feature.identifier, feature.title, feature.description ?? null);
+       VALUES (?, ?, ?, ?, ?, NULL)`
+    ).run(
+      featureId,
+      app.id,
+      feature.identifier,
+      feature.title,
+      feature.description ?? null
+    );
   }
 }
 
 function upsertPolicySummary(app: BundleApp): void {
   const summary = app.policy_summary;
-  if (!summary || (!summary.summary_json && !summary.source_text_excerpt)) return;
+  if (!(summary && (summary.summary_json || summary.source_text_excerpt))) {
+    return;
+  }
   // Drop the row entirely if the bundle's policy URL doesn't pass
   // sanitisation — without a safe URL there's no legitimate place to
   // navigate to from the summary card.
   const policyUrl = safePolicyUrl(app.privacy_policy_url);
-  if (!policyUrl) return;
+  if (!policyUrl) {
+    return;
+  }
 
   // The bundle ships an excerpt of the source text rather than the full
   // doc (see lib/audit-bundle.ts); we store the excerpt as-is so the
@@ -751,16 +842,18 @@ function upsertPolicySummary(app: BundleApp): void {
        model             = excluded.model,
        updated_at        = excluded.updated_at,
        source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at),
-       generated_at      = COALESCE(excluded.generated_at, privacy_policy_analyses.generated_at)`,
+       generated_at      = COALESCE(excluded.generated_at, privacy_policy_analyses.generated_at)`
   ).run(
     app.id,
     policyUrl,
     summary.source_text_excerpt ?? null,
-    summary.source_text_excerpt ? summary.source_text_excerpt.split(/\s+/).length : 0,
+    summary.source_text_excerpt
+      ? summary.source_text_excerpt.split(/\s+/).length
+      : 0,
     summary.summary_json ?? null,
     now,
     summary.fetched_at ?? null,
-    summary.generated_at ?? null,
+    summary.generated_at ?? null
   );
 }
 

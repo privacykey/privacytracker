@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * DateFormatPicker — Settings → Appearance control for the
@@ -13,19 +13,19 @@
  * primitives along.
  */
 
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import {
   DATE_FORMAT_DEFAULT,
   DATE_FORMAT_MODES,
+  type DateFormatMode,
   describeDateFormat,
   normaliseDateFormat,
-  type DateFormatMode,
-} from '@/lib/date-format';
-import { broadcastDateFormat } from '@/lib/date-format-hook';
+} from "@/lib/date-format";
+import { broadcastDateFormat } from "@/lib/date-format-hook";
 
 export default function DateFormatPicker() {
-  const t = useTranslations('date_format');
+  const t = useTranslations("date_format");
   // Hydrating null means "still fetching" — render the select as
   // disabled so the user doesn't briefly see the wrong default and
   // accidentally save it. Once the GET resolves we flip to the real
@@ -55,14 +55,18 @@ export default function DateFormatPicker() {
 
   useEffect(() => {
     let live = true;
-    fetch('/api/date-format')
-      .then(r => (r.ok ? r.json() : null))
+    fetch("/api/date-format")
+      .then((r) => (r.ok ? r.json() : null))
       .then((body: { mode?: string } | null) => {
-        if (!live) return;
+        if (!live) {
+          return;
+        }
         setMode(normaliseDateFormat(body?.mode ?? null));
       })
       .catch(() => {
-        if (live) setMode(DATE_FORMAT_DEFAULT);
+        if (live) {
+          setMode(DATE_FORMAT_DEFAULT);
+        }
       });
     return () => {
       live = false;
@@ -74,9 +78,9 @@ export default function DateFormatPicker() {
     setSaving(true);
     setError(null);
     try {
-      const r = await fetch('/api/date-format', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const r = await fetch("/api/date-format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: next }),
       });
       if (!r.ok) {
@@ -92,7 +96,7 @@ export default function DateFormatPicker() {
       broadcastDateFormat(saved);
       setSavedAt(Date.now());
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t('save_failed'));
+      setError(e instanceof Error ? e.message : t("save_failed"));
     } finally {
       setSaving(false);
     }
@@ -100,16 +104,19 @@ export default function DateFormatPicker() {
 
   return (
     <div className="settings-field date-format-picker">
-      <label htmlFor="date-format-picker-select" className="settings-field-label">
-        {t('label')}
+      <label
+        className="settings-field-label"
+        htmlFor="date-format-picker-select"
+      >
+        {t("label")}
       </label>
-      <p className="settings-field-hint">{t('hint')}</p>
+      <p className="settings-field-hint">{t("hint")}</p>
       <select
-        id="date-format-picker-select"
-        value={mode ?? DATE_FORMAT_DEFAULT}
-        onChange={(e) => handleChange(normaliseDateFormat(e.target.value))}
-        disabled={mode === null || saving}
         className="date-format-picker-select"
+        disabled={mode === null || saving}
+        id="date-format-picker-select"
+        onChange={(e) => handleChange(normaliseDateFormat(e.target.value))}
+        value={mode ?? DATE_FORMAT_DEFAULT}
       >
         {DATE_FORMAT_MODES.map((m) => (
           <option key={m} value={m}>
@@ -117,17 +124,18 @@ export default function DateFormatPicker() {
                 agnostic); client appends `— Dec 31, 2025` etc. on the
                 first effect tick. See the `mounted` declaration above
                 for the hydration-mismatch reasoning. */}
-            {t(`modes.${m}`)}{mounted ? ` — ${describeDateFormat(m)}` : ''}
+            {t(`modes.${m}`)}
+            {mounted ? ` — ${describeDateFormat(m)}` : ""}
           </option>
         ))}
       </select>
       {savedAt && !saving && !error && (
         <p
+          aria-live="polite"
           className="settings-field-status settings-field-status-ok"
           role="status"
-          aria-live="polite"
         >
-          {t('saved')}
+          {t("saved")}
         </p>
       )}
       {error && (

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Shared state hook for the dashboard layout editors. Both the
@@ -14,49 +14,56 @@
  * polite live region of their choice.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { arrayMove } from '@dnd-kit/sortable';
+import { arrayMove } from "@dnd-kit/sortable";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  FIRST_CLASS_CARDS,
-  matchDashboardPreset,
   type DashboardCardId,
   type DashboardLayout,
   type DashboardPresetKey,
-} from './dashboard-layout';
+  FIRST_CLASS_CARDS,
+  matchDashboardPreset,
+} from "./dashboard-layout";
 
 const SAVE_DEBOUNCE_MS = 250;
 const SAVED_BADGE_MS = 1400;
 
-export type LayoutSaverState = 'idle' | 'saving' | 'saved' | 'error';
+export type LayoutSaverState = "idle" | "saving" | "saved" | "error";
 
 export interface UseDashboardLayoutSaverResult {
-  layout: DashboardLayout;
   activePreset: DashboardPresetKey | null;
-  hiddenSet: ReadonlySet<DashboardCardId>;
-  savingState: LayoutSaverState;
+  applyPreset: (
+    preset: DashboardPresetKey,
+    viaConfirm?: boolean
+  ) => Promise<void>;
+  cancelPendingPreset: () => void;
   errorMsg: string | null;
+  hiddenSet: ReadonlySet<DashboardCardId>;
+  layout: DashboardLayout;
   liveMessage: string;
   pendingPreset: DashboardPresetKey | null;
-  applyPreset: (preset: DashboardPresetKey, viaConfirm?: boolean) => Promise<void>;
-  cancelPendingPreset: () => void;
-  resetLayout: () => Promise<void>;
-  toggleVisibility: (id: DashboardCardId) => void;
   reorder: (activeId: DashboardCardId, overId: DashboardCardId) => void;
+  resetLayout: () => Promise<void>;
+  savingState: LayoutSaverState;
+  toggleVisibility: (id: DashboardCardId) => void;
 }
 
 export function useDashboardLayoutSaver(
-  initialLayout: DashboardLayout,
+  initialLayout: DashboardLayout
 ): UseDashboardLayoutSaverResult {
-  const t = useTranslations('dashboard.layout_editor');
-  const tPresetLabel = useTranslations('dashboard.layout_editor.presets.labels');
-  const tCardLabel = useTranslations('dashboard.layout_editor.cards.labels');
+  const t = useTranslations("dashboard.layout_editor");
+  const tPresetLabel = useTranslations(
+    "dashboard.layout_editor.presets.labels"
+  );
+  const tCardLabel = useTranslations("dashboard.layout_editor.cards.labels");
 
   const [layout, setLayout] = useState<DashboardLayout>(initialLayout);
-  const [pendingPreset, setPendingPreset] = useState<DashboardPresetKey | null>(null);
-  const [savingState, setSavingState] = useState<LayoutSaverState>('idle');
+  const [pendingPreset, setPendingPreset] = useState<DashboardPresetKey | null>(
+    null
+  );
+  const [savingState, setSavingState] = useState<LayoutSaverState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [liveMessage, setLiveMessage] = useState('');
+  const [liveMessage, setLiveMessage] = useState("");
 
   // Debounce window for the PUT after an edit. Tracks the active timer
   // so a rapid sequence collapses into a single save.
@@ -68,7 +75,7 @@ export function useDashboardLayoutSaver(
   const activePreset = useMemo(() => matchDashboardPreset(layout), [layout]);
   const hiddenSet = useMemo<ReadonlySet<DashboardCardId>>(
     () => new Set(layout.hidden),
-    [layout],
+    [layout]
   );
 
   const announce = useCallback((msg: string) => {
@@ -78,15 +85,17 @@ export function useDashboardLayoutSaver(
   }, []);
 
   const flashSaved = useCallback((seq: number) => {
-    setSavingState('saved');
+    setSavingState("saved");
     window.setTimeout(() => {
-      if (seq === lastSeqRef.current) setSavingState('idle');
+      if (seq === lastSeqRef.current) {
+        setSavingState("idle");
+      }
     }, SAVED_BADGE_MS);
   }, []);
 
   const persistLayout = useCallback(
     (next: DashboardLayout) => {
-      setSavingState('saving');
+      setSavingState("saving");
       setErrorMsg(null);
       if (debounceTimer.current !== null) {
         window.clearTimeout(debounceTimer.current);
@@ -94,32 +103,39 @@ export function useDashboardLayoutSaver(
       debounceTimer.current = window.setTimeout(async () => {
         const seq = ++lastSeqRef.current;
         try {
-          const res = await fetch('/api/dashboard/layout', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+          const res = await fetch("/api/dashboard/layout", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ layout: next }),
           });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          if (seq !== lastSeqRef.current) return;
-          announce(t('saved_live'));
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          if (seq !== lastSeqRef.current) {
+            return;
+          }
+          announce(t("saved_live"));
           flashSaved(seq);
         } catch (err) {
-          if (seq !== lastSeqRef.current) return;
-          setSavingState('error');
+          if (seq !== lastSeqRef.current) {
+            return;
+          }
+          setSavingState("error");
           setErrorMsg((err as Error).message);
         }
       }, SAVE_DEBOUNCE_MS);
     },
-    [announce, flashSaved, t],
+    [announce, flashSaved, t]
   );
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (debounceTimer.current !== null) {
         window.clearTimeout(debounceTimer.current);
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   const applyPreset = useCallback(
     async (presetKey: DashboardPresetKey, viaConfirm = false) => {
@@ -133,28 +149,34 @@ export function useDashboardLayoutSaver(
         return;
       }
       setPendingPreset(null);
-      setSavingState('saving');
+      setSavingState("saving");
       setErrorMsg(null);
       const seq = ++lastSeqRef.current;
       try {
-        const res = await fetch('/api/dashboard/layout/preset', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/dashboard/layout/preset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ preset: presetKey }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         const data = (await res.json()) as { layout: DashboardLayout };
-        if (seq !== lastSeqRef.current) return;
+        if (seq !== lastSeqRef.current) {
+          return;
+        }
         setLayout(data.layout);
-        announce(t('preset_applied_live', { name: tPresetLabel(presetKey) }));
+        announce(t("preset_applied_live", { name: tPresetLabel(presetKey) }));
         flashSaved(seq);
       } catch (err) {
-        if (seq !== lastSeqRef.current) return;
-        setSavingState('error');
+        if (seq !== lastSeqRef.current) {
+          return;
+        }
+        setSavingState("error");
         setErrorMsg((err as Error).message);
       }
     },
-    [activePreset, announce, flashSaved, t, tPresetLabel],
+    [activePreset, announce, flashSaved, t, tPresetLabel]
   );
 
   const cancelPendingPreset = useCallback(() => {
@@ -162,20 +184,26 @@ export function useDashboardLayoutSaver(
   }, []);
 
   const resetLayout = useCallback(async () => {
-    setSavingState('saving');
+    setSavingState("saving");
     setErrorMsg(null);
     const seq = ++lastSeqRef.current;
     try {
-      const res = await fetch('/api/dashboard/layout', { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch("/api/dashboard/layout", { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = (await res.json()) as { layout: DashboardLayout };
-      if (seq !== lastSeqRef.current) return;
+      if (seq !== lastSeqRef.current) {
+        return;
+      }
       setLayout(data.layout);
-      announce(t('reset_live'));
+      announce(t("reset_live"));
       flashSaved(seq);
     } catch (err) {
-      if (seq !== lastSeqRef.current) return;
-      setSavingState('error');
+      if (seq !== lastSeqRef.current) {
+        return;
+      }
+      setSavingState("error");
       setErrorMsg((err as Error).message);
     }
   }, [announce, flashSaved, t]);
@@ -183,10 +211,12 @@ export function useDashboardLayoutSaver(
   const toggleVisibility = useCallback(
     (id: DashboardCardId) => {
       // No-op for callouts — they're reorder-only.
-      if (!FIRST_CLASS_CARDS.has(id)) return;
+      if (!FIRST_CLASS_CARDS.has(id)) {
+        return;
+      }
       const isHidden = hiddenSet.has(id);
       const nextHidden = isHidden
-        ? layout.hidden.filter(x => x !== id)
+        ? layout.hidden.filter((x) => x !== id)
         : [...layout.hidden, id];
       const next: DashboardLayout = {
         v: 1,
@@ -196,20 +226,24 @@ export function useDashboardLayoutSaver(
       setLayout(next);
       announce(
         isHidden
-          ? t('shown_live', { name: tCardLabel(id) })
-          : t('hidden_live', { name: tCardLabel(id) }),
+          ? t("shown_live", { name: tCardLabel(id) })
+          : t("hidden_live", { name: tCardLabel(id) })
       );
       persistLayout(next);
     },
-    [layout, hiddenSet, persistLayout, announce, t, tCardLabel],
+    [layout, hiddenSet, persistLayout, announce, t, tCardLabel]
   );
 
   const reorder = useCallback(
     (activeId: DashboardCardId, overId: DashboardCardId) => {
-      if (activeId === overId) return;
+      if (activeId === overId) {
+        return;
+      }
       const oldIndex = layout.order.indexOf(activeId);
       const newIndex = layout.order.indexOf(overId);
-      if (oldIndex < 0 || newIndex < 0) return;
+      if (oldIndex < 0 || newIndex < 0) {
+        return;
+      }
       const nextOrder = arrayMove(layout.order, oldIndex, newIndex);
       const next: DashboardLayout = {
         v: 1,
@@ -218,15 +252,15 @@ export function useDashboardLayoutSaver(
       };
       setLayout(next);
       announce(
-        t('moved_live', {
+        t("moved_live", {
           name: tCardLabel(activeId),
           position: newIndex + 1,
           total: layout.order.length,
-        }),
+        })
       );
       persistLayout(next);
     },
-    [layout, persistLayout, announce, t, tCardLabel],
+    [layout, persistLayout, announce, t, tCardLabel]
   );
 
   return {

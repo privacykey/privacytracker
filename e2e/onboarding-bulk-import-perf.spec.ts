@@ -1,7 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page, test } from "@playwright/test";
 
 const sameOriginHeaders = {
-  origin: 'http://127.0.0.1:3000',
+  origin: "http://127.0.0.1:3000",
 };
 
 const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
@@ -15,16 +15,16 @@ function candidateFor(query: string, index: number) {
   return {
     appleId: `${9_000_000 + index}`,
     name: query,
-    developer: 'Bulk Fixture Co',
+    developer: "Bulk Fixture Co",
     iconUrl: `https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/bulk-${index}.png/100x100bb.jpg`,
-    url: `https://apps.apple.com/us/app/${query.toLowerCase().replace(/[^a-z0-9]+/g, '-')}/id${9_000_000 + index}`,
+    url: `https://apps.apple.com/us/app/${query.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/id${9_000_000 + index}`,
     bundleId: `com.example.bulk${index}`,
     searchQuery: query,
   };
 }
 
 async function mockBulkSearch(page: Page) {
-  await page.route('**/api/search', async route => {
+  await page.route("**/api/search", async (route) => {
     const body = route.request().postDataJSON() as {
       rows?: Array<{ name?: string }>;
       bundleIds?: string[];
@@ -32,10 +32,10 @@ async function mockBulkSearch(page: Page) {
     const rows = body.rows ?? [];
     await route.fulfill({
       status: 200,
-      contentType: 'application/json',
+      contentType: "application/json",
       body: JSON.stringify({
         results: rows.map((row, index) => {
-          const query = (row.name ?? '').trim();
+          const query = (row.name ?? "").trim();
           return {
             query,
             candidates: query ? [candidateFor(query, index + 1)] : [],
@@ -47,17 +47,17 @@ async function mockBulkSearch(page: Page) {
 }
 
 async function openWizardToTextEntry(page: Page) {
-  await page.goto('/onboard');
-  await page.getByText('Other import options').click();
-  await page.getByTestId('onboard-method-manual').click();
-  await page.getByTestId('onboard-step1-continue').click();
+  await page.goto("/onboard");
+  await page.getByText("Other import options").click();
+  await page.getByTestId("onboard-method-manual").click();
+  await page.getByTestId("onboard-step1-continue").click();
 }
 
 test.beforeEach(async ({ request }) => {
-  const focus = await request.post('/api/focus', {
+  const focus = await request.post("/api/focus", {
     headers: sameOriginHeaders,
     data: {
-      audience: 'self',
+      audience: "self",
       understand: true,
       declutter: false,
       minimal: false,
@@ -66,470 +66,513 @@ test.beforeEach(async ({ request }) => {
   });
   await expect(focus).toBeOK();
 
-  const cleared = await request.put('/api/privacy-profile', {
+  const cleared = await request.put("/api/privacy-profile", {
     headers: sameOriginHeaders,
     data: { profile: null },
   });
   await expect(cleared).toBeOK();
 });
 
-browserFlow('large onboarding import batches item status writes instead of fan-out updates', async ({ page }) => {
-  const bulkCalls: BulkCall[] = [];
-  let updateCalls = 0;
+browserFlow(
+  "large onboarding import batches item status writes instead of fan-out updates",
+  async ({ page }) => {
+    const bulkCalls: BulkCall[] = [];
+    let updateCalls = 0;
 
-  await mockBulkSearch(page);
-  await page.route('**/api/imports**', async route => {
-    const request = route.request();
-    const url = new URL(request.url());
-    const method = request.method();
+    await mockBulkSearch(page);
+    await page.route("**/api/imports**", async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const method = request.method();
 
-    if (url.pathname === '/api/imports/items/update') {
-      updateCalls += 1;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ item: { id: `legacy-${updateCalls}` } }),
-      });
-      return;
-    }
+      if (url.pathname === "/api/imports/items/update") {
+        updateCalls += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ item: { id: `legacy-${updateCalls}` } }),
+        });
+        return;
+      }
 
-    if (url.pathname === '/api/imports/items' && method === 'POST') {
-      const body = request.postDataJSON() as {
-        items?: Array<{ query?: string; status?: string }>;
-      };
-      const items = body.items ?? [];
-      bulkCalls.push({
-        count: items.length,
-        statuses: items.map(item => item.status ?? ''),
-      });
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          items: items.map((item, index) => ({
-            id: `item-${index}-${item.query}`,
-            query: item.query,
-            status: item.status,
-          })),
-        }),
-      });
-      return;
-    }
+      if (url.pathname === "/api/imports/items" && method === "POST") {
+        const body = request.postDataJSON() as {
+          items?: Array<{ query?: string; status?: string }>;
+        };
+        const items = body.items ?? [];
+        bulkCalls.push({
+          count: items.length,
+          statuses: items.map((item) => item.status ?? ""),
+        });
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            items: items.map((item, index) => ({
+              id: `item-${index}-${item.query}`,
+              query: item.query,
+              status: item.status,
+            })),
+          }),
+        });
+        return;
+      }
 
-    if (url.pathname === '/api/imports/queue') {
-      const status = {
-        queued: 150,
-        oldestNextAttemptAt: null,
-        soonestNextAttemptAt: null,
-        items: [],
-        pausedUntil: null,
-        running: false,
-        lastRunAt: null,
-      };
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(method === 'POST'
-          ? { processed: 0, succeeded: 0, failed: 0, rateLimited: 0, pausedUntil: null, skipped: 'empty', status }
-          : status),
-      });
-      return;
-    }
+      if (url.pathname === "/api/imports/queue") {
+        const status = {
+          queued: 150,
+          oldestNextAttemptAt: null,
+          soonestNextAttemptAt: null,
+          items: [],
+          pausedUntil: null,
+          running: false,
+          lastRunAt: null,
+        };
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(
+            method === "POST"
+              ? {
+                  processed: 0,
+                  succeeded: 0,
+                  failed: 0,
+                  rateLimited: 0,
+                  pausedUntil: null,
+                  skipped: "empty",
+                  status,
+                }
+              : status
+          ),
+        });
+        return;
+      }
 
-    if (url.pathname === '/api/imports' && method === 'POST') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'imp-bulk-e2e',
-          createdAt: Date.now(),
-          completedAt: null,
-          source: 'manual',
-          sourceLabel: 'bulk e2e',
-          total: 150,
-          matched: 0,
-          unmatched: 0,
-          imported: 0,
-          queued: 0,
-          errored: 0,
-          removed: 0,
-          itemCount: 0,
-        }),
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/imports' && method === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          import: {
-            id: 'imp-bulk-e2e',
+      if (url.pathname === "/api/imports" && method === "POST") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            id: "imp-bulk-e2e",
             createdAt: Date.now(),
             completedAt: null,
-            source: 'manual',
-            sourceLabel: 'bulk e2e',
+            source: "manual",
+            sourceLabel: "bulk e2e",
             total: 150,
             matched: 0,
             unmatched: 0,
             imported: 0,
-            queued: 150,
+            queued: 0,
             errored: 0,
             removed: 0,
-            itemCount: 150,
-          },
-          items: Array.from({ length: 150 }, (_, index) => ({
-            id: `item-${index}`,
-            query: `Bulk App ${index + 1}`,
-            editedQuery: null,
-            status: 'queued',
-            appName: `Bulk App ${index + 1}`,
-            url: `https://apps.apple.com/us/app/bulk-app-${index + 1}/id${9_000_000 + index}`,
-            scrapeError: null,
-            nextAttemptAt: null,
-          })),
-        }),
-      });
-      return;
-    }
-
-    await route.continue();
-  });
-
-  await openWizardToTextEntry(page);
-
-  const names = Array.from({ length: 150 }, (_, index) => `Bulk App ${index + 1}`);
-  await page.getByTestId('onboard-app-names').fill(names.join('\n'));
-  await page.getByTestId('onboard-search').click();
-
-  await expect(page.locator('.search-result-item')).toHaveCount(150);
-  await page.getByTestId('onboard-confirm-import').click();
-  await expect(page.getByRole('heading', { name: /Importing apps/i })).toBeVisible();
-
-  await expect.poll(() => bulkCalls.length).toBeGreaterThanOrEqual(3);
-  expect(updateCalls).toBe(0);
-  expect(bulkCalls[0].count).toBe(150);
-  expect(bulkCalls[1].count).toBe(150);
-  expect([...new Set(bulkCalls[1].statuses)]).toEqual(['matched']);
-  expect(bulkCalls[2].count).toBe(150);
-  expect([...new Set(bulkCalls[2].statuses)]).toEqual(['queued']);
-});
-
-browserFlow('onboarding import drains queued apps chunk-after-chunk until empty', async ({ page }) => {
-  let queueRemaining = 25;
-  let queuePostCalls = 0;
-  const processedPlan = [10, 10, 5, 0];
-
-  const queueStatus = () => ({
-    queued: queueRemaining,
-    oldestNextAttemptAt: null,
-    soonestNextAttemptAt: null,
-    items: [],
-    pausedUntil: null,
-    running: false,
-    lastRunAt: null,
-  });
-
-  await mockBulkSearch(page);
-  await page.route('**/api/imports**', async route => {
-    const request = route.request();
-    const url = new URL(request.url());
-    const method = request.method();
-
-    if (url.pathname === '/api/imports/items' && method === 'POST') {
-      const body = request.postDataJSON() as {
-        items?: Array<{ query?: string; status?: string }>;
-      };
-      const items = body.items ?? [];
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          items: items.map((item, index) => ({
-            id: `drain-item-${index}-${item.query}`,
-            query: item.query,
-            status: item.status,
-          })),
-        }),
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/imports/queue') {
-      if (method === 'POST') {
-        const processed = processedPlan[Math.min(queuePostCalls, processedPlan.length - 1)];
-        queuePostCalls += 1;
-        queueRemaining = Math.max(0, queueRemaining - processed);
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            processed,
-            succeeded: processed,
-            failed: 0,
-            rateLimited: 0,
-            pausedUntil: null,
-            skipped: processed === 0 ? 'empty' : null,
-            status: queueStatus(),
+            itemCount: 0,
           }),
         });
         return;
       }
 
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(queueStatus()),
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/imports' && method === 'POST') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'imp-drain-e2e',
-          createdAt: Date.now(),
-          completedAt: null,
-          source: 'manual',
-          sourceLabel: 'queue drain e2e',
-          total: 25,
-          matched: 0,
-          unmatched: 0,
-          imported: 0,
-          queued: 0,
-          errored: 0,
-          removed: 0,
-          itemCount: 0,
-        }),
-      });
-      return;
-    }
-
-    if (url.pathname === '/api/imports' && method === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          import: {
-            id: 'imp-drain-e2e',
-            createdAt: Date.now(),
-            completedAt: null,
-            source: 'manual',
-            sourceLabel: 'queue drain e2e',
-            total: 25,
-            matched: 25,
-            unmatched: 0,
-            imported: 25 - queueRemaining,
-            queued: queueRemaining,
-            errored: 0,
-            removed: 0,
-            itemCount: 25,
-          },
-          items: Array.from({ length: 25 }, (_, index) => {
-            const imported = index < 25 - queueRemaining;
-            return {
-              id: `drain-item-${index}`,
-              query: `Drain App ${index + 1}`,
+      if (url.pathname === "/api/imports" && method === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            import: {
+              id: "imp-bulk-e2e",
+              createdAt: Date.now(),
+              completedAt: null,
+              source: "manual",
+              sourceLabel: "bulk e2e",
+              total: 150,
+              matched: 0,
+              unmatched: 0,
+              imported: 0,
+              queued: 150,
+              errored: 0,
+              removed: 0,
+              itemCount: 150,
+            },
+            items: Array.from({ length: 150 }, (_, index) => ({
+              id: `item-${index}`,
+              query: `Bulk App ${index + 1}`,
               editedQuery: null,
-              status: imported ? 'imported' : 'queued',
-              appName: `Drain App ${index + 1}`,
-              appId: `${9_100_000 + index}`,
-              url: `https://apps.apple.com/us/app/drain-app-${index + 1}/id${9_100_000 + index}`,
+              status: "queued",
+              appName: `Bulk App ${index + 1}`,
+              url: `https://apps.apple.com/us/app/bulk-app-${index + 1}/id${9_000_000 + index}`,
               scrapeError: null,
               nextAttemptAt: null,
-            };
+            })),
           }),
-        }),
-      });
-      return;
-    }
+        });
+        return;
+      }
 
-    await route.continue();
-  });
+      await route.continue();
+    });
 
-  await openWizardToTextEntry(page);
+    await openWizardToTextEntry(page);
 
-  const names = Array.from({ length: 25 }, (_, index) => `Drain App ${index + 1}`);
-  await page.getByTestId('onboard-app-names').fill(names.join('\n'));
-  await page.getByTestId('onboard-search').click();
+    const names = Array.from(
+      { length: 150 },
+      (_, index) => `Bulk App ${index + 1}`
+    );
+    await page.getByTestId("onboard-app-names").fill(names.join("\n"));
+    await page.getByTestId("onboard-search").click();
 
-  await expect(page.locator('.search-result-item')).toHaveCount(25);
-  const startedAt = Date.now();
-  await page.getByTestId('onboard-confirm-import').click();
-  await expect(page.getByRole('heading', { name: /Importing apps/i })).toBeVisible();
+    await expect(page.locator(".search-result-item")).toHaveCount(150);
+    await page.getByTestId("onboard-confirm-import").click();
+    await expect(
+      page.getByRole("heading", { name: /Importing apps/i })
+    ).toBeVisible();
 
-  await expect.poll(() => queuePostCalls, { timeout: 5_000 }).toBeGreaterThanOrEqual(4);
-  expect(Date.now() - startedAt).toBeLessThan(5_000);
-  await expect(page.getByRole('button', { name: /dashboard/i })).toBeVisible();
-});
+    await expect.poll(() => bulkCalls.length).toBeGreaterThanOrEqual(3);
+    expect(updateCalls).toBe(0);
+    expect(bulkCalls[0].count).toBe(150);
+    expect(bulkCalls[1].count).toBe(150);
+    expect([...new Set(bulkCalls[1].statuses)]).toEqual(["matched"]);
+    expect(bulkCalls[2].count).toBe(150);
+    expect([...new Set(bulkCalls[2].statuses)]).toEqual(["queued"]);
+  }
+);
 
-browserFlow('onboarding import drain waits through a 429 cooldown and resumes', async ({ page }) => {
-  let queueRemaining = 12;
-  let queuePostCalls = 0;
-  let activePause: number | null = null;
+browserFlow(
+  "onboarding import drains queued apps chunk-after-chunk until empty",
+  async ({ page }) => {
+    let queueRemaining = 25;
+    let queuePostCalls = 0;
+    const processedPlan = [10, 10, 5, 0];
 
-  const queueStatus = () => ({
-    queued: queueRemaining,
-    oldestNextAttemptAt: null,
-    soonestNextAttemptAt: activePause,
-    items: [],
-    pausedUntil: activePause,
-    running: false,
-    lastRunAt: null,
-  });
+    const queueStatus = () => ({
+      queued: queueRemaining,
+      oldestNextAttemptAt: null,
+      soonestNextAttemptAt: null,
+      items: [],
+      pausedUntil: null,
+      running: false,
+      lastRunAt: null,
+    });
 
-  await mockBulkSearch(page);
-  await page.route('**/api/imports**', async route => {
-    const request = route.request();
-    const url = new URL(request.url());
-    const method = request.method();
+    await mockBulkSearch(page);
+    await page.route("**/api/imports**", async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const method = request.method();
 
-    if (url.pathname === '/api/imports/items' && method === 'POST') {
-      const body = request.postDataJSON() as {
-        items?: Array<{ query?: string; status?: string }>;
-      };
-      const items = body.items ?? [];
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          items: items.map((item, index) => ({
-            id: `pause-item-${index}-${item.query}`,
-            query: item.query,
-            status: item.status,
-          })),
-        }),
-      });
-      return;
-    }
+      if (url.pathname === "/api/imports/items" && method === "POST") {
+        const body = request.postDataJSON() as {
+          items?: Array<{ query?: string; status?: string }>;
+        };
+        const items = body.items ?? [];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            items: items.map((item, index) => ({
+              id: `drain-item-${index}-${item.query}`,
+              query: item.query,
+              status: item.status,
+            })),
+          }),
+        });
+        return;
+      }
 
-    if (url.pathname === '/api/imports/queue') {
-      if (method === 'POST') {
-        queuePostCalls += 1;
-        let processed = 0;
-        let rateLimited = 0;
-        let skipped: 'empty' | null = null;
-
-        if (queuePostCalls === 1) {
-          processed = 10;
-          queueRemaining = 2;
-          activePause = null;
-        } else if (queuePostCalls === 2) {
-          processed = 1;
-          rateLimited = 1;
-          activePause = Date.now() + 1_200;
-        } else if (queuePostCalls === 3) {
-          processed = 2;
-          queueRemaining = 0;
-          activePause = null;
-        } else {
-          skipped = 'empty';
-          activePause = null;
+      if (url.pathname === "/api/imports/queue") {
+        if (method === "POST") {
+          const processed =
+            processedPlan[Math.min(queuePostCalls, processedPlan.length - 1)];
+          queuePostCalls += 1;
+          queueRemaining = Math.max(0, queueRemaining - processed);
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              processed,
+              succeeded: processed,
+              failed: 0,
+              rateLimited: 0,
+              pausedUntil: null,
+              skipped: processed === 0 ? "empty" : null,
+              status: queueStatus(),
+            }),
+          });
+          return;
         }
 
         await route.fulfill({
           status: 200,
-          contentType: 'application/json',
+          contentType: "application/json",
+          body: JSON.stringify(queueStatus()),
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/imports" && method === "POST") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
           body: JSON.stringify({
-            processed,
-            succeeded: rateLimited > 0 ? 0 : processed,
-            failed: 0,
-            rateLimited,
-            pausedUntil: activePause,
-            skipped,
-            status: queueStatus(),
+            id: "imp-drain-e2e",
+            createdAt: Date.now(),
+            completedAt: null,
+            source: "manual",
+            sourceLabel: "queue drain e2e",
+            total: 25,
+            matched: 0,
+            unmatched: 0,
+            imported: 0,
+            queued: 0,
+            errored: 0,
+            removed: 0,
+            itemCount: 0,
           }),
         });
         return;
       }
 
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(queueStatus()),
-      });
-      return;
-    }
+      if (url.pathname === "/api/imports" && method === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            import: {
+              id: "imp-drain-e2e",
+              createdAt: Date.now(),
+              completedAt: null,
+              source: "manual",
+              sourceLabel: "queue drain e2e",
+              total: 25,
+              matched: 25,
+              unmatched: 0,
+              imported: 25 - queueRemaining,
+              queued: queueRemaining,
+              errored: 0,
+              removed: 0,
+              itemCount: 25,
+            },
+            items: Array.from({ length: 25 }, (_, index) => {
+              const imported = index < 25 - queueRemaining;
+              return {
+                id: `drain-item-${index}`,
+                query: `Drain App ${index + 1}`,
+                editedQuery: null,
+                status: imported ? "imported" : "queued",
+                appName: `Drain App ${index + 1}`,
+                appId: `${9_100_000 + index}`,
+                url: `https://apps.apple.com/us/app/drain-app-${index + 1}/id${9_100_000 + index}`,
+                scrapeError: null,
+                nextAttemptAt: null,
+              };
+            }),
+          }),
+        });
+        return;
+      }
 
-    if (url.pathname === '/api/imports' && method === 'POST') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'imp-pause-e2e',
-          createdAt: Date.now(),
-          completedAt: null,
-          source: 'manual',
-          sourceLabel: 'queue pause e2e',
-          total: 12,
-          matched: 0,
-          unmatched: 0,
-          imported: 0,
-          queued: 0,
-          errored: 0,
-          removed: 0,
-          itemCount: 0,
-        }),
-      });
-      return;
-    }
+      await route.continue();
+    });
 
-    if (url.pathname === '/api/imports' && method === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          import: {
-            id: 'imp-pause-e2e',
+    await openWizardToTextEntry(page);
+
+    const names = Array.from(
+      { length: 25 },
+      (_, index) => `Drain App ${index + 1}`
+    );
+    await page.getByTestId("onboard-app-names").fill(names.join("\n"));
+    await page.getByTestId("onboard-search").click();
+
+    await expect(page.locator(".search-result-item")).toHaveCount(25);
+    const startedAt = Date.now();
+    await page.getByTestId("onboard-confirm-import").click();
+    await expect(
+      page.getByRole("heading", { name: /Importing apps/i })
+    ).toBeVisible();
+
+    await expect
+      .poll(() => queuePostCalls, { timeout: 5000 })
+      .toBeGreaterThanOrEqual(4);
+    expect(Date.now() - startedAt).toBeLessThan(5000);
+    await expect(
+      page.getByRole("button", { name: /dashboard/i })
+    ).toBeVisible();
+  }
+);
+
+browserFlow(
+  "onboarding import drain waits through a 429 cooldown and resumes",
+  async ({ page }) => {
+    let queueRemaining = 12;
+    let queuePostCalls = 0;
+    let activePause: number | null = null;
+
+    const queueStatus = () => ({
+      queued: queueRemaining,
+      oldestNextAttemptAt: null,
+      soonestNextAttemptAt: activePause,
+      items: [],
+      pausedUntil: activePause,
+      running: false,
+      lastRunAt: null,
+    });
+
+    await mockBulkSearch(page);
+    await page.route("**/api/imports**", async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const method = request.method();
+
+      if (url.pathname === "/api/imports/items" && method === "POST") {
+        const body = request.postDataJSON() as {
+          items?: Array<{ query?: string; status?: string }>;
+        };
+        const items = body.items ?? [];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            items: items.map((item, index) => ({
+              id: `pause-item-${index}-${item.query}`,
+              query: item.query,
+              status: item.status,
+            })),
+          }),
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/imports/queue") {
+        if (method === "POST") {
+          queuePostCalls += 1;
+          let processed = 0;
+          let rateLimited = 0;
+          let skipped: "empty" | null = null;
+
+          if (queuePostCalls === 1) {
+            processed = 10;
+            queueRemaining = 2;
+            activePause = null;
+          } else if (queuePostCalls === 2) {
+            processed = 1;
+            rateLimited = 1;
+            activePause = Date.now() + 1200;
+          } else if (queuePostCalls === 3) {
+            processed = 2;
+            queueRemaining = 0;
+            activePause = null;
+          } else {
+            skipped = "empty";
+            activePause = null;
+          }
+
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              processed,
+              succeeded: rateLimited > 0 ? 0 : processed,
+              failed: 0,
+              rateLimited,
+              pausedUntil: activePause,
+              skipped,
+              status: queueStatus(),
+            }),
+          });
+          return;
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(queueStatus()),
+        });
+        return;
+      }
+
+      if (url.pathname === "/api/imports" && method === "POST") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            id: "imp-pause-e2e",
             createdAt: Date.now(),
             completedAt: null,
-            source: 'manual',
-            sourceLabel: 'queue pause e2e',
+            source: "manual",
+            sourceLabel: "queue pause e2e",
             total: 12,
-            matched: 12,
+            matched: 0,
             unmatched: 0,
-            imported: 12 - queueRemaining,
-            queued: queueRemaining,
+            imported: 0,
+            queued: 0,
             errored: 0,
             removed: 0,
-            itemCount: 12,
-          },
-          items: Array.from({ length: 12 }, (_, index) => {
-            const imported = index < 12 - queueRemaining;
-            return {
-              id: `pause-item-${index}`,
-              query: `Pause App ${index + 1}`,
-              editedQuery: null,
-              status: imported ? 'imported' : 'queued',
-              appName: `Pause App ${index + 1}`,
-              appId: `${9_200_000 + index}`,
-              url: `https://apps.apple.com/us/app/pause-app-${index + 1}/id${9_200_000 + index}`,
-              scrapeError: null,
-              nextAttemptAt: activePause,
-            };
+            itemCount: 0,
           }),
-        }),
-      });
-      return;
-    }
+        });
+        return;
+      }
 
-    await route.continue();
-  });
+      if (url.pathname === "/api/imports" && method === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            import: {
+              id: "imp-pause-e2e",
+              createdAt: Date.now(),
+              completedAt: null,
+              source: "manual",
+              sourceLabel: "queue pause e2e",
+              total: 12,
+              matched: 12,
+              unmatched: 0,
+              imported: 12 - queueRemaining,
+              queued: queueRemaining,
+              errored: 0,
+              removed: 0,
+              itemCount: 12,
+            },
+            items: Array.from({ length: 12 }, (_, index) => {
+              const imported = index < 12 - queueRemaining;
+              return {
+                id: `pause-item-${index}`,
+                query: `Pause App ${index + 1}`,
+                editedQuery: null,
+                status: imported ? "imported" : "queued",
+                appName: `Pause App ${index + 1}`,
+                appId: `${9_200_000 + index}`,
+                url: `https://apps.apple.com/us/app/pause-app-${index + 1}/id${9_200_000 + index}`,
+                scrapeError: null,
+                nextAttemptAt: activePause,
+              };
+            }),
+          }),
+        });
+        return;
+      }
 
-  await openWizardToTextEntry(page);
+      await route.continue();
+    });
 
-  const names = Array.from({ length: 12 }, (_, index) => `Pause App ${index + 1}`);
-  await page.getByTestId('onboard-app-names').fill(names.join('\n'));
-  await page.getByTestId('onboard-search').click();
+    await openWizardToTextEntry(page);
 
-  await expect(page.locator('.search-result-item')).toHaveCount(12);
-  await page.getByTestId('onboard-confirm-import').click();
-  await expect(page.getByRole('heading', { name: /Importing apps/i })).toBeVisible();
+    const names = Array.from(
+      { length: 12 },
+      (_, index) => `Pause App ${index + 1}`
+    );
+    await page.getByTestId("onboard-app-names").fill(names.join("\n"));
+    await page.getByTestId("onboard-search").click();
 
-  await expect.poll(() => queuePostCalls, { timeout: 5_000 }).toBeGreaterThanOrEqual(2);
-  await expect(page.getByText(/Apple paused imports/i)).toBeVisible();
-  await expect.poll(() => queuePostCalls, { timeout: 8_000 }).toBeGreaterThanOrEqual(4);
-});
+    await expect(page.locator(".search-result-item")).toHaveCount(12);
+    await page.getByTestId("onboard-confirm-import").click();
+    await expect(
+      page.getByRole("heading", { name: /Importing apps/i })
+    ).toBeVisible();
+
+    await expect
+      .poll(() => queuePostCalls, { timeout: 5000 })
+      .toBeGreaterThanOrEqual(2);
+    await expect(page.getByText(/Apple paused imports/i)).toBeVisible();
+    await expect
+      .poll(() => queuePostCalls, { timeout: 8000 })
+      .toBeGreaterThanOrEqual(4);
+  }
+);

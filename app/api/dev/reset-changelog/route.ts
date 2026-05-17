@@ -21,26 +21,28 @@
  * against).
  */
 
-import { NextResponse } from 'next/server';
-import db from '@/lib/db';
-import { recordActivity } from '@/lib/activity';
-import { requireMutationGuard } from '@/lib/api-guards';
-import { recordAudit } from '@/lib/security';
+import { NextResponse } from "next/server";
+import { recordActivity } from "@/lib/activity";
+import { requireMutationGuard } from "@/lib/api-guards";
+import db from "@/lib/db";
+import { recordAudit } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const startedAt = Date.now();
   const guard = requireMutationGuard(request, {
-    action: 'dev.reset_changelog',
+    action: "dev.reset_changelog",
     rateLimit: {
-      keyPrefix: 'dev.reset_changelog',
+      keyPrefix: "dev.reset_changelog",
       limit: 6,
       windowMs: 10 * 60_000,
-      message: 'Rate limit exceeded for dev changelog reset. Try again later.',
+      message: "Rate limit exceeded for dev changelog reset. Try again later.",
     },
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   let snapshotsRemoved = 0;
   let reviewActionsRemoved = 0;
@@ -48,15 +50,15 @@ export async function POST(request: Request) {
 
   try {
     const wipe = db.transaction(() => {
-      const a = db.prepare('DELETE FROM privacy_snapshots').run();
+      const a = db.prepare("DELETE FROM privacy_snapshots").run();
       snapshotsRemoved = a.changes;
 
       try {
-        const b = db.prepare('DELETE FROM change_review_actions').run();
+        const b = db.prepare("DELETE FROM change_review_actions").run();
         reviewActionsRemoved = b.changes;
       } catch (e) {
         // Older installs may not have this table — non-fatal.
-        console.warn('[dev/reset-changelog] change_review_actions skipped:', e);
+        console.warn("[dev/reset-changelog] change_review_actions skipped:", e);
       }
 
       const c = db
@@ -64,34 +66,34 @@ export async function POST(request: Request) {
           `UPDATE apps
              SET changeCount = 0,
                  changes_acknowledged_at = 0,
-                 changes_snoozed_until = 0`,
+                 changes_snoozed_until = 0`
         )
         .run();
       appsTouched = c.changes;
     });
     wipe();
   } catch (e) {
-    console.error('[/api/dev/reset-changelog] failed:', e);
+    console.error("[/api/dev/reset-changelog] failed:", e);
     recordAudit({
-      action: 'dev.reset_changelog.failed',
+      action: "dev.reset_changelog.failed",
       actorIp: guard.actorIp,
       userAgent: guard.userAgent,
       success: false,
       detail: e instanceof Error ? e.message : String(e),
     });
     return NextResponse.json(
-      { error: 'reset-changelog failed; database left untouched' },
-      { status: 500 },
+      { error: "reset-changelog failed; database left untouched" },
+      { status: 500 }
     );
   }
 
   try {
     recordActivity({
-      type: 'reset',
-      status: 'ok',
+      type: "reset",
+      status: "ok",
       summary: `Dev reset-changelog — cleared ${snapshotsRemoved} snapshots`,
       detail: {
-        mode: 'dev-reset-changelog',
+        mode: "dev-reset-changelog",
         snapshotsRemoved,
         reviewActionsRemoved,
         appsTouched,
@@ -99,10 +101,10 @@ export async function POST(request: Request) {
       startedAt,
     });
   } catch (e) {
-    console.warn('[/api/dev/reset-changelog] activity-log failed:', e);
+    console.warn("[/api/dev/reset-changelog] activity-log failed:", e);
   }
   recordAudit({
-    action: 'dev.reset_changelog.success',
+    action: "dev.reset_changelog.success",
     actorIp: guard.actorIp,
     userAgent: guard.userAgent,
     success: true,

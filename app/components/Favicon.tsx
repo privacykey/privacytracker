@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 
 interface FaviconProps {
-  /** Any URL — we extract the host and proxy the favicon through /api/favicon. */
-  url: string | null | undefined;
-  /** Rendered width/height in px. Matches `size` hint to the backend (currently unused server-side but reserved). */
-  size?: number;
   /** Optional extra class so callers can tweak margin/inline alignment. */
   className?: string;
+  /** Rendered width/height in px. Matches `size` hint to the backend (currently unused server-side but reserved). */
+  size?: number;
+  /** Any URL — we extract the host and proxy the favicon through /api/favicon. */
+  url: string | null | undefined;
 }
 
 /**
@@ -26,9 +26,15 @@ interface FaviconProps {
  * browser from pinging third-party hosts just because a Manual Apps page
  * is open — this is a privacy auditor, after all.
  */
-export default function Favicon({ url, size = 16, className = '' }: FaviconProps) {
+export default function Favicon({
+  url,
+  size = 16,
+  className = "",
+}: FaviconProps) {
   const host = useMemo(() => {
-    if (!url) return null;
+    if (!url) {
+      return null;
+    }
     try {
       return new URL(url).host;
     } catch {
@@ -41,9 +47,9 @@ export default function Favicon({ url, size = 16, className = '' }: FaviconProps
   if (!host || failed) {
     return (
       <span
+        aria-hidden="true"
         className={`favicon-fallback ${className}`.trim()}
         style={{ width: size, height: size }}
-        aria-hidden="true"
       >
         🌐
       </span>
@@ -55,15 +61,15 @@ export default function Favicon({ url, size = 16, className = '' }: FaviconProps
     // already tiny and cacheable, and next/image would require remote-host
     // allowlisting for every domain the user tracks.
     <img
-      src={`/api/favicon?host=${encodeURIComponent(host)}`}
       alt=""
-      width={size}
-      height={size}
-      className={`favicon-img ${className}`.trim()}
-      onError={() => setFailed(true)}
       aria-hidden="true"
-      loading="lazy"
+      className={`favicon-img ${className}`.trim()}
       decoding="async"
+      height={size}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      src={`/api/favicon?host=${encodeURIComponent(host)}`}
+      width={size}
     />
   );
 }

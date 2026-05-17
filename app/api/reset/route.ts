@@ -1,16 +1,16 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
-import db from '../../../lib/db';
-import { getSetting } from '../../../lib/scheduler';
+import { NextResponse } from "next/server";
+import db from "../../../lib/db";
+import { getSetting } from "../../../lib/scheduler";
 import {
   adminTokenRequiredForRequest,
-  requestHasValidAdminToken,
-  recordAudit,
-  requestActorIp,
   checkRateLimit,
   rateLimitKeyForRequest,
-} from '../../../lib/security';
+  recordAudit,
+  requestActorIp,
+  requestHasValidAdminToken,
+} from "../../../lib/security";
 
 /**
  * Reset wipes the entire DB. This is irreversible and the most destructive
@@ -22,7 +22,7 @@ import {
  */
 export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   // The intent of this limiter is "stop a same-origin bug from being
   // trivially looped" (a runaway loop trips it instantly regardless of
@@ -32,82 +32,91 @@ export async function POST(request: Request) {
   // E2E suite (5+ specs reset between runs) without weakening either
   // primary guardrail.
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'reset'),
+    key: rateLimitKeyForRequest(request, "reset"),
     limit: 30,
     windowMs: 10 * 60_000,
   });
   if (!rate.allowed) {
     recordAudit({
-      action: 'reset.rate_limited',
+      action: "reset.rate_limited",
       actorIp,
       userAgent,
       success: false,
       detail: `retryAfterMs=${rate.retryAfterMs}`,
     });
     return NextResponse.json(
-      { error: 'Rate limit exceeded for reset. Try again later.' },
-      { status: 429 },
+      { error: "Rate limit exceeded for reset. Try again later." },
+      { status: 429 }
     );
   }
 
-  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
-      action: 'reset.unauthorised',
+      action: "reset.unauthorised",
       actorIp,
       userAgent,
       success: false,
-      detail: 'admin token required but missing or invalid',
+      detail: "admin token required but missing or invalid",
     });
-    return NextResponse.json({ error: 'Admin token required' }, { status: 401 });
+    return NextResponse.json(
+      { error: "Admin token required" },
+      { status: 401 }
+    );
   }
 
-  if (getSetting('sync_running', 'false') === 'true') {
+  if (getSetting("sync_running", "false") === "true") {
     return NextResponse.json(
-      { error: 'A sync is currently running. Please wait until it finishes.' },
-      { status: 409 },
+      { error: "A sync is currently running. Please wait until it finishes." },
+      { status: 409 }
     );
   }
 
   const resetAll = db.transaction(() => {
-    db.prepare('DELETE FROM notifications').run();
+    db.prepare("DELETE FROM notifications").run();
     // Clear the import history too — `imports` cascades into `import_items`
     // via FK, but we DELETE both explicitly so the behaviour is obvious to
     // anyone reading this list. Reset is a clean-slate operation; leaving
     // stale history rows around would show phantom "Removed" entries for
     // apps that no longer exist in the fresh DB.
-    db.prepare('DELETE FROM import_items').run();
-    db.prepare('DELETE FROM imports').run();
+    db.prepare("DELETE FROM import_items").run();
+    db.prepare("DELETE FROM imports").run();
     // Manual apps are user-authored and independent of the scraped apps, but
     // they're still privacy state — clean-slate means we drop these too.
-    db.prepare('DELETE FROM manual_apps').run();
-    db.prepare('DELETE FROM privacy_data_types').run();
-    db.prepare('DELETE FROM privacy_categories').run();
-    db.prepare('DELETE FROM privacy_purposes').run();
-    db.prepare('DELETE FROM privacy_snapshots').run();
-    db.prepare('DELETE FROM privacy_types').run();
-    db.prepare('DELETE FROM apps').run();
-    db.prepare('DELETE FROM app_settings').run();
+    db.prepare("DELETE FROM manual_apps").run();
+    db.prepare("DELETE FROM privacy_data_types").run();
+    db.prepare("DELETE FROM privacy_categories").run();
+    db.prepare("DELETE FROM privacy_purposes").run();
+    db.prepare("DELETE FROM privacy_snapshots").run();
+    db.prepare("DELETE FROM privacy_types").run();
+    db.prepare("DELETE FROM apps").run();
+    db.prepare("DELETE FROM app_settings").run();
     // NB: intentionally NOT deleting audit_log — we want the trail to survive.
   });
 
   try {
     resetAll();
     recordAudit({
-      action: 'reset.success',
+      action: "reset.success",
       actorIp,
       userAgent,
       success: true,
     });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Reset API error', error);
+    console.error("Reset API error", error);
     recordAudit({
-      action: 'reset.failed',
+      action: "reset.failed",
       actorIp,
       userAgent,
       success: false,
       detail: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to reset app data' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to reset app data" },
+      { status: 500 }
+    );
   }
 }

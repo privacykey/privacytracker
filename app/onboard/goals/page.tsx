@@ -1,16 +1,16 @@
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { redirect } from 'next/navigation';
-import GoalsScreen from '../../components/GoalsScreen';
-import { getActiveFocus } from '@/lib/feature-flag-storage';
-import { getSetting } from '@/lib/scheduler';
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { getActiveFocus } from "@/lib/feature-flag-storage";
+import { getSetting } from "@/lib/scheduler";
+import GoalsScreen from "../../components/GoalsScreen";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   return {
-    title: t('onboard_goals_title'),
+    title: t("onboard_goals_title"),
   };
 }
 
@@ -42,9 +42,9 @@ export default function OnboardGoalsPage() {
   // `getActiveFocus()` falls back to 'self' when nothing's stored, so we
   // check the underlying app_settings key directly: it's only present after
   // screen 1's /api/focus POST or the v1 migration ran.
-  const audienceStored = getSetting('flag.focus.audience', '') !== '';
-  if (!audienceStored || !focus) {
-    redirect('/welcome');
+  const audienceStored = getSetting("flag.focus.audience", "") !== "";
+  if (!(audienceStored && focus)) {
+    redirect("/welcome");
   }
 
   const audience = focus.audience;
@@ -56,31 +56,31 @@ export default function OnboardGoalsPage() {
   // applies audience/goal rule defaults that we want to ignore here:
   // we only want to restore *explicitly user-picked* goals.
   const hasStoredGoal =
-    getSetting('flag.focus.goal.understand', '') !== '' ||
-    getSetting('flag.focus.goal.declutter', '') !== '' ||
-    getSetting('flag.focus.goal.minimal', '') !== '' ||
-    getSetting('flag.focus.goal.accessibility', '') !== '';
+    getSetting("flag.focus.goal.understand", "") !== "" ||
+    getSetting("flag.focus.goal.declutter", "") !== "" ||
+    getSetting("flag.focus.goal.minimal", "") !== "" ||
+    getSetting("flag.focus.goal.accessibility", "") !== "";
 
   const initialUnderstand = hasStoredGoal
-    ? getSetting('flag.focus.goal.understand', '') === 'true'
+    ? getSetting("flag.focus.goal.understand", "") === "true"
     : undefined;
   const initialDeclutter = hasStoredGoal
-    ? getSetting('flag.focus.goal.declutter', '') === 'true'
+    ? getSetting("flag.focus.goal.declutter", "") === "true"
     : undefined;
   const initialMinimal = hasStoredGoal
-    ? getSetting('flag.focus.goal.minimal', '') === 'true'
+    ? getSetting("flag.focus.goal.minimal", "") === "true"
     : undefined;
   const initialAccessibility = hasStoredGoal
-    ? getSetting('flag.focus.goal.accessibility', '') === 'true'
+    ? getSetting("flag.focus.goal.accessibility", "") === "true"
     : undefined;
 
   return (
     <GoalsScreen
       audience={audience}
-      initialUnderstand={initialUnderstand}
+      initialAccessibility={initialAccessibility}
       initialDeclutter={initialDeclutter}
       initialMinimal={initialMinimal}
-      initialAccessibility={initialAccessibility}
+      initialUnderstand={initialUnderstand}
     />
   );
 }

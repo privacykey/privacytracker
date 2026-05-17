@@ -1,14 +1,15 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { diffPolicyTexts } from "../../../../../../lib/policy-diff";
 import {
   getPolicyVersion,
   getPreviousPolicyVersion,
-} from '../../../../../../lib/policy-versions';
-import { diffPolicyTexts } from '../../../../../../lib/policy-diff';
+} from "../../../../../../lib/policy-versions";
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
-} from '../../../../../../lib/security';
+} from "../../../../../../lib/security";
 
 // GET /api/policy/version/[id]/diff
 //
@@ -31,26 +32,26 @@ import {
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string }> }
 ) {
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'policy.version.diff'),
+    key: rateLimitKeyForRequest(request, "policy.version.diff"),
     limit: 60,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const params = await Promise.resolve(context.params);
-  const id = (params?.id ?? '').toString();
+  const id = (params?.id ?? "").toString();
   if (!id || id.length > 128) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
   const current = getPolicyVersion(id);
   if (!current) {
-    return NextResponse.json({ error: 'Version not found' }, { status: 404 });
+    return NextResponse.json({ error: "Version not found" }, { status: 404 });
   }
 
   const previous = getPreviousPolicyVersion(id);
@@ -58,12 +59,15 @@ export async function GET(
     // No predecessor — return 404 so the UI can render "first-ever scrape,
     // nothing to compare against" without a special-case status code.
     return NextResponse.json(
-      { error: 'No previous version to diff against' },
-      { status: 404 },
+      { error: "No previous version to diff against" },
+      { status: 404 }
     );
   }
 
-  const result = diffPolicyTexts(previous.source_text ?? '', current.source_text ?? '');
+  const result = diffPolicyTexts(
+    previous.source_text ?? "",
+    current.source_text ?? ""
+  );
 
   return NextResponse.json({
     previous: {

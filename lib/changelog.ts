@@ -1,47 +1,49 @@
-import db from './db';
-import crypto from 'crypto';
+import crypto from "node:crypto";
+import db from "./db";
 
 // Re-export all pure types and constants from the client-safe split so that
 // existing server-side callers can continue importing from this single file.
 export type {
+  ChangeEntry,
+  ChangelogRow,
   PrivacyCategorySnapshot,
   PrivacyTypeSnapshot,
-  ChangeEntry,
-  SnapshotChangelogRow,
+  ReviewAction,
+  ReviewActionRecord,
   ReviewChangelogRow,
-  ChangelogRow,
+  SnapshotChangelogRow,
+  SnoozeDays,
   UnacknowledgedChangeEvent,
   UnacknowledgedChanges,
-  ReviewAction,
-  SnoozeDays,
-  ReviewActionRecord,
-} from './changelog-types';
-export { SNOOZE_DAYS_OPTIONS } from './changelog-types';
+} from "./changelog-types";
+export { SNOOZE_DAYS_OPTIONS } from "./changelog-types";
 
 import type {
-  PrivacyTypeSnapshot,
   ChangeEntry,
-  SnapshotChangelogRow,
-  ReviewChangelogRow,
   ChangelogRow,
+  PrivacyTypeSnapshot,
+  ReviewAction,
+  ReviewActionRecord,
+  ReviewChangelogRow,
+  SnapshotChangelogRow,
+  SnoozeDays,
   UnacknowledgedChangeEvent,
   UnacknowledgedChanges,
-  ReviewAction,
-  SnoozeDays,
-  ReviewActionRecord,
-} from './changelog-types';
+} from "./changelog-types";
 
 /** Build a snapshot of an app's current privacy state directly from DB rows. */
 export function buildSnapshot(appId: string): PrivacyTypeSnapshot[] {
-  const types = db.prepare('SELECT * FROM privacy_types WHERE app_id = ?').all(appId) as any[];
-  return types.map(t => {
-    const categories = db.prepare(
-      'SELECT * FROM privacy_categories WHERE type_id = ?'
-    ).all(t.id) as any[];
+  const types = db
+    .prepare("SELECT * FROM privacy_types WHERE app_id = ?")
+    .all(appId) as any[];
+  return types.map((t) => {
+    const categories = db
+      .prepare("SELECT * FROM privacy_categories WHERE type_id = ?")
+      .all(t.id) as any[];
     return {
       identifier: t.identifier,
       title: t.title,
-      categories: categories.map(c => ({
+      categories: categories.map((c) => ({
         identifier: c.identifier,
         title: c.title,
       })),
@@ -56,16 +58,16 @@ export function diffSnapshots(
 ): ChangeEntry[] {
   const changes: ChangeEntry[] = [];
 
-  const oldTypes = new Map(oldSnapshot.map(t => [t.identifier, t]));
-  const newTypes = new Map(newSnapshot.map(t => [t.identifier, t]));
+  const oldTypes = new Map(oldSnapshot.map((t) => [t.identifier, t]));
+  const newTypes = new Map(newSnapshot.map((t) => [t.identifier, t]));
 
   // New top-level privacy types
   for (const [id, newType] of newTypes) {
     if (!oldTypes.has(id)) {
       changes.push({
-        type: 'added',
+        type: "added",
         description: `New privacy label: "${newType.title}"`,
-        details: newType.categories.map(c => c.title),
+        details: newType.categories.map((c) => c.title),
       });
     }
   }
@@ -74,7 +76,7 @@ export function diffSnapshots(
   for (const [id, oldType] of oldTypes) {
     if (!newTypes.has(id)) {
       changes.push({
-        type: 'removed',
+        type: "removed",
         description: `Removed privacy label: "${oldType.title}"`,
       });
     }
@@ -83,24 +85,30 @@ export function diffSnapshots(
   // Changes within existing types — compare categories
   for (const [id, newType] of newTypes) {
     const oldType = oldTypes.get(id);
-    if (!oldType) continue;
+    if (!oldType) {
+      continue;
+    }
 
-    const oldCatIds = new Set(oldType.categories.map(c => c.identifier));
-    const newCatIds = new Set(newType.categories.map(c => c.identifier));
+    const oldCatIds = new Set(oldType.categories.map((c) => c.identifier));
+    const newCatIds = new Set(newType.categories.map((c) => c.identifier));
 
-    const addedCats = newType.categories.filter(c => !oldCatIds.has(c.identifier));
-    const removedCats = oldType.categories.filter(c => !newCatIds.has(c.identifier));
+    const addedCats = newType.categories.filter(
+      (c) => !oldCatIds.has(c.identifier)
+    );
+    const removedCats = oldType.categories.filter(
+      (c) => !newCatIds.has(c.identifier)
+    );
 
     for (const c of addedCats) {
       changes.push({
-        type: 'added',
+        type: "added",
         description: `"${newType.title}" now collects: ${c.title}`,
       });
     }
 
     for (const c of removedCats) {
       changes.push({
-        type: 'removed',
+        type: "removed",
         description: `"${newType.title}" no longer collects: ${c.title}`,
       });
     }
@@ -110,43 +118,6 @@ export function diffSnapshots(
 }
 
 export interface SaveSnapshotOptions {
-  /**
-   * Provenance of the snapshot. Defaults to `'live'` for the real-time
-   * scrape path. Use `'wayback'` for back-dated rows written by the
-   * historical-import flow.
-   */
-  source?: 'live' | 'wayback';
-  /**
-   * Override the timestamp written to `scraped_at`. Historical imports pass
-   * the capture date of the Wayback snapshot so the changelog timeline
-   * places the row at the correct point in history rather than "now".
-   */
-  scrapedAt?: number;
-  /**
-   * The `https://web.archive.org/web/…` URL the snapshot was reconstructed
-   * from. Ignored unless `source === 'wayback'`.
-   */
-  waybackUrl?: string | null;
-  /**
-   * When true, do not bump `apps.changeCount` even if `changes` is
-   * non-empty. Defaults to `true` for `source === 'wayback'` so retroactive
-   * imports don't re-raise the unacknowledged-changes badge for history the
-   * user has already lived through.
-   */
-  skipChangeCountBump?: boolean;
-  /**
-   * Provenance of *why* this sync ran. Stored verbatim on the snapshot row so
-   * the History timeline can show a "Scheduled sync"/"Manual sync"/etc. pill
-   * next to each entry. Freeform, but conventional values are:
-   *   - `'scheduled'` — background scheduler tick
-   *   - `'manual'`    — user clicked Sync now / rescraped a single app
-   *   - `'import'`    — initial scrape during onboarding or bulk import
-   *   - `'wayback'`   — historical back-fill
-   * Defaults to `'wayback'` when `source === 'wayback'` and `undefined`
-   * otherwise; the UI falls back to "Live sync" for the undefined case so
-   * legacy rows still render sensibly.
-   */
-  triggeredBy?: SyncTrigger | null;
   /**
    * App Store version string ("7.22.0") current at the moment this snapshot
    * was taken. Captured from iTunes Lookup by the scraper and threaded through
@@ -161,6 +132,43 @@ export interface SaveSnapshotOptions {
    * release date even when they sync weeks after the update landed.
    */
   appVersionUpdatedAt?: number | null;
+  /**
+   * Override the timestamp written to `scraped_at`. Historical imports pass
+   * the capture date of the Wayback snapshot so the changelog timeline
+   * places the row at the correct point in history rather than "now".
+   */
+  scrapedAt?: number;
+  /**
+   * When true, do not bump `apps.changeCount` even if `changes` is
+   * non-empty. Defaults to `true` for `source === 'wayback'` so retroactive
+   * imports don't re-raise the unacknowledged-changes badge for history the
+   * user has already lived through.
+   */
+  skipChangeCountBump?: boolean;
+  /**
+   * Provenance of the snapshot. Defaults to `'live'` for the real-time
+   * scrape path. Use `'wayback'` for back-dated rows written by the
+   * historical-import flow.
+   */
+  source?: "live" | "wayback";
+  /**
+   * Provenance of *why* this sync ran. Stored verbatim on the snapshot row so
+   * the History timeline can show a "Scheduled sync"/"Manual sync"/etc. pill
+   * next to each entry. Freeform, but conventional values are:
+   *   - `'scheduled'` — background scheduler tick
+   *   - `'manual'`    — user clicked Sync now / rescraped a single app
+   *   - `'import'`    — initial scrape during onboarding or bulk import
+   *   - `'wayback'`   — historical back-fill
+   * Defaults to `'wayback'` when `source === 'wayback'` and `undefined`
+   * otherwise; the UI falls back to "Live sync" for the undefined case so
+   * legacy rows still render sensibly.
+   */
+  triggeredBy?: SyncTrigger | null;
+  /**
+   * The `https://web.archive.org/web/…` URL the snapshot was reconstructed
+   * from. Ignored unless `source === 'wayback'`.
+   */
+  waybackUrl?: string | null;
 }
 
 /**
@@ -172,7 +180,12 @@ export interface SaveSnapshotOptions {
  * a purple "SAMPLE" pill so devs (and reviewers screenshotting the UI)
  * can tell synthesised history apart from real syncs at a glance.
  */
-export type SyncTrigger = 'scheduled' | 'manual' | 'import' | 'wayback' | 'sample';
+export type SyncTrigger =
+  | "scheduled"
+  | "manual"
+  | "import"
+  | "wayback"
+  | "sample";
 
 /**
  * Coerce the raw `triggered_by` column value to one of the canonical
@@ -189,11 +202,17 @@ export type SyncTrigger = 'scheduled' | 'manual' | 'import' | 'wayback' | 'sampl
  * empty array so the UI can just render the bare count.
  */
 function parseCoveredSnapshotIds(raw: string | null | undefined): string[] {
-  if (!raw) return [];
+  if (!raw) {
+    return [];
+  }
   try {
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((v): v is string => typeof v === 'string' && v.length > 0);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter(
+      (v): v is string => typeof v === "string" && v.length > 0
+    );
   } catch {
     return [];
   }
@@ -201,18 +220,20 @@ function parseCoveredSnapshotIds(raw: string | null | undefined): string[] {
 
 function normalizeTrigger(
   raw: string | null,
-  source: string | null,
+  source: string | null
 ): SyncTrigger | null {
   if (
-    raw === 'scheduled' ||
-    raw === 'manual' ||
-    raw === 'import' ||
-    raw === 'wayback' ||
-    raw === 'sample'
+    raw === "scheduled" ||
+    raw === "manual" ||
+    raw === "import" ||
+    raw === "wayback" ||
+    raw === "sample"
   ) {
     return raw;
   }
-  if (source === 'wayback') return 'wayback';
+  if (source === "wayback") {
+    return "wayback";
+  }
   return null;
 }
 
@@ -221,29 +242,31 @@ export function saveSnapshot(
   appId: string,
   snapshot: PrivacyTypeSnapshot[],
   changes: ChangeEntry[],
-  options: SaveSnapshotOptions = {},
+  options: SaveSnapshotOptions = {}
 ): string {
   const id = crypto.randomUUID();
   const hasChanges = changes.length > 0;
-  const source = options.source ?? 'live';
+  const source = options.source ?? "live";
   const scrapedAt = options.scrapedAt ?? Date.now();
-  const waybackUrl = source === 'wayback' ? options.waybackUrl ?? null : null;
+  const waybackUrl = source === "wayback" ? (options.waybackUrl ?? null) : null;
   // Wayback rows are *history* — they should never inflate the unacknowledged
   // badge or the change counter. Callers can still opt out of the bump for
   // live snapshots by passing skipChangeCountBump explicitly, but the
   // default mirrors the legacy behaviour: live rows with real changes bump,
   // wayback rows never do.
-  const skipBump = options.skipChangeCountBump ?? source === 'wayback';
+  const skipBump = options.skipChangeCountBump ?? source === "wayback";
   // triggered_by is optional — callers that haven't been threaded through yet
   // will write NULL and the UI falls back to an inferred label. Wayback rows
   // default to 'wayback' so back-fill always carries provenance even if the
   // helper forgets to pass it.
   const triggeredBy =
-    options.triggeredBy ?? (source === 'wayback' ? 'wayback' : null);
+    options.triggeredBy ?? (source === "wayback" ? "wayback" : null);
 
   const appVersion = options.appVersion ?? null;
   const appVersionUpdatedAt =
-    typeof options.appVersionUpdatedAt === 'number' ? options.appVersionUpdatedAt : null;
+    typeof options.appVersionUpdatedAt === "number"
+      ? options.appVersionUpdatedAt
+      : null;
 
   db.prepare(`
     INSERT INTO privacy_snapshots
@@ -262,11 +285,13 @@ export function saveSnapshot(
     waybackUrl,
     triggeredBy,
     appVersion,
-    appVersionUpdatedAt,
+    appVersionUpdatedAt
   );
 
   if (hasChanges && !skipBump) {
-    db.prepare('UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?').run(appId);
+    db.prepare(
+      "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?"
+    ).run(appId);
   }
 
   return id;
@@ -283,7 +308,7 @@ export function saveSnapshot(
  */
 export function appendPolicyChangeEntry(
   appId: string,
-  entry: ChangeEntry,
+  entry: ChangeEntry
 ): void {
   const latest = getLatestSnapshot(appId) ?? [];
   const id = crypto.randomUUID();
@@ -294,7 +319,7 @@ export function appendPolicyChangeEntry(
   //   - `first` is the first-ever capture and worth acknowledging.
   //   - `changed` is the whole point of the feature.
   //   - `error` surfaces a failed rescrape the user should notice.
-  const changesDetected = entry.policy_event === 'same' ? 0 : 1;
+  const changesDetected = entry.policy_event === "same" ? 0 : 1;
   db.prepare(`
     INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -304,7 +329,7 @@ export function appendPolicyChangeEntry(
     Date.now(),
     JSON.stringify(latest),
     changesDetected,
-    JSON.stringify([{ ...entry, category: entry.category ?? 'privacy-policy' }]),
+    JSON.stringify([{ ...entry, category: entry.category ?? "privacy-policy" }])
   );
 }
 
@@ -332,24 +357,30 @@ export function appendPolicyChangeEntry(
 export function appendWaybackAttemptEntry(
   appId: string,
   options: {
-    event: 'requested_snapshot' | 'no_capture' | 'save_now_failed';
+    event: "requested_snapshot" | "no_capture" | "save_now_failed";
     description: string;
     details?: string[];
     saveNowUrl?: string;
     targetDate?: number;
-  },
+  }
 ): void {
   const latest = getLatestSnapshot(appId) ?? [];
   const id = crypto.randomUUID();
   const entry: ChangeEntry = {
-    type: 'wayback',
+    type: "wayback",
     description: options.description,
-    category: 'wayback-attempt',
+    category: "wayback-attempt",
     wayback_event: options.event,
   };
-  if (options.details && options.details.length > 0) entry.details = options.details;
-  if (options.saveNowUrl) entry.save_now_url = options.saveNowUrl;
-  if (typeof options.targetDate === 'number') entry.target_date = options.targetDate;
+  if (options.details && options.details.length > 0) {
+    entry.details = options.details;
+  }
+  if (options.saveNowUrl) {
+    entry.save_now_url = options.saveNowUrl;
+  }
+  if (typeof options.targetDate === "number") {
+    entry.target_date = options.targetDate;
+  }
 
   db.prepare(`
     INSERT INTO privacy_snapshots
@@ -361,18 +392,20 @@ export function appendWaybackAttemptEntry(
     appId,
     Date.now(),
     JSON.stringify(latest),
-    JSON.stringify([entry]),
+    JSON.stringify([entry])
   );
 }
 
 /** Return the most recent snapshot for an app, or null if none exists. */
 export function getLatestSnapshot(appId: string): PrivacyTypeSnapshot[] | null {
-  const row = db.prepare(`
+  const row = db
+    .prepare(`
     SELECT snapshot_json FROM privacy_snapshots
     WHERE app_id = ?
     ORDER BY scraped_at DESC
     LIMIT 1
-  `).get(appId) as any;
+  `)
+    .get(appId) as any;
 
   return row ? JSON.parse(row.snapshot_json) : null;
 }
@@ -384,8 +417,9 @@ export function getLatestSnapshot(appId: string): PrivacyTypeSnapshot[] | null {
  * source independently, so callers don't have to post-filter.
  */
 export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
-  const snapshots = (db
-    .prepare(`
+  const snapshots = (
+    db
+      .prepare(`
       SELECT id, scraped_at, snapshot_json, changes_detected, changes_summary,
              source, wayback_snapshot_url, triggered_by,
              app_version, app_version_updated_at
@@ -394,7 +428,7 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
       ORDER BY scraped_at DESC
       LIMIT ?
     `)
-    .all(appId, limit) as Array<{
+      .all(appId, limit) as Array<{
       id: string;
       scraped_at: number;
       snapshot_json: string | null;
@@ -405,21 +439,24 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
       triggered_by: string | null;
       app_version: string | null;
       app_version_updated_at: number | null;
-    }>).map<SnapshotChangelogRow>(row => ({
-      kind: 'snapshot',
-      id: row.id,
-      scraped_at: row.scraped_at,
-      snapshot_json: row.snapshot_json ?? null,
-      changes_detected: row.changes_detected,
-      changes_summary: row.changes_summary ? (JSON.parse(row.changes_summary) as ChangeEntry[]) : [],
-      // Normalize NULL/missing source to 'live' so older rows (pre-migration)
-      // still render correctly and the UI can branch on a guaranteed value.
-      source: row.source === 'wayback' ? 'wayback' : 'live',
-      wayback_snapshot_url: row.wayback_snapshot_url ?? null,
-      triggered_by: normalizeTrigger(row.triggered_by, row.source),
-      app_version: row.app_version ?? null,
-      app_version_updated_at: row.app_version_updated_at ?? null,
-    }));
+    }>
+  ).map<SnapshotChangelogRow>((row) => ({
+    kind: "snapshot",
+    id: row.id,
+    scraped_at: row.scraped_at,
+    snapshot_json: row.snapshot_json ?? null,
+    changes_detected: row.changes_detected,
+    changes_summary: row.changes_summary
+      ? (JSON.parse(row.changes_summary) as ChangeEntry[])
+      : [],
+    // Normalize NULL/missing source to 'live' so older rows (pre-migration)
+    // still render correctly and the UI can branch on a guaranteed value.
+    source: row.source === "wayback" ? "wayback" : "live",
+    wayback_snapshot_url: row.wayback_snapshot_url ?? null,
+    triggered_by: normalizeTrigger(row.triggered_by, row.source),
+    app_version: row.app_version ?? null,
+    app_version_updated_at: row.app_version_updated_at ?? null,
+  }));
 
   // Mark wayback rows whose snapshot content is byte-identical to an adjacent
   // live row. The UI uses this to show "Matches live sync" so users can see
@@ -429,13 +466,17 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
   // twice in the same order is a reliable comparison.
   for (let i = 0; i < snapshots.length; i++) {
     const row = snapshots[i];
-    if (row.source !== 'wayback' || !row.snapshot_json) continue;
+    if (row.source !== "wayback" || !row.snapshot_json) {
+      continue;
+    }
     // Look at both neighbours because wayback rows are usually back-dated and
     // end up either immediately before or immediately after a live sync row
     // in the timeline, depending on when the import ran.
     const neighbours = [snapshots[i - 1], snapshots[i + 1]];
     for (const other of neighbours) {
-      if (!other || other.source !== 'live' || !other.snapshot_json) continue;
+      if (!other || other.source !== "live" || !other.snapshot_json) {
+        continue;
+      }
       if (other.snapshot_json === row.snapshot_json) {
         row.matches_live_sync = true;
         break;
@@ -443,8 +484,9 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
     }
   }
 
-  const reviews = (db
-    .prepare(`
+  const reviews = (
+    db
+      .prepare(`
       SELECT id, acted_at, action, covered_count, covered_snapshot_ids,
              snooze_until, note
       FROM change_review_actions
@@ -452,7 +494,7 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
       ORDER BY acted_at DESC
       LIMIT ?
     `)
-    .all(appId, limit) as Array<{
+      .all(appId, limit) as Array<{
       id: string;
       acted_at: number;
       action: ReviewAction;
@@ -460,25 +502,30 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
       covered_snapshot_ids: string | null;
       snooze_until: number | null;
       note: string | null;
-    }>).map<ReviewChangelogRow>(row => ({
-      kind: 'review',
-      id: `review:${row.id}`,
-      scraped_at: row.acted_at,
-      action: row.action,
-      covered_count: row.covered_count,
-      // JSON-decoded list of snapshot ids covered at review time. Defensive
-      // parse — malformed or missing rows (pre-migration) default to [].
-      covered_snapshot_ids: parseCoveredSnapshotIds(row.covered_snapshot_ids),
-      snooze_until: row.snooze_until,
-      note: row.note,
-    }));
+    }>
+  ).map<ReviewChangelogRow>((row) => ({
+    kind: "review",
+    id: `review:${row.id}`,
+    scraped_at: row.acted_at,
+    action: row.action,
+    covered_count: row.covered_count,
+    // JSON-decoded list of snapshot ids covered at review time. Defensive
+    // parse — malformed or missing rows (pre-migration) default to [].
+    covered_snapshot_ids: parseCoveredSnapshotIds(row.covered_snapshot_ids),
+    snooze_until: row.snooze_until,
+    note: row.note,
+  }));
 
   // Merge-sort by timestamp DESC. Stable tie-break: snapshot before review so
   // if a user clicks Mark-reviewed immediately after a sync lands the order on
   // screen reads "change detected → acknowledged" rather than the reverse.
   const merged: ChangelogRow[] = [...snapshots, ...reviews].sort((a, b) => {
-    if (b.scraped_at !== a.scraped_at) return b.scraped_at - a.scraped_at;
-    if (a.kind !== b.kind) return a.kind === 'snapshot' ? -1 : 1;
+    if (b.scraped_at !== a.scraped_at) {
+      return b.scraped_at - a.scraped_at;
+    }
+    if (a.kind !== b.kind) {
+      return a.kind === "snapshot" ? -1 : 1;
+    }
     return 0;
   });
 
@@ -494,16 +541,17 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
  * stamped onto every row for rendering.
  */
 export interface UniversalChangeRow {
+  appDeveloper: string | null;
+  appIconUrl: string | null;
+  appId: string;
+  appName: string;
+  entry: ChangeEntry;
   /** Stable id: `<snapshotId>:<entryIndex>`. Lets the UI render keys
    *  + scroll-to-row anchors without duplicate collisions. */
   id: string;
-  appId: string;
-  appName: string;
-  appIconUrl: string | null;
-  appDeveloper: string | null;
   scrapedAt: number;
   /** 'live' | 'wayback' — wayback rows are back-dated archive imports. */
-  source: 'live' | 'wayback';
+  source: "live" | "wayback";
   /**
    * Inherited snapshot trigger so the UI can tag scheduled vs manual.
    * Reuses the `SyncTrigger` union (the same shape `normalizeTrigger`
@@ -513,24 +561,23 @@ export interface UniversalChangeRow {
    * value to keep the assignment legal.
    */
   triggeredBy: SyncTrigger | null;
-  entry: ChangeEntry;
 }
 
 export interface UniversalChangelogFilters {
-  /** Inclusive window (epoch ms). Defaults to "all time" when omitted. */
-  fromMs?: number;
-  toMs?: number;
   /** Restrict to a specific tracked app id. */
   appId?: string;
-  /** Restrict to one or more entry types — ChangeEntry.type. */
-  types?: Array<ChangeEntry['type']>;
   /** Restrict to one or more entry categories — ChangeEntry.category. */
-  categories?: Array<NonNullable<ChangeEntry['category']>>;
+  categories?: NonNullable<ChangeEntry["category"]>[];
+  /** Inclusive window (epoch ms). Defaults to "all time" when omitted. */
+  fromMs?: number;
   /** Page size; defaults to 100. The UI is expected to paginate via
    *  `offset` rather than asking for huge limits. */
   limit?: number;
   /** Skip this many rows from the head of the (sorted) result set. */
   offset?: number;
+  toMs?: number;
+  /** Restrict to one or more entry types — ChangeEntry.type. */
+  types?: ChangeEntry["type"][];
 }
 
 /**
@@ -544,24 +591,25 @@ export interface UniversalChangelogFilters {
  * Returns `{ rows, total }` so the UI can render a "showing N of M"
  * footer and decide whether to render a Load-more button.
  */
-export function listUniversalChangelog(
-  opts: UniversalChangelogFilters = {},
-): { rows: UniversalChangeRow[]; total: number } {
+export function listUniversalChangelog(opts: UniversalChangelogFilters = {}): {
+  rows: UniversalChangeRow[];
+  total: number;
+} {
   const limit = Math.max(1, Math.min(opts.limit ?? 100, 500));
   const offset = Math.max(0, opts.offset ?? 0);
 
-  const where: string[] = ['s.changes_detected > 0'];
+  const where: string[] = ["s.changes_detected > 0"];
   const params: Array<number | string> = [];
-  if (typeof opts.fromMs === 'number') {
-    where.push('s.scraped_at >= ?');
+  if (typeof opts.fromMs === "number") {
+    where.push("s.scraped_at >= ?");
     params.push(opts.fromMs);
   }
-  if (typeof opts.toMs === 'number') {
-    where.push('s.scraped_at <= ?');
+  if (typeof opts.toMs === "number") {
+    where.push("s.scraped_at <= ?");
     params.push(opts.toMs);
   }
   if (opts.appId) {
-    where.push('s.app_id = ?');
+    where.push("s.app_id = ?");
     params.push(opts.appId);
   }
 
@@ -573,36 +621,36 @@ export function listUniversalChangelog(
   // filling the requested page in one DB pass.
   const candidateCap = Math.min(limit * 8, 4000);
 
-  type Row = {
-    snapshot_id: string;
+  interface Row {
     app_id: string;
-    name: string;
-    iconUrl: string | null;
-    developer: string | null;
-    scraped_at: number;
     changes_summary: string | null;
+    developer: string | null;
+    iconUrl: string | null;
+    name: string;
+    scraped_at: number;
+    snapshot_id: string;
     source: string | null;
     triggered_by: string | null;
-  };
+  }
 
-  const candidates = (db
+  const candidates = db
     .prepare(
       `SELECT s.id AS snapshot_id, s.app_id, a.name, a.iconUrl, a.developer,
               s.scraped_at, s.changes_summary, s.source, s.triggered_by
          FROM privacy_snapshots s
          JOIN apps a ON a.id = s.app_id
-        WHERE ${where.join(' AND ')}
+        WHERE ${where.join(" AND ")}
         ORDER BY s.scraped_at DESC
-        LIMIT ?`,
+        LIMIT ?`
     )
-    .all(...params, candidateCap)) as Row[];
+    .all(...params, candidateCap) as Row[];
 
-  const typeSet = opts.types && opts.types.length > 0
-    ? new Set<string>(opts.types)
-    : null;
-  const categorySet = opts.categories && opts.categories.length > 0
-    ? new Set<string>(opts.categories)
-    : null;
+  const typeSet =
+    opts.types && opts.types.length > 0 ? new Set<string>(opts.types) : null;
+  const categorySet =
+    opts.categories && opts.categories.length > 0
+      ? new Set<string>(opts.categories)
+      : null;
 
   const rowsAll: UniversalChangeRow[] = [];
   for (const r of candidates) {
@@ -617,10 +665,14 @@ export function listUniversalChangelog(
     }
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
-      if (typeSet && !typeSet.has(entry.type)) continue;
+      if (typeSet && !typeSet.has(entry.type)) {
+        continue;
+      }
       if (categorySet) {
-        const c = entry.category ?? 'privacy-label';
-        if (!categorySet.has(c)) continue;
+        const c = entry.category ?? "privacy-label";
+        if (!categorySet.has(c)) {
+          continue;
+        }
       }
       rowsAll.push({
         id: `${r.snapshot_id}:${i}`,
@@ -629,7 +681,7 @@ export function listUniversalChangelog(
         appIconUrl: r.iconUrl ?? null,
         appDeveloper: r.developer ?? null,
         scrapedAt: r.scraped_at,
-        source: r.source === 'wayback' ? 'wayback' : 'live',
+        source: r.source === "wayback" ? "wayback" : "live",
         triggeredBy: normalizeTrigger(r.triggered_by, r.source),
         entry,
       });
@@ -650,7 +702,7 @@ export function listUniversalChangelog(
 export function getUnacknowledgedChanges(appId: string): UnacknowledgedChanges {
   const row = db
     .prepare(
-      'SELECT changes_acknowledged_at, changes_snoozed_until FROM apps WHERE id = ?',
+      "SELECT changes_acknowledged_at, changes_snoozed_until FROM apps WHERE id = ?"
     )
     .get(appId) as
     | { changes_acknowledged_at?: number; changes_snoozed_until?: number }
@@ -669,9 +721,13 @@ export function getUnacknowledgedChanges(appId: string): UnacknowledgedChanges {
       WHERE app_id = ? AND changes_detected = 1 AND scraped_at > ?
       ORDER BY scraped_at DESC
     `)
-    .all(appId, since) as Array<{ id: string; scraped_at: number; changes_summary: string | null }>;
+    .all(appId, since) as Array<{
+    id: string;
+    scraped_at: number;
+    changes_summary: string | null;
+  }>;
 
-  const events: UnacknowledgedChangeEvent[] = rows.map(r => {
+  const events: UnacknowledgedChangeEvent[] = rows.map((r) => {
     let parsed: ChangeEntry[] = [];
     if (r.changes_summary) {
       try {
@@ -689,8 +745,11 @@ export function getUnacknowledgedChanges(appId: string): UnacknowledgedChanges {
   for (const event of events) {
     for (const change of event.changes) {
       totalCount += 1;
-      if (change.type === 'added') addedCount += 1;
-      else if (change.type === 'removed') removedCount += 1;
+      if (change.type === "added") {
+        addedCount += 1;
+      } else if (change.type === "removed") {
+        removedCount += 1;
+      }
     }
   }
 
@@ -710,7 +769,7 @@ export function getUnacknowledgedChanges(appId: string): UnacknowledgedChanges {
  */
 export function recordReviewAction(
   appId: string,
-  options: { action: ReviewAction; snoozeDays?: SnoozeDays; note?: string },
+  options: { action: ReviewAction; snoozeDays?: SnoozeDays; note?: string }
 ): ReviewActionRecord {
   const { action, snoozeDays, note } = options;
   const now = Date.now();
@@ -726,7 +785,7 @@ export function recordReviewAction(
   // later doesn't lose that provenance.
   const pending = getUnacknowledgedChanges(appId);
   const coveredCount = pending.totalCount;
-  const coveredSnapshotIds = pending.events.map(e => e.id);
+  const coveredSnapshotIds = pending.events.map((e) => e.id);
   const coveredSnapshotIdsJson =
     coveredSnapshotIds.length > 0 ? JSON.stringify(coveredSnapshotIds) : null;
 
@@ -738,7 +797,7 @@ export function recordReviewAction(
   const preState = readReviewActionPreState(appId);
 
   let snoozeUntil: number | null = null;
-  if (action === 'snoozed') {
+  if (action === "snoozed") {
     const days = snoozeDays ?? 7;
     snoozeUntil = now + days * 24 * 60 * 60 * 1000;
   }
@@ -748,7 +807,7 @@ export function recordReviewAction(
       `INSERT INTO change_review_actions
          (id, app_id, action, acted_at, covered_count, covered_snapshot_ids,
           snooze_until, note)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       id,
       appId,
@@ -757,10 +816,10 @@ export function recordReviewAction(
       coveredCount,
       coveredSnapshotIdsJson,
       snoozeUntil,
-      note ?? null,
+      note ?? null
     );
 
-    if (action === 'reviewed' || action === 'dismissed') {
+    if (action === "reviewed" || action === "dismissed") {
       // Terminal actions advance the acknowledgement watermark and clear
       // any pending snooze (otherwise Mark-reviewed during a snooze would
       // silently leave the app in a snoozed-but-reviewed tombstone state
@@ -770,16 +829,20 @@ export function recordReviewAction(
             SET changeCount = 0,
                 changes_acknowledged_at = ?,
                 changes_snoozed_until = 0
-          WHERE id = ?`,
+          WHERE id = ?`
       ).run(now, appId);
-      db.prepare('UPDATE notifications SET read = 1 WHERE app_id = ? AND read = 0')
-        .run(appId);
-    } else if (action === 'snoozed') {
-      db.prepare('UPDATE apps SET changes_snoozed_until = ? WHERE id = ?')
-        .run(snoozeUntil, appId);
-    } else if (action === 'unsnoozed') {
-      db.prepare('UPDATE apps SET changes_snoozed_until = 0 WHERE id = ?')
-        .run(appId);
+      db.prepare(
+        "UPDATE notifications SET read = 1 WHERE app_id = ? AND read = 0"
+      ).run(appId);
+    } else if (action === "snoozed") {
+      db.prepare("UPDATE apps SET changes_snoozed_until = ? WHERE id = ?").run(
+        snoozeUntil,
+        appId
+      );
+    } else if (action === "unsnoozed") {
+      db.prepare("UPDATE apps SET changes_snoozed_until = 0 WHERE id = ?").run(
+        appId
+      );
     }
   });
   tx();
@@ -808,7 +871,7 @@ export function recordReviewAction(
  * still works even if someone calls the lib directly.
  */
 export function acknowledgeChanges(appId: string): void {
-  recordReviewAction(appId, { action: 'reviewed' });
+  recordReviewAction(appId, { action: "reviewed" });
 }
 
 /**
@@ -835,12 +898,18 @@ function readReviewActionPreState(appId: string): ReviewActionPreState | null {
   const row = db
     .prepare(
       `SELECT changeCount, changes_acknowledged_at, changes_snoozed_until
-         FROM apps WHERE id = ?`,
+         FROM apps WHERE id = ?`
     )
     .get(appId) as
-    | { changeCount: number; changes_acknowledged_at: number; changes_snoozed_until: number }
+    | {
+        changeCount: number;
+        changes_acknowledged_at: number;
+        changes_snoozed_until: number;
+      }
     | undefined;
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
   return {
     changeCount: row.changeCount,
     changesAcknowledgedAt: row.changes_acknowledged_at,
@@ -874,24 +943,26 @@ function readReviewActionPreState(appId: string): ReviewActionPreState | null {
 export function undoReviewAction(
   appId: string,
   actionId: string,
-  preState: ReviewActionPreState,
+  preState: ReviewActionPreState
 ): { ok: boolean } {
   const tx = db.transaction(() => {
     const del = db
-      .prepare(`DELETE FROM change_review_actions WHERE id = ? AND app_id = ?`)
+      .prepare("DELETE FROM change_review_actions WHERE id = ? AND app_id = ?")
       .run(actionId, appId);
-    if (del.changes === 0) return false;
+    if (del.changes === 0) {
+      return false;
+    }
     db.prepare(
       `UPDATE apps
           SET changeCount = ?,
               changes_acknowledged_at = ?,
               changes_snoozed_until = ?
-        WHERE id = ?`,
+        WHERE id = ?`
     ).run(
       preState.changeCount,
       preState.changesAcknowledgedAt,
       preState.changesSnoozedUntil,
-      appId,
+      appId
     );
     return true;
   });
@@ -904,7 +975,10 @@ export function undoReviewAction(
  * snapshots, and by any UI that wants to show recent review activity in
  * isolation.
  */
-export function getReviewActions(appId: string, limit = 50): ReviewActionRecord[] {
+export function getReviewActions(
+  appId: string,
+  limit = 50
+): ReviewActionRecord[] {
   const rows = db
     .prepare(
       `SELECT id, app_id, action, acted_at, covered_count, covered_snapshot_ids,
@@ -912,19 +986,19 @@ export function getReviewActions(appId: string, limit = 50): ReviewActionRecord[
          FROM change_review_actions
         WHERE app_id = ?
         ORDER BY acted_at DESC
-        LIMIT ?`,
+        LIMIT ?`
     )
     .all(appId, limit) as Array<{
-      id: string;
-      app_id: string;
-      action: ReviewAction;
-      acted_at: number;
-      covered_count: number;
-      covered_snapshot_ids: string | null;
-      snooze_until: number | null;
-      note: string | null;
-    }>;
-  return rows.map<ReviewActionRecord>(row => ({
+    id: string;
+    app_id: string;
+    action: ReviewAction;
+    acted_at: number;
+    covered_count: number;
+    covered_snapshot_ids: string | null;
+    snooze_until: number | null;
+    note: string | null;
+  }>;
+  return rows.map<ReviewActionRecord>((row) => ({
     id: row.id,
     app_id: row.app_id,
     action: row.action,

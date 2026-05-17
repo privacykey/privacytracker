@@ -15,53 +15,58 @@
  * server-rendered surfaces (e.g. live count in preflight).
  */
 
-import type { VerdictValue } from './verdict-types';
-import type { AppProfileBadge } from './privacy-profile';
+import type { AppProfileBadge } from "./privacy-profile";
+import type { VerdictValue } from "./verdict-types";
 
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
 
-export type QueueScope = 'undecided' | 'all' | 'mismatch' | 'changed';
+export type QueueScope = "undecided" | "all" | "mismatch" | "changed";
 export type QueueSort =
-  | 'mismatch_severity'
-  | 'risk'
-  | 'alphabetical'
-  | 'random';
+  | "mismatch_severity"
+  | "risk"
+  | "alphabetical"
+  | "random";
 
 /** `null` means "no split — one big batch". */
 export type QueueSplit = 10 | 25 | 50 | null;
 
 /** Stable, ordered lists for UI iteration. */
 export const QUEUE_SCOPE_VALUES: readonly QueueScope[] = [
-  'undecided',
-  'all',
-  'mismatch',
-  'changed',
+  "undecided",
+  "all",
+  "mismatch",
+  "changed",
 ] as const;
 
 export const QUEUE_SORT_VALUES: readonly QueueSort[] = [
-  'mismatch_severity',
-  'risk',
-  'alphabetical',
-  'random',
+  "mismatch_severity",
+  "risk",
+  "alphabetical",
+  "random",
 ] as const;
 
-export const QUEUE_SPLIT_VALUES: readonly QueueSplit[] = [10, 25, 50, null] as const;
+export const QUEUE_SPLIT_VALUES: readonly QueueSplit[] = [
+  10,
+  25,
+  50,
+  null,
+] as const;
 
 /**
  * Minimum shape the queue needs from an app row. Matches the subset of
  * AppGrid's `App` type that the carousel card actually renders.
  */
 export interface QueueAppInput {
-  id: string;
-  name: string;
+  changeCount: number;
   developer?: string;
   iconUrl?: string;
+  id: string;
   lastSynced: number;
-  changeCount: number;
-  trackCount?: number;
   linkedCount?: number;
+  name: string;
+  trackCount?: number;
   unlinkedCount?: number;
 }
 
@@ -72,14 +77,14 @@ export interface QueuePreflightChoices {
 }
 
 export interface QueueComputeOptions {
+  /** Apps with pending changes (privacy / accessibility / policy). */
+  changedAppIds?: Set<string>;
+  profileBadges: Record<string, AppProfileBadge>;
+  /** Seedable RNG for stable random sort in tests. Defaults to Math.random. */
+  rng?: () => number;
   scope: QueueScope;
   sort: QueueSort;
   userVerdicts: Record<string, VerdictValue>;
-  profileBadges: Record<string, AppProfileBadge>;
-  /** Apps with pending changes (privacy / accessibility / policy). */
-  changedAppIds?: Set<string>;
-  /** Seedable RNG for stable random sort in tests. Defaults to Math.random. */
-  rng?: () => number;
 }
 
 // ─────────────────────────────────────────────
@@ -87,8 +92,8 @@ export interface QueueComputeOptions {
 // ─────────────────────────────────────────────
 
 export const DEFAULT_PREFLIGHT: QueuePreflightChoices = {
-  scope: 'undecided',
-  sort: 'mismatch_severity',
+  scope: "undecided",
+  sort: "mismatch_severity",
   split: null,
 };
 
@@ -98,8 +103,8 @@ export const DEFAULT_PREFLIGHT: QueuePreflightChoices = {
  * and `undecided` floods them with stuff they haven't even reviewed yet.
  */
 export const GUARDIAN_DEFAULT_PREFLIGHT: QueuePreflightChoices = {
-  scope: 'mismatch',
-  sort: 'mismatch_severity',
+  scope: "mismatch",
+  sort: "mismatch_severity",
   split: null,
 };
 
@@ -115,18 +120,15 @@ export function computeQueueRiskScore(app: QueueAppInput): number {
   return t * 10 + l * 3 + u;
 }
 
-function matchesScope(
-  app: QueueAppInput,
-  opts: QueueComputeOptions,
-): boolean {
+function matchesScope(app: QueueAppInput, opts: QueueComputeOptions): boolean {
   switch (opts.scope) {
-    case 'undecided':
+    case "undecided":
       return !opts.userVerdicts[app.id];
-    case 'all':
+    case "all":
       return true;
-    case 'mismatch':
+    case "mismatch":
       return (opts.profileBadges[app.id]?.count ?? 0) > 0;
-    case 'changed':
+    case "changed":
       return opts.changedAppIds
         ? opts.changedAppIds.has(app.id)
         : app.changeCount > 0;
@@ -136,27 +138,33 @@ function matchesScope(
 function compareApps(
   a: QueueAppInput,
   b: QueueAppInput,
-  opts: QueueComputeOptions,
+  opts: QueueComputeOptions
 ): number {
   switch (opts.sort) {
-    case 'mismatch_severity': {
+    case "mismatch_severity": {
       const aGap = opts.profileBadges[a.id]?.totalGap ?? -1;
       const bGap = opts.profileBadges[b.id]?.totalGap ?? -1;
-      if (aGap !== bGap) return bGap - aGap;
+      if (aGap !== bGap) {
+        return bGap - aGap;
+      }
       // No profile or equal gaps — fall back to risk so the queue still
       // surfaces the worst apps first.
       const riskDelta = computeQueueRiskScore(b) - computeQueueRiskScore(a);
-      if (riskDelta !== 0) return riskDelta;
+      if (riskDelta !== 0) {
+        return riskDelta;
+      }
       return a.name.localeCompare(b.name);
     }
-    case 'risk': {
+    case "risk": {
       const riskDelta = computeQueueRiskScore(b) - computeQueueRiskScore(a);
-      if (riskDelta !== 0) return riskDelta;
+      if (riskDelta !== 0) {
+        return riskDelta;
+      }
       return a.name.localeCompare(b.name);
     }
-    case 'alphabetical':
+    case "alphabetical":
       return a.name.localeCompare(b.name);
-    case 'random':
+    case "random":
       // Caller seeds via Fisher-Yates; this comparator is unused for
       // random. The dispatch in computeQueue branches before calling.
       return 0;
@@ -185,10 +193,10 @@ function shuffle<T>(items: T[], rng: () => number): T[] {
  */
 export function computeQueueApps(
   apps: QueueAppInput[],
-  opts: QueueComputeOptions,
+  opts: QueueComputeOptions
 ): QueueAppInput[] {
-  const scoped = apps.filter(a => matchesScope(a, opts));
-  if (opts.sort === 'random') {
+  const scoped = apps.filter((a) => matchesScope(a, opts));
+  if (opts.sort === "random") {
     return shuffle(scoped, opts.rng ?? Math.random);
   }
   return [...scoped].sort((a, b) => compareApps(a, b, opts));
@@ -196,14 +204,20 @@ export function computeQueueApps(
 
 /** Number of batches for a given total + split. */
 export function countQueueBatches(total: number, split: QueueSplit): number {
-  if (split === null || total <= split) return total > 0 ? 1 : 0;
+  if (split === null || total <= split) {
+    return total > 0 ? 1 : 0;
+  }
   return Math.ceil(total / split);
 }
 
 /** Split a sorted app list into batches. Returns `[apps]` when no split. */
 export function splitQueueIntoBatches<T>(apps: T[], split: QueueSplit): T[][] {
-  if (split === null || apps.length === 0) return apps.length > 0 ? [apps] : [];
-  if (apps.length <= split) return [apps];
+  if (split === null || apps.length === 0) {
+    return apps.length > 0 ? [apps] : [];
+  }
+  if (apps.length <= split) {
+    return [apps];
+  }
   const out: T[][] = [];
   for (let i = 0; i < apps.length; i += split) {
     out.push(apps.slice(i, i + split));
@@ -217,11 +231,11 @@ export function splitQueueIntoBatches<T>(apps: T[], split: QueueSplit): T[][] {
 
 export interface QueueSessionTotals {
   decided: number;
-  safe: number;
-  replace: number;
-  uninstall: number;
   notesAdded: number;
+  replace: number;
+  safe: number;
   skipped: number;
+  uninstall: number;
 }
 
 export const EMPTY_SESSION_TOTALS: QueueSessionTotals = {
@@ -237,13 +251,13 @@ export const EMPTY_SESSION_TOTALS: QueueSessionTotals = {
 export function applyDecision(
   totals: QueueSessionTotals,
   verdict: VerdictValue,
-  wroteNote: boolean,
+  wroteNote: boolean
 ): QueueSessionTotals {
   return {
     decided: totals.decided + 1,
-    safe: totals.safe + (verdict === 'safe' ? 1 : 0),
-    replace: totals.replace + (verdict === 'replace' ? 1 : 0),
-    uninstall: totals.uninstall + (verdict === 'uninstall' ? 1 : 0),
+    safe: totals.safe + (verdict === "safe" ? 1 : 0),
+    replace: totals.replace + (verdict === "replace" ? 1 : 0),
+    uninstall: totals.uninstall + (verdict === "uninstall" ? 1 : 0),
     notesAdded: totals.notesAdded + (wroteNote ? 1 : 0),
     skipped: totals.skipped,
   };
@@ -253,13 +267,16 @@ export function applyDecision(
 export function undoDecision(
   totals: QueueSessionTotals,
   verdict: VerdictValue,
-  hadNote: boolean,
+  hadNote: boolean
 ): QueueSessionTotals {
   return {
     decided: Math.max(0, totals.decided - 1),
-    safe: Math.max(0, totals.safe - (verdict === 'safe' ? 1 : 0)),
-    replace: Math.max(0, totals.replace - (verdict === 'replace' ? 1 : 0)),
-    uninstall: Math.max(0, totals.uninstall - (verdict === 'uninstall' ? 1 : 0)),
+    safe: Math.max(0, totals.safe - (verdict === "safe" ? 1 : 0)),
+    replace: Math.max(0, totals.replace - (verdict === "replace" ? 1 : 0)),
+    uninstall: Math.max(
+      0,
+      totals.uninstall - (verdict === "uninstall" ? 1 : 0)
+    ),
     notesAdded: Math.max(0, totals.notesAdded - (hadNote ? 1 : 0)),
     skipped: totals.skipped,
   };

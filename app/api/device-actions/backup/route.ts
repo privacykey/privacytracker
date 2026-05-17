@@ -14,26 +14,26 @@
  * before writing any state.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
-import { recordBackup } from '@/lib/device-actions';
-import { getActiveFocus } from '@/lib/feature-flag-storage';
-import { readBoundedJson } from '@/lib/security';
+import { type NextRequest, NextResponse } from "next/server";
+import { recordBackup } from "@/lib/device-actions";
+import { getActiveFocus } from "@/lib/feature-flag-storage";
+import { readBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface Body {
-  ecid?: string;
-  path?: string;
-  finishedAt?: number;
   deviceName?: string | null;
+  ecid?: string;
+  finishedAt?: number;
+  path?: string;
 }
 
 export async function POST(request: NextRequest) {
   const focus = getActiveFocus();
-  if (focus.audience !== 'self') {
+  if (focus.audience !== "self") {
     return NextResponse.json(
-      { error: 'Backups can only be recorded under audience=self.' },
-      { status: 403 },
+      { error: "Backups can only be recorded under audience=self." },
+      { status: 403 }
     );
   }
 
@@ -41,17 +41,23 @@ export async function POST(request: NextRequest) {
   try {
     body = await readBoundedJson<Body>(request, 8 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.ecid || typeof body.ecid !== 'string') {
-    return NextResponse.json({ error: 'ecid is required' }, { status: 400 });
+  if (!body.ecid || typeof body.ecid !== "string") {
+    return NextResponse.json({ error: "ecid is required" }, { status: 400 });
   }
-  if (!body.path || typeof body.path !== 'string') {
-    return NextResponse.json({ error: 'path is required' }, { status: 400 });
+  if (!body.path || typeof body.path !== "string") {
+    return NextResponse.json({ error: "path is required" }, { status: 400 });
   }
-  if (typeof body.finishedAt !== 'number' || !Number.isFinite(body.finishedAt)) {
-    return NextResponse.json({ error: 'finishedAt is required' }, { status: 400 });
+  if (
+    typeof body.finishedAt !== "number" ||
+    !Number.isFinite(body.finishedAt)
+  ) {
+    return NextResponse.json(
+      { error: "finishedAt is required" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -63,7 +69,10 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error('[/api/device-actions/backup POST] failed:', e);
-    return NextResponse.json({ error: 'Failed to record backup' }, { status: 500 });
+    console.error("[/api/device-actions/backup POST] failed:", e);
+    return NextResponse.json(
+      { error: "Failed to record backup" },
+      { status: 500 }
+    );
   }
 }

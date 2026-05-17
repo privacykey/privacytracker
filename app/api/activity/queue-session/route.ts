@@ -9,18 +9,18 @@
  * + Dev Options accordion read these rows.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
-import { recordActivity } from '@/lib/activity';
-import { readBoundedJson } from '@/lib/security';
+import { type NextRequest, NextResponse } from "next/server";
+import { recordActivity } from "@/lib/activity";
+import { readBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface Totals {
   decided?: number;
-  safe?: number;
-  replace?: number;
-  uninstall?: number;
   notesAdded?: number;
+  replace?: number;
+  safe?: number;
+  uninstall?: number;
 }
 
 interface Preflight {
@@ -30,12 +30,17 @@ interface Preflight {
 }
 
 interface Body {
-  totals?: Totals;
   preflight?: Preflight;
+  totals?: Totals;
 }
 
-const VALID_SCOPES = new Set(['undecided', 'all', 'mismatch', 'changed']);
-const VALID_SORTS = new Set(['mismatch_severity', 'risk', 'alphabetical', 'random']);
+const VALID_SCOPES = new Set(["undecided", "all", "mismatch", "changed"]);
+const VALID_SORTS = new Set([
+  "mismatch_severity",
+  "risk",
+  "alphabetical",
+  "random",
+]);
 const VALID_SPLITS = new Set([10, 25, 50, null]);
 
 export async function POST(request: NextRequest) {
@@ -43,7 +48,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await readBoundedJson<Body>(request, 4 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const totals = body.totals ?? {};
@@ -54,18 +59,26 @@ export async function POST(request: NextRequest) {
   const notesAdded = Number(totals.notesAdded ?? 0);
 
   const preflight = body.preflight ?? {};
-  const scope = VALID_SCOPES.has(preflight.scope as string) ? preflight.scope : 'unknown';
-  const sort = VALID_SORTS.has(preflight.sort as string) ? preflight.sort : 'unknown';
-  const split = VALID_SPLITS.has(preflight.split as number | null) ? preflight.split : 'unknown';
+  const scope = VALID_SCOPES.has(preflight.scope as string)
+    ? preflight.scope
+    : "unknown";
+  const sort = VALID_SORTS.has(preflight.sort as string)
+    ? preflight.sort
+    : "unknown";
+  const split = VALID_SPLITS.has(preflight.split as number | null)
+    ? preflight.split
+    : "unknown";
 
   // Drop the row entirely when nothing happened — avoids feed noise from
   // users opening + closing the preflight without deciding anything.
-  if (decided === 0) return new NextResponse(null, { status: 204 });
+  if (decided === 0) {
+    return new NextResponse(null, { status: 204 });
+  }
 
   try {
     recordActivity({
-      type: 'queue_session_completed',
-      status: 'ok',
+      type: "queue_session_completed",
+      status: "ok",
       summary: `Queue session: ${decided} decided · ${safe} safe · ${replace} replace · ${uninstall} uninstall`,
       detail: {
         decided,
@@ -78,7 +91,7 @@ export async function POST(request: NextRequest) {
       startedAt: Date.now(),
     });
   } catch (e) {
-    console.warn('[/api/activity/queue-session] recordActivity failed:', e);
+    console.warn("[/api/activity/queue-session] recordActivity failed:", e);
   }
   return new NextResponse(null, { status: 204 });
 }

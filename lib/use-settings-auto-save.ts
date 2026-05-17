@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Client hook that wraps a settings POST in a validate → POST → toast
@@ -13,26 +13,26 @@
  * a green pill; network/server failures show a red pill with reason.
  */
 
-import { useCallback, useState } from 'react';
-import { pushSettingsToast } from '../app/components/SettingsAutoSaveToast';
+import { useCallback, useState } from "react";
+import { pushSettingsToast } from "../app/components/SettingsAutoSaveToast";
 
-export type AutoSaveResult = 'ok' | 'invalid' | 'error';
+export type AutoSaveResult = "ok" | "invalid" | "error";
 
 export interface AutoSaveOptions<T> {
-  /** Endpoint to POST to. */
-  endpoint: string;
   /** Build the request body from the value. Defaults to `{ value }`. */
   buildBody?: (value: T) => unknown;
-  /** Sync validator. Return `null` for valid, a string for the inline error. */
-  validate?: (value: T) => string | null;
+  /** Endpoint to POST to. */
+  endpoint: string;
+  /** HTTP method, defaults to POST. */
+  method?: "POST" | "PATCH" | "PUT";
+  /** Optional callback fired after the toast. */
+  onSaved?: (value: T, response: unknown) => void;
   /** Toast message on success. Defaults to "Saved". */
   successMessage?: string | ((value: T) => string);
   /** Optional Task Center label override. Falls back to `successMessage`. */
   taskLabel?: string | ((value: T) => string);
-  /** HTTP method, defaults to POST. */
-  method?: 'POST' | 'PATCH' | 'PUT';
-  /** Optional callback fired after the toast. */
-  onSaved?: (value: T, response: unknown) => void;
+  /** Sync validator. Return `null` for valid, a string for the inline error. */
+  validate?: (value: T) => string | null;
 }
 
 export function useSettingsAutoSave<T>(opts: AutoSaveOptions<T>) {
@@ -46,7 +46,7 @@ export function useSettingsAutoSave<T>(opts: AutoSaveOptions<T>) {
         const v = opts.validate(value);
         if (v) {
           setError(v);
-          return 'invalid';
+          return "invalid";
         }
       }
       setError(null);
@@ -55,58 +55,65 @@ export function useSettingsAutoSave<T>(opts: AutoSaveOptions<T>) {
       try {
         const body = opts.buildBody ? opts.buildBody(value) : { value };
         const res = await fetch(opts.endpoint, {
-          method: opts.method ?? 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: opts.method ?? "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
         if (!res.ok) {
-          const text = await res.text().catch(() => '');
+          const text = await res.text().catch(() => "");
           // Surface server-supplied `{ error: "…" }` when present.
           let reason = `HTTP ${res.status}`;
           try {
             const parsed = JSON.parse(text) as { error?: string };
-            if (parsed?.error) reason = parsed.error;
+            if (parsed?.error) {
+              reason = parsed.error;
+            }
           } catch {
-            if (text) reason = text.slice(0, 200);
+            if (text) {
+              reason = text.slice(0, 200);
+            }
           }
           pushSettingsToast({
-            kind: 'error',
+            kind: "error",
             message: `Couldn't save — ${reason}`,
-            taskLabel: typeof opts.taskLabel === 'function' ? opts.taskLabel(value) : opts.taskLabel,
+            taskLabel:
+              typeof opts.taskLabel === "function"
+                ? opts.taskLabel(value)
+                : opts.taskLabel,
           });
-          return 'error';
+          return "error";
         }
 
         const responseBody = await res.json().catch(() => null);
 
         const successMsg =
-          typeof opts.successMessage === 'function'
+          typeof opts.successMessage === "function"
             ? opts.successMessage(value)
-            : opts.successMessage ?? 'Saved';
+            : (opts.successMessage ?? "Saved");
         pushSettingsToast({
-          kind: 'success',
+          kind: "success",
           message: successMsg,
           taskLabel:
-            typeof opts.taskLabel === 'function'
+            typeof opts.taskLabel === "function"
               ? opts.taskLabel(value)
               : opts.taskLabel,
         });
 
         opts.onSaved?.(value, responseBody);
-        return 'ok';
+        return "ok";
       } catch (err) {
         // Network/transport failure — distinct from server-rejected.
-        const reason = err instanceof Error ? err.message : 'connection';
+        const reason = err instanceof Error ? err.message : "connection";
         pushSettingsToast({
-          kind: 'error',
+          kind: "error",
           message: `Couldn't save — ${reason}`,
         });
-        return 'error';
+        return "error";
       } finally {
         setSaving(false);
       }
     },
-    [opts],
+    [opts]
   );
 
   return { save, error, saving, clearError: () => setError(null) };

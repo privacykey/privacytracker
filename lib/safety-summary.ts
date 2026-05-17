@@ -6,12 +6,12 @@
  * (`flag.detail.policy.safety_summary`) that decides whether to render it.
  */
 
-import { buildSafetyPrompt, getPromptVersion } from './ai-prompts';
-import { resolveFlagFromDb } from './feature-flags-server';
+import { buildSafetyPrompt, getPromptVersion } from "./ai-prompts";
+import { resolveFlagFromDb } from "./feature-flags-server";
 
 export interface SafetySummary {
-  paragraph: string;
   concerns: string[];
+  paragraph: string;
   promptVersion: number;
 }
 
@@ -21,9 +21,9 @@ export interface SafetySummary {
  */
 export function shouldShowSafetySummary(): boolean {
   try {
-    return resolveFlagFromDb('flag.detail.policy.safety_summary') === 'on';
+    return resolveFlagFromDb("flag.detail.policy.safety_summary") === "on";
   } catch (e) {
-    console.warn('[safety-summary] resolver failed:', e);
+    console.warn("[safety-summary] resolver failed:", e);
     return false;
   }
 }
@@ -50,19 +50,28 @@ export function parseSafetySummary(raw: string): SafetySummary | null {
     return null;
   }
 
-  if (!parsed || typeof parsed !== 'object') return null;
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
   const obj = parsed as Record<string, unknown>;
 
-  const paragraph = typeof obj.paragraph === 'string' ? obj.paragraph.trim() : '';
+  const paragraph =
+    typeof obj.paragraph === "string" ? obj.paragraph.trim() : "";
   const concerns = Array.isArray(obj.concerns)
-    ? obj.concerns.filter((c): c is string => typeof c === 'string').map((c) => c.trim()).filter(Boolean).slice(0, 5)
+    ? obj.concerns
+        .filter((c): c is string => typeof c === "string")
+        .map((c) => c.trim())
+        .filter(Boolean)
+        .slice(0, 5)
     : [];
 
-  if (!paragraph && concerns.length === 0) return null;
+  if (!paragraph && concerns.length === 0) {
+    return null;
+  }
 
   return {
     paragraph,
     concerns,
-    promptVersion: getPromptVersion('safety_summary'),
+    promptVersion: getPromptVersion("safety_summary"),
   };
 }

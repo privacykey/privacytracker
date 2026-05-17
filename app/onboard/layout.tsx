@@ -5,8 +5,8 @@
  * before and who plug in a device while in the import flow.
  */
 
-import type { ReactNode } from 'react';
-import DeviceConnectedToast from '../components/DeviceConnectedToast';
+import type { ReactNode } from "react";
+import DeviceConnectedToast from "../components/DeviceConnectedToast";
 
 export default function OnboardLayout({ children }: { children: ReactNode }) {
   return (

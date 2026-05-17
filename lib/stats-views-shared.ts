@@ -6,49 +6,39 @@
  * Keep new exports here pure data — no `db`, no `fs`, no imports from
  * files that touch either.
  */
-import type { PolicyLensKey, PolicyRating } from './policy-summary-meta';
+import type { PolicyLensKey, PolicyRating } from "./policy-summary-meta";
 
 // ── Matrix (apps × category × severity) ───────────────────────────────
 export type SeverityId =
-  | 'DATA_USED_TO_TRACK_YOU'
-  | 'DATA_LINKED_TO_YOU'
-  | 'DATA_NOT_LINKED_TO_YOU';
+  | "DATA_USED_TO_TRACK_YOU"
+  | "DATA_LINKED_TO_YOU"
+  | "DATA_NOT_LINKED_TO_YOU";
 
 export interface MatrixApp {
+  categoryCount: number;
+  developer: string;
+  iconUrl: string;
   id: string;
   name: string;
-  iconUrl: string;
-  developer: string;
-  categoryCount: number;
 }
 
 export interface MatrixCategory {
+  appCount: number;
   identifier: string;
   label: string;
-  appCount: number;
 }
 
 export interface MatrixData {
   apps: MatrixApp[];
   categories: MatrixCategory[];
-  severities: { identifier: SeverityId; label: string }[];
   cells: Record<string, Record<string, SeverityId>>;
+  severities: { identifier: SeverityId; label: string }[];
 }
 
 // ── Timeline ──────────────────────────────────────────────────────────
-export type TimelineBucket = 'day' | 'week' | 'month';
+export type TimelineBucket = "day" | "week" | "month";
 
 export interface TimelinePoint {
-  bucket: string;
-  /**
-   * Counts privacy-label changes only (legacy rows with no category are
-   * treated as privacy-label for back-compat). Accessibility goes to the
-   * dedicated buckets below.
-   */
-  added: number;
-  removed: number;
-  modified: number;
-  policy: number;
   /**
    * Accessibility-label additions / removals. Optional so old serialised
    * payloads deserialize cleanly — treat missing fields as 0.
@@ -56,19 +46,29 @@ export interface TimelinePoint {
   accessibilityAdded?: number;
   accessibilityRemoved?: number;
   /**
+   * Counts privacy-label changes only (legacy rows with no category are
+   * treated as privacy-label for back-compat). Accessibility goes to the
+   * dedicated buckets below.
+   */
+  added: number;
+  bucket: string;
+  modified: number;
+  policy: number;
+  removed: number;
+  reviews?: number;
+  /**
    * Contextual counters — sync snapshots and review actions in the same
    * bucket. Optional and not part of the `total` roll-up so the stats
    * chart can ignore them.
    */
   syncs?: number;
-  reviews?: number;
 }
 
 export interface TimelineData {
-  from: number;
-  to: number;
   bucketType: TimelineBucket;
+  from: number;
   points: TimelinePoint[];
+  to: number;
   total: number;
 }
 
@@ -84,16 +84,16 @@ export interface RadarLens {
 }
 
 export interface RadarApp {
-  id: string;
-  name: string;
-  iconUrl: string;
-  lenses: RadarLens[];
   hasPolicy: boolean;
+  iconUrl: string;
+  id: string;
+  lenses: RadarLens[];
+  name: string;
   status?: string;
 }
 
 export interface RadarData {
+  apps: RadarApp[];
   axes: { key: PolicyLensKey; label: string }[];
   ratings: readonly PolicyRating[];
-  apps: RadarApp[];
 }

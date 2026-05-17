@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Verdict picker for the App Detail page. Renders three big buttons
@@ -18,28 +18,19 @@
  * app safe", "Decide later", etc. — no jargon, no scary CTAs.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  type AppVerdict,
   VERDICT_META,
   VERDICT_ORDER,
-  type AppVerdict,
   type VerdictValue,
-} from '../../lib/verdict-types';
+} from "../../lib/verdict-types";
 
 interface Props {
   appId: string;
   appName: string;
-  /** Optional initial state — server-rendered when available. */
-  initialVerdicts?: AppVerdict[];
-  /**
-   * Called after the picker successfully writes (or clears) the
-   * user's verdict so the parent can refresh derived state (e.g.
-   * the verdict pill in the detail header). Receives the new value
-   * (or null when cleared).
-   */
-  onChange?: (verdict: VerdictValue | null) => void;
   /**
    * Compact mode — drops the title, subtitle, imported-recs region,
    * and the rationale textarea, leaving just the three small option
@@ -49,16 +40,25 @@ interface Props {
    * mode is what the App Detail page renders.
    */
   compact?: boolean;
+  /** Optional initial state — server-rendered when available. */
+  initialVerdicts?: AppVerdict[];
+  /**
+   * Called after the picker successfully writes (or clears) the
+   * user's verdict so the parent can refresh derived state (e.g.
+   * the verdict pill in the detail header). Receives the new value
+   * (or null when cleared).
+   */
+  onChange?: (verdict: VerdictValue | null) => void;
 }
 
 interface PickerState {
-  loading: boolean;
-  saving: boolean;
   error: string | null;
-  user: AppVerdict | null;
   imported: AppVerdict[];
+  loading: boolean;
   /** Buffered rationale text — debounced to the API. */
   rationale: string;
+  saving: boolean;
+  user: AppVerdict | null;
 }
 
 const RATIONALE_DEBOUNCE_MS = 600;
@@ -74,8 +74,8 @@ export default function VerdictPicker({
   // short labels and descriptions reuse the existing `verdict.*`
   // namespace so the same strings stay in sync between this picker
   // and the read-only VerdictPill / pill metadata renderers.
-  const tPicker = useTranslations('verdict_picker');
-  const tVerdict = useTranslations('verdict');
+  const tPicker = useTranslations("verdict_picker");
+  const tVerdict = useTranslations("verdict");
 
   // Used to bust the Router Cache after a successful save/clear so
   // the dashboard / app-list views the user might back-navigate to
@@ -86,14 +86,17 @@ export default function VerdictPicker({
   // router cache.
   const router = useRouter();
 
-  const split = useMemo(() => splitVerdicts(initialVerdicts ?? []), [initialVerdicts]);
+  const split = useMemo(
+    () => splitVerdicts(initialVerdicts ?? []),
+    [initialVerdicts]
+  );
   const [state, setState] = useState<PickerState>({
     loading: false,
     saving: false,
     error: null,
     user: split.user,
     imported: split.imported,
-    rationale: split.user?.rationale ?? '',
+    rationale: split.user?.rationale ?? "",
   });
 
   // Two-stage editing flow:
@@ -105,12 +108,12 @@ export default function VerdictPicker({
   //      summary view.
   // Falls back to the summary view (compact pill + Edit) when state.user is
   // set and the picker isn't being edited.
-  type EditStep = 'picker' | 'reason';
+  type EditStep = "picker" | "reason";
   const [editing, setEditing] = useState(false);
-  const [step, setStep] = useState<EditStep>('picker');
+  const [step, setStep] = useState<EditStep>("picker");
 
   const showSummary = !!state.user && !editing;
-  const showReason = !!state.user && editing && step === 'reason';
+  const showReason = !!state.user && editing && step === "reason";
   // showPicker is implicit — falls through when neither summary nor reason
   // matches (no verdict yet, or the user clicked "Change my decision").
 
@@ -120,13 +123,17 @@ export default function VerdictPicker({
   // an in-session bundle import.
   useEffect(() => {
     let live = true;
-    setState(s => ({ ...s, loading: true }));
+    setState((s) => ({ ...s, loading: true }));
     fetch(`/api/verdicts?appId=${encodeURIComponent(appId)}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))
+      )
       .then(({ verdicts }: { verdicts: AppVerdict[] }) => {
-        if (!live) return;
+        if (!live) {
+          return;
+        }
         const next = splitVerdicts(verdicts);
-        setState(s => ({
+        setState((s) => ({
           ...s,
           loading: false,
           user: next.user,
@@ -134,14 +141,20 @@ export default function VerdictPicker({
           rationale: next.user?.rationale ?? s.rationale,
         }));
       })
-      .catch(e => {
-        if (!live) return;
-        setState(s => ({ ...s, loading: false, error: e instanceof Error ? e.message : tPicker('error_load') }));
+      .catch((e) => {
+        if (!live) {
+          return;
+        }
+        setState((s) => ({
+          ...s,
+          loading: false,
+          error: e instanceof Error ? e.message : tPicker("error_load"),
+        }));
       });
     return () => {
       live = false;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, [appId]);
 
   // ── Cmd+Z undo for verdict mutations ───────────────────────────────
@@ -154,7 +167,9 @@ export default function VerdictPicker({
   // global `app:undo` window event while the picker is mounted, and
   // replay via the same /api/verdicts route that fired the original
   // change.
-  type VerdictUndoOp = { priorUser: AppVerdict | null };
+  interface VerdictUndoOp {
+    priorUser: AppVerdict | null;
+  }
   const MAX_VERDICT_UNDO_OPS = 20;
   const verdictUndoStackRef = useRef<VerdictUndoOp[]>([]);
   // Local flash for "Restored …" feedback. Picker doesn't have a toast
@@ -164,14 +179,16 @@ export default function VerdictPicker({
 
   const pushVerdictUndo = useCallback((op: VerdictUndoOp) => {
     const next = [...verdictUndoStackRef.current, op];
-    if (next.length > MAX_VERDICT_UNDO_OPS) next.shift();
+    if (next.length > MAX_VERDICT_UNDO_OPS) {
+      next.shift();
+    }
     verdictUndoStackRef.current = next;
   }, []);
 
   const flashUndoMessage = useCallback((msg: string) => {
     setUndoFlash(msg);
     window.setTimeout(() => {
-      setUndoFlash(current => (current === msg ? null : current));
+      setUndoFlash((current) => (current === msg ? null : current));
     }, 2500);
   }, []);
 
@@ -184,20 +201,22 @@ export default function VerdictPicker({
       // server-side UPSERT key (app_id + 'user') guarantees there's
       // exactly one user row to restore.
       const priorUser = state.user;
-      setState(s => ({ ...s, saving: true, error: null }));
+      setState((s) => ({ ...s, saving: true, error: null }));
       try {
-        const res = await fetch('/api/verdicts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/verdicts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ appId, verdict, rationale }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         const { verdict: saved }: { verdict: AppVerdict } = await res.json();
-        setState(s => ({
+        setState((s) => ({
           ...s,
           saving: false,
           user: saved,
-          rationale: saved.rationale ?? '',
+          rationale: saved.rationale ?? "",
         }));
         // After a successful save, step into the rationale stage so the
         // user can add a reason without losing focus. Done collapses the
@@ -205,7 +224,7 @@ export default function VerdictPicker({
         // Done immediately. Avoids the prior auto-collapse that hid the
         // rationale field as soon as a verdict was picked.
         setEditing(true);
-        setStep('reason');
+        setStep("reason");
         pushVerdictUndo({ priorUser });
         onChange?.(saved.verdict);
         // Bust the Router Cache so a back-nav to /dashboard or
@@ -214,14 +233,14 @@ export default function VerdictPicker({
         // (or no pill) until the user manually refreshes.
         router.refresh();
       } catch (e) {
-        setState(s => ({
+        setState((s) => ({
           ...s,
           saving: false,
-          error: e instanceof Error ? e.message : tPicker('error_save'),
+          error: e instanceof Error ? e.message : tPicker("error_save"),
         }));
       }
     },
-    [appId, onChange, tPicker, router, state.user, pushVerdictUndo],
+    [appId, onChange, tPicker, router, state.user, pushVerdictUndo]
   );
 
   const clearVerdict = useCallback(async () => {
@@ -232,13 +251,18 @@ export default function VerdictPicker({
     // verdict button just overwrites it (and the new value still
     // has its own undo entry).
     const priorUser = state.user;
-    setState(s => ({ ...s, saving: true, error: null }));
+    setState((s) => ({ ...s, saving: true, error: null }));
     try {
-      const res = await fetch(`/api/verdicts?appId=${encodeURIComponent(appId)}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setState(s => ({ ...s, saving: false, user: null, rationale: '' }));
+      const res = await fetch(
+        `/api/verdicts?appId=${encodeURIComponent(appId)}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      setState((s) => ({ ...s, saving: false, user: null, rationale: "" }));
       pushVerdictUndo({ priorUser });
       onChange?.(null);
       // Same Router Cache bust as `setVerdict` — clearing the
@@ -246,17 +270,19 @@ export default function VerdictPicker({
       // that paints a verdict pill.
       router.refresh();
     } catch (e) {
-      setState(s => ({
+      setState((s) => ({
         ...s,
         saving: false,
-        error: e instanceof Error ? e.message : tPicker('error_clear'),
+        error: e instanceof Error ? e.message : tPicker("error_clear"),
       }));
     }
   }, [appId, onChange, tPicker, router, state.user, pushVerdictUndo]);
 
   const handleVerdictUndo = useCallback(async () => {
     const prev = verdictUndoStackRef.current;
-    if (prev.length === 0) return;
+    if (prev.length === 0) {
+      return;
+    }
     const top = prev[prev.length - 1];
     verdictUndoStackRef.current = prev.slice(0, -1);
 
@@ -265,18 +291,24 @@ export default function VerdictPicker({
         // Restore via the same POST endpoint the picker uses on
         // forward changes. The handler is an UPSERT so this works
         // whether the row currently exists or not.
-        const res = await fetch('/api/verdicts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/verdicts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             appId,
             verdict: top.priorUser.verdict,
             rationale: top.priorUser.rationale ?? null,
           }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         const { verdict: restored }: { verdict: AppVerdict } = await res.json();
-        setState(s => ({ ...s, user: restored, rationale: restored.rationale ?? '' }));
+        setState((s) => ({
+          ...s,
+          user: restored,
+          rationale: restored.rationale ?? "",
+        }));
         onChange?.(restored.verdict);
         const label = tVerdict(`${restored.verdict}.label`);
         flashUndoMessage(`↶ Restored "${label}"`);
@@ -284,25 +316,32 @@ export default function VerdictPicker({
         // Prior state was "no verdict" — restore by clearing.
         // DELETE is idempotent on the server side, so this is
         // safe to fire even if the row was already gone.
-        const res = await fetch(`/api/verdicts?appId=${encodeURIComponent(appId)}`, {
-          method: 'DELETE',
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setState(s => ({ ...s, user: null, rationale: '' }));
+        const res = await fetch(
+          `/api/verdicts?appId=${encodeURIComponent(appId)}`,
+          {
+            method: "DELETE",
+          }
+        );
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        setState((s) => ({ ...s, user: null, rationale: "" }));
         onChange?.(null);
-        flashUndoMessage('↶ Verdict undecided again');
+        flashUndoMessage("↶ Verdict undecided again");
       }
       router.refresh();
     } catch (e) {
-      console.error('[verdict-picker] undo failed:', e);
-      flashUndoMessage('❌ Couldn’t undo that change');
+      console.error("[verdict-picker] undo failed:", e);
+      flashUndoMessage("❌ Couldn’t undo that change");
     }
   }, [appId, flashUndoMessage, onChange, router, tVerdict]);
 
   useEffect(() => {
-    const handler = () => { void handleVerdictUndo(); };
-    window.addEventListener('app:undo', handler);
-    return () => window.removeEventListener('app:undo', handler);
+    const handler = () => {
+      void handleVerdictUndo();
+    };
+    window.addEventListener("app:undo", handler);
+    return () => window.removeEventListener("app:undo", handler);
   }, [handleVerdictUndo]);
 
   const dismissImported = useCallback(
@@ -310,27 +349,29 @@ export default function VerdictPicker({
       try {
         const qs = new URLSearchParams({
           appId,
-          source: 'imported',
+          source: "imported",
           sourceName,
         });
-        const res = await fetch(`/api/verdicts?${qs}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setState(s => ({
+        const res = await fetch(`/api/verdicts?${qs}`, { method: "DELETE" });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        setState((s) => ({
           ...s,
-          imported: s.imported.filter(v => v.sourceName !== sourceName),
+          imported: s.imported.filter((v) => v.sourceName !== sourceName),
         }));
         // Imported recommendations show on /dashboard/review-
         // recommendations and as ghost pills on /dashboard cards;
         // dismiss = "I've seen this", so refresh the parent layouts.
         router.refresh();
       } catch (e) {
-        setState(s => ({
+        setState((s) => ({
           ...s,
-          error: e instanceof Error ? e.message : tPicker('error_dismiss'),
+          error: e instanceof Error ? e.message : tPicker("error_dismiss"),
         }));
       }
     },
-    [appId, tPicker, router],
+    [appId, tPicker, router]
   );
 
   // Debounced rationale auto-save. Each keystroke updates the buffered
@@ -339,24 +380,33 @@ export default function VerdictPicker({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onRationaleChange = useCallback(
     (next: string) => {
-      setState(s => ({ ...s, rationale: next }));
-      if (!state.user) return; // No verdict yet — rationale only persists when paired with one
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setState((s) => ({ ...s, rationale: next }));
+      if (!state.user) {
+        return; // No verdict yet — rationale only persists when paired with one
+      }
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
       debounceRef.current = setTimeout(() => {
-        if (!state.user) return;
+        if (!state.user) {
+          return;
+        }
         setVerdict(state.user.verdict, next.trim() || null);
       }, RATIONALE_DEBOUNCE_MS);
     },
-    [state.user, setVerdict],
+    [state.user, setVerdict]
   );
 
   // Flush any pending rationale write on unmount so a "type, navigate
   // away" sequence doesn't drop the last edit.
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+  useEffect(
+    () => () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    },
+    []
+  );
 
   // Compact mode — short-circuit early. Renders a single horizontal
   // chip cluster suitable for inline use in a list row. No imported
@@ -365,27 +415,29 @@ export default function VerdictPicker({
   if (compact) {
     return (
       <div
+        aria-label={tPicker("options_aria")}
         className="verdict-picker verdict-picker-compact"
         role="radiogroup"
-        aria-label={tPicker('options_aria')}
       >
-        {VERDICT_ORDER.map(value => {
+        {VERDICT_ORDER.map((value) => {
           const meta = VERDICT_META[value];
           const active = state.user?.verdict === value;
           const optionLabel = tVerdict(`${value}_short`);
           const optionDesc = tVerdict(`${value}_desc`);
           return (
             <button
-              key={value}
-              type="button"
-              role="radio"
               aria-checked={active}
+              className={`verdict-picker-chip verdict-picker-chip-${meta.cls}${active ? "is-active" : ""}`}
               disabled={state.saving}
-              className={`verdict-picker-chip verdict-picker-chip-${meta.cls}${active ? ' is-active' : ''}`}
+              key={value}
               onClick={() => setVerdict(value, state.rationale.trim() || null)}
+              role="radio"
               title={optionDesc}
+              type="button"
             >
-              <span className="verdict-picker-chip-icon" aria-hidden="true">{meta.icon}</span>
+              <span aria-hidden="true" className="verdict-picker-chip-icon">
+                {meta.icon}
+              </span>
               <span className="verdict-picker-chip-label">{optionLabel}</span>
             </button>
           );
@@ -402,56 +454,71 @@ export default function VerdictPicker({
   // Imported recommendations — shared between the expanded picker and
   // the collapsed summary so advisory context stays visible after the
   // user has decided.
-  const importedSection = state.imported.length > 0 ? (
-    <div
-      className="verdict-picker-imported"
-      role="region"
-      aria-label={tPicker('imported_aria')}
-    >
-      <p className="verdict-picker-imported-title">{tPicker('imported_title')}</p>
-      <ul className="verdict-picker-imported-list">
-        {state.imported.map(rec => {
-          const meta = VERDICT_META[rec.verdict];
-          const sourceLabel = rec.sourceName ?? tPicker('imported_friend_fallback');
-          const verdictShort = tVerdict(`${rec.verdict}_short`).toLowerCase();
-          return (
-            <li key={rec.id} className={`verdict-picker-imported-row verdict-pill-${meta.cls}`}>
-              <span className="verdict-pill-icon" aria-hidden="true">{meta.icon}</span>
-              <div className="verdict-picker-imported-body">
-                <div className="verdict-picker-imported-label">
-                  {tPicker.rich('imported_says', {
-                    name: sourceLabel,
-                    verdict: verdictShort,
-                    strong: chunks => <strong>{chunks}</strong>,
-                    em: chunks => <em>{chunks}</em>,
-                  })}
-                </div>
-                {rec.rationale && (
-                  <div className="verdict-picker-imported-reason">
-                    &ldquo;{rec.rationale}&rdquo;
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                className="verdict-picker-imported-dismiss"
-                onClick={() => rec.sourceName && dismissImported(rec.sourceName)}
-                aria-label={
-                  rec.sourceName
-                    ? tPicker('imported_dismiss_aria', { sourceName: rec.sourceName })
-                    : tPicker('imported_dismiss_aria_anon')
-                }
-                title={tPicker('imported_dismiss_title')}
+  const importedSection =
+    state.imported.length > 0 ? (
+      <div
+        aria-label={tPicker("imported_aria")}
+        className="verdict-picker-imported"
+        role="region"
+      >
+        <p className="verdict-picker-imported-title">
+          {tPicker("imported_title")}
+        </p>
+        <ul className="verdict-picker-imported-list">
+          {state.imported.map((rec) => {
+            const meta = VERDICT_META[rec.verdict];
+            const sourceLabel =
+              rec.sourceName ?? tPicker("imported_friend_fallback");
+            const verdictShort = tVerdict(`${rec.verdict}_short`).toLowerCase();
+            return (
+              <li
+                className={`verdict-picker-imported-row verdict-pill-${meta.cls}`}
+                key={rec.id}
               >
-                ✕
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="verdict-picker-imported-hint">{tPicker('imported_hint')}</p>
-    </div>
-  ) : null;
+                <span aria-hidden="true" className="verdict-pill-icon">
+                  {meta.icon}
+                </span>
+                <div className="verdict-picker-imported-body">
+                  <div className="verdict-picker-imported-label">
+                    {tPicker.rich("imported_says", {
+                      name: sourceLabel,
+                      verdict: verdictShort,
+                      strong: (chunks) => <strong>{chunks}</strong>,
+                      em: (chunks) => <em>{chunks}</em>,
+                    })}
+                  </div>
+                  {rec.rationale && (
+                    <div className="verdict-picker-imported-reason">
+                      &ldquo;{rec.rationale}&rdquo;
+                    </div>
+                  )}
+                </div>
+                <button
+                  aria-label={
+                    rec.sourceName
+                      ? tPicker("imported_dismiss_aria", {
+                          sourceName: rec.sourceName,
+                        })
+                      : tPicker("imported_dismiss_aria_anon")
+                  }
+                  className="verdict-picker-imported-dismiss"
+                  onClick={() =>
+                    rec.sourceName && dismissImported(rec.sourceName)
+                  }
+                  title={tPicker("imported_dismiss_title")}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="verdict-picker-imported-hint">
+          {tPicker("imported_hint")}
+        </p>
+      </div>
+    ) : null;
 
   // Wrap the parts that recur across all three views — the heading
   // (always rendered, sr-only in collapsed mode), the undo flash, and
@@ -464,19 +531,22 @@ export default function VerdictPicker({
 
   // ── 1. Collapsed summary view ─────────────────────────────────────
   if (showSummary && state.user) {
-    const rationale = state.user.rationale?.trim() ?? '';
+    const rationale = state.user.rationale?.trim() ?? "";
     const meta = VERDICT_META[state.user.verdict];
     return (
-      <section className="verdict-picker verdict-picker-collapsed" aria-labelledby="verdict-picker-heading">
-        <h3 id="verdict-picker-heading" className="sr-only">
-          {tPicker('title', { appName })}
+      <section
+        aria-labelledby="verdict-picker-heading"
+        className="verdict-picker verdict-picker-collapsed"
+      >
+        <h3 className="sr-only" id="verdict-picker-heading">
+          {tPicker("title", { appName })}
         </h3>
 
         {undoFlash && (
           <div
+            aria-live="polite"
             className="verdict-picker-undo-flash"
             role="status"
-            aria-live="polite"
           >
             {undoFlash}
           </div>
@@ -484,12 +554,14 @@ export default function VerdictPicker({
 
         {importedSection}
 
-        <div className={`verdict-picker-summary verdict-picker-summary-${meta.cls}`}>
-          <span className="verdict-picker-summary-icon" aria-hidden="true">
+        <div
+          className={`verdict-picker-summary verdict-picker-summary-${meta.cls}`}
+        >
+          <span aria-hidden="true" className="verdict-picker-summary-icon">
             {meta.icon}
           </span>
           <span className="verdict-picker-summary-label">
-            {tPicker('summary_label')}
+            {tPicker("summary_label")}
           </span>
           <span className="verdict-picker-summary-value">
             {tVerdict(`${state.user.verdict}_short`)}
@@ -503,15 +575,15 @@ export default function VerdictPicker({
             </span>
           )}
           <button
-            type="button"
+            aria-label={tPicker("edit_aria", { appName })}
             className="btn btn-secondary btn-sm verdict-picker-summary-edit"
             onClick={() => {
-              setStep('reason');
+              setStep("reason");
               setEditing(true);
             }}
-            aria-label={tPicker('edit_aria', { appName })}
+            type="button"
           >
-            {tPicker('edit')}
+            {tPicker("edit")}
           </button>
         </div>
 
@@ -524,18 +596,21 @@ export default function VerdictPicker({
   if (showReason && state.user) {
     const meta = VERDICT_META[state.user.verdict];
     return (
-      <section className="verdict-picker" aria-labelledby="verdict-picker-heading">
+      <section
+        aria-labelledby="verdict-picker-heading"
+        className="verdict-picker"
+      >
         <header className="verdict-picker-header">
-          <h3 id="verdict-picker-heading" className="verdict-picker-title">
-            {tPicker('reason_title')}
+          <h3 className="verdict-picker-title" id="verdict-picker-heading">
+            {tPicker("reason_title")}
           </h3>
         </header>
 
         {undoFlash && (
           <div
+            aria-live="polite"
             className="verdict-picker-undo-flash"
             role="status"
-            aria-live="polite"
           >
             {undoFlash}
           </div>
@@ -547,58 +622,68 @@ export default function VerdictPicker({
             and offers a single "Change" link to swap back to the full
             picker. The pill is read-only here; the verdict is already
             saved on the server. */}
-        <div className={`verdict-picker-reason-chosen verdict-picker-reason-chosen-${meta.cls}`}>
-          <span className="verdict-picker-reason-chosen-icon" aria-hidden="true">{meta.icon}</span>
+        <div
+          className={`verdict-picker-reason-chosen verdict-picker-reason-chosen-${meta.cls}`}
+        >
+          <span
+            aria-hidden="true"
+            className="verdict-picker-reason-chosen-icon"
+          >
+            {meta.icon}
+          </span>
           <span className="verdict-picker-reason-chosen-label">
-            {tPicker.rich('reason_chosen_label', {
+            {tPicker.rich("reason_chosen_label", {
               verdict: tVerdict(`${state.user.verdict}_short`),
-              strong: chunks => <strong>{chunks}</strong>,
+              strong: (chunks) => <strong>{chunks}</strong>,
             })}
           </span>
           <button
-            type="button"
             className="verdict-picker-reason-change"
-            onClick={() => setStep('picker')}
             disabled={state.saving}
+            onClick={() => setStep("picker")}
+            type="button"
           >
-            {tPicker('reason_change')}
+            {tPicker("reason_change")}
           </button>
         </div>
 
         <div className="verdict-picker-rationale">
-          <label htmlFor="verdict-rationale" className="verdict-picker-rationale-label">
-            {tPicker('rationale_label')}
+          <label
+            className="verdict-picker-rationale-label"
+            htmlFor="verdict-rationale"
+          >
+            {tPicker("rationale_label")}
           </label>
           <textarea
-            id="verdict-rationale"
-            className="verdict-picker-rationale-input"
-            value={state.rationale}
-            onChange={e => onRationaleChange(e.target.value)}
-            placeholder={tPicker('rationale_placeholder')}
-            rows={3}
-            maxLength={400}
             autoFocus
+            className="verdict-picker-rationale-input"
+            id="verdict-rationale"
+            maxLength={400}
+            onChange={(e) => onRationaleChange(e.target.value)}
+            placeholder={tPicker("rationale_placeholder")}
+            rows={3}
+            value={state.rationale}
           />
           <div className="verdict-picker-rationale-meta">
             <button
-              type="button"
               className="btn btn-ghost btn-sm verdict-picker-clear"
-              onClick={clearVerdict}
               disabled={state.saving}
+              onClick={clearVerdict}
+              type="button"
             >
-              {tPicker('clear')}
+              {tPicker("clear")}
             </button>
             <div className="verdict-picker-rationale-spacer" />
-            <span className="verdict-picker-saved" aria-live="polite">
-              {state.saving ? tPicker('saving') : tPicker('saved')}
+            <span aria-live="polite" className="verdict-picker-saved">
+              {state.saving ? tPicker("saving") : tPicker("saved")}
             </span>
             <button
-              type="button"
               className="btn btn-primary btn-sm verdict-picker-done"
-              onClick={() => setEditing(false)}
               disabled={state.saving}
+              onClick={() => setEditing(false)}
+              type="button"
             >
-              {tPicker('done')}
+              {tPicker("done")}
             </button>
           </div>
         </div>
@@ -610,19 +695,22 @@ export default function VerdictPicker({
 
   // ── 3. Picker step — three big verdict buttons (no rationale yet) ──
   return (
-    <section className="verdict-picker" aria-labelledby="verdict-picker-heading">
+    <section
+      aria-labelledby="verdict-picker-heading"
+      className="verdict-picker"
+    >
       <header className="verdict-picker-header">
-        <h3 id="verdict-picker-heading" className="verdict-picker-title">
-          {tPicker('title', { appName })}
+        <h3 className="verdict-picker-title" id="verdict-picker-heading">
+          {tPicker("title", { appName })}
         </h3>
-        <p className="verdict-picker-sub">{tPicker('sub')}</p>
+        <p className="verdict-picker-sub">{tPicker("sub")}</p>
       </header>
 
       {undoFlash && (
         <div
+          aria-live="polite"
           className="verdict-picker-undo-flash"
           role="status"
-          aria-live="polite"
         >
           {undoFlash}
         </div>
@@ -631,27 +719,29 @@ export default function VerdictPicker({
       {importedSection}
 
       <div
+        aria-label={tPicker("options_aria")}
         className="verdict-picker-options"
         role="radiogroup"
-        aria-label={tPicker('options_aria')}
       >
-        {VERDICT_ORDER.map(value => {
+        {VERDICT_ORDER.map((value) => {
           const meta = VERDICT_META[value];
           const active = state.user?.verdict === value;
           const optionLabel = tVerdict(`${value}_short`);
           const optionDesc = tVerdict(`${value}_desc`);
           return (
             <button
-              key={value}
-              type="button"
-              role="radio"
               aria-checked={active}
+              className={`verdict-picker-option verdict-picker-option-${meta.cls} ${active ? "is-active" : ""}`}
               disabled={state.saving}
-              className={`verdict-picker-option verdict-picker-option-${meta.cls} ${active ? 'is-active' : ''}`}
+              key={value}
               onClick={() => setVerdict(value, state.rationale.trim() || null)}
+              role="radio"
               title={optionDesc}
+              type="button"
             >
-              <span className="verdict-picker-option-icon" aria-hidden="true">{meta.icon}</span>
+              <span aria-hidden="true" className="verdict-picker-option-icon">
+                {meta.icon}
+              </span>
               <span className="verdict-picker-option-label">{optionLabel}</span>
               <span className="verdict-picker-option-desc">{optionDesc}</span>
             </button>
@@ -665,12 +755,12 @@ export default function VerdictPicker({
       {state.user && (
         <div className="verdict-picker-picker-actions">
           <button
-            type="button"
             className="btn btn-ghost btn-sm"
-            onClick={() => setStep('reason')}
             disabled={state.saving}
+            onClick={() => setStep("reason")}
+            type="button"
           >
-            {tPicker('reason_back')}
+            {tPicker("reason_back")}
           </button>
         </div>
       )}
@@ -680,14 +770,19 @@ export default function VerdictPicker({
   );
 }
 
-function splitVerdicts(verdicts: AppVerdict[]): { user: AppVerdict | null; imported: AppVerdict[] } {
+function splitVerdicts(verdicts: AppVerdict[]): {
+  user: AppVerdict | null;
+  imported: AppVerdict[];
+} {
   let user: AppVerdict | null = null;
   const imported: AppVerdict[] = [];
   for (const v of verdicts) {
-    if (v.source === 'user') {
+    if (v.source === "user") {
       // There can only be one user verdict per app (UNIQUE index), so
       // the first hit is the right one. Keep it idempotent though.
-      if (!user) user = v;
+      if (!user) {
+        user = v;
+      }
     } else {
       imported.push(v);
     }

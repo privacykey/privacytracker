@@ -1,10 +1,11 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { getPolicyVersion } from '../../../../../lib/policy-versions';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { getPolicyVersion } from "../../../../../lib/policy-versions";
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
-} from '../../../../../lib/security';
+} from "../../../../../lib/security";
 
 // Returns the captured policy source text for a single version row.
 // Used by the History timeline: clicking a privacy-policy changelog entry
@@ -18,30 +19,30 @@ import {
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string }> }
 ) {
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'policy.version.read'),
+    key: rateLimitKeyForRequest(request, "policy.version.read"),
     limit: 120,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   // Next 14/15 params is a plain object; Next 16 hands a Promise. Supporting
   // both keeps the handler portable across the major upgrade.
   const params = await Promise.resolve(context.params);
-  const id = (params?.id ?? '').toString();
+  const id = (params?.id ?? "").toString();
 
   // Guard against absurd ids so we don't hit SQLite with arbitrary strings.
   if (!id || id.length > 128) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
   const row = getPolicyVersion(id);
   if (!row) {
-    return NextResponse.json({ error: 'Version not found' }, { status: 404 });
+    return NextResponse.json({ error: "Version not found" }, { status: 404 });
   }
 
   return NextResponse.json({

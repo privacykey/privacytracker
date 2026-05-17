@@ -1,5 +1,5 @@
-import crypto from 'crypto';
-import db from './db';
+import crypto from "node:crypto";
+import db from "./db";
 
 /**
  * One row per *distinct* privacy-policy text we have ever successfully
@@ -12,18 +12,9 @@ import db from './db';
  * captured at that time via GET /api/policy/version/[id].
  */
 export interface PolicyVersionRow {
-  id: string;
   app_id: string;
-  content_hash: string;
-  first_fetched_at: number;
-  last_fetched_at: number;
-  policy_url: string | null;
-  source_final_url: string | null;
-  source_title: string | null;
-  source_content_type: string | null;
-  source_origin: string | null;
-  source_word_count: number;
-  source_text: string;
+  /** Epoch ms of the most recent time we recorded an archive URL. */
+  archive_submitted_at: number | null;
   /**
    * Internet Archive snapshot URL for this exact version, populated
    * best-effort after a successful scrape (see lib/wayback.ts). Null while
@@ -31,8 +22,17 @@ export interface PolicyVersionRow {
    * unreachable at scrape time.
    */
   archive_url: string | null;
-  /** Epoch ms of the most recent time we recorded an archive URL. */
-  archive_submitted_at: number | null;
+  content_hash: string;
+  first_fetched_at: number;
+  id: string;
+  last_fetched_at: number;
+  policy_url: string | null;
+  source_content_type: string | null;
+  source_final_url: string | null;
+  source_origin: string | null;
+  source_text: string;
+  source_title: string | null;
+  source_word_count: number;
 }
 
 interface UpsertInput {
@@ -40,12 +40,12 @@ interface UpsertInput {
   contentHash: string;
   fetchedAt: number;
   policyUrl: string | null;
-  sourceFinalUrl: string | null;
-  sourceTitle: string | null;
   sourceContentType: string | null;
+  sourceFinalUrl: string | null;
   sourceOrigin: string | null;
-  sourceWordCount: number;
   sourceText: string;
+  sourceTitle: string | null;
+  sourceWordCount: number;
 }
 
 /**
@@ -56,13 +56,13 @@ interface UpsertInput {
 export function upsertPolicyVersion(input: UpsertInput): string {
   const existing = db
     .prepare(
-      'SELECT id FROM privacy_policy_versions WHERE app_id = ? AND content_hash = ?',
+      "SELECT id FROM privacy_policy_versions WHERE app_id = ? AND content_hash = ?"
     )
     .get(input.appId, input.contentHash) as { id?: string } | undefined;
 
   if (existing?.id) {
     db.prepare(
-      'UPDATE privacy_policy_versions SET last_fetched_at = ? WHERE id = ?',
+      "UPDATE privacy_policy_versions SET last_fetched_at = ? WHERE id = ?"
     ).run(input.fetchedAt, existing.id);
     return existing.id;
   }
@@ -73,7 +73,7 @@ export function upsertPolicyVersion(input: UpsertInput): string {
        id, app_id, content_hash, first_fetched_at, last_fetched_at,
        policy_url, source_final_url, source_title, source_content_type,
        source_origin, source_word_count, source_text
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     input.appId,
@@ -86,7 +86,7 @@ export function upsertPolicyVersion(input: UpsertInput): string {
     input.sourceContentType,
     input.sourceOrigin,
     input.sourceWordCount,
-    input.sourceText,
+    input.sourceText
   );
   return id;
 }
@@ -100,7 +100,7 @@ export function getPolicyVersion(id: string): PolicyVersionRow | null {
               source_origin, source_word_count, source_text,
               archive_url, archive_submitted_at
          FROM privacy_policy_versions
-        WHERE id = ?`,
+        WHERE id = ?`
     )
     .get(id) as PolicyVersionRow | undefined;
   return row ?? null;
@@ -112,7 +112,9 @@ export function getPolicyVersion(id: string): PolicyVersionRow | null {
  */
 export function hasAnyPolicyVersion(appId: string): boolean {
   const row = db
-    .prepare('SELECT 1 AS present FROM privacy_policy_versions WHERE app_id = ? LIMIT 1')
+    .prepare(
+      "SELECT 1 AS present FROM privacy_policy_versions WHERE app_id = ? LIMIT 1"
+    )
     .get(appId) as { present?: number } | undefined;
   return Boolean(row?.present);
 }
@@ -127,10 +129,10 @@ export function hasAnyPolicyVersion(appId: string): boolean {
 export function setPolicyVersionArchiveUrl(
   id: string,
   archiveUrl: string,
-  submittedAt: number,
+  submittedAt: number
 ): void {
   db.prepare(
-    'UPDATE privacy_policy_versions SET archive_url = ?, archive_submitted_at = ? WHERE id = ?',
+    "UPDATE privacy_policy_versions SET archive_url = ?, archive_submitted_at = ? WHERE id = ?"
   ).run(archiveUrl, submittedAt, id);
 }
 
@@ -140,7 +142,9 @@ export function setPolicyVersionArchiveUrl(
  * is summarising. Returns null when no scrape has ever succeeded for the
  * app (e.g. the developer link has been unreachable since onboarding).
  */
-export function getCurrentPolicyVersion(appId: string): PolicyVersionRow | null {
+export function getCurrentPolicyVersion(
+  appId: string
+): PolicyVersionRow | null {
   const row = db
     .prepare(
       `SELECT id, app_id, content_hash, first_fetched_at, last_fetched_at,
@@ -150,7 +154,7 @@ export function getCurrentPolicyVersion(appId: string): PolicyVersionRow | null 
          FROM privacy_policy_versions
         WHERE app_id = ?
         ORDER BY last_fetched_at DESC
-        LIMIT 1`,
+        LIMIT 1`
     )
     .get(appId) as PolicyVersionRow | undefined;
   return row ?? null;
@@ -169,25 +173,33 @@ export function getCurrentPolicyVersion(appId: string): PolicyVersionRow | null 
  * the timestamp drives the "changed N days ago" copy.
  */
 export interface RecentPolicyChange {
+  changedAt: number;
   currentVersionId: string;
   previousVersionId: string;
-  changedAt: number;
 }
 
 export function getRecentPolicyChange(
   appId: string,
-  windowDays: number,
+  windowDays: number
 ): RecentPolicyChange | null {
-  if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
+  if (!Number.isFinite(windowDays) || windowDays <= 0) {
+    return null;
+  }
 
   const current = getCurrentPolicyVersion(appId);
-  if (!current) return null;
+  if (!current) {
+    return null;
+  }
 
   const previous = getPreviousPolicyVersion(current.id);
-  if (!previous) return null;
+  if (!previous) {
+    return null;
+  }
 
   const windowMs = windowDays * 24 * 60 * 60 * 1000;
-  if (current.first_fetched_at + windowMs <= Date.now()) return null;
+  if (current.first_fetched_at + windowMs <= Date.now()) {
+    return null;
+  }
 
   return {
     currentVersionId: current.id,
@@ -208,7 +220,9 @@ export function getRecentPolicyChange(
  */
 export function getPreviousPolicyVersion(id: string): PolicyVersionRow | null {
   const current = getPolicyVersion(id);
-  if (!current) return null;
+  if (!current) {
+    return null;
+  }
 
   const row = db
     .prepare(
@@ -221,7 +235,7 @@ export function getPreviousPolicyVersion(id: string): PolicyVersionRow | null {
           AND content_hash != ?
           AND first_fetched_at < ?
         ORDER BY first_fetched_at DESC
-        LIMIT 1`,
+        LIMIT 1`
     )
     .get(current.app_id, current.content_hash, current.first_fetched_at) as
     | PolicyVersionRow
@@ -238,14 +252,16 @@ export function getPreviousPolicyVersion(id: string): PolicyVersionRow | null {
  */
 export function getArchiveUrlForHash(
   appId: string,
-  contentHash: string | null,
+  contentHash: string | null
 ): string | null {
-  if (!contentHash) return null;
+  if (!contentHash) {
+    return null;
+  }
   const row = db
     .prepare(
       `SELECT archive_url FROM privacy_policy_versions
         WHERE app_id = ? AND content_hash = ?
-        LIMIT 1`,
+        LIMIT 1`
     )
     .get(appId, contentHash) as { archive_url?: string | null } | undefined;
   return row?.archive_url ?? null;

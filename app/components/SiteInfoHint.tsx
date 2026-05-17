@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import { getTranslations } from 'next-intl/server';
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 /**
  * Bottom-LEFT mirror of {@link KeyboardHint}. Holds the two "site info"
@@ -23,26 +23,26 @@ import { getTranslations } from 'next-intl/server';
  * server-rendered.
  */
 export default async function SiteInfoHint() {
-  const t = await getTranslations('footer');
+  const t = await getTranslations("footer");
   return (
     // The parent <footer> in app/layout.tsx already supplies the
     // contentinfo landmark, so this wrapper is just a styled
     // positioning anchor — matching KeyboardHint on the right.
-    <div className="site-info-hint-anchor" aria-label={t('site_info_aria')}>
+    <div aria-label={t("site_info_aria")} className="site-info-hint-anchor">
       <Link
+        className="site-info-hint-link"
         href="/privacy-policy"
-        className="site-info-hint-link"
-        title={t('privacy_policy_title')}
+        title={t("privacy_policy_title")}
       >
-        {t('privacy_policy')}
+        {t("privacy_policy")}
       </Link>
-      <span className="site-info-hint-divider" aria-hidden="true" />
+      <span aria-hidden="true" className="site-info-hint-divider" />
       <Link
-        href="/legal"
         className="site-info-hint-link"
-        title={t('legal_title')}
+        href="/legal"
+        title={t("legal_title")}
       >
-        {t('legal')}
+        {t("legal")}
       </Link>
     </div>
   );

@@ -1,16 +1,16 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import {
+  isManualAppSource,
+  MANUAL_APP_SOURCE_META,
+  MANUAL_APP_SOURCES,
+  type ManualAppInput,
+} from "../../../lib/manual-apps";
 import {
   createManualApp,
   listManualApps,
-} from '../../../lib/manual-apps-server';
-import {
-  MANUAL_APP_SOURCES,
-  MANUAL_APP_SOURCE_META,
-  isManualAppSource,
-  type ManualAppInput,
-} from '../../../lib/manual-apps';
+} from "../../../lib/manual-apps-server";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -19,7 +19,7 @@ import {
   recordAudit,
   requestActorIp,
   requestHasValidAdminToken,
-} from '../../../lib/security';
+} from "../../../lib/security";
 
 /**
  * List every manual app the user has tracked and return the source-type
@@ -29,17 +29,19 @@ import {
  */
 export async function GET(request: Request) {
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'manual-apps.list'),
+    key: rateLimitKeyForRequest(request, "manual-apps.list"),
     limit: 120,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   return NextResponse.json({
     apps: listManualApps(),
-    sources: MANUAL_APP_SOURCES.map(value => ({ ...MANUAL_APP_SOURCE_META[value] })),
+    sources: MANUAL_APP_SOURCES.map((value) => ({
+      ...MANUAL_APP_SOURCE_META[value],
+    })),
   });
 }
 
@@ -53,25 +55,31 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'manual-apps.write'),
+    key: rateLimitKeyForRequest(request, "manual-apps.write"),
     limit: 30,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
-      action: 'manual-apps.create.unauthorised',
+      action: "manual-apps.create.unauthorised",
       actorIp,
       userAgent,
       success: false,
     });
-    return NextResponse.json({ error: 'Admin token required' }, { status: 401 });
+    return NextResponse.json(
+      { error: "Admin token required" },
+      { status: 401 }
+    );
   }
 
   let body: Record<string, unknown>;
@@ -81,31 +89,32 @@ export async function POST(request: Request) {
     body = await readBoundedJson<Record<string, unknown>>(request, 8 * 1024);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid body' },
-      { status: 400 },
+      { error: error instanceof Error ? error.message : "Invalid body" },
+      { status: 400 }
     );
   }
 
   if (!isManualAppSource(body.source)) {
     return NextResponse.json(
-      { error: `source must be one of: ${MANUAL_APP_SOURCES.join(', ')}` },
-      { status: 400 },
+      { error: `source must be one of: ${MANUAL_APP_SOURCES.join(", ")}` },
+      { status: 400 }
     );
   }
 
   const input: ManualAppInput = {
-    name: typeof body.name === 'string' ? body.name : '',
+    name: typeof body.name === "string" ? body.name : "",
     source: body.source,
-    developer: typeof body.developer === 'string' ? body.developer : null,
-    privacyPolicyUrl: typeof body.privacyPolicyUrl === 'string' ? body.privacyPolicyUrl : null,
-    sourceUrl: typeof body.sourceUrl === 'string' ? body.sourceUrl : null,
-    notes: typeof body.notes === 'string' ? body.notes : null,
+    developer: typeof body.developer === "string" ? body.developer : null,
+    privacyPolicyUrl:
+      typeof body.privacyPolicyUrl === "string" ? body.privacyPolicyUrl : null,
+    sourceUrl: typeof body.sourceUrl === "string" ? body.sourceUrl : null,
+    notes: typeof body.notes === "string" ? body.notes : null,
   };
 
   try {
     const created = createManualApp(input);
     recordAudit({
-      action: 'manual-apps.create.success',
+      action: "manual-apps.create.success",
       actorIp,
       userAgent,
       success: true,
@@ -113,9 +122,10 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ app: created }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to create manual app';
+    const message =
+      error instanceof Error ? error.message : "Failed to create manual app";
     recordAudit({
-      action: 'manual-apps.create.failed',
+      action: "manual-apps.create.failed",
       actorIp,
       userAgent,
       success: false,

@@ -11,11 +11,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "ultracite check",
+    "lint:fix": "ultracite fix",
     "lint:i18n": "node scripts/check-i18n-parity.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",
-    "test:coverage": "rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --experimental-test-coverage --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",
+    "test": "node --conditions=react-server --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",
+    "test:coverage": "rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --conditions=react-server --experimental-test-coverage --import tsx --import ./tests/setup-env.ts --test tests/**/*.test.ts",
     "test:e2e": "playwright test",
     "test:ios-import-helper": "python3 -m unittest discover -s tools/ios-app-import/tests -p '*_test.py'",
     "test:tauri": "cargo test --manifest-path src-tauri/Cargo.toml",
@@ -44,10 +45,11 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-joyride": "3.1.0",
+    "server-only": "^0.0.1",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
-    "@eslint/compat": "^2.1.0",
+    "@biomejs/biome": "2.4.15",
     "@playwright/test": "^1.59.1",
     "@tauri-apps/cli": "^2.11.1",
     "@types/better-sqlite3": "^7.6.9",
@@ -55,11 +57,9 @@
     "@types/react": "^19.2.3",
     "@types/react-dom": "^19.2.3",
     "cross-env": "^10.1.0",
-    "eslint": "^10.3.0",
-    "eslint-config-next": "^16.2.6",
-    "eslint-plugin-react-hooks": "^7.1.1",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "ultracite": "7.7.0"
   },
   "pnpm": {
     "//": "Install-script allow-list. pnpm v9+ blocks all install scripts by default; without this block the listed packages land in node_modules with their build steps skipped, breaking native bindings (better-sqlite3), platform binaries (esbuild, @swc/core, @tauri-apps/cli, unrs-resolver), libvips (sharp), language data (tesseract.js), and macOS fsevents (@parcel/watcher). Mirrored in pnpm-workspace.yaml for pnpm 10+, which reads `onlyBuiltDependencies` from the workspace file in preference to here. The `overrides` block lives in pnpm-workspace.yaml — keeping it in BOTH places caused [ERR_PNPM_LOCKFILE_CONFIG_MISMATCH] in CI because pnpm 10 reads overrides from the workspace file but writes them to the lockfile, and the comparison failed against package.json's stale copy.",

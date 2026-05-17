@@ -26,24 +26,24 @@
  * condition, not a crash.
  */
 
-import crypto from 'crypto';
-import db from './db';
-import { recordActivity } from './activity';
-import { schedulePostAppUpdatePolicyFetch } from './post-app-update-policy-fetch';
+import crypto from "node:crypto";
+import { recordActivity } from "./activity";
+import db from "./db";
+import { schedulePostAppUpdatePolicyFetch } from "./post-app-update-policy-fetch";
 import {
-  readSyncBulkState,
-  writeSyncBulkState,
-  clearSyncBulkState,
   acquireSyncBulkMutex,
-  releaseSyncBulkMutex,
-  isSyncBulkMutexHeld,
-  zeroSyncTotals,
-  summariseSyncState,
+  clearSyncBulkState,
   hasSyncPendingWork,
+  isSyncBulkMutexHeld,
+  readSyncBulkState,
+  releaseSyncBulkMutex,
   type SyncBulkState,
   type SyncBulkTotals,
   type SyncQueueEntry,
-} from './sync-bulk-state';
+  summariseSyncState,
+  writeSyncBulkState,
+  zeroSyncTotals,
+} from "./sync-bulk-state";
 
 /** Row shape pulled from `apps` to seed the queue. */
 export interface SyncAppRow {
@@ -53,18 +53,18 @@ export interface SyncAppRow {
 }
 
 export interface RunSyncBulkOptions {
-  initiator: 'manual' | 'scheduled' | 'resume';
+  initiator: "manual" | "scheduled" | "resume";
   resumeState?: SyncBulkState;
 }
 
 /** Return shape kept compatible with the pre-refactor `runScheduledSync`. */
 export interface RunSyncBulkResult {
-  synced: number;
   changes: number;
-  skipped?: boolean;
+  durationMs?: number;
   /** Extended: how many apps Apple rate-limited us on this run. */
   rateLimited?: number;
-  durationMs?: number;
+  skipped?: boolean;
+  synced: number;
 }
 
 /**
@@ -73,9 +73,11 @@ export interface RunSyncBulkResult {
  * historically returned `{ skipped: true }` in the busy case so the
  * runner does the same for back-compat.
  */
-export function canStartSyncManualRun(): { ok: true } | { ok: false; reason: 'busy' } {
+export function canStartSyncManualRun():
+  | { ok: true }
+  | { ok: false; reason: "busy" } {
   if (isSyncBulkMutexHeld() || readSyncBulkState() !== null) {
-    return { ok: false, reason: 'busy' };
+    return { ok: false, reason: "busy" };
   }
   return { ok: true };
 }
@@ -94,17 +96,17 @@ export function buildInitialSyncQueue(): {
          FROM apps
         WHERE url IS NOT NULL
           AND TRIM(url) != ''
-        ORDER BY name COLLATE NOCASE ASC`,
+        ORDER BY name COLLATE NOCASE ASC`
     )
     .all() as SyncAppRow[];
   return {
     queue: apps
-      .filter(app => app.url) // defensive: SQL already excludes these
-      .map<SyncQueueEntry>(app => ({
+      .filter((app) => app.url) // defensive: SQL already excludes these
+      .map<SyncQueueEntry>((app) => ({
         appId: app.id,
         appName: app.name,
         url: app.url,
-        status: 'pending',
+        status: "pending",
       })),
     appCount: apps.length,
   };
@@ -117,28 +119,34 @@ export function buildInitialSyncQueue(): {
  */
 function lookupSyncAppRow(appId: string): SyncAppRow | null {
   const row = db
-    .prepare(`SELECT id, name, url FROM apps WHERE id = ?`)
+    .prepare("SELECT id, name, url FROM apps WHERE id = ?")
     .get(appId) as SyncAppRow | undefined;
   return row ?? null;
 }
 
 function bulkSummaryLine(totals: SyncBulkTotals): string {
   const parts = [`${totals.succeeded}/${totals.attempted} synced`];
-  parts.push(`${totals.changes} change${totals.changes === 1 ? '' : 's'}`);
-  if (totals.failed) parts.push(`${totals.failed} error${totals.failed === 1 ? '' : 's'}`);
-  if (totals.rateLimited) parts.push(`${totals.rateLimited} rate-limited`);
-  if (totals.skipped) parts.push(`${totals.skipped} skipped`);
-  return parts.join(', ');
+  parts.push(`${totals.changes} change${totals.changes === 1 ? "" : "s"}`);
+  if (totals.failed) {
+    parts.push(`${totals.failed} error${totals.failed === 1 ? "" : "s"}`);
+  }
+  if (totals.rateLimited) {
+    parts.push(`${totals.rateLimited} rate-limited`);
+  }
+  if (totals.skipped) {
+    parts.push(`${totals.skipped} skipped`);
+  }
+  return parts.join(", ");
 }
 
 function activityTypeFor(
-  initiator: 'manual' | 'scheduled' | 'resume',
-): 'manual_sync' | 'scheduled_sync' {
+  initiator: "manual" | "scheduled" | "resume"
+): "manual_sync" | "scheduled_sync" {
   // Resume is re-finishing whatever the original initiator started — we
   // don't know which one. Treating it as 'scheduled_sync' keeps the
   // activity timeline readable (users rarely kick off manual syncs, so
   // resumes are more likely to be continuations of scheduled work).
-  return initiator === 'manual' ? 'manual_sync' : 'scheduled_sync';
+  return initiator === "manual" ? "manual_sync" : "scheduled_sync";
 }
 
 /**
@@ -148,7 +156,7 @@ function activityTypeFor(
  *   - If absent, the runner creates a fresh state blob.
  */
 export async function runBulkSync(
-  options: RunSyncBulkOptions,
+  options: RunSyncBulkOptions
 ): Promise<RunSyncBulkResult> {
   let state: SyncBulkState;
   if (options.resumeState) {
@@ -156,8 +164,8 @@ export async function runBulkSync(
     // Flip any `in_progress` entries back to `pending` — those were the
     // app(s) mid-flight when the previous process died. We'll redo them.
     for (const entry of state.queue) {
-      if (entry.status === 'in_progress') {
-        entry.status = 'pending';
+      if (entry.status === "in_progress") {
+        entry.status = "pending";
       }
     }
   } else {
@@ -185,8 +193,8 @@ export async function runBulkSync(
   if (state.queue.length === 0) {
     recordActivity({
       type: activityTypeFor(state.initiator),
-      status: 'ok',
-      summary: 'No apps to sync',
+      status: "ok",
+      summary: "No apps to sync",
       detail: { appCount: 0 },
       startedAt: state.startedAt,
     });
@@ -200,9 +208,9 @@ export async function runBulkSync(
   // Lazy-load to match the pre-refactor dynamic import — avoids a cycle
   // between scheduler.ts (which imports activity) and scraper.ts (which
   // also imports activity indirectly via db).
-  const { fetchAndParseApp, AppleRateLimitError } = await import('./scraper');
-  const trigger: 'manual' | 'scheduled' =
-    state.initiator === 'manual' ? 'manual' : 'scheduled';
+  const { fetchAndParseApp, AppleRateLimitError } = await import("./scraper");
+  const trigger: "manual" | "scheduled" =
+    state.initiator === "manual" ? "manual" : "scheduled";
 
   let rateLimited = false;
 
@@ -211,15 +219,17 @@ export async function runBulkSync(
       const entry = state.queue[i];
       // Skip apps already completed in a prior life. `failed` is intentional
       // — a user can kick off a new run to retry them.
-      if (entry.status === 'done' || entry.status === 'failed') continue;
+      if (entry.status === "done" || entry.status === "failed") {
+        continue;
+      }
 
       // Mark in-flight + persist BEFORE any work so a crash here is visible.
-      entry.status = 'in_progress';
+      entry.status = "in_progress";
       entry.startedAt = Date.now();
-      delete entry.finishedAt;
-      delete entry.error;
-      delete entry.outcome;
-      delete entry.changesDetected;
+      entry.finishedAt = undefined;
+      entry.error = undefined;
+      entry.outcome = undefined;
+      entry.changesDetected = undefined;
       state.currentAppId = entry.appId;
       state.totals.attempted++;
       writeSyncBulkState(state);
@@ -227,11 +237,13 @@ export async function runBulkSync(
       // Refresh the app row — the user may have deleted the app or edited
       // the URL between queue build and dequeue.
       const app = lookupSyncAppRow(entry.appId);
-      if (!app || !app.url) {
-        const reason = !app ? 'App no longer exists.' : 'App no longer has a URL.';
-        entry.status = 'done'; // treat as completed-with-skip so we don't retry on resume
+      if (!app?.url) {
+        const reason = app
+          ? "App no longer has a URL."
+          : "App no longer exists.";
+        entry.status = "done"; // treat as completed-with-skip so we don't retry on resume
         entry.finishedAt = Date.now();
-        entry.outcome = 'skipped';
+        entry.outcome = "skipped";
         entry.error = reason;
         state.totals.skipped++;
         state.totals.attempted--; // this one didn't actually fire a scrape
@@ -246,22 +258,24 @@ export async function runBulkSync(
         // scheduled after the bulk App Store labels finish.
         const result = await fetchAndParseApp(app.url, true, false, trigger);
         const changesDetected =
-          !!result && typeof result === 'object' && 'changesDetected' in result
+          result && typeof result === "object" && "changesDetected" in result
             ? !!(result as { changesDetected?: boolean }).changesDetected
             : false;
 
-        entry.status = 'done';
+        entry.status = "done";
         entry.finishedAt = Date.now();
-        entry.outcome = changesDetected ? 'changed' : 'succeeded';
+        entry.outcome = changesDetected ? "changed" : "succeeded";
         entry.changesDetected = changesDetected;
         state.totals.succeeded++;
-        if (changesDetected) state.totals.changes++;
+        if (changesDetected) {
+          state.totals.changes++;
+        }
         state.currentAppId = null;
         writeSyncBulkState(state);
       } catch (error) {
         const isRateLimit =
           !!error &&
-          typeof error === 'object' &&
+          typeof error === "object" &&
           (error instanceof AppleRateLimitError ||
             (error as { rateLimited?: unknown }).rateLimited === true);
 
@@ -271,11 +285,13 @@ export async function runBulkSync(
           // in totals, then bail out. The next scheduled tick will retry
           // from scratch; crash-safe resume doesn't apply because we're
           // about to clear state cleanly.
-          entry.status = 'failed';
+          entry.status = "failed";
           entry.finishedAt = Date.now();
-          entry.outcome = 'rate_limited';
+          entry.outcome = "rate_limited";
           entry.error =
-            error instanceof Error ? error.message.slice(0, 200) : 'Apple rate-limited';
+            error instanceof Error
+              ? error.message.slice(0, 200)
+              : "Apple rate-limited";
           state.totals.rateLimited++;
           state.totals.attempted--; // 429 isn't a real attempt
           state.currentAppId = null;
@@ -286,7 +302,7 @@ export async function runBulkSync(
           // waiting on Apple not on us).
           for (let j = i + 1; j < state.queue.length; j++) {
             const peer = state.queue[j];
-            if (peer.status === 'pending') {
+            if (peer.status === "pending") {
               state.totals.rateLimited++;
             }
           }
@@ -294,11 +310,11 @@ export async function runBulkSync(
           break;
         }
 
-        const message = error instanceof Error ? error.message : 'Sync error';
-        entry.status = 'failed';
+        const message = error instanceof Error ? error.message : "Sync error";
+        entry.status = "failed";
         entry.finishedAt = Date.now();
         entry.error = message.slice(0, 200);
-        entry.outcome = 'failed';
+        entry.outcome = "failed";
         state.totals.failed++;
         state.currentAppId = null;
         writeSyncBulkState(state);
@@ -307,12 +323,11 @@ export async function runBulkSync(
 
     // Clean completion (or rate-limit exit) — write summary row, clear state.
     const durationMs = Date.now() - runStartedAt;
-    const status =
-      state.totals.failed > 0 || rateLimited ? 'partial' : 'ok';
+    const status = state.totals.failed > 0 || rateLimited ? "partial" : "ok";
 
     const baseSummary = bulkSummaryLine(state.totals);
     const activitySummary = (
-      state.initiator === 'resume'
+      state.initiator === "resume"
         ? `${baseSummary} (resumed after restart)`
         : baseSummary
     ).slice(0, 200);
@@ -321,8 +336,8 @@ export async function runBulkSync(
     // count because we haven't actually covered every app.
     if (!rateLimited) {
       db.prepare(
-        `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`,
-      ).run('last_auto_sync', Date.now().toString());
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)"
+      ).run("last_auto_sync", Date.now().toString());
     }
 
     recordActivity({
@@ -330,7 +345,7 @@ export async function runBulkSync(
       status,
       summary: activitySummary,
       detail: {
-        mode: state.initiator === 'resume' ? 'bulk-resumed' : 'bulk',
+        mode: state.initiator === "resume" ? "bulk-resumed" : "bulk",
         totals: state.totals,
         runId: state.runId,
         rateLimited,
@@ -342,7 +357,7 @@ export async function runBulkSync(
     releaseSyncBulkMutex();
 
     if (state.totals.succeeded > 0) {
-      schedulePostAppUpdatePolicyFetch('sync');
+      schedulePostAppUpdatePolicyFetch("sync");
     }
 
     return {
@@ -354,13 +369,17 @@ export async function runBulkSync(
   } catch (error) {
     // Outer catch — loop itself blew up (DB I/O, OOM). Leave state + mutex
     // in place so `instrumentation.ts` can resume on the next boot.
-    const message = error instanceof Error ? error.message : 'Bulk sync failed';
+    const message = error instanceof Error ? error.message : "Bulk sync failed";
     recordActivity({
       type: activityTypeFor(state.initiator),
-      status: 'error',
-      summary: `${state.initiator === 'manual' ? 'Manual' : 'Scheduled'} sync failed: ${message}`.slice(0, 200),
+      status: "error",
+      summary:
+        `${state.initiator === "manual" ? "Manual" : "Scheduled"} sync failed: ${message}`.slice(
+          0,
+          200
+        ),
       detail: {
-        mode: 'bulk',
+        mode: "bulk",
         totals: state.totals,
         errorMessage: message,
         runId: state.runId,
@@ -388,7 +407,7 @@ export function describeCurrentSyncRun(): {
   const mutexHeld = isSyncBulkMutexHeld();
   const summary = state ? summariseSyncState(state) : null;
   const currentAppName = state?.currentAppId
-    ? state.queue.find(e => e.appId === state.currentAppId)?.appName ?? null
+    ? (state.queue.find((e) => e.appId === state.currentAppId)?.appName ?? null)
     : null;
   const stale = mutexHeld && !hasSyncPendingWork(state);
   return {

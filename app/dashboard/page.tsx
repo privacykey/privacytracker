@@ -1,55 +1,67 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { getTriageData } from '../../lib/triage';
-import {
-  getManualAppsBannerDismissed,
-  getUserIntent,
-} from '../../lib/preferences-server';
-import { countManualApps } from '../../lib/manual-apps-server';
-import { getMismatchedApps } from '../../lib/privacy-profile-server';
-import { resolveFlagFromDb } from '../../lib/feature-flags-server';
-import { getSetting } from '../../lib/scheduler';
-import { getActiveFocus, getWelcomedAt, setWelcomedAt } from '../../lib/feature-flag-storage';
-import {
-  getUserVerdictsByAppId,
-  getImportedVerdictsByAppId,
-} from '../../lib/verdicts';
-import { getTranslations } from 'next-intl/server';
-import HomeView, { type DashboardFlagState } from '../components/HomeView';
-import Nav from '../components/Nav';
-import CoachmarkTour from '../components/CoachmarkTour';
-import SampleModeView from '../components/SampleModeView';
-import BundleImportProvenanceBanner from '../components/BundleImportProvenanceBanner';
-import TaskList from '../components/TaskList';
-import { resolveAllTasks, resolveOptInCandidates } from '../../lib/tasks-server';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import {
   consumeMigrationFlowMarker,
   getMostRecentImport,
-} from '../../lib/audit-bundle-import';
-import { getDashboardLayout } from '../../lib/dashboard-layout-server';
-import { DEFAULT_LAYOUT, type DashboardLayout } from '../../lib/dashboard-layout';
+} from "../../lib/audit-bundle-import";
+import {
+  type DashboardLayout,
+  DEFAULT_LAYOUT,
+} from "../../lib/dashboard-layout";
+import { getDashboardLayout } from "../../lib/dashboard-layout-server";
+import {
+  getActiveFocus,
+  getWelcomedAt,
+  setWelcomedAt,
+} from "../../lib/feature-flag-storage";
+import { resolveFlagFromDb } from "../../lib/feature-flags-server";
+import { countManualApps } from "../../lib/manual-apps-server";
+import {
+  getManualAppsBannerDismissed,
+  getUserIntent,
+} from "../../lib/preferences-server";
+import { getMismatchedApps } from "../../lib/privacy-profile-server";
+import { getSetting } from "../../lib/scheduler";
+import {
+  resolveAllTasks,
+  resolveOptInCandidates,
+} from "../../lib/tasks-server";
+import { getTriageData } from "../../lib/triage";
+import {
+  getImportedVerdictsByAppId,
+  getUserVerdictsByAppId,
+} from "../../lib/verdicts";
+import BundleImportProvenanceBanner from "../components/BundleImportProvenanceBanner";
+import CoachmarkTour from "../components/CoachmarkTour";
+import HomeView, { type DashboardFlagState } from "../components/HomeView";
+import Nav from "../components/Nav";
+import SampleModeView from "../components/SampleModeView";
+import TaskList from "../components/TaskList";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: 'Home — privacytracker',
+  title: "Home — privacytracker",
 };
 
 interface DashboardPageProps {
   searchParams?: Promise<{ sample?: string; edit?: string }>;
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage({
+  searchParams,
+}: DashboardPageProps) {
   // ?sample=1 — set by the welcome screen's "Try with sample data" button.
   // Skips the empty-apps redirect so the SampleModeView client component can
   // pick up the sessionStorage seed and render the demo apps inline.
   const params = (await searchParams) ?? {};
-  const sampleMode = params.sample === '1';
+  const sampleMode = params.sample === "1";
   // ?edit=layout — opens the inline edit-in-place mode for the dashboard
   // layout. Only honoured when `flag.dashboard.layout_editor.visible` is
   // on (the resolver below ignores the param if the flag is off).
-  const editLayoutRequested = params.edit === 'layout';
+  const editLayoutRequested = params.edit === "layout";
 
   if (sampleMode) {
     return (
@@ -65,7 +77,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     triage = getTriageData();
   } catch (error) {
     // DB not ready
-    console.warn('[dashboard] getTriageData failed:', error);
+    console.warn("[dashboard] getTriageData failed:", error);
   }
 
   // Round 3 wave B: lazy welcomed_at write. If the user has apps but no
@@ -76,9 +88,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   // welcomed_at is already set.
   if (triage && triage.totalApps > 0) {
     try {
-      if (getWelcomedAt() === null) setWelcomedAt();
+      if (getWelcomedAt() === null) {
+        setWelcomedAt();
+      }
     } catch (e) {
-      console.warn('[dashboard] welcomed_at lazy-set failed:', e);
+      console.warn("[dashboard] welcomed_at lazy-set failed:", e);
     }
   }
 
@@ -98,12 +112,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   if (triage && triage.totalApps > 0) {
     try {
       const migrate = consumeMigrationFlowMarker();
-      if (migrate) migrationTarget = migrate.targetPath;
+      if (migrate) {
+        migrationTarget = migrate.targetPath;
+      }
     } catch (e) {
-      console.warn('[dashboard] migration consume failed:', e);
+      console.warn("[dashboard] migration consume failed:", e);
     }
   }
-  if (migrationTarget) redirect(migrationTarget);
+  if (migrationTarget) {
+    redirect(migrationTarget);
+  }
 
   if (!triage || triage.totalApps === 0) {
     // If the user hasn't picked an archetype yet, send them to the welcome
@@ -116,7 +134,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         return null;
       }
     })();
-    redirect(intent ? '/onboard' : '/welcome');
+    redirect(intent ? "/onboard" : "/welcome");
   }
 
   const userIntent = (() => {
@@ -152,7 +170,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   try {
     mismatchedApps = getMismatchedApps();
   } catch (error) {
-    console.warn('[dashboard] getMismatchedApps failed:', error);
+    console.warn("[dashboard] getMismatchedApps failed:", error);
   }
 
   // Round 3 PR 3: pre-resolve dashboard flags server-side so HomeView gets
@@ -162,32 +180,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const flags: DashboardFlagState | undefined = (() => {
     try {
       const resolve = (k: Parameters<typeof resolveFlagFromDb>[0]) =>
-        resolveFlagFromDb(k) === 'on';
+        resolveFlagFromDb(k) === "on";
       return {
         callout: {
-          declutter: resolve('flag.dashboard.callout.declutter'),
-          guardian: resolve('flag.dashboard.callout.guardian'),
-          understand_declutter: resolve('flag.dashboard.callout.understand_declutter'),
-          understand_only: resolve('flag.dashboard.callout.understand_only'),
+          declutter: resolve("flag.dashboard.callout.declutter"),
+          guardian: resolve("flag.dashboard.callout.guardian"),
+          understand_declutter: resolve(
+            "flag.dashboard.callout.understand_declutter"
+          ),
+          understand_only: resolve("flag.dashboard.callout.understand_only"),
         },
-        focusStrip: resolve('flag.dashboard.focus_strip'),
-        heroQuiet: resolve('flag.dashboard.hero.quiet_state'),
-        heroAttention: resolve('flag.dashboard.hero.attention_state'),
-        manualAppsBanner: resolve('flag.dashboard.manual_apps_banner'),
-        riskSection: resolve('flag.dashboard.risk_section'),
-        glanceSection: resolve('flag.dashboard.glance_section'),
-        reviewSection: resolve('flag.dashboard.review_section'),
-        profileMismatchSection: resolve('flag.dashboard.profile_mismatch_section'),
-        staleSection: resolve('flag.dashboard.stale_section'),
-        activitySection: resolve('flag.dashboard.activity_section'),
-        riskTierLegend: resolve('flag.dashboard.risk_tier_legend'),
-        backgroundModeWizard: resolve('flag.dashboard.background_mode_wizard'),
-        taskList: resolve('flag.dashboard.task_list'),
-        layoutEditorVisible: resolve('flag.dashboard.layout_editor.visible'),
+        focusStrip: resolve("flag.dashboard.focus_strip"),
+        heroQuiet: resolve("flag.dashboard.hero.quiet_state"),
+        heroAttention: resolve("flag.dashboard.hero.attention_state"),
+        manualAppsBanner: resolve("flag.dashboard.manual_apps_banner"),
+        riskSection: resolve("flag.dashboard.risk_section"),
+        glanceSection: resolve("flag.dashboard.glance_section"),
+        reviewSection: resolve("flag.dashboard.review_section"),
+        profileMismatchSection: resolve(
+          "flag.dashboard.profile_mismatch_section"
+        ),
+        staleSection: resolve("flag.dashboard.stale_section"),
+        activitySection: resolve("flag.dashboard.activity_section"),
+        riskTierLegend: resolve("flag.dashboard.risk_tier_legend"),
+        backgroundModeWizard: resolve("flag.dashboard.background_mode_wizard"),
+        taskList: resolve("flag.dashboard.task_list"),
+        layoutEditorVisible: resolve("flag.dashboard.layout_editor.visible"),
       };
     } catch (error) {
-      console.warn('[dashboard] flag resolution failed:', error);
-      return undefined;
+      console.warn("[dashboard] flag resolution failed:", error);
+      return;
     }
   })();
 
@@ -200,7 +222,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     try {
       return resolveAllTasks(undefined, false);
     } catch (error) {
-      console.warn('[dashboard] resolveAllTasks failed:', error);
+      console.warn("[dashboard] resolveAllTasks failed:", error);
       return [];
     }
   })();
@@ -212,7 +234,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     try {
       return resolveOptInCandidates(undefined, false);
     } catch (error) {
-      console.warn('[dashboard] resolveOptInCandidates failed:', error);
+      console.warn("[dashboard] resolveOptInCandidates failed:", error);
       return [];
     }
   })();
@@ -225,9 +247,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   // this surface?" signal.
   const backgroundCalloutVisible = (() => {
     try {
-      const completed = getSetting('background_wizard_completed_at', '');
-      const dismissed = getSetting('background_wizard_dismissed_at', '');
-      return !completed && !dismissed;
+      const completed = getSetting("background_wizard_completed_at", "");
+      const dismissed = getSetting("background_wizard_dismissed_at", "");
+      return !(completed || dismissed);
     } catch {
       return false;
     }
@@ -238,7 +260,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   // tracks per-session completion inside the component itself.
   const tourEnabled = (() => {
     try {
-      return resolveFlagFromDb('flag.onboarding.coachmark_tour') === 'on';
+      return resolveFlagFromDb("flag.onboarding.coachmark_tour") === "on";
     } catch {
       return false;
     }
@@ -256,18 +278,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const navFlags = (() => {
     try {
       return {
-        appCountBadge: resolveFlagFromDb('flag.nav.app_count_badge') === 'on',
-        notificationBell: resolveFlagFromDb('flag.nav.notification_bell') === 'on',
-        notificationBellPolling: resolveFlagFromDb('flag.notifications.bell.polling') === 'on',
-        taskCenterTrigger: resolveFlagFromDb('flag.nav.task_center_trigger') === 'on',
-        taskListIcon: resolveFlagFromDb('flag.nav.task_list_icon') === 'on',
-        mobileDrawer: resolveFlagFromDb('flag.nav.mobile_drawer') === 'on',
-        pagePrivacyMap: resolveFlagFromDb('flag.page.privacy_map') === 'on',
-        pageStats: resolveFlagFromDb('flag.page.stats') === 'on',
-        pageShortlist: resolveFlagFromDb('flag.page.shortlist') === 'on',
+        appCountBadge: resolveFlagFromDb("flag.nav.app_count_badge") === "on",
+        notificationBell:
+          resolveFlagFromDb("flag.nav.notification_bell") === "on",
+        notificationBellPolling:
+          resolveFlagFromDb("flag.notifications.bell.polling") === "on",
+        taskCenterTrigger:
+          resolveFlagFromDb("flag.nav.task_center_trigger") === "on",
+        taskListIcon: resolveFlagFromDb("flag.nav.task_list_icon") === "on",
+        mobileDrawer: resolveFlagFromDb("flag.nav.mobile_drawer") === "on",
+        pagePrivacyMap: resolveFlagFromDb("flag.page.privacy_map") === "on",
+        pageStats: resolveFlagFromDb("flag.page.stats") === "on",
+        pageShortlist: resolveFlagFromDb("flag.page.shortlist") === "on",
       };
     } catch {
-      return undefined;
+      return;
     }
   })();
 
@@ -293,7 +318,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     try {
       return getDashboardLayout();
     } catch (error) {
-      console.warn('[dashboard] getDashboardLayout failed:', error);
+      console.warn("[dashboard] getDashboardLayout failed:", error);
       return DEFAULT_LAYOUT;
     }
   })();
@@ -309,7 +334,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       const ids = new Set<string>([...userMap.keys(), ...importedMap.keys()]);
       return ids.size;
     } catch (error) {
-      console.warn('[dashboard] reviewableCount computation failed:', error);
+      console.warn("[dashboard] reviewableCount computation failed:", error);
       return 0;
     }
   })();
@@ -319,39 +344,43 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <Nav appCount={triage.totalApps} flags={navFlags} />
       {recentBundleImport && (
         <BundleImportProvenanceBanner
-          importedAt={recentBundleImport.importedAt}
-          recommenderName={recentBundleImport.recommenderName ?? 'your friend'}
+          annotationsAdded={recentBundleImport.annotationsAdded}
           appsAdded={recentBundleImport.appsAdded}
           appsUpdated={recentBundleImport.appsUpdated}
-          annotationsAdded={recentBundleImport.annotationsAdded}
+          importedAt={recentBundleImport.importedAt}
+          recommenderName={recentBundleImport.recommenderName ?? "your friend"}
         />
       )}
       <HomeView
-        triage={triage}
-        userIntent={userIntent}
-        manualAppsCount={manualAppsCount}
-        manualAppsBannerDismissed={manualAppsBannerDismissed}
-        mismatchedApps={mismatchedApps}
-        flags={flags}
         backgroundCalloutVisible={backgroundCalloutVisible}
-        taskListSlot={<TaskList tasks={userTasks} candidates={userTaskCandidates} />}
+        editMode={editLayoutRequested && (flags?.layoutEditorVisible ?? true)}
+        flags={flags}
+        layout={dashboardLayout}
+        manualAppsBannerDismissed={manualAppsBannerDismissed}
+        manualAppsCount={manualAppsCount}
+        mismatchedApps={mismatchedApps}
         // The "N apps need a decision" CTA is now part of the
         // customisable layout (card id `review_cta`). The server
         // renders the banner here so server-side `getTranslations`
         // resolves the ICU plural; HomeView slots it into the layout
         // order in place of the standalone render above HomeView.
         reviewCtaSlot={
-          reviewableCount > 0 ? <ReviewCtaBanner count={reviewableCount} /> : null
+          reviewableCount > 0 ? (
+            <ReviewCtaBanner count={reviewableCount} />
+          ) : null
         }
-        layout={dashboardLayout}
-        editMode={editLayoutRequested && (flags?.layoutEditorVisible ?? true)}
+        taskListSlot={
+          <TaskList candidates={userTaskCandidates} tasks={userTasks} />
+        }
+        triage={triage}
+        userIntent={userIntent}
       />
       {tourEnabled && tourFocus && (
         <CoachmarkTour
-          enabled={tourEnabled}
-          audience={tourFocus.audience}
-          goals={tourFocus.goals}
           aiConfigured={tourFocus.aiConfigured}
+          audience={tourFocus.audience}
+          enabled={tourEnabled}
+          goals={tourFocus.goals}
         />
       )}
     </>
@@ -367,20 +396,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
  * resolves cleanly without a sprinkle of conditionals at the call-site.
  */
 async function ReviewCtaBanner({ count }: { count: number }) {
-  const t = await getTranslations('dashboard.review_cta');
+  const t = await getTranslations("dashboard.review_cta");
   return (
     <div className="review-cta-wrap">
       <Link
-        href="/dashboard/review-recommendations"
+        aria-label={t("aria", { count })}
         className="review-cta"
-        aria-label={t('aria', { count })}
+        href="/dashboard/review-recommendations"
       >
-        <span className="review-cta-icon" aria-hidden="true">📝</span>
-        <span className="review-cta-body">
-          <strong>{t('heading', { count })}</strong>
-          <span className="review-cta-sub">{t('body')}</span>
+        <span aria-hidden="true" className="review-cta-icon">
+          📝
         </span>
-        <span className="review-cta-arrow" aria-hidden="true">→</span>
+        <span className="review-cta-body">
+          <strong>{t("heading", { count })}</strong>
+          <span className="review-cta-sub">{t("body")}</span>
+        </span>
+        <span aria-hidden="true" className="review-cta-arrow">
+          →
+        </span>
       </Link>
     </div>
   );

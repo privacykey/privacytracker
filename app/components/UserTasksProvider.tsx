@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
-} from 'react';
-import { isDesktop } from '../../lib/desktop';
-import type { OptInCandidate, ResolvedTask, UserTaskId } from '../../lib/tasks';
+} from "react";
+import { isDesktop } from "../../lib/desktop";
+import type { OptInCandidate, ResolvedTask, UserTaskId } from "../../lib/tasks";
 
 /**
  * Shared client-side store for the user-tasks feature. Mounted in
@@ -26,17 +26,20 @@ import type { OptInCandidate, ResolvedTask, UserTaskId } from '../../lib/tasks';
  */
 
 interface UserTasksContextValue {
-  tasks: ResolvedTask[];
   /** Tasks marked `optInOnly` that the user can add via the chip tray. */
   candidates: OptInCandidate[];
+  dismissTask: (id: UserTaskId) => Promise<void>;
   loading: boolean;
+  optInTask: (id: UserTaskId) => Promise<void>;
   /** Has the first fetch completed? Lets surfaces avoid a flash of
    *  "all tasks pending" when they actually render before the API resolves. */
   ready: boolean;
-  startTask: (id: UserTaskId, opts?: { missingPrerequisite?: UserTaskId }) => Promise<void>;
-  dismissTask: (id: UserTaskId) => Promise<void>;
-  optInTask: (id: UserTaskId) => Promise<void>;
   refresh: () => Promise<void>;
+  startTask: (
+    id: UserTaskId,
+    opts?: { missingPrerequisite?: UserTaskId }
+  ) => Promise<void>;
+  tasks: ResolvedTask[];
 }
 
 const UserTasksContext = createContext<UserTasksContextValue | null>(null);
@@ -50,9 +53,12 @@ interface UserTasksProviderProps {
 }
 
 const POLL_INTERVAL_MS = 60_000;
-const REFRESH_EVENT = 'user-tasks:refresh';
+const REFRESH_EVENT = "user-tasks:refresh";
 
-export function UserTasksProvider({ children, initialTasks }: UserTasksProviderProps) {
+export function UserTasksProvider({
+  children,
+  initialTasks,
+}: UserTasksProviderProps) {
   const [tasks, setTasks] = useState<ResolvedTask[]>(initialTasks ?? []);
   const [candidates, setCandidates] = useState<OptInCandidate[]>([]);
   const [ready, setReady] = useState<boolean>(Boolean(initialTasks?.length));
@@ -68,8 +74,10 @@ export function UserTasksProvider({ children, initialTasks }: UserTasksProviderP
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/user-tasks', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const res = await fetch("/api/user-tasks", { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const json = (await res.json()) as {
         tasks: ResolvedTask[];
         candidates?: OptInCandidate[];
@@ -78,7 +86,7 @@ export function UserTasksProvider({ children, initialTasks }: UserTasksProviderP
       setCandidates(json.candidates ?? []);
       setReady(true);
     } catch (error) {
-      console.warn('[user-tasks] fetch failed:', error);
+      console.warn("[user-tasks] fetch failed:", error);
     } finally {
       setLoading(false);
     }
@@ -86,7 +94,9 @@ export function UserTasksProvider({ children, initialTasks }: UserTasksProviderP
 
   // Initial hydration when no server-side initialTasks were passed.
   useEffect(() => {
-    if (initialTasks && initialTasks.length > 0) return;
+    if (initialTasks && initialTasks.length > 0) {
+      return;
+    }
     void fetchTasks();
   }, [fetchTasks, initialTasks]);
 
@@ -105,62 +115,74 @@ export function UserTasksProvider({ children, initialTasks }: UserTasksProviderP
     return () => window.removeEventListener(REFRESH_EVENT, onRefresh);
   }, [fetchTasks]);
 
-  const applyMutationResponse = useCallback((json: {
-    tasks?: ResolvedTask[];
-    candidates?: OptInCandidate[];
-  }) => {
-    setTasks(json.tasks ?? []);
-    setCandidates(json.candidates ?? []);
-  }, []);
+  const applyMutationResponse = useCallback(
+    (json: { tasks?: ResolvedTask[]; candidates?: OptInCandidate[] }) => {
+      setTasks(json.tasks ?? []);
+      setCandidates(json.candidates ?? []);
+    },
+    []
+  );
 
   const startTask = useCallback(
     async (id: UserTaskId, opts?: { missingPrerequisite?: UserTaskId }) => {
       try {
-        const res = await fetch('/api/user-tasks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/user-tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id,
-            action: 'start',
+            action: "start",
             missingPrerequisite: opts?.missingPrerequisite,
           }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
         applyMutationResponse(await res.json());
       } catch (error) {
-        console.warn('[user-tasks] startTask failed:', error);
+        console.warn("[user-tasks] startTask failed:", error);
       }
     },
-    [applyMutationResponse],
+    [applyMutationResponse]
   );
 
-  const dismissTask = useCallback(async (id: UserTaskId) => {
-    try {
-      const res = await fetch('/api/user-tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'dismiss' }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      applyMutationResponse(await res.json());
-    } catch (error) {
-      console.warn('[user-tasks] dismissTask failed:', error);
-    }
-  }, [applyMutationResponse]);
+  const dismissTask = useCallback(
+    async (id: UserTaskId) => {
+      try {
+        const res = await fetch("/api/user-tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, action: "dismiss" }),
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        applyMutationResponse(await res.json());
+      } catch (error) {
+        console.warn("[user-tasks] dismissTask failed:", error);
+      }
+    },
+    [applyMutationResponse]
+  );
 
-  const optInTask = useCallback(async (id: UserTaskId) => {
-    try {
-      const res = await fetch('/api/user-tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'opt_in' }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      applyMutationResponse(await res.json());
-    } catch (error) {
-      console.warn('[user-tasks] optInTask failed:', error);
-    }
-  }, [applyMutationResponse]);
+  const optInTask = useCallback(
+    async (id: UserTaskId) => {
+      try {
+        const res = await fetch("/api/user-tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, action: "opt_in" }),
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        applyMutationResponse(await res.json());
+      } catch (error) {
+        console.warn("[user-tasks] optInTask failed:", error);
+      }
+    },
+    [applyMutationResponse]
+  );
 
   // Refine the task list with the runtime `isDesktop` flag. The server
   // resolver passes `isDesktop: false` (it can't inspect the client
@@ -187,7 +209,11 @@ export function UserTasksProvider({ children, initialTasks }: UserTasksProviderP
     refresh: fetchTasks,
   };
 
-  return <UserTasksContext.Provider value={value}>{children}</UserTasksContext.Provider>;
+  return (
+    <UserTasksContext.Provider value={value}>
+      {children}
+    </UserTasksContext.Provider>
+  );
 }
 
 export function useUserTasks(): UserTasksContextValue {
@@ -215,6 +241,8 @@ export function useUserTasks(): UserTasksContextValue {
  *  mutate task state outside the provider (e.g. the inline panel
  *  triggering its own re-poll after a click). */
 export function emitUserTasksRefresh(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") {
+    return;
+  }
   window.dispatchEvent(new Event(REFRESH_EVENT));
 }

@@ -1,20 +1,20 @@
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import { headers } from 'next/headers';
-import { redirect } from 'next/navigation';
-import OnboardWizard from '../components/OnboardWizard';
-import { getSetting } from '@/lib/scheduler';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
-import { detectDeviceFromUA } from '../../lib/device';
+import type { Metadata } from "next";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { getSetting } from "@/lib/scheduler";
+import { detectDeviceFromUA } from "../../lib/device";
+import OnboardWizard from "../components/OnboardWizard";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   return {
-    title: t('onboard_title'),
+    title: t("onboard_title"),
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Gate the import wizard behind the welcome splash — if the user lands here
@@ -31,25 +31,29 @@ export const dynamic = 'force-dynamic';
  * `refineDeviceOnClient` using viewport width + touch points.
  */
 export default async function OnboardPage() {
-  const audienceSet = getSetting('flag.focus.audience', '') !== '';
-  if (!audienceSet) redirect('/welcome');
+  const audienceSet = getSetting("flag.focus.audience", "") !== "";
+  if (!audienceSet) {
+    redirect("/welcome");
+  }
 
   // `headers()` is async in Next 15/16 (still works synchronously in 14);
   // await covers both without a runtime branch.
   const hdrs = await Promise.resolve(headers() as any);
   const userAgent =
-    typeof hdrs?.get === 'function' ? (hdrs.get('user-agent') as string | null) : null;
+    typeof hdrs?.get === "function"
+      ? (hdrs.get("user-agent") as string | null)
+      : null;
   const initialDevice = detectDeviceFromUA(userAgent);
   const flags = {
-    methodConfigurator: safeResolveOn('flag.onboarding.method.configurator'),
+    methodConfigurator: safeResolveOn("flag.onboarding.method.configurator"),
   };
 
-  return <OnboardWizard initialDevice={initialDevice} flags={flags} />;
+  return <OnboardWizard flags={flags} initialDevice={initialDevice} />;
 }
 
 function safeResolveOn(key: Parameters<typeof resolveFlagFromDb>[0]): boolean {
   try {
-    return resolveFlagFromDb(key) === 'on';
+    return resolveFlagFromDb(key) === "on";
   } catch {
     return false;
   }

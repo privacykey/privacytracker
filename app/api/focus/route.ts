@@ -7,12 +7,12 @@
  * on first boot; new flows never touch it.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
-import { getActiveFocus, setActiveFocus } from '@/lib/feature-flag-storage';
-import type { Audience } from '@/lib/feature-flag-rules';
-import { readBoundedJson } from '@/lib/security';
+import { type NextRequest, NextResponse } from "next/server";
+import type { Audience } from "@/lib/feature-flag-rules";
+import { getActiveFocus, setActiveFocus } from "@/lib/feature-flag-storage";
+import { readBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * GET — return the current focus + AI-configured derivation. Used by the
@@ -23,37 +23,37 @@ export async function GET() {
   const focus = getActiveFocus();
   return NextResponse.json({
     audience: focus.audience,
-    understand: focus.goals.has('understand'),
-    declutter: focus.goals.has('declutter'),
-    minimal: focus.goals.has('minimal'),
-    accessibility: focus.goals.has('accessibility'),
+    understand: focus.goals.has("understand"),
+    declutter: focus.goals.has("declutter"),
+    minimal: focus.goals.has("minimal"),
+    accessibility: focus.goals.has("accessibility"),
     aiConfigured: focus.aiConfigured,
   });
 }
 
 interface FocusBody {
+  accessibility?: boolean;
   audience: Audience;
-  understand?: boolean;
   declutter?: boolean;
   minimal?: boolean;
-  accessibility?: boolean;
+  understand?: boolean;
 }
 
-const VALID_AUDIENCES: readonly Audience[] = ['self', 'loved_one', 'guardian'];
+const VALID_AUDIENCES: readonly Audience[] = ["self", "loved_one", "guardian"];
 
 export async function POST(request: NextRequest) {
   let body: Partial<FocusBody>;
   try {
     body = await readBoundedJson<Partial<FocusBody>>(request, 4 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const audience = body.audience;
-  if (!audience || !VALID_AUDIENCES.includes(audience)) {
+  if (!(audience && VALID_AUDIENCES.includes(audience))) {
     return NextResponse.json(
-      { error: `audience must be one of: ${VALID_AUDIENCES.join(', ')}` },
-      { status: 400 },
+      { error: `audience must be one of: ${VALID_AUDIENCES.join(", ")}` },
+      { status: 400 }
     );
   }
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   if (minimal) {
     understand = false;
     declutter = false;
-  } else if (!understand && !declutter) {
+  } else if (!(understand || declutter)) {
     // Silent fallback per §4.2 — empty primary goals defaults to understand.
     understand = true;
   }
@@ -77,10 +77,10 @@ export async function POST(request: NextRequest) {
   try {
     setActiveFocus({ audience, understand, declutter, minimal, accessibility });
   } catch (e) {
-    console.error('[/api/focus] write failed:', e);
+    console.error("[/api/focus] write failed:", e);
     return NextResponse.json(
-      { error: 'Failed to save focus' },
-      { status: 500 },
+      { error: "Failed to save focus" },
+      { status: 500 }
     );
   }
 

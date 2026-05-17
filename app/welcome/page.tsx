@@ -1,15 +1,15 @@
-import type { Metadata } from 'next';
-import { getTranslations } from 'next-intl/server';
-import WelcomeSplash from '../components/WelcomeSplash';
-import { getActiveFocus } from '@/lib/feature-flag-storage';
-import { getSetting } from '@/lib/scheduler';
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { getActiveFocus } from "@/lib/feature-flag-storage";
+import { getSetting } from "@/lib/scheduler";
+import WelcomeSplash from "../components/WelcomeSplash";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   return {
-    title: t('welcome_title'),
+    title: t("welcome_title"),
   };
 }
 
@@ -30,7 +30,7 @@ export default function WelcomePage() {
   })();
 
   // Empty-string default tells "not yet written" apart from a stored 'self'.
-  const audienceStored = getSetting('flag.focus.audience', '') !== '';
+  const audienceStored = getSetting("flag.focus.audience", "") !== "";
 
   const initialAudience = audienceStored && focus ? focus.audience : null;
 

@@ -1,8 +1,8 @@
-import { redirect } from 'next/navigation';
-import { getAllApps } from '../lib/scraper';
-import { getSetting } from '../lib/scheduler';
+import { redirect } from "next/navigation";
+import { getSetting } from "../lib/scheduler";
+import { getAllApps } from "../lib/scraper";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Three-way landing:
@@ -20,13 +20,15 @@ export default function RootPage() {
   try {
     const apps = getAllApps() as any[];
     hasApps = apps.length > 0;
-    audienceSet = getSetting('flag.focus.audience', '') !== '';
+    audienceSet = getSetting("flag.focus.audience", "") !== "";
   } catch (error) {
     // DB not yet initialised — send to welcome, which doesn't need any
     // pre-existing state to render.
-    console.warn('[root] DB read failed, routing to /welcome:', error);
+    console.warn("[root] DB read failed, routing to /welcome:", error);
   }
 
-  if (hasApps) redirect('/dashboard');
-  redirect(audienceSet ? '/onboard' : '/welcome');
+  if (hasApps) {
+    redirect("/dashboard");
+  }
+  redirect(audienceSet ? "/onboard" : "/welcome");
 }

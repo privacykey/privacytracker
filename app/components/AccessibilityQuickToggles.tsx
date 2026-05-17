@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { isDesktop, openMacAccessibilitySettings } from '../../lib/desktop';
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { isDesktop, openMacAccessibilitySettings } from "../../lib/desktop";
 
 /**
  * Footer-pill accessibility quick-toggles. Sits next to the keyboard-hint
@@ -41,28 +41,33 @@ import { isDesktop, openMacAccessibilitySettings } from '../../lib/desktop';
 // layout.tsx, which reads the same keys on page load to avoid a FOUC.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type A11yFontMode = 'default' | 'dyslexic';
-export type A11yScaleMode = 'default' | 'large' | 'x-large';
-export type A11yThemeMode = 'system' | 'light' | 'dark' | 'high-contrast';
-export type A11yShapesMode = 'off' | 'on';
-export type A11ySolidMode = 'off' | 'on';
+export type A11yFontMode = "default" | "dyslexic";
+export type A11yScaleMode = "default" | "large" | "x-large";
+export type A11yThemeMode = "system" | "light" | "dark" | "high-contrast";
+export type A11yShapesMode = "off" | "on";
+export type A11ySolidMode = "off" | "on";
 
 export const A11Y_STORAGE_KEYS = {
-  font: 'a11y-quick-font',
-  scale: 'a11y-quick-scale',
-  theme: 'a11y-quick-theme',
-  shapes: 'a11y-quick-shapes',
-  solid: 'a11y-quick-solid',
+  font: "a11y-quick-font",
+  scale: "a11y-quick-scale",
+  theme: "a11y-quick-theme",
+  shapes: "a11y-quick-shapes",
+  solid: "a11y-quick-solid",
 } as const;
 
-const SCALE_ORDER: A11yScaleMode[] = ['default', 'large', 'x-large'];
-const THEME_ORDER: A11yThemeMode[] = ['system', 'light', 'dark', 'high-contrast'];
+const SCALE_ORDER: A11yScaleMode[] = ["default", "large", "x-large"];
+const THEME_ORDER: A11yThemeMode[] = [
+  "system",
+  "light",
+  "dark",
+  "high-contrast",
+];
 
 const THEME_GLYPH: Record<A11yThemeMode, string> = {
-  system: '🌓',
-  light: '☀️',
-  dark: '🌙',
-  'high-contrast': '◐',
+  system: "🌓",
+  light: "☀️",
+  dark: "🌙",
+  "high-contrast": "◐",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,67 +78,104 @@ const THEME_GLYPH: Record<A11yThemeMode, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function applyFont(mode: A11yFontMode) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") {
+    return;
+  }
   const html = document.documentElement;
-  if (mode === 'dyslexic') html.setAttribute('data-a11y-font', 'dyslexic');
-  else html.removeAttribute('data-a11y-font');
+  if (mode === "dyslexic") {
+    html.setAttribute("data-a11y-font", "dyslexic");
+  } else {
+    html.removeAttribute("data-a11y-font");
+  }
   try {
-    if (mode === 'default') localStorage.removeItem(A11Y_STORAGE_KEYS.font);
-    else localStorage.setItem(A11Y_STORAGE_KEYS.font, mode);
+    if (mode === "default") {
+      localStorage.removeItem(A11Y_STORAGE_KEYS.font);
+    } else {
+      localStorage.setItem(A11Y_STORAGE_KEYS.font, mode);
+    }
   } catch {
     /* storage may be unavailable in private mode — attribute still applies */
   }
 }
 
 function applyScale(mode: A11yScaleMode) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") {
+    return;
+  }
   const html = document.documentElement;
-  if (mode === 'default') html.removeAttribute('data-a11y-scale');
-  else html.setAttribute('data-a11y-scale', mode);
+  if (mode === "default") {
+    html.removeAttribute("data-a11y-scale");
+  } else {
+    html.setAttribute("data-a11y-scale", mode);
+  }
   try {
-    if (mode === 'default') localStorage.removeItem(A11Y_STORAGE_KEYS.scale);
-    else localStorage.setItem(A11Y_STORAGE_KEYS.scale, mode);
+    if (mode === "default") {
+      localStorage.removeItem(A11Y_STORAGE_KEYS.scale);
+    } else {
+      localStorage.setItem(A11Y_STORAGE_KEYS.scale, mode);
+    }
   } catch {
     /* noop */
   }
 }
 
 function applyTheme(mode: A11yThemeMode) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") {
+    return;
+  }
   const html = document.documentElement;
-  html.removeAttribute('data-theme-override');
-  if (mode === 'light' || mode === 'dark' || mode === 'high-contrast') {
-    html.setAttribute('data-theme-override', mode);
+  html.removeAttribute("data-theme-override");
+  if (mode === "light" || mode === "dark" || mode === "high-contrast") {
+    html.setAttribute("data-theme-override", mode);
   }
   try {
-    if (mode === 'system') localStorage.removeItem(A11Y_STORAGE_KEYS.theme);
-    else localStorage.setItem(A11Y_STORAGE_KEYS.theme, mode);
+    if (mode === "system") {
+      localStorage.removeItem(A11Y_STORAGE_KEYS.theme);
+    } else {
+      localStorage.setItem(A11Y_STORAGE_KEYS.theme, mode);
+    }
   } catch {
     /* noop */
   }
 }
 
 function applyShapes(mode: A11yShapesMode) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") {
+    return;
+  }
   const html = document.documentElement;
-  if (mode === 'on') html.setAttribute('data-a11y-shapes', 'on');
-  else html.removeAttribute('data-a11y-shapes');
+  if (mode === "on") {
+    html.setAttribute("data-a11y-shapes", "on");
+  } else {
+    html.removeAttribute("data-a11y-shapes");
+  }
   try {
-    if (mode === 'off') localStorage.removeItem(A11Y_STORAGE_KEYS.shapes);
-    else localStorage.setItem(A11Y_STORAGE_KEYS.shapes, mode);
+    if (mode === "off") {
+      localStorage.removeItem(A11Y_STORAGE_KEYS.shapes);
+    } else {
+      localStorage.setItem(A11Y_STORAGE_KEYS.shapes, mode);
+    }
   } catch {
     /* noop */
   }
 }
 
 function applySolid(mode: A11ySolidMode) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") {
+    return;
+  }
   const html = document.documentElement;
-  if (mode === 'on') html.setAttribute('data-a11y-solid', 'on');
-  else html.removeAttribute('data-a11y-solid');
+  if (mode === "on") {
+    html.setAttribute("data-a11y-solid", "on");
+  } else {
+    html.removeAttribute("data-a11y-solid");
+  }
   try {
-    if (mode === 'off') localStorage.removeItem(A11Y_STORAGE_KEYS.solid);
-    else localStorage.setItem(A11Y_STORAGE_KEYS.solid, mode);
+    if (mode === "off") {
+      localStorage.removeItem(A11Y_STORAGE_KEYS.solid);
+    } else {
+      localStorage.setItem(A11Y_STORAGE_KEYS.solid, mode);
+    }
   } catch {
     /* noop */
   }
@@ -146,13 +188,13 @@ function readInitial(): {
   shapes: A11yShapesMode;
   solid: A11ySolidMode;
 } {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return {
-      font: 'default',
-      scale: 'default',
-      theme: 'system',
-      shapes: 'off',
-      solid: 'off',
+      font: "default",
+      scale: "default",
+      theme: "system",
+      shapes: "off",
+      solid: "off",
     };
   }
   try {
@@ -162,23 +204,25 @@ function readInitial(): {
     const shapes = localStorage.getItem(A11Y_STORAGE_KEYS.shapes);
     const solid = localStorage.getItem(A11Y_STORAGE_KEYS.solid);
     return {
-      font: font === 'dyslexic' ? 'dyslexic' : 'default',
+      font: font === "dyslexic" ? "dyslexic" : "default",
       scale:
-        scale === 'large' || scale === 'x-large' ? (scale as A11yScaleMode) : 'default',
+        scale === "large" || scale === "x-large"
+          ? (scale as A11yScaleMode)
+          : "default",
       theme:
-        theme === 'light' || theme === 'dark' || theme === 'high-contrast'
+        theme === "light" || theme === "dark" || theme === "high-contrast"
           ? (theme as A11yThemeMode)
-          : 'system',
-      shapes: shapes === 'on' ? 'on' : 'off',
-      solid: solid === 'on' ? 'on' : 'off',
+          : "system",
+      shapes: shapes === "on" ? "on" : "off",
+      solid: solid === "on" ? "on" : "off",
     };
   } catch {
     return {
-      font: 'default',
-      scale: 'default',
-      theme: 'system',
-      shapes: 'off',
-      solid: 'off',
+      font: "default",
+      scale: "default",
+      theme: "system",
+      shapes: "off",
+      solid: "off",
     };
   }
 }
@@ -191,15 +235,15 @@ export default function AccessibilityQuickToggles() {
   // i18n — every visible label, hint, aria-label, and tooltip on the
   // popover reads from `a11y_quick.*`; inline helpers keep the keys typed
   // against the existing enum unions.
-  const t = useTranslations('a11y_quick');
+  const t = useTranslations("a11y_quick");
 
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
-  const [font, setFont] = useState<A11yFontMode>('default');
-  const [scale, setScale] = useState<A11yScaleMode>('default');
-  const [theme, setTheme] = useState<A11yThemeMode>('system');
-  const [shapes, setShapes] = useState<A11yShapesMode>('off');
-  const [solid, setSolid] = useState<A11ySolidMode>('off');
+  const [font, setFont] = useState<A11yFontMode>("default");
+  const [scale, setScale] = useState<A11yScaleMode>("default");
+  const [theme, setTheme] = useState<A11yThemeMode>("system");
+  const [shapes, setShapes] = useState<A11yShapesMode>("off");
+  const [solid, setSolid] = useState<A11ySolidMode>("off");
   const [desktop, setDesktop] = useState(false);
   const [openingMac, setOpeningMac] = useState(false);
   const [macOpenError, setMacOpenError] = useState<string | null>(null);
@@ -224,25 +268,33 @@ export default function AccessibilityQuickToggles() {
   // Outside-click + Escape to dismiss. Guarded by `open` so the listener is
   // only attached while the popover is visible.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onClick = (e: MouseEvent) => {
       const target = e.target as Node | null;
-      if (!target) return;
-      if (popoverRef.current?.contains(target)) return;
-      if (triggerRef.current?.contains(target)) return;
+      if (!target) {
+        return;
+      }
+      if (popoverRef.current?.contains(target)) {
+        return;
+      }
+      if (triggerRef.current?.contains(target)) {
+        return;
+      }
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         setOpen(false);
         triggerRef.current?.focus();
       }
     };
-    window.addEventListener('mousedown', onClick);
-    window.addEventListener('keydown', onKey);
+    window.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener('mousedown', onClick);
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
@@ -259,14 +311,14 @@ export default function AccessibilityQuickToggles() {
       // than the popover container itself.
       requestAnimationFrame(() => {
         const closeBtn = popoverRef.current?.querySelector<HTMLButtonElement>(
-          '.a11y-quick-popover-close',
+          ".a11y-quick-popover-close"
         );
         closeBtn?.focus();
       });
     };
-    window.addEventListener('a11y-quick-toggles:open', onRequestOpen);
+    window.addEventListener("a11y-quick-toggles:open", onRequestOpen);
     return () => {
-      window.removeEventListener('a11y-quick-toggles:open', onRequestOpen);
+      window.removeEventListener("a11y-quick-toggles:open", onRequestOpen);
     };
   }, []);
 
@@ -276,12 +328,13 @@ export default function AccessibilityQuickToggles() {
   // disabled at its end of the scale and announces its next target in the
   // aria-label for screen readers.
   const canShrinkScale = SCALE_ORDER.indexOf(scale) > 0;
-  const canGrowScale =
-    SCALE_ORDER.indexOf(scale) < SCALE_ORDER.length - 1;
+  const canGrowScale = SCALE_ORDER.indexOf(scale) < SCALE_ORDER.length - 1;
 
   const shrinkScale = useCallback(() => {
     const idx = SCALE_ORDER.indexOf(scale);
-    if (idx <= 0) return;
+    if (idx <= 0) {
+      return;
+    }
     const next = SCALE_ORDER[idx - 1];
     setScale(next);
     applyScale(next);
@@ -289,7 +342,9 @@ export default function AccessibilityQuickToggles() {
 
   const growScale = useCallback(() => {
     const idx = SCALE_ORDER.indexOf(scale);
-    if (idx >= SCALE_ORDER.length - 1) return;
+    if (idx >= SCALE_ORDER.length - 1) {
+      return;
+    }
     const next = SCALE_ORDER[idx + 1];
     setScale(next);
     applyScale(next);
@@ -300,8 +355,8 @@ export default function AccessibilityQuickToggles() {
   // want to undo one of the three accessibility prefs don't have to wipe
   // their theme + font choices too.
   const resetScale = useCallback(() => {
-    setScale('default');
-    applyScale('default');
+    setScale("default");
+    applyScale("default");
   }, []);
 
   const chooseTheme = useCallback((mode: A11yThemeMode) => {
@@ -310,34 +365,34 @@ export default function AccessibilityQuickToggles() {
   }, []);
 
   const toggleFont = useCallback(() => {
-    const next: A11yFontMode = font === 'dyslexic' ? 'default' : 'dyslexic';
+    const next: A11yFontMode = font === "dyslexic" ? "default" : "dyslexic";
     setFont(next);
     applyFont(next);
   }, [font]);
 
   const toggleShapes = useCallback(() => {
-    const next: A11yShapesMode = shapes === 'on' ? 'off' : 'on';
+    const next: A11yShapesMode = shapes === "on" ? "off" : "on";
     setShapes(next);
     applyShapes(next);
   }, [shapes]);
 
   const toggleSolid = useCallback(() => {
-    const next: A11ySolidMode = solid === 'on' ? 'off' : 'on';
+    const next: A11ySolidMode = solid === "on" ? "off" : "on";
     setSolid(next);
     applySolid(next);
   }, [solid]);
 
   const handleResetAll = () => {
-    applyFont('default');
-    applyScale('default');
-    applyTheme('system');
-    applyShapes('off');
-    applySolid('off');
-    setFont('default');
-    setScale('default');
-    setTheme('system');
-    setShapes('off');
-    setSolid('off');
+    applyFont("default");
+    applyScale("default");
+    applyTheme("system");
+    applyShapes("off");
+    applySolid("off");
+    setFont("default");
+    setScale("default");
+    setTheme("system");
+    setShapes("off");
+    setSolid("off");
   };
 
   const openMacPane = async () => {
@@ -345,7 +400,9 @@ export default function AccessibilityQuickToggles() {
     setMacOpenError(null);
     try {
       const ok = await openMacAccessibilitySettings();
-      if (!ok) setMacOpenError(t('mac_open_error'));
+      if (!ok) {
+        setMacOpenError(t("mac_open_error"));
+      }
     } finally {
       setOpeningMac(false);
     }
@@ -354,44 +411,48 @@ export default function AccessibilityQuickToggles() {
   // Defer render until mount (localStorage needs the client anyway); also
   // avoids a hydration mismatch on the count / glyph values that depend on
   // state the server cannot know.
-  if (!mounted) return null;
+  if (!mounted) {
+    return null;
+  }
 
   const anyActive =
-    font !== 'default' ||
-    scale !== 'default' ||
-    theme !== 'system' ||
-    shapes !== 'off' ||
-    solid !== 'off';
+    font !== "default" ||
+    scale !== "default" ||
+    theme !== "system" ||
+    shapes !== "off" ||
+    solid !== "off";
 
   return (
     <>
       <button
-        ref={triggerRef}
-        type="button"
-        className={`a11y-quick-trigger${anyActive ? ' is-active' : ''}`}
-        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={anyActive ? t('trigger_aria_active') : t('trigger_aria_idle')}
-        title={t('trigger_title')}
-        onClick={() => setOpen(o => !o)}
+        aria-haspopup="dialog"
+        aria-label={
+          anyActive ? t("trigger_aria_active") : t("trigger_aria_idle")
+        }
+        className={`a11y-quick-trigger${anyActive ? "is-active" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+        ref={triggerRef}
+        title={t("trigger_title")}
+        type="button"
       >
         {/* Matches the accessibility badge used in AppDetailView (detail-a11y-chip)
             — a circle with a person figure inside — so the footer trigger reads
             as the same "accessibility surface" users already recognise. */}
         <svg
+          aria-hidden="true"
           className="a11y-quick-trigger-glyph"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
           fill="none"
+          height="18"
           stroke="currentColor"
-          strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+          width="18"
         >
           <circle cx="12" cy="12" r="10" />
-          <circle cx="12" cy="7.2" r="1.4" fill="currentColor" />
+          <circle cx="12" cy="7.2" fill="currentColor" r="1.4" />
           <path d="M6.5 10.5h11" />
           <path d="M12 10.5v4" />
           <path d="M9 18l3-3.5L15 18" />
@@ -400,7 +461,7 @@ export default function AccessibilityQuickToggles() {
           <span
             aria-hidden="true"
             className={`a11y-quick-trigger-dot${
-              shapes === 'on' ? ' a11y-quick-trigger-dot-tick' : ''
+              shapes === "on" ? "a11y-quick-trigger-dot-tick" : ""
             }`}
           >
             {/* Tick glyph only when Shape change markers is on — same
@@ -409,17 +470,17 @@ export default function AccessibilityQuickToggles() {
                 surface (cards, footer trigger) instead of plain dots. When
                 shapes are off this span renders as the original 7×7 teal
                 dot with no SVG. */}
-            {shapes === 'on' && (
+            {shapes === "on" && (
               <svg
-                width="8"
-                height="8"
-                viewBox="0 0 10 10"
+                aria-hidden="true"
                 fill="none"
+                height="8"
                 stroke="currentColor"
-                strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                aria-hidden="true"
+                strokeWidth="2.2"
+                viewBox="0 0 10 10"
+                width="8"
               >
                 <polyline points="2,5.3 4.2,7.2 8,3" />
               </svg>
@@ -430,18 +491,20 @@ export default function AccessibilityQuickToggles() {
 
       {open && (
         <div
+          aria-label={t("popover_aria")}
+          className="a11y-quick-popover"
           ref={popoverRef}
           role="dialog"
-          aria-label={t('popover_aria')}
-          className="a11y-quick-popover"
         >
           <div className="a11y-quick-popover-header">
-            <strong className="a11y-quick-popover-title">{t('popover_title')}</strong>
+            <strong className="a11y-quick-popover-title">
+              {t("popover_title")}
+            </strong>
             <button
-              type="button"
+              aria-label={t("close_aria")}
               className="a11y-quick-popover-close"
-              aria-label={t('close_aria')}
               onClick={() => setOpen(false)}
+              type="button"
             >
               ✕
             </button>
@@ -451,17 +514,17 @@ export default function AccessibilityQuickToggles() {
             {/* 1. Dyslexia-friendly font */}
             <label className="a11y-quick-row">
               <div className="a11y-quick-row-text">
-                <div className="a11y-quick-row-title">{t('font_title')}</div>
-                <div className="a11y-quick-row-hint">{t('font_hint')}</div>
+                <div className="a11y-quick-row-title">{t("font_title")}</div>
+                <div className="a11y-quick-row-hint">{t("font_hint")}</div>
               </div>
               <button
-                type="button"
-                role="switch"
-                aria-checked={font === 'dyslexic'}
-                className={`switch-toggle${font === 'dyslexic' ? ' is-on' : ''}`}
+                aria-checked={font === "dyslexic"}
+                className={`switch-toggle${font === "dyslexic" ? "is-on" : ""}`}
                 onClick={toggleFont}
+                role="switch"
+                type="button"
               >
-                <span className="switch-toggle-thumb" aria-hidden="true" />
+                <span aria-hidden="true" className="switch-toggle-thumb" />
               </button>
             </label>
 
@@ -474,52 +537,63 @@ export default function AccessibilityQuickToggles() {
                 step through each size in reverse. */}
             <div className="a11y-quick-row a11y-quick-row-text-size">
               <div className="a11y-quick-row-text">
-                <div className="a11y-quick-row-title">{t('scale_title')}</div>
+                <div className="a11y-quick-row-title">{t("scale_title")}</div>
                 <div className="a11y-quick-row-hint">
-                  {t.rich('scale_hint', {
+                  {t.rich("scale_hint", {
                     strong: (chunks) => <strong>{chunks}</strong>,
                     label: t(
-                      scale === 'default'
-                        ? 'scale_default'
-                        : scale === 'large'
-                          ? 'scale_large'
-                          : 'scale_x_large',
+                      scale === "default"
+                        ? "scale_default"
+                        : scale === "large"
+                          ? "scale_large"
+                          : "scale_x_large"
                     ),
                   })}
                 </div>
               </div>
-              <div className="a11y-quick-stepper" role="group" aria-label={t('scale_aria')}>
+              <div
+                aria-label={t("scale_aria")}
+                className="a11y-quick-stepper"
+                role="group"
+              >
                 <button
-                  type="button"
+                  aria-label={t("scale_smaller_aria")}
                   className="a11y-quick-stepper-btn"
-                  onClick={shrinkScale}
                   disabled={!canShrinkScale}
-                  aria-label={t('scale_smaller_aria')}
-                  title={t('scale_smaller_title')}
-                >
-                  <span className="a11y-quick-stepper-small" aria-hidden="true">A</span>
-                </button>
-                <span className="a11y-quick-stepper-divider" aria-hidden="true" />
-                <button
+                  onClick={shrinkScale}
+                  title={t("scale_smaller_title")}
                   type="button"
-                  className="a11y-quick-stepper-btn"
-                  onClick={growScale}
-                  disabled={!canGrowScale}
-                  aria-label={t('scale_larger_aria')}
-                  title={t('scale_larger_title')}
                 >
-                  <span className="a11y-quick-stepper-big" aria-hidden="true">A</span>
+                  <span aria-hidden="true" className="a11y-quick-stepper-small">
+                    A
+                  </span>
+                </button>
+                <span
+                  aria-hidden="true"
+                  className="a11y-quick-stepper-divider"
+                />
+                <button
+                  aria-label={t("scale_larger_aria")}
+                  className="a11y-quick-stepper-btn"
+                  disabled={!canGrowScale}
+                  onClick={growScale}
+                  title={t("scale_larger_title")}
+                  type="button"
+                >
+                  <span aria-hidden="true" className="a11y-quick-stepper-big">
+                    A
+                  </span>
                 </button>
               </div>
               <div className="a11y-quick-row-reset-wrap">
                 <button
-                  type="button"
+                  aria-label={t("scale_reset_aria")}
                   className="a11y-quick-inline-reset"
+                  disabled={scale === "default"}
                   onClick={resetScale}
-                  disabled={scale === 'default'}
-                  aria-label={t('scale_reset_aria')}
+                  type="button"
                 >
-                  {t('scale_reset')}
+                  {t("scale_reset")}
                 </button>
               </div>
             </div>
@@ -529,30 +603,33 @@ export default function AccessibilityQuickToggles() {
                 Contrast). System stays as the default "match OS" option. */}
             <div className="a11y-quick-row a11y-quick-row-theme">
               <div className="a11y-quick-row-text">
-                <div className="a11y-quick-row-title">{t('theme_title')}</div>
-                <div className="a11y-quick-row-hint">{t('theme_hint')}</div>
+                <div className="a11y-quick-row-title">{t("theme_title")}</div>
+                <div className="a11y-quick-row-hint">{t("theme_hint")}</div>
               </div>
               <div
+                aria-label={t("theme_aria")}
                 className="a11y-quick-theme-grid"
                 role="radiogroup"
-                aria-label={t('theme_aria')}
               >
-                {THEME_ORDER.map(mode => {
+                {THEME_ORDER.map((mode) => {
                   // Map the kebab-case enum value to the snake_case
                   // translation key suffix (`high-contrast` →
                   // `high_contrast`).
-                  const tKey = mode.replace(/-/g, '_');
+                  const tKey = mode.replace(/-/g, "_");
                   return (
                     <button
-                      key={mode}
-                      type="button"
-                      role="radio"
                       aria-checked={theme === mode}
-                      className={`a11y-quick-theme-btn${theme === mode ? ' is-active' : ''}`}
+                      className={`a11y-quick-theme-btn${theme === mode ? "is-active" : ""}`}
+                      key={mode}
                       onClick={() => chooseTheme(mode)}
+                      role="radio"
                       title={t(`theme_${tKey}_full`)}
+                      type="button"
                     >
-                      <span className="a11y-quick-theme-btn-glyph" aria-hidden="true">
+                      <span
+                        aria-hidden="true"
+                        className="a11y-quick-theme-btn-glyph"
+                      >
                         {THEME_GLYPH[mode]}
                       </span>
                       <span className="a11y-quick-theme-btn-label">
@@ -571,35 +648,39 @@ export default function AccessibilityQuickToggles() {
                 the mapping explicitly. */}
             <label className="a11y-quick-row">
               <div className="a11y-quick-row-text">
-                <div className="a11y-quick-row-title">{t('shapes_title')}</div>
+                <div className="a11y-quick-row-title">{t("shapes_title")}</div>
                 <div className="a11y-quick-row-hint a11y-quick-row-hint-shapes">
-                  {t('shapes_hint')}
+                  {t("shapes_hint")}
                 </div>
-                <div className="a11y-quick-shape-legend" aria-hidden="false">
+                <div aria-hidden="false" className="a11y-quick-shape-legend">
                   <span
+                    aria-label={t("shapes_legend_privacy_aria")}
                     className="a11y-quick-shape a11y-quick-shape-privacy"
                     role="img"
-                    aria-label={t('shapes_legend_privacy_aria')}
-                    title={t('shapes_legend_privacy_title')}
+                    title={t("shapes_legend_privacy_title")}
                   />
-                  <span className="a11y-quick-shape-text">{t('shapes_legend_privacy_text')}</span>
+                  <span className="a11y-quick-shape-text">
+                    {t("shapes_legend_privacy_text")}
+                  </span>
                   <span
+                    aria-label={t("shapes_legend_a11y_aria")}
                     className="a11y-quick-shape a11y-quick-shape-accessibility"
                     role="img"
-                    aria-label={t('shapes_legend_a11y_aria')}
-                    title={t('shapes_legend_a11y_title')}
+                    title={t("shapes_legend_a11y_title")}
                   />
-                  <span className="a11y-quick-shape-text">{t('shapes_legend_a11y_text')}</span>
+                  <span className="a11y-quick-shape-text">
+                    {t("shapes_legend_a11y_text")}
+                  </span>
                 </div>
               </div>
               <button
-                type="button"
-                role="switch"
-                aria-checked={shapes === 'on'}
-                className={`switch-toggle${shapes === 'on' ? ' is-on' : ''}`}
+                aria-checked={shapes === "on"}
+                className={`switch-toggle${shapes === "on" ? "is-on" : ""}`}
                 onClick={toggleShapes}
+                role="switch"
+                type="button"
               >
-                <span className="switch-toggle-thumb" aria-hidden="true" />
+                <span aria-hidden="true" className="switch-toggle-thumb" />
               </button>
             </label>
 
@@ -610,17 +691,17 @@ export default function AccessibilityQuickToggles() {
                 parse. */}
             <label className="a11y-quick-row">
               <div className="a11y-quick-row-text">
-                <div className="a11y-quick-row-title">{t('solid_title')}</div>
-                <div className="a11y-quick-row-hint">{t('solid_hint')}</div>
+                <div className="a11y-quick-row-title">{t("solid_title")}</div>
+                <div className="a11y-quick-row-hint">{t("solid_hint")}</div>
               </div>
               <button
-                type="button"
-                role="switch"
-                aria-checked={solid === 'on'}
-                className={`switch-toggle${solid === 'on' ? ' is-on' : ''}`}
+                aria-checked={solid === "on"}
+                className={`switch-toggle${solid === "on" ? "is-on" : ""}`}
                 onClick={toggleSolid}
+                role="switch"
+                type="button"
               >
-                <span className="switch-toggle-thumb" aria-hidden="true" />
+                <span aria-hidden="true" className="switch-toggle-thumb" />
               </button>
             </label>
 
@@ -630,16 +711,18 @@ export default function AccessibilityQuickToggles() {
             {desktop && (
               <div className="a11y-quick-row a11y-quick-row-native">
                 <div className="a11y-quick-row-text">
-                  <div className="a11y-quick-row-title">{t('native_title')}</div>
-                  <div className="a11y-quick-row-hint">{t('native_hint')}</div>
+                  <div className="a11y-quick-row-title">
+                    {t("native_title")}
+                  </div>
+                  <div className="a11y-quick-row-hint">{t("native_hint")}</div>
                 </div>
                 <button
-                  type="button"
                   className="btn btn-secondary btn-sm"
-                  onClick={() => void openMacPane()}
                   disabled={openingMac}
+                  onClick={() => void openMacPane()}
+                  type="button"
                 >
-                  {openingMac ? t('native_opening') : t('native_open')}
+                  {openingMac ? t("native_opening") : t("native_open")}
                 </button>
               </div>
             )}
@@ -653,14 +736,14 @@ export default function AccessibilityQuickToggles() {
 
           <div className="a11y-quick-popover-footer">
             <button
-              type="button"
               className="a11y-quick-reset"
-              onClick={handleResetAll}
               disabled={!anyActive}
+              onClick={handleResetAll}
+              type="button"
             >
-              {t('reset_all')}
+              {t("reset_all")}
             </button>
-            <span className="a11y-quick-footer-hint">{t('footer_hint')}</span>
+            <span className="a11y-quick-footer-hint">{t("footer_hint")}</span>
           </div>
         </div>
       )}

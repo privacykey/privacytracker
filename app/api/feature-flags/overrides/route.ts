@@ -15,23 +15,25 @@
  *   DELETE ?surface=<prefix>           — clear overrides for one surface (e.g. ?surface=dashboard)
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from "next/server";
+import { requireMutationGuard } from "@/lib/api-guards";
 import {
-  setOverride as storeOverride,
+  type FlagKey,
+  type FlagValue,
+  HARD_DEFAULTS,
+} from "@/lib/feature-flag-rules";
+import {
   clearAllOverrides,
   clearSurfaceOverrides,
-} from '@/lib/feature-flag-storage';
-import { HARD_DEFAULTS, type FlagKey, type FlagValue } from '@/lib/feature-flag-rules';
-import { readBoundedJson } from '@/lib/security';
-import { requireMutationGuard } from '@/lib/api-guards';
+  setOverride as storeOverride,
+} from "@/lib/feature-flag-storage";
+import { readBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-const VALID_VALUES: readonly FlagValue[] = ['on', 'off', 'collapsed'];
+const VALID_VALUES: readonly FlagValue[] = ["on", "off", "collapsed"];
 
 interface PostBody {
-  key?: string;
-  value?: string;
   /**
    * Bulk-import payload. When present, the server wipes every existing
    * override (using the same code path as DELETE without a surface) and
@@ -44,6 +46,8 @@ interface PostBody {
     key?: unknown;
     override?: unknown;
   }>;
+  key?: string;
+  value?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -53,20 +57,22 @@ export async function POST(request: NextRequest) {
   // audit-bundle export route). Treat them as a guarded mutation:
   // admin token required when configured, rate-limited per-IP.
   const guard = requireMutationGuard(request, {
-    action: 'feature_flag.override',
+    action: "feature_flag.override",
     rateLimit: {
-      keyPrefix: 'feature_flag.override',
+      keyPrefix: "feature_flag.override",
       limit: 30,
       windowMs: 60_000,
     },
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   let body: PostBody;
   try {
     body = await readBoundedJson<PostBody>(request, 64 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   // Bulk import path. We treat the presence of an array `flags` as the
@@ -85,23 +91,31 @@ export async function POST(request: NextRequest) {
       clearAllOverrides();
 
       for (const row of body.flags) {
-        if (!row || typeof row !== 'object') { skipped++; continue; }
+        if (!row || typeof row !== "object") {
+          skipped++;
+          continue;
+        }
         const key = row.key;
         const override = row.override;
 
         // Only persist rows whose `override` is one of the valid string
         // values. `null` (cleared) and unknown / malformed entries fall
         // through to the post-wipe default state.
-        if (typeof key !== 'string' || !(key in HARD_DEFAULTS)) {
+        if (typeof key !== "string" || !(key in HARD_DEFAULTS)) {
           skipped++;
-          if (typeof key === 'string') skippedKeys.push(key);
+          if (typeof key === "string") {
+            skippedKeys.push(key);
+          }
           continue;
         }
         if (override === null || override === undefined) {
           // Imported file says "no override" — already covered by the wipe.
           continue;
         }
-        if (typeof override !== 'string' || !VALID_VALUES.includes(override as FlagValue)) {
+        if (
+          typeof override !== "string" ||
+          !VALID_VALUES.includes(override as FlagValue)
+        ) {
           skipped++;
           continue;
         }
@@ -109,8 +123,11 @@ export async function POST(request: NextRequest) {
         applied++;
       }
     } catch (e) {
-      console.error('[/api/feature-flags/overrides POST bulk] failed:', e);
-      return NextResponse.json({ error: 'Failed to import overrides' }, { status: 500 });
+      console.error("[/api/feature-flags/overrides POST bulk] failed:", e);
+      return NextResponse.json(
+        { error: "Failed to import overrides" },
+        { status: 500 }
+      );
     }
     return NextResponse.json({
       ok: true,
@@ -122,21 +139,28 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (!body.key || typeof body.key !== 'string' || !(body.key in HARD_DEFAULTS)) {
-    return NextResponse.json({ error: 'unknown flag key' }, { status: 400 });
+  if (
+    !body.key ||
+    typeof body.key !== "string" ||
+    !(body.key in HARD_DEFAULTS)
+  ) {
+    return NextResponse.json({ error: "unknown flag key" }, { status: 400 });
   }
-  if (!body.value || !VALID_VALUES.includes(body.value as FlagValue)) {
+  if (!(body.value && VALID_VALUES.includes(body.value as FlagValue))) {
     return NextResponse.json(
-      { error: `value must be one of: ${VALID_VALUES.join(', ')}` },
-      { status: 400 },
+      { error: `value must be one of: ${VALID_VALUES.join(", ")}` },
+      { status: 400 }
     );
   }
 
   try {
     storeOverride(body.key as FlagKey, body.value as FlagValue);
   } catch (e) {
-    console.error('[/api/feature-flags/overrides POST] failed:', e);
-    return NextResponse.json({ error: 'Failed to set override' }, { status: 500 });
+    console.error("[/api/feature-flags/overrides POST] failed:", e);
+    return NextResponse.json(
+      { error: "Failed to set override" },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true, key: body.key, value: body.value });
@@ -144,16 +168,18 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const guard = requireMutationGuard(request, {
-    action: 'feature_flag.override.clear',
+    action: "feature_flag.override.clear",
     rateLimit: {
-      keyPrefix: 'feature_flag.override.clear',
+      keyPrefix: "feature_flag.override.clear",
       limit: 10,
       windowMs: 60_000,
     },
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
-  const surface = request.nextUrl.searchParams.get('surface');
+  const surface = request.nextUrl.searchParams.get("surface");
 
   try {
     if (surface) {
@@ -162,9 +188,12 @@ export async function DELETE(request: NextRequest) {
       clearAllOverrides();
     }
   } catch (e) {
-    console.error('[/api/feature-flags/overrides DELETE] failed:', e);
-    return NextResponse.json({ error: 'Failed to clear overrides' }, { status: 500 });
+    console.error("[/api/feature-flags/overrides DELETE] failed:", e);
+    return NextResponse.json(
+      { error: "Failed to clear overrides" },
+      { status: 500 }
+    );
   }
 
-  return NextResponse.json({ ok: true, scope: surface ?? 'all' });
+  return NextResponse.json({ ok: true, scope: surface ?? "all" });
 }

@@ -13,29 +13,35 @@
  * piece of debug context into a single payload meant for GitHub issues;
  * this route is the live, polled, repeated read for the dashboard.
  */
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { clearApiTimings, snapshotApiTimings } from "@/lib/api-timing";
+import db from "@/lib/db";
+import {
+  clearDbWorkerTimings,
+  snapshotDbWorkerTimings,
+} from "@/lib/db-worker-client";
 import {
   clearSlowQueryRing,
   installRuntimeDiagnostics,
   resetEventLoopMonitor,
   setProfilingEnabled,
   snapshotRuntimeMetrics,
-} from '@/lib/runtime-diagnostics';
-import { clearApiTimings, snapshotApiTimings } from '@/lib/api-timing';
-import { clearDbWorkerTimings, snapshotDbWorkerTimings } from '@/lib/db-worker-client';
-import { clearScrapeActivity, snapshotScrapeActivity } from '@/lib/scrape-activity';
-import db from '@/lib/db';
+} from "@/lib/runtime-diagnostics";
+import {
+  clearScrapeActivity,
+  snapshotScrapeActivity,
+} from "@/lib/scrape-activity";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
+  readBoundedJson,
   recordAudit,
   requestActorIp,
   requestHasValidAdminToken,
-  readBoundedJson,
-} from '@/lib/security';
+} from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 function runtimeDiagnosticsPayload() {
   installRuntimeDiagnostics(db);
@@ -57,32 +63,38 @@ export async function GET() {
 
 export async function DELETE(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   // Tight rate limit — clearing the histogram is cheap, but we don't
   // want a misbehaving client to wipe the diagnostic state every tick
   // and turn the dashboard into a blind hill.
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'diagnostics.runtime.clear'),
+    key: rateLimitKeyForRequest(request, "diagnostics.runtime.clear"),
     limit: 10,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Rate limit exceeded. Try again shortly.' },
-      { status: 429 },
+      { error: "Rate limit exceeded. Try again shortly." },
+      { status: 429 }
     );
   }
 
-  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
-      action: 'diagnostics.runtime.clear.unauthorised',
+      action: "diagnostics.runtime.clear.unauthorised",
       actorIp,
       userAgent,
       success: false,
-      detail: 'admin token required but missing or invalid',
+      detail: "admin token required but missing or invalid",
     });
-    return NextResponse.json({ error: 'Admin token required' }, { status: 401 });
+    return NextResponse.json(
+      { error: "Admin token required" },
+      { status: 401 }
+    );
   }
 
   clearSlowQueryRing();
@@ -91,7 +103,7 @@ export async function DELETE(request: Request) {
   clearDbWorkerTimings();
   clearScrapeActivity();
   recordAudit({
-    action: 'diagnostics.runtime.clear.success',
+    action: "diagnostics.runtime.clear.success",
     actorIp,
     userAgent,
     success: true,
@@ -108,28 +120,34 @@ export async function DELETE(request: Request) {
  */
 export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'diagnostics.runtime.config'),
+    key: rateLimitKeyForRequest(request, "diagnostics.runtime.config"),
     limit: 10,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Rate limit exceeded. Try again shortly.' },
-      { status: 429 },
+      { error: "Rate limit exceeded. Try again shortly." },
+      { status: 429 }
     );
   }
 
-  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
-      action: 'diagnostics.runtime.config.unauthorised',
+      action: "diagnostics.runtime.config.unauthorised",
       actorIp,
       userAgent,
       success: false,
     });
-    return NextResponse.json({ error: 'Admin token required' }, { status: 401 });
+    return NextResponse.json(
+      { error: "Admin token required" },
+      { status: 401 }
+    );
   }
 
   let body: { profilingEnabled?: unknown };
@@ -137,21 +155,21 @@ export async function POST(request: Request) {
     body = await readBoundedJson<{ profilingEnabled?: unknown }>(request, 1024);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid body' },
-      { status: 400 },
+      { error: error instanceof Error ? error.message : "Invalid body" },
+      { status: 400 }
     );
   }
 
-  if (typeof body.profilingEnabled !== 'boolean') {
+  if (typeof body.profilingEnabled !== "boolean") {
     return NextResponse.json(
-      { error: '`profilingEnabled` must be a boolean.' },
-      { status: 400 },
+      { error: "`profilingEnabled` must be a boolean." },
+      { status: 400 }
     );
   }
 
   setProfilingEnabled(body.profilingEnabled);
   recordAudit({
-    action: 'diagnostics.runtime.config.success',
+    action: "diagnostics.runtime.config.success",
     actorIp,
     userAgent,
     success: true,

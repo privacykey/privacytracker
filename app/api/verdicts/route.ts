@@ -13,19 +13,19 @@
  * own) requires no extra params.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
+import { type NextRequest, NextResponse } from "next/server";
+import { readBoundedJson } from "@/lib/security";
 import {
-  listVerdicts,
-  setVerdict,
   clearVerdict,
   isValidVerdict,
-  type VerdictValue,
+  listVerdicts,
+  setVerdict,
   type VerdictSource,
-} from '@/lib/verdicts';
-import { readBoundedJson } from '@/lib/security';
+  type VerdictValue,
+} from "@/lib/verdicts";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Bust the Next full-route cache for every server-rendered surface
@@ -49,7 +49,7 @@ export const dynamic = 'force-dynamic';
  */
 function invalidateVerdictCaches(appId?: string): void {
   try {
-    revalidatePath('/dashboard', 'layout');
+    revalidatePath("/dashboard", "layout");
     if (appId) {
       revalidatePath(`/apps/${appId}`);
     }
@@ -58,28 +58,31 @@ function invalidateVerdictCaches(appId?: string): void {
     // route handler / server action, but that should never happen
     // here. Log and continue — the client-side router.refresh() is
     // a second safety net.
-    console.warn('[/api/verdicts] revalidatePath failed:', e);
+    console.warn("[/api/verdicts] revalidatePath failed:", e);
   }
 }
 
 export async function GET(request: NextRequest) {
-  const appId = request.nextUrl.searchParams.get('appId');
+  const appId = request.nextUrl.searchParams.get("appId");
   if (!appId) {
-    return NextResponse.json({ error: 'appId is required' }, { status: 400 });
+    return NextResponse.json({ error: "appId is required" }, { status: 400 });
   }
   try {
     const verdicts = listVerdicts(appId);
     return NextResponse.json({ verdicts });
   } catch (e) {
-    console.error('[/api/verdicts GET] failed:', e);
-    return NextResponse.json({ error: 'Failed to list verdicts' }, { status: 500 });
+    console.error("[/api/verdicts GET] failed:", e);
+    return NextResponse.json(
+      { error: "Failed to list verdicts" },
+      { status: 500 }
+    );
   }
 }
 
 interface PostBody {
   appId?: string;
-  verdict?: VerdictValue;
   rationale?: string | null;
+  verdict?: VerdictValue;
 }
 
 export async function POST(request: NextRequest) {
@@ -87,20 +90,27 @@ export async function POST(request: NextRequest) {
   try {
     body = await readBoundedJson<PostBody>(request, 8 * 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.appId || typeof body.appId !== 'string') {
-    return NextResponse.json({ error: 'appId is required' }, { status: 400 });
+  if (!body.appId || typeof body.appId !== "string") {
+    return NextResponse.json({ error: "appId is required" }, { status: 400 });
   }
   if (!isValidVerdict(body.verdict)) {
     return NextResponse.json(
-      { error: 'verdict must be one of: safe, replace, uninstall' },
-      { status: 400 },
+      { error: "verdict must be one of: safe, replace, uninstall" },
+      { status: 400 }
     );
   }
-  if (body.rationale !== undefined && body.rationale !== null && typeof body.rationale !== 'string') {
-    return NextResponse.json({ error: 'rationale must be a string or null' }, { status: 400 });
+  if (
+    body.rationale !== undefined &&
+    body.rationale !== null &&
+    typeof body.rationale !== "string"
+  ) {
+    return NextResponse.json(
+      { error: "rationale must be a string or null" },
+      { status: 400 }
+    );
   }
 
   try {
@@ -108,35 +118,39 @@ export async function POST(request: NextRequest) {
       appId: body.appId,
       verdict: body.verdict,
       rationale: body.rationale ?? null,
-      source: 'user',
+      source: "user",
     });
     invalidateVerdictCaches(body.appId);
     return NextResponse.json({ verdict }, { status: 201 });
   } catch (e) {
-    console.error('[/api/verdicts POST] failed:', e);
-    return NextResponse.json({ error: 'Failed to set verdict' }, { status: 500 });
+    console.error("[/api/verdicts POST] failed:", e);
+    return NextResponse.json(
+      { error: "Failed to set verdict" },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const appId = request.nextUrl.searchParams.get('appId');
+  const appId = request.nextUrl.searchParams.get("appId");
   if (!appId) {
-    return NextResponse.json({ error: 'appId is required' }, { status: 400 });
+    return NextResponse.json({ error: "appId is required" }, { status: 400 });
   }
 
   // Optional: clear an imported recommendation. Defaults to clearing
   // the user's own verdict (the common case).
-  const sourceParam = request.nextUrl.searchParams.get('source');
-  const source: VerdictSource = sourceParam === 'imported' ? 'imported' : 'user';
+  const sourceParam = request.nextUrl.searchParams.get("source");
+  const source: VerdictSource =
+    sourceParam === "imported" ? "imported" : "user";
   const sourceName =
-    source === 'imported'
-      ? request.nextUrl.searchParams.get('sourceName')
+    source === "imported"
+      ? request.nextUrl.searchParams.get("sourceName")
       : null;
 
-  if (source === 'imported' && !sourceName) {
+  if (source === "imported" && !sourceName) {
     return NextResponse.json(
-      { error: 'sourceName is required when source=imported' },
-      { status: 400 },
+      { error: "sourceName is required when source=imported" },
+      { status: 400 }
     );
   }
 
@@ -145,7 +159,10 @@ export async function DELETE(request: NextRequest) {
     invalidateVerdictCaches(appId);
     return NextResponse.json({ removed });
   } catch (e) {
-    console.error('[/api/verdicts DELETE] failed:', e);
-    return NextResponse.json({ error: 'Failed to clear verdict' }, { status: 500 });
+    console.error("[/api/verdicts DELETE] failed:", e);
+    return NextResponse.json(
+      { error: "Failed to clear verdict" },
+      { status: 500 }
+    );
   }
 }

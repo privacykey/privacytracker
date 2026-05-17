@@ -17,20 +17,17 @@
  * reorder.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from "next/server";
+import { requireMutationGuard } from "@/lib/api-guards";
+import { matchDashboardPreset, reconcileLayout } from "@/lib/dashboard-layout";
 import {
   readDashboardLayoutWithMatch,
   resetDashboardLayout,
   saveDashboardLayoutWithLog,
-} from '@/lib/dashboard-layout-server';
-import {
-  matchDashboardPreset,
-  reconcileLayout,
-} from '@/lib/dashboard-layout';
-import { readBoundedJson } from '@/lib/security';
-import { requireMutationGuard } from '@/lib/api-guards';
+} from "@/lib/dashboard-layout-server";
+import { readBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const BODY_BYTES = 8 * 1024;
 
@@ -40,9 +37,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   const guard = requireMutationGuard(request, {
-    action: 'dashboard.layout.save',
+    action: "dashboard.layout.save",
     rateLimit: {
-      keyPrefix: 'dashboard.layout.save',
+      keyPrefix: "dashboard.layout.save",
       limit: 60,
       windowMs: 60_000,
     },
@@ -51,24 +48,29 @@ export async function PUT(request: NextRequest) {
     // rate limiter still protects the DB from a runaway editor.
     requireAdminToken: false,
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   let body: unknown;
   try {
     body = await readBoundedJson(request, BODY_BYTES);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body || typeof body !== 'object') {
-    return NextResponse.json({ error: 'Body must be an object' }, { status: 400 });
+  if (!body || typeof body !== "object") {
+    return NextResponse.json(
+      { error: "Body must be an object" },
+      { status: 400 }
+    );
   }
 
   const raw = (body as { layout?: unknown }).layout;
-  if (!raw || typeof raw !== 'object') {
+  if (!raw || typeof raw !== "object") {
     return NextResponse.json(
-      { error: 'Missing or invalid `layout` field' },
-      { status: 400 },
+      { error: "Missing or invalid `layout` field" },
+      { status: 400 }
     );
   }
 
@@ -86,15 +88,17 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const guard = requireMutationGuard(request, {
-    action: 'dashboard.layout.reset',
+    action: "dashboard.layout.reset",
     rateLimit: {
-      keyPrefix: 'dashboard.layout.reset',
+      keyPrefix: "dashboard.layout.reset",
       limit: 20,
       windowMs: 60_000,
     },
     requireAdminToken: false,
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   const next = resetDashboardLayout();
   return NextResponse.json({

@@ -11,10 +11,10 @@
  * params in one batch are fine.
  */
 export interface DbWorkerStatement {
+  /** Bound parameters. Use [] for parameter-less statements. */
+  params: readonly unknown[] | Record<string, unknown>;
   /** Prepared SQL. Cached on the worker side by exact string match. */
   sql: string;
-  /** Bound parameters. Use [] for parameter-less statements. */
-  params: ReadonlyArray<unknown> | Record<string, unknown>;
 }
 
 /**
@@ -25,35 +25,35 @@ export interface DbWorkerStatement {
  * error — earlier chunks remain durable (atomic per chunk).
  */
 export interface DbWorkerExecuteRequest {
-  kind: 'execute';
-  /** Correlation id. Must be unique per in-flight request. */
-  requestId: string;
-  statements: DbWorkerStatement[];
   /** Rows per inner transaction. Defaults to 200 in the worker.
    *  Use Infinity to force a single transaction over all statements. */
   chunkSize?: number;
+  kind: "execute";
+  /** Correlation id. Must be unique per in-flight request. */
+  requestId: string;
+  statements: DbWorkerStatement[];
 }
 
 export type DbWorkerRequest = DbWorkerExecuteRequest;
 
 /** Successful execution. */
 export interface DbWorkerOkResponse {
-  kind: 'execute-ok';
+  /** Wall-clock ms spent in `execute()`. Excludes message-passing latency. */
+  durationMs: number;
+  kind: "execute-ok";
   requestId: string;
   /** Total `changes` across all statements (summed). */
   totalChanges: number;
-  /** Wall-clock ms spent in `execute()`. Excludes message-passing latency. */
-  durationMs: number;
 }
 
 /** Failed execution. */
 export interface DbWorkerErrorResponse {
-  kind: 'execute-error';
-  requestId: string;
   /** Stringified error message from better-sqlite3 (or 'unknown error'). */
   error: string;
   /** Index in the original `statements` array where the failure happened. */
   failedAtIndex: number;
+  kind: "execute-error";
+  requestId: string;
 }
 
 export type DbWorkerResponse = DbWorkerOkResponse | DbWorkerErrorResponse;

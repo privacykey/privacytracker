@@ -15,27 +15,27 @@
 
 /** Map CATEGORY_META identifiers to the `category.*` namespace key. */
 const CATEGORY_NAMESPACE_KEY: Record<string, string> = {
-  CONTACT_INFO: 'contact_info',
-  HEALTH_AND_FITNESS: 'health_fitness',
-  FINANCIAL_INFO: 'financial_info',
-  LOCATION: 'location',
-  SENSITIVE_INFO: 'sensitive_info',
-  CONTACTS: 'contacts',
-  USER_CONTENT: 'user_content',
-  BROWSING_HISTORY: 'browsing_history',
-  SEARCH_HISTORY: 'search_history',
-  IDENTIFIERS: 'identifiers',
-  PURCHASES: 'purchases',
-  USAGE_DATA: 'usage_data',
-  DIAGNOSTICS: 'diagnostics',
-  OTHER: 'other',
+  CONTACT_INFO: "contact_info",
+  HEALTH_AND_FITNESS: "health_fitness",
+  FINANCIAL_INFO: "financial_info",
+  LOCATION: "location",
+  SENSITIVE_INFO: "sensitive_info",
+  CONTACTS: "contacts",
+  USER_CONTENT: "user_content",
+  BROWSING_HISTORY: "browsing_history",
+  SEARCH_HISTORY: "search_history",
+  IDENTIFIERS: "identifiers",
+  PURCHASES: "purchases",
+  USAGE_DATA: "usage_data",
+  DIAGNOSTICS: "diagnostics",
+  OTHER: "other",
 };
 
 /** Map SEVERITY_CONFIG identifiers to the `severity.*` namespace key. */
 const SEVERITY_NAMESPACE_KEY: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: 'data_used_to_track_you',
-  DATA_LINKED_TO_YOU: 'data_linked_to_you',
-  DATA_NOT_LINKED_TO_YOU: 'data_not_linked_to_you',
+  DATA_USED_TO_TRACK_YOU: "data_used_to_track_you",
+  DATA_LINKED_TO_YOU: "data_linked_to_you",
+  DATA_NOT_LINKED_TO_YOU: "data_not_linked_to_you",
 };
 
 /**
@@ -45,7 +45,7 @@ const SEVERITY_NAMESPACE_KEY: Record<string, string> = {
  */
 export function categoryLabel(
   t: (key: string) => string,
-  identifier: string,
+  identifier: string
 ): string | undefined {
   const key = CATEGORY_NAMESPACE_KEY[identifier];
   return key ? t(key) : undefined;
@@ -59,7 +59,7 @@ export function categoryLabel(
  */
 export function categoryDescription(
   t: (key: string) => string,
-  identifier: string,
+  identifier: string
 ): string | undefined {
   const key = CATEGORY_NAMESPACE_KEY[identifier];
   return key ? t(key) : undefined;
@@ -71,7 +71,7 @@ export function categoryDescription(
  */
 export function severityLabel(
   t: (key: string) => string,
-  identifier: string,
+  identifier: string
 ): string | undefined {
   const key = SEVERITY_NAMESPACE_KEY[identifier];
   return key ? t(key) : undefined;
@@ -83,7 +83,7 @@ export function severityLabel(
  */
 export function severityDescription(
   t: (key: string) => string,
-  identifier: string,
+  identifier: string
 ): string | undefined {
   const key = SEVERITY_NAMESPACE_KEY[identifier];
   return key ? t(`${key}_desc`) : undefined;
@@ -95,12 +95,12 @@ export function severityDescription(
  * a circular import with lib/privacy-profile.ts.
  */
 export interface BadgeLocalisationInput {
-  kind: 'no_profile' | 'match' | 'mismatches';
   count: number;
-  /** English label fallback — returned when the kind isn't recognised. */
-  label: string;
   /** English description fallback — same back-compat reasoning. */
   description: string;
+  kind: "no_profile" | "match" | "mismatches";
+  /** English label fallback — returned when the kind isn't recognised. */
+  label: string;
   /** Worst-category localised label, already resolved via `categoryLabel`. */
   worstCategoryLabel: string | null;
   /**
@@ -112,15 +112,15 @@ export interface BadgeLocalisationInput {
 
 export function localiseBadgeLabel(
   t: (key: string, values?: Record<string, string | number>) => string,
-  badge: BadgeLocalisationInput,
+  badge: BadgeLocalisationInput
 ): string {
   switch (badge.kind) {
-    case 'no_profile':
-      return t('no_profile_label');
-    case 'match':
-      return t('match_label');
-    case 'mismatches':
-      return t('mismatches_label', { count: badge.count });
+    case "no_profile":
+      return t("no_profile_label");
+    case "match":
+      return t("match_label");
+    case "mismatches":
+      return t("mismatches_label", { count: badge.count });
     default:
       return badge.label;
   }
@@ -128,16 +128,18 @@ export function localiseBadgeLabel(
 
 export function localiseBadgeDescription(
   t: (key: string, values?: Record<string, string | number>) => string,
-  badge: BadgeLocalisationInput,
+  badge: BadgeLocalisationInput
 ): string {
   switch (badge.kind) {
-    case 'no_profile':
-      return t('no_profile_description');
-    case 'match':
-      return t('match_description');
-    case 'mismatches':
-      if (badge.worstMismatchSentence) return badge.worstMismatchSentence;
-      return t('mismatches_description', { count: badge.count });
+    case "no_profile":
+      return t("no_profile_description");
+    case "match":
+      return t("match_description");
+    case "mismatches":
+      if (badge.worstMismatchSentence) {
+        return badge.worstMismatchSentence;
+      }
+      return t("mismatches_description", { count: badge.count });
     default:
       return badge.description;
   }
@@ -145,25 +147,25 @@ export function localiseBadgeDescription(
 
 /** Mirror of {@link BadgeLocalisationInput} for the accessibility profile badge. */
 export interface A11yBadgeLocalisationInput {
-  kind: 'no_profile' | 'match' | 'missing_required' | 'missing_nice';
   count: number;
-  missingRequired: number;
-  label: string;
   description: string;
+  kind: "no_profile" | "match" | "missing_required" | "missing_nice";
+  label: string;
+  missingRequired: number;
 }
 
 export function localiseA11yBadgeLabel(
   t: (key: string, values?: Record<string, string | number>) => string,
-  badge: A11yBadgeLocalisationInput,
+  badge: A11yBadgeLocalisationInput
 ): string {
   switch (badge.kind) {
-    case 'no_profile':
-      return t('no_profile_label');
-    case 'match':
-      return t('match_label');
-    case 'missing_required':
-    case 'missing_nice':
-      return t('missing_label', { count: badge.count });
+    case "no_profile":
+      return t("no_profile_label");
+    case "match":
+      return t("match_label");
+    case "missing_required":
+    case "missing_nice":
+      return t("missing_label", { count: badge.count });
     default:
       return badge.label;
   }
@@ -171,17 +173,19 @@ export function localiseA11yBadgeLabel(
 
 export function localiseA11yBadgeDescription(
   t: (key: string, values?: Record<string, string | number>) => string,
-  badge: A11yBadgeLocalisationInput,
+  badge: A11yBadgeLocalisationInput
 ): string {
   switch (badge.kind) {
-    case 'no_profile':
-      return t('no_profile_description');
-    case 'match':
-      return t('match_description');
-    case 'missing_required':
-      return t('missing_required_description', { count: badge.missingRequired });
-    case 'missing_nice':
-      return t('missing_nice_description', { count: badge.count });
+    case "no_profile":
+      return t("no_profile_description");
+    case "match":
+      return t("match_description");
+    case "missing_required":
+      return t("missing_required_description", {
+        count: badge.missingRequired,
+      });
+    case "missing_nice":
+      return t("missing_nice_description", { count: badge.count });
     default:
       return badge.description;
   }

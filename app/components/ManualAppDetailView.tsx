@@ -1,28 +1,29 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useCallback, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import type { ManualApp, ManualAppSourceMeta } from '../../lib/manual-apps';
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useCallback, useMemo, useState } from "react";
+import { useFlag } from "../../lib/feature-flags-hooks";
 import type {
   ManualAppEvent,
+  ManualAppFieldChangeDetail,
   ManualAppPolicyVersion,
   ManualAppScrapeDetail,
-  ManualAppFieldChangeDetail,
-} from '../../lib/manual-app-history';
-import Favicon from './Favicon';
-import { useFlag } from '../../lib/feature-flags-hooks';
+} from "../../lib/manual-app-history";
+import type { ManualApp, ManualAppSourceMeta } from "../../lib/manual-apps";
+import Favicon from "./Favicon";
 
 interface Props {
   app: ManualApp;
-  meta: ManualAppSourceMeta;
-  events: ManualAppEvent[];
   currentVersion: ManualAppPolicyVersion | null;
+  events: ManualAppEvent[];
+  meta: ManualAppSourceMeta;
 }
 
 // Shape of POST /api/manual-apps/[id]/scrape response. Kept here so the
 // component is the single point of contact with the endpoint.
 interface ScrapeResponse {
+  error?: string;
   event: ManualAppEvent;
   version: {
     id: string;
@@ -34,7 +35,6 @@ interface ScrapeResponse {
     fetchedAt: number;
     isNew: boolean;
   } | null;
-  error?: string;
 }
 
 interface PolicyVersionResponse {
@@ -44,19 +44,21 @@ interface PolicyVersionResponse {
 function formatDateTime(ms: number): string {
   try {
     return new Date(ms).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
     });
   } catch {
-    return '';
+    return "";
   }
 }
 
 function safeHost(url: string | null | undefined): string | null {
-  if (!url) return null;
+  if (!url) {
+    return null;
+  }
   try {
     return new URL(url).host;
   } catch {
@@ -64,101 +66,139 @@ function safeHost(url: string | null | undefined): string | null {
   }
 }
 
-type DetailT = (key: string, values?: Record<string, string | number | Date>) => string;
+type DetailT = (
+  key: string,
+  values?: Record<string, string | number | Date>
+) => string;
 
 /** Human label + icon for each scrape policy_event discriminator. */
-function scrapeEventLabel(t: DetailT, event: ManualAppScrapeDetail): { icon: string; title: string; tone: 'ok' | 'warn' | 'error' | 'info' } {
+function scrapeEventLabel(
+  t: DetailT,
+  event: ManualAppScrapeDetail
+): { icon: string; title: string; tone: "ok" | "warn" | "error" | "info" } {
   switch (event.policy_event) {
-    case 'first':
-      return { icon: '●', title: t('scrape_event_first'), tone: 'info' };
-    case 'changed':
-      return { icon: '△', title: t('scrape_event_changed'), tone: 'warn' };
-    case 'same':
-      return { icon: '✓', title: t('scrape_event_same'), tone: 'ok' };
-    case 'error':
-      return { icon: '✕', title: t('scrape_event_error'), tone: 'error' };
+    case "first":
+      return { icon: "●", title: t("scrape_event_first"), tone: "info" };
+    case "changed":
+      return { icon: "△", title: t("scrape_event_changed"), tone: "warn" };
+    case "same":
+      return { icon: "✓", title: t("scrape_event_same"), tone: "ok" };
+    case "error":
+      return { icon: "✕", title: t("scrape_event_error"), tone: "error" };
     default:
-      return { icon: '·', title: t('scrape_event_default'), tone: 'info' };
+      return { icon: "·", title: t("scrape_event_default"), tone: "info" };
   }
 }
 
-const FIELD_LABEL_KEYS: Record<ManualAppFieldChangeDetail['field'], string> = {
-  name: 'field_label_name',
-  source: 'field_label_source',
-  developer: 'field_label_developer',
-  privacyPolicyUrl: 'field_label_privacy_policy_url',
-  sourceUrl: 'field_label_source_url',
-  notes: 'field_label_notes',
+const FIELD_LABEL_KEYS: Record<ManualAppFieldChangeDetail["field"], string> = {
+  name: "field_label_name",
+  source: "field_label_source",
+  developer: "field_label_developer",
+  privacyPolicyUrl: "field_label_privacy_policy_url",
+  sourceUrl: "field_label_source_url",
+  notes: "field_label_notes",
 };
 
 function truncate(value: string | null, max = 160): string {
-  if (!value) return '—';
-  if (value.length <= max) return value;
+  if (!value) {
+    return "—";
+  }
+  if (value.length <= max) {
+    return value;
+  }
   return `${value.slice(0, max).trimEnd()}…`;
 }
 
-export default function ManualAppDetailView({ app, meta, events, currentVersion }: Props) {
+export default function ManualAppDetailView({
+  app,
+  meta,
+  events,
+  currentVersion,
+}: Props) {
   // i18n — page chrome (breadcrumbs, header, action buttons, scrape
   // card, changelog). The source-meta short label still comes from
   // the shared `manual_app_source.*` namespace so the eyebrow chip
   // matches the picker buttons in ManualAppsView.
-  const t = useTranslations('manual_app_detail');
-  const tSource = useTranslations('manual_app_source');
+  const t = useTranslations("manual_app_detail");
+  const tSource = useTranslations("manual_app_source");
 
   // Wave I — per-section flags for the manual-app surface. Each one
   // resolves through the same useFlag hook the rest of the client tree
   // uses, so override toggles in Dev Options re-render this view live.
-  const manualScrapeButtonOn = useFlag('flag.detail.manual.scrape_button') === 'on';
-  const manualCurrentVersionMetadataOn = useFlag('flag.detail.manual.current_version_metadata') === 'on';
-  const manualShowCapturedTextOn = useFlag('flag.detail.manual.show_captured_text') === 'on';
-  const manualEditDetailsOn = useFlag('flag.detail.manual.edit_details') === 'on';
-  const manualChangelogOn = useFlag('flag.detail.manual.changelog') === 'on';
+  const manualScrapeButtonOn =
+    useFlag("flag.detail.manual.scrape_button") === "on";
+  const manualCurrentVersionMetadataOn =
+    useFlag("flag.detail.manual.current_version_metadata") === "on";
+  const manualShowCapturedTextOn =
+    useFlag("flag.detail.manual.show_captured_text") === "on";
+  const manualEditDetailsOn =
+    useFlag("flag.detail.manual.edit_details") === "on";
+  const manualChangelogOn = useFlag("flag.detail.manual.changelog") === "on";
 
   const [liveApp] = useState<ManualApp>(app);
   const [liveEvents, setLiveEvents] = useState<ManualAppEvent[]>(events);
-  const [liveVersion, setLiveVersion] = useState<ManualAppPolicyVersion | null>(currentVersion);
+  const [liveVersion, setLiveVersion] = useState<ManualAppPolicyVersion | null>(
+    currentVersion
+  );
   const [scraping, setScraping] = useState(false);
-  const [flash, setFlash] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [flash, setFlash] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   // Lazy cache for expanded policy versions, keyed by version id. The
   // changelog starts collapsed; clicking "Show captured text" fires a GET
   // for the full text the first time and reuses the cache afterwards.
   const [expandedVersions, setExpandedVersions] = useState<
-    Record<string, { status: 'loading' } | { status: 'loaded'; version: ManualAppPolicyVersion } | { status: 'error'; message: string }>
+    Record<
+      string,
+      | { status: "loading" }
+      | { status: "loaded"; version: ManualAppPolicyVersion }
+      | { status: "error"; message: string }
+    >
   >({});
 
-  const policyHost = useMemo(() => safeHost(liveApp.privacyPolicyUrl), [liveApp.privacyPolicyUrl]);
-  const sourceHost = useMemo(() => safeHost(liveApp.sourceUrl), [liveApp.sourceUrl]);
+  const policyHost = useMemo(
+    () => safeHost(liveApp.privacyPolicyUrl),
+    [liveApp.privacyPolicyUrl]
+  );
+  const sourceHost = useMemo(
+    () => safeHost(liveApp.sourceUrl),
+    [liveApp.sourceUrl]
+  );
   const canScrape = Boolean(liveApp.privacyPolicyUrl) && !scraping;
 
   const onScrape = useCallback(async () => {
-    if (!liveApp.privacyPolicyUrl || scraping) return;
+    if (!liveApp.privacyPolicyUrl || scraping) {
+      return;
+    }
     setScraping(true);
-    setErrorMsg('');
-    setFlash('');
+    setErrorMsg("");
+    setFlash("");
     try {
       const res = await fetch(`/api/manual-apps/${liveApp.id}/scrape`, {
-        method: 'POST',
+        method: "POST",
       });
-      const data = (await res.json().catch(() => ({}))) as ScrapeResponse & { error?: string };
+      const data = (await res.json().catch(() => ({}))) as ScrapeResponse & {
+        error?: string;
+      };
       if (!res.ok) {
-        throw new Error(data?.error ?? t('scrape_failed_default'));
+        throw new Error(data?.error ?? t("scrape_failed_default"));
       }
 
       // Prepend the new event so the user sees it at the top without a reload.
       if (data.event) {
-        setLiveEvents(prev => [data.event, ...prev]);
+        setLiveEvents((prev) => [data.event, ...prev]);
       }
 
       if (data.version) {
         // Synthesise a "current version" entry from the endpoint's lightweight
         // summary — sufficient for the summary card. The full text arrives
         // on-demand via the /policy-version/ GET when the user expands a row.
-        setLiveVersion(prev => ({
+        setLiveVersion((prev) => ({
           id: data.version!.id,
           manualAppId: liveApp.id,
           contentHash: data.version!.contentHash,
-          firstFetchedAt: data.version!.isNew ? data.version!.fetchedAt : prev?.firstFetchedAt ?? data.version!.fetchedAt,
+          firstFetchedAt: data.version!.isNew
+            ? data.version!.fetchedAt
+            : (prev?.firstFetchedAt ?? data.version!.fetchedAt),
           lastFetchedAt: data.version!.fetchedAt,
           policyUrl: data.version!.policyUrl,
           sourceFinalUrl: data.version!.sourceFinalUrl,
@@ -166,74 +206,89 @@ export default function ManualAppDetailView({ app, meta, events, currentVersion 
           sourceContentType: prev?.sourceContentType ?? null,
           sourceOrigin: prev?.sourceOrigin ?? null,
           sourceWordCount: data.version!.wordCount,
-          sourceText: prev?.contentHash === data.version!.contentHash ? prev?.sourceText ?? '' : '',
+          sourceText:
+            prev?.contentHash === data.version!.contentHash
+              ? (prev?.sourceText ?? "")
+              : "",
         }));
       }
 
       const scrapeDetail = data.event?.detail;
-      if (scrapeDetail && scrapeDetail.kind === 'scrape') {
+      if (scrapeDetail && scrapeDetail.kind === "scrape") {
         switch (scrapeDetail.policy_event) {
-          case 'first':
-            setFlash(t('flash_first'));
+          case "first":
+            setFlash(t("flash_first"));
             break;
-          case 'changed':
-            setFlash(t('flash_changed'));
+          case "changed":
+            setFlash(t("flash_changed"));
             break;
-          case 'same':
-            setFlash(t('flash_same'));
+          case "same":
+            setFlash(t("flash_same"));
             break;
-          case 'error':
-            setErrorMsg(scrapeDetail.error ?? t('scrape_returned_error'));
+          case "error":
+            setErrorMsg(scrapeDetail.error ?? t("scrape_returned_error"));
             break;
         }
       } else if (data.error) {
         setErrorMsg(data.error);
       }
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : t('scrape_failed_default'));
+      setErrorMsg(
+        err instanceof Error ? err.message : t("scrape_failed_default")
+      );
     } finally {
       setScraping(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, [liveApp.id, liveApp.privacyPolicyUrl, scraping]);
 
   const toggleVersion = useCallback(
     async (versionId: string) => {
       const cached = expandedVersions[versionId];
-      if (cached && cached.status === 'loaded') {
+      if (cached && cached.status === "loaded") {
         // Collapse on a second click by removing the key.
-        setExpandedVersions(prev => {
+        setExpandedVersions((prev) => {
           const next = { ...prev };
           delete next[versionId];
           return next;
         });
         return;
       }
-      setExpandedVersions(prev => ({ ...prev, [versionId]: { status: 'loading' } }));
+      setExpandedVersions((prev) => ({
+        ...prev,
+        [versionId]: { status: "loading" },
+      }));
       try {
-        const res = await fetch(`/api/manual-apps/${liveApp.id}/policy-version/${versionId}`);
-        const data = (await res.json().catch(() => ({}))) as PolicyVersionResponse & {
+        const res = await fetch(
+          `/api/manual-apps/${liveApp.id}/policy-version/${versionId}`
+        );
+        const data = (await res
+          .json()
+          .catch(() => ({}))) as PolicyVersionResponse & {
           error?: string;
         };
-        if (!res.ok || !data?.version) {
-          throw new Error(data?.error ?? t('captured_text_load_failed'));
+        if (!(res.ok && data?.version)) {
+          throw new Error(data?.error ?? t("captured_text_load_failed"));
         }
-        setExpandedVersions(prev => ({
+        setExpandedVersions((prev) => ({
           ...prev,
-          [versionId]: { status: 'loaded', version: data.version },
+          [versionId]: { status: "loaded", version: data.version },
         }));
       } catch (err) {
-        setExpandedVersions(prev => ({
+        setExpandedVersions((prev) => ({
           ...prev,
           [versionId]: {
-            status: 'error',
-            message: err instanceof Error ? err.message : t('captured_text_load_failed'),
+            status: "error",
+            message:
+              err instanceof Error
+                ? err.message
+                : t("captured_text_load_failed"),
           },
         }));
       }
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
-    [expandedVersions, liveApp.id],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
+    [expandedVersions, liveApp.id]
   );
 
   // Split events into scrape vs field_change groups in case we want to show
@@ -244,18 +299,21 @@ export default function ManualAppDetailView({ app, meta, events, currentVersion 
 
   return (
     <main className="page manual-app-detail-page">
-      <nav className="manual-app-detail-breadcrumbs" aria-label={t('breadcrumbs_aria')}>
-        <Link href="/dashboard">{t('breadcrumb_dashboard')}</Link>
+      <nav
+        aria-label={t("breadcrumbs_aria")}
+        className="manual-app-detail-breadcrumbs"
+      >
+        <Link href="/dashboard">{t("breadcrumb_dashboard")}</Link>
         <span aria-hidden="true"> › </span>
-        <Link href="/dashboard/manual-apps">{t('breadcrumb_manual')}</Link>
+        <Link href="/dashboard/manual-apps">{t("breadcrumb_manual")}</Link>
         <span aria-hidden="true"> › </span>
         <span>{liveApp.name}</span>
       </nav>
 
       <header className="manual-app-detail-header">
         <div className="manual-app-detail-headline">
-          <span className="manual-app-detail-icon" aria-hidden="true">
-            {meta?.icon ?? '📦'}
+          <span aria-hidden="true" className="manual-app-detail-icon">
+            {meta?.icon ?? "📦"}
           </span>
           <div>
             <div className="manual-app-detail-eyebrow">
@@ -263,22 +321,30 @@ export default function ManualAppDetailView({ app, meta, events, currentVersion 
             </div>
             <h1 className="manual-app-detail-title">{liveApp.name}</h1>
             <div className="manual-app-detail-sub">
-              {liveApp.developer ? <span>{liveApp.developer}</span> : <span className="muted">{t('developer_unset')}</span>}
+              {liveApp.developer ? (
+                <span>{liveApp.developer}</span>
+              ) : (
+                <span className="muted">{t("developer_unset")}</span>
+              )}
               <span aria-hidden="true"> · </span>
-              <span className="muted">{t('added_at', { date: formatDateTime(liveApp.firstSeen) })}</span>
+              <span className="muted">
+                {t("added_at", { date: formatDateTime(liveApp.firstSeen) })}
+              </span>
             </div>
           </div>
         </div>
 
         <div className="manual-app-detail-actions">
-          {manualEditDetailsOn && <Link
-            href={`/dashboard/manual-apps?editId=${encodeURIComponent(liveApp.id)}`}
-            className="btn btn-secondary"
-          >
-            {t('edit_details')}
-          </Link>}
-          <Link href="/dashboard/manual-apps" className="btn btn-ghost">
-            {t('back_to_list')}
+          {manualEditDetailsOn && (
+            <Link
+              className="btn btn-secondary"
+              href={`/dashboard/manual-apps?editId=${encodeURIComponent(liveApp.id)}`}
+            >
+              {t("edit_details")}
+            </Link>
+          )}
+          <Link className="btn btn-ghost" href="/dashboard/manual-apps">
+            {t("back_to_list")}
           </Link>
         </div>
       </header>
@@ -286,34 +352,34 @@ export default function ManualAppDetailView({ app, meta, events, currentVersion 
       <section className="manual-app-detail-facts">
         <dl>
           <div>
-            <dt>{t('policy_label')}</dt>
+            <dt>{t("policy_label")}</dt>
             <dd>
               {liveApp.privacyPolicyUrl ? (
                 <a
-                  href={liveApp.privacyPolicyUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
                   className="manual-app-detail-link"
+                  href={liveApp.privacyPolicyUrl}
+                  rel="noreferrer noopener"
+                  target="_blank"
                 >
-                  <Favicon url={liveApp.privacyPolicyUrl} size={16} />
+                  <Favicon size={16} url={liveApp.privacyPolicyUrl} />
                   <span>{policyHost ?? liveApp.privacyPolicyUrl}</span>
                 </a>
               ) : (
-                <span className="muted">{t('policy_unset')}</span>
+                <span className="muted">{t("policy_unset")}</span>
               )}
             </dd>
           </div>
           {liveApp.sourceUrl && (
             <div>
-              <dt>{t('source_link_label')}</dt>
+              <dt>{t("source_link_label")}</dt>
               <dd>
                 <a
-                  href={liveApp.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
                   className="manual-app-detail-link"
+                  href={liveApp.sourceUrl}
+                  rel="noreferrer noopener"
+                  target="_blank"
                 >
-                  <Favicon url={liveApp.sourceUrl} size={16} />
+                  <Favicon size={16} url={liveApp.sourceUrl} />
                   <span>{sourceHost ?? liveApp.sourceUrl}</span>
                 </a>
               </dd>
@@ -321,7 +387,7 @@ export default function ManualAppDetailView({ app, meta, events, currentVersion 
           )}
           {liveApp.notes && (
             <div className="manual-app-detail-notes">
-              <dt>{t('notes_label')}</dt>
+              <dt>{t("notes_label")}</dt>
               <dd>{liveApp.notes}</dd>
             </div>
           )}
@@ -330,26 +396,32 @@ export default function ManualAppDetailView({ app, meta, events, currentVersion 
 
       <section className="manual-app-detail-scrape-card">
         <div className="manual-app-detail-scrape-heading">
-          <h2>{t('scrape_card_heading')}</h2>
-          {manualScrapeButtonOn && <button
-            type="button"
-            className="btn btn-primary"
-            onClick={onScrape}
-            disabled={!canScrape}
-          >
-            {scraping
-              ? t('scraping')
-              : liveVersion
-                ? t('rescrape_button')
-                : t('scrape_button')}
-          </button>}
+          <h2>{t("scrape_card_heading")}</h2>
+          {manualScrapeButtonOn && (
+            <button
+              className="btn btn-primary"
+              disabled={!canScrape}
+              onClick={onScrape}
+              type="button"
+            >
+              {scraping
+                ? t("scraping")
+                : liveVersion
+                  ? t("rescrape_button")
+                  : t("scrape_button")}
+            </button>
+          )}
         </div>
 
         {!liveApp.privacyPolicyUrl && (
           <p className="manual-app-detail-scrape-hint muted">
-            {t.rich('scrape_hint_no_url', {
+            {t.rich("scrape_hint_no_url", {
               editLink: (chunks) => (
-                <Link href={`/dashboard/manual-apps?editId=${encodeURIComponent(liveApp.id)}`}>{chunks}</Link>
+                <Link
+                  href={`/dashboard/manual-apps?editId=${encodeURIComponent(liveApp.id)}`}
+                >
+                  {chunks}
+                </Link>
               ),
             })}
           </p>
@@ -369,63 +441,87 @@ export default function ManualAppDetailView({ app, meta, events, currentVersion 
         {liveVersion && manualCurrentVersionMetadataOn ? (
           <div className="manual-app-detail-current">
             <div className="manual-app-detail-current-row">
-              <span className="manual-app-detail-current-label">{t('current_last_captured')}</span>
+              <span className="manual-app-detail-current-label">
+                {t("current_last_captured")}
+              </span>
               <span>{formatDateTime(liveVersion.lastFetchedAt)}</span>
             </div>
             <div className="manual-app-detail-current-row">
-              <span className="manual-app-detail-current-label">{t('current_first_captured')}</span>
+              <span className="manual-app-detail-current-label">
+                {t("current_first_captured")}
+              </span>
               <span>{formatDateTime(liveVersion.firstFetchedAt)}</span>
             </div>
             <div className="manual-app-detail-current-row">
-              <span className="manual-app-detail-current-label">{t('current_word_count')}</span>
+              <span className="manual-app-detail-current-label">
+                {t("current_word_count")}
+              </span>
               <span>{liveVersion.sourceWordCount.toLocaleString()}</span>
             </div>
             {liveVersion.sourceFinalUrl && (
               <div className="manual-app-detail-current-row">
-                <span className="manual-app-detail-current-label">{t('current_resolved_url')}</span>
+                <span className="manual-app-detail-current-label">
+                  {t("current_resolved_url")}
+                </span>
                 <span>
-                  <a href={liveVersion.sourceFinalUrl} target="_blank" rel="noreferrer noopener">
-                    {safeHost(liveVersion.sourceFinalUrl) ?? liveVersion.sourceFinalUrl}
+                  <a
+                    href={liveVersion.sourceFinalUrl}
+                    rel="noreferrer noopener"
+                    target="_blank"
+                  >
+                    {safeHost(liveVersion.sourceFinalUrl) ??
+                      liveVersion.sourceFinalUrl}
                   </a>
                 </span>
               </div>
             )}
             {liveVersion.sourceTitle && (
               <div className="manual-app-detail-current-row">
-                <span className="manual-app-detail-current-label">{t('current_page_title')}</span>
+                <span className="manual-app-detail-current-label">
+                  {t("current_page_title")}
+                </span>
                 <span>{truncate(liveVersion.sourceTitle, 120)}</span>
               </div>
             )}
           </div>
         ) : (
           <p className="manual-app-detail-empty muted">
-            {t.rich('no_captures', { strong: (chunks) => <strong>{chunks}</strong> })}
+            {t.rich("no_captures", {
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         )}
       </section>
 
-      {manualChangelogOn && <section className="manual-app-detail-changelog">
-        <h2>{t('changelog_heading')}</h2>
-        <p className="muted manual-app-detail-changelog-intro">{t('changelog_intro')}</p>
+      {manualChangelogOn && (
+        <section className="manual-app-detail-changelog">
+          <h2>{t("changelog_heading")}</h2>
+          <p className="muted manual-app-detail-changelog-intro">
+            {t("changelog_intro")}
+          </p>
 
-        {liveEvents.length === 0 ? (
-          <div className="manual-app-detail-empty">
-            <p className="muted">{t('changelog_empty')}</p>
-          </div>
-        ) : (
-          <ol className="manual-app-detail-timeline" aria-label={t('timeline_aria')}>
-            {liveEvents.map(event => (
-              <ManualAppTimelineRow
-                key={event.id}
-                event={event}
-                expanded={expandedVersions}
-                onToggleVersion={toggleVersion}
-                showCapturedText={manualShowCapturedTextOn}
-              />
-            ))}
-          </ol>
-        )}
-      </section>}
+          {liveEvents.length === 0 ? (
+            <div className="manual-app-detail-empty">
+              <p className="muted">{t("changelog_empty")}</p>
+            </div>
+          ) : (
+            <ol
+              aria-label={t("timeline_aria")}
+              className="manual-app-detail-timeline"
+            >
+              {liveEvents.map((event) => (
+                <ManualAppTimelineRow
+                  event={event}
+                  expanded={expandedVersions}
+                  key={event.id}
+                  onToggleVersion={toggleVersion}
+                  showCapturedText={manualShowCapturedTextOn}
+                />
+              ))}
+            </ol>
+          )}
+        </section>
+      )}
     </main>
   );
 }
@@ -434,85 +530,116 @@ interface TimelineRowProps {
   event: ManualAppEvent;
   expanded: Record<
     string,
-    { status: 'loading' } | { status: 'loaded'; version: ManualAppPolicyVersion } | { status: 'error'; message: string }
+    | { status: "loading" }
+    | { status: "loaded"; version: ManualAppPolicyVersion }
+    | { status: "error"; message: string }
   >;
   onToggleVersion: (versionId: string) => void;
   /** Wave I — `flag.detail.manual.show_captured_text`. */
   showCapturedText?: boolean;
 }
 
-function ManualAppTimelineRow({ event, expanded, onToggleVersion, showCapturedText = true }: TimelineRowProps) {
-  const tDetail = useTranslations('manual_app_detail');
+function ManualAppTimelineRow({
+  event,
+  expanded,
+  onToggleVersion,
+  showCapturedText = true,
+}: TimelineRowProps) {
+  const tDetail = useTranslations("manual_app_detail");
   const when = formatDateTime(event.occurredAt);
 
-  if (event.type === 'scrape' && event.detail?.kind === 'scrape') {
+  if (event.type === "scrape" && event.detail?.kind === "scrape") {
     const label = scrapeEventLabel(tDetail, event.detail);
     const versionId = event.detail.versionId;
     const expansion = versionId ? expanded[versionId] : undefined;
-    const isExpanded = expansion?.status === 'loaded';
+    const isExpanded = expansion?.status === "loaded";
 
     return (
       <li className={`manual-app-detail-timeline-row tone-${label.tone}`}>
-        <div className="manual-app-detail-timeline-icon" aria-hidden="true">
+        <div aria-hidden="true" className="manual-app-detail-timeline-icon">
           {label.icon}
         </div>
         <div className="manual-app-detail-timeline-body">
           <div className="manual-app-detail-timeline-heading">
-            <span className="manual-app-detail-timeline-title">{label.title}</span>
+            <span className="manual-app-detail-timeline-title">
+              {label.title}
+            </span>
             <span className="manual-app-detail-timeline-time">{when}</span>
           </div>
           <div className="manual-app-detail-timeline-meta">
-            {typeof event.detail.wordCount === 'number' && (
-              <span>{tDetail('n_words', { count: event.detail.wordCount })}</span>
+            {typeof event.detail.wordCount === "number" && (
+              <span>
+                {tDetail("n_words", { count: event.detail.wordCount })}
+              </span>
             )}
             {event.detail.finalUrl && (
               <>
-                {typeof event.detail.wordCount === 'number' && <span aria-hidden="true"> · </span>}
-                <a href={event.detail.finalUrl} target="_blank" rel="noreferrer noopener">
+                {typeof event.detail.wordCount === "number" && (
+                  <span aria-hidden="true"> · </span>
+                )}
+                <a
+                  href={event.detail.finalUrl}
+                  rel="noreferrer noopener"
+                  target="_blank"
+                >
                   {safeHost(event.detail.finalUrl) ?? event.detail.finalUrl}
                 </a>
               </>
             )}
           </div>
           {event.detail.error && (
-            <div className="manual-app-detail-timeline-error">{event.detail.error}</div>
+            <div className="manual-app-detail-timeline-error">
+              {event.detail.error}
+            </div>
           )}
           {showCapturedText && versionId && (
             <div className="manual-app-detail-timeline-actions">
               <button
-                type="button"
                 className="pill-button"
                 onClick={() => onToggleVersion(versionId)}
+                type="button"
               >
-                {isExpanded ? tDetail('hide_captured_text') : tDetail('show_captured_text')}
+                {isExpanded
+                  ? tDetail("hide_captured_text")
+                  : tDetail("show_captured_text")}
               </button>
             </div>
           )}
-          {expansion?.status === 'loading' && (
-            <div className="manual-app-detail-timeline-loading">{tDetail('loading_captured_text')}</div>
+          {expansion?.status === "loading" && (
+            <div className="manual-app-detail-timeline-loading">
+              {tDetail("loading_captured_text")}
+            </div>
           )}
-          {expansion?.status === 'error' && (
-            <div className="manual-app-detail-timeline-error">{expansion.message}</div>
+          {expansion?.status === "error" && (
+            <div className="manual-app-detail-timeline-error">
+              {expansion.message}
+            </div>
           )}
-          {expansion?.status === 'loaded' && (
-            <pre className="manual-app-detail-timeline-text">{expansion.version.sourceText}</pre>
+          {expansion?.status === "loaded" && (
+            <pre className="manual-app-detail-timeline-text">
+              {expansion.version.sourceText}
+            </pre>
           )}
         </div>
       </li>
     );
   }
 
-  if (event.type === 'field_change' && event.detail?.kind === 'field_change') {
+  if (event.type === "field_change" && event.detail?.kind === "field_change") {
     const labelKey = FIELD_LABEL_KEYS[event.detail.field];
     const label = labelKey ? tDetail(labelKey) : event.detail.field;
     const from = truncate(event.detail.from, 160);
     const to = truncate(event.detail.to, 160);
     return (
       <li className="manual-app-detail-timeline-row tone-info">
-        <div className="manual-app-detail-timeline-icon" aria-hidden="true">✎</div>
+        <div aria-hidden="true" className="manual-app-detail-timeline-icon">
+          ✎
+        </div>
         <div className="manual-app-detail-timeline-body">
           <div className="manual-app-detail-timeline-heading">
-            <span className="manual-app-detail-timeline-title">{tDetail('field_updated', { label })}</span>
+            <span className="manual-app-detail-timeline-title">
+              {tDetail("field_updated", { label })}
+            </span>
             <span className="manual-app-detail-timeline-time">{when}</span>
           </div>
           <div className="manual-app-detail-timeline-meta">
@@ -530,7 +657,9 @@ function ManualAppTimelineRow({ event, expanded, onToggleVersion, showCapturedTe
   // Fallback for unknown event shapes (migration from a future schema).
   return (
     <li className="manual-app-detail-timeline-row tone-info">
-      <div className="manual-app-detail-timeline-icon" aria-hidden="true">·</div>
+      <div aria-hidden="true" className="manual-app-detail-timeline-icon">
+        ·
+      </div>
       <div className="manual-app-detail-timeline-body">
         <div className="manual-app-detail-timeline-heading">
           <span className="manual-app-detail-timeline-title">{event.type}</span>

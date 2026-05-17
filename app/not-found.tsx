@@ -1,10 +1,10 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { headers } from 'next/headers';
-import GithubIssueLink from './components/GithubIssueLink';
+import type { Metadata } from "next";
+import { headers } from "next/headers";
+import Link from "next/link";
+import GithubIssueLink from "./components/GithubIssueLink";
 
 export const metadata: Metadata = {
-  title: '404 — Page not found · privacytracker',
+  title: "404 — Page not found · privacytracker",
   description: "The page you're looking for doesn't exist.",
 };
 
@@ -26,22 +26,52 @@ export const metadata: Metadata = {
  * don't opt into linking to the 404 page.
  */
 function pathToLabel(path: string): string {
-  if (path.startsWith('/apps/')) return 'app';
-  if (path === '/dashboard/apps') return 'Apps';
-  if (path === '/dashboard/privacy') return 'Privacy Map';
-  if (path === '/dashboard/stats') return 'Stats';
-  if (path === '/dashboard/manual-apps') return 'Manual apps';
-  if (path === '/dashboard/settings') return 'Settings';
-  if (path === '/dashboard/settings/import-history') return 'Import history';
-  if (path === '/dashboard/shortlist') return 'Shortlist';
-  if (path === '/dashboard/compare') return 'Compare';
-  if (path === '/dashboard') return 'Dashboard';
-  if (path === '/onboard') return 'Onboarding';
-  if (path === '/welcome') return 'Welcome';
-  if (path === '/help/definitions') return 'Definitions';
-  if (path === '/privacy-policy') return 'Privacy Policy';
-  if (path === '/legal') return 'Legal';
-  return 'previous page';
+  if (path.startsWith("/apps/")) {
+    return "app";
+  }
+  if (path === "/dashboard/apps") {
+    return "Apps";
+  }
+  if (path === "/dashboard/privacy") {
+    return "Privacy Map";
+  }
+  if (path === "/dashboard/stats") {
+    return "Stats";
+  }
+  if (path === "/dashboard/manual-apps") {
+    return "Manual apps";
+  }
+  if (path === "/dashboard/settings") {
+    return "Settings";
+  }
+  if (path === "/dashboard/settings/import-history") {
+    return "Import history";
+  }
+  if (path === "/dashboard/shortlist") {
+    return "Shortlist";
+  }
+  if (path === "/dashboard/compare") {
+    return "Compare";
+  }
+  if (path === "/dashboard") {
+    return "Dashboard";
+  }
+  if (path === "/onboard") {
+    return "Onboarding";
+  }
+  if (path === "/welcome") {
+    return "Welcome";
+  }
+  if (path === "/help/definitions") {
+    return "Definitions";
+  }
+  if (path === "/privacy-policy") {
+    return "Privacy Policy";
+  }
+  if (path === "/legal") {
+    return "Legal";
+  }
+  return "previous page";
 }
 
 /**
@@ -54,12 +84,17 @@ function pathToLabel(path: string): string {
  * object whose host matches ours, there's no way for an attacker to land a
  * `javascript:` URI or a cross-origin redirect here.
  */
-async function resolveBackLink(): Promise<{ href: string; label: string } | null> {
+async function resolveBackLink(): Promise<{
+  href: string;
+  label: string;
+} | null> {
   try {
     const h = await headers();
-    const referer = h.get('referer');
-    const host = h.get('host');
-    if (!referer || !host) return null;
+    const referer = h.get("referer");
+    const host = h.get("host");
+    if (!(referer && host)) {
+      return null;
+    }
 
     let url: URL;
     try {
@@ -70,15 +105,17 @@ async function resolveBackLink(): Promise<{ href: string; label: string } | null
 
     // Same-origin only. Compares the host segment (hostname + port) directly;
     // case-insensitive to match how the proxy does it.
-    if (url.host.toLowerCase() !== host.toLowerCase()) return null;
+    if (url.host.toLowerCase() !== host.toLowerCase()) {
+      return null;
+    }
 
     const path = url.pathname;
     // Belt-and-braces: pathname always starts with `/` on a valid URL, but
     // reject protocol-relative / empty / schemed strings if anything
     // exotic leaked through.
     if (
-      !path.startsWith('/') ||
-      path.startsWith('//') ||
+      !path.startsWith("/") ||
+      path.startsWith("//") ||
       path.length > 200 ||
       /[\s<>]/.test(path) ||
       /[a-z][a-z0-9+.-]*:/i.test(path)
@@ -88,7 +125,9 @@ async function resolveBackLink(): Promise<{ href: string; label: string } | null
 
     // Avoid a loop if the user somehow arrived at the 404 from another 404,
     // and avoid offering "/" which is a redirect-only router page.
-    if (path === '/' || path === '/404') return null;
+    if (path === "/" || path === "/404") {
+      return null;
+    }
 
     return { href: path + url.search, label: pathToLabel(path) };
   } catch {
@@ -100,7 +139,11 @@ export default async function NotFound() {
   const back = await resolveBackLink();
 
   return (
-    <div className="notfound-root" role="alert" aria-labelledby="notfound-title">
+    <div
+      aria-labelledby="notfound-title"
+      className="notfound-root"
+      role="alert"
+    >
       <style>{`
         .notfound-root {
           min-height: calc(100vh - 60px);
@@ -330,12 +373,20 @@ export default async function NotFound() {
         <div className="notfound-brand">
           {/* Regenerated via `python3 tools/build_icons.py` → public/brand-icon.png. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="notfound-logo" src="/brand-icon.png" alt="" width={44} height={44} />
+          <img
+            alt=""
+            className="notfound-logo"
+            height={44}
+            src="/brand-icon.png"
+            width={44}
+          />
           <span className="notfound-brand-name">privacytracker</span>
         </div>
-        <p className="notfound-code" aria-hidden="true">404</p>
+        <p aria-hidden="true" className="notfound-code">
+          404
+        </p>
         <span className="notfound-eyebrow">Page not found</span>
-        <h1 id="notfound-title" className="notfound-title">
+        <h1 className="notfound-title" id="notfound-title">
           We couldn&apos;t find that page
         </h1>
         <p className="notfound-subtitle">
@@ -345,26 +396,33 @@ export default async function NotFound() {
         <div className="notfound-actions">
           {back ? (
             <>
-              <Link href={back.href} className="notfound-btn notfound-btn-primary">
+              <Link
+                className="notfound-btn notfound-btn-primary"
+                href={back.href}
+              >
                 ← Back to {back.label}
               </Link>
-              <Link href="/" className="notfound-btn notfound-btn-secondary">
+              <Link className="notfound-btn notfound-btn-secondary" href="/">
                 Home
               </Link>
             </>
           ) : (
             <>
-              <Link href="/" className="notfound-btn notfound-btn-primary">
+              <Link className="notfound-btn notfound-btn-primary" href="/">
                 Home
               </Link>
-              <Link href="/dashboard" className="notfound-btn notfound-btn-secondary">
+              <Link
+                className="notfound-btn notfound-btn-secondary"
+                href="/dashboard"
+              >
                 Go to dashboard
               </Link>
             </>
           )}
         </div>
         <p className="notfound-hint">
-          Looking for an app? Try the <Link href="/dashboard/apps">tracked apps list</Link>.
+          Looking for an app? Try the{" "}
+          <Link href="/dashboard/apps">tracked apps list</Link>.
         </p>
         {/* Bottom "report a bug" link. The GithubIssueLink client component
             builds a prefilled issue URL using window.location.href and

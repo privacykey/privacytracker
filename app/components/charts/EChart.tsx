@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import type * as ECharts from "echarts";
 /**
  * Thin ECharts wrapper that:
  *   - Imports echarts + echarts-for-react only on the client (Next App Router
@@ -12,37 +13,37 @@
  *
  * Callers pass an ECharts `option` object; this component owns only the chrome.
  */
-import { useEffect, useRef } from 'react';
-import type * as ECharts from 'echarts';
+import { useEffect, useRef } from "react";
 
-const THEME_NAME = 'privacy';
+const THEME_NAME = "privacy";
 let themeRegistered = false;
 
 async function registerThemeOnce(echarts: typeof ECharts) {
-  if (themeRegistered) return;
+  if (themeRegistered) {
+    return;
+  }
   echarts.registerTheme(THEME_NAME, {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     textStyle: {
-      color: '#f0f0f5',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      color: "#f0f0f5",
+      fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
     },
-    title: { textStyle: { color: '#f0f0f5' } },
-    legend: { textStyle: { color: '#a0a0b0' } },
+    title: { textStyle: { color: "#f0f0f5" } },
+    legend: { textStyle: { color: "#a0a0b0" } },
     tooltip: {
-      backgroundColor: 'rgba(18, 18, 26, 0.92)',
-      borderColor: 'rgba(255, 255, 255, 0.12)',
-      textStyle: { color: '#f0f0f5' },
+      backgroundColor: "rgba(18, 18, 26, 0.92)",
+      borderColor: "rgba(255, 255, 255, 0.12)",
+      textStyle: { color: "#f0f0f5" },
     },
   });
   themeRegistered = true;
 }
 
 interface EChartProps {
-  option: ECharts.EChartsCoreOption;
-  /** Height in px or any valid CSS length. Width is always 100% of parent. */
-  height?: number | string;
   /** Extra className appended to the root div. */
   className?: string;
+  /** Height in px or any valid CSS length. Width is always 100% of parent. */
+  height?: number | string;
   /** Optional click handler for interactive charts. */
   onClick?: (params: unknown) => void;
   /**
@@ -52,9 +53,16 @@ interface EChartProps {
    * The caller receives the raw ECharts instance.
    */
   onReady?: (instance: ECharts.ECharts) => void;
+  option: ECharts.EChartsCoreOption;
 }
 
-export default function EChart({ option, height = 360, className, onClick, onReady }: EChartProps) {
+export default function EChart({
+  option,
+  height = 360,
+  className,
+  onClick,
+  onReady,
+}: EChartProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<ECharts.ECharts | null>(null);
 
@@ -64,14 +72,22 @@ export default function EChart({ option, height = 360, className, onClick, onRea
     // initial-paint path. The first chart on a page pays the hit; subsequent
     // charts reuse the cached module.
     (async () => {
-      const echarts = await import('echarts');
-      if (cancelled || !rootRef.current) return;
+      const echarts = await import("echarts");
+      if (cancelled || !rootRef.current) {
+        return;
+      }
       await registerThemeOnce(echarts);
-      const inst = echarts.init(rootRef.current, THEME_NAME, { renderer: 'canvas' });
+      const inst = echarts.init(rootRef.current, THEME_NAME, {
+        renderer: "canvas",
+      });
       instanceRef.current = inst;
       inst.setOption(option);
-      if (onClick) inst.on('click', onClick);
-      if (onReady) onReady(inst);
+      if (onClick) {
+        inst.on("click", onClick);
+      }
+      if (onReady) {
+        onReady(inst);
+      }
     })();
 
     return () => {
@@ -96,7 +112,9 @@ export default function EChart({ option, height = 360, className, onClick, onRea
   // ResizeObserver — safer than window resize because the chart can live
   // inside a flex parent that changes independently of the viewport.
   useEffect(() => {
-    if (!rootRef.current || typeof ResizeObserver === 'undefined') return;
+    if (!rootRef.current || typeof ResizeObserver === "undefined") {
+      return;
+    }
     const ro = new ResizeObserver(() => instanceRef.current?.resize());
     ro.observe(rootRef.current);
     return () => ro.disconnect();
@@ -104,9 +122,12 @@ export default function EChart({ option, height = 360, className, onClick, onRea
 
   return (
     <div
-      ref={rootRef}
       className={className}
-      style={{ width: '100%', height: typeof height === 'number' ? `${height}px` : height }}
+      ref={rootRef}
+      style={{
+        width: "100%",
+        height: typeof height === "number" ? `${height}px` : height,
+      }}
     />
   );
 }

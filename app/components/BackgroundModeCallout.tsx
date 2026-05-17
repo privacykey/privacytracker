@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Compact dashboard callout that points users at the
@@ -18,10 +18,10 @@
  * permanently (re-discoverable via Settings).
  */
 
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { isDesktop } from '../../lib/desktop';
-import BackgroundModeWizard from './BackgroundModeWizard';
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { isDesktop } from "../../lib/desktop";
+import BackgroundModeWizard from "./BackgroundModeWizard";
 
 interface Props {
   /** Server-resolved initial visibility — populated when no completion
@@ -31,7 +31,7 @@ interface Props {
 }
 
 export default function BackgroundModeCallout({ initiallyVisible }: Props) {
-  const t = useTranslations('background_mode_callout');
+  const t = useTranslations("background_mode_callout");
   const [visible, setVisible] = useState(initiallyVisible);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [confirmedDesktop, setConfirmedDesktop] = useState(false);
@@ -45,42 +45,52 @@ export default function BackgroundModeCallout({ initiallyVisible }: Props) {
     setConfirmedDesktop(isDesktop());
   }, []);
 
-  if (!visible || !confirmedDesktop) return null;
+  if (!(visible && confirmedDesktop)) {
+    return null;
+  }
 
   const handleDismiss = async () => {
     setVisible(false);
     try {
-      await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ background_wizard_dismissed_at: String(Date.now()) }),
+      await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          background_wizard_dismissed_at: String(Date.now()),
+        }),
       });
     } catch (err) {
-      console.warn('[BackgroundModeCallout] dismiss save failed:', err);
+      console.warn("[BackgroundModeCallout] dismiss save failed:", err);
     }
   };
 
   return (
     <>
-      <div className="bg-mode-callout" role="region" aria-label={t('region_aria')}>
-        <span className="bg-mode-callout-icon" aria-hidden="true">🌙</span>
+      <div
+        aria-label={t("region_aria")}
+        className="bg-mode-callout"
+        role="region"
+      >
+        <span aria-hidden="true" className="bg-mode-callout-icon">
+          🌙
+        </span>
         <div className="bg-mode-callout-text">
-          <strong className="bg-mode-callout-title">{t('title')}</strong>
-          <span className="bg-mode-callout-body">{t('body')}</span>
+          <strong className="bg-mode-callout-title">{t("title")}</strong>
+          <span className="bg-mode-callout-body">{t("body")}</span>
         </div>
         <button
-          type="button"
           className="btn btn-primary btn-sm"
           onClick={() => setWizardOpen(true)}
+          type="button"
         >
-          {t('cta')}
+          {t("cta")}
         </button>
         <button
-          type="button"
+          aria-label={t("dismiss_aria")}
           className="bg-mode-callout-dismiss"
           onClick={() => void handleDismiss()}
-          aria-label={t('dismiss_aria')}
-          title={t('dismiss_title')}
+          title={t("dismiss_title")}
+          type="button"
         >
           ✕
         </button>
@@ -89,7 +99,7 @@ export default function BackgroundModeCallout({ initiallyVisible }: Props) {
         <BackgroundModeWizard
           onClose={(outcome) => {
             setWizardOpen(false);
-            if (outcome === 'completed') {
+            if (outcome === "completed") {
               setVisible(false);
             }
           }}

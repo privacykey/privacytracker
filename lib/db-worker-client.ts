@@ -17,47 +17,52 @@
  * transparently to inline execution on the main thread.
  */
 
-import path from 'path';
-import db, { dbPath } from './db';
+import path from "node:path";
+import db, { dbPath } from "./db";
 import type {
   DbWorkerExecuteRequest,
   DbWorkerResponse,
   DbWorkerStatement,
-} from './db-worker-types';
+} from "./db-worker-types";
 
 // Lazy `worker_threads` import — top-level import would fail in build
 // environments (e.g. edge runtime compile pass) that lack it.
 
 interface WorkerLike {
+  on: (
+    event: "message" | "error" | "exit",
+    listener: (...args: unknown[]) => void
+  ) => void;
   postMessage: (msg: DbWorkerExecuteRequest) => void;
-  on: (event: 'message' | 'error' | 'exit', listener: (...args: unknown[]) => void) => void;
-  unref?: () => void;
   terminate: () => Promise<number>;
+  unref?: () => void;
 }
 
 interface PendingRequest {
-  resolve: (response: DbWorkerResponse) => void;
   reject: (err: Error) => void;
+  resolve: (response: DbWorkerResponse) => void;
 }
 
 export interface DbWorkerTimingRecord {
   /** Epoch ms when the batch finished or failed. */
   at: number;
-  statementCount: number;
-  chunkSize: number | 'infinity';
+  chunkSize: number | "infinity";
   /** Wall-clock duration observed by the caller, including message passing. */
   durationMs: number;
+  error?: string;
+  failedAtIndex?: number;
+  inline: boolean;
+  outcome: "ok" | "error";
+  statementCount: number;
+  totalChanges: number;
   /** Duration reported by the worker itself; absent for postMessage/spawn failures. */
   workerDurationMs?: number;
-  totalChanges: number;
-  inline: boolean;
-  outcome: 'ok' | 'error';
-  failedAtIndex?: number;
-  error?: string;
 }
 
 const DIAGNOSTIC_RING_SIZE = 200;
-const diagnosticRing: Array<DbWorkerTimingRecord | undefined> = new Array(DIAGNOSTIC_RING_SIZE);
+const diagnosticRing: Array<DbWorkerTimingRecord | undefined> = new Array(
+  DIAGNOSTIC_RING_SIZE
+);
 let diagnosticWriteIndex = 0;
 let diagnosticTotalCount = 0;
 let diagnosticFailedCount = 0;
@@ -68,19 +73,25 @@ const pending = new Map<string, PendingRequest>();
 let nextRequestId = 1;
 let workerDisabled = false;
 
-function normaliseChunkSize(chunkSize: number): number | 'infinity' {
-  return Number.isFinite(chunkSize) ? chunkSize : 'infinity';
+function normaliseChunkSize(chunkSize: number): number | "infinity" {
+  return Number.isFinite(chunkSize) ? chunkSize : "infinity";
 }
 
 function recordDbWorkerTiming(record: DbWorkerTimingRecord): void {
   diagnosticRing[diagnosticWriteIndex % DIAGNOSTIC_RING_SIZE] = record;
   diagnosticWriteIndex += 1;
   diagnosticTotalCount += 1;
-  if (record.outcome === 'error') diagnosticFailedCount += 1;
-  if (record.inline) diagnosticInlineCount += 1;
+  if (record.outcome === "error") {
+    diagnosticFailedCount += 1;
+  }
+  if (record.inline) {
+    diagnosticInlineCount += 1;
+  }
 }
 
-function getRecentDbWorkerTimings(limit = DIAGNOSTIC_RING_SIZE): DbWorkerTimingRecord[] {
+function getRecentDbWorkerTimings(
+  limit = DIAGNOSTIC_RING_SIZE
+): DbWorkerTimingRecord[] {
   const wrapped = diagnosticWriteIndex >= DIAGNOSTIC_RING_SIZE;
   const start = wrapped ? diagnosticWriteIndex % DIAGNOSTIC_RING_SIZE : 0;
   const liveCount = wrapped ? DIAGNOSTIC_RING_SIZE : diagnosticWriteIndex;
@@ -88,7 +99,9 @@ function getRecentDbWorkerTimings(limit = DIAGNOSTIC_RING_SIZE): DbWorkerTimingR
   const out: DbWorkerTimingRecord[] = [];
   for (let i = liveCount - want; i < liveCount; i += 1) {
     const slot = diagnosticRing[(start + i) % DIAGNOSTIC_RING_SIZE];
-    if (slot) out.push(slot);
+    if (slot) {
+      out.push(slot);
+    }
   }
   return out;
 }
@@ -129,18 +142,26 @@ export function clearDbWorkerTimings(): void {
  * or a previous spawn attempt failed (re-tried on next process restart).
  */
 function isWorkerEnabled(): boolean {
-  if (workerDisabled) return false;
-  if (process.env.WORKER_DISABLED === '1') return false;
-  if (process.env.NEXT_PHASE === 'phase-production-build') return false;
-  if (process.env.BUILD_STANDALONE === '1') return false;
+  if (workerDisabled) {
+    return false;
+  }
+  if (process.env.WORKER_DISABLED === "1") {
+    return false;
+  }
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return false;
+  }
+  if (process.env.BUILD_STANDALONE === "1") {
+    return false;
+  }
   return true;
 }
 
 function spawnWorker(): WorkerLike | null {
-  let workerThreads: typeof import('node:worker_threads');
+  let workerThreads: typeof import("node:worker_threads");
   try {
     // Node-only API; require keeps it out of bundler static analysis.
-    workerThreads = require('node:worker_threads');
+    workerThreads = require("node:worker_threads");
   } catch {
     workerDisabled = true;
     return null;
@@ -164,38 +185,53 @@ function spawnWorker(): WorkerLike | null {
     // root in dev). Both are server-controlled; neither is reachable
     // by a low-privilege attacker who doesn't already have write
     // access to a trusted location.
-    const fs = require('node:fs');
+    const fs = require("node:fs");
     const candidates = [
-      path.join(__dirname, 'db-worker.cjs'),
-      path.join(process.cwd(), 'lib', 'db-worker.cjs'),
-      path.join(process.cwd(), 'db-worker.cjs'),
+      path.join(import.meta.dirname, "db-worker.cjs"),
+      path.join(process.cwd(), "lib", "db-worker.cjs"),
+      path.join(process.cwd(), "db-worker.cjs"),
     ];
-    const allowedBases = [__dirname, process.cwd()].map(p => {
-      try { return fs.realpathSync(p); } catch { return p; }
+    const allowedBases = [import.meta.dirname, process.cwd()].map((p) => {
+      try {
+        return fs.realpathSync(p);
+      } catch {
+        return p;
+      }
     });
     const workerPath = candidates.find((p) => {
       try {
-        if (!fs.existsSync(p)) return false;
+        if (!fs.existsSync(p)) {
+          return false;
+        }
         const real = fs.realpathSync(p);
-        return allowedBases.some(base => real.startsWith(base + path.sep) || real === base);
+        return allowedBases.some(
+          (base) => real.startsWith(base + path.sep) || real === base
+        );
       } catch {
         return false;
       }
     });
     if (!workerPath) {
       throw new Error(
-        `db-worker.cjs not found. Looked in: ${candidates.join(', ')}. ` +
-        'In standalone builds, scripts/stage-standalone.mjs is responsible for ' +
-        'copying lib/db-worker.cjs into the bundle.',
+        `db-worker.cjs not found. Looked in: ${candidates.join(", ")}. ` +
+          "In standalone builds, scripts/stage-standalone.mjs is responsible for " +
+          "copying lib/db-worker.cjs into the bundle."
       );
     }
     const w = new workerThreads.Worker(workerPath, {
       workerData: { dbPath },
     }) as unknown as WorkerLike;
-    w.on('message', (raw: unknown) => {
+    w.on("message", (raw: unknown) => {
       const response = raw as DbWorkerResponse;
-      if (!response || typeof response !== 'object' || typeof response.requestId !== 'string') {
-        console.warn('[db-worker-client] received malformed worker message', response);
+      if (
+        !response ||
+        typeof response !== "object" ||
+        typeof response.requestId !== "string"
+      ) {
+        console.warn(
+          "[db-worker-client] received malformed worker message",
+          response
+        );
         return;
       }
       const slot = pending.get(response.requestId);
@@ -206,37 +242,48 @@ function spawnWorker(): WorkerLike | null {
       pending.delete(response.requestId);
       slot.resolve(response);
     });
-    w.on('error', (err: unknown) => {
+    w.on("error", (err: unknown) => {
       // Worker-level error — reject every in-flight request, mark worker
       // dead so the next call respawns.
-      console.error('[db-worker-client] worker error event:', err);
+      console.error("[db-worker-client] worker error event:", err);
       const error = err instanceof Error ? err : new Error(String(err));
-      for (const slot of pending.values()) slot.reject(error);
+      for (const slot of pending.values()) {
+        slot.reject(error);
+      }
       pending.clear();
       cachedWorker = null;
     });
-    w.on('exit', (code: unknown) => {
+    w.on("exit", (code: unknown) => {
       // Unexpected exit — same handling as `error`.
       if (code !== 0) {
         console.warn(`[db-worker-client] worker exited with code ${code}`);
       }
       const error = new Error(`db worker exited with code ${code}`);
-      for (const slot of pending.values()) slot.reject(error);
+      for (const slot of pending.values()) {
+        slot.reject(error);
+      }
       pending.clear();
       cachedWorker = null;
     });
     w.unref?.();
     return w;
   } catch (err) {
-    console.error('[db-worker-client] spawn failed, falling back to inline execution:', err);
+    console.error(
+      "[db-worker-client] spawn failed, falling back to inline execution:",
+      err
+    );
     workerDisabled = true;
     return null;
   }
 }
 
 function getWorker(): WorkerLike | null {
-  if (!isWorkerEnabled()) return null;
-  if (cachedWorker !== null) return cachedWorker;
+  if (!isWorkerEnabled()) {
+    return null;
+  }
+  if (cachedWorker !== null) {
+    return cachedWorker;
+  }
   cachedWorker = spawnWorker();
   return cachedWorker;
 }
@@ -247,7 +294,7 @@ function getWorker(): WorkerLike | null {
  */
 function executeInline(
   statements: DbWorkerStatement[],
-  chunkSize: number,
+  chunkSize: number
 ): DbWorkerResponse {
   // `db` is statically imported at the top of this file. We used to
   // `require('./db').default` here under a "lazy load" rationale, but
@@ -261,7 +308,12 @@ function executeInline(
   // this inline path. Using the static import removes the
   // interop variable from the failure mode.
   if (statements.length === 0) {
-    return { kind: 'execute-ok', requestId: 'inline', totalChanges: 0, durationMs: 0 };
+    return {
+      kind: "execute-ok",
+      requestId: "inline",
+      totalChanges: 0,
+      durationMs: 0,
+    };
   }
   const startedAt = Date.now();
   let totalChanges = 0;
@@ -291,11 +343,11 @@ function executeInline(
       totalChanges += runChunk();
     } catch (e) {
       return {
-        kind: 'execute-error',
-        requestId: 'inline',
+        kind: "execute-error",
+        requestId: "inline",
         error: e instanceof Error ? e.message : String(e),
         failedAtIndex:
-          typeof (e as { failedAtIndex?: unknown })?.failedAtIndex === 'number'
+          typeof (e as { failedAtIndex?: unknown })?.failedAtIndex === "number"
             ? (e as { failedAtIndex: number }).failedAtIndex
             : start,
       };
@@ -303,8 +355,8 @@ function executeInline(
     cursor = end;
   }
   return {
-    kind: 'execute-ok',
-    requestId: 'inline',
+    kind: "execute-ok",
+    requestId: "inline",
     totalChanges,
     durationMs: Date.now() - startedAt,
   };
@@ -323,7 +375,7 @@ function executeInline(
  */
 export async function runBulkWrite(
   statements: DbWorkerStatement[],
-  options: { chunkSize?: number } = {},
+  options: { chunkSize?: number } = {}
 ): Promise<{ totalChanges: number; durationMs: number }> {
   const chunkSize = options.chunkSize ?? 200;
   const startedAt = performance.now();
@@ -334,7 +386,7 @@ export async function runBulkWrite(
     // Inline path. Wrap in a Promise so the API shape stays consistent.
     const response = executeInline(statements, chunkSize);
     const durationMs = Math.round(performance.now() - startedAt);
-    if (response.kind === 'execute-ok') {
+    if (response.kind === "execute-ok") {
       recordDbWorkerTiming({
         at: Date.now(),
         statementCount,
@@ -343,9 +395,12 @@ export async function runBulkWrite(
         workerDurationMs: response.durationMs,
         totalChanges: response.totalChanges,
         inline: true,
-        outcome: 'ok',
+        outcome: "ok",
       });
-      return { totalChanges: response.totalChanges, durationMs: response.durationMs };
+      return {
+        totalChanges: response.totalChanges,
+        durationMs: response.durationMs,
+      };
     }
     recordDbWorkerTiming({
       at: Date.now(),
@@ -354,12 +409,13 @@ export async function runBulkWrite(
       durationMs,
       totalChanges: 0,
       inline: true,
-      outcome: 'error',
+      outcome: "error",
       failedAtIndex: response.failedAtIndex,
       error: response.error.slice(0, 240),
     });
     const err = new Error(response.error);
-    (err as Error & { failedAtIndex: number }).failedAtIndex = response.failedAtIndex;
+    (err as Error & { failedAtIndex: number }).failedAtIndex =
+      response.failedAtIndex;
     throw err;
   }
 
@@ -374,7 +430,7 @@ export async function runBulkWrite(
         durationMs: Math.round(performance.now() - startedAt),
         totalChanges: 0,
         inline: false,
-        outcome: 'error',
+        outcome: "error",
         error: err.message.slice(0, 240),
       });
       reject(err);
@@ -382,7 +438,7 @@ export async function runBulkWrite(
     pending.set(requestId, {
       resolve: (response) => {
         const durationMs = Math.round(performance.now() - startedAt);
-        if (response.kind === 'execute-ok') {
+        if (response.kind === "execute-ok") {
           recordDbWorkerTiming({
             at: Date.now(),
             statementCount,
@@ -391,9 +447,12 @@ export async function runBulkWrite(
             workerDurationMs: response.durationMs,
             totalChanges: response.totalChanges,
             inline: false,
-            outcome: 'ok',
+            outcome: "ok",
           });
-          resolve({ totalChanges: response.totalChanges, durationMs: response.durationMs });
+          resolve({
+            totalChanges: response.totalChanges,
+            durationMs: response.durationMs,
+          });
         } else {
           recordDbWorkerTiming({
             at: Date.now(),
@@ -402,12 +461,13 @@ export async function runBulkWrite(
             durationMs,
             totalChanges: 0,
             inline: false,
-            outcome: 'error',
+            outcome: "error",
             failedAtIndex: response.failedAtIndex,
             error: response.error.slice(0, 240),
           });
           const err = new Error(response.error);
-          (err as Error & { failedAtIndex: number }).failedAtIndex = response.failedAtIndex;
+          (err as Error & { failedAtIndex: number }).failedAtIndex =
+            response.failedAtIndex;
           reject(err);
         }
       },
@@ -415,7 +475,7 @@ export async function runBulkWrite(
     });
     try {
       worker.postMessage({
-        kind: 'execute',
+        kind: "execute",
         requestId,
         statements,
         chunkSize,
@@ -439,7 +499,7 @@ export async function _resetDbWorker(): Promise<void> {
     cachedWorker = null;
   }
   for (const slot of pending.values()) {
-    slot.reject(new Error('db worker reset'));
+    slot.reject(new Error("db worker reset"));
   }
   pending.clear();
   workerDisabled = false;

@@ -1,52 +1,53 @@
-import crypto from 'crypto';
-import db from './db';
-import { recordActivity, type ActivityStatus } from './activity';
-import { schedulePostAppUpdatePolicyFetch } from './post-app-update-policy-fetch';
+import crypto from "node:crypto";
+import { type ActivityStatus, recordActivity } from "./activity";
+import db from "./db";
 import {
   createImportCompletionNotification,
   markNotificationsStaleForApp,
-} from './notifications';
+} from "./notifications";
+import { schedulePostAppUpdatePolicyFetch } from "./post-app-update-policy-fetch";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
-export const IMPORT_SOURCES = ['screenshots', 'file', 'manual'] as const;
+export const IMPORT_SOURCES = ["screenshots", "file", "manual"] as const;
 export type ImportSource = (typeof IMPORT_SOURCES)[number];
 
 export const IMPORT_ITEM_STATUSES = [
-  'matched',
-  'unmatched',
-  'skipped',
-  'imported',
-  'error',
+  "matched",
+  "unmatched",
+  "skipped",
+  "imported",
+  "error",
   // Name-only row: the iTunes Search API rate-limited the wizard before we
   // could resolve this query into a URL. The client-side QueuedSearchProvider
   // owns retries — when the search eventually lands, the row is upserted to
   // 'matched' with `url` filled in. The server-side import-queue worker
   // explicitly does NOT claim 'pending_search' rows (no URL to scrape), so
   // these two retry paths don't compete.
-  'pending_search',
+  "pending_search",
   // Matched row whose App Store scrape Apple 429'd partway through. Has a
   // URL; the server-side import-queue worker drains these on a backoff. The
   // user sees a "Queued" pill in Import History until each row flips to
   // 'imported' or 'error'.
-  'queued',
+  "queued",
   // User imported the app, then later removed it from the dashboard. We keep
   // the import_item row for audit + display but refuse to re-add the app on a
   // scheduled sync or naive retry. Set via `markImportItemsRemovedForApp`.
-  'removed',
+  "removed",
 ] as const;
 export type ImportItemStatus = (typeof IMPORT_ITEM_STATUSES)[number];
 
 export interface ImportRow {
-  id: string;
-  createdAt: number;
   completedAt: number | null;
-  source: ImportSource;
-  sourceLabel: string | null;
-  total: number;
-  matched: number;
-  unmatched: number;
+  createdAt: number;
+  /** Device this import was attached to, or null when unset (legacy or
+   *  callers that don't yet populate it). */
+  deviceId: string | null;
+  errored: number;
+  id: string;
   imported: number;
+  itemCount: number;
+  matched: number;
   /**
    * Live counters computed by joining `import_items`, not stored on the
    * `imports` table. The history UI needs these on the collapsed summary
@@ -60,46 +61,48 @@ export interface ImportRow {
    *              for legacy imports that predate the items write path.
    */
   queued: number;
-  errored: number;
   removed: number;
-  itemCount: number;
+  source: ImportSource;
+  sourceLabel: string | null;
+  total: number;
+  unmatched: number;
 }
 
 export interface ImportItemRow {
-  id: string;
-  importId: string;
-  query: string;
-  editedQuery: string | null;
-  status: ImportItemStatus;
   appId: string | null;
   appName: string | null;
+  attemptCount: number;
+  /**
+   * ISO country code the search was performed against. Gives retries a
+   * hint so we scrape the same storefront the user originally saw.
+   */
+  country: string | null;
   developer: string | null;
-  url: string | null;
+  editedQuery: string | null;
   /**
    * Icon captured at the moment we matched the app in the iTunes search.
    * Persisted so the "Queued" row in Import History can show the user's
    * app without waiting for the scrape to succeed.
    */
   iconUrl: string | null;
-  /**
-   * ISO country code the search was performed against. Gives retries a
-   * hint so we scrape the same storefront the user originally saw.
-   */
-  country: string | null;
-  scrapeError: string | null;
-  /**
-   * Sticky pointer to the original app id. When a tracked app is deleted the
-   * FK `SET NULL` wipes `app_id`; we preserve the old id here so the import
-   * history UI can still describe which app was removed.
-   */
-  removedAppId: string | null;
+  id: string;
+  importId: string;
   /**
    * Background queue bookkeeping. `nextAttemptAt` is the epoch-ms threshold
    * at/after which the worker may retry a `'queued'` row; `attemptCount` is
    * the number of times this row has been tried so backoff can grow.
    */
   nextAttemptAt: number | null;
-  attemptCount: number;
+  query: string;
+  /**
+   * Sticky pointer to the original app id. When a tracked app is deleted the
+   * FK `SET NULL` wipes `app_id`; we preserve the old id here so the import
+   * history UI can still describe which app was removed.
+   */
+  removedAppId: string | null;
+  scrapeError: string | null;
+  status: ImportItemStatus;
+  url: string | null;
 }
 
 // ── Create / update ────────────────────────────────────────────────────
@@ -122,8 +125,10 @@ export interface ImportItemRow {
  * the scrape has created the `apps` row.
  */
 function resolveSafeAppId(appId: string | null | undefined): string | null {
-  if (!appId) return null;
-  const exists = db.prepare('SELECT 1 FROM apps WHERE id = ?').get(appId);
+  if (!appId) {
+    return null;
+  }
+  const exists = db.prepare("SELECT 1 FROM apps WHERE id = ?").get(appId);
   return exists ? appId : null;
 }
 
@@ -131,31 +136,42 @@ export function createImport(input: {
   source: ImportSource;
   sourceLabel?: string;
   total?: number;
+  /** Device that the import session is attached to. Optional — legacy
+   *  callers and old install paths leave it NULL. The OnboardWizard's new
+   *  device-naming step populates this for every fresh import. */
+  deviceId?: string | null;
 }): ImportRow {
-  const id = newId('imp');
+  const id = newId("imp");
   const createdAt = Date.now();
   db.prepare(
-    `INSERT INTO imports (id, created_at, source, source_label, total)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, createdAt, input.source, input.sourceLabel ?? null, input.total ?? 0);
+    `INSERT INTO imports (id, created_at, source, source_label, total, device_id)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    createdAt,
+    input.source,
+    input.sourceLabel ?? null,
+    input.total ?? 0,
+    input.deviceId ?? null
+  );
 
   return getImportRowOrThrow(id);
 }
 
 interface AddImportItemInput {
-  query: string;
-  editedQuery?: string | null;
-  status: ImportItemStatus;
   appId?: string | null;
   appName?: string | null;
-  developer?: string | null;
-  url?: string | null;
-  iconUrl?: string | null;
-  country?: string | null;
-  scrapeError?: string | null;
-  removedAppId?: string | null;
-  nextAttemptAt?: number | null;
   attemptCount?: number;
+  country?: string | null;
+  developer?: string | null;
+  editedQuery?: string | null;
+  iconUrl?: string | null;
+  nextAttemptAt?: number | null;
+  query: string;
+  removedAppId?: string | null;
+  scrapeError?: string | null;
+  status: ImportItemStatus;
+  url?: string | null;
 }
 
 /**
@@ -210,37 +226,49 @@ interface AddImportItemInput {
  */
 export async function addImportItemsAsync(
   importId: string,
-  items: AddImportItemInput[],
+  items: AddImportItemInput[]
 ): Promise<ImportItemRow[]> {
   if (!getImportRow(importId)) {
     throw new Error(`Unknown import ${importId}`);
   }
-  if (items.length === 0) return [];
+  if (items.length === 0) {
+    return [];
+  }
 
   // Lazy-load the worker client. Top-level import would pull it into
   // every module that touches imports.ts, including the test bundle.
   // Keeping it dynamic also defers worker spawn until something
   // actually wants the async path.
-  const { runBulkWrite } = require('./db-worker-client') as typeof import('./db-worker-client');
+  const { runBulkWrite } =
+    require("./db-worker-client") as typeof import("./db-worker-client");
 
   const findExisting = db.prepare(
     `SELECT * FROM import_items
        WHERE import_id = ? AND query = ?
-       ORDER BY rowid LIMIT 1`,
+       ORDER BY rowid LIMIT 1`
   );
 
   // Phase 1 (sync, on main thread): build the statement plan + the
   // result rows. This phase does N small reads + N pushes to
   // arrays — fast enough that it doesn't visibly block the UI even
   // for a 200-row batch.
-  type Statement = { sql: string; params: unknown[] };
+  interface Statement {
+    params: unknown[];
+    sql: string;
+  }
   const statements: Statement[] = [];
   const results: ImportItemRow[] = [];
   const safeAppIdCache = new Map<string, string | null>();
-  const cachedResolveSafeAppId = (appId: string | null | undefined): string | null => {
-    if (!appId) return null;
+  const cachedResolveSafeAppId = (
+    appId: string | null | undefined
+  ): string | null => {
+    if (!appId) {
+      return null;
+    }
     const cached = safeAppIdCache.get(appId);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      return cached;
+    }
     const safeAppId = resolveSafeAppId(appId);
     safeAppIdCache.set(appId, safeAppId);
     return safeAppId;
@@ -257,7 +285,7 @@ export async function addImportItemsAsync(
       | undefined;
 
     if (existing) {
-      if (existing.status === 'removed') {
+      if (existing.status === "removed") {
         // Tombstone — keep the existing row, no write needed.
         results.push(hydrateImportItem(existing));
         continue;
@@ -274,29 +302,50 @@ export async function addImportItemsAsync(
       // Status is always part of an upsert (the whole point of
       // re-running the call is to flip status forward, e.g.
       // queued → matched).
-      push('status', item.status);
-      const safeAppId = item.appId !== undefined
-        ? cachedResolveSafeAppId(item.appId)
-        : existing.app_id;
-      if (item.editedQuery !== undefined) push('edited_query', item.editedQuery);
-      if (item.appId !== undefined) push('app_id', safeAppId);
-      if (item.appName !== undefined) push('app_name', item.appName);
-      if (item.developer !== undefined) push('developer', item.developer);
-      if (item.url !== undefined) push('url', item.url);
-      if (item.iconUrl !== undefined) push('icon_url', item.iconUrl);
-      if (item.country !== undefined) push('country', item.country);
-      if (item.scrapeError !== undefined) push('scrape_error', item.scrapeError);
-      if (item.removedAppId !== undefined) push('removed_app_id', item.removedAppId);
-      if (item.nextAttemptAt !== undefined) push('next_attempt_at', item.nextAttemptAt);
+      push("status", item.status);
+      const safeAppId =
+        item.appId === undefined
+          ? existing.app_id
+          : cachedResolveSafeAppId(item.appId);
+      if (item.editedQuery !== undefined) {
+        push("edited_query", item.editedQuery);
+      }
+      if (item.appId !== undefined) {
+        push("app_id", safeAppId);
+      }
+      if (item.appName !== undefined) {
+        push("app_name", item.appName);
+      }
+      if (item.developer !== undefined) {
+        push("developer", item.developer);
+      }
+      if (item.url !== undefined) {
+        push("url", item.url);
+      }
+      if (item.iconUrl !== undefined) {
+        push("icon_url", item.iconUrl);
+      }
+      if (item.country !== undefined) {
+        push("country", item.country);
+      }
+      if (item.scrapeError !== undefined) {
+        push("scrape_error", item.scrapeError);
+      }
+      if (item.removedAppId !== undefined) {
+        push("removed_app_id", item.removedAppId);
+      }
+      if (item.nextAttemptAt !== undefined) {
+        push("next_attempt_at", item.nextAttemptAt);
+      }
       if (item.attemptCount !== undefined) {
         // attempt_count is NOT NULL DEFAULT 0 — bypass the `?? null`
         // coercion in `push` to avoid a NULL constraint violation.
-        fields.push('attempt_count = ?');
+        fields.push("attempt_count = ?");
         values.push(item.attemptCount);
       }
       values.push(existing.id);
       statements.push({
-        sql: `UPDATE import_items SET ${fields.join(', ')} WHERE id = ?`,
+        sql: `UPDATE import_items SET ${fields.join(", ")} WHERE id = ?`,
         params: values,
       });
 
@@ -307,25 +356,41 @@ export async function addImportItemsAsync(
         id: existing.id,
         importId,
         query: existing.query,
-        editedQuery: item.editedQuery !== undefined ? item.editedQuery : existing.edited_query,
+        editedQuery:
+          item.editedQuery === undefined
+            ? existing.edited_query
+            : item.editedQuery,
         status: item.status,
         appId: safeAppId,
-        appName: item.appName !== undefined ? item.appName : existing.app_name,
-        developer: item.developer !== undefined ? item.developer : existing.developer,
-        url: item.url !== undefined ? item.url : existing.url,
-        iconUrl: item.iconUrl !== undefined ? item.iconUrl : existing.icon_url,
-        country: item.country !== undefined ? item.country : existing.country,
-        scrapeError: item.scrapeError !== undefined ? item.scrapeError : existing.scrape_error,
-        removedAppId: item.removedAppId !== undefined ? item.removedAppId : existing.removed_app_id,
-        nextAttemptAt: item.nextAttemptAt !== undefined ? item.nextAttemptAt : existing.next_attempt_at,
-        attemptCount: item.attemptCount !== undefined ? item.attemptCount : (existing.attempt_count ?? 0),
+        appName: item.appName === undefined ? existing.app_name : item.appName,
+        developer:
+          item.developer === undefined ? existing.developer : item.developer,
+        url: item.url === undefined ? existing.url : item.url,
+        iconUrl: item.iconUrl === undefined ? existing.icon_url : item.iconUrl,
+        country: item.country === undefined ? existing.country : item.country,
+        scrapeError:
+          item.scrapeError === undefined
+            ? existing.scrape_error
+            : item.scrapeError,
+        removedAppId:
+          item.removedAppId === undefined
+            ? existing.removed_app_id
+            : item.removedAppId,
+        nextAttemptAt:
+          item.nextAttemptAt === undefined
+            ? existing.next_attempt_at
+            : item.nextAttemptAt,
+        attemptCount:
+          item.attemptCount === undefined
+            ? (existing.attempt_count ?? 0)
+            : item.attemptCount,
       };
       results.push(updated);
       continue;
     }
 
     // Fresh INSERT path.
-    const id = newId('iti');
+    const id = newId("iti");
     const attemptCount = item.attemptCount ?? 0;
     const safeAppId = cachedResolveSafeAppId(item.appId);
     statements.push({
@@ -384,7 +449,10 @@ export async function addImportItemsAsync(
   return results;
 }
 
-export function addImportItems(importId: string, items: AddImportItemInput[]): ImportItemRow[] {
+export function addImportItems(
+  importId: string,
+  items: AddImportItemInput[]
+): ImportItemRow[] {
   if (!getImportRow(importId)) {
     throw new Error(`Unknown import ${importId}`);
   }
@@ -392,13 +460,13 @@ export function addImportItems(importId: string, items: AddImportItemInput[]): I
   const findExisting = db.prepare(
     `SELECT * FROM import_items
        WHERE import_id = ? AND query = ?
-       ORDER BY rowid LIMIT 1`,
+       ORDER BY rowid LIMIT 1`
   );
   const insert = db.prepare(
     `INSERT INTO import_items (
       id, import_id, query, edited_query, status, app_id, app_name, developer, url,
       icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   const results: ImportItemRow[] = [];
@@ -413,7 +481,7 @@ export function addImportItems(importId: string, items: AddImportItemInput[]): I
         // Respect the "removed" tombstone: a retry landing on a row the user
         // has already deleted from the dashboard must not flip the status
         // back. We hand the caller the existing row unchanged.
-        if (existing.status === 'removed') {
+        if (existing.status === "removed") {
           results.push(hydrateImportItem(existing));
           continue;
         }
@@ -424,24 +492,48 @@ export function addImportItems(importId: string, items: AddImportItemInput[]): I
         const patch: Parameters<typeof updateImportItem>[1] = {
           status: item.status,
         };
-        if (item.editedQuery !== undefined) patch.editedQuery = item.editedQuery;
-        if (item.appId !== undefined) patch.appId = item.appId;
-        if (item.appName !== undefined) patch.appName = item.appName;
-        if (item.developer !== undefined) patch.developer = item.developer;
-        if (item.url !== undefined) patch.url = item.url;
-        if (item.iconUrl !== undefined) patch.iconUrl = item.iconUrl;
-        if (item.country !== undefined) patch.country = item.country;
-        if (item.scrapeError !== undefined) patch.scrapeError = item.scrapeError;
-        if (item.removedAppId !== undefined) patch.removedAppId = item.removedAppId;
-        if (item.nextAttemptAt !== undefined) patch.nextAttemptAt = item.nextAttemptAt;
-        if (item.attemptCount !== undefined) patch.attemptCount = item.attemptCount;
+        if (item.editedQuery !== undefined) {
+          patch.editedQuery = item.editedQuery;
+        }
+        if (item.appId !== undefined) {
+          patch.appId = item.appId;
+        }
+        if (item.appName !== undefined) {
+          patch.appName = item.appName;
+        }
+        if (item.developer !== undefined) {
+          patch.developer = item.developer;
+        }
+        if (item.url !== undefined) {
+          patch.url = item.url;
+        }
+        if (item.iconUrl !== undefined) {
+          patch.iconUrl = item.iconUrl;
+        }
+        if (item.country !== undefined) {
+          patch.country = item.country;
+        }
+        if (item.scrapeError !== undefined) {
+          patch.scrapeError = item.scrapeError;
+        }
+        if (item.removedAppId !== undefined) {
+          patch.removedAppId = item.removedAppId;
+        }
+        if (item.nextAttemptAt !== undefined) {
+          patch.nextAttemptAt = item.nextAttemptAt;
+        }
+        if (item.attemptCount !== undefined) {
+          patch.attemptCount = item.attemptCount;
+        }
 
         const updated = updateImportItem(existing.id, patch);
-        if (updated) results.push(updated);
+        if (updated) {
+          results.push(updated);
+        }
         continue;
       }
 
-      const id = newId('iti');
+      const id = newId("iti");
       const attemptCount = item.attemptCount ?? 0;
       // See resolveSafeAppId above — at match time the apps row hasn't
       // been scraped yet, so the FK would blow up if we passed appId
@@ -462,7 +554,7 @@ export function addImportItems(importId: string, items: AddImportItemInput[]): I
         item.scrapeError ?? null,
         item.removedAppId ?? null,
         item.nextAttemptAt ?? null,
-        attemptCount,
+        attemptCount
       );
       results.push({
         id,
@@ -491,12 +583,14 @@ export function addImportItems(importId: string, items: AddImportItemInput[]): I
 
 export function updateImportItem(
   itemId: string,
-  patch: Partial<Omit<AddImportItemInput, 'query'>> & { query?: string },
+  patch: Partial<Omit<AddImportItemInput, "query">> & { query?: string }
 ): ImportItemRow | null {
   const existing = db
-    .prepare('SELECT import_id FROM import_items WHERE id = ?')
+    .prepare("SELECT import_id FROM import_items WHERE id = ?")
     .get(itemId) as { import_id: string } | undefined;
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
 
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -506,34 +600,62 @@ export function updateImportItem(
     values.push(value ?? null);
   };
 
-  if (patch.query !== undefined) pushField('query', patch.query);
-  if (patch.editedQuery !== undefined) pushField('edited_query', patch.editedQuery);
-  if (patch.status !== undefined) pushField('status', patch.status);
+  if (patch.query !== undefined) {
+    pushField("query", patch.query);
+  }
+  if (patch.editedQuery !== undefined) {
+    pushField("edited_query", patch.editedQuery);
+  }
+  if (patch.status !== undefined) {
+    pushField("status", patch.status);
+  }
   // Coerce app_id to NULL if the referenced apps row doesn't exist — see
   // resolveSafeAppId. Once the scrape populates apps, a later
   // markItemImported / recordItemSuccess re-writes this with a valid FK.
-  if (patch.appId !== undefined) pushField('app_id', resolveSafeAppId(patch.appId));
-  if (patch.appName !== undefined) pushField('app_name', patch.appName);
-  if (patch.developer !== undefined) pushField('developer', patch.developer);
-  if (patch.url !== undefined) pushField('url', patch.url);
-  if (patch.iconUrl !== undefined) pushField('icon_url', patch.iconUrl);
-  if (patch.country !== undefined) pushField('country', patch.country);
-  if (patch.scrapeError !== undefined) pushField('scrape_error', patch.scrapeError);
-  if (patch.removedAppId !== undefined) pushField('removed_app_id', patch.removedAppId);
-  if (patch.nextAttemptAt !== undefined) pushField('next_attempt_at', patch.nextAttemptAt);
+  if (patch.appId !== undefined) {
+    pushField("app_id", resolveSafeAppId(patch.appId));
+  }
+  if (patch.appName !== undefined) {
+    pushField("app_name", patch.appName);
+  }
+  if (patch.developer !== undefined) {
+    pushField("developer", patch.developer);
+  }
+  if (patch.url !== undefined) {
+    pushField("url", patch.url);
+  }
+  if (patch.iconUrl !== undefined) {
+    pushField("icon_url", patch.iconUrl);
+  }
+  if (patch.country !== undefined) {
+    pushField("country", patch.country);
+  }
+  if (patch.scrapeError !== undefined) {
+    pushField("scrape_error", patch.scrapeError);
+  }
+  if (patch.removedAppId !== undefined) {
+    pushField("removed_app_id", patch.removedAppId);
+  }
+  if (patch.nextAttemptAt !== undefined) {
+    pushField("next_attempt_at", patch.nextAttemptAt);
+  }
   if (patch.attemptCount !== undefined) {
     // attempt_count is NOT NULL DEFAULT 0 — coerce so pushField's ?? null
     // doesn't violate the column constraint.
-    fields.push('attempt_count = ?');
+    fields.push("attempt_count = ?");
     values.push(patch.attemptCount);
   }
 
-  if (fields.length === 0) return getImportItemById(itemId);
+  if (fields.length === 0) {
+    return getImportItemById(itemId);
+  }
 
   values.push(itemId);
 
   const tx = db.transaction(() => {
-    db.prepare(`UPDATE import_items SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    db.prepare(`UPDATE import_items SET ${fields.join(", ")} WHERE id = ?`).run(
+      ...values
+    );
     recomputeImportCounters(existing.import_id);
   });
   tx();
@@ -543,12 +665,12 @@ export function updateImportItem(
 
 export function findImportItem(
   importId: string,
-  query: string,
+  query: string
 ): ImportItemRow | null {
   const row = db
     .prepare(
       `SELECT * FROM import_items WHERE import_id = ?
-       AND (query = ? OR edited_query = ?) ORDER BY rowid LIMIT 1`,
+       AND (query = ? OR edited_query = ?) ORDER BY rowid LIMIT 1`
     )
     .get(importId, query, query) as ImportItemRecord | undefined;
   return row ? hydrateImportItem(row) : null;
@@ -557,12 +679,14 @@ export function findImportItem(
 export function markItemImported(
   importId: string,
   query: string,
-  app: { id: string; name: string; developer?: string | null; url: string },
+  app: { id: string; name: string; developer?: string | null; url: string }
 ): ImportItemRow | null {
   const item = findImportItem(importId, query);
-  if (!item) return null;
+  if (!item) {
+    return null;
+  }
   return updateImportItem(item.id, {
-    status: 'imported',
+    status: "imported",
     appId: app.id,
     appName: app.name,
     developer: app.developer ?? null,
@@ -574,12 +698,14 @@ export function markItemImported(
 export function markItemError(
   importId: string,
   query: string,
-  error: string,
+  error: string
 ): ImportItemRow | null {
   const item = findImportItem(importId, query);
-  if (!item) return null;
+  if (!item) {
+    return null;
+  }
   return updateImportItem(item.id, {
-    status: 'error',
+    status: "error",
     scrapeError: error,
   });
 }
@@ -597,16 +723,19 @@ export function markItemError(
  */
 export function enqueueItem(
   itemId: string,
-  opts: { retryAfterMs?: number; scrapeError?: string | null } = {},
+  opts: { retryAfterMs?: number; scrapeError?: string | null } = {}
 ): ImportItemRow | null {
-  const retryAfter = typeof opts.retryAfterMs === 'number' && opts.retryAfterMs > 0
-    ? opts.retryAfterMs
-    : DEFAULT_QUEUE_BACKOFF_MS;
+  const retryAfter =
+    typeof opts.retryAfterMs === "number" && opts.retryAfterMs > 0
+      ? opts.retryAfterMs
+      : DEFAULT_QUEUE_BACKOFF_MS;
   return updateImportItem(itemId, {
-    status: 'queued',
+    status: "queued",
     nextAttemptAt: Date.now() + retryAfter,
     // Keep any existing scrape_error visible unless the caller overrode it.
-    ...(opts.scrapeError !== undefined ? { scrapeError: opts.scrapeError } : {}),
+    ...(opts.scrapeError === undefined
+      ? {}
+      : { scrapeError: opts.scrapeError }),
   });
 }
 
@@ -651,7 +780,7 @@ export function claimQueuedBatch(limit = 5): ImportItemRow[] {
            CASE WHEN app_id IS NULL THEN 0 ELSE 1 END,
            next_attempt_at ASC,
            rowid ASC
-         LIMIT ?`,
+         LIMIT ?`
       )
       .all(now, limit) as ImportItemRecord[];
 
@@ -659,16 +788,18 @@ export function claimQueuedBatch(limit = 5): ImportItemRow[] {
       `UPDATE import_items
          SET attempt_count = attempt_count + 1,
              next_attempt_at = ?
-       WHERE id = ? AND status = 'queued'`,
+       WHERE id = ? AND status = 'queued'`
     );
 
     for (const row of rows) {
       const result = bump.run(inFlightFence, row.id);
       if (result.changes === 1) {
         const refreshed = db
-          .prepare('SELECT * FROM import_items WHERE id = ?')
+          .prepare("SELECT * FROM import_items WHERE id = ?")
           .get(row.id) as ImportItemRecord | undefined;
-        if (refreshed) claimed.push(hydrateImportItem(refreshed));
+        if (refreshed) {
+          claimed.push(hydrateImportItem(refreshed));
+        }
       }
     }
   });
@@ -683,10 +814,16 @@ export function claimQueuedBatch(limit = 5): ImportItemRow[] {
  */
 export function recordItemSuccess(
   itemId: string,
-  app: { id: string; name: string; developer?: string | null; url: string; iconUrl?: string | null },
+  app: {
+    id: string;
+    name: string;
+    developer?: string | null;
+    url: string;
+    iconUrl?: string | null;
+  }
 ): ImportItemRow | null {
   return updateImportItem(itemId, {
-    status: 'imported',
+    status: "imported",
     appId: app.id,
     appName: app.name,
     developer: app.developer ?? null,
@@ -703,9 +840,12 @@ export function recordItemSuccess(
  * Flips the row to `'error'` and clears the retry fence so the UI can
  * render it under the "needs attention" bucket.
  */
-export function recordItemError(itemId: string, error: string): ImportItemRow | null {
+export function recordItemError(
+  itemId: string,
+  error: string
+): ImportItemRow | null {
   return updateImportItem(itemId, {
-    status: 'error',
+    status: "error",
     scrapeError: error,
     nextAttemptAt: null,
   });
@@ -718,21 +858,24 @@ export function recordItemError(itemId: string, error: string): ImportItemRow | 
  */
 export function recordItemRetry(
   itemId: string,
-  opts: { retryAfterMs?: number; scrapeError?: string | null } = {},
+  opts: { retryAfterMs?: number; scrapeError?: string | null } = {}
 ): ImportItemRow | null {
   const existing = getImportItemById(itemId);
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
   // Grow backoff with each attempt: Retry-After header wins if present,
   // otherwise 2^attemptCount minutes capped at the ceiling.
   const fallback = Math.min(
-    DEFAULT_QUEUE_BACKOFF_MS * Math.pow(2, Math.max(0, existing.attemptCount - 1)),
-    MAX_QUEUE_BACKOFF_MS,
+    DEFAULT_QUEUE_BACKOFF_MS * 2 ** Math.max(0, existing.attemptCount - 1),
+    MAX_QUEUE_BACKOFF_MS
   );
-  const wait = typeof opts.retryAfterMs === 'number' && opts.retryAfterMs > 0
-    ? opts.retryAfterMs
-    : fallback;
+  const wait =
+    typeof opts.retryAfterMs === "number" && opts.retryAfterMs > 0
+      ? opts.retryAfterMs
+      : fallback;
   return updateImportItem(itemId, {
-    status: 'queued',
+    status: "queued",
     nextAttemptAt: Date.now() + wait,
     scrapeError: opts.scrapeError ?? existing.scrapeError,
   });
@@ -755,7 +898,7 @@ export function getQueueStatus(): {
          COUNT(*) AS queued,
          MIN(next_attempt_at) AS soonest,
          MAX(next_attempt_at) AS oldest
-       FROM import_items WHERE status = 'queued'`,
+       FROM import_items WHERE status = 'queued'`
     )
     .get() as { queued: number; soonest: number | null; oldest: number | null };
 
@@ -764,7 +907,7 @@ export function getQueueStatus(): {
       `SELECT * FROM import_items
        WHERE status = 'queued'
        ORDER BY next_attempt_at ASC, rowid ASC
-       LIMIT 25`,
+       LIMIT 25`
     )
     .all() as ImportItemRecord[];
 
@@ -778,16 +921,46 @@ export function getQueueStatus(): {
 
 // Backoff constants the worker + UI share. Kept in this module so there's a
 // single source of truth for queue timing.
-const DEFAULT_QUEUE_BACKOFF_MS = 60 * 1000;            // 1 minute
-const MAX_QUEUE_BACKOFF_MS = 30 * 60 * 1000;           // 30 minutes
+const DEFAULT_QUEUE_BACKOFF_MS = 60 * 1000; // 1 minute
+const MAX_QUEUE_BACKOFF_MS = 30 * 60 * 1000; // 30 minutes
 
 export function completeImport(importId: string): ImportRow | null {
   const before = getImportRow(importId);
-  if (!before) return null;
+  if (!before) {
+    return null;
+  }
 
   const tx = db.transaction(() => {
     recomputeImportCounters(importId);
-    db.prepare('UPDATE imports SET completed_at = ? WHERE id = ?').run(Date.now(), importId);
+    db.prepare("UPDATE imports SET completed_at = ? WHERE id = ?").run(
+      Date.now(),
+      importId
+    );
+    // When the import targets a device, write app_devices junction rows
+    // for every imported item that resolved to an app. Idempotent UPSERT
+    // — re-running completeImport is safe. Skipped for legacy imports
+    // that have no device attached.
+    if (before.deviceId) {
+      const importedItems = db
+        .prepare(
+          "SELECT DISTINCT app_id FROM import_items WHERE import_id = ? AND status = 'imported' AND app_id IS NOT NULL"
+        )
+        .all(importId) as { app_id: string }[];
+      const now = Date.now();
+      const upsert = db.prepare(`
+        INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(app_id, device_id) DO UPDATE SET last_seen_at = excluded.last_seen_at
+      `);
+      for (const row of importedItems) {
+        upsert.run(row.app_id, before.deviceId, now, now);
+      }
+      // Touch the device so the picker sorts it to the top next time.
+      db.prepare("UPDATE devices SET last_synced_at = ? WHERE id = ?").run(
+        now,
+        before.deviceId
+      );
+    }
   });
   tx();
 
@@ -817,13 +990,18 @@ export function completeImport(importId: string): ImportRow | null {
       //   • else                             → ok.
       let status: ActivityStatus;
       if (total > 0 && itemCount === 0) {
-        status = 'error';
+        status = "error";
       } else if (total > 0 && imported === 0) {
-        status = 'error';
-      } else if (errored > 0 || queued > 0 || unmatched > 0 || imported < total) {
-        status = 'partial';
+        status = "error";
+      } else if (
+        errored > 0 ||
+        queued > 0 ||
+        unmatched > 0 ||
+        imported < total
+      ) {
+        status = "partial";
       } else {
-        status = 'ok';
+        status = "ok";
       }
 
       // Short-form summary the user sees in the activity row without
@@ -833,26 +1011,32 @@ export function completeImport(importId: string): ImportRow | null {
         ? ` (${after.sourceLabel})`
         : after.source
           ? ` (${after.source})`
-          : '';
+          : "";
       const parts: string[] = [];
       parts.push(`Imported ${imported}/${total}${sourceHint}`);
-      if (errored > 0) parts.push(`${errored} failed`);
-      if (queued > 0) parts.push(`${queued} queued`);
-      if (unmatched > 0) parts.push(`${unmatched} unmatched`);
+      if (errored > 0) {
+        parts.push(`${errored} failed`);
+      }
+      if (queued > 0) {
+        parts.push(`${queued} queued`);
+      }
+      if (unmatched > 0) {
+        parts.push(`${unmatched} unmatched`);
+      }
       // Diagnostic: itemCount diverging from total means some rows never
       // persisted (typical symptom: /api/search returned 500 or the
       // follow-up /api/imports/items POST never landed). Surface it on
       // the activity row so the root-cause is visible without expanding.
       if (itemCount === 0 && total > 0) {
-        parts.push('no item rows persisted (search likely failed)');
+        parts.push("no item rows persisted (search likely failed)");
       } else if (itemCount > 0 && itemCount < total) {
         parts.push(`${total - itemCount} rows missing from history`);
       }
 
       recordActivity({
-        type: 'import',
+        type: "import",
         status,
-        summary: parts.join(' · ').slice(0, 200),
+        summary: parts.join(" · ").slice(0, 200),
         detail: {
           importId: after.id,
           source: after.source,
@@ -885,14 +1069,14 @@ export function completeImport(importId: string): ImportRow | null {
           status,
         });
       } catch (notifyError) {
-        console.warn('[imports] completion notification failed:', notifyError);
+        console.warn("[imports] completion notification failed:", notifyError);
       }
 
       if (imported > 0) {
-        schedulePostAppUpdatePolicyFetch('import');
+        schedulePostAppUpdatePolicyFetch("import");
       }
     } catch (error) {
-      console.warn('[imports] recordActivity (import) failed:', error);
+      console.warn("[imports] recordActivity (import) failed:", error);
     }
   }
 
@@ -910,22 +1094,61 @@ export function completeImport(importId: string): ImportRow | null {
  */
 export function completeImportIfSettled(importId: string): ImportRow | null {
   const row = getImportRow(importId);
-  if (!row || row.completedAt) return row;
+  if (!row || row.completedAt) {
+    return row;
+  }
 
   const pending = db
     .prepare(
       `SELECT COUNT(*) AS count
          FROM import_items
         WHERE import_id = ?
-          AND status IN ('matched', 'queued')`,
+          AND status IN ('matched', 'queued')`
     )
     .get(importId) as { count: number } | undefined;
 
-  if ((pending?.count ?? 0) > 0) return row;
+  if ((pending?.count ?? 0) > 0) {
+    return row;
+  }
   return completeImport(importId);
 }
 
 // ── Queries ────────────────────────────────────────────────────────────
+
+/**
+ * Count of completed imports attached to a device + the timestamp of the
+ * most recent one. Drives the "Previously imported · N times" badge in
+ * the OnboardWizard cfgutil panel.
+ *
+ * "Completed" = `completed_at IS NOT NULL`. Ignores in-flight imports
+ * that crashed mid-scrape so the badge reflects what the user actually
+ * shipped through, not abandoned attempts.
+ */
+export function getImportCountForDevice(deviceId: string): {
+  count: number;
+  lastCompletedAt: number | null;
+} {
+  if (!deviceId) {
+    return { count: 0, lastCompletedAt: null };
+  }
+  try {
+    const row = db
+      .prepare(`
+        SELECT COUNT(*) AS count, MAX(completed_at) AS last_completed
+        FROM imports
+        WHERE device_id = ? AND completed_at IS NOT NULL
+      `)
+      .get(deviceId) as
+      | { count: number; last_completed: number | null }
+      | undefined;
+    return {
+      count: row?.count ?? 0,
+      lastCompletedAt: row?.last_completed ?? null,
+    };
+  } catch {
+    return { count: 0, lastCompletedAt: null };
+  }
+}
 
 export function listImports(): ImportRow[] {
   // Left-join an aggregate sub-select so each row carries live counters
@@ -951,23 +1174,29 @@ export function listImports(): ImportRow[] {
              FROM import_items
             GROUP BY import_id
          ) s ON s.import_id = i.id
-         ORDER BY i.created_at DESC`,
+         ORDER BY i.created_at DESC`
     )
     .all() as (ImportRecord & {
-      queued_count: number;
-      errored_count: number;
-      removed_count: number;
-      item_count: number;
-    })[];
+    queued_count: number;
+    errored_count: number;
+    removed_count: number;
+    item_count: number;
+  })[];
   return rows.map(hydrateImport);
 }
 
-export function getImport(importId: string): { import: ImportRow; items: ImportItemRow[] } | null {
+export function getImport(
+  importId: string
+): { import: ImportRow; items: ImportItemRow[] } | null {
   const row = getImportRow(importId);
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
 
   const items = db
-    .prepare('SELECT * FROM import_items WHERE import_id = ? ORDER BY rowid ASC')
+    .prepare(
+      "SELECT * FROM import_items WHERE import_id = ? ORDER BY rowid ASC"
+    )
     .all(importId) as ImportItemRecord[];
 
   return {
@@ -978,7 +1207,7 @@ export function getImport(importId: string): { import: ImportRow; items: ImportI
 
 export function getImportItemById(itemId: string): ImportItemRow | null {
   const row = db
-    .prepare('SELECT * FROM import_items WHERE id = ?')
+    .prepare("SELECT * FROM import_items WHERE id = ?")
     .get(itemId) as ImportItemRecord | undefined;
   return row ? hydrateImportItem(row) : null;
 }
@@ -986,7 +1215,7 @@ export function getImportItemById(itemId: string): ImportItemRow | null {
 // ── Provenance lookups ─────────────────────────────────────────────────
 
 export interface AppImportProvenance {
-  item: ImportItemRow;
+  importedAt: number;
   /**
    * The batch this item belonged to. Captured separately so the per-app
    * detail footer can show "imported on <date>" without a second DB trip —
@@ -994,7 +1223,7 @@ export interface AppImportProvenance {
    * expose the createdAt / source / source label for render.
    */
   importId: string;
-  importedAt: number;
+  item: ImportItemRow;
   source: ImportSource;
   sourceLabel: string | null;
 }
@@ -1012,9 +1241,11 @@ export interface AppImportProvenance {
  * and the footer should simply render "imported" without the fix-match CTA.
  */
 export function getAppImportProvenance(
-  appId: string,
+  appId: string
 ): AppImportProvenance | null {
-  if (!appId) return null;
+  if (!appId) {
+    return null;
+  }
   // CASE-ordering: 'imported' wins over matched/queued. Everything else is
   // last-resort so a user can still find *some* history row to fix from.
   // Ordering inside each bucket is by the parent import's created_at DESC
@@ -1034,7 +1265,7 @@ export function getAppImportProvenance(
             ELSE 3
           END,
           i.created_at DESC
-        LIMIT 1`,
+        LIMIT 1`
     )
     .get(appId, appId) as
     | (ImportItemRecord & {
@@ -1044,7 +1275,9 @@ export function getAppImportProvenance(
       })
     | undefined;
 
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
 
   return {
     item: hydrateImportItem(row),
@@ -1075,21 +1308,25 @@ export function markImportItemsRemovedForApp(appId: string): string[] {
   const affected = db
     .prepare(
       `SELECT DISTINCT import_id FROM import_items
-       WHERE app_id = ? AND status != 'removed'`,
+       WHERE app_id = ? AND status != 'removed'`
     )
     .all(appId) as { import_id: string }[];
 
-  if (affected.length === 0) return [];
+  if (affected.length === 0) {
+    return [];
+  }
 
   db.prepare(
     `UPDATE import_items
        SET status = 'removed',
            removed_app_id = COALESCE(removed_app_id, app_id)
-     WHERE app_id = ? AND status != 'removed'`,
+     WHERE app_id = ? AND status != 'removed'`
   ).run(appId);
 
-  const importIds = affected.map(row => row.import_id);
-  for (const importId of importIds) recomputeImportCounters(importId);
+  const importIds = affected.map((row) => row.import_id);
+  for (const importId of importIds) {
+    recomputeImportCounters(importId);
+  }
   return importIds;
 }
 
@@ -1116,12 +1353,14 @@ export function replaceImportItemMatch(
      * showing the *previous* match's icon after the user fixes a mismatch.
      */
     iconUrl?: string | null;
-  },
+  }
 ): { item: ImportItemRow | null; previousAppRemoved: string | null } {
   const existing = db
-    .prepare('SELECT * FROM import_items WHERE id = ?')
+    .prepare("SELECT * FROM import_items WHERE id = ?")
     .get(itemId) as ImportItemRecord | undefined;
-  if (!existing) return { item: null, previousAppRemoved: null };
+  if (!existing) {
+    return { item: null, previousAppRemoved: null };
+  }
 
   // The "previous" app is whichever id we last pointed at — either the live
   // FK (`app_id`) or the tombstone we stashed on a prior removal.
@@ -1140,14 +1379,14 @@ export function replaceImportItemMatch(
              icon_url = ?,
              scrape_error = NULL,
              removed_app_id = NULL
-       WHERE id = ?`,
+       WHERE id = ?`
     ).run(
       newApp.id,
       newApp.name,
       newApp.developer ?? null,
       newApp.url,
       newApp.iconUrl ?? null,
-      itemId,
+      itemId
     );
 
     // Garbage-collect the previous app if no other import row still points
@@ -1159,11 +1398,11 @@ export function replaceImportItemMatch(
           `SELECT 1 FROM import_items
            WHERE id != ?
              AND (app_id = ? OR removed_app_id = ?)
-           LIMIT 1`,
+           LIMIT 1`
         )
         .get(itemId, previousAppId, previousAppId);
       if (!stillReferenced) {
-        db.prepare('DELETE FROM apps WHERE id = ?').run(previousAppId);
+        db.prepare("DELETE FROM apps WHERE id = ?").run(previousAppId);
         previousAppRemoved = previousAppId;
       }
     }
@@ -1182,7 +1421,7 @@ export function replaceImportItemMatch(
     try {
       markNotificationsStaleForApp(previousAppId);
     } catch (error) {
-      console.warn('[imports] markNotificationsStaleForApp failed:', error);
+      console.warn("[imports] markNotificationsStaleForApp failed:", error);
     }
   }
 
@@ -1193,24 +1432,28 @@ export function replaceImportItemMatch(
 
 export function deleteImport(
   importId: string,
-  opts: { removeApps: boolean },
+  opts: { removeApps: boolean }
 ): { deletedApps: number } {
   const existing = getImport(importId);
-  if (!existing) return { deletedApps: 0 };
+  if (!existing) {
+    return { deletedApps: 0 };
+  }
 
   const appIds = opts.removeApps
     ? existing.items
-        .map(item => item.appId)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        .map((item) => item.appId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
     : [];
 
   const tx = db.transaction(() => {
     if (appIds.length > 0) {
-      const deleteApp = db.prepare('DELETE FROM apps WHERE id = ?');
-      for (const appId of appIds) deleteApp.run(appId);
+      const deleteApp = db.prepare("DELETE FROM apps WHERE id = ?");
+      for (const appId of appIds) {
+        deleteApp.run(appId);
+      }
     }
     // Cascades remove import_items automatically.
-    db.prepare('DELETE FROM imports WHERE id = ?').run(importId);
+    db.prepare("DELETE FROM imports WHERE id = ?").run(importId);
   });
   tx();
 
@@ -1220,33 +1463,34 @@ export function deleteImport(
 // ── Internal helpers ───────────────────────────────────────────────────
 
 interface ImportRecord {
-  id: string;
-  created_at: number;
   completed_at: number | null;
+  created_at: number;
+  device_id: string | null;
+  id: string;
+  imported: number;
+  matched: number;
   source: string;
   source_label: string | null;
   total: number;
-  matched: number;
   unmatched: number;
-  imported: number;
 }
 
 interface ImportItemRecord {
-  id: string;
-  import_id: string;
-  query: string;
-  edited_query: string | null;
-  status: string;
   app_id: string | null;
   app_name: string | null;
-  developer: string | null;
-  url: string | null;
-  icon_url: string | null;
-  country: string | null;
-  scrape_error: string | null;
-  removed_app_id: string | null;
-  next_attempt_at: number | null;
   attempt_count: number | null;
+  country: string | null;
+  developer: string | null;
+  edited_query: string | null;
+  icon_url: string | null;
+  id: string;
+  import_id: string;
+  next_attempt_at: number | null;
+  query: string;
+  removed_app_id: string | null;
+  scrape_error: string | null;
+  status: string;
+  url: string | null;
 }
 
 function getImportRow(importId: string): ImportRow | null {
@@ -1271,7 +1515,7 @@ function getImportRow(importId: string): ImportRow | null {
             WHERE import_id = ?
             GROUP BY import_id
          ) s ON s.import_id = i.id
-        WHERE i.id = ?`,
+        WHERE i.id = ?`
     )
     .get(importId, importId) as
     | (ImportRecord & {
@@ -1286,7 +1530,9 @@ function getImportRow(importId: string): ImportRow | null {
 
 function getImportRowOrThrow(importId: string): ImportRow {
   const row = getImportRow(importId);
-  if (!row) throw new Error(`Import ${importId} not found immediately after insert`);
+  if (!row) {
+    throw new Error(`Import ${importId} not found immediately after insert`);
+  }
   return row;
 }
 
@@ -1308,7 +1554,7 @@ function recomputeImportCounters(importId: string): void {
          SUM(CASE WHEN status IN ('matched', 'imported', 'queued') THEN 1 ELSE 0 END) AS matched,
          SUM(CASE WHEN status IN ('unmatched', 'skipped', 'error', 'removed') THEN 1 ELSE 0 END) AS unmatched,
          SUM(CASE WHEN status = 'imported' THEN 1 ELSE 0 END) AS imported
-       FROM import_items WHERE import_id = ?`,
+       FROM import_items WHERE import_id = ?`
     )
     .get(importId) as {
     total: number;
@@ -1320,20 +1566,20 @@ function recomputeImportCounters(importId: string): void {
   // `total` on the imports row is what the user originally submitted; keep it
   // at max(existing, current rows) so it never shrinks if a row is removed later.
   const current = db
-    .prepare('SELECT total FROM imports WHERE id = ?')
+    .prepare("SELECT total FROM imports WHERE id = ?")
     .get(importId) as { total: number } | undefined;
   const existingTotal = current?.total ?? 0;
 
   db.prepare(
     `UPDATE imports
      SET total = ?, matched = ?, unmatched = ?, imported = ?
-     WHERE id = ?`,
+     WHERE id = ?`
   ).run(
     Math.max(existingTotal, counts.total ?? 0),
     counts.matched ?? 0,
     counts.unmatched ?? 0,
     counts.imported ?? 0,
-    importId,
+    importId
   );
 }
 
@@ -1343,7 +1589,7 @@ function hydrateImport(
     errored_count?: number;
     removed_count?: number;
     item_count?: number;
-  },
+  }
 ): ImportRow {
   return {
     id: row.id,
@@ -1363,6 +1609,7 @@ function hydrateImport(
     errored: row.errored_count ?? 0,
     removed: row.removed_count ?? 0,
     itemCount: row.item_count ?? 0,
+    deviceId: row.device_id ?? null,
   };
 }
 
@@ -1387,13 +1634,13 @@ function hydrateImportItem(row: ImportItemRecord): ImportItemRow {
 }
 
 function normalizeSource(value: string): ImportSource {
-  return IMPORT_SOURCES.find(source => source === value) ?? 'manual';
+  return IMPORT_SOURCES.find((source) => source === value) ?? "manual";
 }
 
 function normalizeItemStatus(value: string): ImportItemStatus {
-  return IMPORT_ITEM_STATUSES.find(status => status === value) ?? 'unmatched';
+  return IMPORT_ITEM_STATUSES.find((status) => status === value) ?? "unmatched";
 }
 
 function newId(prefix: string): string {
-  return `${prefix}_${crypto.randomBytes(9).toString('base64url')}`;
+  return `${prefix}_${crypto.randomBytes(9).toString("base64url")}`;
 }

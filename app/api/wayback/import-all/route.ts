@@ -1,23 +1,22 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import {
-  removeImportedHistory,
-} from '../../../../lib/historical-import';
-import { recordActivity } from '../../../../lib/activity';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { recordActivity } from "../../../../lib/activity";
+import { removeImportedHistory } from "../../../../lib/historical-import";
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
   requestActorIp,
-} from '../../../../lib/security';
+} from "../../../../lib/security";
 import {
-  runBulkWaybackImport,
-  canStartManualRun,
   buildInitialQueue,
+  canStartManualRun,
   describeCurrentRun,
   requestActiveBulkWaybackCancel,
+  runBulkWaybackImport,
   type StreamWriter,
-} from '../../../../lib/wayback-bulk-runner';
+} from "../../../../lib/wayback-bulk-runner";
 import {
   clearBulkState,
   hasPendingWork,
@@ -27,7 +26,7 @@ import {
   summariseState,
   writeBulkState,
   zeroTotals,
-} from '../../../../lib/wayback-bulk-state';
+} from "../../../../lib/wayback-bulk-state";
 
 /**
  * Bulk historical import across every app with an App Store URL.
@@ -95,20 +94,27 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
   const url = new URL(request.url);
-  const wantStream = url.searchParams.get('stream') === '1' || url.searchParams.get('stream') === 'true';
-  const force = url.searchParams.get('force') === '1' || url.searchParams.get('force') === 'true';
+  const wantStream =
+    url.searchParams.get("stream") === "1" ||
+    url.searchParams.get("stream") === "true";
+  const force =
+    url.searchParams.get("force") === "1" ||
+    url.searchParams.get("force") === "true";
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'wayback.import-all'),
+    key: rateLimitKeyForRequest(request, "wayback.import-all"),
     limit: 2,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Bulk import throttled — wait before retrying.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
+      { error: "Bulk import throttled — wait before retrying." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) },
+      }
     );
   }
 
@@ -116,26 +122,32 @@ export async function POST(request: Request) {
     const existing = describeCurrentRun();
     if (existing.mutexHeld && !existing.stale) {
       return NextResponse.json(
-        { error: 'A Wayback import is already running. Pause or cancel it before forcing a fresh import.' },
-        { status: 409 },
+        {
+          error:
+            "A Wayback import is already running. Pause or cancel it before forcing a fresh import.",
+        },
+        { status: 409 }
       );
     }
     if (existing.state || existing.mutexHeld) {
       clearBulkState();
       releaseBulkMutex();
       recordAudit({
-        action: 'wayback.import.bulk.force_restart',
+        action: "wayback.import.bulk.force_restart",
         actorIp,
         userAgent,
         success: true,
-        detail: existing.state ? `discardedRunId=${existing.state.runId}` : 'discarded stale mutex',
+        detail: existing.state
+          ? `discardedRunId=${existing.state.runId}`
+          : "discarded stale mutex",
       });
       recordActivity({
-        type: 'wayback_import',
-        status: 'cancelled',
-        summary: 'Discarded paused Wayback import queue before starting a fresh import',
+        type: "wayback_import",
+        status: "cancelled",
+        summary:
+          "Discarded paused Wayback import queue before starting a fresh import",
         detail: {
-          mode: 'bulk-force-restart',
+          mode: "bulk-force-restart",
           discardedRunId: existing.state?.runId ?? null,
         },
         startedAt: Date.now(),
@@ -150,8 +162,11 @@ export async function POST(request: Request) {
   const canStart = canStartManualRun();
   if (!canStart.ok) {
     return NextResponse.json(
-      { error: 'A Wayback import is already running. Wait for it to finish before starting another.' },
-      { status: 409 },
+      {
+        error:
+          "A Wayback import is already running. Wait for it to finish before starting another.",
+      },
+      { status: 409 }
     );
   }
 
@@ -162,15 +177,15 @@ export async function POST(request: Request) {
   if (appCount === 0) {
     return NextResponse.json(
       {
-        error: 'No apps to import history for.',
+        error: "No apps to import history for.",
         totals: zeroTotals(),
       },
-      { status: 200 },
+      { status: 200 }
     );
   }
 
   recordAudit({
-    action: 'wayback.import.bulk.start',
+    action: "wayback.import.bulk.start",
     actorIp,
     userAgent,
     success: true,
@@ -183,7 +198,7 @@ export async function POST(request: Request) {
       async start(controller) {
         const writer: StreamWriter = (obj: unknown) => {
           try {
-            controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
+            controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
           } catch {
             /* client disconnected — ignore */
           }
@@ -191,7 +206,7 @@ export async function POST(request: Request) {
 
         try {
           await runBulkWaybackImport({
-            initiator: 'manual',
+            initiator: "manual",
             streamWriter: writer,
             actorIp,
             userAgent,
@@ -214,8 +229,8 @@ export async function POST(request: Request) {
     return new Response(stream, {
       status: 200,
       headers: {
-        'Content-Type': 'application/x-ndjson; charset=utf-8',
-        'Cache-Control': 'no-store, no-transform',
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-store, no-transform",
       },
     });
   }
@@ -225,7 +240,7 @@ export async function POST(request: Request) {
   // place on purpose so the next startup can resume.
   try {
     const result = await runBulkWaybackImport({
-      initiator: 'manual',
+      initiator: "manual",
       actorIp,
       userAgent,
       streamRequested: false,
@@ -235,77 +250,100 @@ export async function POST(request: Request) {
       durationMs: result.durationMs,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Bulk import failed';
+    const message =
+      error instanceof Error ? error.message : "Bulk import failed";
     return NextResponse.json(
       { error: message, totals: zeroTotals() },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
 
 export async function PATCH(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'wayback.import-all.control'),
+    key: rateLimitKeyForRequest(request, "wayback.import-all.control"),
     limit: 20,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
     return NextResponse.json(
-      { error: 'Wayback import controls are throttled — wait before retrying.' },
-      { status: 429, headers: { 'Retry-After': String(Math.ceil(rate.retryAfterMs / 1000)) } },
+      {
+        error: "Wayback import controls are throttled — wait before retrying.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rate.retryAfterMs / 1000)) },
+      }
     );
   }
 
-  const body = await request.json().catch(() => null) as { action?: unknown } | null;
-  const action = typeof body?.action === 'string' ? body.action : '';
+  const body = (await request.json().catch(() => null)) as {
+    action?: unknown;
+  } | null;
+  const action = typeof body?.action === "string" ? body.action : "";
 
-  if (action === 'pause') {
+  if (action === "pause") {
     const state = readBulkState();
     if (!state) {
-      return NextResponse.json({ error: 'No Wayback import queue is available to pause.' }, { status: 404 });
+      return NextResponse.json(
+        { error: "No Wayback import queue is available to pause." },
+        { status: 404 }
+      );
     }
-    if (state.status === 'paused') {
-      return NextResponse.json({ ok: true, status: 'paused', summary: summariseState(state) });
+    if (state.status === "paused") {
+      return NextResponse.json({
+        ok: true,
+        status: "paused",
+        summary: summariseState(state),
+      });
     }
 
     const next = {
       ...state,
-      status: isBulkMutexHeld() ? 'pause_requested' as const : 'paused' as const,
+      status: isBulkMutexHeld()
+        ? ("pause_requested" as const)
+        : ("paused" as const),
       pauseRequestedAt: Date.now(),
       pausedAt: isBulkMutexHeld() ? state.pausedAt : Date.now(),
       currentAppId: isBulkMutexHeld() ? state.currentAppId : null,
     };
     writeBulkState(next);
-    if (!isBulkMutexHeld()) releaseBulkMutex();
+    if (!isBulkMutexHeld()) {
+      releaseBulkMutex();
+    }
     recordAudit({
-      action: 'wayback.import.bulk.pause_requested',
+      action: "wayback.import.bulk.pause_requested",
       actorIp,
       userAgent,
       success: true,
       detail: `runId=${state.runId}`,
     });
-    return NextResponse.json({ ok: true, status: next.status, summary: summariseState(next) });
+    return NextResponse.json({
+      ok: true,
+      status: next.status,
+      summary: summariseState(next),
+    });
   }
 
-  if (action === 'cancel') {
+  if (action === "cancel") {
     const state = readBulkState();
     const mutexHeld = isBulkMutexHeld();
-    if (!state && !mutexHeld) {
-      return NextResponse.json({ ok: true, status: 'idle' });
+    if (!(state || mutexHeld)) {
+      return NextResponse.json({ ok: true, status: "idle" });
     }
     if (state && mutexHeld) {
       const next = {
         ...state,
-        status: 'cancel_requested' as const,
+        status: "cancel_requested" as const,
         cancelRequestedAt: Date.now(),
       };
       writeBulkState(next);
       const aborted = requestActiveBulkWaybackCancel(state.runId);
       recordAudit({
-        action: 'wayback.import.bulk.cancel_requested',
+        action: "wayback.import.bulk.cancel_requested",
         actorIp,
         userAgent,
         success: true,
@@ -313,7 +351,7 @@ export async function PATCH(request: Request) {
       });
       return NextResponse.json({
         ok: true,
-        status: 'cancel_requested',
+        status: "cancel_requested",
         aborted,
         summary: summariseState(next),
       });
@@ -324,20 +362,20 @@ export async function PATCH(request: Request) {
     clearBulkState();
     releaseBulkMutex();
     recordAudit({
-      action: 'wayback.import.bulk.cancelled',
+      action: "wayback.import.bulk.cancelled",
       actorIp,
       userAgent,
       success: true,
-      detail: state ? `runId=${state.runId}` : 'stale mutex',
+      detail: state ? `runId=${state.runId}` : "stale mutex",
     });
     recordActivity({
-      type: 'wayback_import',
-      status: 'cancelled',
+      type: "wayback_import",
+      status: "cancelled",
       summary: state
-        ? `Cancelled Wayback import queue — ${summary?.remaining ?? 0} app${summary?.remaining === 1 ? '' : 's'} not processed`
-        : 'Cleared stale Wayback import lock',
+        ? `Cancelled Wayback import queue — ${summary?.remaining ?? 0} app${summary?.remaining === 1 ? "" : "s"} not processed`
+        : "Cleared stale Wayback import lock",
       detail: {
-        mode: 'bulk',
+        mode: "bulk",
         cancelled: true,
         runId: state?.runId ?? null,
         remaining: summary?.remaining ?? 0,
@@ -345,72 +383,85 @@ export async function PATCH(request: Request) {
       },
       startedAt,
     });
-    return NextResponse.json({ ok: true, status: 'cancelled', summary });
+    return NextResponse.json({ ok: true, status: "cancelled", summary });
   }
 
-  if (action === 'resume') {
+  if (action === "resume") {
     const state = readBulkState();
-    if (!state || !hasPendingWork(state)) {
-      return NextResponse.json({ error: 'No paused Wayback import queue is available to resume.' }, { status: 404 });
+    if (!(state && hasPendingWork(state))) {
+      return NextResponse.json(
+        { error: "No paused Wayback import queue is available to resume." },
+        { status: 404 }
+      );
     }
-    if (state.status === 'cancel_requested') {
-      return NextResponse.json({ error: 'This Wayback import is already cancelling.' }, { status: 409 });
+    if (state.status === "cancel_requested") {
+      return NextResponse.json(
+        { error: "This Wayback import is already cancelling." },
+        { status: 409 }
+      );
     }
     if (isBulkMutexHeld()) {
-      return NextResponse.json({ error: 'A Wayback import is already running.' }, { status: 409 });
+      return NextResponse.json(
+        { error: "A Wayback import is already running." },
+        { status: 409 }
+      );
     }
 
     const resumeState = {
       ...state,
-      status: 'running' as const,
+      status: "running" as const,
       pausedAt: undefined,
       pauseRequestedAt: undefined,
       cancelRequestedAt: undefined,
     };
     writeBulkState(resumeState);
     runBulkWaybackImport({
-      initiator: 'manual',
+      initiator: "manual",
       actorIp,
       userAgent,
       streamRequested: false,
       resumeState,
-    }).catch(error => {
-      console.error('[WaybackResume] Manual resume failed:', error);
+    }).catch((error) => {
+      console.error("[WaybackResume] Manual resume failed:", error);
     });
     recordAudit({
-      action: 'wayback.import.bulk.resume_requested',
+      action: "wayback.import.bulk.resume_requested",
       actorIp,
       userAgent,
       success: true,
       detail: `runId=${state.runId}`,
     });
-    return NextResponse.json({ ok: true, status: 'running', summary: summariseState(resumeState) });
+    return NextResponse.json({
+      ok: true,
+      status: "running",
+      summary: summariseState(resumeState),
+    });
   }
 
   return NextResponse.json(
-    { error: 'Unknown Wayback control action.' },
-    { status: 400 },
+    { error: "Unknown Wayback control action." },
+    { status: 400 }
   );
 }
 
 export async function DELETE(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
   const startedAt = Date.now();
   const deleted = removeImportedHistory();
 
   recordAudit({
-    action: 'wayback.import.bulk.remove',
+    action: "wayback.import.bulk.remove",
     actorIp,
     userAgent,
     success: true,
     detail: `deleted=${deleted}`,
   });
   recordActivity({
-    type: 'wayback_import',
-    status: 'ok',
-    summary: `Removed ${deleted} imported history row${deleted === 1 ? '' : 's'}`,
-    detail: { mode: 'bulk', removed: true, deleted },
+    type: "wayback_import",
+    status: "ok",
+    summary: `Removed ${deleted} imported history row${deleted === 1 ? "" : "s"}`,
+    detail: { mode: "bulk", removed: true, deleted },
     startedAt,
   });
   return NextResponse.json({ deleted });

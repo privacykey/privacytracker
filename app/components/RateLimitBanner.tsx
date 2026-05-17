@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Inline rate-limit banner with live countdown and auto-retry.
@@ -12,19 +12,19 @@
  * banner re-appears on the next poll.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RateLimitCategory } from '@/lib/rate-limit';
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { RateLimitCategory } from "@/lib/rate-limit";
 
 interface RateLimitSnapshot {
-  category: RateLimitCategory;
   active: boolean;
-  resumeAt: number;
+  category: RateLimitCategory;
   reason: string;
+  resumeAt: number;
 }
 
 interface RateLimitStatusResponse {
-  search: RateLimitSnapshot;
   scrape: RateLimitSnapshot;
+  search: RateLimitSnapshot;
   serverNow: number;
 }
 
@@ -38,37 +38,40 @@ interface Props {
    * after firing.
    */
   onResume?: () => void;
-  /** `inline` sits flush in a surface; `floating` adds shadow + margin. */
-  variant?: 'inline' | 'floating';
   /** Polling cadence while cooldown is active. Defaults to 4500 ms. */
   pollIntervalMs?: number;
   /** If true, keep polling even when no cooldown is active. */
   pollWhenIdle?: boolean;
+  /** `inline` sits flush in a surface; `floating` adds shadow + margin. */
+  variant?: "inline" | "floating";
 }
 
-const HUMAN_LABEL: Record<RateLimitCategory, { title: string; what: string }> = {
-  search: {
-    title: 'Apple search service is throttled',
-    what: 'Apple has rate-limited iTunes Search lookups from this app. New search results may be missing or stale until this clears.',
-  },
-  scrape: {
-    title: 'Apple App Store is throttled',
-    what: "Apple is temporarily blocking App Store page reads. Re-syncs and new imports can't fetch fresh privacy labels until this clears.",
-  },
-};
+const HUMAN_LABEL: Record<RateLimitCategory, { title: string; what: string }> =
+  {
+    search: {
+      title: "Apple search service is throttled",
+      what: "Apple has rate-limited iTunes Search lookups from this app. New search results may be missing or stale until this clears.",
+    },
+    scrape: {
+      title: "Apple App Store is throttled",
+      what: "Apple is temporarily blocking App Store page reads. Re-syncs and new imports can't fetch fresh privacy labels until this clears.",
+    },
+  };
 
 function formatCountdown(remainingMs: number): string {
   const totalSec = Math.max(0, Math.ceil(remainingMs / 1000));
-  if (totalSec < 60) return `${totalSec}s`;
+  if (totalSec < 60) {
+    return `${totalSec}s`;
+  }
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
-  return s === 0 ? `${m}m` : `${m}m ${s.toString().padStart(2, '0')}s`;
+  return s === 0 ? `${m}m` : `${m}m ${s.toString().padStart(2, "0")}s`;
 }
 
 export default function RateLimitBanner({
   category,
   onResume,
-  variant = 'inline',
+  variant = "inline",
   pollIntervalMs = 4500,
   pollWhenIdle = false,
 }: Props) {
@@ -84,8 +87,10 @@ export default function RateLimitBanner({
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/rate-limit/status', { cache: 'no-store' });
-      if (!res.ok) return;
+      const res = await fetch("/api/rate-limit/status", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
       const data = (await res.json()) as RateLimitStatusResponse;
       const next = data[category];
       setSnapshot(next);
@@ -103,47 +108,67 @@ export default function RateLimitBanner({
   useEffect(() => {
     void fetchStatus();
     const isActive = snapshot?.active ?? false;
-    if (!isActive && !pollWhenIdle) return;
-    const id = setInterval(() => { void fetchStatus(); }, pollIntervalMs);
-    return () => { clearInterval(id); };
+    if (!(isActive || pollWhenIdle)) {
+      return;
+    }
+    const id = setInterval(() => {
+      void fetchStatus();
+    }, pollIntervalMs);
+    return () => {
+      clearInterval(id);
+    };
     // snapshot.active retriggers this effect to start/stop the interval.
   }, [fetchStatus, snapshot?.active, pollIntervalMs, pollWhenIdle]);
 
   // Local 1 Hz countdown tick driven by snapshot.resumeAt.
   useEffect(() => {
-    if (!snapshot?.active) return;
+    if (!snapshot?.active) {
+      return;
+    }
     const compute = () => {
       const ms = Math.max(0, snapshot.resumeAt - Date.now());
       setRemainingMs(ms);
       if (ms === 0 && !resumedRef.current) {
         resumedRef.current = true;
         // Hide the banner so the parent has a clean stage for retry.
-        setSnapshot(prev => (prev ? { ...prev, active: false, resumeAt: 0, reason: '' } : prev));
+        setSnapshot((prev) =>
+          prev ? { ...prev, active: false, resumeAt: 0, reason: "" } : prev
+        );
         if (onResume) {
           // Defer one tick so React commits the hide before the parent retries.
-          setTimeout(() => { onResume(); }, 0);
+          setTimeout(() => {
+            onResume();
+          }, 0);
         }
       }
     };
     compute();
     const id = setInterval(compute, 1000);
-    return () => { clearInterval(id); };
+    return () => {
+      clearInterval(id);
+    };
   }, [snapshot?.active, snapshot?.resumeAt, onResume]);
 
   const handleManualRetry = useCallback(async () => {
-    if (retrying) return;
+    if (retrying) {
+      return;
+    }
     setRetrying(true);
     try {
-      const res = await fetch('/api/rate-limit/status', {
-        method: 'DELETE',
-        headers: { 'content-type': 'application/json' },
+      const res = await fetch("/api/rate-limit/status", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ category }),
       });
       if (res.ok) {
         // Optimistically hide the banner; next poll confirms.
         resumedRef.current = true;
-        setSnapshot(prev => (prev ? { ...prev, active: false, resumeAt: 0, reason: '' } : prev));
-        if (onResume) onResume();
+        setSnapshot((prev) =>
+          prev ? { ...prev, active: false, resumeAt: 0, reason: "" } : prev
+        );
+        if (onResume) {
+          onResume();
+        }
       }
     } catch {
       // Swallow — UI stays mounted, user can click again.
@@ -152,19 +177,28 @@ export default function RateLimitBanner({
     }
   }, [category, onResume, retrying]);
 
-  if (!snapshot || !snapshot.active) return null;
+  if (!snapshot?.active) {
+    return null;
+  }
 
   const meta = HUMAN_LABEL[category];
   const className = `rate-limit-banner rate-limit-banner--${variant}`;
 
   return (
-    <div className={className} role="status" aria-live="polite" data-rate-category={category}>
+    <div
+      aria-live="polite"
+      className={className}
+      data-rate-category={category}
+      role="status"
+    >
       <div className="rate-limit-banner-row">
-        <span className="rate-limit-banner-icon" aria-hidden="true">⏳</span>
+        <span aria-hidden="true" className="rate-limit-banner-icon">
+          ⏳
+        </span>
         <div className="rate-limit-banner-text">
           <div className="rate-limit-banner-title">{meta.title}</div>
           <div className="rate-limit-banner-sub">
-            {meta.what}{' '}
+            {meta.what}{" "}
             <span className="rate-limit-banner-countdown">
               Auto-retry in <strong>{formatCountdown(remainingMs)}</strong>.
             </span>
@@ -172,33 +206,35 @@ export default function RateLimitBanner({
         </div>
         <div className="rate-limit-banner-actions">
           <button
-            type="button"
             className="btn btn-secondary btn-sm"
-            onClick={() => void handleManualRetry()}
             disabled={retrying}
+            onClick={() => void handleManualRetry()}
+            type="button"
           >
-            {retrying ? 'Retrying…' : 'Retry now'}
+            {retrying ? "Retrying…" : "Retry now"}
           </button>
         </div>
       </div>
       {snapshot.reason && (
         <div className="rate-limit-banner-details">
           <button
-            type="button"
-            className="link-button-inline"
-            onClick={() => setShowDetails(d => !d)}
             aria-expanded={showDetails}
+            className="link-button-inline"
+            onClick={() => setShowDetails((d) => !d)}
+            type="button"
           >
-            {showDetails ? 'Hide details' : 'Why is this happening?'}
+            {showDetails ? "Hide details" : "Why is this happening?"}
           </button>
           {showDetails && (
             <div className="rate-limit-banner-reason">
               <p>
-                Apple polices request volumes against their iTunes Search
-                ({category === 'search' ? 'used here' : 'shared rolling-minute window'})
-                and App Store endpoints. When the rolling-minute counter trips,
-                further requests bounce until the window opens up again. We
-                pace requests under Apple&rsquo;s ceiling, but burst usage
+                Apple polices request volumes against their iTunes Search (
+                {category === "search"
+                  ? "used here"
+                  : "shared rolling-minute window"}
+                ) and App Store endpoints. When the rolling-minute counter
+                trips, further requests bounce until the window opens up again.
+                We pace requests under Apple&rsquo;s ceiling, but burst usage
                 (e.g. importing a long app list while a background sync runs)
                 can still cross the line.
               </p>

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * UpdateBanner — top-of-page banner that surfaces an available app update
@@ -29,42 +29,42 @@
  * middle of a privacy-label diff would be a bad day.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   checkAndInstall,
   isTauri as isTauriRuntime,
   type TauriUpdateResult,
-} from '@/lib/tauri-updater';
+} from "@/lib/tauri-updater";
 
-type DeploymentRuntime = 'docker' | 'tauri' | 'homebrew' | 'node' | 'unknown';
+type DeploymentRuntime = "docker" | "tauri" | "homebrew" | "node" | "unknown";
 
 interface UpdateStatusResponse {
   currentVersion: string;
-  latestVersion: string | null;
-  updateAvailable: boolean;
-  lastChecked: number;
-  latestPublishedAt: string | null;
-  latestNotes: string | null;
-  latestUrl: string | null;
-  lastError: string | null;
   enabled: boolean;
+  lastChecked: number;
+  lastError: string | null;
+  latestNotes: string | null;
+  latestPublishedAt: string | null;
+  latestUrl: string | null;
+  latestVersion: string | null;
   runtime: DeploymentRuntime;
+  updateAvailable: boolean;
 }
 
 const POLL_INTERVAL_MS = 30 * 60 * 1000; // 30 min — banner UX, not a check
-const DISMISS_KEY = 'update-banner-dismissed-version';
-const STATUS_URL = '/api/update-status';
+const DISMISS_KEY = "update-banner-dismissed-version";
+const STATUS_URL = "/api/update-status";
 
 export default function UpdateBanner() {
-  const tBanner = useTranslations('update_banner');
+  const tBanner = useTranslations("update_banner");
   const [status, setStatus] = useState<UpdateStatusResponse | null>(null);
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   const [installState, setInstallState] = useState<
-    'idle' | 'installing' | 'done' | 'error'
-  >('idle');
+    "idle" | "installing" | "done" | "error"
+  >("idle");
   const [installError, setInstallError] = useState<string | null>(null);
-  const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
 
   // Track whether we've mounted on the client. The server can't know if
   // the user is in Tauri (no DOM) so the runtime resolution is deferred
@@ -85,8 +85,10 @@ export default function UpdateBanner() {
   // ─── Poll status ───────────────────────────────────────────────────
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch(STATUS_URL, { cache: 'no-store' });
-      if (!res.ok) return;
+      const res = await fetch(STATUS_URL, { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
       const json = (await res.json()) as UpdateStatusResponse;
       setStatus(json);
     } catch {
@@ -98,7 +100,9 @@ export default function UpdateBanner() {
     fetchStatus();
     pollRef.current = setInterval(fetchStatus, POLL_INTERVAL_MS);
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+      }
     };
   }, [fetchStatus]);
 
@@ -106,8 +110,12 @@ export default function UpdateBanner() {
   // The server reports 'docker' / 'homebrew' / 'node'. Tauri can only be
   // detected from the client (window.__TAURI__), so we override here.
   const effectiveRuntime: DeploymentRuntime = useMemo(() => {
-    if (!mounted || !status) return status?.runtime ?? 'unknown';
-    if (isTauriRuntime()) return 'tauri';
+    if (!(mounted && status)) {
+      return status?.runtime ?? "unknown";
+    }
+    if (isTauriRuntime()) {
+      return "tauri";
+    }
     return status.runtime;
   }, [mounted, status]);
 
@@ -121,37 +129,41 @@ export default function UpdateBanner() {
   // come from the same /api/update-status response body), so re-creating
   // the callback on every status change is effectively free.
   const handleDismiss = useCallback(() => {
-    if (!status?.latestVersion) return;
+    if (!status?.latestVersion) {
+      return;
+    }
     try {
       localStorage.setItem(DISMISS_KEY, status.latestVersion);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setDismissedVersion(status.latestVersion);
   }, [status]);
 
   const handleTauriInstall = useCallback(async () => {
-    setInstallState('installing');
+    setInstallState("installing");
     setInstallError(null);
     const result: TauriUpdateResult = await checkAndInstall();
     if (result.installed) {
-      setInstallState('done');
+      setInstallState("done");
       // The relaunch() call inside checkAndInstall will wipe this view
       // before this state ever paints. Setting it anyway for the case
       // where Tauri reports installed but defers the restart.
     } else if (result.error) {
-      setInstallState('error');
+      setInstallState("error");
       setInstallError(result.error);
     } else {
       // No update available per Tauri (could happen if the GitHub cache
       // is stale relative to Tauri's manifest poll — rare but possible).
-      setInstallState('idle');
+      setInstallState("idle");
     }
   }, []);
 
   const handleCopy = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopyState('copied');
-      setTimeout(() => setCopyState('idle'), 1800);
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 1800);
     } catch {
       // No clipboard permission — the command stays visible in the
       // banner so users can still select+copy manually.
@@ -159,9 +171,15 @@ export default function UpdateBanner() {
   }, []);
 
   // ─── Render gates ──────────────────────────────────────────────────
-  if (!mounted || !status) return null;
-  if (!status.enabled) return null;
-  if (!status.updateAvailable) return null;
+  if (!(mounted && status)) {
+    return null;
+  }
+  if (!status.enabled) {
+    return null;
+  }
+  if (!status.updateAvailable) {
+    return null;
+  }
   if (status.latestVersion && status.latestVersion === dismissedVersion) {
     return null;
   }
@@ -169,13 +187,13 @@ export default function UpdateBanner() {
   const upgradeCommand = upgradeCommandFor(effectiveRuntime);
 
   return (
-    <div className="update-banner" role="status" aria-live="polite">
+    <div aria-live="polite" className="update-banner" role="status">
       <div className="update-banner__inner">
         <div className="update-banner__copy">
-          <span className="update-banner__label">{tBanner('label')}</span>
+          <span className="update-banner__label">{tBanner("label")}</span>
           <span className="update-banner__summary">
-            {tBanner('summary', {
-              latest: status.latestVersion ?? '',
+            {tBanner("summary", {
+              latest: status.latestVersion ?? "",
               current: status.currentVersion,
             })}
           </span>
@@ -183,27 +201,27 @@ export default function UpdateBanner() {
             <a
               className="update-banner__link"
               href={status.latestUrl}
-              target="_blank"
               rel="noopener noreferrer"
+              target="_blank"
             >
-              {tBanner('release_notes')}
+              {tBanner("release_notes")}
             </a>
           )}
         </div>
 
         <div className="update-banner__actions">
-          {effectiveRuntime === 'tauri' && (
+          {effectiveRuntime === "tauri" && (
             <button
-              type="button"
               className="update-banner__cta update-banner__cta--primary"
+              disabled={installState === "installing"}
               onClick={handleTauriInstall}
-              disabled={installState === 'installing'}
+              type="button"
             >
-              {installState === 'installing'
-                ? tBanner('installing')
-                : installState === 'error'
-                ? tBanner('try_again')
-                : tBanner('install_restart')}
+              {installState === "installing"
+                ? tBanner("installing")
+                : installState === "error"
+                  ? tBanner("try_again")
+                  : tBanner("install_restart")}
             </button>
           )}
 
@@ -211,37 +229,43 @@ export default function UpdateBanner() {
             <div className="update-banner__cmd-row">
               <code className="update-banner__cmd">{upgradeCommand}</code>
               <button
-                type="button"
+                aria-label={tBanner("copy_aria", { cmd: upgradeCommand })}
                 className="update-banner__cta update-banner__cta--ghost"
                 onClick={() => handleCopy(upgradeCommand)}
-                aria-label={tBanner('copy_aria', { cmd: upgradeCommand })}
+                type="button"
               >
-                {copyState === 'copied' ? tBanner('copied') : tBanner('copy')}
+                {copyState === "copied" ? tBanner("copied") : tBanner("copy")}
               </button>
             </div>
           )}
 
           <button
-            type="button"
+            aria-label={tBanner("dismiss_aria", {
+              version: status.latestVersion ?? "",
+            })}
             className="update-banner__cta update-banner__cta--ghost"
             onClick={handleDismiss}
-            aria-label={tBanner('dismiss_aria', { version: status.latestVersion ?? '' })}
+            type="button"
           >
-            {tBanner('not_now')}
+            {tBanner("not_now")}
           </button>
         </div>
 
-        {installState === 'error' && installError && (
+        {installState === "error" && installError && (
           <p className="update-banner__error" role="alert">
-            {tBanner('install_failed_pre', { message: installError })}
+            {tBanner("install_failed_pre", { message: installError })}
             {status.latestUrl ? (
-              <a href={status.latestUrl} target="_blank" rel="noopener noreferrer">
-                {tBanner('download_manually_link')}
+              <a
+                href={status.latestUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {tBanner("download_manually_link")}
               </a>
             ) : (
-              tBanner('download_manually_no_link')
+              tBanner("download_manually_no_link")
             )}
-            {tBanner('install_failed_post')}
+            {tBanner("install_failed_post")}
           </p>
         )}
       </div>
@@ -256,14 +280,12 @@ export default function UpdateBanner() {
  */
 function upgradeCommandFor(runtime: DeploymentRuntime): string | null {
   switch (runtime) {
-    case 'docker':
-      return 'docker compose pull && docker compose up -d';
-    case 'homebrew':
-      return 'brew upgrade privacykey/tap/privacytracker';
-    case 'node':
-      return 'git pull && npm install && npm run build';
-    case 'tauri':
-    case 'unknown':
+    case "docker":
+      return "docker compose pull && docker compose up -d";
+    case "homebrew":
+      return "brew upgrade privacykey/tap/privacytracker";
+    case "node":
+      return "git pull && npm install && npm run build";
     default:
       return null;
   }

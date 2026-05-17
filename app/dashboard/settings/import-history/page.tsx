@@ -1,17 +1,17 @@
-import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
-import { getAllApps } from '../../../../lib/scraper';
-import SettingsView from '../../../components/SettingsView';
-import Nav from '../../../components/Nav';
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { getAllApps } from "../../../../lib/scraper";
+import Nav from "../../../components/Nav";
+import SettingsView from "../../../components/SettingsView";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('page_metadata');
+  const t = await getTranslations("page_metadata");
   return {
-    title: t('import_history_title'),
-    description: t('import_history_description'),
+    title: t("import_history_title"),
+    description: t("import_history_description"),
   };
 }
 
@@ -31,11 +31,11 @@ export default function ImportHistoryPage() {
     apps = getAllApps() as any[];
   } catch (error) {
     // DB not ready — same behaviour as the Settings page.
-    console.warn('[import-history-page] getAllApps failed:', error);
+    console.warn("[import-history-page] getAllApps failed:", error);
   }
 
   if (apps.length === 0) {
-    redirect('/onboard');
+    redirect("/onboard");
   }
 
   return (

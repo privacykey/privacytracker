@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Bottom-center toast that confirms or surfaces failure for inline
@@ -13,22 +13,22 @@
  * push also writes a synthetic auto-completed Task Center entry.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTaskCenter } from './TaskCenter';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTaskCenter } from "./TaskCenter";
 
-const TOAST_EVENT = 'privacytracker:settings-toast';
+const TOAST_EVENT = "privacytracker:settings-toast";
 /** How long the pill stays fully visible before auto-fading. */
 const DEFAULT_HOLD_MS = 5000;
 const FADE_MS = 200;
 
-export type SettingsToastKind = 'success' | 'error' | 'info';
+export type SettingsToastKind = "success" | "error" | "info";
 
 export interface SettingsToastDetail {
+  /** Optional override for hold duration in ms. Defaults to 2500. */
+  holdMs?: number;
   kind: SettingsToastKind;
   /** Short user-facing message — keep under ~60 chars; the pill clamps wider strings. */
   message: string;
-  /** Optional override for hold duration in ms. Defaults to 2500. */
-  holdMs?: number;
   /**
    * Optional Task Center label. When the user has the "Also log to
    * Task Center" preference on, this is what appears in the dropdown.
@@ -42,8 +42,12 @@ export interface SettingsToastDetail {
  * picks it up via a window event. Returns immediately.
  */
 export function pushSettingsToast(detail: SettingsToastDetail): void {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent<SettingsToastDetail>(TOAST_EVENT, { detail }));
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent<SettingsToastDetail>(TOAST_EVENT, { detail })
+  );
 }
 
 interface ToastState {
@@ -100,7 +104,9 @@ export default function SettingsAutoSaveToast({
     function onPush(e: Event) {
       const ce = e as CustomEvent<SettingsToastDetail>;
       const detail = ce.detail;
-      if (!detail || typeof detail.message !== 'string') return;
+      if (!detail || typeof detail.message !== "string") {
+        return;
+      }
 
       // Replace whatever toast is currently visible.
       clearTimers();
@@ -114,17 +120,21 @@ export default function SettingsAutoSaveToast({
         try {
           const handle = taskCenter.startTask({
             title: detail.taskLabel ?? detail.message,
-            kind: 'sync', // generic — TaskCenter doesn't have a "settings" kind
+            kind: "sync", // generic — TaskCenter doesn't have a "settings" kind
           });
-          handle.complete(detail.kind === 'error' ? 'error' : 'done', detail.message);
+          handle.complete(
+            detail.kind === "error" ? "error" : "done",
+            detail.message
+          );
         } catch {
           // TaskCenter unavailable — mirror is best-effort.
         }
       }
 
-      const hold = typeof detail.holdMs === 'number' && detail.holdMs > 0
-        ? detail.holdMs
-        : DEFAULT_HOLD_MS;
+      const hold =
+        typeof detail.holdMs === "number" && detail.holdMs > 0
+          ? detail.holdMs
+          : DEFAULT_HOLD_MS;
       fadeTimerRef.current = setTimeout(() => {
         setFading(true);
         removeTimerRef.current = setTimeout(() => {
@@ -141,33 +151,35 @@ export default function SettingsAutoSaveToast({
     };
   }, [clearTimers, taskCenter]);
 
-  if (!state) return null;
+  if (!state) {
+    return null;
+  }
 
   const { detail, id } = state;
   return (
     <div
-      key={id}
-      role="status"
       aria-live="polite"
+      className={`settings-autosave-toast settings-autosave-toast--${detail.kind}${
+        fading ? "is-fading" : ""
+      }`}
+      key={id}
       // Whole-pill click dismisses; the × button is the keyboard path.
       onClick={dismiss}
-      className={`settings-autosave-toast settings-autosave-toast--${detail.kind}${
-        fading ? ' is-fading' : ''
-      }`}
+      role="status"
     >
-      {detail.kind === 'success' && <span aria-hidden="true">✓</span>}
-      {detail.kind === 'error' && <span aria-hidden="true">⚠</span>}
-      {detail.kind === 'info' && <span aria-hidden="true">ℹ</span>}
+      {detail.kind === "success" && <span aria-hidden="true">✓</span>}
+      {detail.kind === "error" && <span aria-hidden="true">⚠</span>}
+      {detail.kind === "info" && <span aria-hidden="true">ℹ</span>}
       <span className="settings-autosave-toast-text">{detail.message}</span>
       <button
-        type="button"
-        className="settings-autosave-toast-dismiss"
         aria-label="Dismiss"
+        className="settings-autosave-toast-dismiss"
         onClick={(e) => {
           // Don't bubble to the wrapper's onClick (dismiss would run twice).
           e.stopPropagation();
           dismiss();
         }}
+        type="button"
       >
         ×
       </button>

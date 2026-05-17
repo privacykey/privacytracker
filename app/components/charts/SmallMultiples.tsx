@@ -1,5 +1,7 @@
-'use client';
+"use client";
 
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 /**
  * Compact per-app severity strips.
  *
@@ -35,51 +37,54 @@
  *   - Pure HTML/CSS — ECharts would be overkill for a matrix of coloured
  *     squares and would cost us a canvas per app.
  */
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-import type { MatrixData } from '../../../lib/stats-views-shared';
-import { CATEGORY_META } from '../../../lib/privacy-meta';
+import { useEffect, useMemo, useState } from "react";
+import { CATEGORY_META } from "../../../lib/privacy-meta";
 import {
   type PrivacyProfile,
   type ProfileTier,
   TIER_META,
   TIER_RANK,
   TYPE_IDENTIFIER_TO_TIER,
-} from '../../../lib/privacy-profile';
+} from "../../../lib/privacy-profile";
+import type { MatrixData } from "../../../lib/stats-views-shared";
 
 const SEV_COLOR: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: '#ff453a',
-  DATA_LINKED_TO_YOU:      '#ff9f0a',
-  DATA_NOT_LINKED_TO_YOU:  '#ffd60a',
+  DATA_USED_TO_TRACK_YOU: "#ff453a",
+  DATA_LINKED_TO_YOU: "#ff9f0a",
+  DATA_NOT_LINKED_TO_YOU: "#ffd60a",
 };
 /** Severity → translation-key map. The actual labels come from
  *  `stats.charts.swatch_*` so they stay in sync with the heatmap legend. */
 const SEV_LABEL_KEY: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: 'swatch_track',
-  DATA_LINKED_TO_YOU:      'swatch_linked',
-  DATA_NOT_LINKED_TO_YOU:  'swatch_not_linked',
+  DATA_USED_TO_TRACK_YOU: "swatch_track",
+  DATA_LINKED_TO_YOU: "swatch_linked",
+  DATA_NOT_LINKED_TO_YOU: "swatch_not_linked",
 };
-const EMPTY = '#1d1d25';
+const EMPTY = "#1d1d25";
 
 // Preference-tier colour. Reuses the severity palette so "your tolerance"
 // speaks the same colour language as the cells below it — if the bar under
 // Health & Fitness is yellow, any cell in that column darker than yellow
 // (orange/red) is a mismatch.
 const PREF_COLOR: Record<ProfileTier, string> = {
-  not_collected: 'var(--text-3)',
-  not_linked:    '#ffd60a',
-  linked:        '#ff9f0a',
-  tracking:      '#ff453a',
+  not_collected: "var(--text-3)",
+  not_linked: "#ffd60a",
+  linked: "#ff9f0a",
+  tracking: "#ff453a",
 };
 
-interface HoverState { app: string; catId: string; catLabel: string; sev: string | null; }
+interface HoverState {
+  app: string;
+  catId: string;
+  catLabel: string;
+  sev: string | null;
+}
 
 export default function SmallMultiples() {
-  const tCharts = useTranslations('stats.charts');
-  const [data, setData]       = useState<MatrixData | null>(null);
-  const [error, setError]     = useState<string | null>(null);
-  const [hover, setHover]     = useState<HoverState | null>(null);
+  const tCharts = useTranslations("stats.charts");
+  const [data, setData] = useState<MatrixData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [hover, setHover] = useState<HoverState | null>(null);
   const [profile, setProfile] = useState<PrivacyProfile | null>(null);
   // "Show Privacy Profile on rows" toggle — gates the preference bar under
   // each icon, the mismatch ring on cells, and the preference line in the
@@ -93,25 +98,46 @@ export default function SmallMultiples() {
 
   useEffect(() => {
     let live = true;
-    fetch('/api/stats/matrix')
-      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-      .then(d => { if (live) setData(d); })
-      .catch(e => { if (live) setError(e.message); });
-    return () => { live = false; };
+    fetch("/api/stats/matrix")
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))
+      )
+      .then((d) => {
+        if (live) {
+          setData(d);
+        }
+      })
+      .catch((e) => {
+        if (live) {
+          setError(e.message);
+        }
+      });
+    return () => {
+      live = false;
+    };
   }, []);
 
   // Profile is optional — component remains fully usable without one. We
   // swallow errors so a 404 or offline state just hides the preference row.
   useEffect(() => {
     let live = true;
-    fetch('/api/privacy-profile')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (live) setProfile(d?.profile ?? null); })
-      .catch(() => { /* no profile — fine */ });
-    return () => { live = false; };
+    fetch("/api/privacy-profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (live) {
+          setProfile(d?.profile ?? null);
+        }
+      })
+      .catch(() => {
+        /* no profile — fine */
+      });
+    return () => {
+      live = false;
+    };
   }, []);
 
-  const profileActive = !!profile && Object.values(profile).some(v => typeof v === 'string');
+  const profileActive =
+    !!profile && Object.values(profile).some((v) => typeof v === "string");
   // Any profile-dependent visual is gated on BOTH the profile being active
   // AND the toggle being on. Centralising the flag here keeps the
   // conditionals in JSX short and prevents drift.
@@ -122,16 +148,41 @@ export default function SmallMultiples() {
   // the hide-empty filter here so downstream rendering / hover / the total
   // count in the sticky header all agree on the same app list.
   const sorted = useMemo(() => {
-    if (!data) return null;
-    const filtered = hideEmpty ? data.apps.filter(a => a.categoryCount > 0) : data.apps;
-    return [...filtered].sort((a, b) => b.categoryCount - a.categoryCount || a.name.localeCompare(b.name));
+    if (!data) {
+      return null;
+    }
+    const filtered = hideEmpty
+      ? data.apps.filter((a) => a.categoryCount > 0)
+      : data.apps;
+    return [...filtered].sort(
+      (a, b) =>
+        b.categoryCount - a.categoryCount || a.name.localeCompare(b.name)
+    );
   }, [data, hideEmpty]);
 
-  if (error) return <div className="empty-state" style={{ padding: 24 }}>Couldn&apos;t load matrix: {error}</div>;
-  if (!data || !sorted) return <div className="empty-state" style={{ padding: 24 }}><span className="spinner-sm" /> {tCharts('loading')}</div>;
+  if (error) {
+    return (
+      <div className="empty-state" style={{ padding: 24 }}>
+        Couldn&apos;t load matrix: {error}
+      </div>
+    );
+  }
+  if (!(data && sorted)) {
+    return (
+      <div className="empty-state" style={{ padding: 24 }}>
+        <span className="spinner-sm" /> {tCharts("loading")}
+      </div>
+    );
+  }
   // Distinguish "no apps at all" from "everything filtered out" so users
   // can still see/toggle the filter controls instead of a hard empty wall.
-  if (data.apps.length === 0) return <div className="empty-state" style={{ padding: 24 }}>{tCharts('no_apps_tracked')}</div>;
+  if (data.apps.length === 0) {
+    return (
+      <div className="empty-state" style={{ padding: 24 }}>
+        {tCharts("no_apps_tracked")}
+      </div>
+    );
+  }
 
   const hiddenCount = data.apps.length - sorted.length;
   const cols = data.categories.length;
@@ -144,20 +195,17 @@ export default function SmallMultiples() {
           onMouseLeave lives on the whole matrix column, not individual
           cells, so moving the mouse between adjacent cells doesn't blink
           the row/column highlight off and on again. */}
-      <div
-        className="sm-matrix-col"
-        onMouseLeave={() => setHover(null)}
-      >
+      <div className="sm-matrix-col" onMouseLeave={() => setHover(null)}>
         {/* Sticky category icon header. Pinned below the site nav so
             column headers stay visible while scanning the rows below. */}
         <div className="sm-sticky-stack">
           <div
             className="sm-header"
             style={{
-              display: 'grid',
+              display: "grid",
               gridTemplateColumns: gridTemplate,
               gap: 2,
-              alignItems: 'center',
+              alignItems: "center",
               paddingBottom: 4,
             }}
           >
@@ -165,11 +213,17 @@ export default function SmallMultiples() {
                 app-name column below. */}
             <div
               className="sm-legend-count"
-              title={hiddenCount > 0 ? `${hiddenCount} app${hiddenCount !== 1 ? 's' : ''} hidden by filter` : undefined}
+              title={
+                hiddenCount > 0
+                  ? `${hiddenCount} app${hiddenCount === 1 ? "" : "s"} hidden by filter`
+                  : undefined
+              }
             >
-              {sorted.length} of {data.apps.length} app{data.apps.length !== 1 ? 's' : ''} × {cols} categor{cols !== 1 ? 'ies' : 'y'}
+              {sorted.length} of {data.apps.length} app
+              {data.apps.length === 1 ? "" : "s"} × {cols} categor
+              {cols === 1 ? "y" : "ies"}
             </div>
-            {data.categories.map(cat => {
+            {data.categories.map((cat) => {
               const meta = CATEGORY_META[cat.identifier];
               const isHoverCol = hover?.catId === cat.identifier;
               const pref = profile?.[cat.identifier];
@@ -179,35 +233,41 @@ export default function SmallMultiples() {
               const prefTitle = prefOverlay
                 ? pref
                   ? `\nYour preference: ${TIER_META[pref].shortLabel} at most`
-                  : '\nNo preference set for this category'
-                : '';
+                  : "\nNo preference set for this category"
+                : "";
               return (
                 <div
+                  className={`sm-category-cell ${isHoverCol ? "sm-category-cell--hover" : ""}`}
                   key={cat.identifier}
-                  className={`sm-category-cell ${isHoverCol ? 'sm-category-cell--hover' : ''}`}
-                  title={`${cat.label}${meta?.description ? ' — ' + meta.description : ''}\n${cat.appCount} app${cat.appCount !== 1 ? 's' : ''} collect this${prefTitle}`}
-                  onMouseEnter={() => setHover({ app: '', catId: cat.identifier, catLabel: cat.label, sev: null })}
+                  onMouseEnter={() =>
+                    setHover({
+                      app: "",
+                      catId: cat.identifier,
+                      catLabel: cat.label,
+                      sev: null,
+                    })
+                  }
+                  title={`${cat.label}${meta?.description ? ` — ${meta.description}` : ""}\n${cat.appCount} app${cat.appCount === 1 ? "" : "s"} collect this${prefTitle}`}
                 >
-                  <div className="sm-category-icon">{meta?.icon ?? '•'}</div>
+                  <div className="sm-category-icon">{meta?.icon ?? "•"}</div>
                   {/* Preference bar directly below the icon. Renders only
                       when the overlay toggle is on; when the category has
                       no explicit preference we still reserve the slot with
                       a faint empty marker so the grid height doesn't
                       shift column by column. */}
-                  {prefOverlay && (
-                    pref ? (
+                  {prefOverlay &&
+                    (pref ? (
                       <div
+                        aria-label={`Your preference: ${TIER_META[pref].shortLabel} at most`}
                         className="sm-category-pref"
                         style={{ background: PREF_COLOR[pref] }}
-                        aria-label={`Your preference: ${TIER_META[pref].shortLabel} at most`}
                       />
                     ) : (
                       <div
+                        aria-label={tCharts("no_pref_aria")}
                         className="sm-category-pref sm-category-pref--none"
-                        aria-label={tCharts('no_pref_aria')}
                       />
-                    )
-                  )}
+                    ))}
                 </div>
               );
             })}
@@ -220,83 +280,111 @@ export default function SmallMultiples() {
         {sorted.length === 0 ? (
           <div className="empty-state" style={{ padding: 24 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
-            <div>{tCharts('no_apps_match')}</div>
-            <div style={{ fontSize: 13, marginTop: 4, color: 'var(--text-3)' }}>
-              Toggle &ldquo;Hide apps with no categories&rdquo; off to bring them back.
+            <div>{tCharts("no_apps_match")}</div>
+            <div style={{ fontSize: 13, marginTop: 4, color: "var(--text-3)" }}>
+              Toggle &ldquo;Hide apps with no categories&rdquo; off to bring
+              them back.
             </div>
           </div>
         ) : (
-        <div className="sm-body" style={{ display: 'grid', gap: 3 }}>
-          {sorted.map(app => {
-            const row = data.cells[app.id] ?? {};
-            const isHoverRow = hover?.app === app.name;
-            return (
-              <div
-                key={app.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: gridTemplate,
-                  gap: 2,
-                  alignItems: 'center',
-                  padding: '3px 0',
-                }}
-              >
-                {/* App label is a link to /apps/[id] so the strip doubles as
+          <div className="sm-body" style={{ display: "grid", gap: 3 }}>
+            {sorted.map((app) => {
+              const row = data.cells[app.id] ?? {};
+              const isHoverRow = hover?.app === app.name;
+              return (
+                <div
+                  key={app.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: gridTemplate,
+                    gap: 2,
+                    alignItems: "center",
+                    padding: "3px 0",
+                  }}
+                >
+                  {/* App label is a link to /apps/[id] so the strip doubles as
                     a nav jump — users were hovering the name expecting a
                     click target. Highlighted when any cell in this row is
                     under the cursor (crosshair-left). */}
-                <Link
-                  href={`/apps/${app.id}`}
-                  className={`sm-app-link ${isHoverRow ? 'sm-app-link--hover' : ''}`}
-                  title={`Open ${app.name}`}
-                  onMouseEnter={() => setHover({ app: app.name, catId: '', catLabel: '', sev: null })}
-                >
-                  <span className="sm-app-link-name">{app.name}</span>
-                  <span className="sm-app-link-count">{app.categoryCount}</span>
-                </Link>
-                {data.categories.map(cat => {
-                  const sev = row[cat.identifier];
-                  const bg = sev ? SEV_COLOR[sev] : EMPTY;
-                  const meta = CATEGORY_META[cat.identifier];
-                  // Mismatch border — cell severity exceeds the user's
-                  // stated preference for this category. Uses inset
-                  // box-shadow instead of `border` so enabling the overlay
-                  // doesn't change the cell's layout size.
-                  const pref = profile?.[cat.identifier];
-                  const observedTier = sev
-                    ? TYPE_IDENTIFIER_TO_TIER[sev as keyof typeof TYPE_IDENTIFIER_TO_TIER]
-                    : undefined;
-                  const isMismatch = !!(prefOverlay && pref && observedTier && TIER_RANK[observedTier] > TIER_RANK[pref]);
-                  return (
-                    <div
-                      key={cat.identifier}
-                      title={sev
-                        ? `${app.name} — ${cat.label}: ${tCharts(SEV_LABEL_KEY[sev])}`
-                        : `${app.name} — ${cat.label}: not collected`}
-                      onMouseEnter={() => setHover({
-                        app: app.name, catId: cat.identifier, catLabel: cat.label, sev: sev ?? null,
-                      })}
-                      style={{
-                        aspectRatio: '1',
-                        borderRadius: 3,
-                        background: bg,
-                        border: sev ? 'none' : '1px solid rgba(255,255,255,0.03)',
-                        boxShadow: isMismatch ? 'inset 0 0 0 2px #fff' : 'none',
-                        cursor: 'default',
-                      }}
-                      aria-label={`${app.name}, ${cat.label}${meta?.description ? ', ' + meta.description : ''}${isMismatch ? ', exceeds your preference' : ''}`}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+                  <Link
+                    className={`sm-app-link ${isHoverRow ? "sm-app-link--hover" : ""}`}
+                    href={`/apps/${app.id}`}
+                    onMouseEnter={() =>
+                      setHover({
+                        app: app.name,
+                        catId: "",
+                        catLabel: "",
+                        sev: null,
+                      })
+                    }
+                    title={`Open ${app.name}`}
+                  >
+                    <span className="sm-app-link-name">{app.name}</span>
+                    <span className="sm-app-link-count">
+                      {app.categoryCount}
+                    </span>
+                  </Link>
+                  {data.categories.map((cat) => {
+                    const sev = row[cat.identifier];
+                    const bg = sev ? SEV_COLOR[sev] : EMPTY;
+                    const meta = CATEGORY_META[cat.identifier];
+                    // Mismatch border — cell severity exceeds the user's
+                    // stated preference for this category. Uses inset
+                    // box-shadow instead of `border` so enabling the overlay
+                    // doesn't change the cell's layout size.
+                    const pref = profile?.[cat.identifier];
+                    const observedTier = sev
+                      ? TYPE_IDENTIFIER_TO_TIER[
+                          sev as keyof typeof TYPE_IDENTIFIER_TO_TIER
+                        ]
+                      : undefined;
+                    const isMismatch = !!(
+                      prefOverlay &&
+                      pref &&
+                      observedTier &&
+                      TIER_RANK[observedTier] > TIER_RANK[pref]
+                    );
+                    return (
+                      <div
+                        aria-label={`${app.name}, ${cat.label}${meta?.description ? `, ${meta.description}` : ""}${isMismatch ? ", exceeds your preference" : ""}`}
+                        key={cat.identifier}
+                        onMouseEnter={() =>
+                          setHover({
+                            app: app.name,
+                            catId: cat.identifier,
+                            catLabel: cat.label,
+                            sev: sev ?? null,
+                          })
+                        }
+                        style={{
+                          aspectRatio: "1",
+                          borderRadius: 3,
+                          background: bg,
+                          border: sev
+                            ? "none"
+                            : "1px solid rgba(255,255,255,0.03)",
+                          boxShadow: isMismatch
+                            ? "inset 0 0 0 2px #fff"
+                            : "none",
+                          cursor: "default",
+                        }}
+                        title={
+                          sev
+                            ? `${app.name} — ${cat.label}: ${tCharts(SEV_LABEL_KEY[sev])}`
+                            : `${app.name} — ${cat.label}: not collected`
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* ── Side panel (right): toggles, colour key, and hover info ────── */}
-      <aside className="sm-sidebar" aria-live="polite">
+      <aside aria-live="polite" className="sm-sidebar">
         {/* Filter/overlay toggles group. Profile-overlay only rendered when
             the user actually has a profile set — without one, the toggle
             would do nothing. hide-empty always available because it does
@@ -304,48 +392,57 @@ export default function SmallMultiples() {
         <div className="sm-sidebar-toggles">
           {profileActive && (
             <label
-              className={`sm-pref-toggle ${showPref ? 'is-on' : ''}`}
-              title={tCharts('filter_show_profile_title')}
+              className={`sm-pref-toggle ${showPref ? "is-on" : ""}`}
+              title={tCharts("filter_show_profile_title")}
             >
               <input
-                type="checkbox"
                 checked={showPref}
-                onChange={e => setShowPref(e.target.checked)}
+                onChange={(e) => setShowPref(e.target.checked)}
+                type="checkbox"
               />
-              <span>{tCharts('filter_show_profile_rows')}</span>
+              <span>{tCharts("filter_show_profile_rows")}</span>
             </label>
           )}
           <label
-            className={`sm-pref-toggle ${hideEmpty ? 'is-on' : ''}`}
-            title={tCharts('filter_hide_no_categories_title')}
+            className={`sm-pref-toggle ${hideEmpty ? "is-on" : ""}`}
+            title={tCharts("filter_hide_no_categories_title")}
           >
             <input
-              type="checkbox"
               checked={hideEmpty}
-              onChange={e => setHideEmpty(e.target.checked)}
+              onChange={(e) => setHideEmpty(e.target.checked)}
+              type="checkbox"
             />
-            <span>{tCharts('filter_hide_no_categories')}</span>
+            <span>{tCharts("filter_hide_no_categories")}</span>
           </label>
           {hiddenCount > 0 && (
             <div className="sm-sidebar-hidden-count">
-              {hiddenCount} app{hiddenCount !== 1 ? 's' : ''} hidden
+              {hiddenCount} app{hiddenCount === 1 ? "" : "s"} hidden
             </div>
           )}
         </div>
 
         {/* Colour key — moved from the matrix column to here so it sits
             next to the hover detail that uses the same colours. */}
-        <div className="sm-legend" aria-label={tCharts('severity_legend_aria')}>
+        <div aria-label={tCharts("severity_legend_aria")} className="sm-legend">
           <span className="sm-legend-item">
-            <span className="sm-legend-swatch" style={{ background: SEV_COLOR.DATA_USED_TO_TRACK_YOU }} />
+            <span
+              className="sm-legend-swatch"
+              style={{ background: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
+            />
             Tracking
           </span>
           <span className="sm-legend-item">
-            <span className="sm-legend-swatch" style={{ background: SEV_COLOR.DATA_LINKED_TO_YOU }} />
+            <span
+              className="sm-legend-swatch"
+              style={{ background: SEV_COLOR.DATA_LINKED_TO_YOU }}
+            />
             Linked
           </span>
           <span className="sm-legend-item">
-            <span className="sm-legend-swatch" style={{ background: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }} />
+            <span
+              className="sm-legend-swatch"
+              style={{ background: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
+            />
             Not linked
           </span>
           {prefOverlay && (
@@ -357,59 +454,93 @@ export default function SmallMultiples() {
         </div>
 
         <div className="sm-tooltip-panel">
-          {hover ? (() => {
-            // Compute preference + mismatch once per render. Kept inline in the
-            // IIFE so the JSX below stays flat and doesn't fight with hooks
-            // rules (can't useMemo here — we're inside a conditional).
-            const pref = profile?.[hover.catId];
-            const observedTier = hover.sev ? TYPE_IDENTIFIER_TO_TIER[hover.sev as keyof typeof TYPE_IDENTIFIER_TO_TIER] : undefined;
-            const isMismatch = !!(prefOverlay && pref && observedTier && TIER_RANK[observedTier] > TIER_RANK[pref]);
-            return (
-              <>
-                {hover.app ? (
-                  <div className="sm-tooltip-app">{hover.app}</div>
-                ) : (
-                  <div className="sm-tooltip-app sm-tooltip-app--muted">{tCharts('tooltip_category')}</div>
-                )}
-                {hover.catLabel && <div className="sm-tooltip-category">{hover.catLabel}</div>}
-                {hover.sev ? (
-                  <div className="sm-tooltip-sev">
-                    <span className="sm-tooltip-dot" style={{ background: SEV_COLOR[hover.sev] }} />
-                    <span style={{ color: SEV_COLOR[hover.sev] }}>{SEV_LABEL_KEY[hover.sev] ? tCharts(SEV_LABEL_KEY[hover.sev]) : hover.sev}</span>
-                  </div>
-                ) : hover.app && hover.catLabel ? (
-                  <div className="sm-tooltip-sev sm-tooltip-sev--empty">{tCharts('tooltip_not_collected')}</div>
-                ) : null}
-                {/* Preference + mismatch row. Gated on the overlay toggle so
+          {hover ? (
+            (() => {
+              // Compute preference + mismatch once per render. Kept inline in the
+              // IIFE so the JSX below stays flat and doesn't fight with hooks
+              // rules (can't useMemo here — we're inside a conditional).
+              const pref = profile?.[hover.catId];
+              const observedTier = hover.sev
+                ? TYPE_IDENTIFIER_TO_TIER[
+                    hover.sev as keyof typeof TYPE_IDENTIFIER_TO_TIER
+                  ]
+                : undefined;
+              const isMismatch = !!(
+                prefOverlay &&
+                pref &&
+                observedTier &&
+                TIER_RANK[observedTier] > TIER_RANK[pref]
+              );
+              return (
+                <>
+                  {hover.app ? (
+                    <div className="sm-tooltip-app">{hover.app}</div>
+                  ) : (
+                    <div className="sm-tooltip-app sm-tooltip-app--muted">
+                      {tCharts("tooltip_category")}
+                    </div>
+                  )}
+                  {hover.catLabel && (
+                    <div className="sm-tooltip-category">{hover.catLabel}</div>
+                  )}
+                  {hover.sev ? (
+                    <div className="sm-tooltip-sev">
+                      <span
+                        className="sm-tooltip-dot"
+                        style={{ background: SEV_COLOR[hover.sev] }}
+                      />
+                      <span style={{ color: SEV_COLOR[hover.sev] }}>
+                        {SEV_LABEL_KEY[hover.sev]
+                          ? tCharts(SEV_LABEL_KEY[hover.sev])
+                          : hover.sev}
+                      </span>
+                    </div>
+                  ) : hover.app && hover.catLabel ? (
+                    <div className="sm-tooltip-sev sm-tooltip-sev--empty">
+                      {tCharts("tooltip_not_collected")}
+                    </div>
+                  ) : null}
+                  {/* Preference + mismatch row. Gated on the overlay toggle so
                     turning off the overlay gives a true severity-only view. */}
-                {prefOverlay && hover.catId && (
-                  <div className="sm-tooltip-pref">
-                    <span className="sm-tooltip-pref-label">{tCharts('tooltip_your_preference')}</span>
-                    <span className="sm-tooltip-pref-value">
-                      {pref ? (
-                        <>
-                          <span className="sm-tooltip-dot" style={{ background: PREF_COLOR[pref] }} />
-                          {TIER_META[pref].shortLabel} at most
-                        </>
-                      ) : (
-                        <span className="sm-tooltip-pref-none">{tCharts('tooltip_no_preference')}</span>
-                      )}
-                    </span>
-                  </div>
-                )}
-                {isMismatch && (
-                  <div className="sm-tooltip-mismatch">
-                    ⚠ Exceeds your preference
-                  </div>
-                )}
-              </>
-            );
-          })() : (
+                  {prefOverlay && hover.catId && (
+                    <div className="sm-tooltip-pref">
+                      <span className="sm-tooltip-pref-label">
+                        {tCharts("tooltip_your_preference")}
+                      </span>
+                      <span className="sm-tooltip-pref-value">
+                        {pref ? (
+                          <>
+                            <span
+                              className="sm-tooltip-dot"
+                              style={{ background: PREF_COLOR[pref] }}
+                            />
+                            {TIER_META[pref].shortLabel} at most
+                          </>
+                        ) : (
+                          <span className="sm-tooltip-pref-none">
+                            {tCharts("tooltip_no_preference")}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {isMismatch && (
+                    <div className="sm-tooltip-mismatch">
+                      ⚠ Exceeds your preference
+                    </div>
+                  )}
+                </>
+              );
+            })()
+          ) : (
             <div className="sm-tooltip-empty">
-              <div className="sm-tooltip-empty-title">{tCharts('tooltip_hover_inspect')}</div>
+              <div className="sm-tooltip-empty-title">
+                {tCharts("tooltip_hover_inspect")}
+              </div>
               <div className="sm-tooltip-empty-hint">
                 Hover a row, cell, or category icon to see the details here.
-                {prefOverlay && ' The coloured bar under each icon shows your preference for that category.'}
+                {prefOverlay &&
+                  " The coloured bar under each icon shows your preference for that category."}
               </div>
             </div>
           )}

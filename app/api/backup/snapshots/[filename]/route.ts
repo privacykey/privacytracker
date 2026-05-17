@@ -1,18 +1,18 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { NextResponse } from 'next/server';
-import { getBackupSnapshotPath } from '@/lib/backup-snapshots';
+import fs from "node:fs";
+import path from "node:path";
+import { NextResponse } from "next/server";
+import { getBackupSnapshotPath } from "@/lib/backup-snapshots";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ filename: string }> },
+  { params }: { params: Promise<{ filename: string }> }
 ) {
   const { filename } = await params;
   const snapshotPath = getBackupSnapshotPath(filename);
   if (!snapshotPath) {
-    return NextResponse.json({ error: 'Snapshot not found' }, { status: 404 });
+    return NextResponse.json({ error: "Snapshot not found" }, { status: 404 });
   }
 
   const body = fs.readFileSync(snapshotPath);
@@ -25,14 +25,12 @@ export async function GET(
   // dropping them into a header verbatim. Strip every char that isn't
   // an ASCII filename component so the response is structurally safe
   // regardless of upstream changes.
-  const safeName = path
-    .basename(snapshotPath)
-    .replace(/[^A-Za-z0-9._-]/g, '_');
+  const safeName = path.basename(snapshotPath).replace(/[^A-Za-z0-9._-]/g, "_");
   return new Response(body, {
     headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Content-Disposition': `attachment; filename="${safeName}"`,
-      'Cache-Control': 'no-store',
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${safeName}"`,
+      "Cache-Control": "no-store",
     },
   });
 }

@@ -7,6 +7,7 @@
 // Run via: `npm run build:standalone`. Idempotent: wipes the destination
 // before copying.
 
+import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
   cpSync,
@@ -16,28 +17,27 @@ import {
   rmSync,
   statSync,
   writeFileSync,
-} from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+} from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const repo = path.resolve(here, '..');
+const repo = path.resolve(here, "..");
 
-const nextStandalone = path.join(repo, '.next', 'standalone');
-const nextStatic = path.join(repo, '.next', 'static');
-const publicDir = path.join(repo, 'public');
+const nextStandalone = path.join(repo, ".next", "standalone");
+const nextStatic = path.join(repo, ".next", "static");
+const publicDir = path.join(repo, "public");
 
-const stagedStatic = path.join(nextStandalone, '.next', 'static');
-const stagedPublic = path.join(nextStandalone, 'public');
+const stagedStatic = path.join(nextStandalone, ".next", "static");
+const stagedPublic = path.join(nextStandalone, "public");
 
-const tauriTarget = path.join(repo, 'src-tauri', 'resources', 'standalone');
+const tauriTarget = path.join(repo, "src-tauri", "resources", "standalone");
 
 if (!existsSync(nextStandalone)) {
   console.error(
-    'stage-standalone: .next/standalone does not exist. Run `npm run build:standalone`' +
-    ' (which sets BUILD_STANDALONE=1 so next.config.js emits the standalone tree)' +
-    ' instead of invoking this script directly.',
+    "stage-standalone: .next/standalone does not exist. Run `npm run build:standalone`" +
+      " (which sets BUILD_STANDALONE=1 so next.config.js emits the standalone tree)" +
+      " instead of invoking this script directly."
   );
   process.exit(1);
 }
@@ -47,15 +47,15 @@ if (existsSync(nextStatic)) {
   rmSync(stagedStatic, { recursive: true, force: true });
   mkdirSync(path.dirname(stagedStatic), { recursive: true });
   cpSync(nextStatic, stagedStatic, { recursive: true });
-  console.log('stage-standalone: copied .next/static');
+  console.log("stage-standalone: copied .next/static");
 } else {
-  console.warn('stage-standalone: .next/static missing — first build?');
+  console.warn("stage-standalone: .next/static missing — first build?");
 }
 
 if (existsSync(publicDir)) {
   rmSync(stagedPublic, { recursive: true, force: true });
   cpSync(publicDir, stagedPublic, { recursive: true });
-  console.log('stage-standalone: copied public/');
+  console.log("stage-standalone: copied public/");
 }
 
 // Copy the SQLite write worker into the standalone bundle. Next's file
@@ -63,14 +63,16 @@ if (existsSync(publicDir)) {
 // dynamically via `new Worker(...)` from `lib/db-worker-client.ts`. Without
 // this copy, the client silently falls back to inline synchronous execution.
 // Mirrors the source layout so the runtime path resolution can find it.
-const workerSource = path.join(repo, 'lib', 'db-worker.cjs');
-const workerDest = path.join(nextStandalone, 'lib', 'db-worker.cjs');
+const workerSource = path.join(repo, "lib", "db-worker.cjs");
+const workerDest = path.join(nextStandalone, "lib", "db-worker.cjs");
 if (existsSync(workerSource)) {
   mkdirSync(path.dirname(workerDest), { recursive: true });
   copyFileSync(workerSource, workerDest);
-  console.log('stage-standalone: copied lib/db-worker.cjs (write worker)');
+  console.log("stage-standalone: copied lib/db-worker.cjs (write worker)");
 } else {
-  console.warn('stage-standalone: lib/db-worker.cjs missing — main thread will block on bulk writes');
+  console.warn(
+    "stage-standalone: lib/db-worker.cjs missing — main thread will block on bulk writes"
+  );
 }
 
 // Stage the whole thing into the tauri resources tree. We dereference
@@ -89,7 +91,7 @@ console.log(`stage-standalone: staged to ${tauriTarget}`);
 // `LSUIElement=true` early enough to keep the process out of the Dock.
 // The leading-dot name hides the helper from Spotlight/Finder.
 // Skipped on non-macOS — sidecar.rs falls through to plain Node there.
-if (process.platform === 'darwin') {
+if (process.platform === "darwin") {
   // Pick the Node binary by TARGET triple, not host arch — required for
   // cross-compiling Intel builds on an arm64 CI runner.
   //
@@ -100,34 +102,32 @@ if (process.platform === 'darwin') {
   const targetTriple =
     process.env.TAURI_BUILD_TARGET ||
     process.env.TAURI_ENV_TARGET_TRIPLE ||
-    (process.arch === 'arm64'
-      ? 'aarch64-apple-darwin'
-      : 'x86_64-apple-darwin');
+    (process.arch === "arm64" ? "aarch64-apple-darwin" : "x86_64-apple-darwin");
   const sourceNode = path.join(
     repo,
-    'src-tauri',
-    'binaries',
-    `node-${targetTriple}`,
+    "src-tauri",
+    "binaries",
+    `node-${targetTriple}`
   );
   if (!existsSync(sourceNode)) {
     console.error(
       `stage-standalone: cannot find Node binary at ${sourceNode}. ` +
-      'See https://privacytracker-docs.privacykey.org/develop/tauri for the curl invocation that ' +
-      'downloads it.',
+        "See https://privacytracker-docs.privacykey.org/develop/tauri for the curl invocation that " +
+        "downloads it."
     );
     process.exit(1);
   }
 
-  const helperApp = path.join(tauriTarget, '.node-helper.app');
-  const helperContents = path.join(helperApp, 'Contents');
-  const helperMacOS = path.join(helperContents, 'MacOS');
+  const helperApp = path.join(tauriTarget, ".node-helper.app");
+  const helperContents = path.join(helperApp, "Contents");
+  const helperMacOS = path.join(helperContents, "MacOS");
   mkdirSync(helperMacOS, { recursive: true });
 
   // Copy Node into the helper's MacOS dir.
-  const helperNode = path.join(helperMacOS, 'node');
+  const helperNode = path.join(helperMacOS, "node");
   copyFileSync(sourceNode, helperNode);
   // Defensively preserve the executable bit.
-  execFileSync('chmod', ['+x', helperNode], { stdio: 'inherit' });
+  execFileSync("chmod", ["+x", helperNode], { stdio: "inherit" });
 
   // Info.plist with LSUIElement=true. Inline so the script stays self-contained.
   const helperPlist = `<?xml version="1.0" encoding="UTF-8"?>
@@ -155,7 +155,7 @@ if (process.platform === 'darwin') {
 </dict>
 </plist>
 `;
-  writeFileSync(path.join(helperContents, 'Info.plist'), helperPlist);
+  writeFileSync(path.join(helperContents, "Info.plist"), helperPlist);
   console.log(`stage-standalone: wrote helper bundle at ${helperApp}`);
 }
 
@@ -174,14 +174,17 @@ if (process.platform === 'darwin') {
 // sidecar boot in parallel, and a partial tarball would make the sidecar
 // fail to find `node_modules/next`. POSIX rename is atomic within a
 // filesystem so readers always see a complete tarball.
-const tauriTarball = path.join(repo, 'src-tauri', 'resources', 'standalone.tar');
+const tauriTarball = path.join(
+  repo,
+  "src-tauri",
+  "resources",
+  "standalone.tar"
+);
 const tauriTarballTmp = `${tauriTarball}.tmp`;
 rmSync(tauriTarballTmp, { force: true });
-execFileSync(
-  'tar',
-  ['-cf', tauriTarballTmp, '-h', '-C', tauriTarget, '.'],
-  { stdio: 'inherit' },
-);
+execFileSync("tar", ["-cf", tauriTarballTmp, "-h", "-C", tauriTarget, "."], {
+  stdio: "inherit",
+});
 renameSync(tauriTarballTmp, tauriTarball);
 console.log(`stage-standalone: tarball at ${tauriTarball} (atomic write)`);
 
@@ -206,4 +209,6 @@ const readyKey = `${tarballStat.size}:${tarballMtimeSeconds}`;
 rmSync(readyMarkerTmp, { force: true });
 writeFileSync(readyMarkerTmp, readyKey);
 renameSync(readyMarkerTmp, readyMarker);
-console.log(`stage-standalone: wrote ${path.basename(readyMarker)} (key ${readyKey})`);
+console.log(
+  `stage-standalone: wrote ${path.basename(readyMarker)} (key ${readyKey})`
+);

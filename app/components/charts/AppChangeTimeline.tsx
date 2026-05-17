@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import { useTranslations } from "next-intl";
 /**
  * Per-app variant of the stats-page Change Timeline. Drives the
  * "Category trend" slot in the Change History strip on the app detail
@@ -33,43 +34,54 @@
  * don't care about the macro view can collapse it so the individual
  * changelog rows own more of the viewport.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import EChart from './EChart';
-import type { TimelineData } from '../../../lib/stats-views-shared';
+import { useEffect, useMemo, useState } from "react";
+import type { TimelineData } from "../../../lib/stats-views-shared";
+import EChart from "./EChart";
 
-type PresetKey = '30d' | '90d' | '6m' | 'ytd' | 'all';
+type PresetKey = "30d" | "90d" | "6m" | "ytd" | "all";
 
 // Preset labels are intentionally short ("30d", "YTD", "All") — these
 // already read the same in zh-CN as in en, so they stay as raw constants.
 const PRESETS: { key: PresetKey; label: string }[] = [
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
-  { key: '6m',  label: '6m' },
-  { key: 'ytd', label: 'YTD' },
-  { key: 'all', label: 'All' },
+  { key: "30d", label: "30d" },
+  { key: "90d", label: "90d" },
+  { key: "6m", label: "6m" },
+  { key: "ytd", label: "YTD" },
+  { key: "all", label: "All" },
 ];
 
 function resolveRange(preset: PresetKey): { from: number; to: number } {
   const now = Date.now();
   switch (preset) {
-    case '30d':  return { from: now - 30 * 86_400_000, to: now };
-    case '90d':  return { from: now - 90 * 86_400_000, to: now };
-    case '6m':   return { from: now - 180 * 86_400_000, to: now };
-    case 'ytd': {
+    case "30d":
+      return { from: now - 30 * 86_400_000, to: now };
+    case "90d":
+      return { from: now - 90 * 86_400_000, to: now };
+    case "6m":
+      return { from: now - 180 * 86_400_000, to: now };
+    case "ytd": {
       const y = new Date().getUTCFullYear();
       return { from: Date.UTC(y, 0, 1), to: now };
     }
-    case 'all':  return { from: 0, to: now };
+    case "all":
+      return { from: 0, to: now };
   }
 }
 
 function formatBucketLabel(bucket: string, kind: string): string {
-  const d = new Date(bucket + 'T00:00:00Z');
-  if (kind === 'month') {
-    return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit', timeZone: 'UTC' });
+  const d = new Date(`${bucket}T00:00:00Z`);
+  if (kind === "month") {
+    return d.toLocaleDateString(undefined, {
+      month: "short",
+      year: "2-digit",
+      timeZone: "UTC",
+    });
   }
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 // Colour palette — privacy added/removed are deliberately INVERTED from
@@ -90,18 +102,18 @@ function formatBucketLabel(bucket: string, kind: string): string {
 // reading is "what changed in the document text" — there's no
 // good/bad axis to invert.
 const COLORS = {
-  added:    '#ef4444', // red — privacy category newly collected
-  removed:  '#10b981', // green — privacy category no longer collected
-  modified: '#f59e0b', // amber — same as before, neutral attention tone
-  policy:   '#2563eb',
+  added: "#ef4444", // red — privacy category newly collected
+  removed: "#10b981", // green — privacy category no longer collected
+  modified: "#f59e0b", // amber — same as before, neutral attention tone
+  policy: "#2563eb",
   // Accessibility bands sit in the same blue family the rest of the UI
   // uses for a11y (grid filter pill, change-dot, detail-page chip). Two
   // distinct shades so added vs removed read apart on the stack without
   // clashing with the policy band above them.
-  accessibilityAdded:   '#64d2ff',
-  accessibilityRemoved: '#5e5ce6',
-  syncs:    '#94a3b8', // slate-400 — quiet grey for the ambient activity line
-  reviews:  '#a855f7', // purple-500 — distinct from any change-type band
+  accessibilityAdded: "#64d2ff",
+  accessibilityRemoved: "#5e5ce6",
+  syncs: "#94a3b8", // slate-400 — quiet grey for the ambient activity line
+  reviews: "#a855f7", // purple-500 — distinct from any change-type band
 } as const;
 
 export default function AppChangeTimeline({
@@ -129,11 +141,11 @@ export default function AppChangeTimeline({
    */
   showLegend?: boolean;
 }) {
-  const tChart = useTranslations('app_change_timeline');
+  const tChart = useTranslations("app_change_timeline");
   // "All" default — the detail page is explicitly historical; users
   // arriving here almost always want to see the full span, and can
   // narrow the window via presets if they want to zoom in.
-  const [preset, setPreset] = useState<PresetKey>('all');
+  const [preset, setPreset] = useState<PresetKey>("all");
   const [data, setData] = useState<TimelineData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -147,7 +159,9 @@ export default function AppChangeTimeline({
   useEffect(() => {
     // Skip the network round-trip entirely while the accordion is
     // collapsed. Re-opening re-runs this effect and fetches fresh data.
-    if (!expanded) return;
+    if (!expanded) {
+      return;
+    }
     let live = true;
     setLoading(true);
     // Build the query string conditionally — leaving `appId` off when
@@ -157,20 +171,28 @@ export default function AppChangeTimeline({
       from: String(range.from),
       to: String(range.to),
     });
-    if (appId) qs.set('appId', appId);
+    if (appId) {
+      qs.set("appId", appId);
+    }
     fetch(`/api/stats/timeline?${qs}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))
+      )
       .then((d: TimelineData) => {
         if (live) {
           setData(d);
           setError(null);
         }
       })
-      .catch(e => {
-        if (live) setError(e instanceof Error ? e.message : tChart('failed_load'));
+      .catch((e) => {
+        if (live) {
+          setError(e instanceof Error ? e.message : tChart("failed_load"));
+        }
       })
       .finally(() => {
-        if (live) setLoading(false);
+        if (live) {
+          setLoading(false);
+        }
       });
     return () => {
       live = false;
@@ -182,68 +204,87 @@ export default function AppChangeTimeline({
   // without a round-trip (the endpoint doesn't return per-series totals).
   const totals = useMemo(() => {
     const zero = {
-      added: 0, removed: 0, modified: 0, policy: 0,
-      accessibilityAdded: 0, accessibilityRemoved: 0,
-      syncs: 0, reviews: 0,
+      added: 0,
+      removed: 0,
+      modified: 0,
+      policy: 0,
+      accessibilityAdded: 0,
+      accessibilityRemoved: 0,
+      syncs: 0,
+      reviews: 0,
     };
-    if (!data) return zero;
+    if (!data) {
+      return zero;
+    }
     return data.points.reduce(
       (acc, p) => ({
-        added:    acc.added    + p.added,
-        removed:  acc.removed  + p.removed,
+        added: acc.added + p.added,
+        removed: acc.removed + p.removed,
         modified: acc.modified + p.modified,
-        policy:   acc.policy   + p.policy,
-        accessibilityAdded:   acc.accessibilityAdded   + (p.accessibilityAdded   ?? 0),
-        accessibilityRemoved: acc.accessibilityRemoved + (p.accessibilityRemoved ?? 0),
-        syncs:    acc.syncs    + (p.syncs   ?? 0),
-        reviews:  acc.reviews  + (p.reviews ?? 0),
+        policy: acc.policy + p.policy,
+        accessibilityAdded:
+          acc.accessibilityAdded + (p.accessibilityAdded ?? 0),
+        accessibilityRemoved:
+          acc.accessibilityRemoved + (p.accessibilityRemoved ?? 0),
+        syncs: acc.syncs + (p.syncs ?? 0),
+        reviews: acc.reviews + (p.reviews ?? 0),
       }),
-      zero,
+      zero
     );
   }, [data]);
 
   const option = useMemo(() => {
-    if (!data) return {};
-    const labels = data.points.map(p => formatBucketLabel(p.bucket, data.bucketType));
+    if (!data) {
+      return {};
+    }
+    const labels = data.points.map((p) =>
+      formatBucketLabel(p.bucket, data.bucketType)
+    );
     // Stacked area band — the change-type series (privacy added /
     // removed / modified / policy + the two accessibility splits). The
     // `?? 0` guard handles the accessibility fields, which are optional
     // on `TimelinePoint` for back-compat with old serialised payloads.
     const band = (
-      key: 'added' | 'removed' | 'modified' | 'policy' | 'accessibilityAdded' | 'accessibilityRemoved',
+      key:
+        | "added"
+        | "removed"
+        | "modified"
+        | "policy"
+        | "accessibilityAdded"
+        | "accessibilityRemoved",
       color: string,
-      label: string,
+      label: string
     ) => ({
       name: label,
-      type: 'line',
-      stack: 'changes',
+      type: "line",
+      stack: "changes",
       smooth: true,
       showSymbol: false,
-      data: data.points.map(p => p[key] ?? 0),
+      data: data.points.map((p) => p[key] ?? 0),
       itemStyle: { color },
       lineStyle: { color },
       // Slightly translucent fill lets the user read a thin band at the
       // top of the stack without it being washed out by the one beneath.
-      areaStyle: { color: color + '55' },
+      areaStyle: { color: `${color}55` },
     });
     // Overlay line — deliberately NOT in the `changes` stack, so the
     // contextual counter rides alongside without inflating the area.
     // Dashed stroke + small symbol markers differentiate it from the
     // smooth filled bands at a glance.
     const overlay = (
-      key: 'syncs' | 'reviews',
+      key: "syncs" | "reviews",
       color: string,
-      label: string,
+      label: string
     ) => ({
       name: label,
-      type: 'line',
+      type: "line",
       smooth: false,
       showSymbol: true,
       symbolSize: 5,
-      data: data.points.map(p => p[key] ?? 0),
+      data: data.points.map((p) => p[key] ?? 0),
       itemStyle: { color },
-      lineStyle: { color, type: 'dashed', width: 1 },
-      emphasis: { focus: 'series' },
+      lineStyle: { color, type: "dashed", width: 1 },
+      emphasis: { focus: "series" },
     });
     // NB: ECharts' canvas renderer doesn't resolve CSS `var()` strings,
     // so axis colours are hex literals matching the 'privacy' theme
@@ -252,7 +293,7 @@ export default function AppChangeTimeline({
     const lastIndex = labels.length - 1;
     return {
       tooltip: {
-        trigger: 'axis',
+        trigger: "axis",
         // `confine: true` keeps the tooltip inside the chart container
         // so it can't spill above the widget header. Without this, the
         // default behaviour would float the box right on the cursor and
@@ -269,56 +310,64 @@ export default function AppChangeTimeline({
           _params: unknown,
           _dom: unknown,
           _rect: unknown,
-          size: { viewSize: number[]; contentSize: number[] },
+          size: { viewSize: number[]; contentSize: number[] }
         ) => {
           const [x] = point;
           const offsetY = 42; // pushes below the header line; tweakable
           const maxY = Math.max(0, size.viewSize[1] - size.contentSize[1] - 6);
           return [x + 12, Math.min(offsetY, maxY)];
         },
-        extraCssText: 'max-width: 240px;',
+        extraCssText: "max-width: 240px;",
       },
       legend: showLegend
         ? {
             bottom: 0,
-            textStyle: { color: '#a0a0b0', fontSize: 10 },
-            icon: 'circle',
+            textStyle: { color: "#a0a0b0", fontSize: 10 },
+            icon: "circle",
             itemHeight: 8,
             itemGap: 10,
           }
         : { show: false },
       grid: { left: 36, right: 28, top: 10, bottom: 40 },
       xAxis: {
-        type: 'category',
+        type: "category",
         data: labels,
         boundaryGap: false,
         axisLabel: {
-          color: '#a0a0b0',
+          color: "#a0a0b0",
           fontSize: 10,
           // Override only the last tick so the right edge always reads
           // "Today" regardless of preset window. ECharts strips each
           // label through this formatter once per render; we leave
           // every other tick alone so date context is preserved.
           formatter: (value: string, index: number) =>
-            index === lastIndex ? tChart('chart_today') : value,
+            index === lastIndex ? tChart("chart_today") : value,
         },
-        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+        axisLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
       },
       yAxis: {
-        type: 'value',
+        type: "value",
         minInterval: 1,
-        axisLabel: { color: '#a0a0b0', fontSize: 10 },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } },
+        axisLabel: { color: "#a0a0b0", fontSize: 10 },
+        splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
       },
       series: [
-        band('added',                COLORS.added,                tChart('band_added')),
-        band('removed',              COLORS.removed,              tChart('band_removed')),
-        band('modified',             COLORS.modified,             tChart('band_modified')),
-        band('policy',               COLORS.policy,               tChart('band_policy')),
-        band('accessibilityAdded',   COLORS.accessibilityAdded,   tChart('band_a11y_added')),
-        band('accessibilityRemoved', COLORS.accessibilityRemoved, tChart('band_a11y_removed')),
-        overlay('syncs',   COLORS.syncs,   tChart('overlay_syncs')),
-        overlay('reviews', COLORS.reviews, tChart('overlay_reviews')),
+        band("added", COLORS.added, tChart("band_added")),
+        band("removed", COLORS.removed, tChart("band_removed")),
+        band("modified", COLORS.modified, tChart("band_modified")),
+        band("policy", COLORS.policy, tChart("band_policy")),
+        band(
+          "accessibilityAdded",
+          COLORS.accessibilityAdded,
+          tChart("band_a11y_added")
+        ),
+        band(
+          "accessibilityRemoved",
+          COLORS.accessibilityRemoved,
+          tChart("band_a11y_removed")
+        ),
+        overlay("syncs", COLORS.syncs, tChart("overlay_syncs")),
+        overlay("reviews", COLORS.reviews, tChart("overlay_reviews")),
       ],
     };
   }, [data, showLegend, tChart]);
@@ -326,48 +375,50 @@ export default function AppChangeTimeline({
   return (
     <div
       style={{
-        border: '1px solid var(--border)',
+        border: "1px solid var(--border)",
         borderRadius: 8,
-        background: 'var(--surface)',
-        overflow: 'hidden',
+        background: "var(--surface)",
+        overflow: "hidden",
       }}
     >
       <button
-        type="button"
-        onClick={() => setExpanded(v => !v)}
-        aria-expanded={expanded}
         aria-controls="app-change-timeline-body"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
         style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
           gap: 8,
-          width: '100%',
-          padding: '10px 12px',
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--text-1)',
-          cursor: 'pointer',
+          width: "100%",
+          padding: "10px 12px",
+          background: "transparent",
+          border: "none",
+          color: "var(--text-1)",
+          cursor: "pointer",
           fontSize: 12,
-          textAlign: 'left',
+          textAlign: "left",
         }}
+        type="button"
       >
-        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <span
             aria-hidden="true"
             style={{
-              display: 'inline-block',
-              transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.15s ease',
-              color: 'var(--text-3)',
+              display: "inline-block",
+              transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
+              transition: "transform 0.15s ease",
+              color: "var(--text-3)",
               fontSize: 10,
               width: 10,
             }}
           >
             ▶
           </span>
-          <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>{tChart('title')}</span>
+          <span style={{ fontWeight: 600, color: "var(--text-2)" }}>
+            {tChart("title")}
+          </span>
         </span>
         {/*
           Diff-style totals stay in the header even when the body is
@@ -380,131 +431,181 @@ export default function AppChangeTimeline({
         */}
         <span
           style={{
-            color: 'var(--text-3)',
-            display: 'flex',
+            color: "var(--text-3)",
+            display: "flex",
             gap: 10,
-            flexWrap: 'wrap',
-            alignItems: 'baseline',
+            flexWrap: "wrap",
+            alignItems: "baseline",
             fontSize: 11,
           }}
         >
           <span>
-            <span style={{ color: COLORS.added, fontWeight: 600 }}>+{totals.added}</span>
-            <span style={{ marginLeft: 4 }}>{tChart('summary_added')}</span>
+            <span style={{ color: COLORS.added, fontWeight: 600 }}>
+              +{totals.added}
+            </span>
+            <span style={{ marginLeft: 4 }}>{tChart("summary_added")}</span>
           </span>
           <span>
-            <span style={{ color: COLORS.removed, fontWeight: 600 }}>−{totals.removed}</span>
-            <span style={{ marginLeft: 4 }}>{tChart('summary_removed')}</span>
+            <span style={{ color: COLORS.removed, fontWeight: 600 }}>
+              −{totals.removed}
+            </span>
+            <span style={{ marginLeft: 4 }}>{tChart("summary_removed")}</span>
           </span>
           {totals.modified > 0 && (
             <span>
-              <span style={{ color: COLORS.modified, fontWeight: 600 }}>~{totals.modified}</span>
-              <span style={{ marginLeft: 4 }}>{tChart('summary_modified')}</span>
+              <span style={{ color: COLORS.modified, fontWeight: 600 }}>
+                ~{totals.modified}
+              </span>
+              <span style={{ marginLeft: 4 }}>
+                {tChart("summary_modified")}
+              </span>
             </span>
           )}
           {totals.policy > 0 && (
             <span>
-              <span style={{ color: COLORS.policy, fontWeight: 600 }}>{totals.policy}</span>
-              <span style={{ marginLeft: 4 }}>{tChart('summary_policy')}</span>
+              <span style={{ color: COLORS.policy, fontWeight: 600 }}>
+                {totals.policy}
+              </span>
+              <span style={{ marginLeft: 4 }}>{tChart("summary_policy")}</span>
             </span>
           )}
           {totals.accessibilityAdded > 0 && (
             <span>
-              <span style={{ color: COLORS.accessibilityAdded, fontWeight: 600 }}>
+              <span
+                style={{ color: COLORS.accessibilityAdded, fontWeight: 600 }}
+              >
                 +{totals.accessibilityAdded}
               </span>
-              <span style={{ marginLeft: 4 }}>{tChart('summary_a11y')}</span>
+              <span style={{ marginLeft: 4 }}>{tChart("summary_a11y")}</span>
             </span>
           )}
           {totals.accessibilityRemoved > 0 && (
             <span>
-              <span style={{ color: COLORS.accessibilityRemoved, fontWeight: 600 }}>
+              <span
+                style={{ color: COLORS.accessibilityRemoved, fontWeight: 600 }}
+              >
                 −{totals.accessibilityRemoved}
               </span>
-              <span style={{ marginLeft: 4 }}>{tChart('summary_a11y')}</span>
+              <span style={{ marginLeft: 4 }}>{tChart("summary_a11y")}</span>
             </span>
           )}
           {totals.syncs > 0 && (
             <span>
-              <span style={{ color: COLORS.syncs, fontWeight: 600 }}>{totals.syncs}</span>
-              <span style={{ marginLeft: 4 }}>{tChart('summary_syncs')}</span>
+              <span style={{ color: COLORS.syncs, fontWeight: 600 }}>
+                {totals.syncs}
+              </span>
+              <span style={{ marginLeft: 4 }}>{tChart("summary_syncs")}</span>
             </span>
           )}
           {totals.reviews > 0 && (
             <span>
-              <span style={{ color: COLORS.reviews, fontWeight: 600 }}>{totals.reviews}</span>
-              <span style={{ marginLeft: 4 }}>{tChart('summary_reviews')}</span>
+              <span style={{ color: COLORS.reviews, fontWeight: 600 }}>
+                {totals.reviews}
+              </span>
+              <span style={{ marginLeft: 4 }}>{tChart("summary_reviews")}</span>
             </span>
           )}
         </span>
       </button>
 
       {expanded && (
-        <div
-          id="app-change-timeline-body"
-          style={{ padding: '0 12px 10px' }}
-        >
-          {showPresets && <div
-            style={{
-              display: 'flex',
-              gap: 4,
-              flexWrap: 'wrap',
-              marginBottom: 8,
-              alignItems: 'center',
-            }}
-          >
-            {PRESETS.map(p => (
-              <button
-                key={p.key}
-                type="button"
-                onClick={() => setPreset(p.key)}
-                aria-pressed={preset === p.key}
+        <div id="app-change-timeline-body" style={{ padding: "0 12px 10px" }}>
+          {showPresets && (
+            <div
+              style={{
+                display: "flex",
+                gap: 4,
+                flexWrap: "wrap",
+                marginBottom: 8,
+                alignItems: "center",
+              }}
+            >
+              {PRESETS.map((p) => (
+                <button
+                  aria-pressed={preset === p.key}
+                  key={p.key}
+                  onClick={() => setPreset(p.key)}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    border: "1px solid",
+                    borderColor:
+                      preset === p.key
+                        ? "var(--accent, #2563eb)"
+                        : "var(--border)",
+                    background:
+                      preset === p.key
+                        ? "var(--accent-soft, rgba(37,99,235,0.10))"
+                        : "var(--surface)",
+                    color: preset === p.key ? "var(--text-1)" : "var(--text-2)",
+                    cursor: "pointer",
+                    fontWeight: preset === p.key ? 600 : 400,
+                  }}
+                  type="button"
+                >
+                  {p.label}
+                </button>
+              ))}
+              <span
                 style={{
-                  padding: '3px 10px',
-                  borderRadius: 6,
+                  marginLeft: "auto",
                   fontSize: 11,
-                  border: '1px solid',
-                  borderColor: preset === p.key ? 'var(--accent, #2563eb)' : 'var(--border)',
-                  background:
-                    preset === p.key ? 'var(--accent-soft, rgba(37,99,235,0.10))' : 'var(--surface)',
-                  color: preset === p.key ? 'var(--text-1)' : 'var(--text-2)',
-                  cursor: 'pointer',
-                  fontWeight: preset === p.key ? 600 : 400,
+                  color: "var(--text-3)",
                 }}
               >
-                {p.label}
-              </button>
-            ))}
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-3)' }}>
-              {loading
-                ? tChart('loading')
-                : data
-                  ? tChart(
-                      data.bucketType === 'day'
-                        ? 'summary_buckets_daily'
-                        : data.bucketType === 'week'
-                          ? 'summary_buckets_weekly'
-                          : 'summary_buckets_monthly',
-                      { count: data.total },
-                    )
-                  : ''}
-            </span>
-          </div>}
+                {loading
+                  ? tChart("loading")
+                  : data
+                    ? tChart(
+                        data.bucketType === "day"
+                          ? "summary_buckets_daily"
+                          : data.bucketType === "week"
+                            ? "summary_buckets_weekly"
+                            : "summary_buckets_monthly",
+                        { count: data.total }
+                      )
+                    : ""}
+              </span>
+            </div>
+          )}
 
           {error && (
-            <div style={{ fontSize: 12, color: 'var(--text-3)', padding: 16, textAlign: 'center' }}>
-              {tChart('error', { message: error })}
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-3)",
+                padding: 16,
+                textAlign: "center",
+              }}
+            >
+              {tChart("error", { message: error })}
             </div>
           )}
-          {!error && data && data.total === 0 && totals.syncs === 0 && totals.reviews === 0 && (
-            <div style={{ fontSize: 12, color: 'var(--text-3)', padding: 20, textAlign: 'center' }}>
-              {tChart('empty_title')}
-              <div style={{ fontSize: 11, marginTop: 4 }}>{tChart('empty_hint')}</div>
-            </div>
-          )}
-          {!error && data && (data.total > 0 || totals.syncs > 0 || totals.reviews > 0) && (
-            <EChart option={option} height={220} />
-          )}
+          {!error &&
+            data &&
+            data.total === 0 &&
+            totals.syncs === 0 &&
+            totals.reviews === 0 && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-3)",
+                  padding: 20,
+                  textAlign: "center",
+                }}
+              >
+                {tChart("empty_title")}
+                <div style={{ fontSize: 11, marginTop: 4 }}>
+                  {tChart("empty_hint")}
+                </div>
+              </div>
+            )}
+          {!error &&
+            data &&
+            (data.total > 0 || totals.syncs > 0 || totals.reviews > 0) && (
+              <EChart height={220} option={option} />
+            )}
         </div>
       )}
     </div>

@@ -1,11 +1,14 @@
-import { NextResponse } from 'next/server';
-import os from 'node:os';
-import path from 'node:path';
-import { existsSync, statSync } from 'node:fs';
-import { getSetting } from '@/lib/scheduler';
-import db from '@/lib/db';
-import { installRuntimeDiagnostics, snapshotRuntimeMetrics } from '@/lib/runtime-diagnostics';
-import { snapshotDbWorkerTimings } from '@/lib/db-worker-client';
+import { existsSync, statSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { NextResponse } from "next/server";
+import db from "@/lib/db";
+import { snapshotDbWorkerTimings } from "@/lib/db-worker-client";
+import {
+  installRuntimeDiagnostics,
+  snapshotRuntimeMetrics,
+} from "@/lib/runtime-diagnostics";
+import { getSetting } from "@/lib/scheduler";
 
 /**
  * Node-side diagnostics payload.
@@ -18,16 +21,20 @@ import { snapshotDbWorkerTimings } from '@/lib/db-worker-client';
  * Don't leak sensitive data from here: no API keys, no privacy_policy
  * text, no auth tokens. This blob is going to show up in GitHub issues.
  */
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-function readLastSync(): { scheduleMode: string; lastAutoSync: number | null; syncRunning: boolean } {
+function readLastSync(): {
+  scheduleMode: string;
+  lastAutoSync: number | null;
+  syncRunning: boolean;
+} {
   return {
-    scheduleMode: getSetting('sync_schedule', 'manual'),
+    scheduleMode: getSetting("sync_schedule", "manual"),
     lastAutoSync: (() => {
-      const raw = parseInt(getSetting('last_auto_sync', '0'), 10);
+      const raw = Number.parseInt(getSetting("last_auto_sync", "0"), 10);
       return Number.isFinite(raw) && raw > 0 ? raw : null;
     })(),
-    syncRunning: getSetting('sync_running', 'false') === 'true',
+    syncRunning: getSetting("sync_running", "false") === "true",
   };
 }
 
@@ -39,41 +46,55 @@ function readBulkRunners(): Record<string, unknown> {
   // SELECT from app_settings directly.
   return {
     wayback: {
-      running: getSetting('wayback_import_running', 'false') === 'true',
-      has_state: getSetting('wayback_bulk_state', '') !== '',
+      running: getSetting("wayback_import_running", "false") === "true",
+      has_state: getSetting("wayback_bulk_state", "") !== "",
     },
     sync: {
-      running: getSetting('sync_running', 'false') === 'true',
-      has_state: getSetting('sync_bulk_state', '') !== '',
+      running: getSetting("sync_running", "false") === "true",
+      has_state: getSetting("sync_bulk_state", "") !== "",
     },
     policy: {
-      running: getSetting('policy_sync_running', 'false') === 'true',
-      has_state: getSetting('policy_bulk_state', '') !== '',
+      running: getSetting("policy_sync_running", "false") === "true",
+      has_state: getSetting("policy_bulk_state", "") !== "",
     },
   };
 }
 
 function redactHomeDir(p: string): string {
   const home = os.homedir();
-  if (!home || home === '/' || home === '\\') return p;
-  if (p === home) return '~';
-  if (p.startsWith(home + '/') || p.startsWith(home + '\\')) {
-    return '~' + p.slice(home.length);
+  if (!home || home === "/" || home === "\\") {
+    return p;
+  }
+  if (p === home) {
+    return "~";
+  }
+  if (p.startsWith(`${home}/`) || p.startsWith(`${home}\\`)) {
+    return `~${p.slice(home.length)}`;
   }
   return p;
 }
 
 function readDbStats(): Record<string, unknown> {
   try {
-    const apps = (db.prepare('SELECT COUNT(*) AS c FROM apps').get() as { c: number }).c;
-    const snapshots = (db.prepare('SELECT COUNT(*) AS c FROM privacy_snapshots').get() as { c: number }).c;
-    const unread = (db.prepare('SELECT COUNT(*) AS c FROM notifications WHERE read = 0').get() as { c: number }).c;
+    const apps = (
+      db.prepare("SELECT COUNT(*) AS c FROM apps").get() as { c: number }
+    ).c;
+    const snapshots = (
+      db.prepare("SELECT COUNT(*) AS c FROM privacy_snapshots").get() as {
+        c: number;
+      }
+    ).c;
+    const unread = (
+      db
+        .prepare("SELECT COUNT(*) AS c FROM notifications WHERE read = 0")
+        .get() as { c: number }
+    ).c;
 
     const dbPath = path.join(
       process.env.PRIVACYTRACKER_DATA_DIR
         ? path.resolve(process.env.PRIVACYTRACKER_DATA_DIR)
-        : path.join(process.cwd(), 'data'),
-      'privacy.db',
+        : path.join(process.cwd(), "data"),
+      "privacy.db"
     );
     const dbSize = existsSync(dbPath) ? statSync(dbPath).size : null;
     return {

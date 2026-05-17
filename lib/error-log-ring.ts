@@ -8,7 +8,7 @@
 const MAX_ENTRIES = 200;
 const MAX_MESSAGE_LEN = 4 * 1024;
 
-export type ErrorLogLevel = 'error' | 'warn';
+export type ErrorLogLevel = "error" | "warn";
 
 export interface ErrorLogEntry {
   /** ms since epoch when the entry was captured. */
@@ -26,21 +26,25 @@ let installedPid: number | null = null;
 
 function pushEntry(level: ErrorLogLevel, args: unknown[]): void {
   const raw = args
-    .map(a => {
+    .map((a) => {
       if (a instanceof Error) {
         return a.stack ?? `${a.name}: ${a.message}`;
       }
-      if (typeof a === 'string') return a;
+      if (typeof a === "string") {
+        return a;
+      }
       try {
         return JSON.stringify(a);
       } catch {
         return String(a);
       }
     })
-    .join(' ');
+    .join(" ");
 
   const truncated = raw.length > MAX_MESSAGE_LEN;
-  const message = truncated ? raw.slice(0, MAX_MESSAGE_LEN) + '… (truncated)' : raw;
+  const message = truncated
+    ? `${raw.slice(0, MAX_MESSAGE_LEN)}… (truncated)`
+    : raw;
 
   ring.push({ at: Date.now(), level, message, truncated });
   if (ring.length > MAX_ENTRIES) {
@@ -53,7 +57,10 @@ function pushEntry(level: ErrorLogLevel, args: unknown[]): void {
  * calling twice (e.g. under hot-reload) is a no-op. Returns the patched
  * functions, or null if already installed in this process.
  */
-export function installErrorLogRing(): { error: typeof console.error; warn: typeof console.warn } | null {
+export function installErrorLogRing(): {
+  error: typeof console.error;
+  warn: typeof console.warn;
+} | null {
   if (installed && installedPid === process.pid) {
     return null;
   }
@@ -64,12 +71,12 @@ export function installErrorLogRing(): { error: typeof console.error; warn: type
   const originalWarn = console.warn;
 
   console.error = function patchedError(...args: unknown[]) {
-    pushEntry('error', args);
+    pushEntry("error", args);
     return originalError.apply(console, args);
   };
 
   console.warn = function patchedWarn(...args: unknown[]) {
-    pushEntry('warn', args);
+    pushEntry("warn", args);
     return originalWarn.apply(console, args);
   };
 

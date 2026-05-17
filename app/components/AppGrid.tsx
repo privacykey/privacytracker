@@ -1,43 +1,32 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { useTaskCenter } from './TaskCenter';
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  localiseBadgeDescription,
+  localiseBadgeLabel,
+} from "../../lib/i18n-meta";
 import type {
   ManualApp,
   ManualAppSource,
   ManualAppSourceMeta,
-} from '../../lib/manual-apps';
-import type { AppProfileBadge } from '../../lib/privacy-profile';
-import { localiseBadgeLabel, localiseBadgeDescription } from '../../lib/i18n-meta';
-import VerdictPill from './VerdictPill';
-import ReviewQueue from './ReviewQueue';
-import BulkSelectBar from './BulkSelectBar';
-import type { QueueAppInput } from '../../lib/review-queue';
+} from "../../lib/manual-apps";
+import type { AppProfileBadge } from "../../lib/privacy-profile";
+import type { QueueAppInput } from "../../lib/review-queue";
+import BulkSelectBar from "./BulkSelectBar";
+import ReviewQueue from "./ReviewQueue";
+import { useTaskCenter } from "./TaskCenter";
+import VerdictPill from "./VerdictPill";
 
 interface App {
-  id: string;
-  name: string;
-  developer?: string;
-  iconUrl?: string;
-  lastSynced: number;
-  changeCount: number;
+  /** Count of declared accessibility features. Server-side derived. */
+  accessibilityCount?: number;
   categoryCount: number;
-  trackCount?: number;
-  linkedCount?: number;
-  unlinkedCount?: number;
-  syncCount: number;
-  url: string;
-  /**
-   * `0`  — developer explicitly hasn't filled in privacy labels (Apple shows
-   *        "No details provided" copy on the listing).
-   * `1`  — labels are present.
-   * `null` — indeterminate / pre-migration row (treated as `1`).
-   */
-  hasPrivacyDetails?: number | null;
+  changeCount: number;
+  developer?: string;
   /**
    * `1`  — Apple's accessibility shelf lists ≥1 feature for this app.
    * `0`  — shelf present but empty (developer filed nothing).
@@ -46,16 +35,30 @@ interface App {
    *        excludes such apps from both "has" and "missing" buckets.
    */
   hasAccessibilityLabels?: number | null;
-  /** Count of declared accessibility features. Server-side derived. */
-  accessibilityCount?: number;
+  /**
+   * `0`  — developer explicitly hasn't filled in privacy labels (Apple shows
+   *        "No details provided" copy on the listing).
+   * `1`  — labels are present.
+   * `null` — indeterminate / pre-migration row (treated as `1`).
+   */
+  hasPrivacyDetails?: number | null;
+  iconUrl?: string;
+  id: string;
+  lastSynced: number;
+  linkedCount?: number;
+  name: string;
+  syncCount: number;
+  trackCount?: number;
+  unlinkedCount?: number;
+  url: string;
 }
 
-type SortKey = 'name' | 'synced' | 'permissions' | 'risk';
+type SortKey = "name" | "synced" | "permissions" | "risk";
 
 // 'unknown' is a pseudo-level for apps where the developer hasn't filled in
 // any privacy labels yet. It's not a real severity — we just can't tell — so
 // it renders yellow ("attention") rather than in the red/orange/blue ramp.
-type RiskLevel = 'high' | 'moderate' | 'low' | 'minimal' | 'unknown';
+type RiskLevel = "high" | "moderate" | "low" | "minimal" | "unknown";
 
 function computeRiskScore(app: App): number {
   // Weights: tracking carries the highest user-impact cost, linked data second,
@@ -71,31 +74,42 @@ function computeRiskLevel(app: App): RiskLevel {
   // zero counts from a missing-labels app are not the same as a real Minimal
   // app that explicitly collects nothing. Return 'unknown' so the UI can
   // surface it as a separate (yellow) attention state.
-  if (app.hasPrivacyDetails === 0) return 'unknown';
+  if (app.hasPrivacyDetails === 0) {
+    return "unknown";
+  }
   const t = app.trackCount ?? 0;
   const l = app.linkedCount ?? 0;
   const u = app.unlinkedCount ?? 0;
-  if (t >= 1) return 'high';
-  if (l >= 3) return 'moderate';
-  if (l >= 1 || u >= 1) return 'low';
-  return 'minimal';
+  if (t >= 1) {
+    return "high";
+  }
+  if (l >= 3) {
+    return "moderate";
+  }
+  if (l >= 1 || u >= 1) {
+    return "low";
+  }
+  return "minimal";
 }
 
-const RISK_META: Record<RiskLevel, { label: string; cls: string; dot: string }> = {
-  high:     { label: 'High risk',     cls: 'risk-pill-high',     dot: '●' },
-  moderate: { label: 'Moderate risk', cls: 'risk-pill-moderate', dot: '●' },
-  low:      { label: 'Low risk',      cls: 'risk-pill-low',      dot: '●' },
-  minimal:  { label: 'Minimal',       cls: 'risk-pill-minimal',  dot: '○' },
-  unknown:  { label: 'No details',    cls: 'risk-pill-unknown',  dot: '⚠' },
+const RISK_META: Record<
+  RiskLevel,
+  { label: string; cls: string; dot: string }
+> = {
+  high: { label: "High risk", cls: "risk-pill-high", dot: "●" },
+  moderate: { label: "Moderate risk", cls: "risk-pill-moderate", dot: "●" },
+  low: { label: "Low risk", cls: "risk-pill-low", dot: "●" },
+  minimal: { label: "Minimal", cls: "risk-pill-minimal", dot: "○" },
+  unknown: { label: "No details", cls: "risk-pill-unknown", dot: "⚠" },
 };
 
 function parseRiskParam(raw: string | null): RiskLevel | null {
   if (
-    raw === 'high' ||
-    raw === 'moderate' ||
-    raw === 'low' ||
-    raw === 'minimal' ||
-    raw === 'unknown'
+    raw === "high" ||
+    raw === "moderate" ||
+    raw === "low" ||
+    raw === "minimal" ||
+    raw === "unknown"
   ) {
     return raw;
   }
@@ -110,14 +124,62 @@ function parseRiskParam(raw: string | null): RiskLevel | null {
  *               pre-migration apps don't pollute the "missing" bucket.
  *   null      — no filter
  */
-type AccessibilityFilter = 'has' | 'missing';
+type AccessibilityFilter = "has" | "missing";
 
-function parseAccessibilityParam(raw: string | null): AccessibilityFilter | null {
-  if (raw === 'has' || raw === 'missing') return raw;
+function parseAccessibilityParam(
+  raw: string | null
+): AccessibilityFilter | null {
+  if (raw === "has" || raw === "missing") {
+    return raw;
+  }
   return null;
 }
 
+/**
+ * Minimal device shape used by the AppGrid dropdown. Matches the
+ * subset of `Device` (lib/devices.ts) the client actually reads —
+ * avoids dragging better-sqlite3 type imports into a client bundle.
+ */
+export interface AppGridDevice {
+  id: string;
+  isUnknownPlaceholder?: boolean;
+  name: string;
+}
+
+/** Validate a `?device=<id>` URL param against the supplied list. */
+function parseDeviceParam(
+  raw: string | null,
+  devices: readonly AppGridDevice[]
+): string | null {
+  if (!raw) {
+    return null;
+  }
+  return devices.some((d) => d.id === raw) ? raw : null;
+}
+
 interface AppGridProps {
+  /**
+   * `appId → deviceId[]` lookup. Apps with no junction-table rows are
+   * absent from the map; the filter renders them as "Unattached" so a
+   * dropdown that scopes to a specific device hides them. The server
+   * always builds this from the `app_devices` junction (lib/devices.ts).
+   */
+  appDeviceMap?: Record<string, string[]>;
+  /** Active audience — drives review-queue guardian variant + copy. */
+  audience?: "self" | "loved_one" | "guardian";
+  /**
+   * Devices the user has connected — drives the device-scope dropdown.
+   * Sorted by recency in the server query so the most-recently-synced
+   * device sits at the top of the menu. Empty array hides the filter.
+   */
+  devices?: AppGridDevice[];
+  /**
+   * Resolved flags for this surface (round 3 wave E). Optional — when not
+   * passed, all surfaces default to visible (legacy behaviour).
+   */
+  flags?: AppGridFlagState;
+  /** Whether the user has a privacy profile set (controls mismatch UI). */
+  hasProfile?: boolean;
   initialApps: App[];
   /**
    * User-authored "custom" apps (web clips, TestFlight, sideloaded, personal
@@ -126,29 +188,6 @@ interface AppGridProps {
    */
   initialManualApps?: ManualApp[];
   manualSources?: ManualAppSourceMeta[];
-  /**
-   * Per-app badge data keyed by `App.id`. Keys are only present when the user
-   * has an active privacy profile AND we've computed a comparison for that
-   * app. When this map is empty (no profile set, or DB not ready) the card
-   * renders without a badge — mirroring the original behaviour pre-profile.
-   */
-  profileBadges?: Record<string, AppProfileBadge>;
-  /**
-   * Local user's verdict per app — `appId` → `'safe' | 'replace' | 'uninstall'`.
-   * Drives the verdict pill on each card. Apps the user hasn't decided on
-   * are absent from the map (treated as "undecided"). Imported
-   * recommendations don't appear here — they live on the detail page
-   * picker so they read as advice, not as the user's own decision.
-   */
-  userVerdicts?: Record<string, import('../../lib/verdict-types').VerdictValue>;
-  /**
-   * Server-hydrated value of the `track_accessibility_labels` setting. When
-   * false, the accessibility filter row is hidden entirely and any existing
-   * `?access=…` query param is ignored — matching how the chip / tab are
-   * suppressed on the detail page. Defaults to `true` so the filter is
-   * visible for users on installs that predate the setting.
-   */
-  showAccessibilityFilter?: boolean;
   /**
    * Per-app breakdown of which change categories (privacy-label,
    * accessibility, privacy-policy) are currently pending acknowledgement.
@@ -162,43 +201,59 @@ interface AppGridProps {
     { privacy: boolean; accessibility: boolean; policy: boolean }
   >;
   /**
-   * Resolved flags for this surface (round 3 wave E). Optional — when not
-   * passed, all surfaces default to visible (legacy behaviour).
+   * Per-app badge data keyed by `App.id`. Keys are only present when the user
+   * has an active privacy profile AND we've computed a comparison for that
+   * app. When this map is empty (no profile set, or DB not ready) the card
+   * renders without a badge — mirroring the original behaviour pre-profile.
    */
-  flags?: AppGridFlagState;
-  /** Active audience — drives review-queue guardian variant + copy. */
-  audience?: 'self' | 'loved_one' | 'guardian';
-  /** Whether the user has a privacy profile set (controls mismatch UI). */
-  hasProfile?: boolean;
+  profileBadges?: Record<string, AppProfileBadge>;
+  /**
+   * Server-hydrated value of the `track_accessibility_labels` setting. When
+   * false, the accessibility filter row is hidden entirely and any existing
+   * `?access=…` query param is ignored — matching how the chip / tab are
+   * suppressed on the detail page. Defaults to `true` so the filter is
+   * visible for users on installs that predate the setting.
+   */
+  showAccessibilityFilter?: boolean;
   /** Show the progress bar in the queue running header. */
   showQueueProgressBar?: boolean;
+  /**
+   * Local user's verdict per app — `appId` → `'safe' | 'replace' | 'uninstall'`.
+   * Drives the verdict pill on each card. Apps the user hasn't decided on
+   * are absent from the map (treated as "undecided"). Imported
+   * recommendations don't appear here — they live on the detail page
+   * picker so they read as advice, not as the user's own decision.
+   */
+  userVerdicts?: Record<string, import("../../lib/verdict-types").VerdictValue>;
 }
 
 export interface AppGridFlagState {
-  filterSearch: boolean;
-  filterSortTabs: boolean;
-  filterRiskButtons: boolean;
-  filterProfileMismatch: boolean;
-  filterAccessibility: boolean;
-  filterActiveBanners: boolean;
-  actionsSyncFiltered: boolean;
-  actionsSyncAll: boolean;
+  actionsAddApps: boolean;
   actionsCompareMode: boolean;
   actionsCustomAppsNav: boolean;
-  actionsAddApps: boolean;
-  cardChangeDot: boolean;
-  cardProfileBadge: boolean;
-  cardFreshnessChip: boolean;
-  cardRiskPill: boolean;
-  cardRiskChips: boolean;
-  cardResyncButton: boolean;
-  cardDeleteButton: boolean;
+  actionsSyncAll: boolean;
+  actionsSyncFiltered: boolean;
   cardAnnotationHighlight: boolean;
+  cardChangeDot: boolean;
+  cardDeleteButton: boolean;
+  cardFreshnessChip: boolean;
+  cardProfileBadge: boolean;
+  cardResyncButton: boolean;
+  cardRiskChips: boolean;
+  cardRiskPill: boolean;
   cardVerdictPill: boolean;
   emptyState: boolean;
-  reviewQueueEnabled: boolean;
+  filterAccessibility: boolean;
+  filterActiveBanners: boolean;
+  /** Device-scope dropdown (hidden when fewer than 2 devices). */
+  filterDevice: boolean;
+  filterProfileMismatch: boolean;
+  filterRiskButtons: boolean;
+  filterSearch: boolean;
+  filterSortTabs: boolean;
   reviewQueueBulkSelect: boolean;
   reviewQueueCfgutilUninstall: boolean;
+  reviewQueueEnabled: boolean;
 }
 
 export default function AppGrid({
@@ -210,9 +265,11 @@ export default function AppGrid({
   showAccessibilityFilter = true,
   pendingChangeCategoriesByApp = {},
   flags,
-  audience = 'self',
+  audience = "self",
   hasProfile = false,
   showQueueProgressBar = true,
+  devices = [],
+  appDeviceMap = {},
 }: AppGridProps) {
   // i18n — first wave covers page title, filter/sort chrome (placeholder,
   // aria-labels, clear-filter buttons, "All risks" pseudo-option),
@@ -223,12 +280,12 @@ export default function AppGrid({
   // filter-button tooltips line up with the active locale. The remaining
   // per-row card-body copy (developer chip, last-changed relative
   // timestamps) is still English; tracked under the broader sweep.
-  const tGrid = useTranslations('app_grid');
-  const tBadge = useTranslations('profile_badge');
-  const tRisk = useTranslations('risk');
+  const tGrid = useTranslations("app_grid");
+  const tBadge = useTranslations("profile_badge");
+  const tRisk = useTranslations("risk");
   // Manual-source short labels (Web app / TestFlight / Personal /
   // Sideloaded) for the small badge on manual-app cards.
-  const tSource = useTranslations('manual_app_source');
+  const tSource = useTranslations("manual_app_source");
 
   // Resolve effective flags with legacy "all-on" defaults so callers that
   // haven't been wired yet still render exactly as before.
@@ -238,6 +295,7 @@ export default function AppGrid({
     filterRiskButtons: flags?.filterRiskButtons ?? true,
     filterProfileMismatch: flags?.filterProfileMismatch ?? true,
     filterAccessibility: flags?.filterAccessibility ?? true,
+    filterDevice: flags?.filterDevice ?? true,
     filterActiveBanners: flags?.filterActiveBanners ?? true,
     actionsSyncFiltered: flags?.actionsSyncFiltered ?? true,
     actionsSyncAll: flags?.actionsSyncAll ?? true,
@@ -272,7 +330,9 @@ export default function AppGrid({
   // hydrate() fallback on the server.
   const manualSourceMeta = useMemo(() => {
     const map = new Map<ManualAppSource, ManualAppSourceMeta>();
-    for (const meta of manualSources) map.set(meta.value, meta);
+    for (const meta of manualSources) {
+      map.set(meta.value, meta);
+    }
     return map;
   }, [manualSources]);
 
@@ -280,15 +340,15 @@ export default function AppGrid({
   const router = useRouter();
   const pathname = usePathname();
   const riskFilter = useMemo(
-    () => parseRiskParam(searchParams?.get('risk') ?? null),
-    [searchParams],
+    () => parseRiskParam(searchParams?.get("risk") ?? null),
+    [searchParams]
   );
   // URL-backed "only show apps that break my privacy profile" toggle. Same
   // deep-link pattern as `?risk=…` so a user can bookmark "show me the
   // problem apps". Absent / "0" / anything else → false.
   const mismatchOnly = useMemo(
-    () => searchParams?.get('mismatch') === '1',
-    [searchParams],
+    () => searchParams?.get("mismatch") === "1",
+    [searchParams]
   );
   // URL-backed accessibility filter. `?access=has` shows apps declaring at
   // least one accessibility feature; `?access=missing` shows apps where the
@@ -296,22 +356,41 @@ export default function AppGrid({
   // takes precedence over the URL so a user who turned the feature off in
   // Settings doesn't land on a grid pre-filtered by it.
   const accessibilityFilter = useMemo<AccessibilityFilter | null>(() => {
-    if (!showAccessibilityFilter) return null;
-    return parseAccessibilityParam(searchParams?.get('access') ?? null);
+    if (!showAccessibilityFilter) {
+      return null;
+    }
+    return parseAccessibilityParam(searchParams?.get("access") ?? null);
   }, [searchParams, showAccessibilityFilter]);
+  // URL-backed device-scope filter. Validates against the supplied device
+  // list so a stale bookmark to a deleted device falls back to "all".
+  // Also accepts the sentinel `'unattached'` for apps with no device
+  // links (legacy manual entries, pre-junction installs) so users can
+  // surface or hide those specifically.
+  const deviceFilter = useMemo<string | null>(() => {
+    const raw = searchParams?.get("device") ?? null;
+    if (raw === "unattached") {
+      return "unattached";
+    }
+    return parseDeviceParam(raw, devices);
+  }, [searchParams, devices]);
   // URL-backed sort order. Matches the `?risk=` / `?mismatch=` pattern so
   // navigating into an app and using browser back restores the user's
   // chosen sort instead of snapping to the default. Unknown / missing
   // values fall back to 'risk'.
   const sort: SortKey = useMemo(() => {
-    const raw = searchParams?.get('sort') ?? null;
-    if (raw === 'name' || raw === 'synced' || raw === 'permissions' || raw === 'risk') {
+    const raw = searchParams?.get("sort") ?? null;
+    if (
+      raw === "name" ||
+      raw === "synced" ||
+      raw === "permissions" ||
+      raw === "risk"
+    ) {
       return raw;
     }
-    return 'risk';
+    return "risk";
   }, [searchParams]);
-  const [filter, setFilter] = useState('');
-  const [toast, setToast] = useState('');
+  const [filter, setFilter] = useState("");
+  const [toast, setToast] = useState("");
 
   // ── Multi-select for side-by-side compare ────────────────────────────
   //
@@ -337,15 +416,17 @@ export default function AppGrid({
   // `queueOpen` so it can co-exist with whatever pageMode is current.
   // Compare mode and Select mode are mutually exclusive — entering one
   // exits the other to keep card-click semantics unambiguous.
-  const [pageMode, setPageMode] = useState<'grid' | 'select'>('grid');
+  const [pageMode, setPageMode] = useState<"grid" | "select">("grid");
   const [queueOpen, setQueueOpen] = useState(false);
   const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([]);
   // Snapshot of verdicts at the moment Select mode was entered — drives
   // the per-app rollback set surfaced by the BulkSelectBar's Undo toast.
-  const [bulkPrevVerdicts, setBulkPrevVerdicts] = useState<Record<string, import('../../lib/verdict-types').VerdictValue>>({});
+  const [bulkPrevVerdicts, setBulkPrevVerdicts] = useState<
+    Record<string, import("../../lib/verdict-types").VerdictValue>
+  >({});
 
   const enterSelectMode = useCallback(() => {
-    setPageMode('select');
+    setPageMode("select");
     setCompareMode(false);
     setSelectedIds([]);
     setBulkSelectedIds([]);
@@ -353,28 +434,30 @@ export default function AppGrid({
   }, [userVerdicts]);
 
   const exitSelectMode = useCallback(() => {
-    setPageMode('grid');
+    setPageMode("grid");
     setBulkSelectedIds([]);
   }, []);
 
   const toggleBulkSelection = useCallback((appId: string) => {
-    setBulkSelectedIds(prev =>
-      prev.includes(appId) ? prev.filter(id => id !== appId) : [...prev, appId],
+    setBulkSelectedIds((prev) =>
+      prev.includes(appId)
+        ? prev.filter((id) => id !== appId)
+        : [...prev, appId]
     );
   }, []);
 
   const setRiskLevel = useCallback(
     (next: RiskLevel | null) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
       if (next) {
-        params.set('risk', next);
+        params.set("risk", next);
       } else {
-        params.delete('risk');
+        params.delete("risk");
       }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams]
   );
 
   const clearRiskFilter = useCallback(() => setRiskLevel(null), [setRiskLevel]);
@@ -384,27 +467,30 @@ export default function AppGrid({
   // URLs clean) via router.replace without a full navigation.
   const setSort = useCallback(
     (next: SortKey) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      if (next === 'risk') {
-        params.delete('sort');
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      if (next === "risk") {
+        params.delete("sort");
       } else {
-        params.set('sort', next);
+        params.set("sort", next);
       }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams]
   );
 
   const setMismatchOnly = useCallback(
     (next: boolean) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      if (next) params.set('mismatch', '1');
-      else params.delete('mismatch');
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      if (next) {
+        params.set("mismatch", "1");
+      } else {
+        params.delete("mismatch");
+      }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams]
   );
 
   // URL writer for the accessibility filter pills. Passing `null` clears
@@ -412,13 +498,32 @@ export default function AppGrid({
   // setRiskLevel / setSort behaviour.
   const setAccessibilityFilter = useCallback(
     (next: AccessibilityFilter | null) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      if (next) params.set('access', next);
-      else params.delete('access');
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      if (next) {
+        params.set("access", next);
+      } else {
+        params.delete("access");
+      }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams]
+  );
+
+  /** URL writer for the device-scope dropdown. Accepts a device id, the
+   *  string `'unattached'` (apps with no junction rows), or null to clear. */
+  const setDeviceFilter = useCallback(
+    (next: string | null) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      if (next) {
+        params.set("device", next);
+      } else {
+        params.delete("device");
+      }
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams]
   );
 
   // Whether the user has an active privacy profile (i.e. we received any
@@ -426,15 +531,19 @@ export default function AppGrid({
   // there's nothing to filter by until a profile exists.
   const hasProfileBadges = useMemo(
     () => Object.keys(profileBadges).length > 0,
-    [profileBadges],
+    [profileBadges]
   );
   // Tally of apps with at least one category above the user's tolerance.
   // When this is 0 the toggle is hidden entirely — filtering to an empty
   // set from a clean profile state would only ever produce the "all clear"
   // empty state.
   const mismatchCount = useMemo(
-    () => apps.reduce((n, a) => (profileBadges[a.id]?.count ?? 0) > 0 ? n + 1 : n, 0),
-    [apps, profileBadges],
+    () =>
+      apps.reduce(
+        (n, a) => ((profileBadges[a.id]?.count ?? 0) > 0 ? n + 1 : n),
+        0
+      ),
+    [apps, profileBadges]
   );
 
   // Subset the risk-filter tabs count against. The tabs ARE the risk filter,
@@ -446,25 +555,80 @@ export default function AppGrid({
   // confusing.
   const prefilteredApps = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    return apps.filter(a => {
+    return apps.filter((a) => {
       if (q) {
         const matches =
           a.name.toLowerCase().includes(q) ||
           (a.developer ? a.developer.toLowerCase().includes(q) : false);
-        if (!matches) return false;
+        if (!matches) {
+          return false;
+        }
       }
-      if (mismatchOnly && (profileBadges[a.id]?.count ?? 0) === 0) return false;
+      if (mismatchOnly && (profileBadges[a.id]?.count ?? 0) === 0) {
+        return false;
+      }
+      if (deviceFilter) {
+        const linkedDevices = appDeviceMap[a.id] ?? [];
+        if (deviceFilter === "unattached") {
+          if (linkedDevices.length > 0) {
+            return false;
+          }
+        } else if (!linkedDevices.includes(deviceFilter)) {
+          return false;
+        }
+      }
       return true;
     });
-  }, [apps, filter, mismatchOnly, profileBadges]);
+  }, [apps, filter, mismatchOnly, profileBadges, deviceFilter, appDeviceMap]);
+
+  // Per-device counts for the dropdown labels. Counting against the full
+  // `apps` list (not `prefilteredApps`) so the menu reflects the underlying
+  // device totals rather than what's currently filtered — same model as
+  // the risk-tab counts.
+  const deviceCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    let unattached = 0;
+    for (const a of apps) {
+      const links = appDeviceMap[a.id] ?? [];
+      if (links.length === 0) {
+        unattached += 1;
+      } else {
+        for (const id of links) {
+          counts.set(id, (counts.get(id) ?? 0) + 1);
+        }
+      }
+    }
+    return { perDevice: counts, unattached };
+  }, [apps, appDeviceMap]);
+
+  // Show the dropdown whenever there's at least one device row. We
+  // previously hid it for single-device users on the theory "a one-item
+  // dropdown is noise" — but in practice users who recently imported
+  // expected to see *which* device the grid was showing, and the silent
+  // hide made them think the feature was broken. The cost of an always-
+  // present menu is one extra row in the toolbar; cheap.
+  const showDeviceFilter = useMemo(() => {
+    if (!f.filterDevice) {
+      return false;
+    }
+    const knownDeviceCount = devices.length;
+    const hasUnattached = deviceCounts.unattached > 0;
+    return knownDeviceCount + (hasUnattached ? 1 : 0) >= 1;
+  }, [f.filterDevice, devices, deviceCounts]);
 
   // Per-level counts against the prefiltered subset — drives the badge on
   // each risk-filter tab.
   const riskLevelCounts = useMemo(() => {
     const counts: Record<RiskLevel, number> = {
-      high: 0, moderate: 0, low: 0, minimal: 0, unknown: 0,
+      high: 0,
+      moderate: 0,
+      low: 0,
+      minimal: 0,
+      unknown: 0,
     };
-    for (const app of prefilteredApps) counts[computeRiskLevel(app)]++;
+    for (const app of prefilteredApps) {
+      counts[computeRiskLevel(app)]++;
+    }
     return counts;
   }, [prefilteredApps]);
   const [pendingDelete, setPendingDelete] = useState<App | null>(null);
@@ -476,110 +640,153 @@ export default function AppGrid({
    * `pendingDelete` directly because that state's typed as `App` and
    * ManualApps go through their own DELETE endpoint.
    */
-  const [pendingDeleteManual, setPendingDeleteManual] = useState<ManualApp | null>(null);
+  const [pendingDeleteManual, setPendingDeleteManual] =
+    useState<ManualApp | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    setTimeout(() => setToast(""), 3000);
   };
 
   const refreshApps = useCallback(async () => {
-    const res = await fetch('/api/apps');
+    const res = await fetch("/api/apps");
     setApps(await res.json());
   }, []);
 
   const syncApp = async (appId: string, appUrl: string) => {
-    setSyncingIds(prev => new Set([...prev, appId]));
-    const appName = apps.find(a => a.id === appId)?.name ?? tGrid('fallback_app_name');
+    setSyncingIds((prev) => new Set([...prev, appId]));
+    const appName =
+      apps.find((a) => a.id === appId)?.name ?? tGrid("fallback_app_name");
     const controller = new AbortController();
     const handle = taskCenter.startTask({
-      title: tGrid('task_resync_title', { name: appName }),
-      subtitle: tGrid('task_resync_subtitle'),
-      kind: 'scrape',
+      title: tGrid("task_resync_title", { name: appName }),
+      subtitle: tGrid("task_resync_subtitle"),
+      kind: "scrape",
       href: `/apps/${appId}`,
       onCancel: () => controller.abort(),
     });
     try {
-      const res = await fetch('/api/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: [appUrl], resync: true, summarizePolicies: false }),
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          urls: [appUrl],
+          resync: true,
+          summarizePolicies: false,
+        }),
         signal: controller.signal,
       });
       const data = await res.json();
       const result = data.results?.[0];
       if (result?.changesDetected) {
-        showToast(tGrid('toast_changes_detected', { name: appName }));
-        handle.complete('done', tGrid('task_done_changes', { count: result.changeCount }));
+        showToast(tGrid("toast_changes_detected", { name: appName }));
+        handle.complete(
+          "done",
+          tGrid("task_done_changes", { count: result.changeCount })
+        );
       } else {
-        showToast(tGrid('toast_app_up_to_date'));
-        handle.complete('done', tGrid('task_done_no_changes'));
+        showToast(tGrid("toast_app_up_to_date"));
+        handle.complete("done", tGrid("task_done_no_changes"));
       }
       await refreshApps();
     } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') {
+      if ((err as Error)?.name !== "AbortError") {
         console.error(`[apps] Re-sync failed for ${appName} (${appId}):`, err);
-        showToast(tGrid('toast_sync_failed'));
-        handle.complete('error', (err as Error)?.message ?? tGrid('task_error_sync_failed'));
+        showToast(tGrid("toast_sync_failed"));
+        handle.complete(
+          "error",
+          (err as Error)?.message ?? tGrid("task_error_sync_failed")
+        );
       }
     } finally {
-      setSyncingIds(prev => { const s = new Set(prev); s.delete(appId); return s; });
+      setSyncingIds((prev) => {
+        const s = new Set(prev);
+        s.delete(appId);
+        return s;
+      });
     }
   };
 
-  const syncAppList = async (appList: App[], { scope }: { scope: 'all' | 'filtered' }) => {
-    if (appList.length === 0) return;
+  const syncAppList = async (
+    appList: App[],
+    { scope }: { scope: "all" | "filtered" }
+  ) => {
+    if (appList.length === 0) {
+      return;
+    }
     setSyncingAll(true);
     const total = appList.length;
     const controller = new AbortController();
-    const title = scope === 'all' ? tGrid('task_sync_all_title') : tGrid('task_sync_filtered_title');
-    const successMsg = scope === 'all'
-      ? tGrid('toast_all_synced')
-      : tGrid('toast_n_synced', { count: total });
+    const title =
+      scope === "all"
+        ? tGrid("task_sync_all_title")
+        : tGrid("task_sync_filtered_title");
+    const successMsg =
+      scope === "all"
+        ? tGrid("toast_all_synced")
+        : tGrid("toast_n_synced", { count: total });
     const handle = taskCenter.startTask({
       title,
-      subtitle: tGrid('task_sync_subtitle_count', { count: total }),
-      kind: 'sync',
-      href: '/dashboard',
+      subtitle: tGrid("task_sync_subtitle_count", { count: total }),
+      kind: "sync",
+      href: "/dashboard",
       onCancel: () => controller.abort(),
-      progress: { current: 0, total, label: tGrid('task_progress_label', { current: 0, total }) },
+      progress: {
+        current: 0,
+        total,
+        label: tGrid("task_progress_label", { current: 0, total }),
+      },
     });
     try {
-      await fetch('/api/scrape', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: appList.map(a => a.url), resync: true, summarizePolicies: false }),
+      await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          urls: appList.map((a) => a.url),
+          resync: true,
+          summarizePolicies: false,
+        }),
         signal: controller.signal,
       });
       await refreshApps();
       showToast(successMsg);
-      handle.complete('done', tGrid('task_done_synced', { count: total }));
+      handle.complete("done", tGrid("task_done_synced", { count: total }));
     } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') {
+      if ((err as Error)?.name !== "AbortError") {
         console.error(`[apps] Sync-${scope} failed:`, err);
-        showToast(tGrid('toast_sync_failed'));
-        handle.complete('error', (err as Error)?.message ?? tGrid('task_error_sync_failed'));
+        showToast(tGrid("toast_sync_failed"));
+        handle.complete(
+          "error",
+          (err as Error)?.message ?? tGrid("task_error_sync_failed")
+        );
       }
     }
     setSyncingAll(false);
   };
 
-  const syncAll = () => syncAppList(apps, { scope: 'all' });
-  const syncFiltered = (list: App[]) => syncAppList(list, { scope: 'filtered' });
+  const syncAll = () => syncAppList(apps, { scope: "all" });
+  const syncFiltered = (list: App[]) =>
+    syncAppList(list, { scope: "filtered" });
 
   const deleteApp = async () => {
-    if (!pendingDelete) return;
+    if (!pendingDelete) {
+      return;
+    }
 
     setDeletingId(pendingDelete.id);
     try {
-      const res = await fetch(`/api/apps?id=${pendingDelete.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setApps(prev => prev.filter(app => app.id !== pendingDelete.id));
+      const res = await fetch(`/api/apps?id=${pendingDelete.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      setApps((prev) => prev.filter((app) => app.id !== pendingDelete.id));
       setPendingDelete(null);
-      showToast(tGrid('toast_app_removed'));
+      showToast(tGrid("toast_app_removed"));
     } catch (error) {
       console.error(`[apps] Delete failed for ${pendingDelete?.id}:`, error);
-      showToast(tGrid('toast_delete_failed'));
+      showToast(tGrid("toast_delete_failed"));
     } finally {
       setDeletingId(null);
     }
@@ -587,45 +794,71 @@ export default function AppGrid({
 
   const daysSince = (ts: number) => {
     const d = Math.floor((Date.now() - ts) / 86_400_000);
-    if (d === 0) return tGrid('freshness.today');
-    if (d === 1) return tGrid('freshness.yesterday');
-    return tGrid('freshness.days_ago', { count: d });
+    if (d === 0) {
+      return tGrid("freshness.today");
+    }
+    if (d === 1) {
+      return tGrid("freshness.yesterday");
+    }
+    return tGrid("freshness.days_ago", { count: d });
   };
 
   const freshnessClass = (ts: number) => {
     const d = Math.floor((Date.now() - ts) / 86_400_000);
-    if (d > 30) return 'stale';
-    if (d > 7) return 'aging';
-    return 'fresh';
+    if (d > 30) {
+      return "stale";
+    }
+    if (d > 7) {
+      return "aging";
+    }
+    return "fresh";
   };
 
   const sorted = [...apps]
-    .filter(a => {
+    .filter((a) => {
       const q = filter.trim().toLowerCase();
-      if (!q) return true;
-      if (a.name.toLowerCase().includes(q)) return true;
-      if (a.developer && a.developer.toLowerCase().includes(q)) return true;
+      if (!q) {
+        return true;
+      }
+      if (a.name.toLowerCase().includes(q)) {
+        return true;
+      }
+      if (a.developer?.toLowerCase().includes(q)) {
+        return true;
+      }
       return false;
     })
-    .filter(a => (riskFilter ? computeRiskLevel(a) === riskFilter : true))
-    .filter(a => (mismatchOnly ? (profileBadges[a.id]?.count ?? 0) > 0 : true))
-    .filter(a => {
+    .filter((a) => (riskFilter ? computeRiskLevel(a) === riskFilter : true))
+    .filter((a) =>
+      mismatchOnly ? (profileBadges[a.id]?.count ?? 0) > 0 : true
+    )
+    .filter((a) => {
       // Accessibility filter is only meaningful for apps we've actually
       // evaluated — `null` rows predate the scraper and shouldn't silently
       // count as "missing" (or as "has"). Exclude them from either bucket.
-      if (!accessibilityFilter) return true;
-      if (a.hasAccessibilityLabels == null) return false;
-      return accessibilityFilter === 'has'
+      if (!accessibilityFilter) {
+        return true;
+      }
+      if (a.hasAccessibilityLabels == null) {
+        return false;
+      }
+      return accessibilityFilter === "has"
         ? a.hasAccessibilityLabels === 1
         : a.hasAccessibilityLabels === 0;
     })
     .sort((a, b) => {
-      if (sort === 'name') return a.name.localeCompare(b.name);
-      if (sort === 'synced') return b.lastSynced - a.lastSynced;
-      if (sort === 'permissions') return b.categoryCount - a.categoryCount;
-      if (sort === 'risk') {
+      if (sort === "name") {
+        return a.name.localeCompare(b.name);
+      }
+      if (sort === "synced") {
+        return b.lastSynced - a.lastSynced;
+      }
+      if (sort === "permissions") {
+        return b.categoryCount - a.categoryCount;
+      }
+      if (sort === "risk") {
         const diff = computeRiskScore(b) - computeRiskScore(a);
-        return diff !== 0 ? diff : a.name.localeCompare(b.name);
+        return diff === 0 ? a.name.localeCompare(b.name) : diff;
       }
       return 0;
     });
@@ -639,22 +872,36 @@ export default function AppGrid({
   // the current sort mode, except for 'synced' which maps naturally to
   // `updatedAt`.
   const filteredManualApps = useMemo(() => {
-    if (riskFilter) return [];
-    if (mismatchOnly) return [];
+    if (riskFilter) {
+      return [];
+    }
+    if (mismatchOnly) {
+      return [];
+    }
     // Manual apps have no App Store listing and therefore no Apple
     // accessibility shelf; surfacing them under a has/missing filter would
     // imply they had been evaluated either way, which they haven't.
-    if (accessibilityFilter) return [];
+    if (accessibilityFilter) {
+      return [];
+    }
     const q = filter.trim().toLowerCase();
     return [...manualApps]
-      .filter(m => {
-        if (!q) return true;
-        if (m.name.toLowerCase().includes(q)) return true;
-        if (m.developer && m.developer.toLowerCase().includes(q)) return true;
+      .filter((m) => {
+        if (!q) {
+          return true;
+        }
+        if (m.name.toLowerCase().includes(q)) {
+          return true;
+        }
+        if (m.developer?.toLowerCase().includes(q)) {
+          return true;
+        }
         return false;
       })
       .sort((a, b) => {
-        if (sort === 'synced') return b.updatedAt - a.updatedAt;
+        if (sort === "synced") {
+          return b.updatedAt - a.updatedAt;
+        }
         return a.name.localeCompare(b.name);
       });
   }, [manualApps, filter, riskFilter, mismatchOnly, accessibilityFilter, sort]);
@@ -675,37 +922,47 @@ export default function AppGrid({
    */
   const deleteManualConfirmed = async () => {
     const app = pendingDeleteManual;
-    if (!app) return;
+    if (!app) {
+      return;
+    }
     setDeletingManualId(app.id);
     try {
-      const res = await fetch(`/api/manual-apps/${app.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setManualApps(prev => prev.filter(m => m.id !== app.id));
+      const res = await fetch(`/api/manual-apps/${app.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      setManualApps((prev) => prev.filter((m) => m.id !== app.id));
       setPendingDeleteManual(null);
-      showToast(tGrid('toast_custom_app_removed'));
+      showToast(tGrid("toast_custom_app_removed"));
     } catch (error) {
       console.error(`[apps] Manual-app delete failed for ${app.id}:`, error);
-      showToast(tGrid('toast_delete_failed'));
+      showToast(tGrid("toast_delete_failed"));
     } finally {
       setDeletingManualId(null);
     }
   };
 
   useEffect(() => {
-    if (!pendingDelete) return;
+    if (!pendingDelete) {
+      return;
+    }
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deletingId) {
+      if (event.key === "Escape" && !deletingId) {
         setPendingDelete(null);
       }
     };
 
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [pendingDelete, deletingId]);
 
   const stopCardNavigation = (
-    event: React.MouseEvent<HTMLButtonElement> | React.PointerEvent<HTMLButtonElement>,
+    event:
+      | React.MouseEvent<HTMLButtonElement>
+      | React.PointerEvent<HTMLButtonElement>
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -713,7 +970,7 @@ export default function AppGrid({
 
   const handleActionClick = (
     event: React.MouseEvent<HTMLButtonElement>,
-    action: () => void | Promise<void>,
+    action: () => void | Promise<void>
   ) => {
     stopCardNavigation(event);
     void action();
@@ -721,22 +978,21 @@ export default function AppGrid({
 
   // ── Compare-selection helpers ────────────────────────────────────────
 
-  const toggleSelection = useCallback(
-    (appId: string) => {
-      setSelectedIds(prev => {
-        if (prev.includes(appId)) {
-          return prev.filter(id => id !== appId);
-        }
-        // Cap at COMPARE_MAX by dropping the OLDEST entry so a stray third
-        // click doesn't feel like nothing happened — the newest click always
-        // wins.
-        const next = [...prev, appId];
-        if (next.length > COMPARE_MAX) return next.slice(next.length - COMPARE_MAX);
-        return next;
-      });
-    },
-    [],
-  );
+  const toggleSelection = useCallback((appId: string) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(appId)) {
+        return prev.filter((id) => id !== appId);
+      }
+      // Cap at COMPARE_MAX by dropping the OLDEST entry so a stray third
+      // click doesn't feel like nothing happened — the newest click always
+      // wins.
+      const next = [...prev, appId];
+      if (next.length > COMPARE_MAX) {
+        return next.slice(next.length - COMPARE_MAX);
+      }
+      return next;
+    });
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedIds([]);
@@ -744,7 +1000,9 @@ export default function AppGrid({
   }, []);
 
   const goToCompare = useCallback(() => {
-    if (selectedIds.length < 2) return;
+    if (selectedIds.length < 2) {
+      return;
+    }
     const [a, b] = selectedIds;
     const qs = new URLSearchParams({ a: `id:${a}`, b: `id:${b}` }).toString();
     router.push(`/dashboard/compare?${qs}`);
@@ -755,7 +1013,7 @@ export default function AppGrid({
       // Select mode wins over compare — when the user has opted into bulk
       // marking, every click toggles selection. Card body navigation is
       // suspended until they exit Select mode.
-      if (pageMode === 'select') {
+      if (pageMode === "select") {
         event.preventDefault();
         event.stopPropagation();
         toggleBulkSelection(appId);
@@ -780,7 +1038,7 @@ export default function AppGrid({
           setCompareMode(false);
           setBulkPrevVerdicts({ ...userVerdicts });
           setBulkSelectedIds(promoted);
-          setPageMode('select');
+          setPageMode("select");
           return;
         }
         toggleSelection(appId);
@@ -804,7 +1062,7 @@ export default function AppGrid({
       toggleBulkSelection,
       toggleSelection,
       userVerdicts,
-    ],
+    ]
   );
 
   // ── Keyboard shortcuts for the compare flow ──────────────────────────
@@ -819,31 +1077,39 @@ export default function AppGrid({
       const t = event.target;
       if (t instanceof HTMLElement) {
         const tag = t.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-        if (t.isContentEditable) return;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+          return;
+        }
+        if (t.isContentEditable) {
+          return;
+        }
       }
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
 
-      if (event.key === 'Escape' && (selectedIds.length > 0 || compareMode)) {
+      if (event.key === "Escape" && (selectedIds.length > 0 || compareMode)) {
         clearSelection();
         return;
       }
-      if (event.key === 'Enter' && selectedIds.length >= 2 && !pendingDelete) {
+      if (event.key === "Enter" && selectedIds.length >= 2 && !pendingDelete) {
         event.preventDefault();
         goToCompare();
       }
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [selectedIds, compareMode, clearSelection, goToCompare, pendingDelete]);
 
   // If a selected app is removed from the grid (deleted, filtered out for
   // good, or the source list changes), drop it from selection too so the
   // dock doesn't hold on to phantom IDs.
   useEffect(() => {
-    if (selectedIds.length === 0) return;
-    const stillExists = new Set(apps.map(a => a.id));
-    const cleaned = selectedIds.filter(id => stillExists.has(id));
+    if (selectedIds.length === 0) {
+      return;
+    }
+    const stillExists = new Set(apps.map((a) => a.id));
+    const cleaned = selectedIds.filter((id) => stillExists.has(id));
     if (cleaned.length !== selectedIds.length) {
       setSelectedIds(cleaned);
     }
@@ -853,107 +1119,129 @@ export default function AppGrid({
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">{tGrid('page_title')}</h1>
+          <h1 className="page-title">{tGrid("page_title")}</h1>
           <p className="page-subtitle">
             {filterActive
-              ? tGrid('showing_of', { shown: totalShown, total: totalTracked })
-              : tGrid('n_tracked', { count: totalTracked })}
+              ? tGrid("showing_of", { shown: totalShown, total: totalTracked })
+              : tGrid("n_tracked", { count: totalTracked })}
           </p>
         </div>
         <div className="header-actions">
-          {f.actionsSyncFiltered && (riskFilter || mismatchOnly || filter.trim().length > 0) &&
+          {f.actionsSyncFiltered &&
+            (riskFilter || mismatchOnly || filter.trim().length > 0) &&
             sorted.length > 0 &&
             sorted.length < apps.length && (
               <button
                 className="btn btn-secondary"
-                onClick={() => syncFiltered(sorted)}
                 disabled={syncingAll}
-                title={tGrid('resync_filter_title', { count: sorted.length })}
+                onClick={() => syncFiltered(sorted)}
+                title={tGrid("resync_filter_title", { count: sorted.length })}
               >
-                {syncingAll ? <span className="spinner" /> : '↻'}
+                {syncingAll ? <span className="spinner" /> : "↻"}
                 {syncingAll
-                  ? tGrid('syncing')
-                  : tGrid('sync_n_apps', { count: sorted.length })}
+                  ? tGrid("syncing")
+                  : tGrid("sync_n_apps", { count: sorted.length })}
               </button>
             )}
-          {f.actionsSyncAll && <button
-            className="btn btn-secondary"
-            onClick={syncAll}
-            disabled={syncingAll || apps.length === 0}
-          >
-            {syncingAll ? <span className="spinner" /> : '↻'}
-            {syncingAll ? tGrid('syncing') : tGrid('sync_all')}
-          </button>}
-          {f.actionsCustomAppsNav && <Link
-            href="/dashboard/manual-apps"
-            className="btn btn-secondary"
-            title={tGrid('untracked_title')}
-          >
-            {tGrid('custom_apps')}
-            {manualApps.length > 0 && (
-              <span className="custom-apps-count" aria-label={tGrid('custom_count_aria', { count: manualApps.length })}>
-                {manualApps.length}
-              </span>
-            )}
-          </Link>}
+          {f.actionsSyncAll && (
+            <button
+              className="btn btn-secondary"
+              disabled={syncingAll || apps.length === 0}
+              onClick={syncAll}
+            >
+              {syncingAll ? <span className="spinner" /> : "↻"}
+              {syncingAll ? tGrid("syncing") : tGrid("sync_all")}
+            </button>
+          )}
+          {f.actionsCustomAppsNav && (
+            <Link
+              className="btn btn-secondary"
+              href="/dashboard/manual-apps"
+              title={tGrid("untracked_title")}
+            >
+              {tGrid("custom_apps")}
+              {manualApps.length > 0 && (
+                <span
+                  aria-label={tGrid("custom_count_aria", {
+                    count: manualApps.length,
+                  })}
+                  className="custom-apps-count"
+                >
+                  {manualApps.length}
+                </span>
+              )}
+            </Link>
+          )}
           {/* Enters "Compare mode" — plain clicks toggle selection instead of
               navigating. Mirrors the Shift/Cmd-click power-user path so
               touch devices can reach the same feature. */}
-          {f.actionsCompareMode && <button
-            type="button"
-            data-tour="compare-button"
-            className={`btn ${compareMode ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => {
-              if (compareMode) {
-                clearSelection();
-              } else {
-                setCompareMode(true);
+          {f.actionsCompareMode && (
+            <button
+              aria-pressed={compareMode}
+              className={`btn ${compareMode ? "btn-primary" : "btn-secondary"}`}
+              data-tour="compare-button"
+              onClick={() => {
+                if (compareMode) {
+                  clearSelection();
+                } else {
+                  setCompareMode(true);
+                }
+              }}
+              title={
+                compareMode
+                  ? tGrid("compare_title_on")
+                  : tGrid("compare_title_off")
               }
-            }}
-            title={compareMode ? tGrid('compare_title_on') : tGrid('compare_title_off')}
-            aria-pressed={compareMode}
-          >
-            {compareMode ? tGrid('cancel_compare') : tGrid('compare')}
-          </button>}
+              type="button"
+            >
+              {compareMode ? tGrid("cancel_compare") : tGrid("compare")}
+            </button>
+          )}
           {f.reviewQueueEnabled && (
             <button
-              type="button"
-              className={`btn btn-secondary review-queue-mode-toggle ${queueOpen ? 'is-active' : ''}`}
+              className={`btn btn-secondary review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
+              disabled={apps.length === 0}
               onClick={() => {
-                if (pageMode === 'select') exitSelectMode();
+                if (pageMode === "select") {
+                  exitSelectMode();
+                }
                 setQueueOpen(true);
               }}
-              title={tGrid('mode_toggle_queue_title')}
-              disabled={apps.length === 0}
+              title={tGrid("mode_toggle_queue_title")}
+              type="button"
             >
-              {tGrid('mode_toggle_queue')}
+              {tGrid("mode_toggle_queue")}
             </button>
           )}
           {f.reviewQueueBulkSelect && (
             <button
-              type="button"
-              className={`btn ${pageMode === 'select' ? 'btn-primary' : 'btn-secondary'}`}
+              aria-pressed={pageMode === "select"}
+              className={`btn ${pageMode === "select" ? "btn-primary" : "btn-secondary"}`}
+              disabled={apps.length === 0}
               onClick={() => {
-                if (pageMode === 'select') {
+                if (pageMode === "select") {
                   exitSelectMode();
                 } else {
                   enterSelectMode();
                 }
               }}
-              title={tGrid('mode_toggle_select_title')}
-              aria-pressed={pageMode === 'select'}
-              disabled={apps.length === 0}
+              title={tGrid("mode_toggle_select_title")}
+              type="button"
             >
-              {pageMode === 'select' ? tGrid('mode_toggle_select_exit') : tGrid('mode_toggle_select')}
+              {pageMode === "select"
+                ? tGrid("mode_toggle_select_exit")
+                : tGrid("mode_toggle_select")}
             </button>
           )}
-          {f.actionsAddApps && <Link
-            href="/onboard"
-            className="btn btn-primary"
-            data-flag-target="flag.appgrid.actions.add_apps"
-          >
-            {tGrid('add_apps')}
-          </Link>}
+          {f.actionsAddApps && (
+            <Link
+              className="btn btn-primary"
+              data-flag-target="flag.appgrid.actions.add_apps"
+              href="/onboard"
+            >
+              {tGrid("add_apps")}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -966,98 +1254,158 @@ export default function AppGrid({
           rendered after the app grid where `position: sticky` only
           revealed it on scroll, leaving users on tall pages with no
           visible bar to interact with. */}
-      {pageMode === 'select' && f.reviewQueueBulkSelect && (
+      {pageMode === "select" && f.reviewQueueBulkSelect && (
         <BulkSelectBar
-          selectedIds={bulkSelectedIds}
-          visibleIds={sorted.map(a => a.id)}
           currentVerdicts={bulkPrevVerdicts}
-          onSelectAll={() => setBulkSelectedIds(sorted.map(a => a.id))}
           onClear={() => setBulkSelectedIds([])}
           onExit={exitSelectMode}
+          onSelectAll={() => setBulkSelectedIds(sorted.map((a) => a.id))}
+          selectedIds={bulkSelectedIds}
+          visibleIds={sorted.map((a) => a.id)}
         />
       )}
 
       <div className="toolbar">
-        {f.filterSearch && <div
-          className="search-input-wrap"
-          data-flag-target="flag.appgrid.filter.search"
-        >
-          <span className="search-icon">⌕</span>
-          <input
-            type="search"
-            className="search-input"
-            placeholder={tGrid('filter_input_placeholder')}
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            aria-label={tGrid('filter_input_aria')}
-            // Marks this as the primary search target for the menu-bar
-            // Edit → Find (Cmd+F) action. MenuActionsBridge listens for
-            // the `search:focus` event and focuses+selects this input.
-            data-search-focus="true"
-          />
-        </div>}
+        {f.filterSearch && (
+          <div
+            className="search-input-wrap"
+            data-flag-target="flag.appgrid.filter.search"
+          >
+            <span className="search-icon">⌕</span>
+            <input
+              aria-label={tGrid("filter_input_aria")}
+              className="search-input"
+              // Marks this as the primary search target for the menu-bar
+              // Edit → Find (Cmd+F) action. MenuActionsBridge listens for
+              // the `search:focus` event and focuses+selects this input.
+              data-search-focus="true"
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={tGrid("filter_input_placeholder")}
+              type="search"
+              value={filter}
+            />
+          </div>
+        )}
         {/* Sort mode — exposed as a radiogroup (single-select) so screen
             readers announce position & selection state. type="button"
             prevents the enclosing form (if any) from submitting. */}
-        {f.filterSortTabs && <div className="sort-tabs" role="radiogroup" aria-label={tGrid('sort_aria')}>
-          {(['risk', 'name', 'synced', 'permissions'] as const).map(s => {
-            const selected = sort === s;
-            return (
-              <button
-                key={s}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                className={`sort-tab ${selected ? 'active' : ''}`}
-                onClick={() => setSort(s)}
-              >
-                {s === 'risk'
-                  ? tGrid('sort.highest_risk')
-                  : s === 'name'
-                  ? tGrid('sort.a_z')
-                  : s === 'synced'
-                  ? tGrid('sort.recent')
-                  : tGrid('sort.most_categories')}
-              </button>
-            );
-          })}
-        </div>}
+        {f.filterSortTabs && (
+          <div
+            aria-label={tGrid("sort_aria")}
+            className="sort-tabs"
+            role="radiogroup"
+          >
+            {(["risk", "name", "synced", "permissions"] as const).map((s) => {
+              const selected = sort === s;
+              return (
+                <button
+                  aria-checked={selected}
+                  className={`sort-tab ${selected ? "active" : ""}`}
+                  key={s}
+                  onClick={() => setSort(s)}
+                  role="radio"
+                  type="button"
+                >
+                  {s === "risk"
+                    ? tGrid("sort.highest_risk")
+                    : s === "name"
+                      ? tGrid("sort.a_z")
+                      : s === "synced"
+                        ? tGrid("sort.recent")
+                        : tGrid("sort.most_categories")}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {/* Device-scope dropdown. Auto-hidden by `showDeviceFilter` when
+            the user only has one device (or only unattached apps) — a
+            single-choice dropdown is just noise. Each option carries
+            its app-count so users see how much each device contributes
+            before clicking. The "Unattached" option is gated on there
+            actually being any unattached apps. */}
+        {showDeviceFilter && (
+          <label
+            className="device-filter-wrap"
+            data-flag-target="flag.appgrid.filter.device"
+          >
+            <span className="device-filter-label">
+              {tGrid("device_filter_label")}
+            </span>
+            <select
+              aria-label={tGrid("device_filter_aria")}
+              className="device-filter-select"
+              onChange={(event) => {
+                const value = event.target.value;
+                setDeviceFilter(value === "" ? null : value);
+              }}
+              value={deviceFilter ?? ""}
+            >
+              <option value="">
+                {tGrid("device_filter_all", { count: apps.length })}
+              </option>
+              {devices.map((d) => {
+                const count = deviceCounts.perDevice.get(d.id) ?? 0;
+                return (
+                  <option key={d.id} value={d.id}>
+                    {d.name} · {count}
+                  </option>
+                );
+              })}
+              {deviceCounts.unattached > 0 && (
+                <option value="unattached">
+                  {tGrid("device_filter_unattached", {
+                    count: deviceCounts.unattached,
+                  })}
+                </option>
+              )}
+            </select>
+          </label>
+        )}
         {/* Privacy-profile filter — only visible once the user has set a
             profile and at least one app falls outside it. A single-purpose
             toggle rather than a radiogroup, so it can stack with the risk
             filter (e.g. "High risk apps that also break my profile"). The
             count in the label makes it obvious how much work a click would
             surface. */}
-        {f.filterProfileMismatch && hasProfileBadges && (mismatchCount > 0 || mismatchOnly) && (
-          <button
-            type="button"
-            className={`mismatch-toggle ${mismatchOnly ? 'active' : ''}`}
-            aria-pressed={mismatchOnly}
-            data-flag-target="flag.appgrid.filter.profile_mismatch"
-            onClick={() => setMismatchOnly(!mismatchOnly)}
-            title={
-              mismatchOnly
-                ? tGrid('mismatch_toggle_title_active')
-                : tGrid('mismatch_toggle_title_inactive')
-            }
-          >
-            <span aria-hidden="true" className="mismatch-toggle-icon">⚠</span>
-            <span className="mismatch-toggle-label">{tGrid('profile_mismatches_label')}</span>
-            <span className="mismatch-toggle-count">{mismatchCount}</span>
-          </button>
-        )}
+        {f.filterProfileMismatch &&
+          hasProfileBadges &&
+          (mismatchCount > 0 || mismatchOnly) && (
+            <button
+              aria-pressed={mismatchOnly}
+              className={`mismatch-toggle ${mismatchOnly ? "active" : ""}`}
+              data-flag-target="flag.appgrid.filter.profile_mismatch"
+              onClick={() => setMismatchOnly(!mismatchOnly)}
+              title={
+                mismatchOnly
+                  ? tGrid("mismatch_toggle_title_active")
+                  : tGrid("mismatch_toggle_title_inactive")
+              }
+              type="button"
+            >
+              <span aria-hidden="true" className="mismatch-toggle-icon">
+                ⚠
+              </span>
+              <span className="mismatch-toggle-label">
+                {tGrid("profile_mismatches_label")}
+              </span>
+              <span className="mismatch-toggle-count">{mismatchCount}</span>
+            </button>
+          )}
         {f.filterActiveBanners && riskFilter && (
           <div className={`filter-status filter-status-${riskFilter}`}>
             <span className="filter-status-text">
-              <span className="filter-status-label">{tGrid('filtering_by')}</span>
+              <span className="filter-status-label">
+                {tGrid("filtering_by")}
+              </span>
               <strong>{tRisk(`${riskFilter}_label`).toLowerCase()}</strong>
             </span>
             <button
-              type="button"
+              aria-label={tGrid("clear_risk_aria")}
               className="filter-status-clear"
               onClick={clearRiskFilter}
-              title={tGrid('clear_filter_title')}
-              aria-label={tGrid('clear_risk_aria')}
+              title={tGrid("clear_filter_title")}
+              type="button"
             >
               ✕
             </button>
@@ -1066,36 +1414,66 @@ export default function AppGrid({
         {f.filterActiveBanners && mismatchOnly && (
           <div className="filter-status filter-status-mismatch">
             <span className="filter-status-text">
-              <span className="filter-status-label">{tGrid('filtering_by')}</span>
+              <span className="filter-status-label">
+                {tGrid("filtering_by")}
+              </span>
               <strong>profile mismatches</strong>
             </span>
             <button
-              type="button"
+              aria-label={tGrid("clear_mismatch_aria")}
               className="filter-status-clear"
               onClick={() => setMismatchOnly(false)}
-              title={tGrid('clear_mismatch_title')}
-              aria-label={tGrid('clear_mismatch_aria')}
+              title={tGrid("clear_mismatch_title")}
+              type="button"
             >
               ✕
             </button>
           </div>
         )}
         {f.filterActiveBanners && accessibilityFilter && (
-          <div className={`filter-status filter-status-access-${accessibilityFilter}`}>
+          <div
+            className={`filter-status filter-status-access-${accessibilityFilter}`}
+          >
             <span className="filter-status-text">
-              <span className="filter-status-label">{tGrid('filtering_by')}</span>
+              <span className="filter-status-label">
+                {tGrid("filtering_by")}
+              </span>
               <strong>
-                {accessibilityFilter === 'has'
-                  ? 'has accessibility features'
-                  : 'no accessibility features'}
+                {accessibilityFilter === "has"
+                  ? "has accessibility features"
+                  : "no accessibility features"}
               </strong>
             </span>
             <button
-              type="button"
+              aria-label={tGrid("clear_a11y_aria")}
               className="filter-status-clear"
               onClick={() => setAccessibilityFilter(null)}
-              title={tGrid('clear_a11y_title')}
-              aria-label={tGrid('clear_a11y_aria')}
+              title={tGrid("clear_a11y_title")}
+              type="button"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {f.filterActiveBanners && deviceFilter && (
+          <div className="filter-status filter-status-device">
+            <span className="filter-status-text">
+              <span className="filter-status-label">
+                {tGrid("filtering_by")}
+              </span>
+              <strong>
+                {deviceFilter === "unattached"
+                  ? tGrid("device_filter_unattached_short")
+                  : (devices.find((d) => d.id === deviceFilter)?.name ??
+                    deviceFilter)}
+              </strong>
+            </span>
+            <button
+              aria-label={tGrid("clear_device_aria")}
+              className="filter-status-clear"
+              onClick={() => setDeviceFilter(null)}
+              title={tGrid("clear_device_title")}
+              type="button"
             >
               ✕
             </button>
@@ -1103,43 +1481,52 @@ export default function AppGrid({
         )}
       </div>
 
-      {f.filterRiskButtons && <div className="risk-filter-row">
-        <div
-          className="segmented-toggle"
-          role="group"
-          aria-label={tGrid('risk_filter_aria')}
-        >
-          <button
-            type="button"
-            className={`segmented-toggle-btn ${riskFilter === null ? 'is-active' : ''}`}
-            onClick={() => setRiskLevel(null)}
-            aria-pressed={riskFilter === null}
+      {f.filterRiskButtons && (
+        <div className="risk-filter-row">
+          <div
+            aria-label={tGrid("risk_filter_aria")}
+            className="segmented-toggle"
+            role="group"
           >
-            <span>{tGrid('all_risks')}</span>
-            <span className="segmented-toggle-btn-count">{prefilteredApps.length}</span>
-          </button>
-          {(['high', 'moderate', 'low', 'minimal', 'unknown'] as const).map(level => {
-            const count = riskLevelCounts[level];
-            const isActive = riskFilter === level;
-            return (
-              <button
-                key={level}
-                type="button"
-                className={`segmented-toggle-btn ${isActive ? 'is-active' : ''}`}
-                data-level={level}
-                onClick={() => setRiskLevel(isActive ? null : level)}
-                aria-pressed={isActive}
-                disabled={count === 0 && !isActive}
-                title={tRisk(`${level}_desc`)}
-              >
-                <span className="segmented-toggle-btn-dot" aria-hidden="true" />
-                <span>{tRisk(`${level}_label`)}</span>
-                <span className="segmented-toggle-btn-count">{count}</span>
-              </button>
-            );
-          })}
+            <button
+              aria-pressed={riskFilter === null}
+              className={`segmented-toggle-btn ${riskFilter === null ? "is-active" : ""}`}
+              onClick={() => setRiskLevel(null)}
+              type="button"
+            >
+              <span>{tGrid("all_risks")}</span>
+              <span className="segmented-toggle-btn-count">
+                {prefilteredApps.length}
+              </span>
+            </button>
+            {(["high", "moderate", "low", "minimal", "unknown"] as const).map(
+              (level) => {
+                const count = riskLevelCounts[level];
+                const isActive = riskFilter === level;
+                return (
+                  <button
+                    aria-pressed={isActive}
+                    className={`segmented-toggle-btn ${isActive ? "is-active" : ""}`}
+                    data-level={level}
+                    disabled={count === 0 && !isActive}
+                    key={level}
+                    onClick={() => setRiskLevel(isActive ? null : level)}
+                    title={tRisk(`${level}_desc`)}
+                    type="button"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="segmented-toggle-btn-dot"
+                    />
+                    <span>{tRisk(`${level}_label`)}</span>
+                    <span className="segmented-toggle-btn-count">{count}</span>
+                  </button>
+                );
+              }
+            )}
+          </div>
         </div>
-      </div>}
+      )}
 
       {/*
         Accessibility filter row — a separate pill group rather than a 7th
@@ -1148,66 +1535,90 @@ export default function AppGrid({
         is on, and only when we have at least one evaluated app so it doesn't
         render as 0/0/0 on fresh installs.
       */}
-      {f.filterAccessibility && showAccessibilityFilter &&
+      {f.filterAccessibility &&
+        showAccessibilityFilter &&
         (() => {
           let hasCount = 0;
           let missingCount = 0;
           let evaluatedCount = 0;
           for (const app of prefilteredApps) {
-            if (app.hasAccessibilityLabels == null) continue;
+            if (app.hasAccessibilityLabels == null) {
+              continue;
+            }
             evaluatedCount++;
-            if (app.hasAccessibilityLabels === 1) hasCount++;
-            else missingCount++;
+            if (app.hasAccessibilityLabels === 1) {
+              hasCount++;
+            } else {
+              missingCount++;
+            }
           }
-          if (evaluatedCount === 0) return null;
+          if (evaluatedCount === 0) {
+            return null;
+          }
           return (
             <div className="access-filter-row" data-tour="accessibility-filter">
               <span className="access-filter-label" id="access-filter-label">
                 Accessibility
               </span>
               <div
+                aria-labelledby="access-filter-label"
                 className="segmented-toggle"
                 role="group"
-                aria-labelledby="access-filter-label"
               >
                 <button
-                  type="button"
-                  className={`segmented-toggle-btn ${accessibilityFilter === null ? 'is-active' : ''}`}
-                  onClick={() => setAccessibilityFilter(null)}
                   aria-pressed={accessibilityFilter === null}
+                  className={`segmented-toggle-btn ${accessibilityFilter === null ? "is-active" : ""}`}
+                  onClick={() => setAccessibilityFilter(null)}
+                  type="button"
                 >
                   <span>All</span>
-                  <span className="segmented-toggle-btn-count">{evaluatedCount}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {evaluatedCount}
+                  </span>
                 </button>
                 <button
-                  type="button"
-                  className={`segmented-toggle-btn ${accessibilityFilter === 'has' ? 'is-active' : ''}`}
+                  aria-pressed={accessibilityFilter === "has"}
+                  className={`segmented-toggle-btn ${accessibilityFilter === "has" ? "is-active" : ""}`}
                   data-access="has"
+                  disabled={hasCount === 0 && accessibilityFilter !== "has"}
                   onClick={() =>
-                    setAccessibilityFilter(accessibilityFilter === 'has' ? null : 'has')
+                    setAccessibilityFilter(
+                      accessibilityFilter === "has" ? null : "has"
+                    )
                   }
-                  aria-pressed={accessibilityFilter === 'has'}
-                  disabled={hasCount === 0 && accessibilityFilter !== 'has'}
-                  title={tGrid('has_features_title')}
+                  title={tGrid("has_features_title")}
+                  type="button"
                 >
-                  <span className="segmented-toggle-btn-dot" aria-hidden="true" />
-                  <span>{tGrid('has_features_label')}</span>
+                  <span
+                    aria-hidden="true"
+                    className="segmented-toggle-btn-dot"
+                  />
+                  <span>{tGrid("has_features_label")}</span>
                   <span className="segmented-toggle-btn-count">{hasCount}</span>
                 </button>
                 <button
-                  type="button"
-                  className={`segmented-toggle-btn ${accessibilityFilter === 'missing' ? 'is-active' : ''}`}
+                  aria-pressed={accessibilityFilter === "missing"}
+                  className={`segmented-toggle-btn ${accessibilityFilter === "missing" ? "is-active" : ""}`}
                   data-access="missing"
-                  onClick={() =>
-                    setAccessibilityFilter(accessibilityFilter === 'missing' ? null : 'missing')
+                  disabled={
+                    missingCount === 0 && accessibilityFilter !== "missing"
                   }
-                  aria-pressed={accessibilityFilter === 'missing'}
-                  disabled={missingCount === 0 && accessibilityFilter !== 'missing'}
-                  title={tGrid('no_features_title')}
+                  onClick={() =>
+                    setAccessibilityFilter(
+                      accessibilityFilter === "missing" ? null : "missing"
+                    )
+                  }
+                  title={tGrid("no_features_title")}
+                  type="button"
                 >
-                  <span className="segmented-toggle-btn-dot" aria-hidden="true" />
-                  <span>{tGrid('no_features_label')}</span>
-                  <span className="segmented-toggle-btn-count">{missingCount}</span>
+                  <span
+                    aria-hidden="true"
+                    className="segmented-toggle-btn-dot"
+                  />
+                  <span>{tGrid("no_features_label")}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {missingCount}
+                  </span>
                 </button>
               </div>
             </div>
@@ -1215,56 +1626,64 @@ export default function AppGrid({
         })()}
 
       {totalShown === 0 ? (
-        f.emptyState ? <div className="empty-state">
-          <div className="empty-state-icon">
-            {riskFilter || mismatchOnly ? '✓' : '📭'}
+        f.emptyState ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              {riskFilter || mismatchOnly ? "✓" : "📭"}
+            </div>
+            <div className="empty-state-title">
+              {mismatchOnly
+                ? tGrid("empty_all_clear_profile")
+                : riskFilter
+                  ? tGrid("empty_no_risk_apps", {
+                      level: tRisk(`${riskFilter}_label`).toLowerCase(),
+                    })
+                  : filter
+                    ? tGrid("empty_no_matches")
+                    : tGrid("empty_no_apps_tracked")}
+            </div>
+            <p className="empty-state-text">
+              {mismatchOnly
+                ? tGrid("empty_text_mismatch")
+                : riskFilter === "unknown"
+                  ? tGrid("empty_text_unknown_filter")
+                  : riskFilter
+                    ? tGrid("empty_text_risk_filter")
+                    : filter
+                      ? tGrid("empty_text_search")
+                      : tGrid("empty_text_no_apps")}
+            </p>
+            {mismatchOnly ? (
+              <button
+                className="btn btn-secondary"
+                onClick={() => setMismatchOnly(false)}
+                style={{ marginTop: 18 }}
+                type="button"
+              >
+                {tGrid("btn_clear_filter")}
+              </button>
+            ) : riskFilter ? (
+              <button
+                className="btn btn-secondary"
+                onClick={clearRiskFilter}
+                style={{ marginTop: 18 }}
+                type="button"
+              >
+                {tGrid("btn_clear_filter")}
+              </button>
+            ) : (
+              !filter && (
+                <Link
+                  className="btn btn-primary"
+                  href="/onboard"
+                  style={{ marginTop: 18 }}
+                >
+                  {tGrid("btn_start_onboarding")}
+                </Link>
+              )
+            )}
           </div>
-          <div className="empty-state-title">
-            {mismatchOnly
-              ? tGrid('empty_all_clear_profile')
-              : riskFilter
-              ? tGrid('empty_no_risk_apps', { level: tRisk(`${riskFilter}_label`).toLowerCase() })
-              : filter
-              ? tGrid('empty_no_matches')
-              : tGrid('empty_no_apps_tracked')}
-          </div>
-          <p className="empty-state-text">
-            {mismatchOnly
-              ? tGrid('empty_text_mismatch')
-              : riskFilter === 'unknown'
-              ? tGrid('empty_text_unknown_filter')
-              : riskFilter
-              ? tGrid('empty_text_risk_filter')
-              : filter
-              ? tGrid('empty_text_search')
-              : tGrid('empty_text_no_apps')}
-          </p>
-          {mismatchOnly ? (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ marginTop: 18 }}
-              onClick={() => setMismatchOnly(false)}
-            >
-              {tGrid('btn_clear_filter')}
-            </button>
-          ) : riskFilter ? (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ marginTop: 18 }}
-              onClick={clearRiskFilter}
-            >
-              {tGrid('btn_clear_filter')}
-            </button>
-          ) : (
-            !filter && (
-              <Link href="/onboard" className="btn btn-primary" style={{ marginTop: 18 }}>
-                {tGrid('btn_start_onboarding')}
-              </Link>
-            )
-          )}
-        </div> : null
+        ) : null
       ) : (
         <div className="app-grid">
           {sorted.map((app, idx) => {
@@ -1282,184 +1701,218 @@ export default function AppGrid({
             // unambiguous element. Subsequent cards are unmarked.
             const isTourCard = idx === 0;
             return (
-            <div
-              key={app.id}
-              data-tour={isTourCard ? 'app-card-first' : undefined}
-              className={`app-card app-card-risk-${risk}${isSelected ? ' app-card-selected' : ''}${compareMode ? ' app-card-selectable' : ''}${pageMode === 'select' ? ' app-card-bulk-selectable' : ''}${isBulkSelected ? ' app-card-bulk-selected' : ''}${
-                // Wave I — gold-border treatment for apps with at least
-                // one non-deleted annotation. Annotation count isn't
-                // threaded into the grid yet, so the class is reserved on
-                // the element with the flag check; CSS provides the
-                // styling hook for when the data lands.
-                f.cardAnnotationHighlight && (app as { annotationCount?: number }).annotationCount
-                  ? ' app-card-annotated'
-                  : ''
-              }`}
-            >
-              <Link
-                href={`/apps/${app.id}`}
-                className="app-card-link"
-                onClick={event => handleCardClick(event, app.id)}
-                aria-pressed={compareMode ? isSelected : undefined}
-                title={
-                  compareMode
-                    ? isSelected
-                      ? `Deselect ${app.name}`
-                      : `Select ${app.name} for comparison`
-                    : `Open ${app.name} — Shift-click to add to compare`
-                }
+              <div
+                className={`app-card app-card-risk-${risk}${isSelected ? "app-card-selected" : ""}${compareMode ? "app-card-selectable" : ""}${pageMode === "select" ? "app-card-bulk-selectable" : ""}${isBulkSelected ? "app-card-bulk-selected" : ""}${
+                  // Wave I — gold-border treatment for apps with at least
+                  // one non-deleted annotation. Annotation count isn't
+                  // threaded into the grid yet, so the class is reserved on
+                  // the element with the flag check; CSS provides the
+                  // styling hook for when the data lands.
+                  f.cardAnnotationHighlight &&
+                  (app as { annotationCount?: number }).annotationCount
+                    ? "app-card-annotated"
+                    : ""
+                }`}
+                data-tour={isTourCard ? "app-card-first" : undefined}
+                key={app.id}
               >
-                <div className="app-card-icon-wrap">
-                  {app.iconUrl ? (
-                    <Image
-                      src={app.iconUrl}
-                      alt={app.name}
-                      width={56}
-                      height={56}
-                      className="app-icon"
-                      unoptimized
-                      style={{ objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div className="app-icon-placeholder">{app.name[0]}</div>
-                  )}
-                  {app.changeCount > 0 && (() => {
-                    // Split the pending bundle by category so the user can
-                    // see at a glance whether a red-flag change was a
-                    // privacy-label regression (orange) or an
-                    // accessibility-label update (blue, less alarming).
-                    // When both are present we render two stacked dots so
-                    // neither gets lost. Policy-only changes ride on the
-                    // orange dot since they live inside the same
-                    // "privacy" mental model.
-                    const breakdown = pendingChangeCategoriesByApp[app.id];
-                    // Treat the breakdown as privacy-only when it's
-                    // missing entirely — that covers the pre-migration
-                    // case where changeCount was bumped by an older
-                    // snapshot we can't re-parse.
-                    const hasPrivacy = !breakdown
-                      ? true
-                      : breakdown.privacy || breakdown.policy;
-                    const hasAccessibility = !!breakdown?.accessibility;
-                    // Figure out a human-readable tooltip that matches
-                    // what the dot(s) actually represent. Falls back to
-                    // the old "permission change" wording only when we
-                    // have no breakdown at all.
-                    const labelParts: string[] = [];
-                    if (hasPrivacy) labelParts.push('privacy');
-                    if (hasAccessibility) labelParts.push('accessibility');
-                    const title = breakdown
-                      ? `${app.changeCount} ${labelParts.join(' and ')} label change${app.changeCount !== 1 ? 's' : ''} detected`
-                      : `${app.changeCount} permission change${app.changeCount !== 1 ? 's' : ''} detected`;
-                    if (!f.cardChangeDot) return null;
-                    return (
-                      <div
-                        className="change-dot-group"
-                        title={title}
-                        aria-label={title}
-                        role="status"
-                      >
-                        {hasPrivacy && (
-                          <span
-                            className="change-dot change-dot-privacy"
-                            aria-hidden="true"
-                          />
-                        )}
-                        {hasAccessibility && (
-                          <span
-                            className="change-dot change-dot-accessibility"
-                            aria-hidden="true"
-                          />
-                        )}
-                      </div>
-                    );
-                  })()}
-                  {isSelected && (
-                    <div
-                      className="app-card-select-badge"
-                      aria-label={tGrid('selected_for_compare_aria', { slot: selectionIndex === 0 ? 'A' : 'B' })}
-                    >
-                      {selectionIndex === 0 ? 'A' : 'B'}
-                    </div>
-                  )}
-                  {pageMode === 'select' && (
-                    <div
-                      className={`app-card-bulk-check ${isBulkSelected ? 'is-checked' : ''}`}
-                      aria-hidden="true"
-                    >
-                      {isBulkSelected ? '✓' : ''}
-                    </div>
-                  )}
-                </div>
-
-                <div className="app-card-body">
-                  <div className="app-name">{app.name}</div>
-                  {app.developer && <div className="app-developer">{app.developer}</div>}
-                  {(() => {
-                    // Profile badge AND verdict pill share this row so both
-                    // signals are visible at a glance without duplicating
-                    // the row chrome. The verdict pill always wins the
-                    // leading slot when both are present — it's the user's
-                    // own decision, which trumps the derived profile-match.
-                    const showProfile = f.cardProfileBadge;
-                    const badge = showProfile ? profileBadges[app.id] : null;
-                    const verdict = f.cardVerdictPill ? userVerdicts[app.id] : undefined;
-                    if (!badge && !verdict) return null;
-                    return (
-                      <div className="app-card-profile-row">
-                        {verdict && <VerdictPill verdict={verdict} size="sm" />}
-                        {badge && (() => {
-                          // Localise via the kind discriminator the
-                          // server-side `summariseBadge` now ships. The
-                          // `worstMismatchSentence` slot lets the
-                          // describeWorstMismatch English fallback ride
-                          // through unchanged for the detailed mismatch
-                          // case until that helper is migrated; zh users
-                          // see the generic "{n} 个类别超出了你的档案"
-                          // until then.
-                          const localisedLabel = localiseBadgeLabel(tBadge, badge);
-                          const localisedDescription = localiseBadgeDescription(tBadge, badge);
-                          return (
-                            <span
-                              className={`app-card-profile-badge match-${badge.tone}`}
-                              title={localisedDescription}
-                              aria-label={tGrid('privacy_profile_aria', { description: localisedDescription })}
-                            >
-                              <span aria-hidden>{badge.tone === 'ok' ? '✓' : '⚠'}</span>
-                              {localisedLabel}
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    );
-                  })()}
-                  <div className="app-meta">
-                    {f.cardFreshnessChip && (
-                      <span className={`freshness-badge ${freshnessClass(app.lastSynced)}`}>
-                        {daysSince(app.lastSynced)}
-                      </span>
+                <Link
+                  aria-pressed={compareMode ? isSelected : undefined}
+                  className="app-card-link"
+                  href={`/apps/${app.id}`}
+                  onClick={(event) => handleCardClick(event, app.id)}
+                  title={
+                    compareMode
+                      ? isSelected
+                        ? `Deselect ${app.name}`
+                        : `Select ${app.name} for comparison`
+                      : `Open ${app.name} — Shift-click to add to compare`
+                  }
+                >
+                  <div className="app-card-icon-wrap">
+                    {app.iconUrl ? (
+                      <Image
+                        alt={app.name}
+                        className="app-icon"
+                        height={56}
+                        src={app.iconUrl}
+                        style={{ objectFit: "cover" }}
+                        unoptimized
+                        width={56}
+                      />
+                    ) : (
+                      <div className="app-icon-placeholder">{app.name[0]}</div>
                     )}
-                    {/*
+                    {app.changeCount > 0 &&
+                      (() => {
+                        // Split the pending bundle by category so the user can
+                        // see at a glance whether a red-flag change was a
+                        // privacy-label regression (orange) or an
+                        // accessibility-label update (blue, less alarming).
+                        // When both are present we render two stacked dots so
+                        // neither gets lost. Policy-only changes ride on the
+                        // orange dot since they live inside the same
+                        // "privacy" mental model.
+                        const breakdown = pendingChangeCategoriesByApp[app.id];
+                        // Treat the breakdown as privacy-only when it's
+                        // missing entirely — that covers the pre-migration
+                        // case where changeCount was bumped by an older
+                        // snapshot we can't re-parse.
+                        const hasPrivacy = breakdown
+                          ? breakdown.privacy || breakdown.policy
+                          : true;
+                        const hasAccessibility = !!breakdown?.accessibility;
+                        // Figure out a human-readable tooltip that matches
+                        // what the dot(s) actually represent. Falls back to
+                        // the old "permission change" wording only when we
+                        // have no breakdown at all.
+                        const labelParts: string[] = [];
+                        if (hasPrivacy) {
+                          labelParts.push("privacy");
+                        }
+                        if (hasAccessibility) {
+                          labelParts.push("accessibility");
+                        }
+                        const title = breakdown
+                          ? `${app.changeCount} ${labelParts.join(" and ")} label change${app.changeCount === 1 ? "" : "s"} detected`
+                          : `${app.changeCount} permission change${app.changeCount === 1 ? "" : "s"} detected`;
+                        if (!f.cardChangeDot) {
+                          return null;
+                        }
+                        return (
+                          <div
+                            aria-label={title}
+                            className="change-dot-group"
+                            role="status"
+                            title={title}
+                          >
+                            {hasPrivacy && (
+                              <span
+                                aria-hidden="true"
+                                className="change-dot change-dot-privacy"
+                              />
+                            )}
+                            {hasAccessibility && (
+                              <span
+                                aria-hidden="true"
+                                className="change-dot change-dot-accessibility"
+                              />
+                            )}
+                          </div>
+                        );
+                      })()}
+                    {isSelected && (
+                      <div
+                        aria-label={tGrid("selected_for_compare_aria", {
+                          slot: selectionIndex === 0 ? "A" : "B",
+                        })}
+                        className="app-card-select-badge"
+                      >
+                        {selectionIndex === 0 ? "A" : "B"}
+                      </div>
+                    )}
+                    {pageMode === "select" && (
+                      <div
+                        aria-hidden="true"
+                        className={`app-card-bulk-check ${isBulkSelected ? "is-checked" : ""}`}
+                      >
+                        {isBulkSelected ? "✓" : ""}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="app-card-body">
+                    <div className="app-name">{app.name}</div>
+                    {app.developer && (
+                      <div className="app-developer">{app.developer}</div>
+                    )}
+                    {(() => {
+                      // Profile badge AND verdict pill share this row so both
+                      // signals are visible at a glance without duplicating
+                      // the row chrome. The verdict pill always wins the
+                      // leading slot when both are present — it's the user's
+                      // own decision, which trumps the derived profile-match.
+                      const showProfile = f.cardProfileBadge;
+                      const badge = showProfile ? profileBadges[app.id] : null;
+                      const verdict = f.cardVerdictPill
+                        ? userVerdicts[app.id]
+                        : undefined;
+                      if (!(badge || verdict)) {
+                        return null;
+                      }
+                      return (
+                        <div className="app-card-profile-row">
+                          {verdict && (
+                            <VerdictPill size="sm" verdict={verdict} />
+                          )}
+                          {badge &&
+                            (() => {
+                              // Localise via the kind discriminator the
+                              // server-side `summariseBadge` now ships. The
+                              // `worstMismatchSentence` slot lets the
+                              // describeWorstMismatch English fallback ride
+                              // through unchanged for the detailed mismatch
+                              // case until that helper is migrated; zh users
+                              // see the generic "{n} 个类别超出了你的档案"
+                              // until then.
+                              const localisedLabel = localiseBadgeLabel(
+                                tBadge,
+                                badge
+                              );
+                              const localisedDescription =
+                                localiseBadgeDescription(tBadge, badge);
+                              return (
+                                <span
+                                  aria-label={tGrid("privacy_profile_aria", {
+                                    description: localisedDescription,
+                                  })}
+                                  className={`app-card-profile-badge match-${badge.tone}`}
+                                  title={localisedDescription}
+                                >
+                                  <span aria-hidden>
+                                    {badge.tone === "ok" ? "✓" : "⚠"}
+                                  </span>
+                                  {localisedLabel}
+                                </span>
+                              );
+                            })()}
+                        </div>
+                      );
+                    })()}
+                    <div className="app-meta">
+                      {f.cardFreshnessChip && (
+                        <span
+                          className={`freshness-badge ${freshnessClass(app.lastSynced)}`}
+                        >
+                          {daysSince(app.lastSynced)}
+                        </span>
+                      )}
+                      {/*
                       Categories count and sync count used to render here but
                       got crowded out on cards with a long mismatch banner.
                       They now live on the risk pill (hover-revealed) and on
                       the resync button (notification-style badge) respectively
                       so the meta row stays a single freshness chip.
                     */}
+                    </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
 
-              <div className="app-card-rail">
-                <div className="app-card-rail-risk">
-                  {f.cardRiskPill && <span
-                    data-tour={isTourCard ? 'severity-pill-first' : undefined}
-                    className={`risk-pill ${riskMeta.cls}`}
-                    title={tRisk(`${risk}_desc`)}
-                  >
-                    <span className="risk-pill-dot" aria-hidden="true">{riskMeta.dot}</span>
-                    {tRisk(`${risk}_label`)}
-                    {/*
+                <div className="app-card-rail">
+                  <div className="app-card-rail-risk">
+                    {f.cardRiskPill && (
+                      <span
+                        className={`risk-pill ${riskMeta.cls}`}
+                        data-tour={
+                          isTourCard ? "severity-pill-first" : undefined
+                        }
+                        title={tRisk(`${risk}_desc`)}
+                      >
+                        <span aria-hidden="true" className="risk-pill-dot">
+                          {riskMeta.dot}
+                        </span>
+                        {tRisk(`${risk}_label`)}
+                        {/*
                       Total categories count — hidden by default, revealed on
                       hover of the pill so the number is reachable without
                       permanently crowding the card header. We only show the
@@ -1468,89 +1921,130 @@ export default function AppGrid({
                       the context; a bare number keeps the hover reveal
                       compact so the pill doesn't double in width.
                     */}
-                    {app.categoryCount > 0 && (
-                      <span
-                        className="risk-pill-count"
-                        aria-label={tGrid('n_categories_aria', { count: app.categoryCount })}
-                      >
-                        · {app.categoryCount}
+                        {app.categoryCount > 0 && (
+                          <span
+                            aria-label={tGrid("n_categories_aria", {
+                              count: app.categoryCount,
+                            })}
+                            className="risk-pill-count"
+                          >
+                            · {app.categoryCount}
+                          </span>
+                        )}
                       </span>
                     )}
-                  </span>}
-                  {f.cardRiskChips && (t > 0 || l > 0 || u > 0) && (
-                    <div className="risk-chip-row" aria-label={tGrid('label_breakdown_aria')}>
-                      {t > 0 && (
-                        <span className="risk-chip risk-chip-track" title={tGrid('track_chip_title', { count: t })}>
-                          <span className="risk-chip-icon" aria-hidden="true">👁</span>
-                          <span className="risk-chip-count">{t}</span>
-                        </span>
-                      )}
-                      {l > 0 && (
-                        <span className="risk-chip risk-chip-linked" title={tGrid('linked_chip_title', { count: l })}>
-                          <span className="risk-chip-icon" aria-hidden="true">🔗</span>
-                          <span className="risk-chip-count">{l}</span>
-                        </span>
-                      )}
-                      {u > 0 && (
-                        <span className="risk-chip risk-chip-unlinked" title={tGrid('unlinked_chip_title', { count: u })}>
-                          <span className="risk-chip-icon" aria-hidden="true">🔓</span>
-                          <span className="risk-chip-count">{u}</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    {f.cardRiskChips && (t > 0 || l > 0 || u > 0) && (
+                      <div
+                        aria-label={tGrid("label_breakdown_aria")}
+                        className="risk-chip-row"
+                      >
+                        {t > 0 && (
+                          <span
+                            className="risk-chip risk-chip-track"
+                            title={tGrid("track_chip_title", { count: t })}
+                          >
+                            <span aria-hidden="true" className="risk-chip-icon">
+                              👁
+                            </span>
+                            <span className="risk-chip-count">{t}</span>
+                          </span>
+                        )}
+                        {l > 0 && (
+                          <span
+                            className="risk-chip risk-chip-linked"
+                            title={tGrid("linked_chip_title", { count: l })}
+                          >
+                            <span aria-hidden="true" className="risk-chip-icon">
+                              🔗
+                            </span>
+                            <span className="risk-chip-count">{l}</span>
+                          </span>
+                        )}
+                        {u > 0 && (
+                          <span
+                            className="risk-chip risk-chip-unlinked"
+                            title={tGrid("unlinked_chip_title", { count: u })}
+                          >
+                            <span aria-hidden="true" className="risk-chip-icon">
+                              🔓
+                            </span>
+                            <span className="risk-chip-count">{u}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
-                <div className="app-card-actions">
-                  {f.cardResyncButton && <button
-                    type="button"
-                    data-tour={isTourCard ? 'resync-button' : undefined}
-                    className="icon-btn"
-                    onPointerDown={stopCardNavigation}
-                    onClick={event => handleActionClick(event, () => syncApp(app.id, app.url))}
-                    disabled={syncingIds.has(app.id)}
-                    title={
-                      app.syncCount > 1
-                        ? tGrid('resync_app_title_with_count', { name: app.name, count: app.syncCount })
-                        : tGrid('resync_app_title', { name: app.name })
-                    }
-                    aria-label={
-                      syncingIds.has(app.id)
-                        ? `${tGrid('syncing')} ${app.name}`
-                        : app.syncCount > 1
-                          ? tGrid('resync_app_aria_with_count', { name: app.name, count: app.syncCount })
-                          : tGrid('resync_app_aria', { name: app.name })
-                    }
-                  >
-                    {syncingIds.has(app.id)
-                      ? <span className="spinner-sm" aria-hidden="true" />
-                      : <span aria-hidden="true">↻</span>}
-                    {/*
+                  <div className="app-card-actions">
+                    {f.cardResyncButton && (
+                      <button
+                        aria-label={
+                          syncingIds.has(app.id)
+                            ? `${tGrid("syncing")} ${app.name}`
+                            : app.syncCount > 1
+                              ? tGrid("resync_app_aria_with_count", {
+                                  name: app.name,
+                                  count: app.syncCount,
+                                })
+                              : tGrid("resync_app_aria", { name: app.name })
+                        }
+                        className="icon-btn"
+                        data-tour={isTourCard ? "resync-button" : undefined}
+                        disabled={syncingIds.has(app.id)}
+                        onClick={(event) =>
+                          handleActionClick(event, () =>
+                            syncApp(app.id, app.url)
+                          )
+                        }
+                        onPointerDown={stopCardNavigation}
+                        title={
+                          app.syncCount > 1
+                            ? tGrid("resync_app_title_with_count", {
+                                name: app.name,
+                                count: app.syncCount,
+                              })
+                            : tGrid("resync_app_title", { name: app.name })
+                        }
+                        type="button"
+                      >
+                        {syncingIds.has(app.id) ? (
+                          <span aria-hidden="true" className="spinner-sm" />
+                        ) : (
+                          <span aria-hidden="true">↻</span>
+                        )}
+                        {/*
                       Notification-style badge showing the cumulative sync
                       count. Sits absolutely over the top-right corner of the
                       refresh icon. Only rendered when > 1 so brand-new apps
                       (which have exactly one sync from onboarding) don't
                       display a noisy "1" badge.
                     */}
-                    {app.syncCount > 1 && !syncingIds.has(app.id) && (
-                      <span className="icon-btn-badge" aria-hidden="true">
-                        {app.syncCount}
-                      </span>
+                        {app.syncCount > 1 && !syncingIds.has(app.id) && (
+                          <span aria-hidden="true" className="icon-btn-badge">
+                            {app.syncCount}
+                          </span>
+                        )}
+                      </button>
                     )}
-                  </button>}
-                  {f.cardDeleteButton && <button
-                    type="button"
-                    className="icon-btn danger"
-                    onPointerDown={stopCardNavigation}
-                    onClick={event => handleActionClick(event, () => setPendingDelete(app))}
-                    title={tGrid('remove_app_title', { name: app.name })}
-                    aria-label={tGrid('remove_app_aria', { name: app.name })}
-                  >
-                    <span aria-hidden="true">✕</span>
-                  </button>}
+                    {f.cardDeleteButton && (
+                      <button
+                        aria-label={tGrid("remove_app_aria", {
+                          name: app.name,
+                        })}
+                        className="icon-btn danger"
+                        onClick={(event) =>
+                          handleActionClick(event, () => setPendingDelete(app))
+                        }
+                        onPointerDown={stopCardNavigation}
+                        title={tGrid("remove_app_title", { name: app.name })}
+                        type="button"
+                      >
+                        <span aria-hidden="true">✕</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
             );
           })}
 
@@ -1562,34 +2056,40 @@ export default function AppGrid({
               model is "click an app card, see that app", whether it came
               from cfgutil or was hand-added. Deletion is inline via the
               /api/manual-apps DELETE endpoint. */}
-          {filteredManualApps.map(m => {
+          {filteredManualApps.map((m) => {
             const meta = manualSourceMeta.get(m.source);
-            const icon = meta?.icon ?? '📦';
+            const icon = meta?.icon ?? "📦";
             // Localised short label for the manual-source badge. Falls
             // back to the raw `m.source` enum value when meta is
             // missing — defensive guard for legacy rows.
-            const sourceLabel = meta ? tSource(`${meta.value}_short`) : m.source;
+            const sourceLabel = meta
+              ? tSource(`${meta.value}_short`)
+              : m.source;
             const busy = deletingManualId === m.id;
             return (
-              <div key={`manual-${m.id}`} className="app-card app-card-custom">
+              <div className="app-card app-card-custom" key={`manual-${m.id}`}>
                 <Link
-                  href={`/manual-apps/${encodeURIComponent(m.id)}`}
+                  aria-label={tGrid("open_custom_aria", { name: m.name })}
                   className="app-card-link"
-                  aria-label={tGrid('open_custom_aria', { name: m.name })}
+                  href={`/manual-apps/${encodeURIComponent(m.id)}`}
                 >
                   <div className="app-card-icon-wrap">
-                    <div className="app-icon-placeholder" aria-hidden="true">
+                    <div aria-hidden="true" className="app-icon-placeholder">
                       <span style={{ fontSize: 28 }}>{icon}</span>
                     </div>
                   </div>
 
                   <div className="app-card-body">
                     <div className="app-name">{m.name}</div>
-                    {m.developer && <div className="app-developer">{m.developer}</div>}
+                    {m.developer && (
+                      <div className="app-developer">{m.developer}</div>
+                    )}
                     <div className="app-meta">
                       <span className="permission-count">{sourceLabel}</span>
                       {m.privacyPolicyUrl && (
-                        <span className="permission-count">· Policy linked</span>
+                        <span className="permission-count">
+                          · Policy linked
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1599,31 +2099,35 @@ export default function AppGrid({
                   <div className="app-card-rail-risk">
                     <span
                       className="risk-pill risk-pill-custom"
-                      title={tGrid('untracked_no_listing_title')}
+                      title={tGrid("untracked_no_listing_title")}
                     >
-                      <span className="risk-pill-dot" aria-hidden="true">◆</span>
+                      <span aria-hidden="true" className="risk-pill-dot">
+                        ◆
+                      </span>
                       Custom
                     </span>
                   </div>
 
                   <div className="app-card-actions">
                     <button
-                      type="button"
-                      className="icon-btn danger"
-                      onPointerDown={stopCardNavigation}
-                      onClick={event =>
-                        handleActionClick(event, () => setPendingDeleteManual(m))
-                      }
-                      disabled={busy}
-                      title={tGrid('remove_custom_title', { name: m.name })}
                       aria-label={
                         busy
                           ? `Removing ${m.name}`
                           : `Remove ${m.name} from custom apps`
                       }
+                      className="icon-btn danger"
+                      disabled={busy}
+                      onClick={(event) =>
+                        handleActionClick(event, () =>
+                          setPendingDeleteManual(m)
+                        )
+                      }
+                      onPointerDown={stopCardNavigation}
+                      title={tGrid("remove_custom_title", { name: m.name })}
+                      type="button"
                     >
                       {busy ? (
-                        <span className="spinner-sm" aria-hidden="true" />
+                        <span aria-hidden="true" className="spinner-sm" />
                       ) : (
                         <span aria-hidden="true">✕</span>
                       )}
@@ -1648,55 +2152,63 @@ export default function AppGrid({
           until the user acts on it. */}
       {(selectedIds.length > 0 || compareMode) && (
         <div
+          aria-label={tGrid("compare_selection_aria")}
+          aria-live="polite"
           className="compare-dock"
           role="region"
-          aria-label={tGrid('compare_selection_aria')}
-          aria-live="polite"
         >
           <div className="compare-dock-info">
             <span className="compare-dock-count">
-              {tGrid('compare_dock_count', { count: selectedIds.length, max: COMPARE_MAX })}
+              {tGrid("compare_dock_count", {
+                count: selectedIds.length,
+                max: COMPARE_MAX,
+              })}
             </span>
             <span className="compare-dock-hint">
               {selectedIds.length === 0
-                ? tGrid('compare_dock_hint_empty')
+                ? tGrid("compare_dock_hint_empty")
                 : selectedIds.length === 1
-                ? tGrid('compare_dock_hint_one')
-                : tGrid('compare_dock_hint_ready')}
+                  ? tGrid("compare_dock_hint_one")
+                  : tGrid("compare_dock_hint_ready")}
             </span>
           </div>
 
           <div className="compare-dock-chips">
             {selectedIds.map((id, index) => {
-              const app = apps.find(a => a.id === id);
-              if (!app) return null;
+              const app = apps.find((a) => a.id === id);
+              if (!app) {
+                return null;
+              }
               return (
-                <div key={id} className="compare-dock-chip">
+                <div className="compare-dock-chip" key={id}>
                   <span className="compare-dock-chip-slot">
-                    {index === 0 ? 'A' : 'B'}
+                    {index === 0 ? "A" : "B"}
                   </span>
                   {app.iconUrl ? (
                     <Image
-                      src={app.iconUrl}
                       alt=""
-                      width={20}
-                      height={20}
-                      className="compare-dock-chip-icon"
-                      unoptimized
                       aria-hidden="true"
+                      className="compare-dock-chip-icon"
+                      height={20}
+                      src={app.iconUrl}
+                      unoptimized
+                      width={20}
                     />
                   ) : (
-                    <span className="compare-dock-chip-icon compare-dock-chip-icon-fallback" aria-hidden="true">
+                    <span
+                      aria-hidden="true"
+                      className="compare-dock-chip-icon compare-dock-chip-icon-fallback"
+                    >
                       {app.name[0]}
                     </span>
                   )}
                   <span className="compare-dock-chip-name">{app.name}</span>
                   <button
-                    type="button"
+                    aria-label={tGrid("deselect_app_aria", { name: app.name })}
                     className="compare-dock-chip-remove"
                     onClick={() => toggleSelection(id)}
-                    aria-label={tGrid('deselect_app_aria', { name: app.name })}
-                    title={tGrid('deselect_app_title', { name: app.name })}
+                    title={tGrid("deselect_app_title", { name: app.name })}
+                    type="button"
                   >
                     ✕
                   </button>
@@ -1707,24 +2219,24 @@ export default function AppGrid({
 
           <div className="compare-dock-actions">
             <button
-              type="button"
               className="btn btn-secondary"
               onClick={clearSelection}
+              type="button"
             >
-              {tGrid('compare_dock_clear')}
+              {tGrid("compare_dock_clear")}
             </button>
             <button
-              type="button"
               className="btn btn-primary"
-              onClick={goToCompare}
               disabled={selectedIds.length < 2}
+              onClick={goToCompare}
               title={
                 selectedIds.length < 2
-                  ? tGrid('compare_dock_title_disabled')
-                  : tGrid('compare_dock_title_enabled')
+                  ? tGrid("compare_dock_title_disabled")
+                  : tGrid("compare_dock_title_enabled")
               }
+              type="button"
             >
-              {tGrid('compare_dock_compare')}
+              {tGrid("compare_dock_compare")}
             </button>
           </div>
         </div>
@@ -1734,43 +2246,53 @@ export default function AppGrid({
         <div
           className="modal-overlay"
           onClick={() => {
-            if (!deletingId) setPendingDelete(null);
+            if (!deletingId) {
+              setPendingDelete(null);
+            }
           }}
         >
           <div
-            className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-app-title"
             aria-describedby="delete-app-copy"
-            onClick={event => event.stopPropagation()}
-            onKeyDown={event => {
-              if (event.key === 'Escape' && !deletingId) setPendingDelete(null);
+            aria-labelledby="delete-app-title"
+            aria-modal="true"
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !deletingId) {
+                setPendingDelete(null);
+              }
             }}
+            role="dialog"
           >
-            <div className="modal-badge">{tGrid('modal_badge_remove')}</div>
-            <h2 id="delete-app-title" className="modal-title">
-              {tGrid('modal_stop_tracking_title', { name: pendingDelete.name })}
+            <div className="modal-badge">{tGrid("modal_badge_remove")}</div>
+            <h2 className="modal-title" id="delete-app-title">
+              {tGrid("modal_stop_tracking_title", { name: pendingDelete.name })}
             </h2>
-            <p id="delete-app-copy" className="modal-copy">
-              {tGrid('modal_stop_tracking_body')}
+            <p className="modal-copy" id="delete-app-copy">
+              {tGrid("modal_stop_tracking_body")}
             </p>
             <div className="modal-actions">
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => setPendingDelete(null)}
                 disabled={Boolean(deletingId)}
+                onClick={() => setPendingDelete(null)}
+                type="button"
               >
-                {tGrid('modal_cancel')}
+                {tGrid("modal_cancel")}
               </button>
               <button
-                type="button"
                 className="btn btn-danger"
-                onClick={() => void deleteApp()}
                 disabled={Boolean(deletingId)}
+                onClick={() => void deleteApp()}
+                type="button"
               >
-                {deletingId ? <><span className="spinner-sm" /> {tGrid('modal_removing')}</> : tGrid('modal_remove_app')}
+                {deletingId ? (
+                  <>
+                    <span className="spinner-sm" /> {tGrid("modal_removing")}
+                  </>
+                ) : (
+                  tGrid("modal_remove_app")
+                )}
               </button>
             </div>
           </div>
@@ -1780,14 +2302,16 @@ export default function AppGrid({
       {queueOpen && f.reviewQueueEnabled && (
         <ReviewQueue
           apps={sorted as QueueAppInput[]}
-          userVerdicts={userVerdicts}
-          profileBadges={profileBadges}
-          hasProfile={hasProfile}
           audience={audience}
-          changedAppIds={new Set(sorted.filter(a => a.changeCount > 0).map(a => a.id))}
+          changedAppIds={
+            new Set(sorted.filter((a) => a.changeCount > 0).map((a) => a.id))
+          }
+          hasProfile={hasProfile}
+          onClose={() => setQueueOpen(false)}
+          profileBadges={profileBadges}
           showCfgutilOffer={f.reviewQueueCfgutilUninstall}
           showProgressBar={showQueueProgressBar}
-          onClose={() => setQueueOpen(false)}
+          userVerdicts={userVerdicts}
         />
       )}
 
@@ -1801,46 +2325,56 @@ export default function AppGrid({
         <div
           className="modal-overlay"
           onClick={() => {
-            if (!deletingManualId) setPendingDeleteManual(null);
+            if (!deletingManualId) {
+              setPendingDeleteManual(null);
+            }
           }}
         >
           <div
-            className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-manual-title"
             aria-describedby="delete-manual-copy"
-            onClick={event => event.stopPropagation()}
-            onKeyDown={event => {
-              if (event.key === 'Escape' && !deletingManualId) setPendingDeleteManual(null);
+            aria-labelledby="delete-manual-title"
+            aria-modal="true"
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !deletingManualId) {
+                setPendingDeleteManual(null);
+              }
             }}
+            role="dialog"
           >
-            <div className="modal-badge">{tGrid('modal_badge_remove')}</div>
-            <h2 id="delete-manual-title" className="modal-title">
-              {tGrid('modal_remove_custom_title', { name: pendingDeleteManual.name })}
+            <div className="modal-badge">{tGrid("modal_badge_remove")}</div>
+            <h2 className="modal-title" id="delete-manual-title">
+              {tGrid("modal_remove_custom_title", {
+                name: pendingDeleteManual.name,
+              })}
             </h2>
-            <p id="delete-manual-copy" className="modal-copy">
-              {tGrid('modal_remove_custom_body')}
+            <p className="modal-copy" id="delete-manual-copy">
+              {tGrid("modal_remove_custom_body")}
             </p>
             <div className="modal-actions">
               <button
-                type="button"
                 className="btn btn-secondary"
-                onClick={() => setPendingDeleteManual(null)}
                 disabled={Boolean(deletingManualId)}
+                onClick={() => setPendingDeleteManual(null)}
+                type="button"
               >
-                {tGrid('modal_cancel')}
+                {tGrid("modal_cancel")}
               </button>
               <button
-                type="button"
-                className="btn btn-danger"
-                onClick={() => void deleteManualConfirmed()}
-                disabled={Boolean(deletingManualId)}
                 autoFocus
+                className="btn btn-danger"
+                disabled={Boolean(deletingManualId)}
+                onClick={() => void deleteManualConfirmed()}
+                type="button"
               >
-                {deletingManualId
-                  ? <><span className="spinner-sm" /> {tGrid('modal_removing')}</>
-                  : tGrid('modal_remove_app')}
+                {deletingManualId ? (
+                  <>
+                    <span className="spinner-sm" /> {tGrid("modal_removing")}
+                  </>
+                ) : (
+                  tGrid("modal_remove_app")
+                )}
               </button>
             </div>
           </div>

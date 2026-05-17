@@ -10,17 +10,17 @@
  * can show a "language not supported" toast.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from "next/server";
 import {
   DEFAULT_LOCALE,
+  isSupportedLocale,
   LOCALE_COOKIE,
   SUPPORTED_LOCALES,
-  isSupportedLocale,
   type SupportedLocale,
-} from '@/i18n';
-import { readBoundedJson } from '@/lib/security';
+} from "@/i18n";
+import { readBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface LocaleBody {
   locale: SupportedLocale;
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await readBoundedJson<Partial<LocaleBody>>(request, 1024);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   const requested = body.locale;
@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
         accepted: false,
         locale: DEFAULT_LOCALE,
         supported: [...SUPPORTED_LOCALES],
-        error: `locale must be one of: ${SUPPORTED_LOCALES.join(', ')}`,
+        error: `locale must be one of: ${SUPPORTED_LOCALES.join(", ")}`,
       },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -55,9 +55,9 @@ export async function POST(request: NextRequest) {
   // 365-day cookie; user-set so it should outlive a session. httpOnly:false
   // because the locale switcher reads it client-side too.
   res.cookies.set(LOCALE_COOKIE, requested, {
-    path: '/',
+    path: "/",
     maxAge: 60 * 60 * 24 * 365,
-    sameSite: 'lax',
+    sameSite: "lax",
     httpOnly: false,
   });
   return res;

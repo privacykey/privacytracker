@@ -5,12 +5,12 @@
  */
 
 interface Props {
-  /** Pixel height; width auto-derives from viewBox. Default 28 px. */
-  height?: number | string;
-  /** Optional className for margin / filter wrappers. */
-  className?: string;
   /** Accessible name. Wordmark is decorative when omitted. */
   ariaLabel?: string;
+  /** Optional className for margin / filter wrappers. */
+  className?: string;
+  /** Pixel height; width auto-derives from viewBox. Default 28 px. */
+  height?: number | string;
 }
 
 export default function BrandWordmark({
@@ -31,33 +31,27 @@ export default function BrandWordmark({
   };
   return (
     <svg
+      aria-hidden={decorative ? true : undefined}
+      aria-label={ariaLabel}
       className={className}
       height={height}
+      role={decorative ? undefined : "img"}
       viewBox="0 0 320 50"
       xmlns="http://www.w3.org/2000/svg"
-      role={decorative ? undefined : 'img'}
-      aria-label={ariaLabel}
-      aria-hidden={decorative ? true : undefined}
     >
       <defs>
-        <linearGradient
-          id="brand-wordmark-grad"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="1"
-        >
+        <linearGradient id="brand-wordmark-grad" x1="0" x2="1" y1="0" y2="1">
           {/* Brand gradient — matches the magnifier-tile icon. */}
           <stop offset="0%" stopColor="#0a84ff" />
           <stop offset="100%" stopColor="#5e5ce6" />
         </linearGradient>
       </defs>
       <text
+        textAnchor="middle"
         // Centre on the viewBox so font-fallback width changes don't
         // shift the wordmark to the left edge.
         x="50%"
         y="38"
-        textAnchor="middle"
         {...textAttrs}
         fill="currentColor"
       >

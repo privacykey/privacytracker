@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { buildDeploymentDiagnostics } from '@/lib/deployment-diagnostics';
+import { NextResponse } from "next/server";
+import { buildDeploymentDiagnostics } from "@/lib/deployment-diagnostics";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Readiness probe for containers and reverse proxies.
@@ -14,14 +14,13 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const diagnostics = buildDeploymentDiagnostics(request.headers);
   const ready =
-    diagnostics.health.status === 'ok' &&
-    diagnostics.database.writable;
+    diagnostics.health.status === "ok" && diagnostics.database.writable;
 
   return NextResponse.json(
     {
-      status: ready ? 'ready' : 'not_ready',
+      status: ready ? "ready" : "not_ready",
       checks: diagnostics.checks,
     },
-    { status: ready ? 200 : 503 },
+    { status: ready ? 200 : 503 }
   );
 }

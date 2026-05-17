@@ -21,11 +21,11 @@
  *              Defaults to the flag key itself when omitted.
  */
 
-import type { FlagKey } from './feature-flag-rules';
+import type { FlagKey } from "./feature-flag-rules";
 
 export interface FlagUsage {
-  hint: string;
   files: string[];
+  hint: string;
   route?: string;
   target?: string;
 }
@@ -37,107 +37,113 @@ export interface FlagUsage {
  */
 export const FLAG_USAGE: Partial<Record<FlagKey, FlagUsage>> = {
   // Apps grid surface ────────────────────────────────────────────────
-  'flag.appgrid.card.profile_badge': {
+  "flag.appgrid.card.profile_badge": {
     hint: "Privacy-profile match pill on each app card (the green/orange/red 'Matches profile' chip).",
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.card.profile_badge',
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.card.profile_badge",
   },
-  'flag.appgrid.card.risk_pill': {
-    hint: 'High/Moderate/Low risk pill on the right rail of each card.',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.card.risk_pill',
+  "flag.appgrid.card.risk_pill": {
+    hint: "High/Moderate/Low risk pill on the right rail of each card.",
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.card.risk_pill",
   },
-  'flag.appgrid.card.freshness_chip': {
+  "flag.appgrid.card.freshness_chip": {
     hint: '"2d ago" / "Fresh" / "Stale" chip on each card.',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.card.freshness_chip',
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.card.freshness_chip",
   },
-  'flag.appgrid.card.resync_button': {
-    hint: 'Per-card ↻ resync icon button (and its sync-count notification badge).',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.card.resync_button',
+  "flag.appgrid.card.resync_button": {
+    hint: "Per-card ↻ resync icon button (and its sync-count notification badge).",
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.card.resync_button",
   },
-  'flag.appgrid.card.delete_button': {
-    hint: 'Per-card ✕ stop-tracking icon button.',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.card.delete_button',
+  "flag.appgrid.card.delete_button": {
+    hint: "Per-card ✕ stop-tracking icon button.",
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.card.delete_button",
   },
-  'flag.appgrid.filter.profile_mismatch': {
+  "flag.appgrid.filter.profile_mismatch": {
     hint: '"Profile mismatches" filter pill above the grid.',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.filter.profile_mismatch',
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.filter.profile_mismatch",
   },
-  'flag.appgrid.filter.search': {
-    hint: 'Search box above the apps grid.',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.filter.search',
+  "flag.appgrid.filter.search": {
+    hint: "Search box above the apps grid.",
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.filter.search",
   },
-  'flag.appgrid.filter.risk_buttons': {
-    hint: 'Risk-level filter buttons (High / Moderate / Low / Minimal / All).',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.filter.risk_buttons',
+  "flag.appgrid.filter.risk_buttons": {
+    hint: "Risk-level filter buttons (High / Moderate / Low / Minimal / All).",
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.filter.risk_buttons",
   },
-  'flag.appgrid.actions.add_apps': {
-    hint: '+ Add Apps button in the page header.',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.actions.add_apps',
+  "flag.appgrid.actions.add_apps": {
+    hint: "+ Add Apps button in the page header.",
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.actions.add_apps",
   },
-  'flag.appgrid.actions.compare_mode': {
-    hint: 'Compare button in the page header (toggles multi-select).',
-    files: ['app/components/AppGrid.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.appgrid.actions.compare_mode',
+  "flag.appgrid.actions.compare_mode": {
+    hint: "Compare button in the page header (toggles multi-select).",
+    files: ["app/components/AppGrid.tsx"],
+    route: "/dashboard/apps",
+    target: "flag.appgrid.actions.compare_mode",
   },
 
   // Audit-bundle / Phase 1 ───────────────────────────────────────────
-  'flag.settings.admin.export.audit_bundle': {
-    hint: 'Audit-bundle export button in Settings (recommender-flow handoff).',
-    files: ['app/components/SettingsView.tsx', 'lib/audit-bundle.ts'],
-    route: '/dashboard/settings',
-    target: 'flag.settings.admin.export.audit_bundle',
+  "flag.settings.admin.export.audit_bundle": {
+    hint: "Audit-bundle export button in Settings (recommender-flow handoff).",
+    files: ["app/components/SettingsView.tsx", "lib/audit-bundle.ts"],
+    route: "/dashboard/settings",
+    target: "flag.settings.admin.export.audit_bundle",
   },
-  'flag.onboarding.method.import_audit_bundle': {
+  "flag.onboarding.method.import_audit_bundle": {
     hint: '"Import audit bundle" tile on the onboarding method picker.',
-    files: ['app/components/OnboardWizard.tsx', 'lib/audit-bundle-import.ts'],
-    route: '/onboard',
-    target: 'flag.onboarding.method.import_audit_bundle',
+    files: ["app/components/OnboardWizard.tsx", "lib/audit-bundle-import.ts"],
+    route: "/onboard",
+    target: "flag.onboarding.method.import_audit_bundle",
   },
 
   // Phase 3 destructive surface ──────────────────────────────────────
-  'flag.devopts.cfgutil_uninstall': {
-    hint: 'Unlocks the Backup + Act steps in /dashboard/review-recommendations. Off by default — destructive opt-in.',
+  "flag.devopts.cfgutil_uninstall": {
+    hint: "Unlocks the Backup + Act steps in /dashboard/review-recommendations. Off by default — destructive opt-in.",
     files: [
-      'app/components/ReviewRecommendationsView.tsx',
-      'lib/device-actions.ts',
-      'src-tauri/src/cfgutil.rs',
+      "app/components/ReviewRecommendationsView.tsx",
+      "lib/device-actions.ts",
+      "src-tauri/src/cfgutil.rs",
     ],
-    route: '/dashboard/review-recommendations',
-    target: 'flag.devopts.cfgutil_uninstall',
+    route: "/dashboard/review-recommendations",
+    target: "flag.devopts.cfgutil_uninstall",
   },
 
   // App Detail ───────────────────────────────────────────────────────
-  'flag.detail.annotations_sidebar': {
-    hint: 'Notes sidebar on the right side of the App Detail page.',
-    files: ['app/components/AnnotationsSidebar.tsx', 'app/components/AppDetailView.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.detail.annotations_sidebar',
+  "flag.detail.annotations_sidebar": {
+    hint: "Notes sidebar on the right side of the App Detail page.",
+    files: [
+      "app/components/AnnotationsSidebar.tsx",
+      "app/components/AppDetailView.tsx",
+    ],
+    route: "/dashboard/apps",
+    target: "flag.detail.annotations_sidebar",
   },
 
   // Detail timeline ──────────────────────────────────────────────────
-  'flag.detail.charts.category_trend': {
-    hint: 'Change-history chart strip above the timeline rows.',
-    files: ['app/components/ChangelogTimeline.tsx', 'app/components/charts/AppChangeTimeline.tsx'],
-    route: '/dashboard/apps',
-    target: 'flag.detail.charts.category_trend',
+  "flag.detail.charts.category_trend": {
+    hint: "Change-history chart strip above the timeline rows.",
+    files: [
+      "app/components/ChangelogTimeline.tsx",
+      "app/components/charts/AppChangeTimeline.tsx",
+    ],
+    route: "/dashboard/apps",
+    target: "flag.detail.charts.category_trend",
   },
 };
 

@@ -21,53 +21,53 @@
  * them on the product page.
  */
 
-import db from './db';
+import db from "./db";
 
-export type RelatedShelfType = 'may_also_like' | 'more_by_developer';
+export type RelatedShelfType = "may_also_like" | "more_by_developer";
 
 export interface RelatedAppRow {
-  sourceAppId:       string;
-  relatedAppleId:    string;
-  relatedName:       string;
-  relatedDeveloper:  string | null;
-  relatedIconUrl:    string | null;
-  relatedStoreUrl:   string;
-  shelfType:         RelatedShelfType;
-  observedAt:        number;
+  observedAt: number;
+  relatedAppleId: string;
+  relatedDeveloper: string | null;
+  relatedIconUrl: string | null;
+  relatedName: string;
+  relatedStoreUrl: string;
+  shelfType: RelatedShelfType;
+  sourceAppId: string;
 }
 
 /** Subset of {@link RelatedAppRow} that the scraper produces, before we know `observedAt`. */
 export interface RelatedAppInput {
-  relatedAppleId:    string;
-  relatedName:       string;
-  relatedDeveloper:  string | null;
-  relatedIconUrl:    string | null;
-  relatedStoreUrl:   string;
-  shelfType:         RelatedShelfType;
+  relatedAppleId: string;
+  relatedDeveloper: string | null;
+  relatedIconUrl: string | null;
+  relatedName: string;
+  relatedStoreUrl: string;
+  shelfType: RelatedShelfType;
 }
 
 // Internal — DB row shape (snake_case).
 interface DbRow {
-  source_app_id:      string;
-  related_apple_id:   string;
-  related_name:       string;
-  related_developer:  string | null;
-  related_icon_url:   string | null;
-  related_store_url:  string;
-  shelf_type:         RelatedShelfType;
-  observed_at:        number;
+  observed_at: number;
+  related_apple_id: string;
+  related_developer: string | null;
+  related_icon_url: string | null;
+  related_name: string;
+  related_store_url: string;
+  shelf_type: RelatedShelfType;
+  source_app_id: string;
 }
 
 function rowToRelated(row: DbRow): RelatedAppRow {
   return {
-    sourceAppId:      row.source_app_id,
-    relatedAppleId:   row.related_apple_id,
-    relatedName:      row.related_name,
+    sourceAppId: row.source_app_id,
+    relatedAppleId: row.related_apple_id,
+    relatedName: row.related_name,
     relatedDeveloper: row.related_developer,
-    relatedIconUrl:   row.related_icon_url,
-    relatedStoreUrl:  row.related_store_url,
-    shelfType:        row.shelf_type,
-    observedAt:       row.observed_at,
+    relatedIconUrl: row.related_icon_url,
+    relatedStoreUrl: row.related_store_url,
+    shelfType: row.shelf_type,
+    observedAt: row.observed_at,
   };
 }
 
@@ -80,13 +80,15 @@ function rowToRelated(row: DbRow): RelatedAppRow {
  * app's last scrape. Order matches Apple's presentation order.
  */
 export function getMayAlsoLike(sourceAppId: string): RelatedAppRow[] {
-  const rows = db.prepare(
-    `SELECT source_app_id, related_apple_id, related_name, related_developer,
+  const rows = db
+    .prepare(
+      `SELECT source_app_id, related_apple_id, related_name, related_developer,
             related_icon_url, related_store_url, shelf_type, observed_at
      FROM related_apps_observed
      WHERE source_app_id = ? AND shelf_type = 'may_also_like'
-     ORDER BY observed_at DESC, related_apple_id ASC`,
-  ).all(sourceAppId) as DbRow[];
+     ORDER BY observed_at DESC, related_apple_id ASC`
+    )
+    .all(sourceAppId) as DbRow[];
   return rows.map(rowToRelated);
 }
 
@@ -95,13 +97,15 @@ export function getMayAlsoLike(sourceAppId: string): RelatedAppRow[] {
  * convention as {@link getMayAlsoLike}.
  */
 export function getMoreByDeveloper(sourceAppId: string): RelatedAppRow[] {
-  const rows = db.prepare(
-    `SELECT source_app_id, related_apple_id, related_name, related_developer,
+  const rows = db
+    .prepare(
+      `SELECT source_app_id, related_apple_id, related_name, related_developer,
             related_icon_url, related_store_url, shelf_type, observed_at
      FROM related_apps_observed
      WHERE source_app_id = ? AND shelf_type = 'more_by_developer'
-     ORDER BY observed_at DESC, related_apple_id ASC`,
-  ).all(sourceAppId) as DbRow[];
+     ORDER BY observed_at DESC, related_apple_id ASC`
+    )
+    .all(sourceAppId) as DbRow[];
   return rows.map(rowToRelated);
 }
 
@@ -110,9 +114,11 @@ export function getMoreByDeveloper(sourceAppId: string): RelatedAppRow[] {
  * if we ever want to render both shelves side-by-side; currently the
  * UI only surfaces 'may_also_like'.
  */
-export function getRelatedAppsForSource(sourceAppId: string): Record<RelatedShelfType, RelatedAppRow[]> {
+export function getRelatedAppsForSource(
+  sourceAppId: string
+): Record<RelatedShelfType, RelatedAppRow[]> {
   return {
-    may_also_like:     getMayAlsoLike(sourceAppId),
+    may_also_like: getMayAlsoLike(sourceAppId),
     more_by_developer: getMoreByDeveloper(sourceAppId),
   };
 }
@@ -135,14 +141,16 @@ export function getRelatedAppsForSource(sourceAppId: string): Record<RelatedShel
 export function replaceRelatedAppsForSource(
   sourceAppId: string,
   inputs: readonly RelatedAppInput[],
-  observedAt: number = Date.now(),
+  observedAt: number = Date.now()
 ): void {
-  const del = db.prepare(`DELETE FROM related_apps_observed WHERE source_app_id = ?`);
+  const del = db.prepare(
+    "DELETE FROM related_apps_observed WHERE source_app_id = ?"
+  );
   const ins = db.prepare(
     `INSERT INTO related_apps_observed
        (source_app_id, related_apple_id, related_name, related_developer,
         related_icon_url, related_store_url, shelf_type, observed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   db.transaction(() => {
@@ -156,7 +164,7 @@ export function replaceRelatedAppsForSource(
         row.relatedIconUrl,
         row.relatedStoreUrl,
         row.shelfType,
-        observedAt,
+        observedAt
       );
     }
   })();
@@ -164,5 +172,5 @@ export function replaceRelatedAppsForSource(
 
 /** Test helper: hard-delete everything (used by resetTestDb / Dev Options purge). */
 export function purgeAllRelatedApps(): number {
-  return db.prepare(`DELETE FROM related_apps_observed`).run().changes;
+  return db.prepare("DELETE FROM related_apps_observed").run().changes;
 }

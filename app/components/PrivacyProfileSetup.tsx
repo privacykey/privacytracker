@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useTranslations } from 'next-intl';
-import PrivacyProfileEditor from './PrivacyProfileEditor';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
 import {
   DEFAULT_PROFILE,
   type PrivacyProfile,
-} from '../../lib/privacy-profile';
+} from "../../lib/privacy-profile";
+import PrivacyProfileEditor from "./PrivacyProfileEditor";
 
 interface Props {
   /** Existing saved profile, so a returning user sees their previous edits. */
@@ -26,20 +26,21 @@ interface Props {
  * the Save & Continue flow is identical.
  */
 export default function PrivacyProfileSetup({ initialProfile }: Props) {
-  const t = useTranslations('onboard.profile_setup');
+  const t = useTranslations("onboard.profile_setup");
   const router = useRouter();
   const hasExistingProfile = Boolean(
-    initialProfile && Object.values(initialProfile).some(v => typeof v === 'string'),
+    initialProfile &&
+      Object.values(initialProfile).some((v) => typeof v === "string")
   );
   const [enabled, setEnabled] = useState<boolean>(hasExistingProfile);
   const [profile, setProfile] = useState<PrivacyProfile>(
-    hasExistingProfile ? { ...initialProfile } : { ...DEFAULT_PROFILE },
+    hasExistingProfile ? { ...initialProfile } : { ...DEFAULT_PROFILE }
   );
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
 
   const continueToWizard = () => {
-    router.push('/onboard');
+    router.push("/onboard");
   };
 
   const onSkip = () => {
@@ -48,27 +49,29 @@ export default function PrivacyProfileSetup({ initialProfile }: Props) {
 
   const onSave = async () => {
     setSaving(true);
-    setError('');
+    setError("");
     try {
       const payload = enabled ? profile : null;
-      const res = await fetch('/api/privacy-profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/privacy-profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile: payload }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error ?? t('save_failed'));
+        throw new Error(body?.error ?? t("save_failed"));
       }
       continueToWizard();
     } catch (err) {
-      console.error('[onboard/profile] save failed:', err);
-      setError(err instanceof Error ? err.message : t('save_failed'));
+      console.error("[onboard/profile] save failed:", err);
+      setError(err instanceof Error ? err.message : t("save_failed"));
       setSaving(false);
     }
   };
 
-  const setCount = Object.values(profile).filter(v => typeof v === 'string').length;
+  const setCount = Object.values(profile).filter(
+    (v) => typeof v === "string"
+  ).length;
 
   return (
     <div className="wizard-outer">
@@ -79,53 +82,56 @@ export default function PrivacyProfileSetup({ initialProfile }: Props) {
             wizard's step 1; same `wizard-back-link` class so the
             placement is consistent across the onboarding flow. */}
         <Link
-          href="/onboard/goals"
+          aria-label={t("back_aria")}
           className="wizard-back-link"
-          aria-label={t('back_aria')}
+          href="/onboard/goals"
         >
-          <span aria-hidden="true">←</span> {t('back_to_goals')}
+          <span aria-hidden="true">←</span> {t("back_to_goals")}
         </Link>
-        <div className="wizard-subtle-eyebrow">{t('eyebrow')}</div>
-        <h1 className="wizard-title">{t('title')}</h1>
+        <div className="wizard-subtle-eyebrow">{t("eyebrow")}</div>
+        <h1 className="wizard-title">{t("title")}</h1>
         <p className="wizard-subtitle">
-          {t.rich('subtitle', { em: chunks => <em>{chunks}</em> })}
+          {t.rich("subtitle", { em: (chunks) => <em>{chunks}</em> })}
         </p>
 
         {/* Master on/off — matches the switch style used in Settings →
             Privacy Profile so the control feels the same wherever the user
             encounters it. */}
-        <div className="privacy-profile-toggle-row" style={{ marginBottom: 16 }}>
+        <div
+          className="privacy-profile-toggle-row"
+          style={{ marginBottom: 16 }}
+        >
           <button
-            type="button"
-            role="switch"
             aria-checked={enabled}
-            aria-label={t('switch_aria')}
-            className={`switch-toggle${enabled ? ' is-on' : ''}`}
-            onClick={() => setEnabled(!enabled)}
+            aria-label={t("switch_aria")}
+            className={`switch-toggle${enabled ? "is-on" : ""}`}
             disabled={saving}
+            onClick={() => setEnabled(!enabled)}
+            role="switch"
+            type="button"
           >
-            <span className="switch-toggle-thumb" aria-hidden="true" />
+            <span aria-hidden="true" className="switch-toggle-thumb" />
           </button>
           <div className="privacy-profile-toggle-label">
-            <div className="privacy-profile-toggle-title">{t('switch_title')}</div>
+            <div className="privacy-profile-toggle-title">
+              {t("switch_title")}
+            </div>
             <div className="privacy-profile-toggle-hint">
-              {enabled
-                ? t('switch_hint_on')
-                : t('switch_hint_off')}
+              {enabled ? t("switch_hint_on") : t("switch_hint_off")}
             </div>
           </div>
         </div>
 
         {enabled && (
           <PrivacyProfileEditor
-            value={profile}
-            onChange={setProfile}
-            disabled={saving}
             // First-time users land here with the editor's local state
             // pre-loaded from DEFAULT_PROFILE — clicking a preset shouldn't
             // require a confirm. Returning users (with a saved profile)
             // get the confirm so they don't lose customisations.
             confirmOnPresetApply={hasExistingProfile}
+            disabled={saving}
+            onChange={setProfile}
+            value={profile}
           />
         )}
 
@@ -137,33 +143,36 @@ export default function PrivacyProfileSetup({ initialProfile }: Props) {
 
         <div className="welcome-actions" style={{ marginTop: 16 }}>
           <button
-            type="button"
             className="btn btn-primary"
-            onClick={() => void onSave()}
             disabled={saving || (enabled && setCount === 0)}
+            onClick={() => void onSave()}
+            type="button"
           >
             {saving
-              ? t('saving')
+              ? t("saving")
               : enabled
-                ? t('save_continue')
-                : t('continue_no_profile')}
+                ? t("save_continue")
+                : t("continue_no_profile")}
           </button>
           <button
-            type="button"
             className="btn btn-ghost welcome-skip"
-            onClick={onSkip}
             disabled={saving}
+            onClick={onSkip}
+            type="button"
           >
-            {t('skip')}
+            {t("skip")}
           </button>
         </div>
 
         <p className="welcome-footnote" style={{ marginTop: 14 }}>
-          {t('footnote_pre')}
-          <Link href="/dashboard/settings#privacy-profile" className="welcome-link">
-            {t('footnote_link')}
+          {t("footnote_pre")}
+          <Link
+            className="welcome-link"
+            href="/dashboard/settings#privacy-profile"
+          >
+            {t("footnote_link")}
           </Link>
-          {t('footnote_post')}
+          {t("footnote_post")}
         </p>
       </div>
     </div>

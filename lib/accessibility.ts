@@ -13,13 +13,13 @@
  * shelf (title only). Both absent → hasAccessibilityLabels = 0.
  */
 
-import db from './db';
-import type { ChangeEntry } from './changelog-types';
 import {
+  type AccessibilityFeature,
   CANONICAL_ACCESSIBILITY_FEATURES as CANONICAL_FEATURES_TYPES,
   type CanonicalAccessibilityFeature,
-  type AccessibilityFeature,
-} from './accessibility-types';
+} from "./accessibility-types";
+import type { ChangeEntry } from "./changelog-types";
+import db from "./db";
 
 /**
  * A single accessibility feature on an app's listing. `identifier` is our
@@ -27,11 +27,11 @@ import {
  * — Apple does not expose a machine id.
  */
 export interface AccessibilityFeatureRecord {
-  identifier: string;
-  title: string;
   description: string | null;
   /** SF Symbol template URI, e.g. "systemimage://voiceover". Null on legacy rows. */
   iconTemplate: string | null;
+  identifier: string;
+  title: string;
 }
 
 /**
@@ -39,10 +39,10 @@ export interface AccessibilityFeatureRecord {
  * even if no app supports the feature) and the app-detail legend (showing
  * what an app is missing). Re-exported from the client-safe `./accessibility-types`.
  */
-export const CANONICAL_ACCESSIBILITY_FEATURES: ReadonlyArray<CanonicalAccessibilityFeature> =
+export const CANONICAL_ACCESSIBILITY_FEATURES: readonly CanonicalAccessibilityFeature[] =
   CANONICAL_FEATURES_TYPES;
 
-export type { CanonicalAccessibilityFeature, AccessibilityFeature };
+export type { AccessibilityFeature, CanonicalAccessibilityFeature };
 
 /**
  * Convert a feature display title ("Voice Control") into a stable slug
@@ -51,8 +51,8 @@ export type { CanonicalAccessibilityFeature, AccessibilityFeature };
 export function slugifyFeatureTitle(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
     .slice(0, 64);
 }
 
@@ -63,24 +63,32 @@ export function slugifyFeatureTitle(title: string): string {
  * is present but empty. Unrecognised subtrees are skipped silently.
  */
 export function extractAccessibilityFeatures(
-  data: unknown,
+  data: unknown
 ): AccessibilityFeatureRecord[] | null {
-  const shelfMapping = readPath(data, [0, 'data', 'shelfMapping']);
-  if (!shelfMapping || typeof shelfMapping !== 'object') return null;
+  const shelfMapping = readPath(data, [0, "data", "shelfMapping"]);
+  if (!shelfMapping || typeof shelfMapping !== "object") {
+    return null;
+  }
 
   // Path 1 (preferred): rich variant with descriptions.
   const headerShelves = readPath(shelfMapping, [
-    'accessibilityHeader',
-    'seeAllAction',
-    'pageData',
-    'shelves',
+    "accessibilityHeader",
+    "seeAllAction",
+    "pageData",
+    "shelves",
   ]);
   if (Array.isArray(headerShelves)) {
     for (const shelf of headerShelves) {
-      if (!shelf || typeof shelf !== 'object') continue;
-      if ((shelf as any).contentType !== 'accessibilityFeatures') continue;
+      if (!shelf || typeof shelf !== "object") {
+        continue;
+      }
+      if ((shelf as any).contentType !== "accessibilityFeatures") {
+        continue;
+      }
       const items = (shelf as any).items;
-      if (!Array.isArray(items)) continue;
+      if (!Array.isArray(items)) {
+        continue;
+      }
       for (const item of items) {
         if (item && Array.isArray((item as any).features)) {
           return normalizeFeatures((item as any).features);
@@ -91,7 +99,7 @@ export function extractAccessibilityFeatures(
 
   // Path 2 (fallback): compact variant without descriptions.
   const directShelf = (shelfMapping as any).accessibilityFeatures;
-  if (directShelf && typeof directShelf === 'object') {
+  if (directShelf && typeof directShelf === "object") {
     const items = directShelf.items;
     if (Array.isArray(items)) {
       for (const item of items) {
@@ -117,25 +125,35 @@ function normalizeFeatures(raw: unknown[]): AccessibilityFeatureRecord[] {
   const seen = new Set<string>();
   const out: AccessibilityFeatureRecord[] = [];
   for (const f of raw) {
-    if (!f || typeof f !== 'object') continue;
+    if (!f || typeof f !== "object") {
+      continue;
+    }
     const rawTitle = (f as any).title;
-    if (typeof rawTitle !== 'string') continue;
+    if (typeof rawTitle !== "string") {
+      continue;
+    }
     const title = rawTitle.trim();
-    if (!title) continue;
+    if (!title) {
+      continue;
+    }
 
     const identifier = slugifyFeatureTitle(title);
-    if (!identifier || seen.has(identifier)) continue;
+    if (!identifier || seen.has(identifier)) {
+      continue;
+    }
     seen.add(identifier);
 
     const rawDescription = (f as any).description;
     const description =
-      typeof rawDescription === 'string' && rawDescription.trim().length > 0
+      typeof rawDescription === "string" && rawDescription.trim().length > 0
         ? rawDescription.trim()
         : null;
 
     const rawTemplate = (f as any).artwork?.template;
     const iconTemplate =
-      typeof rawTemplate === 'string' && rawTemplate.length > 0 ? rawTemplate : null;
+      typeof rawTemplate === "string" && rawTemplate.length > 0
+        ? rawTemplate
+        : null;
 
     out.push({ identifier, title, description, iconTemplate });
   }
@@ -145,7 +163,9 @@ function normalizeFeatures(raw: unknown[]): AccessibilityFeatureRecord[] {
 function readPath(obj: unknown, path: Array<string | number>): unknown {
   let cur: any = obj;
   for (const key of path) {
-    if (cur == null) return null;
+    if (cur == null) {
+      return null;
+    }
     cur = cur[key as any];
   }
   return cur ?? null;
@@ -158,11 +178,11 @@ function readPath(obj: unknown, path: Array<string | number>): unknown {
  */
 export function writeAccessibilityFeatures(
   appId: string,
-  features: AccessibilityFeatureRecord[],
+  features: AccessibilityFeatureRecord[]
 ): void {
-  const del = db.prepare('DELETE FROM accessibility_features WHERE app_id = ?');
+  const del = db.prepare("DELETE FROM accessibility_features WHERE app_id = ?");
   const ins = db.prepare(
-    'INSERT INTO accessibility_features (id, app_id, identifier, title, description, icon_template) VALUES (?, ?, ?, ?, ?, ?)',
+    "INSERT INTO accessibility_features (id, app_id, identifier, title, description, icon_template) VALUES (?, ?, ?, ?, ?, ?)"
   );
   const tx = db.transaction(() => {
     del.run(appId);
@@ -173,7 +193,7 @@ export function writeAccessibilityFeatures(
         f.identifier,
         f.title,
         f.description,
-        f.iconTemplate,
+        f.iconTemplate
       );
     }
   });
@@ -186,18 +206,18 @@ export function writeAccessibilityFeatures(
  * the two via `apps.hasAccessibilityLabels`.
  */
 export function buildAccessibilitySnapshot(
-  appId: string,
+  appId: string
 ): AccessibilityFeatureRecord[] {
   const rows = db
     .prepare(
-      'SELECT identifier, title, description, icon_template FROM accessibility_features WHERE app_id = ? ORDER BY identifier',
+      "SELECT identifier, title, description, icon_template FROM accessibility_features WHERE app_id = ? ORDER BY identifier"
     )
     .all(appId) as Array<{
-      identifier: string;
-      title: string;
-      description: string | null;
-      icon_template: string | null;
-    }>;
+    identifier: string;
+    title: string;
+    description: string | null;
+    icon_template: string | null;
+  }>;
   return rows.map((r) => ({
     identifier: r.identifier,
     title: r.title,
@@ -213,7 +233,7 @@ export function buildAccessibilitySnapshot(
  */
 export function diffAccessibility(
   prev: AccessibilityFeatureRecord[],
-  next: AccessibilityFeatureRecord[],
+  next: AccessibilityFeatureRecord[]
 ): ChangeEntry[] {
   const prevMap = new Map(prev.map((f) => [f.identifier, f]));
   const nextMap = new Map(next.map((f) => [f.identifier, f]));
@@ -223,18 +243,18 @@ export function diffAccessibility(
   for (const [id, feature] of nextMap) {
     if (!prevMap.has(id)) {
       changes.push({
-        type: 'added',
+        type: "added",
         description: `Now supports accessibility feature: "${feature.title}"`,
-        category: 'accessibility',
+        category: "accessibility",
       });
     }
   }
   for (const [id, feature] of prevMap) {
     if (!nextMap.has(id)) {
       changes.push({
-        type: 'removed',
+        type: "removed",
         description: `No longer claims accessibility feature: "${feature.title}"`,
-        category: 'accessibility',
+        category: "accessibility",
       });
     }
   }
@@ -256,7 +276,7 @@ export function getAccessibilityCoverageByFeature(): Array<{
       `SELECT identifier, MIN(title) AS title, COUNT(DISTINCT app_id) AS appCount
          FROM accessibility_features
          GROUP BY identifier
-         ORDER BY appCount DESC, title ASC`,
+         ORDER BY appCount DESC, title ASC`
     )
     .all() as Array<{ identifier: string; title: string; appCount: number }>;
 }

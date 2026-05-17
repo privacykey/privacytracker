@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 /**
  * "Raise an issue on GitHub" link for the 404 page (and anywhere else we
@@ -18,8 +18,8 @@ import { useEffect, useState } from 'react';
  * ignore the prefill params silently.
  */
 
-const REPO = 'privacykey/privacytracker';
-const TEMPLATE = 'bug_report.yml';
+const REPO = "privacykey/privacytracker";
+const TEMPLATE = "bug_report.yml";
 const FALLBACK_HREF = `https://github.com/${REPO}/issues/new?template=${TEMPLATE}`;
 
 /** GitHub caps the querystring — keep prefilled values reasonable. */
@@ -27,8 +27,10 @@ const MAX_URL_LENGTH = 500;
 const MAX_UA_LENGTH = 240;
 
 function clamp(value: string, max: number): string {
-  if (value.length <= max) return value;
-  return value.slice(0, max - 1) + '…';
+  if (value.length <= max) {
+    return value;
+  }
+  return `${value.slice(0, max - 1)}…`;
 }
 
 export default function GithubIssueLink({ className }: { className?: string }) {
@@ -39,8 +41,8 @@ export default function GithubIssueLink({ className }: { className?: string }) {
       const current = clamp(window.location.href, MAX_URL_LENGTH);
       const previous = document.referrer
         ? clamp(document.referrer, MAX_URL_LENGTH)
-        : '(direct link — no referrer)';
-      const ua = clamp(navigator.userAgent ?? '', MAX_UA_LENGTH);
+        : "(direct link — no referrer)";
+      const ua = clamp(navigator.userAgent ?? "", MAX_UA_LENGTH);
       const title = `404 on ${window.location.pathname}`;
 
       // URLSearchParams handles the encoding for us. GitHub issue forms
@@ -48,8 +50,8 @@ export default function GithubIssueLink({ className }: { className?: string }) {
       const params = new URLSearchParams({
         template: TEMPLATE,
         title,
-        'current-url': current,
-        'previous-url': previous,
+        "current-url": current,
+        "previous-url": previous,
         browser: ua,
       });
 
@@ -62,10 +64,10 @@ export default function GithubIssueLink({ className }: { className?: string }) {
 
   return (
     <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
       className={className}
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
     >
       Not what you&apos;re expecting? <span>Raise an issue on GitHub →</span>
     </a>

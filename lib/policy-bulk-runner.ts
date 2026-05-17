@@ -15,37 +15,37 @@
  * cost profile stays stable.
  */
 
-import crypto from 'crypto';
-import db from './db';
-import { recordActivity } from './activity';
-import { recordAudit } from './security';
+import crypto from "node:crypto";
+import { recordActivity } from "./activity";
+import db from "./db";
 import {
-  syncPrivacyPolicyAnalysis,
-  type PolicyPhase,
-  type PolicyPhaseStream,
-} from './privacy-policy';
-import type { PolicyRunPhase } from './policy-summary-meta';
-import {
-  readPolicyBulkState,
-  writePolicyBulkState,
-  clearPolicyBulkState,
   acquirePolicyBulkMutex,
-  releasePolicyBulkMutex,
-  isPolicyBulkMutexHeld,
-  zeroPolicyTotals,
-  summarisePolicyState,
+  clearPolicyBulkState,
   hasPolicyPendingWork,
+  isPolicyBulkMutexHeld,
+  type PolicyAppOutcome,
   type PolicyBulkState,
   type PolicyBulkTotals,
   type PolicyQueueEntry,
-  type PolicyAppOutcome,
-} from './policy-bulk-state';
+  readPolicyBulkState,
+  releasePolicyBulkMutex,
+  summarisePolicyState,
+  writePolicyBulkState,
+  zeroPolicyTotals,
+} from "./policy-bulk-state";
+import type { PolicyRunPhase } from "./policy-summary-meta";
+import {
+  type PolicyPhase,
+  type PolicyPhaseStream,
+  syncPrivacyPolicyAnalysis,
+} from "./privacy-policy";
+import { recordAudit } from "./security";
 
 /** Row shape pulled from `apps` to seed the queue. */
 export interface PolicyAppRow {
+  developer: string | null;
   id: string;
   name: string;
-  developer: string | null;
   privacyPolicyUrl: string | null;
 }
 
@@ -58,24 +58,24 @@ export type PolicyStreamWriter = (obj: unknown) => void;
  * happened to be cached, so the single-app regenerate route is the only
  * place it's exposed.
  */
-export type PolicyBulkPhase = Extract<PolicyPhase, 'fetch' | 'all'>;
+export type PolicyBulkPhase = Extract<PolicyPhase, "fetch" | "all">;
 
 export interface RunPolicyBulkOptions {
-  initiator: 'manual' | 'automatic' | 'resume';
-  phase: PolicyBulkPhase;
+  actorIp?: string | null;
   /** Bypass the per-app scrape throttle for this batch. */
   force: boolean;
+  initiator: "manual" | "automatic" | "resume";
+  phase: PolicyBulkPhase;
+  resumeState?: PolicyBulkState;
+  streamRequested?: boolean;
   /** NDJSON event sink. Omit for buffered / background runs. */
   streamWriter?: PolicyStreamWriter;
-  actorIp?: string | null;
   userAgent?: string | null;
-  streamRequested?: boolean;
-  resumeState?: PolicyBulkState;
 }
 
 export interface RunPolicyBulkResult {
-  totals: PolicyBulkTotals;
   durationMs: number;
+  totals: PolicyBulkTotals;
 }
 
 /**
@@ -85,13 +85,15 @@ export interface RunPolicyBulkResult {
  */
 function classifyOutcome(
   analysisStatus: string | undefined,
-  throttled: boolean,
+  throttled: boolean
 ): PolicyAppOutcome {
-  if (throttled) return 'throttled';
-  if (analysisStatus === 'ready' || analysisStatus === 'source_ready') {
-    return 'succeeded';
+  if (throttled) {
+    return "throttled";
   }
-  return 'failed';
+  if (analysisStatus === "ready" || analysisStatus === "source_ready") {
+    return "succeeded";
+  }
+  return "failed";
 }
 
 /**
@@ -100,9 +102,11 @@ function classifyOutcome(
  * resumed and streamed runs classify the same way.
  */
 function wasThrottled(lastRunLog: unknown): boolean {
-  if (!Array.isArray(lastRunLog) || lastRunLog.length === 0) return false;
-  const tail = lastRunLog[lastRunLog.length - 1] as { phase?: string } | undefined;
-  return tail?.phase === 'throttled';
+  if (!Array.isArray(lastRunLog) || lastRunLog.length === 0) {
+    return false;
+  }
+  const tail = lastRunLog.at(-1) as { phase?: string } | undefined;
+  return tail?.phase === "throttled";
 }
 
 /**
@@ -110,9 +114,11 @@ function wasThrottled(lastRunLog: unknown): boolean {
  * the mutex nor the state blob is claimed, otherwise `{ ok: false }` so
  * the POST handler can return a 409 response.
  */
-export function canStartPolicyManualRun(): { ok: true } | { ok: false; reason: 'busy' } {
+export function canStartPolicyManualRun():
+  | { ok: true }
+  | { ok: false; reason: "busy" } {
   if (isPolicyBulkMutexHeld() || readPolicyBulkState() !== null) {
-    return { ok: false, reason: 'busy' };
+    return { ok: false, reason: "busy" };
   }
   return { ok: true };
 }
@@ -132,17 +138,17 @@ export function buildInitialPolicyQueue(): {
          FROM apps
         WHERE privacyPolicyUrl IS NOT NULL
           AND TRIM(privacyPolicyUrl) != ''
-        ORDER BY name COLLATE NOCASE ASC`,
+        ORDER BY name COLLATE NOCASE ASC`
     )
     .all() as PolicyAppRow[];
   return {
     queue: apps
-      .filter(app => app.privacyPolicyUrl) // defensive: SQL already excludes these
-      .map<PolicyQueueEntry>(app => ({
+      .filter((app) => app.privacyPolicyUrl) // defensive: SQL already excludes these
+      .map<PolicyQueueEntry>((app) => ({
         appId: app.id,
         appName: app.name,
         policyUrl: app.privacyPolicyUrl as string,
-        status: 'pending',
+        status: "pending",
       })),
     appCount: apps.length,
   };
@@ -155,18 +161,29 @@ export function buildInitialPolicyQueue(): {
  */
 function lookupPolicyAppRow(appId: string): PolicyAppRow | null {
   const row = db
-    .prepare(`SELECT id, name, developer, privacyPolicyUrl FROM apps WHERE id = ?`)
+    .prepare(
+      "SELECT id, name, developer, privacyPolicyUrl FROM apps WHERE id = ?"
+    )
     .get(appId) as PolicyAppRow | undefined;
   return row ?? null;
 }
 
-function bulkSummaryLine(phase: PolicyBulkPhase, totals: PolicyBulkTotals): string {
-  const verb = phase === 'all' ? 'summarise' : 'scrape';
+function bulkSummaryLine(
+  phase: PolicyBulkPhase,
+  totals: PolicyBulkTotals
+): string {
+  const verb = phase === "all" ? "summarise" : "scrape";
   const parts = [`${totals.succeeded} ok`];
-  if (totals.failed) parts.push(`${totals.failed} failed`);
-  if (totals.throttled) parts.push(`${totals.throttled} throttled`);
-  if (totals.skipped) parts.push(`${totals.skipped} skipped`);
-  return `Bulk policy ${verb}: ${parts.join(', ')}`;
+  if (totals.failed) {
+    parts.push(`${totals.failed} failed`);
+  }
+  if (totals.throttled) {
+    parts.push(`${totals.throttled} throttled`);
+  }
+  if (totals.skipped) {
+    parts.push(`${totals.skipped} skipped`);
+  }
+  return `Bulk policy ${verb}: ${parts.join(", ")}`;
 }
 
 /**
@@ -179,7 +196,7 @@ function bulkSummaryLine(phase: PolicyBulkPhase, totals: PolicyBulkTotals): stri
  * This function only talks to the DB + activity log.
  */
 export async function runBulkPolicySync(
-  options: RunPolicyBulkOptions,
+  options: RunPolicyBulkOptions
 ): Promise<RunPolicyBulkResult> {
   const writer: PolicyStreamWriter = options.streamWriter ?? (() => {});
 
@@ -189,8 +206,8 @@ export async function runBulkPolicySync(
     // Flip any `in_progress` entries back to `pending` — those were the
     // app(s) mid-flight when the previous process died. We'll redo them.
     for (const entry of state.queue) {
-      if (entry.status === 'in_progress') {
-        entry.status = 'pending';
+      if (entry.status === "in_progress") {
+        entry.status = "pending";
       }
     }
   } else {
@@ -218,11 +235,11 @@ export async function runBulkPolicySync(
   // 'all' implies force-resummarise; 'force' (bypass throttle) also implies
   // it because paying the bypass cost only makes sense to get fresh AI
   // output. Same logic the original route used.
-  const forceResummarise = state.force || state.phase === 'all';
+  const forceResummarise = state.force || state.phase === "all";
   const runStartedAt = Date.now();
 
   writer({
-    type: 'batch-start',
+    type: "batch-start",
     total: state.queue.length,
     phase: state.phase,
     force: state.force,
@@ -236,21 +253,23 @@ export async function runBulkPolicySync(
       const entry = state.queue[i];
       // Skip apps already completed in a prior life. `failed` is intentional
       // — a user can kick off a new run to retry them.
-      if (entry.status === 'done' || entry.status === 'failed') continue;
+      if (entry.status === "done" || entry.status === "failed") {
+        continue;
+      }
 
       // Mark in-flight + persist BEFORE any work so a crash here is visible.
-      entry.status = 'in_progress';
+      entry.status = "in_progress";
       entry.startedAt = Date.now();
-      delete entry.finishedAt;
-      delete entry.error;
-      delete entry.outcome;
-      delete entry.analysisStatus;
+      entry.finishedAt = undefined;
+      entry.error = undefined;
+      entry.outcome = undefined;
+      entry.analysisStatus = undefined;
       state.currentAppId = entry.appId;
       state.totals.attempted++;
       writePolicyBulkState(state);
 
       writer({
-        type: 'app-start',
+        type: "app-start",
         appId: entry.appId,
         name: entry.appName,
         index: i,
@@ -260,21 +279,21 @@ export async function runBulkPolicySync(
       // Refresh the app row — the user may have edited the URL / renamed
       // the app between queue build and dequeue.
       const app = lookupPolicyAppRow(entry.appId);
-      if (!app || !app.privacyPolicyUrl) {
-        const reason = !app
-          ? 'App no longer exists.'
-          : 'App no longer has a privacy policy URL.';
-        entry.status = 'done'; // treat as completed-with-skip so we don't retry on resume
+      if (!app?.privacyPolicyUrl) {
+        const reason = app
+          ? "App no longer has a privacy policy URL."
+          : "App no longer exists.";
+        entry.status = "done"; // treat as completed-with-skip so we don't retry on resume
         entry.finishedAt = Date.now();
-        entry.outcome = 'skipped';
+        entry.outcome = "skipped";
         state.totals.skipped++;
         state.currentAppId = null;
         writePolicyBulkState(state);
         writer({
-          type: 'app-done',
+          type: "app-done",
           appId: entry.appId,
           name: entry.appName,
-          status: 'skipped',
+          status: "skipped",
           index: i,
           total: state.queue.length,
           note: reason,
@@ -285,7 +304,7 @@ export async function runBulkPolicySync(
       const phaseStream: PolicyPhaseStream = {
         emit: (phaseEvent: PolicyRunPhase) =>
           writer({
-            type: 'phase',
+            type: "phase",
             appId: app.id,
             phase: phaseEvent,
           }),
@@ -304,27 +323,27 @@ export async function runBulkPolicySync(
             phaseStream,
             forceResummarise,
             bypassThrottle: state.force,
-          },
+          }
         );
-        const analysisStatus = analysis?.status ?? 'unknown';
+        const analysisStatus = analysis?.status ?? "unknown";
         const throttled = analysis ? wasThrottled(analysis.lastRunLog) : false;
         const outcome = classifyOutcome(analysisStatus, throttled);
 
-        entry.status = 'done';
+        entry.status = "done";
         entry.finishedAt = Date.now();
         entry.outcome = outcome;
         entry.analysisStatus = analysisStatus;
         switch (outcome) {
-          case 'succeeded':
+          case "succeeded":
             state.totals.succeeded++;
             break;
-          case 'throttled':
+          case "throttled":
             state.totals.throttled++;
             break;
-          case 'failed':
+          case "failed":
             state.totals.failed++;
             break;
-          case 'skipped':
+          case "skipped":
             state.totals.skipped++;
             break;
         }
@@ -332,7 +351,7 @@ export async function runBulkPolicySync(
         writePolicyBulkState(state);
 
         writer({
-          type: 'app-done',
+          type: "app-done",
           appId: app.id,
           name: app.name,
           status: analysisStatus,
@@ -342,20 +361,20 @@ export async function runBulkPolicySync(
         });
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Bulk policy sync error';
-        entry.status = 'failed';
+          error instanceof Error ? error.message : "Bulk policy sync error";
+        entry.status = "failed";
         entry.finishedAt = Date.now();
         entry.error = message.slice(0, 200);
-        entry.outcome = 'failed';
+        entry.outcome = "failed";
         state.totals.failed++;
         state.currentAppId = null;
         writePolicyBulkState(state);
 
         writer({
-          type: 'app-done',
+          type: "app-done",
           appId: app.id,
           name: app.name,
-          status: 'error',
+          status: "error",
           error: message,
           index: i,
           total: state.queue.length,
@@ -366,7 +385,7 @@ export async function runBulkPolicySync(
     // Clean completion — write summary row + audit, clear state + mutex.
     const durationMs = Date.now() - runStartedAt;
     writer({
-      type: 'summary',
+      type: "summary",
       totals: state.totals,
       phase: state.phase,
       force: state.force,
@@ -375,16 +394,16 @@ export async function runBulkPolicySync(
 
     const summaryLine = bulkSummaryLine(state.phase, state.totals);
     const activitySummary =
-      state.initiator === 'resume'
+      state.initiator === "resume"
         ? `${summaryLine} (resumed after restart)`.slice(0, 200)
         : summaryLine.slice(0, 200);
 
     recordActivity({
-      type: 'policy_summary',
-      status: state.totals.failed > 0 ? 'partial' : 'ok',
+      type: "policy_summary",
+      status: state.totals.failed > 0 ? "partial" : "ok",
       summary: activitySummary,
       detail: {
-        mode: state.initiator === 'resume' ? 'bulk-resumed' : 'bulk',
+        mode: state.initiator === "resume" ? "bulk-resumed" : "bulk",
         phase: state.phase,
         force: state.force,
         totals: state.totals,
@@ -394,9 +413,9 @@ export async function runBulkPolicySync(
     });
     recordAudit({
       action:
-        state.initiator === 'resume'
-          ? 'policy.sync-all.resumed.success'
-          : 'policy.sync-all.success',
+        state.initiator === "resume"
+          ? "policy.sync-all.resumed.success"
+          : "policy.sync-all.success",
       actorIp: options.actorIp ?? null,
       userAgent: options.userAgent ?? null,
       success: true,
@@ -414,14 +433,14 @@ export async function runBulkPolicySync(
     // Outer catch — loop itself blew up (DB I/O, OOM). Leave state + mutex
     // in place so `instrumentation.ts` can resume on the next boot.
     const message =
-      error instanceof Error ? error.message : 'Bulk policy sync failed';
-    writer({ type: 'error', error: message });
+      error instanceof Error ? error.message : "Bulk policy sync failed";
+    writer({ type: "error", error: message });
     recordActivity({
-      type: 'policy_summary',
-      status: 'error',
+      type: "policy_summary",
+      status: "error",
       summary: `Bulk policy sync aborted: ${message}`.slice(0, 200),
       detail: {
-        mode: 'bulk',
+        mode: "bulk",
         phase: state.phase,
         force: state.force,
         totals: state.totals,
@@ -431,7 +450,7 @@ export async function runBulkPolicySync(
       startedAt: state.startedAt,
     });
     recordAudit({
-      action: 'policy.sync-all.failed',
+      action: "policy.sync-all.failed",
       actorIp: options.actorIp ?? null,
       userAgent: options.userAgent ?? null,
       success: false,
@@ -458,7 +477,7 @@ export function describeCurrentPolicyRun(): {
   const mutexHeld = isPolicyBulkMutexHeld();
   const summary = state ? summarisePolicyState(state) : null;
   const currentAppName = state?.currentAppId
-    ? state.queue.find(e => e.appId === state.currentAppId)?.appName ?? null
+    ? (state.queue.find((e) => e.appId === state.currentAppId)?.appName ?? null)
     : null;
   const stale = mutexHeld && !hasPolicyPendingWork(state);
   return {

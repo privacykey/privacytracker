@@ -6,50 +6,54 @@
  * prior state). `force`/`forceResummarise` flags are preserved across resume.
  */
 
-import { getSetting, setSetting } from './scheduler';
-import db from './db';
+import db from "./db";
+import { getSetting, setSetting } from "./scheduler";
 
 /** Key under which the state blob lives in `app_settings`. */
-const STATE_KEY = 'policy_bulk_state';
+const STATE_KEY = "policy_bulk_state";
 
 /** Cross-request lock key. */
-export const POLICY_BULK_MUTEX_KEY = 'policy_sync_running';
+export const POLICY_BULK_MUTEX_KEY = "policy_sync_running";
 
 /** Bump when the persisted JSON shape changes incompatibly. */
 const STATE_SCHEMA_VERSION = 1;
 
-export type PolicyQueueEntryStatus = 'pending' | 'in_progress' | 'done' | 'failed';
+export type PolicyQueueEntryStatus =
+  | "pending"
+  | "in_progress"
+  | "done"
+  | "failed";
 
 /** One per-app outcome category, mirrored up into run totals. */
 export type PolicyAppOutcome =
-  | 'succeeded'   // analysis.status was 'ready' or 'source_ready'
-  | 'failed'      // fetch_error / analysis_error / etc.
-  | 'throttled'   // per-app scrape-throttle hit; prior state returned unchanged
-  | 'skipped';    // app had no privacyPolicyUrl at dequeue time
+  | "succeeded" // analysis.status was 'ready' or 'source_ready'
+  | "failed" // fetch_error / analysis_error / etc.
+  | "throttled" // per-app scrape-throttle hit; prior state returned unchanged
+  | "skipped"; // app had no privacyPolicyUrl at dequeue time
 
 export interface PolicyQueueEntry {
-  appId: string;
-  appName: string;
-  policyUrl: string;
-  status: PolicyQueueEntryStatus;
-  /** Epoch-ms when we flipped to in_progress. */
-  startedAt?: number;
-  /** Epoch-ms when processing finished. */
-  finishedAt?: number;
-  /** Short error message on failure (trimmed to keep the blob small). */
-  error?: string;
-  /** Final per-app outcome category (mirrored up into totals). */
-  outcome?: PolicyAppOutcome;
   /** The analysis row's `status` column at the moment we finished. */
   analysisStatus?: string;
+  appId: string;
+  appName: string;
+  /** Short error message on failure (trimmed to keep the blob small). */
+  error?: string;
+  /** Epoch-ms when processing finished. */
+  finishedAt?: number;
+  /** Final per-app outcome category (mirrored up into totals). */
+  outcome?: PolicyAppOutcome;
+  policyUrl: string;
+  /** Epoch-ms when we flipped to in_progress. */
+  startedAt?: number;
+  status: PolicyQueueEntryStatus;
 }
 
 export interface PolicyBulkTotals {
   attempted: number;
-  succeeded: number;
   failed: number;
-  throttled: number;
   skipped: number;
+  succeeded: number;
+  throttled: number;
 }
 
 /** Exported so the runner can seed a fresh run with zeros. */
@@ -58,32 +62,32 @@ export function zeroPolicyTotals(): PolicyBulkTotals {
 }
 
 export interface PolicyBulkState {
-  /** Schema version of the persisted blob. */
-  version: number;
-  /** UUID generated at the start of the run; changes on resume. */
-  runId: string;
-  /** Epoch-ms when the original run started. Survives resume. */
-  startedAt: number;
+  /** Id of the app currently being processed (denormalised from queue). */
+  currentAppId: string | null;
+  /** Whether to bypass the per-app 1-hour scrape throttle. */
+  force: boolean;
   /** How the run started. `resume` means the server restarted mid-run. */
-  initiator: 'manual' | 'automatic' | 'resume';
-  /** Epoch-ms when state was last persisted. */
-  updatedAt: number;
+  initiator: "manual" | "automatic" | "resume";
   /**
    * Bulk-sync phase. `fetch` re-fetches HTML and only re-summarises when
    * the text hash changed. `all` forces a fresh AI summary for every app.
    */
-  phase: 'fetch' | 'all';
-  /** Whether to bypass the per-app 1-hour scrape throttle. */
-  force: boolean;
-  /** Id of the app currently being processed (denormalised from queue). */
-  currentAppId: string | null;
+  phase: "fetch" | "all";
   /** The full app queue with per-app status. */
   queue: PolicyQueueEntry[];
-  /** Rolling totals across the whole run. */
-  totals: PolicyBulkTotals;
+  /** UUID generated at the start of the run; changes on resume. */
+  runId: string;
+  /** Epoch-ms when the original run started. Survives resume. */
+  startedAt: number;
   /** Informational only — a resumed run always runs in background mode
    *  because the NDJSON stream to the original caller died with the process. */
   streamRequested: boolean;
+  /** Rolling totals across the whole run. */
+  totals: PolicyBulkTotals;
+  /** Epoch-ms when state was last persisted. */
+  updatedAt: number;
+  /** Schema version of the persisted blob. */
+  version: number;
 }
 
 /**
@@ -92,15 +96,17 @@ export interface PolicyBulkState {
  * callers treat null as "nothing to resume".
  */
 export function readPolicyBulkState(): PolicyBulkState | null {
-  const raw = getSetting(STATE_KEY, '');
-  if (!raw) return null;
+  const raw = getSetting(STATE_KEY, "");
+  if (!raw) {
+    return null;
+  }
   try {
     const parsed = JSON.parse(raw);
     if (
       !parsed ||
-      typeof parsed !== 'object' ||
+      typeof parsed !== "object" ||
       parsed.version !== STATE_SCHEMA_VERSION ||
-      typeof parsed.runId !== 'string' ||
+      typeof parsed.runId !== "string" ||
       !Array.isArray(parsed.queue)
     ) {
       return null;
@@ -113,10 +119,10 @@ export function readPolicyBulkState(): PolicyBulkState | null {
 
 /** Persist the state blob. Refreshes `updatedAt` on every write. */
 export function writePolicyBulkState(
-  next: Omit<PolicyBulkState, 'version' | 'updatedAt'> & {
+  next: Omit<PolicyBulkState, "version" | "updatedAt"> & {
     version?: number;
     updatedAt?: number;
-  },
+  }
 ): void {
   const payload: PolicyBulkState = {
     ...next,
@@ -128,24 +134,26 @@ export function writePolicyBulkState(
 
 /** Remove the state blob. Called on clean completion / stale-heal. */
 export function clearPolicyBulkState(): void {
-  db.prepare('DELETE FROM app_settings WHERE key = ?').run(STATE_KEY);
+  db.prepare("DELETE FROM app_settings WHERE key = ?").run(STATE_KEY);
 }
 
 /** Acquire the cross-request mutex. Returns true if we got it. */
 export function acquirePolicyBulkMutex(): boolean {
-  if (getSetting(POLICY_BULK_MUTEX_KEY) === 'true') return false;
-  setSetting(POLICY_BULK_MUTEX_KEY, 'true');
+  if (getSetting(POLICY_BULK_MUTEX_KEY) === "true") {
+    return false;
+  }
+  setSetting(POLICY_BULK_MUTEX_KEY, "true");
   return true;
 }
 
 /** Release the mutex unconditionally. Safe to call even when not held. */
 export function releasePolicyBulkMutex(): void {
-  setSetting(POLICY_BULK_MUTEX_KEY, 'false');
+  setSetting(POLICY_BULK_MUTEX_KEY, "false");
 }
 
 /** Is the mutex currently claimed? */
 export function isPolicyBulkMutexHeld(): boolean {
-  return getSetting(POLICY_BULK_MUTEX_KEY) === 'true';
+  return getSetting(POLICY_BULK_MUTEX_KEY) === "true";
 }
 
 /** Convenience: per-status counts so UI callers don't walk the queue. */
@@ -163,16 +171,16 @@ export function summarisePolicyState(state: PolicyBulkState): {
   let failed = 0;
   for (const entry of state.queue) {
     switch (entry.status) {
-      case 'pending':
+      case "pending":
         pending++;
         break;
-      case 'in_progress':
+      case "in_progress":
         inProgress++;
         break;
-      case 'done':
+      case "done":
         done++;
         break;
-      case 'failed':
+      case "failed":
         failed++;
         break;
     }
@@ -189,6 +197,10 @@ export function summarisePolicyState(state: PolicyBulkState): {
 
 /** Has the persisted state got anything left to do? */
 export function hasPolicyPendingWork(state: PolicyBulkState | null): boolean {
-  if (!state) return false;
-  return state.queue.some(entry => entry.status === 'pending' || entry.status === 'in_progress');
+  if (!state) {
+    return false;
+  }
+  return state.queue.some(
+    (entry) => entry.status === "pending" || entry.status === "in_progress"
+  );
 }

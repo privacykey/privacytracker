@@ -1,15 +1,15 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { getTranslations } from 'next-intl/server';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { resolveFlagFromDb } from "@/lib/feature-flags-server";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — privacytracker',
+  title: "Privacy Policy — privacytracker",
   description:
-    'privacytracker runs locally and does not collect, store, or transmit any personal data. This page details every third-party endpoint the app may contact while you use it.',
+    "privacytracker runs locally and does not collect, store, or transmit any personal data. This page details every third-party endpoint the app may contact while you use it.",
 };
 
 /**
@@ -27,109 +27,110 @@ export const metadata: Metadata = {
 
 // Canonical GitHub repo — referenced from README / SECURITY / Homebrew tap.
 // If the repo is ever renamed, update both places.
-const GITHUB_REPO = 'https://github.com/privacykey/privacytracker';
+const GITHUB_REPO = "https://github.com/privacykey/privacytracker";
 
 // Deep-link into Settings with a hash the SettingsView pulse handler
 // recognises. Kept as a named constant so the two places we reference it
 // (the "Going fully offline" prose + the sidebar entry, if we ever add one)
 // don't drift apart.
-const SETTINGS_AI_HASH = '/dashboard/settings#ai-summaries';
+const SETTINGS_AI_HASH = "/dashboard/settings#ai-summaries";
 
 // One third-party endpoint the app may call, plus the purpose / trigger /
 // data shape. Kept as a typed record so the renderer can group them by
 // category and the SSR output stays deterministic.
 interface Subprocessor {
-  name: string;
   endpoint: string;
-  /** When the call fires. Helps readers see what they can disable. */
-  trigger: string;
-  /** What's sent in the request body / query string. */
-  sends: string;
-  /** What's received back. */
-  receives: string;
+  name: string;
   /** Whether calling it is required for the core loop or only optional. */
-  necessity: 'required' | 'optional' | 'on-demand';
+  necessity: "required" | "optional" | "on-demand";
   /** Link to the third party's own privacy policy, if they publish one. */
   policyUrl?: string;
+  /** What's received back. */
+  receives: string;
+  /** What's sent in the request body / query string. */
+  sends: string;
+  /** When the call fires. Helps readers see what they can disable. */
+  trigger: string;
 }
 
 const APP_STORE_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: 'Apple — iTunes Search API',
-    endpoint: 'itunes.apple.com/search, itunes.apple.com/lookup',
+    name: "Apple — iTunes Search API",
+    endpoint: "itunes.apple.com/search, itunes.apple.com/lookup",
     trigger:
-      'Whenever you search for an app by name during onboarding, or when the app syncs metadata (version, developer, icon).',
+      "Whenever you search for an app by name during onboarding, or when the app syncs metadata (version, developer, icon).",
     sends:
-      'The app name you typed, or a known Apple track ID, plus the country code you picked (default AU).',
+      "The app name you typed, or a known Apple track ID, plus the country code you picked (default AU).",
     receives:
-      'A public-catalogue JSON payload: track ID, name, developer, icon URL, App Store URL, current version.',
-    necessity: 'required',
-    policyUrl: 'https://www.apple.com/legal/privacy/en-ww/',
+      "A public-catalogue JSON payload: track ID, name, developer, icon URL, App Store URL, current version.",
+    necessity: "required",
+    policyUrl: "https://www.apple.com/legal/privacy/en-ww/",
   },
   {
-    name: 'Apple — App Store web listing',
-    endpoint: 'apps.apple.com/<country>/app/<slug>/id<id>',
+    name: "Apple — App Store web listing",
+    endpoint: "apps.apple.com/<country>/app/<slug>/id<id>",
     trigger:
-      'During every privacy-label scrape — initial import, manual resync, and the 30-minute background sync.',
+      "During every privacy-label scrape — initial import, manual resync, and the 30-minute background sync.",
     sends:
-      'A standard browser-style HTTP GET with a Referer of apps.apple.com. No cookies, no identifiers.',
+      "A standard browser-style HTTP GET with a Referer of apps.apple.com. No cookies, no identifiers.",
     receives:
       "The App Store page HTML, which the app parses for the privacy label JSON blob and developer's privacy policy link.",
-    necessity: 'required',
+    necessity: "required",
   },
   {
-    name: 'Apple — mzstatic image CDN',
-    endpoint: 'is1-ssl.mzstatic.com (and siblings)',
+    name: "Apple — mzstatic image CDN",
+    endpoint: "is1-ssl.mzstatic.com (and siblings)",
     trigger:
-      'Only when your browser renders an app icon returned by the Apple lookup — Apple host the icons here directly.',
-    sends: 'Nothing beyond a standard image request.',
-    receives: 'PNG / JPG icon bytes.',
-    necessity: 'required',
+      "Only when your browser renders an app icon returned by the Apple lookup — Apple host the icons here directly.",
+    sends: "Nothing beyond a standard image request.",
+    receives: "PNG / JPG icon bytes.",
+    necessity: "required",
   },
 ];
 
 const POLICY_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: 'Developer-published privacy policy URLs',
-    endpoint: 'Whatever host the developer links to on the App Store page',
+    name: "Developer-published privacy policy URLs",
+    endpoint: "Whatever host the developer links to on the App Store page",
     trigger:
-      'Each time you resync an app or the 30-minute background sync runs, we follow the privacy-policy link Apple publishes on the App Store page for that app.',
-    sends: 'A standard HTTP GET. No cookies, no identifiers.',
-    receives: 'The HTML of the developer’s published privacy policy.',
-    necessity: 'required',
+      "Each time you resync an app or the 30-minute background sync runs, we follow the privacy-policy link Apple publishes on the App Store page for that app.",
+    sends: "A standard HTTP GET. No cookies, no identifiers.",
+    receives: "The HTML of the developer’s published privacy policy.",
+    necessity: "required",
   },
 ];
 
 const ARCHIVE_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: 'Internet Archive — Wayback availability API',
-    endpoint: 'archive.org/wayback/available',
+    name: "Internet Archive — Wayback availability API",
+    endpoint: "archive.org/wayback/available",
     trigger:
-      'Only when you explicitly run a historical Wayback import (once per app, per calendar quarter).',
+      "Only when you explicitly run a historical Wayback import (once per app, per calendar quarter).",
     sends:
-      'The App Store URL you’re trying to back-fill, plus a target timestamp. No cookies, no identifiers.',
-    receives: 'The closest available Wayback capture URL for that timestamp.',
-    necessity: 'on-demand',
-    policyUrl: 'https://archive.org/about/terms.php',
+      "The App Store URL you’re trying to back-fill, plus a target timestamp. No cookies, no identifiers.",
+    receives: "The closest available Wayback capture URL for that timestamp.",
+    necessity: "on-demand",
+    policyUrl: "https://archive.org/about/terms.php",
   },
   {
-    name: 'Internet Archive — Wayback Machine replay',
-    endpoint: 'web.archive.org/web/<timestamp>id_/<original>',
+    name: "Internet Archive — Wayback Machine replay",
+    endpoint: "web.archive.org/web/<timestamp>id_/<original>",
     trigger:
-      'Follow-up to the availability API — downloads the archived App Store HTML so we can re-parse it against the same schema as a live scrape.',
-    sends: 'A standard HTTP GET.',
-    receives: 'The archived HTML with Wayback’s toolbar injector disabled (`id_` suffix).',
-    necessity: 'on-demand',
-  },
-  {
-    name: 'Internet Archive — Save Page Now',
-    endpoint: 'web.archive.org/save/<url>',
-    trigger:
-      'Only fired when a historical import finds an empty quarter with no existing capture — we ask the Archive to create one for future runs.',
-    sends: 'The public App Store URL of the app. Nothing else.',
+      "Follow-up to the availability API — downloads the archived App Store HTML so we can re-parse it against the same schema as a live scrape.",
+    sends: "A standard HTTP GET.",
     receives:
-      'An HTTP response indicating whether the snapshot request was accepted; no data stored client-side.',
-    necessity: 'on-demand',
+      "The archived HTML with Wayback’s toolbar injector disabled (`id_` suffix).",
+    necessity: "on-demand",
+  },
+  {
+    name: "Internet Archive — Save Page Now",
+    endpoint: "web.archive.org/save/<url>",
+    trigger:
+      "Only fired when a historical import finds an empty quarter with no existing capture — we ask the Archive to create one for future runs.",
+    sends: "The public App Store URL of the app. Nothing else.",
+    receives:
+      "An HTTP response indicating whether the snapshot request was accepted; no data stored client-side.",
+    necessity: "on-demand",
   },
 ];
 
@@ -141,49 +142,51 @@ const ARCHIVE_SUBPROCESSORS: Subprocessor[] = [
 // from Settings → Updates (toggles `update_check_enabled` to "false").
 const UPDATE_CHECK_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: 'GitHub Releases API',
-    endpoint: 'api.github.com/repos/privacykey/privacytracker/releases/latest',
+    name: "GitHub Releases API",
+    endpoint: "api.github.com/repos/privacykey/privacytracker/releases/latest",
     trigger:
       'Once every 24 hours by default, or when you press "Check for updates" in Settings → Updates. Disable entirely with the same toggle.',
     sends:
-      'A standard HTTP GET with a User-Agent identifying the running version. No cookies, no API token, no machine identifier.',
+      "A standard HTTP GET with a User-Agent identifying the running version. No cookies, no API token, no machine identifier.",
     receives:
-      'JSON metadata for the most recent published release: tag, body (release notes), download URLs.',
-    necessity: 'optional',
-    policyUrl: 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement',
+      "JSON metadata for the most recent published release: tag, body (release notes), download URLs.",
+    necessity: "optional",
+    policyUrl:
+      "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
   },
 ];
 
 const AI_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: 'OpenAI API',
-    endpoint: 'api.openai.com',
+    name: "OpenAI API",
+    endpoint: "api.openai.com",
     trigger:
       "Only if you set the AI provider to “OpenAI” in Settings → AI and supply your own API key.",
     sends:
-      'The scraped developer privacy policy text plus a structured-summary prompt. No app data beyond what’s in the policy.',
-    receives: 'A JSON summary keyed by the lenses defined in lib/privacy-policy.ts.',
-    necessity: 'optional',
-    policyUrl: 'https://openai.com/policies/privacy-policy',
+      "The scraped developer privacy policy text plus a structured-summary prompt. No app data beyond what’s in the policy.",
+    receives:
+      "A JSON summary keyed by the lenses defined in lib/privacy-policy.ts.",
+    necessity: "optional",
+    policyUrl: "https://openai.com/policies/privacy-policy",
   },
   {
-    name: 'Anthropic API',
-    endpoint: 'api.anthropic.com',
+    name: "Anthropic API",
+    endpoint: "api.anthropic.com",
     trigger:
       "Only if you explicitly set the AI provider to “Anthropic” in Settings → AI and supply your own API key.",
-    sends: 'The same scraped policy text + summary prompt.',
-    receives: 'A JSON summary.',
-    necessity: 'optional',
-    policyUrl: 'https://www.anthropic.com/legal/privacy',
+    sends: "The same scraped policy text + summary prompt.",
+    receives: "A JSON summary.",
+    necessity: "optional",
+    policyUrl: "https://www.anthropic.com/legal/privacy",
   },
   {
-    name: 'Custom / local AI endpoint (Ollama, OpenAI-compatible self-host, etc.)',
-    endpoint: 'Whatever base URL you configure (default 127.0.0.1:11434)',
+    name: "Custom / local AI endpoint (Ollama, OpenAI-compatible self-host, etc.)",
+    endpoint: "Whatever base URL you configure (default 127.0.0.1:11434)",
     trigger:
-      'Only if you set the AI provider to “Custom” in Settings → AI. Intended for local models — no data leaves your network if the endpoint is local.',
-    sends: 'Scraped policy text + summary prompt.',
-    receives: 'A JSON summary.',
-    necessity: 'optional',
+      "Only if you set the AI provider to “Custom” in Settings → AI. Intended for local models — no data leaves your network if the endpoint is local.",
+    sends: "Scraped policy text + summary prompt.",
+    receives: "A JSON summary.",
+    necessity: "optional",
   },
 ];
 
@@ -193,12 +196,12 @@ const AI_SUBPROCESSORS: Subprocessor[] = [
 // is enough, and the detail lives in the subprocessor table below.
 const OUT_OF_SCOPE: { title: string; detail: string }[] = [
   {
-    title: 'No analytics, telemetry, or tracking cookies',
+    title: "No analytics, telemetry, or tracking cookies",
     detail:
       "There's no Google Analytics, Plausible, Mixpanel, Sentry, PostHog, Segment, or any other telemetry pipeline. No tracking pixels, no advertising cookies, and no crash-reporting backend. The app doesn't phone home about your usage, device, or errors. Accessibility preferences (theme, font scale, dyslexic font) are stored in your browser's localStorage so they survive reloads — those preferences never leave your device.",
   },
   {
-    title: 'No user accounts, no sign-in',
+    title: "No user accounts, no sign-in",
     detail:
       "The app has no login system and no user accounts. Everything — the apps you track, the privacy-label history, any AI settings — lives in a single SQLite file on the machine running privacytracker.",
   },
@@ -211,16 +214,25 @@ const OUT_OF_SCOPE: { title: string; detail: string }[] = [
 // instead of pre-rendered strings so the sidebar localises with the
 // active locale. The `hint` for the third-parties row stays inline
 // because it's a numeric count (locale-agnostic).
-const SIDEBAR_SECTIONS: { id: string; labelKey: string; hintKey?: string; hint?: string }[] = [
-  { id: 'priv-nothing', labelKey: 'what_we_collect', hintKey: 'what_we_collect_hint' },
+const SIDEBAR_SECTIONS: {
+  id: string;
+  labelKey: string;
+  hintKey?: string;
+  hint?: string;
+}[] = [
   {
-    id: 'priv-subprocessors',
-    labelKey: 'third_parties',
+    id: "priv-nothing",
+    labelKey: "what_we_collect",
+    hintKey: "what_we_collect_hint",
+  },
+  {
+    id: "priv-subprocessors",
+    labelKey: "third_parties",
     hint: `${APP_STORE_SUBPROCESSORS.length + POLICY_SUBPROCESSORS.length + ARCHIVE_SUBPROCESSORS.length + AI_SUBPROCESSORS.length + UPDATE_CHECK_SUBPROCESSORS.length}`,
   },
-  { id: 'priv-self-host', labelKey: 'going_offline' },
-  { id: 'priv-alternatives', labelKey: 'other_summarisers' },
-  { id: 'priv-questions', labelKey: 'questions' },
+  { id: "priv-self-host", labelKey: "going_offline" },
+  { id: "priv-alternatives", labelKey: "other_summarisers" },
+  { id: "priv-questions", labelKey: "questions" },
 ];
 
 /**
@@ -228,14 +240,14 @@ const SIDEBAR_SECTIONS: { id: string; labelKey: string; hintKey?: string; hint?:
  * calls `getTranslations`, which is fine: this is a server component
  * and React's RSC pipeline awaits async children transparently.
  */
-async function NecessityChip({ value }: { value: Subprocessor['necessity'] }) {
-  const tField = await getTranslations('privacy_policy_page.subproc_field');
+async function NecessityChip({ value }: { value: Subprocessor["necessity"] }) {
+  const tField = await getTranslations("privacy_policy_page.subproc_field");
   const label =
-    value === 'required'
-      ? tField('necessity_required')
-      : value === 'optional'
-        ? tField('necessity_optional')
-        : tField('necessity_on_demand');
+    value === "required"
+      ? tField("necessity_required")
+      : value === "optional"
+        ? tField("necessity_optional")
+        : tField("necessity_on_demand");
   return <span className={`priv-nec-chip priv-nec-${value}`}>{label}</span>;
 }
 
@@ -244,7 +256,7 @@ async function SubprocessorCard({ s }: { s: Subprocessor }) {
   // copy is dense per-endpoint commentary that stays English in v1 (they
   // describe network behaviour with technical jargon — separate
   // translation pass alongside copy review).
-  const tField = await getTranslations('privacy_policy_page.subproc_field');
+  const tField = await getTranslations("privacy_policy_page.subproc_field");
   return (
     <article className="priv-subproc-card">
       <header className="priv-subproc-head">
@@ -253,17 +265,17 @@ async function SubprocessorCard({ s }: { s: Subprocessor }) {
       </header>
       <code className="priv-subproc-endpoint">{s.endpoint}</code>
       <dl className="priv-subproc-grid">
-        <dt>{tField('trigger')}</dt>
+        <dt>{tField("trigger")}</dt>
         <dd>{s.trigger}</dd>
-        <dt>{tField('sends')}</dt>
+        <dt>{tField("sends")}</dt>
         <dd>{s.sends}</dd>
-        <dt>{tField('receives')}</dt>
+        <dt>{tField("receives")}</dt>
         <dd>{s.receives}</dd>
       </dl>
       {s.policyUrl && (
         <p className="priv-subproc-policy">
-          <a href={s.policyUrl} target="_blank" rel="noopener noreferrer">
-            {tField('policy_link')}
+          <a href={s.policyUrl} rel="noopener noreferrer" target="_blank">
+            {tField("policy_link")}
           </a>
         </p>
       )}
@@ -278,7 +290,7 @@ export default async function PrivacyPolicyPage() {
   // for every focus to avoid shipping a privacy auditor without a
   // privacy-policy disclosure of its own. The flag exists so OEM /
   // embedded builds can hide the route if needed.
-  if (resolveFlagFromDb('flag.legal.privacy_policy_page') !== 'on') {
+  if (resolveFlagFromDb("flag.legal.privacy_policy_page") !== "on") {
     notFound();
   }
 
@@ -287,11 +299,11 @@ export default async function PrivacyPolicyPage() {
   // `privacy_policy_page` namespace. Section bodies + sub-section
   // ledes pull from `bodies.*`; subprocessor card field labels
   // come from `subproc_field.*`.
-  const t = await getTranslations('privacy_policy_page');
-  const tSec = await getTranslations('privacy_policy_page.sections');
-  const tBody = await getTranslations('privacy_policy_page.bodies');
+  const t = await getTranslations("privacy_policy_page");
+  const tSec = await getTranslations("privacy_policy_page.sections");
+  const tBody = await getTranslations("privacy_policy_page.bodies");
 
-  const lastUpdated = 'April 2026';
+  const lastUpdated = "April 2026";
 
   // Pre-filled issue URL. Round 3 PR 5: the standalone `privacy-policy.yml`
   // template merged into the main `bug_report.yml`, which now has a
@@ -303,33 +315,43 @@ export default async function PrivacyPolicyPage() {
   // — browser XSS heuristics and some corporate proxies flag `<!--` in
   // URL query params and block the click, even though GitHub would have
   // rendered it as an innocuous comment.
-  const SOURCE_PAGE = '/privacy-policy';
+  const SOURCE_PAGE = "/privacy-policy";
   const issueUrl =
     `${GITHUB_REPO}/issues/new` +
-    `?template=bug_report.yml` +
-    `&report-type=${encodeURIComponent('Privacy policy concern or correction')}` +
+    "?template=bug_report.yml" +
+    `&report-type=${encodeURIComponent("Privacy policy concern or correction")}` +
     `&source-page=${encodeURIComponent(SOURCE_PAGE)}`;
 
   return (
     <div className="privacy-policy-page">
       <header className="priv-page-hero">
-        <Link href="/" className="priv-back-link">{t('back_to_app')}</Link>
-        <p className="priv-eyebrow">{t('eyebrow')}</p>
-        <h1 className="priv-page-title">{t('title')}</h1>
-        <p className="priv-page-sub">{t('subtitle')}</p>
-        <p className="priv-page-meta">{t('last_updated', { date: lastUpdated })}</p>
+        <Link className="priv-back-link" href="/">
+          {t("back_to_app")}
+        </Link>
+        <p className="priv-eyebrow">{t("eyebrow")}</p>
+        <h1 className="priv-page-title">{t("title")}</h1>
+        <p className="priv-page-sub">{t("subtitle")}</p>
+        <p className="priv-page-meta">
+          {t("last_updated", { date: lastUpdated })}
+        </p>
       </header>
 
       <div className="legal-layout">
-        <aside className="legal-sidebar" aria-label={t('sidebar_aria')}>
-          <p className="legal-sidebar-title">{t('sidebar_jump')}</p>
+        <aside aria-label={t("sidebar_aria")} className="legal-sidebar">
+          <p className="legal-sidebar-title">{t("sidebar_jump")}</p>
           <ul className="legal-sidebar-list">
-            {SIDEBAR_SECTIONS.map(section => (
+            {SIDEBAR_SECTIONS.map((section) => (
               <li key={section.id}>
-                <a href={`#${section.id}`} className="legal-sidebar-link">
+                <a className="legal-sidebar-link" href={`#${section.id}`}>
                   <span>{tSec(section.labelKey)}</span>
-                  {section.hintKey && <span className="legal-sidebar-count">{tSec(section.hintKey)}</span>}
-                  {section.hint && !section.hintKey && <span className="legal-sidebar-count">{section.hint}</span>}
+                  {section.hintKey && (
+                    <span className="legal-sidebar-count">
+                      {tSec(section.hintKey)}
+                    </span>
+                  )}
+                  {section.hint && !section.hintKey && (
+                    <span className="legal-sidebar-count">{section.hint}</span>
+                  )}
                 </a>
               </li>
             ))}
@@ -346,42 +368,58 @@ export default async function PrivacyPolicyPage() {
               shape lives on the marketing site
               (privacytracker website/privacy.html) — keep them in sync. */}
           <div
+            aria-label={t("disclosure.aria")}
             className="priv-disclosure-callout"
             role="img"
-            aria-label={t('disclosure.aria')}
           >
             <svg
+              aria-hidden="true"
               className="priv-disclosure-tick"
-              width="52"
+              fill="none"
+              focusable="false"
               height="52"
               viewBox="0 0 52 52"
-              fill="none"
-              aria-hidden="true"
-              focusable="false"
+              width="52"
             >
-              <circle cx="26" cy="26" r="23" stroke="currentColor" strokeWidth="3" />
+              <circle
+                cx="26"
+                cy="26"
+                r="23"
+                stroke="currentColor"
+                strokeWidth="3"
+              />
               <path
                 d="M15 27 L22 34 L37 19"
+                fill="none"
                 stroke="currentColor"
-                strokeWidth="4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                fill="none"
+                strokeWidth="4"
               />
             </svg>
-            <h2 className="priv-disclosure-title">{t('disclosure.title')}</h2>
-            <p className="priv-disclosure-body">{t('disclosure.body')}</p>
+            <h2 className="priv-disclosure-title">{t("disclosure.title")}</h2>
+            <p className="priv-disclosure-body">{t("disclosure.body")}</p>
           </div>
 
-          <section id="priv-nothing" className="priv-section" aria-labelledby="priv-nothing-heading">
-            <h2 id="priv-nothing-heading" className="priv-section-title">{tSec('what_we_collect_full')}</h2>
-            <p className="priv-section-lede priv-section-lede-strong">{tBody('nothing_lede')}</p>
+          <section
+            aria-labelledby="priv-nothing-heading"
+            className="priv-section"
+            id="priv-nothing"
+          >
+            <h2 className="priv-section-title" id="priv-nothing-heading">
+              {tSec("what_we_collect_full")}
+            </h2>
+            <p className="priv-section-lede priv-section-lede-strong">
+              {tBody("nothing_lede")}
+            </p>
             <p className="priv-section-body">
-              {tBody.rich('nothing_body', { code: (chunks) => <code>{chunks}</code> })}
+              {tBody.rich("nothing_body", {
+                code: (chunks) => <code>{chunks}</code>,
+              })}
             </p>
             <ul className="priv-out-of-scope-list">
-              {OUT_OF_SCOPE.map(item => (
-                <li key={item.title} className="priv-out-of-scope-item">
+              {OUT_OF_SCOPE.map((item) => (
+                <li className="priv-out-of-scope-item" key={item.title}>
                   <div className="priv-out-of-scope-title">{item.title}</div>
                   <div className="priv-out-of-scope-detail">{item.detail}</div>
                 </li>
@@ -389,89 +427,130 @@ export default async function PrivacyPolicyPage() {
             </ul>
           </section>
 
-          <section id="priv-subprocessors" className="priv-section" aria-labelledby="priv-subprocessors-heading">
-            <h2 id="priv-subprocessors-heading" className="priv-section-title">{tSec('third_parties_full')}</h2>
-            <p className="priv-section-lede">{tBody('third_parties_lede')}</p>
+          <section
+            aria-labelledby="priv-subprocessors-heading"
+            className="priv-section"
+            id="priv-subprocessors"
+          >
+            <h2 className="priv-section-title" id="priv-subprocessors-heading">
+              {tSec("third_parties_full")}
+            </h2>
+            <p className="priv-section-lede">{tBody("third_parties_lede")}</p>
             <p className="priv-section-body">
-              {tBody.rich('third_parties_body', { em: (chunks) => <em>{chunks}</em> })}
+              {tBody.rich("third_parties_body", {
+                em: (chunks) => <em>{chunks}</em>,
+              })}
             </p>
 
-            <h3 className="priv-subsection-title">{tSec('appstore_metadata')}</h3>
-            <p className="priv-subsection-sub">{tBody('appstore_sub')}</p>
+            <h3 className="priv-subsection-title">
+              {tSec("appstore_metadata")}
+            </h3>
+            <p className="priv-subsection-sub">{tBody("appstore_sub")}</p>
             <div className="priv-subproc-grid-wrap">
-              {APP_STORE_SUBPROCESSORS.map(s => <SubprocessorCard key={s.name} s={s} />)}
+              {APP_STORE_SUBPROCESSORS.map((s) => (
+                <SubprocessorCard key={s.name} s={s} />
+              ))}
             </div>
 
-            <h3 className="priv-subsection-title">{tSec('developer_policies')}</h3>
-            <p className="priv-subsection-sub">{tBody('developer_sub')}</p>
+            <h3 className="priv-subsection-title">
+              {tSec("developer_policies")}
+            </h3>
+            <p className="priv-subsection-sub">{tBody("developer_sub")}</p>
             <div className="priv-subproc-grid-wrap">
-              {POLICY_SUBPROCESSORS.map(s => <SubprocessorCard key={s.name} s={s} />)}
+              {POLICY_SUBPROCESSORS.map((s) => (
+                <SubprocessorCard key={s.name} s={s} />
+              ))}
             </div>
 
-            <h3 className="priv-subsection-title">{tSec('historical_archives')}</h3>
-            <p className="priv-subsection-sub">{tBody('archives_sub')}</p>
+            <h3 className="priv-subsection-title">
+              {tSec("historical_archives")}
+            </h3>
+            <p className="priv-subsection-sub">{tBody("archives_sub")}</p>
             <div className="priv-subproc-grid-wrap">
-              {ARCHIVE_SUBPROCESSORS.map(s => <SubprocessorCard key={s.name} s={s} />)}
+              {ARCHIVE_SUBPROCESSORS.map((s) => (
+                <SubprocessorCard key={s.name} s={s} />
+              ))}
             </div>
 
-            <h3 className="priv-subsection-title">{tSec('ai_providers')}</h3>
+            <h3 className="priv-subsection-title">{tSec("ai_providers")}</h3>
             <p className="priv-subsection-sub">
-              {tBody('ai_sub_prefix')}{' '}
-              <Link href={SETTINGS_AI_HASH} className="priv-inline-link">
-                {tBody('ai_sub_settings_link')}
+              {tBody("ai_sub_prefix")}{" "}
+              <Link className="priv-inline-link" href={SETTINGS_AI_HASH}>
+                {tBody("ai_sub_settings_link")}
               </Link>
-              {tBody('ai_sub_suffix')}
+              {tBody("ai_sub_suffix")}
             </p>
             <div className="priv-subproc-grid-wrap">
-              {AI_SUBPROCESSORS.map(s => <SubprocessorCard key={s.name} s={s} />)}
+              {AI_SUBPROCESSORS.map((s) => (
+                <SubprocessorCard key={s.name} s={s} />
+              ))}
             </div>
 
-            <h3 className="priv-subsection-title">{tSec('update_check')}</h3>
-            <p className="priv-subsection-sub">{tBody('update_check_sub')}</p>
+            <h3 className="priv-subsection-title">{tSec("update_check")}</h3>
+            <p className="priv-subsection-sub">{tBody("update_check_sub")}</p>
             <div className="priv-subproc-grid-wrap">
-              {UPDATE_CHECK_SUBPROCESSORS.map(s => <SubprocessorCard key={s.name} s={s} />)}
+              {UPDATE_CHECK_SUBPROCESSORS.map((s) => (
+                <SubprocessorCard key={s.name} s={s} />
+              ))}
             </div>
           </section>
 
-          <section id="priv-self-host" className="priv-section" aria-labelledby="priv-self-host-heading">
-            <h2 id="priv-self-host-heading" className="priv-section-title">{tSec('going_offline_full')}</h2>
+          <section
+            aria-labelledby="priv-self-host-heading"
+            className="priv-section"
+            id="priv-self-host"
+          >
+            <h2 className="priv-section-title" id="priv-self-host-heading">
+              {tSec("going_offline_full")}
+            </h2>
             <p className="priv-section-body">
-              {tBody.rich('going_offline_p1', { code: (chunks) => <code>{chunks}</code> })}
+              {tBody.rich("going_offline_p1", {
+                code: (chunks) => <code>{chunks}</code>,
+              })}
             </p>
-            <p className="priv-section-body">{tBody('going_offline_p2')}</p>
+            <p className="priv-section-body">{tBody("going_offline_p2")}</p>
             <ul className="priv-offline-steps">
               <li>
-                {tBody.rich('going_offline_step_ai', {
+                {tBody.rich("going_offline_step_ai", {
                   strong: (chunks) => <strong>{chunks}</strong>,
                   settings: (chunks) => (
-                    <Link href={SETTINGS_AI_HASH} className="priv-inline-link priv-inline-link-settings">
+                    <Link
+                      className="priv-inline-link priv-inline-link-settings"
+                      href={SETTINGS_AI_HASH}
+                    >
                       {chunks}
                     </Link>
                   ),
                 })}
               </li>
               <li>
-                {tBody.rich('going_offline_step_wayback', {
+                {tBody.rich("going_offline_step_wayback", {
                   strong: (chunks) => <strong>{chunks}</strong>,
                 })}
               </li>
             </ul>
-            <p className="priv-section-body">{tBody('going_offline_p3')}</p>
+            <p className="priv-section-body">{tBody("going_offline_p3")}</p>
           </section>
 
-          <section id="priv-alternatives" className="priv-section" aria-labelledby="priv-alternatives-heading">
-            <h2 id="priv-alternatives-heading" className="priv-section-title">{tSec('other_summarisers_full')}</h2>
-            <p className="priv-section-body">{tBody('alternatives_p1')}</p>
+          <section
+            aria-labelledby="priv-alternatives-heading"
+            className="priv-section"
+            id="priv-alternatives"
+          >
+            <h2 className="priv-section-title" id="priv-alternatives-heading">
+              {tSec("other_summarisers_full")}
+            </h2>
+            <p className="priv-section-body">{tBody("alternatives_p1")}</p>
             <ul className="priv-offline-steps">
               <li>
-                {tBody.rich('alternatives_tosdr', {
+                {tBody.rich("alternatives_tosdr", {
                   strong: (chunks) => <strong>{chunks}</strong>,
                   tosdr: (chunks) => (
                     <a
-                      href="https://tosdr.org/"
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="priv-inline-link"
+                      href="https://tosdr.org/"
+                      rel="noopener noreferrer"
+                      target="_blank"
                     >
                       {chunks}
                     </a>
@@ -479,14 +558,14 @@ export default async function PrivacyPolicyPage() {
                 })}
               </li>
               <li>
-                {tBody.rich('alternatives_privacyspy', {
+                {tBody.rich("alternatives_privacyspy", {
                   strong: (chunks) => <strong>{chunks}</strong>,
                   privacyspy: (chunks) => (
                     <a
-                      href="https://privacyspy.org/"
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="priv-inline-link"
+                      href="https://privacyspy.org/"
+                      rel="noopener noreferrer"
+                      target="_blank"
                     >
                       {chunks}
                     </a>
@@ -495,25 +574,25 @@ export default async function PrivacyPolicyPage() {
               </li>
             </ul>
             <p className="priv-section-body">
-              {tBody.rich('alternatives_p2', {
+              {tBody.rich("alternatives_p2", {
                 strong: (chunks) => <strong>{chunks}</strong>,
                 em: (chunks) => <em>{chunks}</em>,
                 tosdr: (chunks) => (
                   <a
-                    href="https://tosdr.org/"
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="priv-inline-link"
+                    href="https://tosdr.org/"
+                    rel="noopener noreferrer"
+                    target="_blank"
                   >
                     {chunks}
                   </a>
                 ),
                 privacyspy: (chunks) => (
                   <a
-                    href="https://privacyspy.org/"
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="priv-inline-link"
+                    href="https://privacyspy.org/"
+                    rel="noopener noreferrer"
+                    target="_blank"
                   >
                     {chunks}
                   </a>
@@ -522,24 +601,35 @@ export default async function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section id="priv-questions" className="priv-section" aria-labelledby="priv-questions-heading">
-            <h2 id="priv-questions-heading" className="priv-section-title">{tSec('questions_full')}</h2>
+          <section
+            aria-labelledby="priv-questions-heading"
+            className="priv-section"
+            id="priv-questions"
+          >
+            <h2 className="priv-section-title" id="priv-questions-heading">
+              {tSec("questions_full")}
+            </h2>
             <p className="priv-section-body">
-              {tBody.rich('questions_p1', { code: (chunks) => <code>{chunks}</code> })}
+              {tBody.rich("questions_p1", {
+                code: (chunks) => <code>{chunks}</code>,
+              })}
             </p>
             <p className="priv-section-body">
               <a
-                href={issueUrl}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="priv-cta-button"
+                href={issueUrl}
+                rel="noopener noreferrer"
+                target="_blank"
               >
                 Open an issue on GitHub ↗
               </a>
             </p>
             <p className="priv-section-body" style={{ marginTop: 12 }}>
-              The full list of bundled libraries and their licences is on the{' '}
-              <Link href="/legal" className="priv-inline-link">Legal page</Link>.
+              The full list of bundled libraries and their licences is on the{" "}
+              <Link className="priv-inline-link" href="/legal">
+                Legal page
+              </Link>
+              .
             </p>
           </section>
         </div>

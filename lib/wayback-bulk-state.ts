@@ -12,14 +12,14 @@
  * Save-Page-Now is idempotent).
  */
 
-import { getSetting, setSetting } from './scheduler';
-import db from './db';
+import db from "./db";
+import { getSetting, setSetting } from "./scheduler";
 
 /** Key under which the state blob lives in `app_settings`. */
-const STATE_KEY = 'wayback_bulk_state';
+const STATE_KEY = "wayback_bulk_state";
 
 /** Cross-request mutex; cleared on clean completion, resume, or stale-mutex healing. */
-export const BULK_MUTEX_KEY = 'wayback_import_running';
+export const BULK_MUTEX_KEY = "wayback_import_running";
 
 /**
  * Bump when the persisted JSON shape changes. `readBulkState` discards
@@ -27,72 +27,72 @@ export const BULK_MUTEX_KEY = 'wayback_import_running';
  */
 const STATE_SCHEMA_VERSION = 2;
 
-export type QueueEntryStatus = 'pending' | 'in_progress' | 'done' | 'failed';
+export type QueueEntryStatus = "pending" | "in_progress" | "done" | "failed";
 export type WaybackBulkRunStatus =
-  | 'running'
-  | 'pause_requested'
-  | 'paused'
-  | 'cancel_requested';
+  | "running"
+  | "pause_requested"
+  | "paused"
+  | "cancel_requested";
 
 export interface QueueEntry {
   appId: string;
   appName: string;
-  status: QueueEntryStatus;
-  /** Epoch-ms when we started processing; set when status flips to in_progress. */
-  startedAt?: number;
-  /** Epoch-ms when processing finished; set on done / failed. */
-  finishedAt?: number;
   /** Short error message on failure (trimmed to avoid bloating the blob). */
   error?: string;
+  failed?: number;
+  /** Epoch-ms when processing finished; set on done / failed. */
+  finishedAt?: number;
   // Per-app totals so the UI can show running stats without hitting activity_log.
   imported?: number;
-  unchanged?: number;
   skipped?: number;
-  failed?: number;
   snapshotsRequested?: number;
+  /** Epoch-ms when we started processing; set when status flips to in_progress. */
+  startedAt?: number;
+  status: QueueEntryStatus;
+  unchanged?: number;
 }
 
 export interface WaybackBulkTotals {
   appsAttempted: number;
   appsWithImports: number;
-  targetsAttempted: number;
-  imported: number;
-  unchanged: number;
-  skipped: number;
   failed: number;
+  imported: number;
+  skipped: number;
   snapshotsRequested: number;
+  targetsAttempted: number;
+  unchanged: number;
 }
 
 export interface WaybackBulkState {
-  /** Schema version of the persisted blob. */
-  version: number;
-  /** UUID generated at the start of the run; changes on resume. */
-  runId: string;
-  /** Epoch-ms when the original run started. Survives resume. */
-  startedAt: number;
-  /** How the run started. `resume` means the server restarted mid-run. */
-  initiator: 'manual' | 'resume';
-  /** Epoch-ms when state was last persisted. */
-  updatedAt: number;
-  /** Cooperative control state for pause/cancel/resume UI. */
-  status: WaybackBulkRunStatus;
-  /** Epoch-ms when a pause was requested, if any. */
-  pauseRequestedAt?: number;
-  /** Epoch-ms when the run was paused at an app boundary, if any. */
-  pausedAt?: number;
   /** Epoch-ms when cancellation was requested, if any. */
   cancelRequestedAt?: number;
   /** Id of the app currently being processed (denormalised from queue). */
   currentAppId: string | null;
+  /** How the run started. `resume` means the server restarted mid-run. */
+  initiator: "manual" | "resume";
+  /** Epoch-ms when the run was paused at an app boundary, if any. */
+  pausedAt?: number;
+  /** Epoch-ms when a pause was requested, if any. */
+  pauseRequestedAt?: number;
   /** The full app queue with per-app status. */
   queue: QueueEntry[];
-  /** Rolling totals across the whole run. */
-  totals: WaybackBulkTotals;
+  /** UUID generated at the start of the run; changes on resume. */
+  runId: string;
+  /** Epoch-ms when the original run started. Survives resume. */
+  startedAt: number;
+  /** Cooperative control state for pause/cancel/resume UI. */
+  status: WaybackBulkRunStatus;
   /**
    * Whether the original caller requested `?stream=1`. Informational —
    * resumed runs always run buffered (the NDJSON stream died with the process).
    */
   streamRequested: boolean;
+  /** Rolling totals across the whole run. */
+  totals: WaybackBulkTotals;
+  /** Epoch-ms when state was last persisted. */
+  updatedAt: number;
+  /** Schema version of the persisted blob. */
+  version: number;
 }
 
 /** All-zero totals. Exported so the bulk loop can seed a fresh run. */
@@ -115,15 +115,17 @@ export function zeroTotals(): WaybackBulkTotals {
  * required fields are missing. Never throws — treat null as "nothing to resume".
  */
 export function readBulkState(): WaybackBulkState | null {
-  const raw = getSetting(STATE_KEY, '');
-  if (!raw) return null;
+  const raw = getSetting(STATE_KEY, "");
+  if (!raw) {
+    return null;
+  }
   try {
     const parsed = JSON.parse(raw);
     if (
       !parsed ||
-      typeof parsed !== 'object' ||
+      typeof parsed !== "object" ||
       (parsed.version !== 1 && parsed.version !== STATE_SCHEMA_VERSION) ||
-      typeof parsed.runId !== 'string' ||
+      typeof parsed.runId !== "string" ||
       !Array.isArray(parsed.queue)
     ) {
       return null;
@@ -145,11 +147,13 @@ export function readBulkState(): WaybackBulkState | null {
  * Persist the state blob atomically (better-sqlite3 is synchronous).
  * Refreshes `updatedAt` to current wall-clock.
  */
-export function writeBulkState(next: Omit<WaybackBulkState, 'version' | 'updatedAt' | 'status'> & {
-  version?: number;
-  status?: WaybackBulkRunStatus;
-  updatedAt?: number;
-}): void {
+export function writeBulkState(
+  next: Omit<WaybackBulkState, "version" | "updatedAt" | "status"> & {
+    version?: number;
+    status?: WaybackBulkRunStatus;
+    updatedAt?: number;
+  }
+): void {
   const payload: WaybackBulkState = {
     ...next,
     version: STATE_SCHEMA_VERSION,
@@ -164,24 +168,26 @@ export function writeBulkState(next: Omit<WaybackBulkState, 'version' | 'updated
  * detects a stale blob with no pending work.
  */
 export function clearBulkState(): void {
-  db.prepare('DELETE FROM app_settings WHERE key = ?').run(STATE_KEY);
+  db.prepare("DELETE FROM app_settings WHERE key = ?").run(STATE_KEY);
 }
 
 /** Acquire the cross-request mutex. Returns true if we got it. */
 export function acquireBulkMutex(): boolean {
-  if (getSetting(BULK_MUTEX_KEY) === 'true') return false;
-  setSetting(BULK_MUTEX_KEY, 'true');
+  if (getSetting(BULK_MUTEX_KEY) === "true") {
+    return false;
+  }
+  setSetting(BULK_MUTEX_KEY, "true");
   return true;
 }
 
 /** Release the mutex unconditionally. Safe to call even when not held. */
 export function releaseBulkMutex(): void {
-  setSetting(BULK_MUTEX_KEY, 'false');
+  setSetting(BULK_MUTEX_KEY, "false");
 }
 
 /** Is the mutex currently claimed? */
 export function isBulkMutexHeld(): boolean {
-  return getSetting(BULK_MUTEX_KEY) === 'true';
+  return getSetting(BULK_MUTEX_KEY) === "true";
 }
 
 /** Return counts so callers don't need to walk the queue manually. */
@@ -199,16 +205,16 @@ export function summariseState(state: WaybackBulkState): {
   let failed = 0;
   for (const entry of state.queue) {
     switch (entry.status) {
-      case 'pending':
+      case "pending":
         pending++;
         break;
-      case 'in_progress':
+      case "in_progress":
         inProgress++;
         break;
-      case 'done':
+      case "done":
         done++;
         break;
-      case 'failed':
+      case "failed":
         failed++;
         break;
     }
@@ -228,30 +234,42 @@ export function summariseState(state: WaybackBulkState): {
  * from a previous process counts as pending on resume.
  */
 export function hasPendingWork(state: WaybackBulkState | null): boolean {
-  if (!state) return false;
-  return state.queue.some(entry => entry.status === 'pending' || entry.status === 'in_progress');
+  if (!state) {
+    return false;
+  }
+  return state.queue.some(
+    (entry) => entry.status === "pending" || entry.status === "in_progress"
+  );
 }
 
 /** Paused queues are user-controlled and should not auto-resume on startup. */
 export function isBulkStatePaused(state: WaybackBulkState | null): boolean {
-  return state?.status === 'paused' || state?.status === 'pause_requested';
+  return state?.status === "paused" || state?.status === "pause_requested";
 }
 
 /** Cancel-requested queues should be cleared rather than auto-resumed. */
-export function isBulkStateCancellationRequested(state: WaybackBulkState | null): boolean {
-  return state?.status === 'cancel_requested';
+export function isBulkStateCancellationRequested(
+  state: WaybackBulkState | null
+): boolean {
+  return state?.status === "cancel_requested";
 }
 
 /** Pending work that should be resumed by the startup hook. */
-export function shouldAutoResumeBulkState(state: WaybackBulkState | null): boolean {
-  return hasPendingWork(state) && !isBulkStatePaused(state) && !isBulkStateCancellationRequested(state);
+export function shouldAutoResumeBulkState(
+  state: WaybackBulkState | null
+): boolean {
+  return (
+    hasPendingWork(state) &&
+    !isBulkStatePaused(state) &&
+    !isBulkStateCancellationRequested(state)
+  );
 }
 
 function normaliseRunStatus(raw: unknown): WaybackBulkRunStatus {
-  return raw === 'pause_requested' ||
-    raw === 'paused' ||
-    raw === 'cancel_requested' ||
-    raw === 'running'
+  return raw === "pause_requested" ||
+    raw === "paused" ||
+    raw === "cancel_requested" ||
+    raw === "running"
     ? raw
-    : 'running';
+    : "running";
 }

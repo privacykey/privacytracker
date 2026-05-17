@@ -9,17 +9,16 @@
  * by the SQL filter in `buildAuditBundle()` — no force-include escape hatch.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
-import { buildAuditBundle, buildBundleFilename } from '@/lib/audit-bundle';
-import { resolveFlagFromDb } from '@/lib/feature-flags-server';
-import { getActiveFocus } from '@/lib/feature-flag-storage';
-import { readOptionalBoundedJson } from '@/lib/security';
-import { requireMutationGuard } from '@/lib/api-guards';
+import { type NextRequest, NextResponse } from "next/server";
+import { requireMutationGuard } from "@/lib/api-guards";
+import { buildAuditBundle, buildBundleFilename } from "@/lib/audit-bundle";
+import { getActiveFocus } from "@/lib/feature-flag-storage";
+import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { readOptionalBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface ExportBody {
-  recommenderName?: string | null;
   includeRecommenderProfile?: boolean;
   /**
    * When true, the produced bundle carries `migration_flow: true`. The
@@ -29,6 +28,7 @@ interface ExportBody {
    * redirect to /dashboard/review-recommendations.
    */
   migrationFlow?: boolean;
+  recommenderName?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -39,58 +39,67 @@ export async function POST(request: NextRequest) {
   // when configured (Tauri/local installs without the token still pass
   // through; the proxy's CSRF check covers them).
   const guard = requireMutationGuard(request, {
-    action: 'export.audit_bundle',
+    action: "export.audit_bundle",
     rateLimit: {
-      keyPrefix: 'export.audit_bundle',
+      keyPrefix: "export.audit_bundle",
       limit: 5,
       windowMs: 60_000,
     },
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   let body: ExportBody = {};
   try {
     body = await readOptionalBoundedJson<ExportBody>(request, 4 * 1024, {});
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
-      { status: 400 },
+      { error: error instanceof Error ? error.message : "Invalid JSON body" },
+      { status: 400 }
     );
   }
 
   // Gate: only callable when the bundle export flag is on. Client surfaces
   // hide the button when off, but the API is the authoritative gate.
   try {
-    if (resolveFlagFromDb('flag.settings.admin.export.audit_bundle') !== 'on') {
+    if (resolveFlagFromDb("flag.settings.admin.export.audit_bundle") !== "on") {
       return NextResponse.json(
-        { error: 'Audit-bundle export is not enabled for your focus' },
-        { status: 403 },
+        { error: "Audit-bundle export is not enabled for your focus" },
+        { status: 403 }
       );
     }
   } catch (e) {
-    console.warn('[/api/export/audit-bundle] flag resolution failed:', e);
+    console.warn("[/api/export/audit-bundle] flag resolution failed:", e);
     // Fail closed when we can't confirm the gate.
     return NextResponse.json(
-      { error: 'Could not check export permission' },
-      { status: 500 },
+      { error: "Could not check export permission" },
+      { status: 500 }
     );
   }
 
   const focus = (() => {
-    try { return getActiveFocus(); } catch { return null; }
+    try {
+      return getActiveFocus();
+    } catch {
+      return null;
+    }
   })();
 
-  let bundle;
+  let bundle: ReturnType<typeof buildAuditBundle> | undefined;
   try {
     bundle = buildAuditBundle({
       recommenderName: body.recommenderName ?? null,
       includeRecommenderProfile: body.includeRecommenderProfile !== false,
-      exportedByAudience: focus?.audience ?? 'self',
+      exportedByAudience: focus?.audience ?? "self",
       migrationFlow: body.migrationFlow === true,
     });
   } catch (e) {
-    console.error('[/api/export/audit-bundle] build failed:', e);
-    return NextResponse.json({ error: 'Failed to build audit bundle' }, { status: 500 });
+    console.error("[/api/export/audit-bundle] build failed:", e);
+    return NextResponse.json(
+      { error: "Failed to build audit bundle" },
+      { status: 500 }
+    );
   }
 
   const filename = buildBundleFilename(body.recommenderName ?? null);
@@ -99,10 +108,10 @@ export async function POST(request: NextRequest) {
   return new NextResponse(json, {
     status: 200,
     headers: {
-      'Content-Type': 'application/json',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      "Content-Type": "application/json",
+      "Content-Disposition": `attachment; filename="${filename}"`,
       // Discourage caching — bundles are point-in-time exports.
-      'Cache-Control': 'no-store',
+      "Cache-Control": "no-store",
     },
   });
 }

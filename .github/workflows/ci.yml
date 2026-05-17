@@ -41,7 +41,7 @@ jobs:
         with:
           fail-on-severity: high
 
-      - name: Lint
+      - name: Lint and format check
         run: pnpm lint
 
       - name: Test

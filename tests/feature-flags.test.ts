@@ -1,12 +1,14 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { resolveFlag, type ResolverContext } from '../lib/feature-flags';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { type ResolverContext, resolveFlag } from "../lib/feature-flags";
 
-function ctx(overrides: ResolverContext['overrides'] = new Map()): ResolverContext {
+function ctx(
+  overrides: ResolverContext["overrides"] = new Map()
+): ResolverContext {
   return {
     focus: {
-      audience: 'self',
-      goals: new Set(['understand']),
+      audience: "self",
+      goals: new Set(["understand"]),
       aiConfigured: false,
     },
     overrides,
@@ -14,26 +16,28 @@ function ctx(overrides: ResolverContext['overrides'] = new Map()): ResolverConte
   };
 }
 
-test('Apple Configurator onboarding method is desktop-runtime only by default', () => {
-  assert.equal(resolveFlag('flag.onboarding.method.configurator', ctx()), 'off');
+test("Apple Configurator onboarding method is desktop-runtime only by default", () => {
   assert.equal(
-    resolveFlag('flag.onboarding.method.configurator', {
+    resolveFlag("flag.onboarding.method.configurator", ctx()),
+    "off"
+  );
+  assert.equal(
+    resolveFlag("flag.onboarding.method.configurator", {
       ...ctx(),
-      runtimeEnvironment: 'desktop',
+      runtimeEnvironment: "desktop",
     }),
-    'on',
+    "on"
   );
 });
 
-test('Apple Configurator onboarding method still honours explicit user override', () => {
+test("Apple Configurator onboarding method still honours explicit user override", () => {
   assert.equal(
-    resolveFlag(
-      'flag.onboarding.method.configurator',
-      {
-        ...ctx(new Map([['flag.onboarding.method.configurator', 'off'] as const])),
-        runtimeEnvironment: 'desktop',
-      },
-    ),
-    'off',
+    resolveFlag("flag.onboarding.method.configurator", {
+      ...ctx(
+        new Map([["flag.onboarding.method.configurator", "off"] as const])
+      ),
+      runtimeEnvironment: "desktop",
+    }),
+    "off"
   );
 });

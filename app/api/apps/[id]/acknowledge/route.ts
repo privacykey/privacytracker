@@ -1,12 +1,13 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
 import {
+  type ReviewAction,
   recordReviewAction,
   SNOOZE_DAYS_OPTIONS,
-  type ReviewAction,
   type SnoozeDays,
-} from '../../../../../lib/changelog';
-import { readOptionalBoundedJson } from '../../../../../lib/security';
+} from "../../../../../lib/changelog";
+import { readOptionalBoundedJson } from "../../../../../lib/security";
 
 /**
  * POST /api/apps/[id]/acknowledge
@@ -24,15 +25,20 @@ import { readOptionalBoundedJson } from '../../../../../lib/security';
  * values fall back to 7 days so a future client that drops a typo in
  * doesn't leave the panel stuck.
  */
-const VALID_ACTIONS: ReviewAction[] = ['reviewed', 'dismissed', 'snoozed', 'unsnoozed'];
+const VALID_ACTIONS: ReviewAction[] = [
+  "reviewed",
+  "dismissed",
+  "snoozed",
+  "unsnoozed",
+];
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   if (!id) {
-    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
   // Body is optional — `await request.json()` throws on an empty payload,
@@ -42,20 +48,21 @@ export async function POST(
   try {
     body = await readOptionalBoundedJson(request, 2 * 1024, {});
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const rawAction = typeof body?.action === 'string' ? body.action.trim() : 'reviewed';
+  const rawAction =
+    typeof body?.action === "string" ? body.action.trim() : "reviewed";
   if (!VALID_ACTIONS.includes(rawAction as ReviewAction)) {
     return NextResponse.json(
-      { error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(', ')}` },
-      { status: 400 },
+      { error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(", ")}` },
+      { status: 400 }
     );
   }
   const action = rawAction as ReviewAction;
 
   let snoozeDays: SnoozeDays | undefined;
-  if (action === 'snoozed') {
+  if (action === "snoozed") {
     const rawDays = Number(body?.snoozeDays);
     if (SNOOZE_DAYS_OPTIONS.includes(rawDays as SnoozeDays)) {
       snoozeDays = rawDays as SnoozeDays;

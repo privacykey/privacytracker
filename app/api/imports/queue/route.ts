@@ -1,7 +1,11 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { getImportQueueStatus, forceImportQueueRun } from '../../../../lib/import-queue';
-import { withApiTiming } from '../../../../lib/api-timing';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import { withApiTiming } from "../../../../lib/api-timing";
+import {
+  forceImportQueueRun,
+  getImportQueueStatus,
+} from "../../../../lib/import-queue";
 
 /**
  * GET  /api/imports/queue — poll endpoint used by the Task Center provider
@@ -13,16 +17,19 @@ import { withApiTiming } from '../../../../lib/api-timing';
  * diagnostics ring — this is the most useful route to track during an
  * import hang.
  */
-export const GET = withApiTiming('/api/imports/queue', async () => {
-  return NextResponse.json(getImportQueueStatus());
-});
+export const GET = withApiTiming("/api/imports/queue", async () =>
+  NextResponse.json(getImportQueueStatus())
+);
 
-export const POST = withApiTiming('/api/imports/queue', async () => {
+export const POST = withApiTiming("/api/imports/queue", async () => {
   try {
     const result = await forceImportQueueRun();
     return NextResponse.json({ ...result, status: getImportQueueStatus() });
   } catch (error) {
-    console.error('Force import-queue run failed', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Force import-queue run failed", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 });

@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { buildDeploymentDiagnostics } from '@/lib/deployment-diagnostics';
+import { NextResponse } from "next/server";
+import { buildDeploymentDiagnostics } from "@/lib/deployment-diagnostics";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Safe deployment diagnostics for the Settings card.

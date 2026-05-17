@@ -6,10 +6,10 @@
  *         rate-limit, polled at ~10 s by the diagnostics page.
  */
 
-import { NextResponse } from 'next/server';
-import { snapshotDisk } from '@/lib/disk-usage';
+import { NextResponse } from "next/server";
+import { snapshotDisk } from "@/lib/disk-usage";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   return NextResponse.json(snapshotDisk());

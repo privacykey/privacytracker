@@ -11,57 +11,62 @@
  * no-op for the activity feed.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
-import { applyDashboardPreset } from '@/lib/dashboard-layout-server';
+import { type NextRequest, NextResponse } from "next/server";
+import { requireMutationGuard } from "@/lib/api-guards";
 import {
   DASHBOARD_PRESET_KEYS,
-  matchDashboardPreset,
   type DashboardPresetKey,
-} from '@/lib/dashboard-layout';
-import { readBoundedJson } from '@/lib/security';
-import { requireMutationGuard } from '@/lib/api-guards';
+  matchDashboardPreset,
+} from "@/lib/dashboard-layout";
+import { applyDashboardPreset } from "@/lib/dashboard-layout-server";
+import { readBoundedJson } from "@/lib/security";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const BODY_BYTES = 1 * 1024;
 
 function isPresetKey(value: unknown): value is DashboardPresetKey {
   return (
-    typeof value === 'string' &&
+    typeof value === "string" &&
     (DASHBOARD_PRESET_KEYS as readonly string[]).includes(value)
   );
 }
 
 export async function POST(request: NextRequest) {
   const guard = requireMutationGuard(request, {
-    action: 'dashboard.layout.preset',
+    action: "dashboard.layout.preset",
     rateLimit: {
-      keyPrefix: 'dashboard.layout.preset',
+      keyPrefix: "dashboard.layout.preset",
       limit: 30,
       windowMs: 60_000,
     },
     requireAdminToken: false,
   });
-  if (!guard.ok) return guard.response;
+  if (!guard.ok) {
+    return guard.response;
+  }
 
   let body: unknown;
   try {
     body = await readBoundedJson(request, BODY_BYTES);
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (!body || typeof body !== 'object') {
-    return NextResponse.json({ error: 'Body must be an object' }, { status: 400 });
+  if (!body || typeof body !== "object") {
+    return NextResponse.json(
+      { error: "Body must be an object" },
+      { status: 400 }
+    );
   }
 
   const preset = (body as { preset?: unknown }).preset;
   if (!isPresetKey(preset)) {
     return NextResponse.json(
       {
-        error: `\`preset\` must be one of: ${DASHBOARD_PRESET_KEYS.join(', ')}`,
+        error: `\`preset\` must be one of: ${DASHBOARD_PRESET_KEYS.join(", ")}`,
       },
-      { status: 400 },
+      { status: 400 }
     );
   }
 

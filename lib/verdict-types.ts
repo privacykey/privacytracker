@@ -8,19 +8,19 @@
  * either module interchangeably.
  */
 
-export type VerdictValue = 'safe' | 'replace' | 'uninstall';
-export type VerdictSource = 'user' | 'imported';
+export type VerdictValue = "safe" | "replace" | "uninstall";
+export type VerdictSource = "user" | "imported";
 
 export interface AppVerdict {
-  id: string;
   appId: string;
-  verdict: VerdictValue;
+  id: string;
   rationale: string | null;
+  setAt: number;
   source: VerdictSource;
   /** Recommender display name when source === 'imported'; null for 'user'. */
   sourceName: string | null;
-  setAt: number;
   updatedAt: number;
+  verdict: VerdictValue;
 }
 
 /**
@@ -34,45 +34,45 @@ export interface AppVerdict {
  * decided" vs "what Apple says about the app").
  */
 export interface VerdictMeta {
-  value: VerdictValue;
-  label: string;
-  shortLabel: string;
+  /** CSS class suffix — `verdict-pill-${cls}` and `verdict-chip-${cls}`. */
+  cls: "safe" | "replace" | "uninstall";
   /** One-liner for tooltips and the picker's per-option helper text. */
   description: string;
   icon: string;
-  /** CSS class suffix — `verdict-pill-${cls}` and `verdict-chip-${cls}`. */
-  cls: 'safe' | 'replace' | 'uninstall';
+  label: string;
+  shortLabel: string;
+  value: VerdictValue;
 }
 
 export const VERDICT_META: Record<VerdictValue, VerdictMeta> = {
   safe: {
-    value: 'safe',
-    label: 'Marked safe',
-    shortLabel: 'Safe',
+    value: "safe",
+    label: "Marked safe",
+    shortLabel: "Safe",
     description:
       "Keeping this app — you're comfortable with what it does and how it handles your data.",
-    icon: '✓',
-    cls: 'safe',
+    icon: "✓",
+    cls: "safe",
   },
   replace: {
-    value: 'replace',
-    label: 'Looking for replacement',
-    shortLabel: 'Replace',
+    value: "replace",
+    label: "Looking for replacement",
+    shortLabel: "Replace",
     description:
       "You want a less invasive alternative. Use the Compare view to find candidates and add them to your shortlist.",
-    icon: '↻',
-    cls: 'replace',
+    icon: "↻",
+    cls: "replace",
   },
   uninstall: {
-    value: 'uninstall',
-    label: 'Marked to remove',
-    shortLabel: 'Remove',
+    value: "uninstall",
+    label: "Marked to remove",
+    shortLabel: "Remove",
     description:
       "You've decided this app should be removed. When source = 'imported', this is a recommendation only — your own decision still gates whether you actually remove it.",
-    icon: '🗑',
-    cls: 'uninstall',
+    icon: "🗑",
+    cls: "uninstall",
   },
 };
 
 /** Stable ordering for the picker / filter row. */
-export const VERDICT_ORDER: VerdictValue[] = ['safe', 'replace', 'uninstall'];
+export const VERDICT_ORDER: VerdictValue[] = ["safe", "replace", "uninstall"];

@@ -17,17 +17,17 @@
  * loader in the route page.
  */
 
-import 'server-only';
+import "server-only";
 
-import { getSetting, setSetting } from './scheduler';
-import { recordActivity } from './activity';
-import { resolveFlagFromDb } from './feature-flags-server';
-import { getActiveFocus } from './feature-flag-storage';
+import { recordActivity } from "./activity";
+import { getActiveFocus } from "./feature-flag-storage";
+import { resolveFlagFromDb } from "./feature-flags-server";
+import { getSetting, setSetting } from "./scheduler";
 
 /** Default freshness window — backups older than this disqualify uninstall. */
 export const BACKUP_FRESHNESS_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-const SETTINGS_BACKUP_PREFIX = 'cfgutil_last_backup_';
+const SETTINGS_BACKUP_PREFIX = "cfgutil_last_backup_";
 
 /**
  * Apple ECIDs are hex strings (typically 12-20 chars). Validate at every
@@ -56,10 +56,10 @@ interface BackupStamp {
  */
 export type DeviceActionGate =
   | { allowed: true }
-  | { allowed: false; reason: 'audience'; activeAudience: string }
-  | { allowed: false; reason: 'flag' }
-  | { allowed: false; reason: 'backup_missing' }
-  | { allowed: false; reason: 'backup_stale'; agedMs: number };
+  | { allowed: false; reason: "audience"; activeAudience: string }
+  | { allowed: false; reason: "flag" }
+  | { allowed: false; reason: "backup_missing" }
+  | { allowed: false; reason: "backup_stale"; agedMs: number };
 
 /**
  * Resolve whether the user can currently invoke the uninstall path.
@@ -69,33 +69,50 @@ export type DeviceActionGate =
  *      verdicts and export bundles, but cannot trigger device-side
  *      changes. This is the most important gate — a guardian
  *      auditing a child's apps must never accidentally execute on
- *      *their own* device.
+ *their own* device. Cannot be bypassed.
  *   2. The `flag.devopts.cfgutil_uninstall` flag must be 'on'. Off by
  *      default, surfaced under Developer Options so the user has
- *      explicitly opted in to the destructive feature.
+ *      explicitly opted in to the destructive feature. Cannot be
+ *      bypassed.
  *   3. A successful backup against the target ECID must exist within
  *      `BACKUP_FRESHNESS_WINDOW_MS`. Backup before destruction is
- *      non-negotiable — re-running a backup is much cheaper than
- *      explaining to a recipient how to recover a wrongly-deleted
- *      app's data.
+ *      strongly recommended, but the user can opt out per-call by
+ *      passing `acknowledgeNoBackup: true` — the wizard's "Type DELETE
+ *      to confirm without a backup" modal sets this. The bypass is
+ *      activity-logged separately (see `recordUninstall.detail`).
  */
-export function checkUninstallGate(ecid: string): DeviceActionGate {
+export function checkUninstallGate(
+  ecid: string,
+  opts: { acknowledgeNoBackup?: boolean } = {}
+): DeviceActionGate {
   const focus = getActiveFocus();
-  if (focus.audience !== 'self') {
-    return { allowed: false, reason: 'audience', activeAudience: focus.audience };
+  if (focus.audience !== "self") {
+    return {
+      allowed: false,
+      reason: "audience",
+      activeAudience: focus.audience,
+    };
   }
 
-  if (resolveFlagFromDb('flag.devopts.cfgutil_uninstall') !== 'on') {
-    return { allowed: false, reason: 'flag' };
+  if (resolveFlagFromDb("flag.devopts.cfgutil_uninstall") !== "on") {
+    return { allowed: false, reason: "flag" };
+  }
+
+  // Per-call user opt-out of the backup-freshness check. The audience +
+  // flag gates above stay enforced — we only relax the backup
+  // requirement, and only when the caller explicitly acknowledges the
+  // risk. The wizard's no-backup modal types DELETE to set this.
+  if (opts.acknowledgeNoBackup) {
+    return { allowed: true };
   }
 
   const stamp = getLastBackup(ecid);
   if (!stamp) {
-    return { allowed: false, reason: 'backup_missing' };
+    return { allowed: false, reason: "backup_missing" };
   }
   const aged = Date.now() - stamp.finishedAt;
   if (aged > BACKUP_FRESHNESS_WINDOW_MS) {
-    return { allowed: false, reason: 'backup_stale', agedMs: aged };
+    return { allowed: false, reason: "backup_stale", agedMs: aged };
   }
 
   return { allowed: true };
@@ -103,16 +120,22 @@ export function checkUninstallGate(ecid: string): DeviceActionGate {
 
 /** Most recent backup stamp for the given ECID, or null. */
 export function getLastBackup(ecid: string): BackupStamp | null {
-  if (!isValidEcid(ecid)) return null;
+  if (!isValidEcid(ecid)) {
+    return null;
+  }
   const key = SETTINGS_BACKUP_PREFIX + ecid;
-  const raw = getSetting(key, '');
-  if (!raw) return null;
+  const raw = getSetting(key, "");
+  if (!raw) {
+    return null;
+  }
   try {
     const parsed = JSON.parse(raw) as Partial<BackupStamp>;
-    if (typeof parsed.finishedAt !== 'number') return null;
+    if (typeof parsed.finishedAt !== "number") {
+      return null;
+    }
     return {
       finishedAt: parsed.finishedAt,
-      path: typeof parsed.path === 'string' ? parsed.path : '',
+      path: typeof parsed.path === "string" ? parsed.path : "",
     };
   } catch {
     return null;
@@ -138,13 +161,12 @@ export function recordBackup(opts: {
 
   try {
     recordActivity({
-      type: 'cfgutil_backup',
-      status: 'ok',
+      type: "cfgutil_backup",
+      status: "ok",
       appId: null,
-      summary:
-        opts.deviceName && opts.deviceName.trim()
-          ? `Backed up ${opts.deviceName.trim()}`
-          : 'Device backup completed',
+      summary: opts.deviceName?.trim()
+        ? `Backed up ${opts.deviceName.trim()}`
+        : "Device backup completed",
       detail: {
         ecid: opts.ecid,
         path: opts.path,
@@ -154,7 +176,7 @@ export function recordBackup(opts: {
       startedAt: opts.finishedAt,
     });
   } catch (e) {
-    console.warn('[device-actions] activity log failed:', e);
+    console.warn("[device-actions] activity log failed:", e);
   }
 }
 
@@ -171,24 +193,34 @@ export function recordUninstall(opts: {
   appName: string | null;
   ok: boolean;
   error: string | null;
+  /**
+   * Set when the user opted out of the backup-freshness check via the
+   * wizard's "delete without a backup" modal. Mirrored into the
+   * activity log so an audit of destructive actions can distinguish
+   * "deleted with a fresh backup" from "deleted at the user's risk".
+   */
+  acknowledgedNoBackup?: boolean;
 }): void {
   try {
     recordActivity({
-      type: 'cfgutil_uninstall',
-      status: opts.ok ? 'ok' : 'error',
+      type: "cfgutil_uninstall",
+      status: opts.ok ? "ok" : "error",
       appId: opts.appId,
       summary: opts.ok
-        ? `Uninstalled ${opts.appName ?? opts.bundleId}`
+        ? `Uninstalled ${opts.appName ?? opts.bundleId}${
+            opts.acknowledgedNoBackup ? " (no backup, acknowledged)" : ""
+          }`
         : `Uninstall failed for ${opts.appName ?? opts.bundleId}`,
       detail: {
         ecid: opts.ecid,
         bundleId: opts.bundleId,
         appName: opts.appName,
         error: opts.error,
+        acknowledgedNoBackup: opts.acknowledgedNoBackup === true,
       },
       startedAt: Date.now(),
     });
   } catch (e) {
-    console.warn('[device-actions] activity log failed:', e);
+    console.warn("[device-actions] activity log failed:", e);
   }
 }

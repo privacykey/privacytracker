@@ -1,12 +1,16 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+export const dynamic = "force-dynamic";
+
+import { NextResponse } from "next/server";
+import db from "../../../../../lib/db";
 import {
   getImportItemById,
   replaceImportItemMatch,
-} from '../../../../../lib/imports';
-import { fetchAndParseApp } from '../../../../../lib/scraper';
-import db from '../../../../../lib/db';
-import { readBoundedJson, validateAppStoreUrl } from '../../../../../lib/security';
+} from "../../../../../lib/imports";
+import { fetchAndParseApp } from "../../../../../lib/scraper";
+import {
+  readBoundedJson,
+  validateAppStoreUrl,
+} from "../../../../../lib/security";
 
 /**
  * Rewire a single import item to point at a different App Store listing.
@@ -23,21 +27,25 @@ export async function POST(request: Request) {
     body = await readBoundedJson<Record<string, unknown>>(request, 16 * 1024);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid JSON body' },
-      { status: 400 },
+      { error: error instanceof Error ? error.message : "Invalid JSON body" },
+      { status: 400 }
     );
   }
 
   try {
-    const itemId = typeof body?.itemId === 'string' ? body.itemId.trim() : '';
-    const url = typeof body?.url === 'string' ? body.url.trim() : '';
+    const itemId = typeof body?.itemId === "string" ? body.itemId.trim() : "";
+    const url = typeof body?.url === "string" ? body.url.trim() : "";
     const editedQuery =
-      typeof body?.editedQuery === 'string' && body.editedQuery.trim().length > 0
+      typeof body?.editedQuery === "string" &&
+      body.editedQuery.trim().length > 0
         ? body.editedQuery.trim()
         : null;
 
     if (!itemId) {
-      return NextResponse.json({ error: 'itemId is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "itemId is required" },
+        { status: 400 }
+      );
     }
     // Match the App-Store-only host allowlist at the route boundary
     // instead of waiting for fetchAndParseApp to re-validate. Cheaper
@@ -46,36 +54,39 @@ export async function POST(request: Request) {
     const validated = validateAppStoreUrl(url);
     if (!validated.ok) {
       return NextResponse.json(
-        { error: 'url must be a canonical apps.apple.com URL with an /id<digits> segment' },
-        { status: 400 },
+        {
+          error:
+            "url must be a canonical apps.apple.com URL with an /id<digits> segment",
+        },
+        { status: 400 }
       );
     }
 
     const existing = getImportItemById(itemId);
     if (!existing) {
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
-    let scraped;
+    let scraped: Awaited<ReturnType<typeof fetchAndParseApp>> | undefined;
     try {
       // Skip policy summarization — the background summarize step handles it.
       scraped = await fetchAndParseApp(
         url,
         /* resync */ false,
         /* summarizePolicies */ false,
-        /* trigger */ 'import',
+        /* trigger */ "import"
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return NextResponse.json(
         { error: `Failed to scrape replacement app: ${message}` },
-        { status: 502 },
+        { status: 502 }
       );
     }
 
     // Scrape result lacks `developer`; pull from the freshly-written apps row.
     const appRow = db
-      .prepare('SELECT developer, url, iconUrl FROM apps WHERE id = ?')
+      .prepare("SELECT developer, url, iconUrl FROM apps WHERE id = ?")
       .get(scraped.id) as
       | { developer: string | null; url: string | null; iconUrl: string | null }
       | undefined;
@@ -96,9 +107,9 @@ export async function POST(request: Request) {
     // column is never rewritten, preserving the "originally: …" sub-line.
     const nextEditedQuery = editedQuery ?? scraped.name;
     if (item && nextEditedQuery) {
-      db.prepare('UPDATE import_items SET edited_query = ? WHERE id = ?').run(
+      db.prepare("UPDATE import_items SET edited_query = ? WHERE id = ?").run(
         nextEditedQuery,
-        itemId,
+        itemId
       );
     }
 
@@ -107,7 +118,10 @@ export async function POST(request: Request) {
       previousAppRemoved,
     });
   } catch (error) {
-    console.error('Change import-item match error', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Change import-item match error", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

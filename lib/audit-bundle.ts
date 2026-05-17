@@ -28,10 +28,10 @@
  * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
  */
 
-import packageJson from '../package.json';
-import db from './db';
-import { getPrivacyProfile } from './privacy-profile-server';
-import { matchPreset, type ProfilePresetKey } from './privacy-profile';
+import packageJson from "../package.json";
+import db from "./db";
+import { matchPreset, type ProfilePresetKey } from "./privacy-profile";
+import { getPrivacyProfile } from "./privacy-profile-server";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,35 +47,11 @@ import { matchPreset, type ProfilePresetKey } from './privacy-profile';
 export const BUNDLE_VERSION = 2;
 
 export interface AuditBundle {
-  version: number;
-  app_version: string;
-  exported_at: string;          // ISO-8601
-  exported_by_audience: 'self' | 'loved_one' | 'guardian';
-  recommender_name: string | null;
-  apps: BundleApp[];
-  recommender_profile: ReturnType<typeof getPrivacyProfile> | null;
-  /**
-   * The named preset key (`strict` / `balanced` / `anti_tracking` /
-   * `permissive`) the recommender's profile exactly matches at export
-   * time, or `null` when their profile is custom or absent. Optional in
-   * the type for forward/back compat — older bundles simply omit the
-   * field, and importers that don't know about it just ignore the value.
-   *
-   * Only meaningful when `recommender_profile` is non-null; if the
-   * profile is excluded from the export, this field is null too.
-   */
-  recommender_profile_preset?: ProfilePresetKey | null;
   annotations: BundleAnnotation[];
-  /**
-   * Per-app verdicts the recommender has set. Only 'user' source rows
-   * are exported — imported recommendations the recommender themselves
-   * received from someone else don't propagate (those are advisory by
-   * definition; a user has to make their own decision before re-sharing).
-   *
-   * Optional in the type for v1 backward compat; the v2 builder always
-   * emits the field (empty array when nothing's been decided yet).
-   */
-  verdicts?: BundleVerdict[];
+  app_version: string;
+  apps: BundleApp[];
+  exported_at: string; // ISO-8601
+  exported_by_audience: "self" | "loved_one" | "guardian";
   /**
    * Migration-flow marker. Added in v1.2 of the desktop migration wizard
    * (round 3). When present and `true`, the receiving install treats the
@@ -89,21 +65,43 @@ export interface AuditBundle {
    * caller explicitly opts in via `migrationFlow: true`.
    */
   migration_flow?: boolean;
+  recommender_name: string | null;
+  recommender_profile: ReturnType<typeof getPrivacyProfile> | null;
+  /**
+   * The named preset key (`strict` / `balanced` / `anti_tracking` /
+   * `permissive`) the recommender's profile exactly matches at export
+   * time, or `null` when their profile is custom or absent. Optional in
+   * the type for forward/back compat — older bundles simply omit the
+   * field, and importers that don't know about it just ignore the value.
+   *
+   * Only meaningful when `recommender_profile` is non-null; if the
+   * profile is excluded from the export, this field is null too.
+   */
+  recommender_profile_preset?: ProfilePresetKey | null;
+  /**
+   * Per-app verdicts the recommender has set. Only 'user' source rows
+   * are exported — imported recommendations the recommender themselves
+   * received from someone else don't propagate (those are advisory by
+   * definition; a user has to make their own decision before re-sharing).
+   *
+   * Optional in the type for v1 backward compat; the v2 builder always
+   * emits the field (empty array when nothing's been decided yet).
+   */
+  verdicts?: BundleVerdict[];
+  version: number;
 }
 
 export interface BundleApp {
+  accessibility_features: BundleAccessibilityFeature[];
+  bundle_id: string | null;
+  current_version: string | null;
+  developer: string | null;
+  has_accessibility_labels: number | null;
+  has_iap?: number | null;
+  has_privacy_details: number | null;
+  icon_url: string | null;
   id: string;
   name: string;
-  developer: string | null;
-  bundle_id: string | null;
-  url: string | null;
-  icon_url: string | null;
-  current_version: string | null;
-  privacy_policy_url: string | null;
-  has_privacy_details: number | null;
-  has_accessibility_labels: number | null;
-  privacy_types: BundlePrivacyType[];
-  accessibility_features: BundleAccessibilityFeature[];
   policy_summary: BundlePolicySummary | null;
   /**
    * Phase 2 pricing snapshot. All four are optional on the type for
@@ -117,50 +115,52 @@ export interface BundleApp {
   price_amount?: number | null;
   price_currency?: string | null;
   price_formatted?: string | null;
-  has_iap?: number | null;
+  privacy_policy_url: string | null;
+  privacy_types: BundlePrivacyType[];
+  url: string | null;
 }
 
 export interface BundlePrivacyType {
+  categories: Array<{ identifier: string; title: string }>;
+  detail: string | null;
   identifier: string;
   title: string;
-  detail: string | null;
-  categories: Array<{ identifier: string; title: string }>;
 }
 
 export interface BundleAccessibilityFeature {
-  identifier: string;
-  title: string;
   declared: boolean;
   description: string | null;
+  identifier: string;
+  title: string;
 }
 
 export interface BundlePolicySummary {
-  summary_json: string | null;
-  source_text_excerpt: string | null;
   fetched_at: number | null;
   generated_at: number | null;
+  source_text_excerpt: string | null;
+  summary_json: string | null;
 }
 
 export interface BundleAnnotation {
-  id: string;
   app_id: string;
   content: string;
-  source: 'user' | 'imported';
-  source_name: string | null;
-  /** visibility is always 'export' in the bundle — private notes filtered out at SQL */
-  visibility: 'export';
-  tag: string | null;
   created_at: number;
+  id: string;
+  source: "user" | "imported";
+  source_name: string | null;
+  tag: string | null;
   updated_at: number;
+  /** visibility is always 'export' in the bundle — private notes filtered out at SQL */
+  visibility: "export";
 }
 
 export interface BundleVerdict {
   app_id: string;
-  /** 'safe' | 'replace' | 'uninstall'. */
-  verdict: string;
   rationale: string | null;
   set_at: number;
   updated_at: number;
+  /** 'safe' | 'replace' | 'uninstall'. */
+  verdict: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,15 +168,13 @@ export interface BundleVerdict {
 // ---------------------------------------------------------------------------
 
 interface BuildOptions {
+  /** The exporter's audience. Captured for downstream UX (banner copy etc.). */
+  exportedByAudience?: "self" | "loved_one" | "guardian";
   /**
    * Whether to include the user's privacy profile in the bundle.
    * Defaults to true (matches the export-modal default checkbox).
    */
   includeRecommenderProfile?: boolean;
-  /** Free-text recommender name. Falls back to "your friend" downstream. */
-  recommenderName?: string | null;
-  /** The exporter's audience. Captured for downstream UX (banner copy etc.). */
-  exportedByAudience?: 'self' | 'loved_one' | 'guardian';
   /**
    * Migration-flow opt-in (round 3 v1.2). When true, the bundle's
    * `migration_flow` field is set so the receiving install can
@@ -185,6 +183,8 @@ interface BuildOptions {
    * normal recommend-to-loved-one exports never flip this on.
    */
   migrationFlow?: boolean;
+  /** Free-text recommender name. Falls back to "your friend" downstream. */
+  recommenderName?: string | null;
 }
 
 /**
@@ -195,14 +195,16 @@ export function buildAuditBundle(opts: BuildOptions = {}): AuditBundle {
   const {
     includeRecommenderProfile = true,
     recommenderName = null,
-    exportedByAudience = 'self',
+    exportedByAudience = "self",
     migrationFlow = false,
   } = opts;
 
   const apps = buildAppList();
   const annotations = buildAnnotationList();
   const verdicts = buildVerdictList();
-  const recommenderProfile = includeRecommenderProfile ? getPrivacyProfile() : null;
+  const recommenderProfile = includeRecommenderProfile
+    ? getPrivacyProfile()
+    : null;
   // Compute the matching preset key only when the profile is being
   // included. matchPreset() returns null for sparse / customised
   // profiles, which is the value we want to surface either way —
@@ -234,13 +236,15 @@ export function buildAuditBundle(opts: BuildOptions = {}): AuditBundle {
 }
 
 function buildAppList(): BundleApp[] {
-  const appRows = db.prepare(`
+  const appRows = db
+    .prepare(`
     SELECT id, name, developer, bundleId, url, iconUrl, currentVersion,
            privacyPolicyUrl, hasPrivacyDetails, hasAccessibilityLabels,
            priceAmount, priceCurrency, priceFormatted, hasIap
     FROM apps
     ORDER BY name COLLATE NOCASE
-  `).all() as Array<{
+  `)
+    .all() as Array<{
     id: string;
     name: string;
     developer: string | null;
@@ -279,20 +283,29 @@ function buildAppList(): BundleApp[] {
 }
 
 function buildPrivacyTypes(appId: string): BundlePrivacyType[] {
-  const types = db.prepare(`
+  const types = db
+    .prepare(`
     SELECT id, identifier, title, detail
     FROM privacy_types
     WHERE app_id = ?
     ORDER BY title
-  `).all(appId) as Array<{ id: string; identifier: string; title: string; detail: string | null }>;
+  `)
+    .all(appId) as Array<{
+    id: string;
+    identifier: string;
+    title: string;
+    detail: string | null;
+  }>;
 
   return types.map((t) => {
-    const categories = db.prepare(`
+    const categories = db
+      .prepare(`
       SELECT identifier, title
       FROM privacy_categories
       WHERE type_id = ?
       ORDER BY title
-    `).all(t.id) as Array<{ identifier: string; title: string }>;
+    `)
+      .all(t.id) as Array<{ identifier: string; title: string }>;
 
     return {
       identifier: t.identifier,
@@ -303,17 +316,21 @@ function buildPrivacyTypes(appId: string): BundlePrivacyType[] {
   });
 }
 
-function buildAccessibilityFeatures(appId: string): BundleAccessibilityFeature[] {
+function buildAccessibilityFeatures(
+  appId: string
+): BundleAccessibilityFeature[] {
   // The accessibility_features table may not exist on all installs (depends
   // on whether the user opted into a11y tracking). Return empty array when
   // the table is missing rather than crashing the export.
   try {
-    const rows = db.prepare(`
+    const rows = db
+      .prepare(`
       SELECT identifier, title, description
       FROM accessibility_features
       WHERE app_id = ?
       ORDER BY title
-    `).all(appId) as Array<{
+    `)
+      .all(appId) as Array<{
       identifier: string;
       title: string;
       description: string | null;
@@ -331,15 +348,24 @@ function buildAccessibilityFeatures(appId: string): BundleAccessibilityFeature[]
 
 function buildPolicySummary(appId: string): BundlePolicySummary | null {
   try {
-    const row = db.prepare(`
+    const row = db
+      .prepare(`
       SELECT summary_json, source_text, source_fetched_at, updated_at AS generated_at
       FROM privacy_policy_analyses
       WHERE app_id = ?
       LIMIT 1
-    `).get(appId) as
-      | { summary_json: string | null; source_text: string | null; source_fetched_at: number | null; generated_at: number | null }
+    `)
+      .get(appId) as
+      | {
+          summary_json: string | null;
+          source_text: string | null;
+          source_fetched_at: number | null;
+          generated_at: number | null;
+        }
       | undefined;
-    if (!row) return null;
+    if (!row) {
+      return null;
+    }
 
     // Truncate source text — don't ship the full policy in every bundle.
     // 4kb is enough context for the recipient to verify what was summarised.
@@ -359,14 +385,16 @@ function buildPolicySummary(appId: string): BundlePolicySummary | null {
 function buildAnnotationList(): BundleAnnotation[] {
   // visibility = 'export' filter is the hard guarantee — private notes
   // never leave the device, regardless of any caller flags.
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT id, app_id, content, source, source_name, visibility,
            tag, created_at, updated_at
     FROM annotations
     WHERE deleted_at IS NULL
       AND visibility = 'export'
     ORDER BY created_at DESC
-  `).all() as Array<BundleAnnotation>;
+  `)
+    .all() as BundleAnnotation[];
   return rows;
 }
 
@@ -377,12 +405,14 @@ function buildAnnotationList(): BundleAnnotation[] {
  * from the person who set it, not from being passed along.
  */
 function buildVerdictList(): BundleVerdict[] {
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(`
     SELECT app_id, verdict, rationale, set_at, updated_at
     FROM app_verdicts
     WHERE source = 'user'
     ORDER BY updated_at DESC
-  `).all() as Array<BundleVerdict>;
+  `)
+    .all() as BundleVerdict[];
   return rows;
 }
 
@@ -395,22 +425,25 @@ function buildVerdictList(): BundleVerdict[] {
  * `{name}-{YYYY-MM-DD}-{HHmm}.audit.json` with a `audit-...` fallback when
  * no name was captured at export time.
  */
-export function buildBundleFilename(recommenderName: string | null, when: Date = new Date()): string {
+export function buildBundleFilename(
+  recommenderName: string | null,
+  when: Date = new Date()
+): string {
   const yyyy = when.getFullYear();
-  const mm = String(when.getMonth() + 1).padStart(2, '0');
-  const dd = String(when.getDate()).padStart(2, '0');
-  const hh = String(when.getHours()).padStart(2, '0');
-  const min = String(when.getMinutes()).padStart(2, '0');
+  const mm = String(when.getMonth() + 1).padStart(2, "0");
+  const dd = String(when.getDate()).padStart(2, "0");
+  const hh = String(when.getHours()).padStart(2, "0");
+  const min = String(when.getMinutes()).padStart(2, "0");
   const datePart = `${yyyy}-${mm}-${dd}-${hh}${min}`;
 
   // Slugify the name: lower, replace whitespace with hyphens, strip
   // unsafe filesystem chars. Empty / null falls back to 'audit'.
-  const sanitised = (recommenderName ?? '')
+  const sanitised = (recommenderName ?? "")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '');
-  const stem = sanitised || 'audit';
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+  const stem = sanitised || "audit";
 
   return `${stem}-${datePart}.audit.json`;
 }

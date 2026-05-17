@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * LocaleSwitcher — segmented pill that swaps the UI language.
@@ -20,9 +20,9 @@
  * for the first render after switching, then re-render in ZH.
  */
 
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { type SupportedLocale } from '@/i18n';
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import type { SupportedLocale } from "@/i18n";
 
 interface LocaleOption {
   code: SupportedLocale;
@@ -33,13 +33,13 @@ interface LocaleOption {
   nativeLabel: string;
 }
 
-const LOCALE_OPTIONS: ReadonlyArray<LocaleOption> = [
-  { code: 'en', label: 'English', nativeLabel: 'English' },
-  { code: 'zh', label: '中文', nativeLabel: '中文' },
+const LOCALE_OPTIONS: readonly LocaleOption[] = [
+  { code: "en", label: "English", nativeLabel: "English" },
+  { code: "zh", label: "中文", nativeLabel: "中文" },
 ];
 
 export default function LocaleSwitcher() {
-  const tFooter = useTranslations('footer');
+  const tFooter = useTranslations("footer");
   // `null` until the GET probe returns; render nothing rather than
   // showing "EN" if the user is actually on ZH (the cookie hasn't
   // been re-read yet).
@@ -50,10 +50,14 @@ export default function LocaleSwitcher() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/locale');
-        if (!res.ok) return;
+        const res = await fetch("/api/locale");
+        if (!res.ok) {
+          return;
+        }
         const data = (await res.json()) as { locale: SupportedLocale };
-        if (!cancelled) setActive(data.locale);
+        if (!cancelled) {
+          setActive(data.locale);
+        }
       } catch {
         /* ignore; pill stays hidden */
       }
@@ -63,46 +67,52 @@ export default function LocaleSwitcher() {
     };
   }, []);
 
-  if (active === null) return null;
+  if (active === null) {
+    return null;
+  }
 
   async function switchTo(locale: SupportedLocale) {
-    if (busy || locale === active) return;
+    if (busy || locale === active) {
+      return;
+    }
     setBusy(true);
     try {
-      const res = await fetch('/api/locale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/locale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale }),
       });
-      if (!res.ok) throw new Error('locale switch rejected');
+      if (!res.ok) {
+        throw new Error("locale switch rejected");
+      }
       // Hard reload so server-rendered surfaces flush to the new
       // message bundle. router.refresh() doesn't reliably re-execute
       // every layout-level await, especially for pages that read
       // i18n.ts via getTranslations() at the page boundary.
       window.location.reload();
     } catch (err) {
-      console.error('[LocaleSwitcher] switch failed:', err);
+      console.error("[LocaleSwitcher] switch failed:", err);
       setBusy(false);
     }
   }
 
   return (
     <div
+      aria-label={tFooter("language_label")}
       className="locale-switcher"
       role="group"
-      aria-label={tFooter('language_label')}
     >
       {LOCALE_OPTIONS.map((option) => {
         const isActive = option.code === active;
         return (
           <button
-            key={option.code}
-            type="button"
-            className={`locale-switcher__option ${isActive ? 'is-active' : ''}`}
             aria-pressed={isActive}
-            onClick={() => void switchTo(option.code)}
+            className={`locale-switcher__option ${isActive ? "is-active" : ""}`}
             disabled={busy}
+            key={option.code}
+            onClick={() => void switchTo(option.code)}
             title={option.nativeLabel}
+            type="button"
           >
             {option.label}
           </button>

@@ -19,31 +19,31 @@
  * to apps / privacy_types tables which must stay pinned to current state.
  */
 
-import crypto from 'crypto';
-import db from './db';
-import { safeFetch } from './security';
+import crypto from "node:crypto";
 import {
   appendWaybackAttemptEntry,
   buildSnapshot,
   diffSnapshots,
   saveSnapshot,
-} from './changelog';
+} from "./changelog";
 import type {
-  PrivacyTypeSnapshot,
-  PrivacyCategorySnapshot,
   ChangeEntry,
-} from './changelog-types';
-import {
-  lookupWaybackSnapshotNear,
-  parseWaybackTimestampMs,
-  isAbortError,
-  submitToWaybackSaveNow,
-  type WaybackSnapshot,
-} from './wayback';
+  PrivacyCategorySnapshot,
+  PrivacyTypeSnapshot,
+} from "./changelog-types";
+import db from "./db";
 // extractFromShoebox parses the legacy `shoebox-media-api-cache-apps`
 // script tag (Jan 2021 – Nov 2025). Shared with the live scraper so the
 // historical schema map stays in one place.
-import { extractFromShoebox } from './scraper';
+import { extractFromShoebox } from "./scraper";
+import { safeFetch } from "./security";
+import {
+  isAbortError,
+  lookupWaybackSnapshotNear,
+  parseWaybackTimestampMs,
+  submitToWaybackSaveNow,
+  type WaybackSnapshot,
+} from "./wayback";
 
 /**
  * Earliest Wayback target date the importer will probe. Anchored at
@@ -82,7 +82,7 @@ const ARCHIVE_HTML_MAX_BYTES = 4 * 1024 * 1024;
 
 const ARCHIVE_HTML_TIMEOUT_MS = 30_000;
 
-const WAYBACK_HOSTS = ['web.archive.org', 'archive.org'];
+const WAYBACK_HOSTS = ["web.archive.org", "archive.org"];
 
 /**
  * List of target dates to attempt, oldest first. Steps back from `today`
@@ -91,7 +91,7 @@ const WAYBACK_HOSTS = ['web.archive.org', 'archive.org'];
  */
 export function computeQuarterlyTargets(
   today: Date = new Date(),
-  launchDate: Date = APP_STORE_WEB_LAUNCH,
+  launchDate: Date = APP_STORE_WEB_LAUNCH
 ): Date[] {
   const floor = launchDate.getTime();
   const now = Math.max(today.getTime(), floor);
@@ -123,8 +123,6 @@ export function computeQuarterlyTargets(
 }
 
 export interface ImportAppHistoryOptions {
-  /** Supply a clock for tests; defaults to `new Date()`. */
-  today?: Date;
   /**
    * Skip targets that already have a wayback snapshot within this many
    * milliseconds. Defaults to 45 days so rerunning the import after adding
@@ -135,63 +133,65 @@ export interface ImportAppHistoryOptions {
   onProgress?: (event: ImportProgressEvent) => void;
   /** Optional cancellation signal for bulk runs. */
   signal?: AbortSignal;
+  /** Supply a clock for tests; defaults to `new Date()`. */
+  today?: Date;
 }
 
 export type ImportTargetOutcome =
-  | 'imported'
-  | 'unchanged'
-  | 'skipped_existing'
-  | 'skipped_no_capture'
-  | 'skipped_drift'
-  | 'skipped_parse_failure'
-  | 'skipped_fetch_failure'
+  | "imported"
+  | "unchanged"
+  | "skipped_existing"
+  | "skipped_no_capture"
+  | "skipped_drift"
+  | "skipped_parse_failure"
+  | "skipped_fetch_failure"
   /** Save Page Now was triggered to archive the live page for a future import. */
-  | 'requested_snapshot'
+  | "requested_snapshot"
   /** Save Page Now was attempted but failed; reason on `errorMessage`. */
-  | 'skipped_save_now_failed';
+  | "skipped_save_now_failed";
 
 export interface ImportTargetResult {
-  /** The quarter we aimed at, as epoch-ms. */
-  targetDate: number;
-  outcome: ImportTargetOutcome;
   /** The timestamp Wayback actually returned, if a capture was found. */
   captureDate?: number;
-  /** The final web.archive.org URL we parsed, if any. */
-  waybackUrl?: string;
   /** Changes detected against the preceding snapshot, if any were written. */
   changeCount?: number;
   /** Set when `outcome` describes a failure. */
   errorMessage?: string;
+  outcome: ImportTargetOutcome;
   /** Populated for `requested_snapshot` — the freshly-submitted Save Page Now URL. */
   saveNowUrl?: string;
+  /** The quarter we aimed at, as epoch-ms. */
+  targetDate: number;
+  /** The final web.archive.org URL we parsed, if any. */
+  waybackUrl?: string;
 }
 
 export interface ImportAppHistoryResult {
   appId: string;
   attempted: number;
-  imported: number;
-  unchanged: number;
-  skipped: number;
   failed: number;
+  imported: number;
+  skipped: number;
   /** Empty quarters where Save Page Now was fired. Reported as "requested N fresh snapshots". */
   snapshotsRequested: number;
   targets: ImportTargetResult[];
+  unchanged: number;
 }
 
 export interface ImportProgressEvent {
   appId: string;
-  targetDate: number;
-  outcome: ImportTargetOutcome;
   captureDate?: number;
-  waybackUrl?: string;
   changeCount?: number;
+  outcome: ImportTargetOutcome;
   saveNowUrl?: string;
+  targetDate: number;
+  waybackUrl?: string;
 }
 
 interface ArchiveAppRow {
   id: string;
-  url: string;
   name: string;
+  url: string;
 }
 
 /**
@@ -201,7 +201,7 @@ interface ArchiveAppRow {
  */
 export async function importAppHistory(
   app: ArchiveAppRow,
-  options: ImportAppHistoryOptions = {},
+  options: ImportAppHistoryOptions = {}
 ): Promise<ImportAppHistoryResult> {
   const today = options.today ?? new Date();
   const dedupeWindowMs = options.dedupeWindowMs ?? 45 * 24 * 60 * 60 * 1000;
@@ -214,9 +214,12 @@ export async function importAppHistory(
     .prepare(
       `SELECT scraped_at, wayback_snapshot_url
          FROM privacy_snapshots
-        WHERE app_id = ? AND source = 'wayback'`,
+        WHERE app_id = ? AND source = 'wayback'`
     )
-    .all(app.id) as Array<{ scraped_at: number; wayback_snapshot_url: string | null }>;
+    .all(app.id) as Array<{
+    scraped_at: number;
+    wayback_snapshot_url: string | null;
+  }>;
 
   const result: ImportAppHistoryResult = {
     appId: app.id,
@@ -241,12 +244,12 @@ export async function importAppHistory(
 
     // Skip quarters we've already covered within the dedupe window.
     const alreadyCovered = existing.some(
-      row => Math.abs(row.scraped_at - targetMs) <= dedupeWindowMs,
+      (row) => Math.abs(row.scraped_at - targetMs) <= dedupeWindowMs
     );
     if (alreadyCovered) {
       const info: ImportTargetResult = {
         targetDate: targetMs,
-        outcome: 'skipped_existing',
+        outcome: "skipped_existing",
       };
       result.targets.push(info);
       result.skipped++;
@@ -257,17 +260,19 @@ export async function importAppHistory(
     let walk: WaybackProbeResult;
     try {
       walk = await findCaptureWithinTolerance(
-	        app.url,
-	        target,
-	        CAPTURE_DRIFT_TOLERANCE_MS,
-	        signal,
-	      );
-	    } catch (error) {
-	      if (isAbortError(error)) throw error;
-	      const info: ImportTargetResult = {
+        app.url,
+        target,
+        CAPTURE_DRIFT_TOLERANCE_MS,
+        signal
+      );
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
+      const info: ImportTargetResult = {
         targetDate: targetMs,
-        outcome: 'skipped_fetch_failure',
-        errorMessage: error instanceof Error ? error.message : 'lookup failed',
+        outcome: "skipped_fetch_failure",
+        errorMessage: error instanceof Error ? error.message : "lookup failed",
       };
       result.targets.push(info);
       result.failed++;
@@ -275,21 +280,25 @@ export async function importAppHistory(
       continue;
     }
 
-    if (walk.kind === 'none') {
+    if (walk.kind === "none") {
       // No archive.org capture near this quarter. Fire Save Page Now to
       // archive the live page for the next import run; submit at most
       // once per app per run.
-      let info: ImportTargetResult = { targetDate: targetMs, outcome: 'skipped_no_capture' };
+      let info: ImportTargetResult = {
+        targetDate: targetMs,
+        outcome: "skipped_no_capture",
+      };
       if (!saveNowAttempted.has(app.url)) {
         saveNowAttempted.add(app.url);
-	        try {
-	          const saved = await submitToWaybackSaveNow(app.url, { signal });
-	          if (saved.ok) {
+        try {
+          const saved = await submitToWaybackSaveNow(app.url, { signal });
+          if (saved.ok) {
             info = {
               targetDate: targetMs,
-              outcome: 'requested_snapshot',
+              outcome: "requested_snapshot",
               saveNowUrl: saved.snapshot.url,
-              captureDate: parseWaybackTimestampMs(saved.snapshot.timestamp) ?? undefined,
+              captureDate:
+                parseWaybackTimestampMs(saved.snapshot.timestamp) ?? undefined,
             };
             result.snapshotsRequested++;
           } else {
@@ -297,18 +306,21 @@ export async function importAppHistory(
             // didn't land instead of collapsing to "no capture".
             info = {
               targetDate: targetMs,
-              outcome: 'skipped_save_now_failed',
+              outcome: "skipped_save_now_failed",
               errorMessage: saved.error,
             };
           }
-	        } catch (error) {
-	          if (isAbortError(error)) throw error;
-	          // submitToWaybackSaveNow returns a discriminated union and
+        } catch (error) {
+          if (isAbortError(error)) {
+            throw error;
+          }
+          // submitToWaybackSaveNow returns a discriminated union and
           // shouldn't throw, but guard so a future refactor can't break us.
           info = {
             targetDate: targetMs,
-            outcome: 'skipped_save_now_failed',
-            errorMessage: error instanceof Error ? error.message : 'save now failed',
+            outcome: "skipped_save_now_failed",
+            errorMessage:
+              error instanceof Error ? error.message : "save now failed",
           };
         }
       }
@@ -319,9 +331,9 @@ export async function importAppHistory(
       // "⚠ Wayback snapshot request failed" entries on every run.
       // Failures still surface in the bulk-import activity log and on
       // `ImportTargetResult.errorMessage` for the API caller.
-      if (info.outcome === 'requested_snapshot') {
+      if (info.outcome === "requested_snapshot") {
         appendWaybackAttemptEntry(app.id, {
-          event: 'requested_snapshot',
+          event: "requested_snapshot",
           description: describeWaybackAttempt(info),
           details: info.errorMessage ? [info.errorMessage] : undefined,
           saveNowUrl: info.saveNowUrl,
@@ -329,16 +341,19 @@ export async function importAppHistory(
         });
       }
       result.targets.push(info);
-      if (info.outcome === 'skipped_no_capture') result.skipped++;
-      else if (info.outcome === 'skipped_save_now_failed') result.skipped++;
+      if (info.outcome === "skipped_no_capture") {
+        result.skipped++;
+      } else if (info.outcome === "skipped_save_now_failed") {
+        result.skipped++;
+      }
       onProgress?.({ appId: app.id, ...info });
       continue;
     }
 
-    if (walk.kind === 'drift') {
+    if (walk.kind === "drift") {
       const info: ImportTargetResult = {
         targetDate: targetMs,
-        outcome: 'skipped_drift',
+        outcome: "skipped_drift",
         captureDate: walk.captureMs,
         waybackUrl: walk.snapshot.url,
       };
@@ -353,10 +368,10 @@ export async function importAppHistory(
 
     // Safety net: skip if this exact Wayback URL is already stored (two
     // targets can resolve to the same capture in sparsely-covered quarters).
-    if (existing.some(row => row.wayback_snapshot_url === lookup.url)) {
+    if (existing.some((row) => row.wayback_snapshot_url === lookup.url)) {
       const info: ImportTargetResult = {
         targetDate: targetMs,
-        outcome: 'skipped_existing',
+        outcome: "skipped_existing",
         captureDate: captureMs,
         waybackUrl: lookup.url,
       };
@@ -368,17 +383,19 @@ export async function importAppHistory(
 
     const replayUrl = buildReplayUrl(lookup.url, lookup.timestamp, app.url);
 
-	    let html: string;
-	    try {
-	      html = await fetchArchivedHtml(replayUrl, signal);
-	    } catch (error) {
-	      if (isAbortError(error)) throw error;
-	      const info: ImportTargetResult = {
+    let html: string;
+    try {
+      html = await fetchArchivedHtml(replayUrl, signal);
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
+      const info: ImportTargetResult = {
         targetDate: targetMs,
-        outcome: 'skipped_fetch_failure',
+        outcome: "skipped_fetch_failure",
         captureDate: captureMs,
         waybackUrl: lookup.url,
-        errorMessage: error instanceof Error ? error.message : 'fetch failed',
+        errorMessage: error instanceof Error ? error.message : "fetch failed",
       };
       result.targets.push(info);
       result.failed++;
@@ -390,7 +407,7 @@ export async function importAppHistory(
     if (!snapshot) {
       const info: ImportTargetResult = {
         targetDate: targetMs,
-        outcome: 'skipped_parse_failure',
+        outcome: "skipped_parse_failure",
         captureDate: captureMs,
         waybackUrl: lookup.url,
       };
@@ -407,7 +424,7 @@ export async function importAppHistory(
     const changes: ChangeEntry[] = prev ? diffSnapshots(prev, snapshot) : [];
 
     saveSnapshot(app.id, snapshot, changes, {
-      source: 'wayback',
+      source: "wayback",
       scrapedAt: captureMs,
       waybackUrl: lookup.url,
     });
@@ -416,9 +433,12 @@ export async function importAppHistory(
     existing.push({ scraped_at: captureMs, wayback_snapshot_url: lookup.url });
 
     const outcome: ImportTargetOutcome =
-      changes.length > 0 || !prev ? 'imported' : 'unchanged';
-    if (outcome === 'imported') result.imported++;
-    else result.unchanged++;
+      changes.length > 0 || !prev ? "imported" : "unchanged";
+    if (outcome === "imported") {
+      result.imported++;
+    } else {
+      result.unchanged++;
+    }
 
     const info: ImportTargetResult = {
       targetDate: targetMs,
@@ -440,62 +460,66 @@ export async function importAppHistory(
  */
 export function removeImportedHistory(appId?: string): number {
   const stmt = appId
-    ? db.prepare("DELETE FROM privacy_snapshots WHERE source = 'wayback' AND app_id = ?")
+    ? db.prepare(
+        "DELETE FROM privacy_snapshots WHERE source = 'wayback' AND app_id = ?"
+      )
     : db.prepare("DELETE FROM privacy_snapshots WHERE source = 'wayback'");
   const info = appId ? stmt.run(appId) : stmt.run();
   return Number(info.changes ?? 0);
 }
 
 export interface CategoryTrendBucket {
-  /** Start of the quarter (epoch ms, UTC-aligned to the 1st of the month). */
-  startMs: number;
+  added: number;
   /** End of the quarter, exclusive. */
   endMs: number;
   /** Human label ("Q4 2025"). */
   label: string;
-  added: number;
   removed: number;
+  /** Start of the quarter (epoch ms, UTC-aligned to the 1st of the month). */
+  startMs: number;
 }
 
 export interface CategoryTrendResult {
+  buckets: CategoryTrendBucket[];
+  netChange: number;
   totalAdded: number;
   totalRemoved: number;
-  netChange: number;
-  buckets: CategoryTrendBucket[];
 }
 
 export interface QuarterlyChangePoint {
-  startMs: number;
-  endMs: number;
-  label: string;
-  /** Number of snapshot rows with `changes_detected = 1` in this bucket. */
-  changeEvents: number;
   /** Total count of individual ChangeEntry items across those rows. */
   changeEntries: number;
+  /** Number of snapshot rows with `changes_detected = 1` in this bucket. */
+  changeEvents: number;
+  endMs: number;
+  label: string;
+  startMs: number;
 }
 
 interface AggregatedSnapshotRow {
-  scraped_at: number;
   changes_detected: number;
   changes_summary: string | null;
+  scraped_at: number;
   source: string | null;
 }
 
 /** Roll up per-snapshot change entries into quarterly added/removed counts. */
 export function computeCategoryTrend(
   appId: string,
-  options: { today?: Date } = {},
+  options: { today?: Date } = {}
 ): CategoryTrendResult {
   const rows = loadAggregationRows(appId);
   const buckets = bucketByQuarter(rows, options.today ?? new Date());
 
   let totalAdded = 0;
   let totalRemoved = 0;
-  const out: CategoryTrendBucket[] = buckets.map(bucket => {
+  const out: CategoryTrendBucket[] = buckets.map((bucket) => {
     let added = 0;
     let removed = 0;
     for (const row of bucket.rows) {
-      if (!row.changes_summary) continue;
+      if (!row.changes_summary) {
+        continue;
+      }
       let parsed: ChangeEntry[] = [];
       try {
         parsed = JSON.parse(row.changes_summary) as ChangeEntry[];
@@ -503,8 +527,11 @@ export function computeCategoryTrend(
         parsed = [];
       }
       for (const change of parsed) {
-        if (change.type === 'added') added++;
-        else if (change.type === 'removed') removed++;
+        if (change.type === "added") {
+          added++;
+        } else if (change.type === "removed") {
+          removed++;
+        }
       }
     }
     totalAdded += added;
@@ -533,16 +560,18 @@ export function computeCategoryTrend(
  */
 export function computeQuarterlyChanges(
   appId: string,
-  options: { today?: Date } = {},
+  options: { today?: Date } = {}
 ): QuarterlyChangePoint[] {
   const rows = loadAggregationRows(appId);
   const buckets = bucketByQuarter(rows, options.today ?? new Date());
 
-  return buckets.map(bucket => {
+  return buckets.map((bucket) => {
     let changeEvents = 0;
     let changeEntries = 0;
     for (const row of bucket.rows) {
-      if (row.changes_detected !== 1) continue;
+      if (row.changes_detected !== 1) {
+        continue;
+      }
       changeEvents++;
       if (row.changes_summary) {
         try {
@@ -573,16 +602,16 @@ function loadAggregationRows(appId: string): AggregatedSnapshotRow[] {
       `SELECT scraped_at, changes_detected, changes_summary, source
          FROM privacy_snapshots
         WHERE app_id = ?
-        ORDER BY scraped_at ASC`,
+        ORDER BY scraped_at ASC`
     )
     .all(appId) as AggregatedSnapshotRow[];
 }
 
 interface QuarterBucket {
-  startMs: number;
   endMs: number;
   label: string;
   rows: AggregatedSnapshotRow[];
+  startMs: number;
 }
 
 /**
@@ -590,7 +619,10 @@ interface QuarterBucket {
  * {@link APP_STORE_HISTORICAL_FLOOR} through the quarter containing `today`.
  * Empty quarters are still emitted so the sparkline has a continuous x-axis.
  */
-function bucketByQuarter(rows: AggregatedSnapshotRow[], today: Date): QuarterBucket[] {
+function bucketByQuarter(
+  rows: AggregatedSnapshotRow[],
+  today: Date
+): QuarterBucket[] {
   const launch = APP_STORE_WEB_LAUNCH;
   const startYear = launch.getUTCFullYear();
   const startQuarter = Math.floor(launch.getUTCMonth() / 3); // 3 = Q4 for Nov
@@ -617,8 +649,12 @@ function bucketByQuarter(rows: AggregatedSnapshotRow[], today: Date): QuarterBuc
   }
 
   for (const row of rows) {
-    const bucket = buckets.find(b => row.scraped_at >= b.startMs && row.scraped_at < b.endMs);
-    if (bucket) bucket.rows.push(row);
+    const bucket = buckets.find(
+      (b) => row.scraped_at >= b.startMs && row.scraped_at < b.endMs
+    );
+    if (bucket) {
+      bucket.rows.push(row);
+    }
   }
 
   return buckets;
@@ -631,9 +667,9 @@ function bucketByQuarter(rows: AggregatedSnapshotRow[], today: Date): QuarterBuc
  *   `none`         — no capture anywhere near the target.
  */
 type WaybackProbeResult =
-  | { kind: 'in_tolerance'; snapshot: WaybackSnapshot; captureMs: number }
-  | { kind: 'drift'; snapshot: WaybackSnapshot; captureMs: number }
-  | { kind: 'none' };
+  | { kind: "in_tolerance"; snapshot: WaybackSnapshot; captureMs: number }
+  | { kind: "drift"; snapshot: WaybackSnapshot; captureMs: number }
+  | { kind: "none" };
 
 /**
  * Widen the search for a Wayback capture around `target`. Wayback's
@@ -649,11 +685,15 @@ async function findCaptureWithinTolerance(
   targetUrl: string,
   target: Date,
   toleranceMs: number,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<WaybackProbeResult> {
   const targetMs = target.getTime();
   const seen = new Set<string>();
-  let bestMiss: { snapshot: WaybackSnapshot; captureMs: number; drift: number } | null = null;
+  let bestMiss: {
+    snapshot: WaybackSnapshot;
+    captureMs: number;
+    drift: number;
+  } | null = null;
 
   for (const offsetDays of WAYBACK_FALLBACK_OFFSET_DAYS) {
     throwIfAborted(signal);
@@ -661,21 +701,30 @@ async function findCaptureWithinTolerance(
 
     let lookup: WaybackSnapshot | null = null;
     try {
-      lookup = await lookupWaybackSnapshotNear(targetUrl, probeDate, { signal });
+      lookup = await lookupWaybackSnapshotNear(targetUrl, probeDate, {
+        signal,
+      });
     } catch (error) {
-      if (isAbortError(error)) throw error;
+      if (isAbortError(error)) {
+        throw error;
+      }
       continue;
     }
-    if (!lookup) continue;
+    if (!lookup) {
+      continue;
+    }
 
     // De-dupe — same URL means we already measured this capture's drift.
-    if (seen.has(lookup.url)) continue;
+    if (seen.has(lookup.url)) {
+      continue;
+    }
     seen.add(lookup.url);
 
-    const captureMs = parseWaybackTimestampMs(lookup.timestamp) ?? probeDate.getTime();
+    const captureMs =
+      parseWaybackTimestampMs(lookup.timestamp) ?? probeDate.getTime();
     const drift = Math.abs(captureMs - targetMs);
     if (drift <= toleranceMs) {
-      return { kind: 'in_tolerance', snapshot: lookup, captureMs };
+      return { kind: "in_tolerance", snapshot: lookup, captureMs };
     }
     if (!bestMiss || drift < bestMiss.drift) {
       bestMiss = { snapshot: lookup, captureMs, drift };
@@ -683,9 +732,13 @@ async function findCaptureWithinTolerance(
   }
 
   if (bestMiss) {
-    return { kind: 'drift', snapshot: bestMiss.snapshot, captureMs: bestMiss.captureMs };
+    return {
+      kind: "drift",
+      snapshot: bestMiss.snapshot,
+      captureMs: bestMiss.captureMs,
+    };
   }
-  return { kind: 'none' };
+  return { kind: "none" };
 }
 
 /**
@@ -694,14 +747,17 @@ async function findCaptureWithinTolerance(
  * "every category is new" noise on first-import for apps that only have
  * current privacy_types rows in the DB.
  */
-function getSnapshotBefore(appId: string, beforeMs: number): PrivacyTypeSnapshot[] | null {
+function getSnapshotBefore(
+  appId: string,
+  beforeMs: number
+): PrivacyTypeSnapshot[] | null {
   const row = db
     .prepare(
       `SELECT snapshot_json
          FROM privacy_snapshots
         WHERE app_id = ? AND scraped_at < ?
         ORDER BY scraped_at DESC
-        LIMIT 1`,
+        LIMIT 1`
     )
     .get(appId, beforeMs) as { snapshot_json: string } | undefined;
 
@@ -727,34 +783,41 @@ function getSnapshotBefore(appId: string, beforeMs: number): PrivacyTypeSnapshot
 function buildReplayUrl(
   waybackUrl: string,
   timestamp: string | undefined,
-  originalUrl: string,
+  originalUrl: string
 ): string {
   const tsFromUrl = waybackUrl.match(/\/web\/(\d{4,14})\//)?.[1];
   const ts = timestamp ?? tsFromUrl;
-  if (!ts) return waybackUrl; // unusual; let safeFetch handle the plain URL
+  if (!ts) {
+    return waybackUrl; // unusual; let safeFetch handle the plain URL
+  }
   return `https://web.archive.org/web/${ts}id_/${originalUrl}`;
 }
 
-async function fetchArchivedHtml(replayUrl: string, signal?: AbortSignal): Promise<string> {
+async function fetchArchivedHtml(
+  replayUrl: string,
+  signal?: AbortSignal
+): Promise<string> {
   const { body } = await safeFetch(replayUrl, {
     allowedHosts: WAYBACK_HOSTS,
     maxBytes: ARCHIVE_HTML_MAX_BYTES,
     timeoutMs: ARCHIVE_HTML_TIMEOUT_MS,
     signal,
-    redirect: 'follow',
+    redirect: "follow",
     headers: {
-      'User-Agent':
-        'privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)',
-      Accept: 'text/html,application/xhtml+xml',
-      'Accept-Language': 'en-US,en;q=0.9',
+      "User-Agent":
+        "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)",
+      Accept: "text/html,application/xhtml+xml",
+      "Accept-Language": "en-US,en;q=0.9",
     },
   });
-  return body.toString('utf8');
+  return body.toString("utf8");
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
-  if (!signal?.aborted) return;
-  throw new DOMException('Wayback import cancelled', 'AbortError');
+  if (!signal?.aborted) {
+    return;
+  }
+  throw new DOMException("Wayback import cancelled", "AbortError");
 }
 
 /**
@@ -771,9 +834,11 @@ function throwIfAborted(signal?: AbortSignal): void {
  *     normalised by `extractFromShoebox`.
  *   - Pre-Jan 2021: no privacy data; returns null.
  */
-export function parsePrivacyItemsFromArchivedHtml(html: string): PrivacyTypeSnapshot[] | null {
+export function parsePrivacyItemsFromArchivedHtml(
+  html: string
+): PrivacyTypeSnapshot[] | null {
   const jsonMatch = html.match(
-    /<script[^>]*id="serialized-server-data"[^>]*>([\s\S]*?)<\/script>/,
+    /<script[^>]*id="serialized-server-data"[^>]*>([\s\S]*?)<\/script>/
   );
 
   // Modern serialized-server-data path; missing tag drops to the
@@ -782,7 +847,7 @@ export function parsePrivacyItemsFromArchivedHtml(html: string): PrivacyTypeSnap
   if (jsonMatch) {
     try {
       const raw = JSON.parse(jsonMatch[1]);
-      data = Array.isArray(raw) ? raw : raw?.data ?? [];
+      data = Array.isArray(raw) ? raw : (raw?.data ?? []);
     } catch {
       data = null;
     }
@@ -797,10 +862,13 @@ export function parsePrivacyItemsFromArchivedHtml(html: string): PrivacyTypeSnap
     }
 
     if (!privacyItems.length) {
-      const viaHeader = shelfMap?.privacyHeader?.seeAllAction?.pageData?.shelves;
+      const viaHeader =
+        shelfMap?.privacyHeader?.seeAllAction?.pageData?.shelves;
       if (viaHeader?.length) {
         for (const shelf of viaHeader) {
-          if (shelf.contentType !== 'privacyType') continue;
+          if (shelf.contentType !== "privacyType") {
+            continue;
+          }
           for (const item of shelf.items ?? []) {
             if (item.categories?.length) {
               privacyItems.push(item);
@@ -833,7 +901,7 @@ export function parsePrivacyItemsFromArchivedHtml(html: string): PrivacyTypeSnap
       const pageData = data?.[0]?.data?.pageData;
       if (pageData?.shelves?.length) {
         for (const shelf of pageData.shelves) {
-          if (shelf.contentType === 'privacyType') {
+          if (shelf.contentType === "privacyType") {
             privacyItems.push(...(shelf.items ?? []));
           }
         }
@@ -858,21 +926,25 @@ export function parsePrivacyItemsFromArchivedHtml(html: string): PrivacyTypeSnap
   const snapshot: PrivacyTypeSnapshot[] = [];
   const typeIds = new Set<string>();
   for (const item of privacyItems) {
-    if (!item?.identifier || typeIds.has(item.identifier)) continue;
+    if (!item?.identifier || typeIds.has(item.identifier)) {
+      continue;
+    }
     typeIds.add(item.identifier);
     const categories: PrivacyCategorySnapshot[] = [];
     const catIds = new Set<string>();
     for (const cat of item.categories ?? []) {
-      if (!cat?.identifier || catIds.has(cat.identifier)) continue;
+      if (!cat?.identifier || catIds.has(cat.identifier)) {
+        continue;
+      }
       catIds.add(cat.identifier);
       categories.push({
         identifier: cat.identifier,
-        title: typeof cat.title === 'string' ? cat.title : cat.identifier,
+        title: typeof cat.title === "string" ? cat.title : cat.identifier,
       });
     }
     snapshot.push({
       identifier: item.identifier,
-      title: typeof item.title === 'string' ? item.title : item.identifier,
+      title: typeof item.title === "string" ? item.title : item.identifier,
       categories,
     });
   }
@@ -888,14 +960,14 @@ export function parsePrivacyItemsFromArchivedHtml(html: string): PrivacyTypeSnap
  * `onProgress` hook.
  */
 export async function importAllAppsHistory(
-  options: ImportAppHistoryOptions = {},
+  options: ImportAppHistoryOptions = {}
 ): Promise<ImportAppHistoryResult[]> {
   const apps = db
     .prepare(
       `SELECT id, url, name
          FROM apps
         WHERE url IS NOT NULL AND TRIM(url) != ''
-        ORDER BY name COLLATE NOCASE ASC`,
+        ORDER BY name COLLATE NOCASE ASC`
     )
     .all() as ArchiveAppRow[];
 
@@ -908,7 +980,7 @@ export async function importAllAppsHistory(
 
 /** Stable run id helper used by the route layer. */
 export function makeImportRunId(): string {
-  return `wayback-import-${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`;
+  return `wayback-import-${Date.now().toString(36)}-${crypto.randomBytes(4).toString("hex")}`;
 }
 
 /**
@@ -918,11 +990,10 @@ export function makeImportRunId(): string {
 function describeWaybackAttempt(info: ImportTargetResult): string {
   const quarter = formatQuarterLabel(info.targetDate);
   switch (info.outcome) {
-    case 'requested_snapshot':
+    case "requested_snapshot":
       return `Requested a fresh Wayback snapshot (aimed at ${quarter}).`;
-    case 'skipped_save_now_failed':
-      return `Could not request a Wayback snapshot for ${quarter}: ${info.errorMessage ?? 'Save Page Now failed'}.`;
-    case 'skipped_no_capture':
+    case "skipped_save_now_failed":
+      return `Could not request a Wayback snapshot for ${quarter}: ${info.errorMessage ?? "Save Page Now failed"}.`;
     default:
       return `No Wayback capture found near ${quarter}.`;
   }
@@ -930,7 +1001,9 @@ function describeWaybackAttempt(info: ImportTargetResult): string {
 
 /** "Q1 2026" from an epoch-ms target. */
 function formatQuarterLabel(ms: number | undefined): string {
-  if (typeof ms !== 'number' || !Number.isFinite(ms)) return 'target quarter';
+  if (typeof ms !== "number" || !Number.isFinite(ms)) {
+    return "target quarter";
+  }
   const d = new Date(ms);
   const q = Math.floor(d.getUTCMonth() / 3) + 1;
   return `Q${q} ${d.getUTCFullYear()}`;

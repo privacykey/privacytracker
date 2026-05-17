@@ -1,32 +1,36 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import crypto from 'crypto';
-import { NextResponse } from 'next/server';
-import { getManualApp } from '../../../../../lib/manual-apps-server';
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
 import {
   appendManualAppEvent,
   getCurrentManualAppPolicyVersion,
   upsertManualAppPolicyVersion,
-} from '../../../../../lib/manual-app-history';
-import { fetchPrivacyPolicySource } from '../../../../../lib/privacy-policy';
+} from "../../../../../lib/manual-app-history";
+import { getManualApp } from "../../../../../lib/manual-apps-server";
+import { fetchPrivacyPolicySource } from "../../../../../lib/privacy-policy";
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
   recordAudit,
   requestActorIp,
-} from '../../../../../lib/security';
+} from "../../../../../lib/security";
 
 // Next 16 hands params as a Promise. Webpack-mode build's TS check
 // rejects T | Promise<T> unions in this position, so we keep the
 // Promise variant only and let `await Promise.resolve(...)` below
 // handle the runtime.
-type Ctx = { params: Promise<{ id: string }> };
+interface Ctx {
+  params: Promise<{ id: string }>;
+}
 
 async function resolveId(context: Ctx): Promise<string | null> {
   const params = await Promise.resolve(context.params);
-  const id = (params?.id ?? '').toString();
+  const id = (params?.id ?? "").toString();
   // UUIDs are 36 chars, but bounded generously for forward-compat.
-  if (!id || id.length > 128) return null;
+  if (!id || id.length > 128) {
+    return null;
+  }
   return id;
 }
 
@@ -44,29 +48,33 @@ async function resolveId(context: Ctx): Promise<string | null> {
  */
 export async function POST(request: Request, context: Ctx) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'manual-apps.scrape'),
+    key: rateLimitKeyForRequest(request, "manual-apps.scrape"),
     // Conservative: one manual-app scrape every ~6 s on average; enough for
     // testing but stops someone from mashing the button into a tight loop.
     limit: 10,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const id = await resolveId(context);
-  if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+  }
 
   const app = getManualApp(id);
-  if (!app) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!app) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   if (!app.privacyPolicyUrl) {
     return NextResponse.json(
-      { error: 'No privacy policy URL set for this manual app' },
-      { status: 400 },
+      { error: "No privacy policy URL set for this manual app" },
+      { status: 400 }
     );
   }
 
@@ -80,14 +88,14 @@ export async function POST(request: Request, context: Ctx) {
     // `'unsupported_content_type'` with an `error` string. Record them as a
     // scrape error so the changelog explains why the user didn't see new
     // content without blowing up the request.
-    if (source.status !== 'ready') {
+    if (source.status !== "ready") {
       const event = appendManualAppEvent({
         manualAppId: id,
-        type: 'scrape',
+        type: "scrape",
         occurredAt: now,
         detail: {
-          kind: 'scrape',
-          policy_event: 'error',
+          kind: "scrape",
+          policy_event: "error",
           policyUrl: app.privacyPolicyUrl,
           finalUrl: source.finalUrl,
           title: source.title,
@@ -95,7 +103,7 @@ export async function POST(request: Request, context: Ctx) {
         },
       });
       recordAudit({
-        action: 'manual-apps.scrape.rejected',
+        action: "manual-apps.scrape.rejected",
         actorIp,
         userAgent,
         success: false,
@@ -105,7 +113,10 @@ export async function POST(request: Request, context: Ctx) {
     }
 
     // Hash the normalised text so identical re-fetches fold into one row.
-    const contentHash = crypto.createHash('sha256').update(source.text).digest('hex');
+    const contentHash = crypto
+      .createHash("sha256")
+      .update(source.text)
+      .digest("hex");
 
     const { id: versionId, isNew } = upsertManualAppPolicyVersion({
       manualAppId: id,
@@ -124,21 +135,21 @@ export async function POST(request: Request, context: Ctx) {
     //   first   — no prior capture exists (`previous == null`)
     //   changed — a prior capture exists, but hash differs
     //   same    — hash matches the most recent capture
-    let policyEvent: 'first' | 'same' | 'changed';
+    let policyEvent: "first" | "same" | "changed";
     if (!previous) {
-      policyEvent = 'first';
+      policyEvent = "first";
     } else if (isNew) {
-      policyEvent = 'changed';
+      policyEvent = "changed";
     } else {
-      policyEvent = 'same';
+      policyEvent = "same";
     }
 
     const event = appendManualAppEvent({
       manualAppId: id,
-      type: 'scrape',
+      type: "scrape",
       occurredAt: now,
       detail: {
-        kind: 'scrape',
+        kind: "scrape",
         policy_event: policyEvent,
         versionId,
         wordCount: source.wordCount,
@@ -150,7 +161,7 @@ export async function POST(request: Request, context: Ctx) {
     });
 
     recordAudit({
-      action: 'manual-apps.scrape.success',
+      action: "manual-apps.scrape.success",
       actorIp,
       userAgent,
       success: true,
@@ -171,25 +182,29 @@ export async function POST(request: Request, context: Ctx) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Policy fetch failed';
+    const message =
+      error instanceof Error ? error.message : "Policy fetch failed";
     const event = appendManualAppEvent({
       manualAppId: id,
-      type: 'scrape',
+      type: "scrape",
       occurredAt: now,
       detail: {
-        kind: 'scrape',
-        policy_event: 'error',
+        kind: "scrape",
+        policy_event: "error",
         policyUrl: app.privacyPolicyUrl,
         error: message,
       },
     });
     recordAudit({
-      action: 'manual-apps.scrape.failed',
+      action: "manual-apps.scrape.failed",
       actorIp,
       userAgent,
       success: false,
       detail: `id=${id} err=${message.slice(0, 120)}`,
     });
-    return NextResponse.json({ event, version: null, error: message }, { status: 200 });
+    return NextResponse.json(
+      { event, version: null, error: message },
+      { status: 200 }
+    );
   }
 }

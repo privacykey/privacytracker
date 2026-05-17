@@ -21,25 +21,25 @@
  *     to make the operation idempotent and also let callers refresh the
  *     captured metadata / note when the user re-shortlists.
  */
-import crypto from 'crypto';
-import db from './db';
-import type {
-  ShortlistEntry,
-  ShortlistGroup,
-  ShortlistMode,
-} from './shortlist-types';
+import crypto from "node:crypto";
+import { buildSnapshot } from "./changelog";
+import db from "./db";
 import type {
   AppProfileBadge,
   AppProfileFootprint,
   PrivacyProfile,
-} from './privacy-profile';
-import { computeProfileMismatch, summariseBadge } from './privacy-profile';
+} from "./privacy-profile";
+import { computeProfileMismatch, summariseBadge } from "./privacy-profile";
 import {
   buildAllFootprints,
   buildAppFootprint,
   getPrivacyProfile,
-} from './privacy-profile-server';
-import { buildSnapshot } from './changelog';
+} from "./privacy-profile-server";
+import type {
+  ShortlistEntry,
+  ShortlistGroup,
+  ShortlistMode,
+} from "./shortlist-types";
 
 // Re-export so existing server callers can keep importing from ./shortlist
 // directly. Client components should import from ./shortlist-types instead,
@@ -47,7 +47,7 @@ import { buildSnapshot } from './changelog';
 export type { ShortlistEntry, ShortlistGroup, ShortlistMode };
 
 /** All permitted ShortlistMode values — keep in sync with the type union. */
-const VALID_MODES: ShortlistMode[] = ['privacy', 'accessibility'];
+const VALID_MODES: ShortlistMode[] = ["privacy", "accessibility"];
 
 /**
  * Normalise a raw mode string (stored as comma-separated in SQLite) into a
@@ -58,37 +58,43 @@ const VALID_MODES: ShortlistMode[] = ['privacy', 'accessibility'];
  * reason") vs an empty list.
  */
 function parseModes(raw: string | null | undefined): ShortlistMode[] {
-  if (!raw) return ['privacy'];
+  if (!raw) {
+    return ["privacy"];
+  }
   const tokens = raw
-    .split(',')
-    .map(t => t.trim().toLowerCase())
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
     .filter((t): t is ShortlistMode => (VALID_MODES as string[]).includes(t));
-  if (tokens.length === 0) return ['privacy'];
+  if (tokens.length === 0) {
+    return ["privacy"];
+  }
   // Canonical order: privacy first, then accessibility, so '[privacy,accessibility]'
   // always serialises the same way — important for equality comparisons
   // and for making the DB contents readable when debugging.
-  return VALID_MODES.filter(m => tokens.includes(m));
+  return VALID_MODES.filter((m) => tokens.includes(m));
 }
 
 /** Inverse of parseModes — used when writing to the DB. Caller should have
  *  already run the modes through the normaliser. */
 function serialiseModes(modes: ShortlistMode[]): string {
-  if (modes.length === 0) return 'privacy';
-  return VALID_MODES.filter(m => modes.includes(m)).join(',');
+  if (modes.length === 0) {
+    return "privacy";
+  }
+  return VALID_MODES.filter((m) => modes.includes(m)).join(",");
 }
 
 /**
  * Merge the new mode(s) into an existing stored list. Returns the merged
  * list in canonical order. Used by the INSERT … ON CONFLICT path so a user
  * who shortlists the same candidate from both compare views ends up with
- * *both* badges attached rather than clobbering the earlier one.
+ *both* badges attached rather than clobbering the earlier one.
  */
 function mergeModes(
   existing: ShortlistMode[],
-  incoming: ShortlistMode[],
+  incoming: ShortlistMode[]
 ): ShortlistMode[] {
   const set = new Set<ShortlistMode>([...existing, ...incoming]);
-  return VALID_MODES.filter(m => set.has(m));
+  return VALID_MODES.filter((m) => set.has(m));
 }
 
 /**
@@ -106,25 +112,29 @@ function resolveCandidateBadge(
   candidateAppleId: string,
   candidateIsTracked: boolean,
   profile: PrivacyProfile | null,
-  footprints: Map<string, AppProfileFootprint>,
+  footprints: Map<string, AppProfileFootprint>
 ): AppProfileBadge | null {
-  if (!profile || !candidateIsTracked) return null;
+  if (!(profile && candidateIsTracked)) {
+    return null;
+  }
   const footprint = footprints.get(candidateAppleId);
-  if (!footprint) return null;
+  if (!footprint) {
+    return null;
+  }
   const result = computeProfileMismatch(profile, footprint);
-  if (!result.profileActive) return null;
+  if (!result.profileActive) {
+    return null;
+  }
   return summariseBadge(result);
 }
 
 export interface AddShortlistEntryInput {
-  sourceAppId: string;
   candidateAppleId: string;
-  candidateName: string;
+  candidateBundleId?: string;
   candidateDeveloper?: string;
   candidateIconUrl?: string;
+  candidateName: string;
   candidateStoreUrl: string;
-  candidateBundleId?: string;
-  note?: string;
   /**
    * Which compare mode(s) the user was in when they saved this candidate.
    * Optional — defaults to ['privacy'] when omitted to preserve the
@@ -133,21 +143,20 @@ export interface AddShortlistEntryInput {
    * re-shortlisting from the other tab adds a badge rather than flipping it.
    */
   modes?: ShortlistMode[];
+  note?: string;
+  sourceAppId: string;
 }
 
 interface ShortlistRow {
-  id: string;
-  source_app_id: string;
-  candidate_apple_id: string;
-  candidate_name: string;
-  candidate_developer: string | null;
-  candidate_icon_url: string | null;
-  candidate_store_url: string;
-  candidate_bundle_id: string | null;
-  note: string | null;
   added_at: number;
+  candidate_apple_id: string;
+  candidate_bundle_id: string | null;
+  candidate_developer: string | null;
+  candidate_has_iap: number | null;
+  candidate_icon_url: string | null;
   candidate_is_tracked: number;
-  mode: string | null;
+  candidate_name: string;
+  candidate_price_currency: string | null;
   /**
    * Phase 2 — price + IAP joined from the candidate's apps row when
    * tracked. Null on every column when the candidate isn't tracked
@@ -155,14 +164,17 @@ interface ShortlistRow {
    * the price chip in that case.
    */
   candidate_price_formatted: string | null;
-  candidate_price_currency: string | null;
-  candidate_has_iap: number | null;
+  candidate_store_url: string;
+  id: string;
+  mode: string | null;
+  note: string | null;
+  source_app_id: string;
 }
 
 function rowToEntry(
   row: ShortlistRow,
   profile: PrivacyProfile | null,
-  footprints: Map<string, AppProfileFootprint>,
+  footprints: Map<string, AppProfileFootprint>
 ): ShortlistEntry {
   const candidateIsTracked = row.candidate_is_tracked === 1;
   return {
@@ -170,11 +182,11 @@ function rowToEntry(
     sourceAppId: row.source_app_id,
     candidateAppleId: row.candidate_apple_id,
     candidateName: row.candidate_name,
-    candidateDeveloper: row.candidate_developer ?? '',
-    candidateIconUrl: row.candidate_icon_url ?? '',
+    candidateDeveloper: row.candidate_developer ?? "",
+    candidateIconUrl: row.candidate_icon_url ?? "",
     candidateStoreUrl: row.candidate_store_url,
-    candidateBundleId: row.candidate_bundle_id ?? '',
-    note: row.note ?? '',
+    candidateBundleId: row.candidate_bundle_id ?? "",
+    note: row.note ?? "",
     addedAt: row.added_at,
     candidateIsTracked,
     modes: parseModes(row.mode),
@@ -182,7 +194,7 @@ function rowToEntry(
       row.candidate_apple_id,
       candidateIsTracked,
       profile,
-      footprints,
+      footprints
     ),
     candidatePriceFormatted: row.candidate_price_formatted,
     candidatePriceCurrency: row.candidate_price_currency,
@@ -195,42 +207,52 @@ function rowToEntry(
  * candidate pair already exists, the stored metadata and note are updated
  * to the latest values and added_at is preserved. Returns the persisted row.
  */
-export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry {
+export function addShortlistEntry(
+  input: AddShortlistEntryInput
+): ShortlistEntry {
   const sourceAppId = input.sourceAppId.trim();
   const candidateAppleId = input.candidateAppleId.trim();
   const candidateName = input.candidateName.trim();
   const candidateStoreUrl = input.candidateStoreUrl.trim();
 
-  if (!sourceAppId) throw new Error('sourceAppId is required');
-  if (!candidateAppleId) throw new Error('candidateAppleId is required');
-  if (!candidateName) throw new Error('candidateName is required');
-  if (!candidateStoreUrl) throw new Error('candidateStoreUrl is required');
+  if (!sourceAppId) {
+    throw new Error("sourceAppId is required");
+  }
+  if (!candidateAppleId) {
+    throw new Error("candidateAppleId is required");
+  }
+  if (!candidateName) {
+    throw new Error("candidateName is required");
+  }
+  if (!candidateStoreUrl) {
+    throw new Error("candidateStoreUrl is required");
+  }
 
   // Defensive: the source app must exist — otherwise the CASCADE contract is
   // meaningless and the shortlist page will render an orphan group. We
   // surface a clear error rather than silently inserting.
   const sourceExists = db
-    .prepare('SELECT 1 FROM apps WHERE id = ? LIMIT 1')
+    .prepare("SELECT 1 FROM apps WHERE id = ? LIMIT 1")
     .get(sourceAppId) as { 1: number } | undefined;
   if (!sourceExists) {
     throw new Error(`Source app not found: ${sourceAppId}`);
   }
 
   if (sourceAppId === candidateAppleId) {
-    throw new Error('Candidate cannot be the same app as the source');
+    throw new Error("Candidate cannot be the same app as the source");
   }
 
   const now = Date.now();
   const id = crypto.randomUUID();
-  const developer = (input.candidateDeveloper ?? '').trim();
-  const iconUrl = (input.candidateIconUrl ?? '').trim();
-  const bundleId = (input.candidateBundleId ?? '').trim();
-  const note = (input.note ?? '').trim();
+  const developer = (input.candidateDeveloper ?? "").trim();
+  const iconUrl = (input.candidateIconUrl ?? "").trim();
+  const bundleId = (input.candidateBundleId ?? "").trim();
+  const note = (input.note ?? "").trim();
   // Parse incoming modes through the normaliser so callers can pass sloppy
   // input (e.g. a stray capital, or a mode we don't support yet) without
   // poisoning the stored list.
   const incomingModes = parseModes(
-    (input.modes && input.modes.length ? input.modes.join(',') : 'privacy'),
+    input.modes?.length ? input.modes.join(",") : "privacy"
   );
 
   // SQLite's ON CONFLICT syntax can't run arbitrary JS to merge comma-
@@ -244,9 +266,11 @@ export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry
   const writeTx = db.transaction(() => {
     const existing = db
       .prepare(
-        'SELECT id, mode FROM shortlist_entries WHERE source_app_id = ? AND candidate_apple_id = ?',
+        "SELECT id, mode FROM shortlist_entries WHERE source_app_id = ? AND candidate_apple_id = ?"
       )
-      .get(sourceAppId, candidateAppleId) as { id: string; mode: string | null } | undefined;
+      .get(sourceAppId, candidateAppleId) as
+      | { id: string; mode: string | null }
+      | undefined;
 
     if (existing) {
       const mergedModes = mergeModes(parseModes(existing.mode), incomingModes);
@@ -259,7 +283,7 @@ export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry
            candidate_bundle_id = ?,
            note                = ?,
            mode                = ?
-         WHERE id = ?`,
+         WHERE id = ?`
       ).run(
         candidateName,
         developer || null,
@@ -268,7 +292,7 @@ export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry
         bundleId || null,
         note || null,
         serialiseModes(mergedModes),
-        existing.id,
+        existing.id
       );
     } else {
       db.prepare(
@@ -276,12 +300,19 @@ export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry
            id, source_app_id, candidate_apple_id, candidate_name,
            candidate_developer, candidate_icon_url, candidate_store_url,
            candidate_bundle_id, note, added_at, mode
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
-        id, sourceAppId, candidateAppleId, candidateName,
-        developer || null, iconUrl || null, candidateStoreUrl,
-        bundleId || null, note || null, now,
-        serialiseModes(incomingModes),
+        id,
+        sourceAppId,
+        candidateAppleId,
+        candidateName,
+        developer || null,
+        iconUrl || null,
+        candidateStoreUrl,
+        bundleId || null,
+        note || null,
+        now,
+        serialiseModes(incomingModes)
       );
     }
   });
@@ -296,7 +327,7 @@ export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry
               t.hasIap         AS candidate_has_iap
          FROM shortlist_entries s
          LEFT JOIN apps t ON t.id = s.candidate_apple_id
-        WHERE s.source_app_id = ? AND s.candidate_apple_id = ?`,
+        WHERE s.source_app_id = ? AND s.candidate_apple_id = ?`
     )
     .get(sourceAppId, candidateAppleId) as ShortlistRow;
   // Only the one candidate in play — single-app footprint fetch is cheaper
@@ -304,7 +335,10 @@ export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry
   const profile = getPrivacyProfile();
   const footprints = new Map<string, AppProfileFootprint>();
   if (profile && row.candidate_is_tracked === 1) {
-    footprints.set(row.candidate_apple_id, buildAppFootprint(row.candidate_apple_id));
+    footprints.set(
+      row.candidate_apple_id,
+      buildAppFootprint(row.candidate_apple_id)
+    );
   }
   return rowToEntry(row, profile, footprints);
 }
@@ -313,7 +347,7 @@ export function addShortlistEntry(input: AddShortlistEntryInput): ShortlistEntry
  * Remove a shortlist entry by id. Returns true if a row was deleted.
  */
 export function removeShortlistEntry(id: string): boolean {
-  const info = db.prepare('DELETE FROM shortlist_entries WHERE id = ?').run(id);
+  const info = db.prepare("DELETE FROM shortlist_entries WHERE id = ?").run(id);
   return info.changes > 0;
 }
 
@@ -321,9 +355,14 @@ export function removeShortlistEntry(id: string): boolean {
  * Remove the shortlist entry for a specific (source_app_id, candidate) pair.
  * Handy for the "untoggle" button when the user only has the pair reference.
  */
-export function removeShortlistEntryByPair(sourceAppId: string, candidateAppleId: string): boolean {
+export function removeShortlistEntryByPair(
+  sourceAppId: string,
+  candidateAppleId: string
+): boolean {
   const info = db
-    .prepare('DELETE FROM shortlist_entries WHERE source_app_id = ? AND candidate_apple_id = ?')
+    .prepare(
+      "DELETE FROM shortlist_entries WHERE source_app_id = ? AND candidate_apple_id = ?"
+    )
     .run(sourceAppId, candidateAppleId);
   return info.changes > 0;
 }
@@ -334,7 +373,7 @@ export function removeShortlistEntryByPair(sourceAppId: string, candidateAppleId
  * Used by the "Reset shortlist" footer on /dashboard/shortlist.
  */
 export function removeAllShortlistEntries(): number {
-  const info = db.prepare('DELETE FROM shortlist_entries').run();
+  const info = db.prepare("DELETE FROM shortlist_entries").run();
   return info.changes;
 }
 
@@ -362,22 +401,24 @@ export function listShortlistGroups(): ShortlistGroup[] {
          FROM shortlist_entries s
          JOIN apps a ON a.id = s.source_app_id
          LEFT JOIN apps t ON t.id = s.candidate_apple_id
-        ORDER BY s.added_at DESC`,
+        ORDER BY s.added_at DESC`
     )
     .all() as (ShortlistRow & {
-      source_name: string;
-      source_icon: string | null;
-      source_developer: string | null;
-      source_price_formatted: string | null;
-      source_price_currency: string | null;
-      source_has_iap: number | null;
-    })[];
+    source_name: string;
+    source_icon: string | null;
+    source_developer: string | null;
+    source_price_formatted: string | null;
+    source_price_currency: string | null;
+    source_has_iap: number | null;
+  })[];
 
   // One SQL scan for every tracked app's footprint — cheaper than N one-shot
   // queries when the shortlist has multiple tracked candidates (the common
   // case, since the user mostly shortlists apps they've added to track).
   const profile = getPrivacyProfile();
-  const footprints = profile ? buildAllFootprints() : new Map<string, AppProfileFootprint>();
+  const footprints = profile
+    ? buildAllFootprints()
+    : new Map<string, AppProfileFootprint>();
 
   const byApp = new Map<string, ShortlistGroup>();
   for (const row of rows) {
@@ -390,10 +431,12 @@ export function listShortlistGroups(): ShortlistGroup[] {
       // don't care about the field just ignore it. Left undefined if the
       // snapshot is empty (scrape pending, or Apple lists no labels) so
       // the client can decide between "no data yet" and "render block".
-      let privacyTypes: ShortlistGroup['sourceApp']['privacyTypes'];
+      let privacyTypes: ShortlistGroup["sourceApp"]["privacyTypes"];
       try {
         const snap = buildSnapshot(row.source_app_id);
-        if (snap.length > 0) privacyTypes = snap;
+        if (snap.length > 0) {
+          privacyTypes = snap;
+        }
       } catch {
         /* DB hiccup — we'd rather render the group without the block
            than fail the whole list. */
@@ -405,7 +448,7 @@ export function listShortlistGroups(): ShortlistGroup[] {
       // hides the banner otherwise (no banner if nothing's actually
       // wrong). Re-uses the footprints map built above so we don't
       // re-query the DB per group.
-      let profileMismatch: ShortlistGroup['sourceApp']['profileMismatch'];
+      let profileMismatch: ShortlistGroup["sourceApp"]["profileMismatch"];
       if (profile) {
         const fp = footprints.get(row.source_app_id);
         if (fp) {
@@ -419,8 +462,8 @@ export function listShortlistGroups(): ShortlistGroup[] {
         sourceApp: {
           id: row.source_app_id,
           name: row.source_name,
-          iconUrl: row.source_icon ?? '',
-          developer: row.source_developer ?? '',
+          iconUrl: row.source_icon ?? "",
+          developer: row.source_developer ?? "",
           privacyTypes,
           profileMismatch,
           priceFormatted: row.source_price_formatted,
@@ -445,13 +488,14 @@ export function listShortlistGroups(): ShortlistGroup[] {
  * Small payload designed for the Compare view to render "already shortlisted"
  * state on its candidate rows without fetching the full groups.
  */
-export function listShortlistPairs(): { sourceAppId: string; candidateAppleId: string }[] {
+export function listShortlistPairs(): {
+  sourceAppId: string;
+  candidateAppleId: string;
+}[] {
   const rows = db
-    .prepare(
-      'SELECT source_app_id, candidate_apple_id FROM shortlist_entries',
-    )
+    .prepare("SELECT source_app_id, candidate_apple_id FROM shortlist_entries")
     .all() as { source_app_id: string; candidate_apple_id: string }[];
-  return rows.map(r => ({
+  return rows.map((r) => ({
     sourceAppId: r.source_app_id,
     candidateAppleId: r.candidate_apple_id,
   }));
@@ -462,7 +506,7 @@ export function listShortlistPairs(): { sourceAppId: string; candidateAppleId: s
  */
 export function countShortlistEntries(): number {
   const row = db
-    .prepare('SELECT COUNT(*) AS n FROM shortlist_entries')
+    .prepare("SELECT COUNT(*) AS n FROM shortlist_entries")
     .get() as { n: number };
   return row.n;
 }
@@ -477,14 +521,19 @@ export function getShortlistEntry(id: string): ShortlistEntry | null {
               CASE WHEN t.id IS NULL THEN 0 ELSE 1 END AS candidate_is_tracked
          FROM shortlist_entries s
          LEFT JOIN apps t ON t.id = s.candidate_apple_id
-        WHERE s.id = ?`,
+        WHERE s.id = ?`
     )
     .get(id) as ShortlistRow | undefined;
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
   const profile = getPrivacyProfile();
   const footprints = new Map<string, AppProfileFootprint>();
   if (profile && row.candidate_is_tracked === 1) {
-    footprints.set(row.candidate_apple_id, buildAppFootprint(row.candidate_apple_id));
+    footprints.set(
+      row.candidate_apple_id,
+      buildAppFootprint(row.candidate_apple_id)
+    );
   }
   return rowToEntry(row, profile, footprints);
 }
@@ -497,39 +546,47 @@ export function getShortlistEntry(id: string): ShortlistEntry | null {
 export function exportShortlistMarkdown(): string {
   const groups = listShortlistGroups();
   if (groups.length === 0) {
-    return '# App alternatives shortlist\n\n_No alternatives shortlisted yet._\n';
+    return "# App alternatives shortlist\n\n_No alternatives shortlisted yet._\n";
   }
 
   const lines: string[] = [];
-  lines.push('# App alternatives shortlist');
-  lines.push('');
-  lines.push(`_Exported ${new Date().toISOString().split('T')[0]} from privacytracker._`);
-  lines.push('');
+  lines.push("# App alternatives shortlist");
+  lines.push("");
+  lines.push(
+    `_Exported ${new Date().toISOString().split("T")[0]} from privacytracker._`
+  );
+  lines.push("");
 
   for (const group of groups) {
-    const dev = group.sourceApp.developer ? ` · ${group.sourceApp.developer}` : '';
+    const dev = group.sourceApp.developer
+      ? ` · ${group.sourceApp.developer}`
+      : "";
     lines.push(`## Alternatives to ${group.sourceApp.name}${dev}`);
-    lines.push('');
+    lines.push("");
     for (const entry of group.entries) {
-      const devSuffix = entry.candidateDeveloper ? ` — ${entry.candidateDeveloper}` : '';
-      const trackedSuffix = entry.candidateIsTracked ? ' _(tracked)_' : '';
+      const devSuffix = entry.candidateDeveloper
+        ? ` — ${entry.candidateDeveloper}`
+        : "";
+      const trackedSuffix = entry.candidateIsTracked ? " _(tracked)_" : "";
       // Surface which comparison lens(es) the user saved this candidate
       // under so a printed/exported shortlist carries the reason with it.
       // Only emitted when the row carries a non-default mode set — a plain
       // 'privacy' entry (the overwhelming majority of legacy rows) stays
       // unadorned so the export reads the same as it always did.
-      const modes = entry.modes ?? ['privacy'];
-      const isDefaultPrivacyOnly = modes.length === 1 && modes[0] === 'privacy';
+      const modes = entry.modes ?? ["privacy"];
+      const isDefaultPrivacyOnly = modes.length === 1 && modes[0] === "privacy";
       const modeSuffix = isDefaultPrivacyOnly
-        ? ''
-        : ` _(saved for ${modes.map(m => m === 'accessibility' ? 'accessibility' : 'privacy').join(' + ')})_`;
-      lines.push(`- [${entry.candidateName}](${entry.candidateStoreUrl})${devSuffix}${trackedSuffix}${modeSuffix}`);
+        ? ""
+        : ` _(saved for ${modes.map((m) => (m === "accessibility" ? "accessibility" : "privacy")).join(" + ")})_`;
+      lines.push(
+        `- [${entry.candidateName}](${entry.candidateStoreUrl})${devSuffix}${trackedSuffix}${modeSuffix}`
+      );
       if (entry.note) {
         lines.push(`  - ${entry.note}`);
       }
     }
-    lines.push('');
+    lines.push("");
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

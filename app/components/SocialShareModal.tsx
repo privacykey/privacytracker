@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * SocialShareModal — renders an Open Graph–style 1200×630 "head-to-head"
@@ -28,27 +28,22 @@
  * then scaled down via CSS for the in-modal preview.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import type {
-  ShortlistEntry,
-  ShortlistGroup,
-} from '../../lib/shortlist-types';
-import type { PrivacyTypeSnapshot } from '../../lib/changelog-types';
-import { TYPE_IDENTIFIER_TO_TIER } from '../../lib/privacy-profile';
-import { CATEGORY_META } from '../../lib/privacy-meta';
-import { useFlag } from '../../lib/feature-flags-hooks';
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { PrivacyTypeSnapshot } from "../../lib/changelog-types";
+import { useFlag } from "../../lib/feature-flags-hooks";
+import { CATEGORY_META } from "../../lib/privacy-meta";
+import { TYPE_IDENTIFIER_TO_TIER } from "../../lib/privacy-profile";
+import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
 
 interface PreviewLike {
-  privacyTypes: PrivacyTypeSnapshot[];
-  name: string;
   developer: string;
   iconUrl: string;
+  name: string;
+  privacyTypes: PrivacyTypeSnapshot[];
 }
 
 export interface SocialShareModalProps {
-  /** The shortlist group whose source app appears on the left. */
-  group: ShortlistGroup;
   /**
    * The specific alternative entry to render on the right. Chosen by the
    * user via the per-entry share button, so there's no in-modal picker —
@@ -56,7 +51,8 @@ export interface SocialShareModalProps {
    * and click a different row.
    */
   entry: ShortlistEntry;
-  onClose: () => void;
+  /** The shortlist group whose source app appears on the left. */
+  group: ShortlistGroup;
   /**
    * Returns the alternative's privacy payload — cached or freshly fetched.
    * The parent owns the /api/preview cache, so repeat opens are free.
@@ -64,30 +60,31 @@ export interface SocialShareModalProps {
    * placeholder instead of hanging the modal.
    */
   loadPreview: (entry: ShortlistEntry) => Promise<PreviewLike | null>;
+  onClose: () => void;
 }
 
 /* ─── Canvas palette ─────────────────────────────────────────────────────
  * Matches the app's dark-mode tokens (see app/globals.css :root). Hard-
  * coded here because canvas.ctx can't resolve CSS custom properties. */
 const PALETTE = {
-  bg:         '#0b0f14',
-  bgAccent:   '#141a22',
-  border:     '#2a3340',
-  text:       '#e6edf3',
-  textMuted:  '#8b98a5',
-  textFaint:  '#5a6876',
-  brand:      '#5ac8fa',
-  tracking:   '#ff9f0a', // matches --orange / .severity-track
-  linked:     '#ff453a', // matches --red / .severity-linked
-  notLinked:  '#ffd60a', // matches --yellow / .severity-unlinked
+  bg: "#0b0f14",
+  bgAccent: "#141a22",
+  border: "#2a3340",
+  text: "#e6edf3",
+  textMuted: "#8b98a5",
+  textFaint: "#5a6876",
+  brand: "#5ac8fa",
+  tracking: "#ff9f0a", // matches --orange / .severity-track
+  linked: "#ff453a", // matches --red / .severity-linked
+  notLinked: "#ffd60a", // matches --yellow / .severity-unlinked
 } as const;
 
-type Tier = 'tracking' | 'linked' | 'not_linked';
+type Tier = "tracking" | "linked" | "not_linked";
 
 const TIER_ORDER: Array<{ tier: Tier; color: string }> = [
-  { tier: 'tracking',   color: PALETTE.tracking },
-  { tier: 'linked',     color: PALETTE.linked },
-  { tier: 'not_linked', color: PALETTE.notLinked },
+  { tier: "tracking", color: PALETTE.tracking },
+  { tier: "linked", color: PALETTE.linked },
+  { tier: "not_linked", color: PALETTE.notLinked },
 ];
 
 /**
@@ -97,18 +94,18 @@ const TIER_ORDER: Array<{ tier: Tier; color: string }> = [
  * next-intl directly.
  */
 interface CanvasLabels {
-  currentlyUsing: string;
-  considerInstead: string;
-  vs: string;
-  headToHead: string;
   comparisonDate: (date: string) => string;
-  sourceAttribution: string;
+  considerInstead: string;
+  currentlyUsing: string;
   fetching: string;
-  noLabels: string;
-  tier: Record<Tier, string>;
+  headToHead: string;
   kicker: Record<Tier, string>;
+  noLabels: string;
+  sourceAttribution: string;
+  tier: Record<Tier, string>;
   /** Localised fallback when the app row has no name on file. */
   unknownApp: string;
+  vs: string;
 }
 
 /**
@@ -116,11 +113,16 @@ interface CanvasLabels {
  * appears under two tiers (rare — usually doesn't happen) is counted under
  * each. If the app has no labels at all we return zeros across the board.
  */
-function countByTier(privacyTypes: PrivacyTypeSnapshot[]): Record<'tracking' | 'linked' | 'not_linked', number> {
-  const counts = { tracking: 0, linked: 0, not_linked: 0 } as Record<'tracking' | 'linked' | 'not_linked', number>;
+function countByTier(
+  privacyTypes: PrivacyTypeSnapshot[]
+): Record<"tracking" | "linked" | "not_linked", number> {
+  const counts = { tracking: 0, linked: 0, not_linked: 0 } as Record<
+    "tracking" | "linked" | "not_linked",
+    number
+  >;
   for (const type of privacyTypes) {
     const tier = TYPE_IDENTIFIER_TO_TIER[type.identifier];
-    if (tier === 'tracking' || tier === 'linked' || tier === 'not_linked') {
+    if (tier === "tracking" || tier === "linked" || tier === "not_linked") {
       counts[tier] += type.categories.length;
     }
   }
@@ -134,16 +136,23 @@ function countByTier(privacyTypes: PrivacyTypeSnapshot[]): Record<'tracking' | '
  */
 function categoriesForTier(
   privacyTypes: PrivacyTypeSnapshot[],
-  tier: 'tracking' | 'linked' | 'not_linked',
-  limit: number,
+  tier: "tracking" | "linked" | "not_linked",
+  limit: number
 ): string[] {
   const labels: string[] = [];
   for (const type of privacyTypes) {
-    if (TYPE_IDENTIFIER_TO_TIER[type.identifier] !== tier) continue;
+    if (TYPE_IDENTIFIER_TO_TIER[type.identifier] !== tier) {
+      continue;
+    }
     for (const cat of type.categories) {
-      const label = CATEGORY_META[cat.identifier]?.label ?? cat.title ?? cat.identifier;
-      if (!labels.includes(label)) labels.push(label);
-      if (labels.length >= limit) return labels;
+      const label =
+        CATEGORY_META[cat.identifier]?.label ?? cat.title ?? cat.identifier;
+      if (!labels.includes(label)) {
+        labels.push(label);
+      }
+      if (labels.length >= limit) {
+        return labels;
+      }
     }
   }
   return labels;
@@ -155,10 +164,13 @@ function categoriesForTier(
  * fall through to a text-avatar fallback.
  */
 function loadImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise(resolve => {
-    if (!src) { resolve(null); return; }
+  return new Promise((resolve) => {
+    if (!src) {
+      resolve(null);
+      return;
+    }
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = src;
@@ -170,35 +182,46 @@ function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
-  maxLines: number,
+  maxLines: number
 ): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
-  let current = '';
+  let current = "";
   for (const word of words) {
     const attempt = current ? `${current} ${word}` : word;
     if (ctx.measureText(attempt).width <= maxWidth) {
       current = attempt;
     } else {
-      if (current) lines.push(current);
+      if (current) {
+        lines.push(current);
+      }
       current = word;
       if (lines.length === maxLines - 1) {
         // Truncate the last line with an ellipsis if more words remain.
-        while (current && ctx.measureText(current + '…').width > maxWidth) {
+        while (current && ctx.measureText(`${current}…`).width > maxWidth) {
           current = current.slice(0, -1);
         }
-        current = current + '…';
+        current = `${current}…`;
         break;
       }
     }
   }
-  if (current && lines.length < maxLines) lines.push(current);
+  if (current && lines.length < maxLines) {
+    lines.push(current);
+  }
   return lines;
 }
 
 /** Round-rect helper — not all browsers' CanvasRenderingContext2D have
  *  ctx.roundRect, so we implement a tiny fallback. */
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
   const radius = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -232,16 +255,26 @@ function paintAppColumn(
     developer: string;
     icon: HTMLImageElement | null;
     privacyTypes: PrivacyTypeSnapshot[];
-    dataState: 'ready' | 'loading' | 'missing';
+    dataState: "ready" | "loading" | "missing";
     labels: CanvasLabels;
-  },
+  }
 ) {
-  const { x, width, label, appName, developer, icon, privacyTypes, dataState, labels } = opts;
+  const {
+    x,
+    width,
+    label,
+    appName,
+    developer,
+    icon,
+    privacyTypes,
+    dataState,
+    labels,
+  } = opts;
 
   // Column label — small uppercase kicker.
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = '600 14px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.textBaseline = 'top';
+  ctx.font = "600 14px system-ui, -apple-system, Segoe UI, sans-serif";
+  ctx.textBaseline = "top";
   ctx.fillText(label.toUpperCase(), x, 150);
 
   // Icon + app name row.
@@ -272,34 +305,39 @@ function paintAppColumn(
     ctx.fillStyle = PALETTE.bgAccent;
     ctx.fill();
     ctx.fillStyle = PALETTE.text;
-    ctx.font = '700 28px system-ui, -apple-system, Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.font = "700 28px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.fillText(
-      (appName || '?').charAt(0).toUpperCase(),
+      (appName || "?").charAt(0).toUpperCase(),
       x + iconSize / 2,
-      iconY + iconSize / 2 + 2,
+      iconY + iconSize / 2 + 2
     );
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
   }
 
   // App name (big), wrapped if too long. `width - iconSize - 16` leaves
   // space for the icon and its gutter.
   ctx.fillStyle = PALETTE.text;
-  ctx.font = '700 30px system-ui, -apple-system, Segoe UI, sans-serif';
-  const nameLines = wrapText(ctx, appName || labels.unknownApp, width - iconSize - 16, 2);
+  ctx.font = "700 30px system-ui, -apple-system, Segoe UI, sans-serif";
+  const nameLines = wrapText(
+    ctx,
+    appName || labels.unknownApp,
+    width - iconSize - 16,
+    2
+  );
   for (let i = 0; i < nameLines.length; i++) {
     ctx.fillText(nameLines[i], x + iconSize + 16, iconY + i * 34);
   }
 
   // Developer underneath (smaller, dimmed).
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = '400 16px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.font = "400 16px system-ui, -apple-system, Segoe UI, sans-serif";
   ctx.fillText(
-    developer || '',
+    developer || "",
     x + iconSize + 16,
-    iconY + nameLines.length * 34 + 4,
+    iconY + nameLines.length * 34 + 4
   );
 
   // ── Tier rows ────────────────────────────────────────────────────────
@@ -313,13 +351,13 @@ function paintAppColumn(
   ctx.lineTo(x + width, divY);
   ctx.stroke();
 
-  if (dataState !== 'ready') {
+  if (dataState !== "ready") {
     ctx.fillStyle = PALETTE.textFaint;
-    ctx.font = '400 15px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.font = "400 15px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.fillText(
-      dataState === 'loading' ? labels.fetching : labels.noLabels,
+      dataState === "loading" ? labels.fetching : labels.noLabels,
       x,
-      divY + 24,
+      divY + 24
     );
     return;
   }
@@ -335,16 +373,16 @@ function paintAppColumn(
 
     // Label.
     ctx.fillStyle = PALETTE.text;
-    ctx.font = '500 17px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.font = "500 17px system-ui, -apple-system, Segoe UI, sans-serif";
     ctx.fillText(labels.tier[tier.tier], x + 22, rowY);
 
     // Count (right-aligned within the column).
     const count = counts[tier.tier];
     ctx.fillStyle = count === 0 ? PALETTE.textMuted : PALETTE.text;
-    ctx.font = '700 18px system-ui, -apple-system, Segoe UI, sans-serif';
-    ctx.textAlign = 'right';
+    ctx.font = "700 18px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.textAlign = "right";
     ctx.fillText(String(count), x + width, rowY);
-    ctx.textAlign = 'left';
+    ctx.textAlign = "left";
 
     rowY += 30;
   }
@@ -354,24 +392,24 @@ function paintAppColumn(
   // — these are the categories most users want at a glance ("contact info,
   // location, identifiers"). If there are no linked categories we fall
   // back to tracking categories, then not-linked.
-  let chipSource: 'linked' | 'tracking' | 'not_linked' = 'linked';
-  let examples = categoriesForTier(privacyTypes, 'linked', 4);
+  let chipSource: "linked" | "tracking" | "not_linked" = "linked";
+  let examples = categoriesForTier(privacyTypes, "linked", 4);
   if (examples.length === 0) {
-    chipSource = 'tracking';
-    examples = categoriesForTier(privacyTypes, 'tracking', 4);
+    chipSource = "tracking";
+    examples = categoriesForTier(privacyTypes, "tracking", 4);
   }
   if (examples.length === 0) {
-    chipSource = 'not_linked';
-    examples = categoriesForTier(privacyTypes, 'not_linked', 4);
+    chipSource = "not_linked";
+    examples = categoriesForTier(privacyTypes, "not_linked", 4);
   }
   if (examples.length > 0) {
     ctx.fillStyle = PALETTE.textMuted;
-    ctx.font = '600 12px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.font = "600 12px system-ui, -apple-system, Segoe UI, sans-serif";
     const tag = labels.kicker[chipSource];
     ctx.fillText(tag, x, rowY + 8);
     ctx.fillStyle = PALETTE.text;
-    ctx.font = '400 14px system-ui, -apple-system, Segoe UI, sans-serif';
-    const joined = examples.join(' · ');
+    ctx.font = "400 14px system-ui, -apple-system, Segoe UI, sans-serif";
+    const joined = examples.join(" · ");
     const truncated = wrapText(ctx, joined, width, 2);
     for (let i = 0; i < truncated.length; i++) {
       ctx.fillText(truncated[i], x, rowY + 28 + i * 20);
@@ -403,13 +441,15 @@ function paintSocialShare(
     sourceIcon: HTMLImageElement | null;
     altIcon: HTMLImageElement | null;
     labels: CanvasLabels;
-  },
+  }
 ) {
   const { labels } = opts;
   const W = 1200;
   const H = 630;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return;
+  }
 
   // Background — always fully clears the canvas before anything else
   // paints, so re-renders don't accumulate pixels from earlier states.
@@ -443,8 +483,8 @@ function paintSocialShare(
   // inner check
   ctx.strokeStyle = PALETTE.bg;
   ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.beginPath();
   ctx.moveTo(8, 18);
   ctx.lineTo(14, 24);
@@ -453,17 +493,17 @@ function paintSocialShare(
   ctx.restore();
 
   ctx.fillStyle = PALETTE.text;
-  ctx.font = '700 22px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('privacytracker', 104, 44);
-  ctx.textBaseline = 'top';
+  ctx.font = "700 22px system-ui, -apple-system, Segoe UI, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText("privacytracker", 104, 44);
+  ctx.textBaseline = "top";
 
   // Right-side kicker.
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = '500 14px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.textAlign = 'right';
+  ctx.font = "500 14px system-ui, -apple-system, Segoe UI, sans-serif";
+  ctx.textAlign = "right";
   ctx.fillText(labels.headToHead, W - 56, 33);
-  ctx.textAlign = 'left';
+  ctx.textAlign = "left";
 
   // ── Columns ──────────────────────────────────────────────────────────
   // Layout: left column (56 → 540), center VS (540 → 660), right column
@@ -477,8 +517,7 @@ function paintSocialShare(
     developer: opts.source.developer,
     icon: opts.sourceIcon,
     privacyTypes: opts.source.privacyTypes,
-    dataState:
-      opts.source.privacyTypes.length > 0 ? 'ready' : 'missing',
+    dataState: opts.source.privacyTypes.length > 0 ? "ready" : "missing",
     labels,
   });
 
@@ -486,15 +525,15 @@ function paintSocialShare(
     x: 660,
     width: 484,
     label: labels.considerInstead,
-    appName: opts.alt?.name ?? '—',
-    developer: opts.alt?.developer ?? '',
+    appName: opts.alt?.name ?? "—",
+    developer: opts.alt?.developer ?? "",
     icon: opts.altIcon,
     privacyTypes: opts.alt?.privacyTypes ?? [],
     dataState: opts.altLoading
-      ? 'loading'
+      ? "loading"
       : opts.alt && opts.alt.privacyTypes.length > 0
-        ? 'ready'
-        : 'missing',
+        ? "ready"
+        : "missing",
     labels,
   });
 
@@ -506,8 +545,8 @@ function paintSocialShare(
   // rather than a floating strip. Painted last so it sits on top of the
   // header band and the column label underneath.
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
   const cx = W / 2;
   const cy = 80; // sit on the header boundary
   // Halo circle for weight.
@@ -520,7 +559,7 @@ function paintSocialShare(
   ctx.stroke();
   // The word itself.
   ctx.fillStyle = PALETTE.text;
-  ctx.font = '900 44px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.font = "900 44px system-ui, -apple-system, Segoe UI, sans-serif";
   ctx.fillText(labels.vs, cx, cy + 2);
   ctx.restore();
 
@@ -537,43 +576,53 @@ function paintSocialShare(
 
   const now = new Date();
   const dateStr = now.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
 
   ctx.fillStyle = PALETTE.textMuted;
-  ctx.font = '500 14px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.textBaseline = 'middle';
+  ctx.font = "500 14px system-ui, -apple-system, Segoe UI, sans-serif";
+  ctx.textBaseline = "middle";
   ctx.fillText(labels.comparisonDate(dateStr), 56, H - 30);
 
-  ctx.textAlign = 'right';
+  ctx.textAlign = "right";
   ctx.fillText(labels.sourceAttribution, W - 56, H - 30);
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
 }
 
-export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialShareModalProps) {
+export function SocialShareModal({
+  group,
+  entry,
+  onClose,
+  loadPreview,
+}: SocialShareModalProps) {
   // Wave I: global social-share gate. Off by default for `self` audience —
   // sharing your own privacy fingerprint is a deliberate opt-in, not a
   // workflow assumption. Loved-one rule turns it on so guardians sharing
   // recommendations have the affordance available.
-  const socialShareOn = useFlag('flag.global.social_share') === 'on';
+  const socialShareOn = useFlag("flag.global.social_share") === "on";
 
   // i18n. Modal chrome strings live under `social_share.*`; the strings
   // baked into the canvas image live under `social_share.canvas.*` and
   // are bundled into a `CanvasLabels` bag passed to the paint helpers.
-  const tShare = useTranslations('social_share');
-  const tCanvas = useTranslations('social_share.canvas');
+  const tShare = useTranslations("social_share");
+  const tCanvas = useTranslations("social_share.canvas");
 
   const [altState, setAltState] = useState<
-    { kind: 'idle' } | { kind: 'loading' } | { kind: 'ready'; data: PreviewLike } | { kind: 'error' }
-  >({ kind: 'idle' });
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "ready"; data: PreviewLike }
+    | { kind: "error" }
+  >({ kind: "idle" });
 
   // Drives the copy-to-clipboard button label so the user gets immediate
   // feedback that the write succeeded (or failed). Auto-reverts to 'idle'
   // after ~1.8s so the button reads as "Copy to clipboard" again.
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
+    "idle"
+  );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -584,15 +633,26 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
   // successfully populate the cache for this entry.
   useEffect(() => {
     let cancelled = false;
-    setAltState({ kind: 'loading' });
-    loadPreview(entry).then(result => {
-      if (cancelled) return;
-      if (!result) { setAltState({ kind: 'error' }); return; }
-      setAltState({ kind: 'ready', data: result });
-    }).catch(() => {
-      if (!cancelled) setAltState({ kind: 'error' });
-    });
-    return () => { cancelled = true; };
+    setAltState({ kind: "loading" });
+    loadPreview(entry)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (!result) {
+          setAltState({ kind: "error" });
+          return;
+        }
+        setAltState({ kind: "ready", data: result });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAltState({ kind: "error" });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entry.id]);
 
@@ -606,7 +666,9 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
   // "no privacy labels available" placeholder.
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     // 2× internal resolution for crisp exports.
     const PIXEL_RATIO = 2;
@@ -614,46 +676,49 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
     const H = 630;
     canvas.width = W * PIXEL_RATIO;
     canvas.height = H * PIXEL_RATIO;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return;
+    }
     ctx.setTransform(PIXEL_RATIO, 0, 0, PIXEL_RATIO, 0, 0);
 
     const source: PreviewLike = {
-      name:         group.sourceApp.name,
-      developer:    group.sourceApp.developer,
-      iconUrl:      group.sourceApp.iconUrl,
+      name: group.sourceApp.name,
+      developer: group.sourceApp.developer,
+      iconUrl: group.sourceApp.iconUrl,
       privacyTypes: group.sourceApp.privacyTypes ?? [],
     };
 
     const alt: PreviewLike | null =
-      altState.kind === 'ready' ? altState.data
-      : {
-          name:         entry.candidateName,
-          developer:    entry.candidateDeveloper,
-          iconUrl:      entry.candidateIconUrl,
-          privacyTypes: [], // filled in when altState goes ready
-        };
+      altState.kind === "ready"
+        ? altState.data
+        : {
+            name: entry.candidateName,
+            developer: entry.candidateDeveloper,
+            iconUrl: entry.candidateIconUrl,
+            privacyTypes: [], // filled in when altState goes ready
+          };
 
     const canvasLabels: CanvasLabels = {
-      currentlyUsing: tCanvas('currently_using'),
-      considerInstead: tCanvas('consider_instead'),
-      vs: tCanvas('vs'),
-      headToHead: tCanvas('head_to_head'),
-      comparisonDate: (date: string) => tCanvas('comparison_date', { date }),
-      sourceAttribution: tCanvas('source_attribution'),
-      fetching: tCanvas('fetching'),
-      noLabels: tCanvas('no_labels'),
+      currentlyUsing: tCanvas("currently_using"),
+      considerInstead: tCanvas("consider_instead"),
+      vs: tCanvas("vs"),
+      headToHead: tCanvas("head_to_head"),
+      comparisonDate: (date: string) => tCanvas("comparison_date", { date }),
+      sourceAttribution: tCanvas("source_attribution"),
+      fetching: tCanvas("fetching"),
+      noLabels: tCanvas("no_labels"),
       tier: {
-        tracking: tCanvas('tier_tracking'),
-        linked: tCanvas('tier_linked'),
-        not_linked: tCanvas('tier_not_linked'),
+        tracking: tCanvas("tier_tracking"),
+        linked: tCanvas("tier_linked"),
+        not_linked: tCanvas("tier_not_linked"),
       },
       kicker: {
-        tracking: tCanvas('kicker_tracking'),
-        linked: tCanvas('kicker_linked'),
-        not_linked: tCanvas('kicker_not_linked'),
+        tracking: tCanvas("kicker_tracking"),
+        linked: tCanvas("kicker_linked"),
+        not_linked: tCanvas("kicker_not_linked"),
       },
-      unknownApp: tCanvas('unknown_app'),
+      unknownApp: tCanvas("unknown_app"),
     };
 
     let cancelled = false;
@@ -662,38 +727,47 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
         loadImage(source.iconUrl),
         alt ? loadImage(alt.iconUrl) : Promise.resolve(null),
       ]);
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       paintSocialShare(canvas, {
         source,
         alt,
-        altLoading: altState.kind === 'loading',
+        altLoading: altState.kind === "loading",
         sourceIcon,
         altIcon,
         labels: canvasLabels,
       });
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [group, entry, altState, tCanvas]);
 
   const handleDownload = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.toBlob(blob => {
-      if (!blob) return;
+    if (!canvas) {
+      return;
+    }
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        return;
+      }
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      const slug = (s: string) => s
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 30) || 'app';
+      const slug = (s: string) =>
+        s
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 30) || "app";
       a.download = `${slug(group.sourceApp.name)}-vs-${slug(entry.candidateName)}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    }, 'image/png');
+    }, "image/png");
   }, [group.sourceApp.name, entry.candidateName]);
 
   /**
@@ -712,17 +786,19 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
    */
   const handleCopy = useCallback(async () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
     // Feature detection — `ClipboardItem` is the last holdout on older
     // Firefox; `navigator.clipboard.write` requires a secure context.
     const canWriteImage =
-      typeof window !== 'undefined' &&
-      typeof window.ClipboardItem === 'function' &&
+      typeof window !== "undefined" &&
+      typeof window.ClipboardItem === "function" &&
       !!navigator.clipboard?.write;
     if (!canWriteImage) {
-      setCopyState('error');
+      setCopyState("error");
       handleDownload();
-      window.setTimeout(() => setCopyState('idle'), 1800);
+      window.setTimeout(() => setCopyState("idle"), 1800);
       return;
     }
     try {
@@ -731,19 +807,22 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
           // Passing a Promise<Blob> rather than an already-awaited Blob
           // lets Safari correlate the clipboard write with the click's
           // user-activation token. Awaiting the blob first would break it.
-          'image/png': new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob(blob => {
-              if (blob) resolve(blob);
-              else reject(new Error('Canvas toBlob returned null'));
-            }, 'image/png');
+          "image/png": new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error("Canvas toBlob returned null"));
+              }
+            }, "image/png");
           }),
         }),
       ]);
-      setCopyState('copied');
-      window.setTimeout(() => setCopyState('idle'), 1800);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1800);
     } catch {
-      setCopyState('error');
-      window.setTimeout(() => setCopyState('idle'), 1800);
+      setCopyState("error");
+      window.setTimeout(() => setCopyState("idle"), 1800);
     }
   }, [handleDownload]);
 
@@ -759,51 +838,66 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
   // for this shortcut — no conflict.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
         return;
       }
       const isCopyCombo =
         (e.metaKey || e.ctrlKey) &&
-        !e.shiftKey && !e.altKey &&
-        (e.key === 'c' || e.key === 'C');
-      if (!isCopyCombo) return;
-      const selection = typeof window !== 'undefined' ? window.getSelection() : null;
+        !e.shiftKey &&
+        !e.altKey &&
+        (e.key === "c" || e.key === "C");
+      if (!isCopyCombo) {
+        return;
+      }
+      const selection =
+        typeof window === "undefined" ? null : window.getSelection();
       const hasTextSelection = !!selection && selection.toString().length > 0;
-      if (hasTextSelection) return; // let the browser copy the selected text
+      if (hasTextSelection) {
+        return; // let the browser copy the selected text
+      }
       e.preventDefault();
       void handleCopy();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose, handleCopy]);
 
   // Hooks above must run unconditionally to keep React's hook order stable.
   // Bail out here if the global social-share gate is off — render nothing
   // and let the parent's onClose drive the close.
-  if (!socialShareOn) return null;
+  if (!socialShareOn) {
+    return null;
+  }
 
   return (
     <div
-      className="social-share-backdrop"
-      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
-      role="dialog"
-      aria-modal="true"
       aria-labelledby="social-share-title"
+      aria-modal="true"
+      className="social-share-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      role="dialog"
     >
       <div className="social-share-dialog">
         <div className="social-share-header">
           <div>
             <h2 className="social-share-title" id="social-share-title">
-              {tShare('title', { source: group.sourceApp.name, alt: entry.candidateName })}
+              {tShare("title", {
+                source: group.sourceApp.name,
+                alt: entry.candidateName,
+              })}
             </h2>
-            <p className="social-share-subtitle">{tShare('subtitle')}</p>
+            <p className="social-share-subtitle">{tShare("subtitle")}</p>
           </div>
           <button
-            type="button"
+            aria-label={tShare("close_aria")}
             className="btn btn-ghost btn-sm"
             onClick={onClose}
-            aria-label={tShare('close_aria')}
+            type="button"
           >
             ✕
           </button>
@@ -811,32 +905,40 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
 
         <div className="social-share-canvas-wrap">
           <canvas
-            ref={canvasRef}
             className="social-share-canvas"
+            ref={canvasRef}
             // Logical display size — the underlying pixel buffer is 2×
             // this, so scaling it down keeps the preview crisp.
-            style={{ width: '100%', maxWidth: 720, height: 'auto', aspectRatio: '1200 / 630' }}
+            style={{
+              width: "100%",
+              maxWidth: 720,
+              height: "auto",
+              aspectRatio: "1200 / 630",
+            }}
           />
-          {altState.kind === 'loading' && (
+          {altState.kind === "loading" && (
             <div className="social-share-canvas-hint" role="status">
-              {tShare('loading_alt', { appName: entry.candidateName })}
+              {tShare("loading_alt", { appName: entry.candidateName })}
             </div>
           )}
-          {altState.kind === 'error' && (
-            <div className="social-share-canvas-hint social-share-canvas-hint-error" role="status">
-              {tShare('load_error')}
+          {altState.kind === "error" && (
+            <div
+              className="social-share-canvas-hint social-share-canvas-hint-error"
+              role="status"
+            >
+              {tShare("load_error")}
             </div>
           )}
         </div>
 
         <div className="social-share-actions">
           <button
-            type="button"
             className="btn btn-primary"
+            disabled={altState.kind === "loading"}
             onClick={handleDownload}
-            disabled={altState.kind === 'loading'}
+            type="button"
           >
-            {tShare('download_png')}
+            {tShare("download_png")}
           </button>
           {/* Copy to clipboard — writes the image as an `image/png` to the
               OS clipboard so the user can paste it directly into a social
@@ -845,25 +947,23 @@ export function SocialShareModal({ group, entry, onClose, loadPreview }: SocialS
               so we don't need a separate toast. Cmd/Ctrl+C also fires this
               while the modal is open — see the keydown effect above. */}
           <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => { void handleCopy(); }}
-            disabled={altState.kind === 'loading'}
-            title={tShare('copy_title')}
             aria-live="polite"
-          >
-            {copyState === 'copied'
-              ? tShare('copied')
-              : copyState === 'error'
-                ? tShare('copy_failed')
-                : tShare('copy_to_clipboard')}
-          </button>
-          <button
+            className="btn btn-secondary"
+            disabled={altState.kind === "loading"}
+            onClick={() => {
+              void handleCopy();
+            }}
+            title={tShare("copy_title")}
             type="button"
-            className="btn btn-ghost"
-            onClick={onClose}
           >
-            {tShare('done')}
+            {copyState === "copied"
+              ? tShare("copied")
+              : copyState === "error"
+                ? tShare("copy_failed")
+                : tShare("copy_to_clipboard")}
+          </button>
+          <button className="btn btn-ghost" onClick={onClose} type="button">
+            {tShare("done")}
           </button>
         </div>
       </div>

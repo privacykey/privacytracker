@@ -1,16 +1,14 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 import {
-  createManualApp,
-} from '../../../../lib/manual-apps-server';
-import {
-  MANUAL_APP_SOURCES,
   isManualAppSource,
+  MANUAL_APP_SOURCES,
   type ManualApp,
   type ManualAppInput,
   type ManualAppSource,
-} from '../../../../lib/manual-apps';
+} from "../../../../lib/manual-apps";
+import { createManualApp } from "../../../../lib/manual-apps-server";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -19,7 +17,7 @@ import {
   recordAudit,
   requestActorIp,
   requestHasValidAdminToken,
-} from '../../../../lib/security';
+} from "../../../../lib/security";
 
 /**
  * POST /api/manual-apps/bulk
@@ -38,16 +36,16 @@ import {
  */
 
 interface BulkInputRow {
+  developer?: unknown;
   name?: unknown;
   source?: unknown;
-  developer?: unknown;
 }
 
 interface BulkRowResult {
-  index: number;
-  ok: boolean;
   app?: ManualApp;
   error?: string;
+  index: number;
+  ok: boolean;
 }
 
 // Cap per-batch — protects SQLite from a runaway client. A 500-app
@@ -57,25 +55,31 @@ const MAX_BULK_ROWS = 1000;
 
 export async function POST(request: Request) {
   const actorIp = requestActorIp(request);
-  const userAgent = request.headers.get('user-agent');
+  const userAgent = request.headers.get("user-agent");
 
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, 'manual-apps.bulk'),
+    key: rateLimitKeyForRequest(request, "manual-apps.bulk"),
     limit: 10,
     windowMs: 60_000,
   });
   if (!rate.allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  if (adminTokenRequiredForRequest(request) && !requestHasValidAdminToken(request)) {
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
     recordAudit({
-      action: 'manual-apps.bulk.unauthorised',
+      action: "manual-apps.bulk.unauthorised",
       actorIp,
       userAgent,
       success: false,
     });
-    return NextResponse.json({ error: 'Admin token required' }, { status: 401 });
+    return NextResponse.json(
+      { error: "Admin token required" },
+      { status: 401 }
+    );
   }
 
   let body: { apps?: unknown };
@@ -85,22 +89,24 @@ export async function POST(request: Request) {
     body = await readBoundedJson<{ apps?: unknown }>(request, 256 * 1024);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid body' },
-      { status: 400 },
+      { error: error instanceof Error ? error.message : "Invalid body" },
+      { status: 400 }
     );
   }
 
   if (!Array.isArray(body.apps) || body.apps.length === 0) {
     return NextResponse.json(
-      { error: 'Expected { apps: [{ name, source, ... }, ...] }' },
-      { status: 400 },
+      { error: "Expected { apps: [{ name, source, ... }, ...] }" },
+      { status: 400 }
     );
   }
 
   if (body.apps.length > MAX_BULK_ROWS) {
     return NextResponse.json(
-      { error: `Too many rows (${body.apps.length} > ${MAX_BULK_ROWS}). Split the batch.` },
-      { status: 413 },
+      {
+        error: `Too many rows (${body.apps.length} > ${MAX_BULK_ROWS}). Split the batch.`,
+      },
+      { status: 413 }
     );
   }
 
@@ -111,8 +117,8 @@ export async function POST(request: Request) {
 
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
-    if (!row || typeof row !== 'object') {
-      results.push({ index: i, ok: false, error: 'Row must be an object' });
+    if (!row || typeof row !== "object") {
+      results.push({ index: i, ok: false, error: "Row must be an object" });
       failed += 1;
       continue;
     }
@@ -121,16 +127,16 @@ export async function POST(request: Request) {
       results.push({
         index: i,
         ok: false,
-        error: `source must be one of: ${MANUAL_APP_SOURCES.join(', ')}`,
+        error: `source must be one of: ${MANUAL_APP_SOURCES.join(", ")}`,
       });
       failed += 1;
       continue;
     }
 
     const input: ManualAppInput = {
-      name: typeof row.name === 'string' ? row.name : '',
+      name: typeof row.name === "string" ? row.name : "",
       source: row.source as ManualAppSource,
-      developer: typeof row.developer === 'string' ? row.developer : null,
+      developer: typeof row.developer === "string" ? row.developer : null,
       privacyPolicyUrl: null,
       sourceUrl: null,
       notes: null,
@@ -141,14 +147,15 @@ export async function POST(request: Request) {
       results.push({ index: i, ok: true, app });
       created += 1;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create manual app';
+      const message =
+        error instanceof Error ? error.message : "Failed to create manual app";
       results.push({ index: i, ok: false, error: message });
       failed += 1;
     }
   }
 
   recordAudit({
-    action: 'manual-apps.bulk',
+    action: "manual-apps.bulk",
     actorIp,
     userAgent,
     success: created > 0,
@@ -157,6 +164,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json(
     { created, failed, results },
-    { status: created > 0 ? 200 : 400 },
+    { status: created > 0 ? 200 : 400 }
   );
 }

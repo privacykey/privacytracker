@@ -23,14 +23,14 @@ const SAMPLE_EVERY = 5;
 export interface ApiTimingRecord {
   /** Epoch ms at the time the response was sent. */
   at: number;
-  /** Route label — usually the static pathname. */
-  route: string;
-  method: string;
   durationMs: number;
-  /** HTTP status; 0 on thrown error before the response was built. */
-  status: number;
   /** Truncated error message if the handler threw. */
   error?: string;
+  method: string;
+  /** Route label — usually the static pathname. */
+  route: string;
+  /** HTTP status; 0 on thrown error before the response was built. */
+  status: number;
 }
 
 const ring: Array<ApiTimingRecord | undefined> = new Array(RING_SIZE);
@@ -43,7 +43,9 @@ function record(rec: ApiTimingRecord): void {
   ring[writeIndex % RING_SIZE] = rec;
   writeIndex += 1;
   totalCount += 1;
-  if (rec.durationMs >= SLOW_THRESHOLD_MS || rec.error) slowCount += 1;
+  if (rec.durationMs >= SLOW_THRESHOLD_MS || rec.error) {
+    slowCount += 1;
+  }
 }
 
 export function getRecentApiTimings(limit = RING_SIZE): ApiTimingRecord[] {
@@ -54,7 +56,9 @@ export function getRecentApiTimings(limit = RING_SIZE): ApiTimingRecord[] {
   const out: ApiTimingRecord[] = [];
   for (let i = liveCount - want; i < liveCount; i++) {
     const slot = ring[(start + i) % RING_SIZE];
-    if (slot) out.push(slot);
+    if (slot) {
+      out.push(slot);
+    }
   }
   return out;
 }
@@ -92,12 +96,12 @@ export function withApiTiming<
   TResult extends Response | Promise<Response>,
 >(
   route: string,
-  handler: (...args: TArgs) => TResult,
+  handler: (...args: TArgs) => TResult
 ): (...args: TArgs) => Promise<Response> {
   return async function timedHandler(...args: TArgs): Promise<Response> {
     const t0 = performance.now();
     const req = args[0] as { method?: string } | undefined;
-    const method = (req?.method ?? 'GET').toUpperCase();
+    const method = (req?.method ?? "GET").toUpperCase();
     try {
       const res = await handler(...args);
       const durationMs = Math.round(performance.now() - t0);
@@ -116,7 +120,10 @@ export function withApiTiming<
         method,
         durationMs,
         status: 0,
-        error: err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200),
+        error:
+          err instanceof Error
+            ? err.message.slice(0, 200)
+            : String(err).slice(0, 200),
       });
       throw err;
     }

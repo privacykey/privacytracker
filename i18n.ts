@@ -9,16 +9,22 @@
  * SUPPORTED_LOCALES.
  */
 
-import { cookies } from 'next/headers';
-import { getRequestConfig } from 'next-intl/server';
+import { cookies } from "next/headers";
+import { getRequestConfig } from "next-intl/server";
 
-export const SUPPORTED_LOCALES = ['en', 'zh'] as const;
+export const SUPPORTED_LOCALES = ["en", "zh"] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
-export const DEFAULT_LOCALE: SupportedLocale = 'en';
-export const LOCALE_COOKIE = 'NEXT_LOCALE';
+export const DEFAULT_LOCALE: SupportedLocale = "en";
+export const LOCALE_COOKIE = "NEXT_LOCALE";
 
-export function isSupportedLocale(value: string | undefined | null): value is SupportedLocale {
-  return value !== null && value !== undefined && (SUPPORTED_LOCALES as readonly string[]).includes(value);
+export function isSupportedLocale(
+  value: string | undefined | null
+): value is SupportedLocale {
+  return (
+    value !== null &&
+    value !== undefined &&
+    (SUPPORTED_LOCALES as readonly string[]).includes(value)
+  );
 }
 
 export default getRequestConfig(async () => {
@@ -26,7 +32,9 @@ export default getRequestConfig(async () => {
   try {
     const store = await cookies();
     const value = store.get(LOCALE_COOKIE)?.value;
-    if (isSupportedLocale(value)) locale = value;
+    if (isSupportedLocale(value)) {
+      locale = value;
+    }
   } catch {
     // `cookies()` throws outside a request scope (e.g. build-time prerender).
   }

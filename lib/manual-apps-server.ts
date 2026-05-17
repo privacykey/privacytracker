@@ -5,31 +5,31 @@
  * `lib/manual-apps.ts`.
  */
 
-import crypto from 'crypto';
-import db from './db';
+import crypto from "node:crypto";
+import db from "./db";
+import {
+  appendManualAppEvent,
+  deleteManualAppHistory,
+  type ManualAppFieldChangeDetail,
+} from "./manual-app-history";
 import {
   isManualAppSource,
   MANUAL_APP_SOURCES,
   type ManualApp,
   type ManualAppInput,
   type ManualAppSource,
-} from './manual-apps';
-import {
-  appendManualAppEvent,
-  deleteManualAppHistory,
-  type ManualAppFieldChangeDetail,
-} from './manual-app-history';
-import { validateExternalUrl } from './security';
+} from "./manual-apps";
+import { validateExternalUrl } from "./security";
 
 interface ManualAppRow {
+  developer: string | null;
+  first_seen: number;
   id: string;
   name: string;
-  source: string;
-  developer: string | null;
-  privacy_policy_url: string | null;
-  source_url: string | null;
   notes: string | null;
-  first_seen: number;
+  privacy_policy_url: string | null;
+  source: string;
+  source_url: string | null;
   updated_at: number;
 }
 
@@ -38,7 +38,9 @@ function hydrate(row: ManualAppRow): ManualApp {
   // a new flavour and the user downgraded) we fall back to 'sideloaded'
   // — the most generic catch-all. The UI still renders the row; it just
   // loses its specific icon/copy.
-  const source: ManualAppSource = isManualAppSource(row.source) ? row.source : 'sideloaded';
+  const source: ManualAppSource = isManualAppSource(row.source)
+    ? row.source
+    : "sideloaded";
   return {
     id: row.id,
     name: row.name,
@@ -53,7 +55,9 @@ function hydrate(row: ManualAppRow): ManualApp {
 }
 
 function normaliseString(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") {
+    return null;
+  }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
@@ -70,9 +74,11 @@ function normaliseString(value: unknown): string | null {
  */
 function normaliseUrl(value: unknown, field: string): string | null {
   const str = normaliseString(value);
-  if (str === null) return null;
+  if (str === null) {
+    return null;
+  }
   const result = validateExternalUrl(str, { maxLength: 2048 });
-  if (!result.ok || !result.url) {
+  if (!(result.ok && result.url)) {
     throw new Error(`${field} is not a valid URL`);
   }
   return result.url.toString();
@@ -83,7 +89,7 @@ export function listManualApps(): ManualApp[] {
     .prepare(
       `SELECT id, name, source, developer, privacy_policy_url, source_url, notes, first_seen, updated_at
        FROM manual_apps
-       ORDER BY updated_at DESC, name COLLATE NOCASE ASC`,
+       ORDER BY updated_at DESC, name COLLATE NOCASE ASC`
     )
     .all() as ManualAppRow[];
   return rows.map(hydrate);
@@ -93,36 +99,53 @@ export function getManualApp(id: string): ManualApp | null {
   const row = db
     .prepare(
       `SELECT id, name, source, developer, privacy_policy_url, source_url, notes, first_seen, updated_at
-       FROM manual_apps WHERE id = ?`,
+       FROM manual_apps WHERE id = ?`
     )
     .get(id) as ManualAppRow | undefined;
   return row ? hydrate(row) : null;
 }
 
 export function countManualApps(): number {
-  const row = db.prepare('SELECT COUNT(*) AS n FROM manual_apps').get() as { n: number };
+  const row = db.prepare("SELECT COUNT(*) AS n FROM manual_apps").get() as {
+    n: number;
+  };
   return row?.n ?? 0;
 }
 
 export function createManualApp(input: ManualAppInput): ManualApp {
   const name = normaliseString(input.name);
-  if (!name) throw new Error('Name is required');
+  if (!name) {
+    throw new Error("Name is required");
+  }
   if (!isManualAppSource(input.source)) {
-    throw new Error(`source must be one of: ${MANUAL_APP_SOURCES.join(', ')}`);
+    throw new Error(`source must be one of: ${MANUAL_APP_SOURCES.join(", ")}`);
   }
 
   const id = crypto.randomUUID();
   const now = Date.now();
   const developer = normaliseString(input.developer);
-  const privacyPolicyUrl = normaliseUrl(input.privacyPolicyUrl, 'privacyPolicyUrl');
-  const sourceUrl = normaliseUrl(input.sourceUrl, 'sourceUrl');
+  const privacyPolicyUrl = normaliseUrl(
+    input.privacyPolicyUrl,
+    "privacyPolicyUrl"
+  );
+  const sourceUrl = normaliseUrl(input.sourceUrl, "sourceUrl");
   const notes = normaliseString(input.notes);
 
   db.prepare(
     `INSERT INTO manual_apps
        (id, name, source, developer, privacy_policy_url, source_url, notes, first_seen, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, name, input.source, developer, privacyPolicyUrl, sourceUrl, notes, now, now);
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    name,
+    input.source,
+    developer,
+    privacyPolicyUrl,
+    sourceUrl,
+    notes,
+    now,
+    now
+  );
 
   return {
     id,
@@ -143,37 +166,46 @@ export function createManualApp(input: ManualAppInput): ManualApp {
  */
 export function updateManualApp(
   id: string,
-  patch: Partial<ManualAppInput>,
+  patch: Partial<ManualAppInput>
 ): ManualApp | null {
   const existing = getManualApp(id);
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
 
   const next: ManualApp = {
     ...existing,
     updatedAt: Date.now(),
   };
 
-  if (Object.prototype.hasOwnProperty.call(patch, 'name')) {
+  if (Object.hasOwn(patch, "name")) {
     const name = normaliseString(patch.name);
-    if (!name) throw new Error('Name is required');
+    if (!name) {
+      throw new Error("Name is required");
+    }
     next.name = name;
   }
-  if (Object.prototype.hasOwnProperty.call(patch, 'source')) {
+  if (Object.hasOwn(patch, "source")) {
     if (!isManualAppSource(patch.source)) {
-      throw new Error(`source must be one of: ${MANUAL_APP_SOURCES.join(', ')}`);
+      throw new Error(
+        `source must be one of: ${MANUAL_APP_SOURCES.join(", ")}`
+      );
     }
     next.source = patch.source;
   }
-  if (Object.prototype.hasOwnProperty.call(patch, 'developer')) {
+  if (Object.hasOwn(patch, "developer")) {
     next.developer = normaliseString(patch.developer);
   }
-  if (Object.prototype.hasOwnProperty.call(patch, 'privacyPolicyUrl')) {
-    next.privacyPolicyUrl = normaliseUrl(patch.privacyPolicyUrl, 'privacyPolicyUrl');
+  if (Object.hasOwn(patch, "privacyPolicyUrl")) {
+    next.privacyPolicyUrl = normaliseUrl(
+      patch.privacyPolicyUrl,
+      "privacyPolicyUrl"
+    );
   }
-  if (Object.prototype.hasOwnProperty.call(patch, 'sourceUrl')) {
-    next.sourceUrl = normaliseUrl(patch.sourceUrl, 'sourceUrl');
+  if (Object.hasOwn(patch, "sourceUrl")) {
+    next.sourceUrl = normaliseUrl(patch.sourceUrl, "sourceUrl");
   }
-  if (Object.prototype.hasOwnProperty.call(patch, 'notes')) {
+  if (Object.hasOwn(patch, "notes")) {
     next.notes = normaliseString(patch.notes);
   }
 
@@ -183,19 +215,25 @@ export function updateManualApp(
   // — the dashboard should only surface genuine edits.
   const fieldDiffs: ManualAppFieldChangeDetail[] = [];
   const pushDiff = (
-    field: ManualAppFieldChangeDetail['field'],
+    field: ManualAppFieldChangeDetail["field"],
     from: string | null,
-    to: string | null,
+    to: string | null
   ) => {
-    if ((from ?? null) === (to ?? null)) return;
+    if ((from ?? null) === (to ?? null)) {
+      return;
+    }
     fieldDiffs.push({ field, from: from ?? null, to: to ?? null });
   };
-  pushDiff('name', existing.name, next.name);
-  pushDiff('source', existing.source, next.source);
-  pushDiff('developer', existing.developer, next.developer);
-  pushDiff('privacyPolicyUrl', existing.privacyPolicyUrl, next.privacyPolicyUrl);
-  pushDiff('sourceUrl', existing.sourceUrl, next.sourceUrl);
-  pushDiff('notes', existing.notes, next.notes);
+  pushDiff("name", existing.name, next.name);
+  pushDiff("source", existing.source, next.source);
+  pushDiff("developer", existing.developer, next.developer);
+  pushDiff(
+    "privacyPolicyUrl",
+    existing.privacyPolicyUrl,
+    next.privacyPolicyUrl
+  );
+  pushDiff("sourceUrl", existing.sourceUrl, next.sourceUrl);
+  pushDiff("notes", existing.notes, next.notes);
 
   // Wrap the UPDATE and the event inserts in a single transaction so a crash
   // mid-write can't leave the changelog referring to a state the row never
@@ -205,7 +243,7 @@ export function updateManualApp(
       `UPDATE manual_apps
          SET name = ?, source = ?, developer = ?, privacy_policy_url = ?, source_url = ?,
              notes = ?, updated_at = ?
-       WHERE id = ?`,
+       WHERE id = ?`
     ).run(
       next.name,
       next.source,
@@ -214,14 +252,14 @@ export function updateManualApp(
       next.sourceUrl,
       next.notes,
       next.updatedAt,
-      id,
+      id
     );
 
     for (const diff of fieldDiffs) {
       appendManualAppEvent({
         manualAppId: id,
-        type: 'field_change',
-        detail: { kind: 'field_change', ...diff },
+        type: "field_change",
+        detail: { kind: "field_change", ...diff },
         occurredAt: next.updatedAt,
       });
     }
@@ -236,7 +274,7 @@ export function deleteManualApp(id: string): boolean {
   // loses a race with another writer. better-sqlite3 is synchronous so the
   // ordering inside one tick is enough — no need for a transaction here.
   deleteManualAppHistory(id);
-  const res = db.prepare('DELETE FROM manual_apps WHERE id = ?').run(id);
+  const res = db.prepare("DELETE FROM manual_apps WHERE id = ?").run(id);
   return res.changes > 0;
 }
 
@@ -273,28 +311,42 @@ export function restoreManualApp(snapshot: ManualApp): ManualApp | null {
   // with whatever's in its undo stack, including stale or partially-
   // typed data after a hot-reload. Source must match the enum, name
   // must be non-empty, id must be a plausible UUID-shaped string.
-  if (!isManualAppSource(snapshot.source)) return null;
-  if (typeof snapshot.id !== 'string' || snapshot.id.length === 0 || snapshot.id.length > 128) return null;
-  if (typeof snapshot.name !== 'string' || snapshot.name.trim().length === 0) return null;
+  if (!isManualAppSource(snapshot.source)) {
+    return null;
+  }
+  if (
+    typeof snapshot.id !== "string" ||
+    snapshot.id.length === 0 ||
+    snapshot.id.length > 128
+  ) {
+    return null;
+  }
+  if (typeof snapshot.name !== "string" || snapshot.name.trim().length === 0) {
+    return null;
+  }
 
   const existing = getManualApp(snapshot.id);
-  if (existing) return null; // idempotent: already restored / never deleted
+  if (existing) {
+    return null; // idempotent: already restored / never deleted
+  }
 
-  const firstSeen = Number.isFinite(snapshot.firstSeen) && snapshot.firstSeen > 0
-    ? Math.floor(snapshot.firstSeen)
-    : Date.now();
+  const firstSeen =
+    Number.isFinite(snapshot.firstSeen) && snapshot.firstSeen > 0
+      ? Math.floor(snapshot.firstSeen)
+      : Date.now();
   // updated_at can stay at the original value — undo is conceptually a
   // restoration, not a fresh edit. If the snapshot is malformed we fall
   // back to firstSeen so the row's monotonic invariant (updated >= first)
   // holds.
-  const updatedAt = Number.isFinite(snapshot.updatedAt) && snapshot.updatedAt >= firstSeen
-    ? Math.floor(snapshot.updatedAt)
-    : firstSeen;
+  const updatedAt =
+    Number.isFinite(snapshot.updatedAt) && snapshot.updatedAt >= firstSeen
+      ? Math.floor(snapshot.updatedAt)
+      : firstSeen;
 
   db.prepare(
     `INSERT INTO manual_apps
        (id, name, source, developer, privacy_policy_url, source_url, notes, first_seen, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     snapshot.id,
     snapshot.name.trim(),
@@ -304,7 +356,7 @@ export function restoreManualApp(snapshot: ManualApp): ManualApp | null {
     snapshot.sourceUrl ?? null,
     snapshot.notes ?? null,
     firstSeen,
-    updatedAt,
+    updatedAt
   );
 
   return {
