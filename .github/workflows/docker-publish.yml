@@ -223,7 +223,7 @@ jobs:
       # buildx-local provenance (set above) can't, because the local
       # provenance has no signature tying it to GitHub.
       - name: Attest build provenance (SLSA)
-        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45  # v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.build-and-push.outputs.digest }}
