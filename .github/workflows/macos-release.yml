@@ -203,7 +203,7 @@ jobs:
       #   • Uploading the resulting artifacts to a draft release when a tag
       #     push fires this workflow (see `tagName` / `releaseName` below).
       - name: Build, sign, notarize, and upload
-        uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4  # v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5  # v0
         env:
           # --- Apple Developer ID (signing) ---
           # APPLE_CERTIFICATE is the base64 of your Developer ID Application
