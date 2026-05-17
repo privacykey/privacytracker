@@ -121,7 +121,7 @@ block2 = "0.6"
 # poll-every-5s loop in the device-connect toast component. core-foundation
 # pulls in CFRunLoop + CFRunLoopSource, which IONotificationPortGetRunLoopSource
 # returns. Both crates are maintained by the rust-cocoa folks and stable.
-io-kit-sys = "0.4"
+io-kit-sys = "0.5"
 core-foundation = "0.10"
 core-foundation-sys = "0.8"
 
