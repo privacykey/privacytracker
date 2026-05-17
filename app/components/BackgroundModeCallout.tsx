@@ -66,11 +66,7 @@ export default function BackgroundModeCallout({ initiallyVisible }: Props) {
 
   return (
     <>
-      <div
-        aria-label={t("region_aria")}
-        className="bg-mode-callout"
-        role="region"
-      >
+      <section aria-label={t("region_aria")} className="bg-mode-callout">
         <span aria-hidden="true" className="bg-mode-callout-icon">
           🌙
         </span>
@@ -94,7 +90,7 @@ export default function BackgroundModeCallout({ initiallyVisible }: Props) {
         >
           ✕
         </button>
-      </div>
+      </section>
       {wizardOpen && (
         <BackgroundModeWizard
           onClose={(outcome) => {

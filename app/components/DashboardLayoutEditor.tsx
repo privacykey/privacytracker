@@ -300,9 +300,9 @@ function SortableRow({
 
   return (
     <li
-      className={`layout-editor-row${isDragging ? "is-dragging" : ""}${
-        hidden ? "is-hidden" : ""
-      }${isCallout ? "is-callout" : ""}`}
+      className={`layout-editor-row${isDragging ? " is-dragging" : ""}${
+        hidden ? " is-hidden" : ""
+      }${isCallout ? " is-callout" : ""}`}
       data-card-id={id}
       ref={setNodeRef}
       style={style}

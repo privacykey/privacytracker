@@ -179,7 +179,7 @@ export default function TaskListIcon() {
           aria-expanded={open}
           aria-haspopup="dialog"
           aria-label={tNav("tasks_icon_aria", { count: readyCount })}
-          className={`task-list-icon-btn${allDone ? "is-all-done" : ""}`}
+          className={`task-list-icon-btn${allDone ? " is-all-done" : ""}`}
           onClick={() => setOpen((v) => !v)}
           ref={buttonRef}
           type="button"

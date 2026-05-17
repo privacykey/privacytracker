@@ -351,7 +351,7 @@ export default function SettingsSidebar() {
               {group.links.map((link) => (
                 <a
                   aria-current={activeId === link.id ? "true" : undefined}
-                  className={`settings-sidebar-link${activeId === link.id ? "is-active" : ""}`}
+                  className={`settings-sidebar-link${activeId === link.id ? " is-active" : ""}`}
                   href={`#${link.id}`}
                   key={link.id}
                   onClick={(event) => handleClick(event, link.id)}

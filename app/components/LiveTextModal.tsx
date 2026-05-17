@@ -171,6 +171,7 @@ export default function LiveTextModal({ open, onClose }: Props) {
 function LiveTextIllustration() {
   return (
     <svg
+      aria-hidden="true"
       height="auto"
       style={{ maxWidth: 220 }}
       viewBox="0 0 260 500"

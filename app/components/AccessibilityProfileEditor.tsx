@@ -152,7 +152,7 @@ export default function AccessibilityProfileEditor({
           const icon = rowIcon(feature);
           return (
             <div
-              className={`privacy-profile-strip-row${rowHasPref ? "has-preference" : ""}`}
+              className={`privacy-profile-strip-row${rowHasPref ? " has-preference" : ""}`}
               key={key}
               role="listitem"
             >
@@ -198,7 +198,7 @@ export default function AccessibilityProfileEditor({
                   return (
                     <button
                       aria-checked={selected}
-                      className={`privacy-profile-pill${selected ? "is-selected" : ""}`}
+                      className={`privacy-profile-pill${selected ? " is-selected" : ""}`}
                       data-a11y-pref={pref}
                       disabled={disabled}
                       key={pref}
@@ -213,7 +213,7 @@ export default function AccessibilityProfileEditor({
                 })}
                 <button
                   aria-checked={current === null}
-                  className={`privacy-profile-pill privacy-profile-pill-optout${current === null ? "is-selected" : ""}`}
+                  className={`privacy-profile-pill privacy-profile-pill-optout${current === null ? " is-selected" : ""}`}
                   disabled={disabled}
                   onClick={() => setPreference(key, null)}
                   role="radio"

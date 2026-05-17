@@ -6070,6 +6070,7 @@ export default function SettingsView({
                     disabled={syncing || status?.isRunning}
                     onClick={triggerSync}
                     style={{ marginTop: 20 }}
+                    type="button"
                   >
                     {syncing ? (
                       <>
@@ -6912,6 +6913,7 @@ ollama serve`}
                       disabled={policyBulkRunning !== null}
                       onClick={() => runBulkPolicySync("fetch")}
                       title={tPolicyCard("rescrape_title")}
+                      type="button"
                     >
                       {policyBulkRunning === "fetch" ? (
                         <>
@@ -6927,6 +6929,7 @@ ollama serve`}
                       disabled={policyBulkRunning !== null}
                       onClick={() => runBulkPolicySync("all")}
                       title={tPolicyCard("summarise_title")}
+                      type="button"
                     >
                       {policyBulkRunning === "all" ? (
                         <>
@@ -7045,6 +7048,7 @@ ollama serve`}
                   <input
                     aria-describedby="policy-scrape-disabled-help"
                     checked={scrapeDisabled}
+                    className="settings-checkbox"
                     disabled={scrapeDisabledAutoSave.saving}
                     onChange={(event) => {
                       const disabled = event.target.checked;
@@ -7064,6 +7068,7 @@ ollama serve`}
                 >
                   {tPolicyThrottle.rich("scrape_disabled_help", {
                     strong: (chunks) => <strong>{chunks}</strong>,
+                    em: (chunks) => <em>{chunks}</em>,
                   })}
                 </span>
               </div>
@@ -7739,7 +7744,7 @@ ollama serve`}
                                             highlightItemId === item.id;
                                           return (
                                             <li
-                                              className={`import-item-row import-item-row-${item.status}${isDeepLinkTarget ? "import-item-row-focused" : ""}`}
+                                              className={`import-item-row import-item-row-${item.status}${isDeepLinkTarget ? " import-item-row-focused" : ""}`}
                                               id={`import-item-${item.id}`}
                                               key={item.id}
                                             >
@@ -8799,6 +8804,7 @@ ollama serve`}
                         className="btn btn-secondary"
                         disabled={exportingBackup}
                         onClick={handleExportBackup}
+                        type="button"
                       >
                         {exportingBackup
                           ? tBackupCard("download_busy")
@@ -9009,6 +9015,7 @@ ollama serve`}
                         className="btn btn-secondary"
                         disabled={creatingBackupSnapshot}
                         onClick={() => void handleCreateBackupSnapshot()}
+                        type="button"
                       >
                         {creatingBackupSnapshot
                           ? tBackupCard("snapshots_creating")
@@ -9166,6 +9173,7 @@ ollama serve`}
                       }
                       onClick={() => void runBulkWaybackImport()}
                       title={tWayback("import_title")}
+                      type="button"
                     >
                       {waybackRunning ? (
                         <>
@@ -9185,6 +9193,7 @@ ollama serve`}
                         }
                         onClick={() => void controlWaybackImport("pause")}
                         title={tWayback("pause_title")}
+                        type="button"
                       >
                         {waybackControlBusy === "pause" ||
                         waybackRunStatus === "pause_requested" ? (
@@ -9203,6 +9212,7 @@ ollama serve`}
                         disabled={waybackControlBusy !== null}
                         onClick={() => void controlWaybackImport("resume")}
                         title={tWayback("resume_title")}
+                        type="button"
                       >
                         {waybackControlBusy === "resume" ? (
                           <>
@@ -9226,6 +9236,7 @@ ollama serve`}
                         }
                         onClick={() => void controlWaybackImport("cancel")}
                         title={tWayback("cancel_title")}
+                        type="button"
                       >
                         {waybackControlBusy === "cancel" ||
                         waybackRunStatus === "cancel_requested" ? (
@@ -9249,6 +9260,7 @@ ollama serve`}
                           void runBulkWaybackImport({ force: true })
                         }
                         title={tWayback("force_title")}
+                        type="button"
                       >
                         {waybackControlBusy === "force" ? (
                           <>
@@ -9269,6 +9281,7 @@ ollama serve`}
                       }
                       onClick={() => setWaybackRemoveOpen(true)}
                       title={tWayback("remove_title")}
+                      type="button"
                     >
                       {waybackRemoving ? (
                         <>
@@ -9691,6 +9704,7 @@ ollama serve`}
                         className="btn btn-danger"
                         disabled={Boolean(status?.isRunning)}
                         onClick={() => setResetStep(1)}
+                        type="button"
                       >
                         {tResetCard("reset_button")}
                       </button>
@@ -10699,20 +10713,13 @@ ollama serve`}
               <div
                 aria-label={tAria("rows_per_table")}
                 className="backup-preview-table"
-                role="table"
               >
                 {restorePreview.perTable
                   .filter((row) => row.rows > 0)
                   .map((row) => (
-                    <div
-                      className="backup-preview-row"
-                      key={row.name}
-                      role="row"
-                    >
-                      <span className="backup-preview-name" role="cell">
-                        {row.name}
-                      </span>
-                      <span className="backup-preview-count" role="cell">
+                    <div className="backup-preview-row" key={row.name}>
+                      <span className="backup-preview-name">{row.name}</span>
+                      <span className="backup-preview-count">
                         {row.rows.toLocaleString()}
                       </span>
                     </div>
@@ -10787,6 +10794,7 @@ ollama serve`}
                   className="btn btn-ghost"
                   disabled={restoreStage === "applying"}
                   onClick={resetRestoreFlow}
+                  type="button"
                 >
                   {tModalRestore("cancel")}
                 </button>
@@ -10797,6 +10805,7 @@ ollama serve`}
                     restoreConfirmText.trim().toUpperCase() !== "RESTORE"
                   }
                   onClick={handleRestoreConfirm}
+                  type="button"
                 >
                   {restoreStage === "applying"
                     ? tModalRestore("restoring")

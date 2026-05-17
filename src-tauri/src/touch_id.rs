@@ -57,12 +57,24 @@ pub fn prompt(reason: &str, timeout: Duration) -> Result<bool, String> {
             error: &mut preflight_err
         ];
         if !can_evaluate.as_bool() {
-            let msg = if preflight_err.is_null() {
-                "LAContext can't evaluate authentication (no Touch ID or password set up)".to_string()
-            } else {
-                let err: &NSError = &*preflight_err;
-                let s: Retained<NSString> = msg_send![err, localizedDescription];
-                s.to_string()
+            // canEvaluatePolicy returns an autoreleased NSError via the
+            // out-param. Convert the raw `*mut NSError` to an owned
+            // `Retained<NSError>` via `Retained::retain` rather than
+            // dereferencing it directly. `retain` is the documented
+            // objc2 path for taking ownership of an Objective-C return
+            // through a raw pointer: it folds the null check into the
+            // `Option`, bumps the retain count to give us stable
+            // ownership for the duration of the message-send, and
+            // lifts the pointer into Rust's lifetime tracking — so we
+            // never expose a raw-pointer dereference to the rest of
+            // the function. CodeQL's `rust/access-invalid-pointer`
+            // rule flagged the previous `&*preflight_err` form.
+            let msg = match Retained::retain(preflight_err) {
+                None => "LAContext can't evaluate authentication (no Touch ID or password set up)".to_string(),
+                Some(err) => {
+                    let s: Retained<NSString> = msg_send![&*err, localizedDescription];
+                    s.to_string()
+                }
             };
             return Err(msg);
         }

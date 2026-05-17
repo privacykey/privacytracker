@@ -166,10 +166,9 @@ export default function BulkSelectBar({
 
   return (
     <>
-      <div
+      <section
         aria-label={t("toolbar_label")}
         className={`bulk-select-bar ${hasSelection ? "is-active" : "is-empty"}`}
-        role="region"
       >
         {/* Top row: state-aware headline so the user always knows what
             the bar wants from them. Empty → invitation. Active →
@@ -266,7 +265,7 @@ export default function BulkSelectBar({
             </span>
           )}
         </div>
-      </div>
+      </section>
 
       {pendingConfirm && (
         <div

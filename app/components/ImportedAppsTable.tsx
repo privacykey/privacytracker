@@ -82,7 +82,7 @@ export default function ImportedAppsTable({ entries, onRemove, onAdd }: Props) {
           the viewport. Empty state renders an inline hint inside the
           same container so the layout shape stays consistent. */}
       <div
-        className={`imported-apps-table-rows${isEmpty ? "is-empty" : ""}`}
+        className={`imported-apps-table-rows${isEmpty ? " is-empty" : ""}`}
         data-testid="imported-apps-rows"
         role="list"
       >

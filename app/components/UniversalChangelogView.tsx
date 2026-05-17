@@ -364,7 +364,7 @@ export default function UniversalChangelogView({
               return (
                 <button
                   aria-selected={active}
-                  className={`changelog-filter-preset${active ? "is-active" : ""}`}
+                  className={`changelog-filter-preset${active ? " is-active" : ""}`}
                   key={b.id}
                   onClick={() =>
                     setFilters((prev) => ({ ...prev, preset: b.id }))

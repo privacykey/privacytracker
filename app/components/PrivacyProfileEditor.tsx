@@ -169,12 +169,12 @@ export default function PrivacyProfileEditor({
             const isPending = pendingPreset === presetKey;
             return (
               <div
-                className={`privacy-profile-preset-cell${isPending ? "has-pending-confirm" : ""}`}
+                className={`privacy-profile-preset-cell${isPending ? " has-pending-confirm" : ""}`}
                 key={presetKey}
               >
                 <button
                   aria-checked={isActive}
-                  className={`privacy-profile-preset-pill${isActive ? "is-active" : ""}`}
+                  className={`privacy-profile-preset-pill${isActive ? " is-active" : ""}`}
                   data-preset={presetKey}
                   data-severity={meta.severityCls}
                   disabled={disabled}
@@ -284,7 +284,7 @@ export default function PrivacyProfileEditor({
           const rowHasPref = current !== null;
           return (
             <div
-              className={`privacy-profile-strip-row${rowHasPref ? "has-preference" : ""}`}
+              className={`privacy-profile-strip-row${rowHasPref ? " has-preference" : ""}`}
               key={key}
               role="listitem"
             >
@@ -315,7 +315,7 @@ export default function PrivacyProfileEditor({
                   return (
                     <button
                       aria-checked={selected}
-                      className={`privacy-profile-pill${selected ? "is-selected" : ""}`}
+                      className={`privacy-profile-pill${selected ? " is-selected" : ""}`}
                       data-tier={tier}
                       disabled={disabled}
                       key={tier}
@@ -330,7 +330,7 @@ export default function PrivacyProfileEditor({
                 })}
                 <button
                   aria-checked={current === null}
-                  className={`privacy-profile-pill privacy-profile-pill-optout${current === null ? "is-selected" : ""}`}
+                  className={`privacy-profile-pill privacy-profile-pill-optout${current === null ? " is-selected" : ""}`}
                   disabled={disabled}
                   onClick={() => setTier(key, null)}
                   role="radio"

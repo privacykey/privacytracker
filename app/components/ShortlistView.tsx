@@ -952,7 +952,7 @@ export default function ShortlistView({
               without us needing an inline helper paragraph. */}
           {f.detailedView && (
             <label
-              className={`shortlist-detailed-toggle${detailedView ? "is-on" : ""}`}
+              className={`shortlist-detailed-toggle${detailedView ? " is-on" : ""}`}
               title={tShortlist("detailed_toggle_title")}
             >
               <input
@@ -1037,10 +1037,9 @@ export default function ShortlistView({
           `shortlist-reset-footer` so the print stylesheet can hide it
           alongside the rest of the chrome. */}
       {f.actionsReset && totalCount > 0 && (
-        <div
+        <section
           aria-label={tShortlist("reset_aria")}
           className="shortlist-reset-footer"
-          role="region"
         >
           {confirmingReset ? (
             <div
@@ -1090,7 +1089,7 @@ export default function ShortlistView({
               <span>{tShortlist("reset_label")}</span>
             </button>
           )}
-        </div>
+        </section>
       )}
 
       {preview.kind !== "idle" && (
@@ -1420,7 +1419,7 @@ function ShortlistEntryRow({
 
   return (
     <>
-      <div className={`shortlist-entry${detailedView ? "has-detailed" : ""}`}>
+      <div className={`shortlist-entry${detailedView ? " has-detailed" : ""}`}>
         {/* Entry-row icon: 40px (mid step in the 32 / 40 / 48 ladder).
           Group headers use 32 (small/inline-with-text), drawer previews
           use 48 (hero-sized). Stepping by 8 keeps the visual hierarchy

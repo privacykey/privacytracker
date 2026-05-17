@@ -339,7 +339,13 @@ function CategoryCard({
         </span>
 
         <span aria-hidden="true" className="pmap-card-chevron">
-          <svg fill="none" height="12" viewBox="0 0 12 12" width="12">
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="12"
+            viewBox="0 0 12 12"
+            width="12"
+          >
             <path
               d="M2.5 4.25L6 7.75L9.5 4.25"
               stroke="currentColor"

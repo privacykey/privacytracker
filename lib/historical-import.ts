@@ -837,8 +837,14 @@ function throwIfAborted(signal?: AbortSignal): void {
 export function parsePrivacyItemsFromArchivedHtml(
   html: string
 ): PrivacyTypeSnapshot[] | null {
+  // Closing tag accepts `</script\s*>` (whitespace before `>`) to stay
+  // robust against the HTML5 end-tag form. A naked `</script>` literal
+  // would let archived pages with `</script >` slip through as one
+  // giant unterminated match and either parse incorrectly or fail
+  // entirely. Same shape as the redirect-extractor regex CodeQL
+  // flagged via `js/bad-tag-filter` over in lib/privacy-policy.ts.
   const jsonMatch = html.match(
-    /<script[^>]*id="serialized-server-data"[^>]*>([\s\S]*?)<\/script>/
+    /<script[^>]*id="serialized-server-data"[^>]*>([\s\S]*?)<\/script\s*>/
   );
 
   // Modern serialized-server-data path; missing tag drops to the

@@ -1416,6 +1416,7 @@ export default function AppDetailView({
           onClick={() => setTab("privacy")}
           role="tab"
           tabIndex={tab === "privacy" ? 0 : -1}
+          type="button"
         >
           {tDetailTabs("privacy_labels")}
           <span style={{ marginLeft: 6, fontSize: 12, color: "var(--text-3)" }}>
@@ -1440,6 +1441,7 @@ export default function AppDetailView({
               onClick={() => setTab("accessibility")}
               role="tab"
               tabIndex={tab === "accessibility" ? 0 : -1}
+              type="button"
             >
               {tDetailTabs("accessibility")}
               <span
@@ -1462,6 +1464,7 @@ export default function AppDetailView({
             onClick={() => setTab("policy")}
             role="tab"
             tabIndex={tab === "policy" ? 0 : -1}
+            type="button"
           >
             {tDetailTabs("ai_policy")}
             <span
@@ -1483,6 +1486,7 @@ export default function AppDetailView({
           onClick={() => setTab("changelog")}
           role="tab"
           tabIndex={tab === "changelog" ? 0 : -1}
+          type="button"
         >
           {tDetailTabs("change_history")}
           <span style={{ marginLeft: 6, fontSize: 12, color: "var(--text-3)" }}>
@@ -1506,6 +1510,7 @@ export default function AppDetailView({
             onClick={() => setTab("compare")}
             role="tab"
             tabIndex={tab === "compare" ? 0 : -1}
+            type="button"
           >
             {tDetail("tab_compare")}
             <span
@@ -3307,15 +3312,13 @@ function PolicyRecentChangeBanner({
         <strong>Privacy policy text changed {ageCopy}.</strong> This change was
         first captured {formatDate(recentPolicyChange.changedAt)}, inside the{" "}
         {policyDiffAlertDays}-day alert window configured in Settings.{" "}
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            onViewDiff();
-          }}
+        <button
+          className="policy-diff-alert-link"
+          onClick={onViewDiff}
+          type="button"
         >
           View diff on the History tab →
-        </a>
+        </button>
       </div>
     </div>
   );
@@ -4106,11 +4109,10 @@ function PrivacyTypeSection({
       </div>
 
       {open && (
-        <div
+        <section
           aria-labelledby={headerId}
           className="accordion-body"
           id={panelId}
-          role="region"
         >
           {privacyType.detail && (
             <p
@@ -4171,7 +4173,7 @@ function PrivacyTypeSection({
                 */
                 <div className="category-card-wrapper" key={cat.id}>
                   <Link
-                    className={`category-card category-card-link${isMismatch ? "category-card-mismatch" : ""}`}
+                    className={`category-card category-card-link${isMismatch ? " category-card-mismatch" : ""}`}
                     href={`/dashboard/privacy#cat-${privacyType.identifier}-${cat.identifier}`}
                     title={
                       mismatchTitle ?? tDetail("category_other_apps_title")
@@ -4221,7 +4223,7 @@ function PrivacyTypeSection({
               );
             })}
           </div>
-        </div>
+        </section>
       )}
     </div>
   );
@@ -4455,6 +4457,7 @@ function AccessibilityPanel({
             <div aria-hidden="true" className="a11y-feature-status">
               {row.declared ? (
                 <svg
+                  aria-hidden="true"
                   fill="none"
                   height="18"
                   stroke="currentColor"
@@ -4468,6 +4471,7 @@ function AccessibilityPanel({
                 </svg>
               ) : (
                 <svg
+                  aria-hidden="true"
                   fill="none"
                   height="18"
                   stroke="currentColor"

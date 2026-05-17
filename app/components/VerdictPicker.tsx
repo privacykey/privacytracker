@@ -427,7 +427,7 @@ export default function VerdictPicker({
           return (
             <button
               aria-checked={active}
-              className={`verdict-picker-chip verdict-picker-chip-${meta.cls}${active ? "is-active" : ""}`}
+              className={`verdict-picker-chip verdict-picker-chip-${meta.cls}${active ? " is-active" : ""}`}
               disabled={state.saving}
               key={value}
               onClick={() => setVerdict(value, state.rationale.trim() || null)}
@@ -456,10 +456,9 @@ export default function VerdictPicker({
   // user has decided.
   const importedSection =
     state.imported.length > 0 ? (
-      <div
+      <section
         aria-label={tPicker("imported_aria")}
         className="verdict-picker-imported"
-        role="region"
       >
         <p className="verdict-picker-imported-title">
           {tPicker("imported_title")}
@@ -517,7 +516,7 @@ export default function VerdictPicker({
         <p className="verdict-picker-imported-hint">
           {tPicker("imported_hint")}
         </p>
-      </div>
+      </section>
     ) : null;
 
   // Wrap the parts that recur across all three views — the heading

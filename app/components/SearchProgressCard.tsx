@@ -62,7 +62,7 @@ export default function SearchProgressCard({ progress, onCancel }: Props) {
         aria-valuemax={progress.total}
         aria-valuemin={0}
         aria-valuenow={progress.matched}
-        className={`search-progress-bar${isPreFirst ? "is-indeterminate" : ""}`}
+        className={`search-progress-bar${isPreFirst ? " is-indeterminate" : ""}`}
         role="progressbar"
       >
         <div

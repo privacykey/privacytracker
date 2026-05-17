@@ -419,6 +419,7 @@ export default function PrivacyHeatmap() {
                 className="btn btn-secondary btn-sm"
                 disabled={effectivePage === 0}
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
+                type="button"
               >
                 ‹ Prev
               </button>
@@ -435,6 +436,7 @@ export default function PrivacyHeatmap() {
                 className="btn btn-secondary btn-sm"
                 disabled={effectivePage >= totalPages - 1}
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                type="button"
               >
                 Next ›
               </button>

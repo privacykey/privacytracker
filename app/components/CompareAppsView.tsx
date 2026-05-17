@@ -555,7 +555,7 @@ export default function CompareAppsView({
           >
             <button
               aria-pressed={compareMode === "privacy"}
-              className={`compare-mode-btn${compareMode === "privacy" ? "is-active" : ""}`}
+              className={`compare-mode-btn${compareMode === "privacy" ? " is-active" : ""}`}
               onClick={() => setCompareMode("privacy")}
               type="button"
             >
@@ -563,7 +563,7 @@ export default function CompareAppsView({
             </button>
             <button
               aria-pressed={compareMode === "accessibility"}
-              className={`compare-mode-btn${compareMode === "accessibility" ? "is-active" : ""}`}
+              className={`compare-mode-btn${compareMode === "accessibility" ? " is-active" : ""}`}
               onClick={() => setCompareMode("accessibility")}
               type="button"
             >
@@ -571,7 +571,7 @@ export default function CompareAppsView({
             </button>
             <button
               aria-pressed={compareMode === "both"}
-              className={`compare-mode-btn${compareMode === "both" ? "is-active" : ""}`}
+              className={`compare-mode-btn${compareMode === "both" ? " is-active" : ""}`}
               onClick={() => setCompareMode("both")}
               title={tCompare("both_mode_title")}
               type="button"
@@ -790,7 +790,7 @@ export default function CompareAppsView({
                     <li key={entry.id}>
                       <button
                         aria-pressed={isPicked}
-                        className={`compare-source-shortlist-chip${isPicked ? "is-picked" : ""}`}
+                        className={`compare-source-shortlist-chip${isPicked ? " is-picked" : ""}`}
                         onClick={() =>
                           setSpecB(
                             isPicked ? null : `url:${entry.candidateStoreUrl}`
@@ -1601,7 +1601,7 @@ function SlotPicker({
                     {enableShortlistOnResults && sourceAppId && (
                       <button
                         aria-pressed={shortlisted}
-                        className={`compare-shortlist-btn${shortlisted ? "is-saved" : ""}`}
+                        className={`compare-shortlist-btn${shortlisted ? " is-saved" : ""}`}
                         onClick={() =>
                           onToggleShortlist({
                             appleId: pastedUrl.appleId,
@@ -1773,7 +1773,7 @@ function SlotPicker({
                           {enableShortlistOnResults && sourceAppId && (
                             <button
                               aria-pressed={shortlisted}
-                              className={`compare-shortlist-btn${shortlisted ? "is-saved" : ""}`}
+                              className={`compare-shortlist-btn${shortlisted ? " is-saved" : ""}`}
                               onClick={() =>
                                 onToggleShortlist({
                                   appleId: m.appleId,
@@ -1942,7 +1942,7 @@ function ModeButton({
   return (
     <button
       aria-pressed={active}
-      className={`compare-mode-btn${active ? "is-active" : ""}`}
+      className={`compare-mode-btn${active ? " is-active" : ""}`}
       onClick={onClick}
       type="button"
     >
@@ -2175,7 +2175,7 @@ function RelatedAppsPanel({
                   <li key={c.appleId}>
                     <button
                       aria-pressed={picked}
-                      className={`compare-related-chip${picked ? "is-picked" : ""}`}
+                      className={`compare-related-chip${picked ? " is-picked" : ""}`}
                       onClick={() => onPick(c.url)}
                       title={
                         picked
@@ -2358,11 +2358,7 @@ function ComparisonBody({
           sourceIdForB={sourceIdForB}
           toggleShortlistFor={toggleShortlistFor}
         />
-        <div
-          aria-label={tCompare("accessibility_separator_aria")}
-          className="compare-both-divider"
-          role="separator"
-        >
+        <div className="compare-both-divider">
           <span className="compare-both-divider-label">
             {tCompare("a11y_section_label")}
           </span>
@@ -2919,7 +2915,7 @@ function SlotHeader({
   const hasFooter = isNoData || isUnfilled || hasA11yCount;
   return (
     <div
-      className={`compare-slot-header${isNoData ? "compare-slot-header-ok" : ""}${isUnfilled ? "compare-slot-header-warn" : ""}`}
+      className={`compare-slot-header${isNoData ? " compare-slot-header-ok" : ""}${isUnfilled ? " compare-slot-header-warn" : ""}`}
     >
       <div className="compare-slot-header-row">
         {slot.iconUrl ? (
@@ -2976,7 +2972,7 @@ function SlotHeader({
         {shortlistAction && (
           <button
             aria-pressed={shortlistAction.isShortlisted}
-            className={`compare-shortlist-btn compare-shortlist-btn-header${shortlistAction.isShortlisted ? "is-saved" : ""}`}
+            className={`compare-shortlist-btn compare-shortlist-btn-header${shortlistAction.isShortlisted ? " is-saved" : ""}`}
             onClick={shortlistAction.onClick}
             title={
               shortlistAction.isShortlisted
@@ -3745,7 +3741,7 @@ function AccessibilitySlotHeader({
 
   return (
     <div
-      className={`compare-slot-header${status === "none" ? "compare-slot-header-warn" : ""}${status === "labeled" ? "compare-slot-header-a11y-ok" : ""}`}
+      className={`compare-slot-header${status === "none" ? " compare-slot-header-warn" : ""}${status === "labeled" ? " compare-slot-header-a11y-ok" : ""}`}
     >
       <div className="compare-slot-header-row">
         {slot.iconUrl ? (
@@ -3802,7 +3798,7 @@ function AccessibilitySlotHeader({
         {shortlistAction && (
           <button
             aria-pressed={shortlistAction.isShortlisted}
-            className={`compare-shortlist-btn compare-shortlist-btn-header${shortlistAction.isShortlisted ? "is-saved" : ""}`}
+            className={`compare-shortlist-btn compare-shortlist-btn-header${shortlistAction.isShortlisted ? " is-saved" : ""}`}
             onClick={shortlistAction.onClick}
             title={
               shortlistAction.isShortlisted

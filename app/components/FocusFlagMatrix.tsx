@@ -646,10 +646,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
         combo&rsquo;s authored cells in as live overrides for testing.
       </p>
 
-      <div
+      <section
         aria-label="Focus × Flags matrix"
         className="focus-matrix-table-wrap"
-        role="region"
       >
         <table className="focus-matrix-table">
           <thead>
@@ -693,7 +692,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
             )}
           </tbody>
         </table>
-      </div>
+      </section>
 
       {toast && (
         <div aria-live="polite" className="focus-matrix-toast" role="status">

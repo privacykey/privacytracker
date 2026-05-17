@@ -892,13 +892,19 @@ export function TaskCenterTrigger() {
               <div className="task-center-section-label">
                 {t("section_upcoming")}
               </div>
-              <a
+              <Link
                 className="task-center-upcoming"
                 href="/dashboard/settings#sync-schedule"
                 onClick={goToSyncSchedule}
               >
                 <div aria-hidden="true" className="task-center-upcoming-icon">
-                  <svg fill="none" height="16" viewBox="0 0 16 16" width="16">
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    width="16"
+                  >
                     <circle
                       cx="8"
                       cy="8"
@@ -933,7 +939,7 @@ export function TaskCenterTrigger() {
                 >
                   ›
                 </div>
-              </a>
+              </Link>
             </div>
           )}
 

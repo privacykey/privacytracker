@@ -697,6 +697,7 @@ export default function AnnotationsSidebar({
         >
           <span aria-hidden="true" className="annotations-sidebar__chevron">
             <svg
+              aria-hidden="true"
               fill="none"
               height="14"
               stroke="currentColor"
@@ -1077,7 +1078,7 @@ function AnnotationCard({ annotation, onUpdate, onDelete }: CardProps) {
             >
               <button
                 aria-selected={editMode === "edit"}
-                className={`annotations-composer-tab${editMode === "edit" ? "is-active" : ""}`}
+                className={`annotations-composer-tab${editMode === "edit" ? " is-active" : ""}`}
                 onClick={() => setEditMode("edit")}
                 role="tab"
                 type="button"
@@ -1086,7 +1087,7 @@ function AnnotationCard({ annotation, onUpdate, onDelete }: CardProps) {
               </button>
               <button
                 aria-selected={editMode === "preview"}
-                className={`annotations-composer-tab${editMode === "preview" ? "is-active" : ""}`}
+                className={`annotations-composer-tab${editMode === "preview" ? " is-active" : ""}`}
                 disabled={!content.trim()}
                 onClick={() => setEditMode("preview")}
                 role="tab"
@@ -1131,11 +1132,10 @@ function AnnotationCard({ annotation, onUpdate, onDelete }: CardProps) {
                 value={content}
               />
             ) : (
-              <div
+              <section
                 aria-label={t("markdown_preview_aria")}
                 className="annotations-composer-preview"
                 dangerouslySetInnerHTML={{ __html: renderAnnotation(content) }}
-                role="region"
               />
             )}
           </div>
@@ -1155,7 +1155,7 @@ function AnnotationCard({ annotation, onUpdate, onDelete }: CardProps) {
               setEditing(true);
             }
           }}
-          role="textbox"
+          role="button"
           tabIndex={0}
         />
       )}
@@ -1291,7 +1291,7 @@ function NewAnnotationForm({ onCreate, onCancel }: NewProps) {
         >
           <button
             aria-selected={editMode === "edit"}
-            className={`annotations-composer-tab${editMode === "edit" ? "is-active" : ""}`}
+            className={`annotations-composer-tab${editMode === "edit" ? " is-active" : ""}`}
             onClick={() => setEditMode("edit")}
             role="tab"
             type="button"
@@ -1300,7 +1300,7 @@ function NewAnnotationForm({ onCreate, onCancel }: NewProps) {
           </button>
           <button
             aria-selected={editMode === "preview"}
-            className={`annotations-composer-tab${editMode === "preview" ? "is-active" : ""}`}
+            className={`annotations-composer-tab${editMode === "preview" ? " is-active" : ""}`}
             disabled={!content.trim()}
             onClick={() => setEditMode("preview")}
             role="tab"
@@ -1340,11 +1340,10 @@ function NewAnnotationForm({ onCreate, onCancel }: NewProps) {
             value={content}
           />
         ) : (
-          <div
+          <section
             aria-label={t("markdown_preview_aria")}
             className="annotations-composer-preview"
             dangerouslySetInnerHTML={{ __html: renderAnnotation(content) }}
-            role="region"
           />
         )}
       </div>

@@ -430,7 +430,7 @@ export default function AccessibilityQuickToggles() {
         aria-label={
           anyActive ? t("trigger_aria_active") : t("trigger_aria_idle")
         }
-        className={`a11y-quick-trigger${anyActive ? "is-active" : ""}`}
+        className={`a11y-quick-trigger${anyActive ? " is-active" : ""}`}
         onClick={() => setOpen((o) => !o)}
         ref={triggerRef}
         title={t("trigger_title")}
@@ -461,7 +461,7 @@ export default function AccessibilityQuickToggles() {
           <span
             aria-hidden="true"
             className={`a11y-quick-trigger-dot${
-              shapes === "on" ? "a11y-quick-trigger-dot-tick" : ""
+              shapes === "on" ? " a11y-quick-trigger-dot-tick" : ""
             }`}
           >
             {/* Tick glyph only when Shape change markers is on — same
@@ -519,7 +519,7 @@ export default function AccessibilityQuickToggles() {
               </div>
               <button
                 aria-checked={font === "dyslexic"}
-                className={`switch-toggle${font === "dyslexic" ? "is-on" : ""}`}
+                className={`switch-toggle${font === "dyslexic" ? " is-on" : ""}`}
                 onClick={toggleFont}
                 role="switch"
                 type="button"
@@ -619,7 +619,7 @@ export default function AccessibilityQuickToggles() {
                   return (
                     <button
                       aria-checked={theme === mode}
-                      className={`a11y-quick-theme-btn${theme === mode ? "is-active" : ""}`}
+                      className={`a11y-quick-theme-btn${theme === mode ? " is-active" : ""}`}
                       key={mode}
                       onClick={() => chooseTheme(mode)}
                       role="radio"
@@ -675,7 +675,7 @@ export default function AccessibilityQuickToggles() {
               </div>
               <button
                 aria-checked={shapes === "on"}
-                className={`switch-toggle${shapes === "on" ? "is-on" : ""}`}
+                className={`switch-toggle${shapes === "on" ? " is-on" : ""}`}
                 onClick={toggleShapes}
                 role="switch"
                 type="button"
@@ -696,7 +696,7 @@ export default function AccessibilityQuickToggles() {
               </div>
               <button
                 aria-checked={solid === "on"}
-                className={`switch-toggle${solid === "on" ? "is-on" : ""}`}
+                className={`switch-toggle${solid === "on" ? " is-on" : ""}`}
                 onClick={toggleSolid}
                 role="switch"
                 type="button"

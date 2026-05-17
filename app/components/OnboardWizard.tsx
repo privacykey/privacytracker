@@ -5001,6 +5001,7 @@ export default function OnboardWizard({
                     className="btn btn-secondary btn-lg"
                     disabled={savingAi}
                     onClick={() => router.push("/dashboard")}
+                    type="button"
                   >
                     {tAiStep("skip_dashboard")}
                   </button>
@@ -5012,6 +5013,7 @@ export default function OnboardWizard({
                   }
                   onClick={() => void runPolicyRegeneration()}
                   style={{ flex: 1 }}
+                  type="button"
                 >
                   {savingAi ? (
                     <>
@@ -5268,6 +5270,7 @@ export default function OnboardWizard({
                     <span aria-hidden="true" className="wizard-a11y-icon">
                       {/* SF-symbol-style accessibility person-in-a-circle */}
                       <svg
+                        aria-hidden="true"
                         fill="none"
                         height="18"
                         stroke="currentColor"
@@ -5312,6 +5315,7 @@ export default function OnboardWizard({
                 data-testid="onboard-step1-continue"
                 onClick={() => setStep(2)}
                 style={{ flex: 1 }}
+                type="button"
               >
                 {tStep1("continue_with", {
                   method: methodMeta[method].title.toLowerCase(),
@@ -6412,6 +6416,7 @@ export default function OnboardWizard({
                   className="btn btn-secondary"
                   disabled={searching}
                   onClick={() => setStep(1)}
+                  type="button"
                 >
                   {tStep2("back")}
                 </button>
@@ -6421,6 +6426,7 @@ export default function OnboardWizard({
                   disabled={searching || selectedCount === 0 || ocring}
                   onClick={handleSearch}
                   style={{ flex: 1 }}
+                  type="button"
                 >
                   {searching && searchProgress ? (
                     tStep2("search_busy_count", {
@@ -7472,6 +7478,7 @@ export default function OnboardWizard({
                   <button
                     className="btn btn-secondary"
                     onClick={() => setStep(2)}
+                    type="button"
                   >
                     {tStep3("back")}
                   </button>
@@ -7485,6 +7492,7 @@ export default function OnboardWizard({
                     }
                     onClick={() => void handleConfirm(effectiveSelected)}
                     style={{ flex: 1 }}
+                    type="button"
                   >
                     {pendingMatchCount > 0
                       ? `Waiting for ${pendingMatchCount} match${pendingMatchCount === 1 ? "" : "es"}…`
@@ -7785,6 +7793,7 @@ export default function OnboardWizard({
                 <button
                   className="btn btn-secondary btn-lg"
                   onClick={() => router.push("/dashboard")}
+                  type="button"
                 >
                   {tStep4("skip_dashboard")}
                 </button>
@@ -7794,6 +7803,7 @@ export default function OnboardWizard({
                     onClick={() =>
                       router.push("/dashboard/settings/import-history")
                     }
+                    type="button"
                   >
                     {tStep4("view_history")}
                   </button>
@@ -7807,6 +7817,7 @@ export default function OnboardWizard({
                   }
                   onClick={() => setStep(5)}
                   style={{ flex: 1 }}
+                  type="button"
                 >
                   {tStep4("next_ai")}
                 </button>
@@ -7864,20 +7875,13 @@ export default function OnboardWizard({
               <div
                 aria-label={tModalRestore("rows_per_table_aria")}
                 className="backup-preview-table"
-                role="table"
               >
                 {restorePreview.perTable
                   .filter((row) => row.rows > 0)
                   .map((row) => (
-                    <div
-                      className="backup-preview-row"
-                      key={row.name}
-                      role="row"
-                    >
-                      <span className="backup-preview-name" role="cell">
-                        {row.name}
-                      </span>
-                      <span className="backup-preview-count" role="cell">
+                    <div className="backup-preview-row" key={row.name}>
+                      <span className="backup-preview-name">{row.name}</span>
+                      <span className="backup-preview-count">
                         {row.rows.toLocaleString()}
                       </span>
                     </div>
@@ -7935,6 +7939,7 @@ export default function OnboardWizard({
                   className="btn btn-ghost"
                   disabled={restoreStage === "applying"}
                   onClick={resetRestoreFlow}
+                  type="button"
                 >
                   {tModalRestore("cancel")}
                 </button>
@@ -7945,6 +7950,7 @@ export default function OnboardWizard({
                     restoreConfirmText.trim().toUpperCase() !== "RESTORE"
                   }
                   onClick={handleRestoreConfirm}
+                  type="button"
                 >
                   {restoreStage === "applying"
                     ? tModalRestore("restoring")
@@ -8818,6 +8824,7 @@ function SearchResultBlock({
             <button
               className="show-more-btn"
               onClick={() => setShowAll(!showAll)}
+              type="button"
             >
               {showAll ? t("show_less") : moreLabel}
             </button>

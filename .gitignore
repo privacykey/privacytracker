@@ -7,6 +7,14 @@
 /.next-build-check
 /out
 
+# Next.js writes this with a different routes-types import path
+# depending on whether `next dev` (./.next/dev/types/…) or `next build`
+# / `next typegen` (./.next/types/…) most recently touched it, which
+# produced churn in git status on every dev/prod switch. Treat it as
+# build output; the `pretypecheck` script in package.json regenerates
+# it via `next typegen` before `tsc` runs.
+/next-env.d.ts
+
 # ── TypeScript build cache ───────────────────────────────────────────
 # `tsc --incremental` writes these; they're per-machine and noisy in
 # diffs. Excluded everywhere, including the root and any subproject.
