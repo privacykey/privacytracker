@@ -187,7 +187,7 @@ function PrivacySection({
       <div className="pmap-section-header">
         <div className="pmap-section-header-main">
           <span className={`severity-badge ${cls}`}>
-            {icon} {label}
+            <span aria-hidden="true">{icon}</span> {label}
           </span>
           {config?.description && <InfoTooltip text={config.description} />}
         </div>

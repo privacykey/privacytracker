@@ -1733,7 +1733,7 @@ function ScrapeActivityCard({
               className="diagnostics-pill diagnostics-severity-warn"
               style={{ marginLeft: 8 }}
             >
-              {inProgress.length} in flight
+              <span aria-hidden="true">⚠</span> {inProgress.length} in flight
             </span>
           )}
         </h2>

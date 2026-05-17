@@ -7260,6 +7260,17 @@ html[data-theme-override="high-contrast"] .nav {
   );
 }
 
+/* Active-state structural cue — adds an inset ring in the active
+   colour so the "this chip is selected" affordance survives in
+   monochrome and for users with red-green colour blindness. The
+   ring is on top of (not in place of) the existing tint, so
+   sighted users get colour + ring; everyone else still gets the
+   ring. `currentColor` picks up the per-verdict text colour set
+   immediately above, so no per-verdict duplication is needed. */
+.verdict-picker-chip.is-active {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
 /* Desktop-only fallback panel. Replaces the previous "uninstall step
    is off" warning. Two action cards: Compare (link) + Print
    checklist (button), side-by-side on wide screens, stacked on
@@ -13146,6 +13157,14 @@ button.import-history-stat.is-active {
 }
 .verdict-picker-option-uninstall.is-active .verdict-picker-option-icon {
   color: var(--rose);
+}
+
+/* Same WCAG redundancy as the chip variant — see comment near
+   `.verdict-picker-chip.is-active`. The option rows are larger, so
+   the ring needs a touch more weight to read distinctly under
+   high-contrast composition. */
+.verdict-picker-option.is-active {
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 
 /* Hover hints picked up from the same family so users see "this is
@@ -25872,6 +25891,55 @@ html[data-a11y-shapes="on"] .change-dot-accessibility {
   );
 }
 
+/* Shape mode extension — ChangelogTimeline dots. The same toggle that
+   reshapes AppGrid change-dots above also reshapes the timeline rail
+   markers so colour-blind users get the same redundant encoding on
+   the per-app history view. Shape vocabulary stays disjoint with the
+   AppGrid set (triangle / star) so no glyph carries two meanings:
+     - has-changes → triangle (caution — matches AppGrid privacy)
+     - no-changes  → square (neutral / unchanged)
+     - first-sync  → diamond (origin marker)
+     - wayback     → plus (archive provenance)
+   `border-radius: 0` is required because the base `.timeline-dot`
+   sets a circular border-radius which would clip the polygon. */
+html[data-a11y-shapes="on"] .timeline-dot {
+  border-radius: 0;
+}
+html[data-a11y-shapes="on"] .timeline-dot.has-changes {
+  clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
+}
+html[data-a11y-shapes="on"] .timeline-dot.no-changes {
+  clip-path: polygon(15% 15%, 85% 15%, 85% 85%, 15% 85%);
+}
+html[data-a11y-shapes="on"] .timeline-dot.first-sync {
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+html[data-a11y-shapes="on"] .timeline-dot.wayback {
+  /* Plus / cross — also drops the outer box-shadow ring that the
+     default `.timeline-dot.wayback` paints; the ring is rectangular
+     and would survive the clip-path as a stray purple square in
+     shape mode. */
+  box-shadow: none;
+  /* Plus / cross — also drops the outer box-shadow ring that the
+     default `.timeline-dot.wayback` paints; the ring is rectangular
+     and would survive the clip-path as a stray purple square in
+     shape mode. */
+  clip-path: polygon(
+    40% 0%,
+    60% 0%,
+    60% 40%,
+    100% 40%,
+    100% 60%,
+    60% 60%,
+    60% 100%,
+    40% 100%,
+    40% 60%,
+    0% 60%,
+    0% 40%,
+    40% 40%
+  );
+}
+
 /* ─────────────────────────────────────────────────────
    Quick-toggles trigger button (sits next to KeyboardHint)
 */
@@ -26161,6 +26229,14 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     2% 35%,
     39% 35%
   );
+}
+
+/* Diamond = first-sync timeline marker. Blue matches the base
+   `.timeline-dot.first-sync` tint so the legend preview reads as
+   the same family of marker users see on the changelog rail. */
+.a11y-quick-shape-timeline {
+  background: var(--blue, #0a84ff);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }
 
 .a11y-quick-shape-text {

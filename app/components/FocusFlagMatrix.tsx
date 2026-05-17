@@ -870,7 +870,25 @@ function FocusMatrixRow({
             >
               <span className="focus-matrix-cell-current">{current}</span>
               <span className="focus-matrix-cell-desired">
-                {desired ?? "·"}
+                {desired === undefined ? (
+                  "·"
+                ) : (
+                  <>
+                    {/* Glyph prefix reinforces the colour cue (green / red /
+                        orange) so on/off/collapsed are distinguishable in
+                        monochrome and for users with red-green colour
+                        blindness. The glyph is aria-hidden because the
+                        textual value next to it is what screen readers
+                        should announce. */}
+                    <span
+                      aria-hidden="true"
+                      className="focus-matrix-cell-glyph"
+                    >
+                      {desired === "on" ? "✓" : desired === "off" ? "✕" : "▾"}
+                    </span>{" "}
+                    {desired}
+                  </>
+                )}
               </span>
             </button>
           </td>

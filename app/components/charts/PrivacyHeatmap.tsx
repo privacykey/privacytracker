@@ -45,6 +45,53 @@ const SEV_VALUE: Record<string, number> = {
   DATA_NOT_LINKED_TO_YOU: 1,
 };
 
+// Decal patterns applied per tier when `html[data-a11y-shapes="on"]` is
+// set, so colour-blind users can tell the three severities apart in the
+// heatmap the same way the AppGrid change-dots and ChangelogTimeline
+// markers re-shape under the same flag. Patterns are layered ON TOP of
+// the existing colour (decals never replace `itemStyle.color`), so
+// sighted users still get the familiar red / orange / yellow gradient
+// reinforced by texture. Distinct per tier and disjoint from each
+// other: dense diagonal stripes for the most severe (track), dots for
+// the middle (linked), wider cross-hatch for the least severe (unlinked).
+const SEV_DECAL: Record<string, Record<string, unknown>> = {
+  DATA_USED_TO_TRACK_YOU: {
+    symbol: "rect",
+    rotation: -Math.PI / 4,
+    dashArrayX: [[3, 0]],
+    dashArrayY: [3, 4],
+    color: "rgba(0, 0, 0, 0.40)",
+  },
+  DATA_LINKED_TO_YOU: {
+    symbol: "circle",
+    symbolSize: 0.5,
+    dashArrayX: [4, 4],
+    dashArrayY: [4, 4],
+    color: "rgba(0, 0, 0, 0.35)",
+  },
+  DATA_NOT_LINKED_TO_YOU: {
+    symbol: "rect",
+    rotation: Math.PI / 4,
+    dashArrayX: [[3, 3]],
+    dashArrayY: [3, 3],
+    color: "rgba(0, 0, 0, 0.30)",
+  },
+};
+
+// CSS gradient mirror of `SEV_DECAL` for the legend swatches at the
+// bottom of the chart. The swatch is only 10×10 so we use a higher-
+// contrast version of the pattern so 2–3 repeats still read as a
+// texture. Off in default mode; switched on by the same shape-mode
+// observer that powers the cell decals.
+const SEV_PATTERN: Record<string, string> = {
+  DATA_USED_TO_TRACK_YOU:
+    "repeating-linear-gradient(-45deg, rgba(0,0,0,0.55) 0 1px, transparent 1px 3px)",
+  DATA_LINKED_TO_YOU:
+    "radial-gradient(circle at center, rgba(0,0,0,0.55) 0.8px, transparent 1.2px)",
+  DATA_NOT_LINKED_TO_YOU:
+    "repeating-linear-gradient(45deg, rgba(0,0,0,0.40) 0 1px, transparent 1px 4px)",
+};
+
 // Fixed page size. Chosen so the x-axis labels at 40° rotation stay readable
 // on a ~900px-wide panel without overlap, and so the user can sweep through a
 // ~100-app library in a handful of clicks.

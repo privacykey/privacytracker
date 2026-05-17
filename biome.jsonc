@@ -87,6 +87,16 @@
         "noControlCharactersInRegex": "off",
         "noDuplicateProperties": "off",
         "noEmptyBlockStatements": "off"
+      },
+      "nursery": {
+        // Off: this rule is Tailwind-specific (sorts utility classes per
+        // Tailwind's prescribed order) and the project doesn't use
+        // Tailwind. With our hand-rolled BEM class names it fires on every
+        // template-literal className that has a leading space in the
+        // conditional branch (the leading space is itself necessary so the
+        // conditional class doesn't merge into the base class name). Still
+        // in Biome's nursery tier — unstable on top of being inapplicable.
+        "useSortedClasses": "off"
       }
     }
   }

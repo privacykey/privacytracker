@@ -671,6 +671,22 @@ export default function AccessibilityQuickToggles() {
                   <span className="a11y-quick-shape-text">
                     {t("shapes_legend_a11y_text")}
                   </span>
+                  {/* Third legend entry covers the ChangelogTimeline rail:
+                      first-sync rows render as a diamond when shape mode is
+                      on (see globals.css `.timeline-dot.first-sync`). The
+                      remaining timeline classes — has-changes / no-changes
+                      / wayback — already map to glyphs from the AppGrid
+                      vocabulary (triangle, square, plus), so adding them
+                      here would just bloat the legend. */}
+                  <span
+                    aria-label={t("shapes_legend_timeline_aria")}
+                    className="a11y-quick-shape a11y-quick-shape-timeline"
+                    role="img"
+                    title={t("shapes_legend_timeline_title")}
+                  />
+                  <span className="a11y-quick-shape-text">
+                    {t("shapes_legend_timeline_text")}
+                  </span>
                 </div>
               </div>
               <button

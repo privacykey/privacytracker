@@ -164,6 +164,19 @@ The editor takes an optional `confirmOnPresetApply` prop (default `true`). When 
 
 Server components under `app/dashboard/**` hand off to client components in `app/components/*View.tsx` / `*Wizard.tsx` (these are the large interactive surfaces — `OnboardWizard`, `SettingsView`, `AppDetailView`, `AppGrid`). Global tokens and severity/category styling live in `app/globals.css` and `lib/privacy-meta.ts` (`SEVERITY_CONFIG`, `CATEGORY_META`). The `@/*` TS path alias maps to the repo root.
 
+**Colour is never the sole semantic signal.** Two parallel mechanisms enforce this:
+
+1. **Always-on baseline (WCAG 1.4.1).** Every coloured pill, badge or chip carries either a text label or an `aria-hidden` glyph alongside the colour. `SEVERITY_CONFIG` defines an `icon` per severity in `lib/privacy-meta.ts` — every `.severity-badge` renderer wraps the icon in an `aria-hidden` span and surfaces a text label next to it. Diagnostics pills with status meaning (`.diagnostics-pill.diagnostics-severity-*`) ship with a `✓ / ⚠ / ✕` glyph prefix. The `FocusFlagMatrix` cells prefix their authored value with a `✓ / ✕ / ▾ / ·` glyph. Verdict-picker `is-active` chips/options gain an inset `box-shadow` ring (in addition to the coloured tint) so the active state reads structurally, not chromatically.
+2. **Opt-in `data-a11y-shapes="on"`.** Quick-toggle in `AccessibilityQuickToggles.tsx` writes `html[data-a11y-shapes="on"]` (localStorage `a11y-quick-shapes`, pre-hydrated in `app/layout.tsx`). CSS clip-paths rebuild colour-only dot/marker surfaces as distinct polygons. Today the toggle covers:
+   - `.change-dot-privacy` → triangle (AppGrid pending-changes dot)
+   - `.change-dot-accessibility` → 5-pointed star (AppGrid pending-changes dot)
+   - `.timeline-dot.has-changes` → triangle (ChangelogTimeline)
+   - `.timeline-dot.no-changes` → square (ChangelogTimeline)
+   - `.timeline-dot.first-sync` → diamond (ChangelogTimeline)
+   - `.timeline-dot.wayback` → plus (ChangelogTimeline; also drops the rectangular outer ring so the polygon stays clean)
+
+Shape vocabulary is disjoint — no glyph carries two meanings. Adding a new shape means picking from the unused pool (currently hexagon, cross, dots/stripes) and adding both the CSS clip-path and a legend entry under `a11y_quick.shapes_legend_*` in `locales/en.json` (mirrored in the legend block of `AccessibilityQuickToggles.tsx`).
+
 ### Lint + format (Biome via Ultracite)
 
 Lint AND format both run through `@biomejs/biome` (`pnpm lint` = `ultracite check`, `pnpm lint:fix` = `ultracite fix`). ESLint and Prettier are gone — Biome handles both jobs in a single pass. The config lives in `biome.jsonc`, which `extends` the `ultracite/biome/core` + `/react` + `/next` presets and applies a set of project-specific overrides on top:
