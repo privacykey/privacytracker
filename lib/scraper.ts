@@ -1007,8 +1007,14 @@ export async function fetchAndParseApp(
     privacyPolicyUrl = sanitizePolicyUrl(privacyPolicyUrl);
 
     // ── Privacy JSON ──
+    // Closing tag accepts HTML5 attribute / whitespace variants
+    // (`</script>`, `</script >`, `</script bar>`) so a future Apple
+    // page that uses any of those forms doesn't make the regex run
+    // away to the next `</script>` in the document and pick up the
+    // wrong payload. Matches the `js/bad-tag-filter` fix applied in
+    // `lib/privacy-policy.ts`.
     const jsonMatch = html.match(
-      /<script\b[^>]*\bid\s*=\s*(["'])serialized-server-data\1[^>]*>([\s\S]*?)<\/script>/i
+      /<script\b[^>]*\bid\s*=\s*(["'])serialized-server-data\1[^>]*>([\s\S]*?)<\/script\b[^>]*>/i
     );
     if (!jsonMatch) {
       throw new Error(
@@ -1709,8 +1715,12 @@ export function extractFromShoebox(html: string): any[] {
     // `shoebox-uts-api-cache-apps` showed up briefly in 2023). Pulling
     // every shoebox and walking each one for the marker path is more
     // robust than hard-coding the id and missing a window.
+    // Closing tag accepts every HTML5 end-tag form (`</script>`,
+    // `</script >`, `</script bar>`) so a future Apple capture
+    // matching one of the attribute-bearing variants doesn't run
+    // the lazy match past the shoebox and into an unrelated tag.
     const SHOEBOX_RE =
-      /<script[^>]*\btype="fastboot\/shoebox"[^>]*\bid="(shoebox-[^"]*)"[^>]*>([\s\S]*?)<\/script>/gi;
+      /<script[^>]*\btype="fastboot\/shoebox"[^>]*\bid="(shoebox-[^"]*)"[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi;
     const candidates: string[] = [];
     let match: RegExpExecArray | null;
     while ((match = SHOEBOX_RE.exec(html)) !== null) {

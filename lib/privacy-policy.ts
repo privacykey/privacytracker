@@ -2380,14 +2380,16 @@ function extractScriptLocationTarget(
   baseUrl: string
 ): string | null {
   // Only look inside <script> bodies — a naked "window.location = " in a
-  // tutorial blob shouldn't count. The closing tag explicitly tolerates
-  // whitespace before the `>` (`</script >`, `</script\n>`, etc.) because
-  // those are valid HTML5 end-tag forms; a tighter `</script>` literal
-  // would let attacker-crafted pages hide their redirect inside what
-  // looks (to our regex) like one giant unterminated script block.
-  // Flagged by CodeQL rule `js/bad-tag-filter`.
+  // tutorial blob shouldn't count. The closing tag tolerates anything
+  // between "script" and the next ">" (`</script >`, `</script\n>`,
+  // `</script foo="bar">`, etc.) because HTML5 parsers accept all of
+  // those forms; a tighter `</script>` literal would let attacker-
+  // crafted pages hide their redirect inside what looks (to our regex)
+  // like one giant unterminated script block. CodeQL rule
+  // `js/bad-tag-filter` previously flagged the `\s*` variant for
+  // missing the attribute form.
   const scriptBlocks =
-    html.match(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi) ?? [];
+    html.match(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi) ?? [];
   for (const block of scriptBlocks) {
     const m =
       block.match(
@@ -2694,29 +2696,30 @@ const CHROME_CLASS_PATTERN =
   /(cookie|consent|banner|navbar|nav-|menu|footer|subscribe|signup|breadcrumb|hero-|cta-|sidebar|social|related|share|toolbar|modal|popup)/i;
 
 function stripChromeTags(html: string): string {
-  // Every closing tag below uses `<\/tagname\s*>` rather than `<\/tagname>`.
-  // HTML5 end tags allow whitespace before the `>` (`</script >`,
-  // `</style\n>`, etc.), and an attacker-crafted policy page could use
-  // that form to keep its `<script>…</script >` block from being
-  // stripped before the text reaches the AI summariser — script bodies
-  // are prime prompt-injection fodder. Same fix CodeQL flagged on the
-  // redirect extractor above (rule `js/bad-tag-filter`).
+  // Every closing tag below uses `<\/tagname\b[^>]*>` rather than the
+  // literal `<\/tagname>`. HTML5 end tags accept whitespace AND
+  // attributes before the `>` (`</script >`, `</script\n>`,
+  // `</script foo="bar">`, etc.), and an attacker-crafted policy page
+  // could use any of those forms to keep its `<script>…</script foo>`
+  // block from being stripped before the text reaches the AI
+  // summariser — script bodies are prime prompt-injection fodder.
+  // CodeQL rule `js/bad-tag-filter` flagged the prior `\s*` variants.
   return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
-    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\s*>/gi, " ")
-    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg\s*>/gi, " ")
-    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav\s*>/gi, " ")
-    .replace(/<header\b[^>]*>[\s\S]*?<\/header\s*>/gi, " ")
-    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside\s*>/gi, " ")
-    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer\s*>/gi, " ")
-    .replace(/<form\b[^>]*>[\s\S]*?<\/form\s*>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
+    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, " ")
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg\b[^>]*>/gi, " ")
+    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav\b[^>]*>/gi, " ")
+    .replace(/<header\b[^>]*>[\s\S]*?<\/header\b[^>]*>/gi, " ")
+    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside\b[^>]*>/gi, " ")
+    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer\b[^>]*>/gi, " ")
+    .replace(/<form\b[^>]*>[\s\S]*?<\/form\b[^>]*>/gi, " ")
     .replace(
       /<[^>]+\srole="(navigation|banner|contentinfo|complementary|search)"[^>]*>[\s\S]*?<\/[^>]+\s*>/gi,
       " "
     )
     .replace(
-      /<(div|section|aside|header|footer|ul|ol)\b[^>]*\sclass="[^"]*"[^>]*>[\s\S]*?<\/\1\s*>/gi,
+      /<(div|section|aside|header|footer|ul|ol)\b[^>]*\sclass="[^"]*"[^>]*>[\s\S]*?<\/\1\b[^>]*>/gi,
       (full) => {
         const classMatch = full.match(/\sclass="([^"]*)"/i);
         if (classMatch && CHROME_CLASS_PATTERN.test(classMatch[1])) {
@@ -2744,19 +2747,20 @@ function htmlBlockToText(html: string): string {
 }
 
 function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
-  // Closing tags below tolerate whitespace before the `>` for the same
-  // reason as `stripChromeTags`: HTML5 end tags are valid with trailing
-  // whitespace (`</main >`) and a strict literal would otherwise fail
-  // to extract the policy text from spec-compliant but unusual markup.
+  // Closing tags below tolerate attributes / whitespace before the `>`
+  // for the same reason as `stripChromeTags`: HTML5 end tags are valid
+  // with trailing whitespace AND attributes (`</main >`, `</main bar>`),
+  // and a strict literal would otherwise fail to extract the policy
+  // text from spec-compliant but unusual markup.
   const title =
     decodeHtmlEntities(
-      html.match(/<title[^>]*>([\s\S]*?)<\/title\s*>/i)?.[1] ?? ""
+      html.match(/<title\b[^>]*>([\s\S]*?)<\/title\b[^>]*>/i)?.[1] ?? ""
     ).trim() || fallbackTitle;
 
   const primaryHtml =
-    html.match(/<main\b[^>]*>([\s\S]*?)<\/main\s*>/i)?.[1] ??
-    html.match(/<article\b[^>]*>([\s\S]*?)<\/article\s*>/i)?.[1] ??
-    html.match(/<body\b[^>]*>([\s\S]*?)<\/body\s*>/i)?.[1] ??
+    html.match(/<main\b[^>]*>([\s\S]*?)<\/main\b[^>]*>/i)?.[1] ??
+    html.match(/<article\b[^>]*>([\s\S]*?)<\/article\b[^>]*>/i)?.[1] ??
+    html.match(/<body\b[^>]*>([\s\S]*?)<\/body\b[^>]*>/i)?.[1] ??
     html;
 
   const firstPassText = htmlBlockToText(stripChromeTags(primaryHtml));
