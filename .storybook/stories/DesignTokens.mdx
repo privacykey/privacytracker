@@ -1,6 +1,9 @@
-import { Meta } from '@storybook/addon-docs/blocks';
+import { Meta } from "@storybook/addon-docs/blocks";
+import { ThemeBridge } from "./_ThemeBridge";
 
 <Meta title="Foundations/Design tokens" />
+
+<ThemeBridge />
 
 # Design tokens
 
@@ -11,48 +14,56 @@ place — useful for confirming a token didn't drift across themes.
 
 export const TOKEN_GROUPS = [
   {
-    title: 'Surface',
-    tokens: ['--bg', '--bg-2', '--bg-3', '--popover-bg', '--popover-border'],
+    title: "Surface",
+    tokens: ["--bg", "--bg-2", "--bg-3", "--popover-bg", "--popover-border"],
   },
   {
-    title: 'Text',
-    tokens: ['--text', '--text-2', '--text-3'],
+    title: "Text",
+    tokens: ["--text", "--text-2", "--text-3"],
   },
   {
-    title: 'Accent',
+    title: "Accent",
     tokens: [
-      '--blue', '--blue-dim', '--blue-hover',
-      '--red', '--red-dim',
-      '--orange', '--orange-dim',
-      '--yellow', '--yellow-dim',
-      '--green', '--green-dim',
-      '--teal', '--teal-dim',
-      '--rose', '--rose-dim',
-      '--purple', '--purple-dim',
+      "--blue", "--blue-dim", "--blue-hover",
+      "--red", "--red-dim",
+      "--orange", "--orange-dim",
+      "--yellow", "--yellow-dim",
+      "--green", "--green-dim",
+      "--teal", "--teal-dim",
+      "--rose", "--rose-dim",
+      "--purple", "--purple-dim",
     ],
   },
   {
-    title: 'Radius',
-    tokens: ['--r-sm', '--r-md', '--r-lg', '--r-xl', '--r-full'],
+    title: "Radius",
+    tokens: ["--r-sm", "--r-md", "--r-lg", "--r-xl", "--r-full"],
     asValue: true,
   },
   {
-    title: 'Shadow',
-    tokens: ['--shadow-sm', '--shadow-md', '--shadow-lg'],
+    title: "Shadow",
+    tokens: ["--shadow-sm", "--shadow-md", "--shadow-lg"],
     asShadow: true,
   },
 ];
 
+export const containerStyle = {
+  padding: 8,
+  background: "color-mix(in srgb, currentColor 5%, transparent)",
+  border: "1px solid color-mix(in srgb, currentColor 14%, transparent)",
+  borderRadius: 6,
+  color: "inherit",
+};
+
 export function Swatch({ token, asValue, asShadow }) {
   const value =
-    typeof window === 'undefined'
-      ? ''
+    typeof window === "undefined"
+      ? ""
       : getComputedStyle(document.documentElement).getPropertyValue(token).trim();
 
   if (asValue) {
     return (
-      <div style={{ padding: 8, background: 'var(--bg-2)', borderRadius: 'var(--r-sm)', fontFamily: 'monospace', fontSize: 12 }}>
-        <div style={{ color: 'var(--text-3)' }}>{token}</div>
+      <div style={{ ...containerStyle, fontFamily: "monospace", fontSize: 12 }}>
+        <div style={{ opacity: 0.55 }}>{token}</div>
         <div>{value}</div>
       </div>
     );
@@ -64,11 +75,12 @@ export function Swatch({ token, asValue, asShadow }) {
         style={{
           padding: 12,
           margin: 8,
-          background: 'var(--bg-2)',
-          borderRadius: 'var(--r-md)',
+          background: "color-mix(in srgb, currentColor 5%, transparent)",
+          borderRadius: 10,
           boxShadow: `var(${token})`,
-          fontFamily: 'monospace',
+          fontFamily: "monospace",
           fontSize: 12,
+          color: "inherit",
         }}
       >
         {token}
@@ -79,27 +91,25 @@ export function Swatch({ token, asValue, asShadow }) {
   return (
     <div
       style={{
-        display: 'flex',
-        alignItems: 'center',
+        ...containerStyle,
+        display: "flex",
+        alignItems: "center",
         gap: 10,
-        padding: 8,
-        background: 'var(--bg-2)',
-        borderRadius: 'var(--r-sm)',
       }}
     >
       <div
+        aria-hidden="true"
         style={{
           width: 32,
           height: 32,
           borderRadius: 6,
           background: `var(${token})`,
-          border: '1px solid var(--bg-3)',
+          border: "1px solid color-mix(in srgb, currentColor 18%, transparent)",
         }}
-        aria-hidden="true"
       />
-      <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
+      <div style={{ fontFamily: "monospace", fontSize: 12 }}>
         <div>{token}</div>
-        <div style={{ color: 'var(--text-3)' }}>{value || '—'}</div>
+        <div style={{ opacity: 0.55 }}>{value || "—"}</div>
       </div>
     </div>
   );
@@ -110,8 +120,8 @@ export function Swatch({ token, asValue, asShadow }) {
     <h2>{group.title}</h2>
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         gap: 8,
       }}
     >

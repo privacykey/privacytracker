@@ -1,6 +1,9 @@
-import { Meta } from '@storybook/addon-docs/blocks';
+import { Meta } from "@storybook/addon-docs/blocks";
+import { ThemeBridge } from "./_ThemeBridge";
 
 <Meta title="Foundations/Introduction" />
+
+<ThemeBridge />
 
 # privacytracker · Storybook
 
@@ -10,12 +13,32 @@ toolbar for theme and locale.
 
 ## How stories are organised
 
-| Sidebar group | What it contains |
-| --- | --- |
-| **Foundations** | Design tokens, severity scale, category meta — the visual vocabulary the components share. |
-| **L** | Leaf components — pure presentational, no i18n or feature-flag coupling. |
-| **I** | i18n-only components — wrapped in `NextIntlClientProvider`. |
-| **F** | Flag-aware components — get a fresh focus/override fixture per story. |
+<table>
+  <thead>
+    <tr>
+      <th align="left">Sidebar group</th>
+      <th align="left">What it contains</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Foundations</strong></td>
+      <td>Design tokens, severity scale, category meta — the visual vocabulary the components share.</td>
+    </tr>
+    <tr>
+      <td><strong>L</strong></td>
+      <td>Leaf components — pure presentational, no i18n or feature-flag coupling.</td>
+    </tr>
+    <tr>
+      <td><strong>I</strong></td>
+      <td>i18n-only components — wrapped in <code>NextIntlClientProvider</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>F</strong></td>
+      <td>Flag-aware components — get a fresh focus/override fixture per story.</td>
+    </tr>
+  </tbody>
+</table>
 
 ## Adding a story
 
