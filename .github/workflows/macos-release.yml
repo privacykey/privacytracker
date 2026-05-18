@@ -246,7 +246,14 @@ jobs:
           # tauri-action's implicit re-run consistent.
           TAURI_BUILD_TARGET: ${{ matrix.target }}
         with:
-          tauriScript: pnpm tauri --
+          # `pnpm tauri` without the trailing `--`. pnpm 11.0.x silently
+          # stripped a trailing `--` separator before running the script;
+          # 11.1.x passes it through, so the CLI saw a literal `--` as
+          # its first positional arg and Clap rejected `build` as
+          # "unexpected argument" (see commit message). Either form is
+          # equivalent for arg forwarding — pnpm already passes the
+          # action's `build --target …` straight through to the script.
+          tauriScript: pnpm tauri
           args: --target ${{ matrix.target }}
           # Draft release keyed on the git tag. On tag push, GITHUB_REF_NAME
           # is the tag (e.g. v0.1.0). On workflow_dispatch, use the input.
