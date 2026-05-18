@@ -14,6 +14,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -262,14 +263,52 @@ if (process.platform === "darwin" && process.env.APPLE_SIGNING_IDENTITY) {
    * need the hardened-runtime flag + a secure timestamp; neither
    * needs explicit entitlements because they inherit from the host
    * process that loads them.
+   *
+   * `statSync` is deliberately preferred over the dirent's
+   * `isDirectory()` / `isFile()` so symlinks are followed — pnpm's
+   * standalone layout can leave `node_modules/<pkg>` as a symlink
+   * into the `.pnpm/` store after Next's file tracing, and the
+   * previous lstat-based walk silently skipped those. The result was
+   * a sneaky failure mode: codesign ran on the `.pnpm` copy, but
+   * `tar -h` later dereferenced the symlink during pack and emitted
+   * an UNSIGNED top-level copy into the archive that notarytool then
+   * rejected.
+   *
+   * The visited-set keyed on realpath prevents infinite recursion
+   * through any symlink cycle pnpm could conjure, and also avoids
+   * redundantly visiting the same inode twice (no behavioural
+   * impact since codesign is idempotent under --force, just noise).
    */
-  const walkMachOFiles = (dir) => {
+  const walkMachOFiles = (dir, visited = new Set()) => {
+    let realDir;
+    try {
+      realDir = realpathSync(dir);
+    } catch {
+      return [];
+    }
+    if (visited.has(realDir)) {
+      return [];
+    }
+    visited.add(realDir);
+
     const results = [];
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        results.push(...walkMachOFiles(full));
-      } else if (entry.isFile() && /\.(node|dylib)$/.test(entry.name)) {
+    let entries;
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return results;
+    }
+    for (const name of entries) {
+      const full = path.join(dir, name);
+      let stats;
+      try {
+        stats = statSync(full); // follows symlinks
+      } catch {
+        continue; // broken / unreadable
+      }
+      if (stats.isDirectory()) {
+        results.push(...walkMachOFiles(full, visited));
+      } else if (stats.isFile() && /\.(node|dylib)$/.test(name)) {
         results.push(full);
       }
     }
