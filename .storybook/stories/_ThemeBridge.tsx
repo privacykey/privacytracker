@@ -1,5 +1,4 @@
 import { useLayoutEffect } from "react";
-import { useGlobals } from "storybook/preview-api";
 
 /**
  * Bridges the Storybook **Theme** toolbar value into the MDX docs iframe.
@@ -8,24 +7,50 @@ import { useGlobals } from "storybook/preview-api";
  * registered in `preview.tsx`, but standalone MDX foundation pages don't
  * run story decorators — so inline `var(--*)` reads in those pages fall
  * back to the OS preference (which can flip-flop against Storybook's
- * docs chrome). Mount `<ThemeBridge />` at the top of every MDX page to
- * keep them in sync with the toolbar.
+ * docs chrome).
+ *
+ * Storybook preview hooks (`useGlobals`) can only run inside decorators
+ * or story render functions, so this bridge reads the toolbar value
+ * directly from the URL — Storybook encodes globals as
+ * `?globals=theme:dark;locale:zh`. We poll the URL on a short interval
+ * so a toolbar flip is reflected in the docs page within ~200 ms.
  */
-export function ThemeBridge() {
-  const [globals] = useGlobals();
-  const theme = (globals?.theme as string) ?? "system";
+function readTheme(): string {
+  if (typeof window === "undefined") {
+    return "system";
+  }
+  const globals =
+    new URL(window.location.href).searchParams.get("globals") ?? "";
+  return /(?:^|;)theme:([^;]+)/.exec(globals)?.[1] ?? "system";
+}
 
+function applyTheme(theme: string): void {
+  const html = document.documentElement;
+  if (theme === "system") {
+    html.removeAttribute("data-theme-override");
+  } else {
+    html.setAttribute("data-theme-override", theme);
+  }
+}
+
+export function ThemeBridge() {
   useLayoutEffect(() => {
-    const html = document.documentElement;
-    if (theme === "system") {
-      html.removeAttribute("data-theme-override");
-    } else {
-      html.setAttribute("data-theme-override", theme);
-    }
+    applyTheme(readTheme());
+
+    let last = readTheme();
+    const id = window.setInterval(() => {
+      const next = readTheme();
+      if (next !== last) {
+        last = next;
+        applyTheme(next);
+      }
+    }, 200);
+
     return () => {
-      html.removeAttribute("data-theme-override");
+      window.clearInterval(id);
+      document.documentElement.removeAttribute("data-theme-override");
     };
-  }, [theme]);
+  }, []);
 
   return null;
 }
