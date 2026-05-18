@@ -77,11 +77,28 @@ browserFlow(
 
     await page.goto("/onboard?preview=fresh");
 
+    // The <summary> toggle is native browser behaviour, so this click
+    // works pre-hydration.
     await page.getByText("Other import options").click();
-    await page.getByTestId("onboard-method-manual").click();
+    // Poll the manual click until React 18 has attached its onClick.
+    // Without this, a slow boot (dev server, busy CI) can dispatch
+    // the click before hydration, leaving the wizard on `file` and
+    // step 2 below would never render `onboard-app-names`.
+    const manualCard = page.getByTestId("onboard-method-manual");
+    await expect(async () => {
+      await manualCard.click();
+      await expect(manualCard).toHaveAttribute("aria-checked", "true", {
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
     await page.getByTestId("onboard-step1-continue").click();
 
     await page.getByTestId("onboard-app-names").fill("Clock");
+    // Commit the staged textarea text into the ImportedAppsTable
+    // before searching — the textarea is a staging input now, and
+    // `onboard-search` stays disabled until at least one row is
+    // committed.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
     await expect(page.getByText("Clock")).toBeVisible();

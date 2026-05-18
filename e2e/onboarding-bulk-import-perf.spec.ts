@@ -48,8 +48,21 @@ async function mockBulkSearch(page: Page) {
 
 async function openWizardToTextEntry(page: Page) {
   await page.goto("/onboard");
+  // The <summary> toggle is native browser behaviour, so this click
+  // works pre-hydration.
   await page.getByText("Other import options").click();
-  await page.getByTestId("onboard-method-manual").click();
+  // Wrap the manual click in `expect.toPass` to survive a React 18
+  // hydration race: on a slow boot the method-card's onClick may not
+  // be attached when Playwright dispatches the click, leaving the
+  // wizard on the default `file` method. Polling aria-checked retries
+  // the click until React has hydrated.
+  const manualCard = page.getByTestId("onboard-method-manual");
+  await expect(async () => {
+    await manualCard.click();
+    await expect(manualCard).toHaveAttribute("aria-checked", "true", {
+      timeout: 500,
+    });
+  }).toPass({ timeout: 10_000 });
   await page.getByTestId("onboard-step1-continue").click();
 }
 
@@ -216,6 +229,11 @@ browserFlow(
       (_, index) => `Bulk App ${index + 1}`
     );
     await page.getByTestId("onboard-app-names").fill(names.join("\n"));
+    // ImportedAppsTable's textarea is a *staging* input — names land
+    // in the search-step `importedApps` list only after the "+ Add"
+    // button commits the pasted text. See the corresponding patch in
+    // `onboard-import.spec.ts` for the full rationale.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
     await expect(page.locator(".search-result-item")).toHaveCount(150);
@@ -378,6 +396,10 @@ browserFlow(
       (_, index) => `Drain App ${index + 1}`
     );
     await page.getByTestId("onboard-app-names").fill(names.join("\n"));
+    // Commit staged text via the "+ Add" button — same
+    // ImportedAppsTable staging-vs-committed split as the bulk-150
+    // case above.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
     await expect(page.locator(".search-result-item")).toHaveCount(25);
@@ -559,6 +581,10 @@ browserFlow(
       (_, index) => `Pause App ${index + 1}`
     );
     await page.getByTestId("onboard-app-names").fill(names.join("\n"));
+    // Commit the staged textarea text — see the multi-app spec in
+    // `onboard-import.spec.ts` for the ImportedAppsTable staging-
+    // vs-committed split.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
     await expect(page.locator(".search-result-item")).toHaveCount(12);

@@ -179,11 +179,28 @@ test.beforeEach(async ({ request }) => {
  * Reusable navigation: walks the wizard from the welcome step to step 2
  * (the "type app names" textarea), ready for the spec to fill in names
  * and click search.
+ *
+ * The manual-method click is wrapped in `expect.toPass` because the
+ * wizard's method-card buttons are React-only (their onClick fires
+ * `setMethod`). On a slow boot — dev server, cold cache, or a busy CI
+ * runner — Playwright can dispatch the click before React 18 has
+ * attached its document-level event delegation; the browser fires
+ * the click but no handler runs, leaving the wizard on the default
+ * `file` method. Polling the click until `aria-checked="true"` lands
+ * lets the helper survive that race without slowing the happy path.
  */
 async function openWizardToTextEntry(page: Page) {
   await page.goto("/onboard?preview=fresh");
+  // The <summary> toggle is native browser behaviour, so this click
+  // works pre-hydration.
   await page.getByText("Other import options").click();
-  await page.getByTestId("onboard-method-manual").click();
+  const manualCard = page.getByTestId("onboard-method-manual");
+  await expect(async () => {
+    await manualCard.click();
+    await expect(manualCard).toHaveAttribute("aria-checked", "true", {
+      timeout: 500,
+    });
+  }).toPass({ timeout: 10_000 });
   await page.getByTestId("onboard-step1-continue").click();
 }
 
@@ -198,6 +215,13 @@ browserFlow(
     await openWizardToTextEntry(page);
 
     await page.getByTestId("onboard-app-names").fill("Clock\nMusic\nMaps");
+    // ImportedAppsTable's textarea is a *staging* input — names land in
+    // the search-step `importedApps` list only after the "+ Add" button
+    // (or Cmd/Ctrl-Enter) commits the pasted text. The pre-refactor
+    // textarea was the source of truth, and the early version of this
+    // spec skipped the commit click. Click it explicitly so the search
+    // step has rows to work against.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
     // Step 3: one .search-result-item per query. The wizard auto-selects
@@ -247,6 +271,10 @@ browserFlow(
     await openWizardToTextEntry(page);
 
     await page.getByTestId("onboard-app-names").fill("Notes");
+    // Commit staged text via the "+ Add" button before searching — the
+    // ImportedAppsTable refactor turned the textarea into a staging
+    // input. Same reason as the multi-app spec above.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
     const block = page
@@ -295,7 +323,7 @@ browserFlow(
 // ---------------------------------------------------------------------------
 
 browserFlow(
-  "no-match: empty candidate list surfaces the zero-results UI and disables import",
+  "no-match: empty candidate list lands in the unavailable section and disables import",
   async ({ page }) => {
     await mockSearchFromFixtures(page);
     await openWizardToTextEntry(page);
@@ -303,17 +331,28 @@ browserFlow(
     await page
       .getByTestId("onboard-app-names")
       .fill("asdfqwerty123notarealapp");
+    // Commit staged text before searching — see the multi-app spec
+    // above for the ImportedAppsTable staging-vs-committed split.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
-    // Step 3 still renders the block — the wizard wants the user to be
-    // able to retry, edit, or skip the unmatched query — but the block
-    // itself shows the empty/no-matches UI rather than candidate rows.
-    const block = page.locator(".search-result-item");
-    await expect(block).toHaveCount(1);
-    await expect(block.locator(".search-result-empty")).toHaveCount(1);
-    await expect(block.locator(".candidate-row")).toHaveCount(0);
+    // Step 3 now routes unmatched queries into the "Not in the App
+    // Store" triage section (one <li> per query with a "Save as"
+    // dropdown), rather than rendering an empty `.search-result-item`
+    // block. The block-level UI is reserved for queries that resolved
+    // against iTunes — anything that came back with zero candidates
+    // gets the triage treatment so the user can route it to manual /
+    // sideloaded / TestFlight / Skip in a single picker.
+    await expect(page.locator(".search-result-item")).toHaveCount(0);
+    const unavailableSection = page
+      .locator("section.onboard-match-section")
+      .filter({ hasText: "Not in the App Store" });
+    await expect(unavailableSection).toBeVisible();
+    await expect(
+      unavailableSection.getByText("asdfqwerty123notarealapp")
+    ).toBeVisible();
 
-    // With nothing selected, the import button is disabled. (effectiveCount
+    // With nothing matched, the import button is disabled. (effectiveCount
     // === 0 → disabled per OnboardWizard's render guard.)
     await expect(page.getByTestId("onboard-confirm-import")).toBeDisabled();
   }
@@ -356,11 +395,18 @@ browserFlow(
       buffer: Buffer.from(csv),
     });
 
-    // After parsing, the wizard populates the textarea with the detected
-    // names. Wait for the textarea to reflect the upload before searching.
-    const textarea = page.getByTestId("onboard-app-names");
-    await expect(textarea).toHaveValue(/Clock/);
-    await expect(textarea).toHaveValue(/Maps/);
+    // After parsing, the wizard renders one `.imported-apps-row` per
+    // CSV row inside the ImportedAppsTable. (Earlier versions of the
+    // wizard used a single textarea as the source of truth — see the
+    // refactor note in the component — so this spec used to assert
+    // `expect(textarea).toHaveValue(/Clock/)`. The textarea is now a
+    // pending-input staging area and never receives CSV content, so we
+    // verify the *committed* rows instead.) Wait for them before
+    // searching so the search step has data to operate on.
+    const importedRows = page.locator(".imported-apps-row");
+    await expect(importedRows).toHaveCount(2);
+    await expect(importedRows.filter({ hasText: "Clock" })).toHaveCount(1);
+    await expect(importedRows.filter({ hasText: "Maps" })).toHaveCount(1);
 
     await page.getByTestId("onboard-search").click();
 
@@ -396,19 +442,26 @@ browserFlow(
     await page
       .getByTestId("onboard-app-names")
       .fill("Mail\nasdfqwerty123\nClock");
+    // Commit staged text before searching — see the multi-app spec
+    // above for the ImportedAppsTable staging-vs-committed split.
+    await page.getByTestId("imported-apps-add").click();
     await page.getByTestId("onboard-search").click();
 
     const blocks = page.locator(".search-result-item");
-    await expect(blocks).toHaveCount(3);
+    // Only matched queries render as `.search-result-item` blocks now —
+    // the unmatched query lands in the "Not in the App Store" section
+    // (one <li> per query) below, so the matched-block count is two
+    // even though we searched for three names.
+    await expect(blocks).toHaveCount(2);
 
-    // The unmatched block shows the zero-results UI, not a candidate row.
-    // Filter by the bare query string — the wizard wraps the query in
-    // typographic curly quotes, so a straight-quoted hasText never matches.
-    const unmatchedBlock = blocks.filter({ hasText: "asdfqwerty123" });
-    await expect(unmatchedBlock.locator(".search-result-empty")).toHaveCount(1);
-    await expect(
-      unmatchedBlock.locator(".search-result-confirmed")
-    ).toHaveCount(0);
+    // The unmatched query shows up in the unavailable section, not as
+    // a result block. Verify the section heading exists and contains
+    // the unmatched query name so we know it surfaced for triage.
+    const unavailableSection = page
+      .locator("section.onboard-match-section")
+      .filter({ hasText: "Not in the App Store" });
+    await expect(unavailableSection).toBeVisible();
+    await expect(unavailableSection.getByText("asdfqwerty123")).toBeVisible();
 
     // Both matched blocks should have an auto-selected candidate
     // ("Confirmed" pill present).
