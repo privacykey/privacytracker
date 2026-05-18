@@ -5314,7 +5314,7 @@ export default function SettingsView({
       </div>
 
       <div
-        className={`settings-layout${viewMode === "import-history" ? "settings-layout-standalone" : ""}`}
+        className={`settings-layout${viewMode === "import-history" ? " settings-layout-standalone" : ""}`}
       >
         {viewMode === "all" && <SettingsSidebar />}
 
@@ -5402,7 +5402,7 @@ export default function SettingsView({
                     <button
                       aria-checked={profileEnabled}
                       aria-label={tAria("use_privacy_profile")}
-                      className={`switch-toggle${profileEnabled ? "is-on" : ""}`}
+                      className={`switch-toggle${profileEnabled ? " is-on" : ""}`}
                       disabled={privacyProfileAutoSave.saving}
                       // Master switch: flipping triggers an immediate save
                       // (skip the editor debounce — toggle is a discrete user
@@ -5528,7 +5528,7 @@ export default function SettingsView({
                     <button
                       aria-checked={a11yProfileEnabled}
                       aria-label={tAria("use_a11y_profile")}
-                      className={`switch-toggle${a11yProfileEnabled ? "is-on" : ""}`}
+                      className={`switch-toggle${a11yProfileEnabled ? " is-on" : ""}`}
                       disabled={a11yProfileAutoSave.saving}
                       onClick={() => {
                         const next = !a11yProfileEnabled;
@@ -7507,7 +7507,7 @@ ollama serve`}
 
                         return (
                           <li
-                            className={`import-history-row${isExpanded ? "is-open" : ""}`}
+                            className={`import-history-row${isExpanded ? " is-open" : ""}`}
                             key={importRow.id}
                           >
                             <div className="import-history-summary">
@@ -8595,7 +8595,7 @@ ollama serve`}
                             : tDeploy("admin_unlock_body_off")}
                         </p>
                         <div
-                          className={`deployment-admin-state${adminTokenUnlocked ? "is-unlocked" : ""}`}
+                          className={`deployment-admin-state${adminTokenUnlocked ? " is-unlocked" : ""}`}
                           role="status"
                         >
                           {adminTokenUnlocked
@@ -8886,7 +8886,7 @@ ollama serve`}
                         </p>
                       </div>
                       <span
-                        className={`backup-snapshot-state${backupSnapshotSettings.enabled ? "is-on" : ""}`}
+                        className={`backup-snapshot-state${backupSnapshotSettings.enabled ? " is-on" : ""}`}
                       >
                         {backupSnapshotSettings.enabled
                           ? tBackupCard("snapshots_state_on")
@@ -10846,7 +10846,7 @@ ollama serve`}
 
             <div className="delete-import-options">
               <label
-                className={`delete-import-option${deleteTarget.mode === "history-only" ? "is-active" : ""}`}
+                className={`delete-import-option${deleteTarget.mode === "history-only" ? " is-active" : ""}`}
               >
                 <input
                   checked={deleteTarget.mode === "history-only"}
@@ -10869,7 +10869,7 @@ ollama serve`}
               </label>
 
               <label
-                className={`delete-import-option${deleteTarget.mode === "with-apps" ? "is-active" : ""}`}
+                className={`delete-import-option${deleteTarget.mode === "with-apps" ? " is-active" : ""}`}
               >
                 <input
                   checked={deleteTarget.mode === "with-apps"}

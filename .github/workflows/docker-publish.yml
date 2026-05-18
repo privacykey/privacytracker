@@ -154,21 +154,24 @@ jobs:
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
   build-and-push:
-    runs-on: ubuntu-latest
+    name: Build Docker image (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     needs: container-smoke
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64/v8
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-
-      # QEMU provides user-space emulation so the amd64 GitHub runner can
-      # execute arm64 instructions during `RUN pnpm install` /
-      # `RUN pnpm build` inside the Dockerfile. Without this, buildx
-      # would refuse to build for a foreign platform.
-      - name: Set up QEMU (multi-arch emulation)
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4
-        with:
-          platforms: arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
@@ -196,25 +199,117 @@ jobs:
             # latest only on main
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image digest
         id: build-and-push
+        timeout-minutes: 50
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
         with:
           context: .
-          push: true
-          # Multi-arch manifest: native x86_64 servers + Apple Silicon /
-          # Raspberry Pi / Graviton. better-sqlite3 is rebuilt per-arch
-          # inside the image (see Dockerfile's `apk add python3 make g++`).
-          platforms: linux/amd64,linux/arm64/v8
-          tags: ${{ steps.meta.outputs.tags }}
+          # Build each architecture on matching hardware. Running the arm64
+          # Node/pnpm/native-addon install path under QEMU has produced
+          # illegal-instruction crashes and CI jobs that sat until cancelled.
+          platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          # Emit provenance + SBOM so the manifest GitHub shows on the
-          # package page lists both platforms cleanly. The cryptographically
-          # signed SLSA attestation is added by the next step.
+          cache-from: type=gha,scope=docker-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=docker-${{ matrix.arch }}
+          outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+          # Emit per-platform provenance + SBOM. The multi-arch manifest gets
+          # an OIDC-signed SLSA attestation after the digest merge job.
           provenance: true
           sbom: true
+
+      - name: Export image digest
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/digests
+          digest="${{ steps.build-and-push.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-manifest:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf  # v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            # branch name (e.g. main)
+            type=ref,event=branch
+            # full git SHA
+            type=sha,format=long
+            # semver tags from v* pushes  (v1.2.3 → 1.2.3, 1.2, 1)
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # latest only on main
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Download image digests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Create and push multi-arch manifest
+        id: manifest
+        working-directory: /tmp/digests
+        run: |
+          set -euo pipefail
+          TAG_ARGS=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && TAG_ARGS+=(--tag "$tag")
+          done <<< "${{ steps.meta.outputs.tags }}"
+
+          shopt -s nullglob
+          digest_files=(*)
+          if [ "${#digest_files[@]}" -eq 0 ]; then
+            echo "No image digest artifacts were downloaded" >&2
+            exit 1
+          fi
+
+          DIGEST_ARGS=()
+          for digest_file in "${digest_files[@]}"; do
+            DIGEST_ARGS+=("ghcr.io/${{ github.repository }}@sha256:${digest_file}")
+          done
+
+          docker buildx imagetools create "${TAG_ARGS[@]}" "${DIGEST_ARGS[@]}"
+
+          image_ref="$(printf '%s\n' "${{ steps.meta.outputs.tags }}" | head -n 1)"
+          manifest_digest="$(
+            docker buildx imagetools inspect "$image_ref" |
+              awk '/^Digest:/ { print $2; exit }'
+          )"
+          if [ -z "$manifest_digest" ]; then
+            echo "Failed to resolve manifest digest for $image_ref" >&2
+            exit 1
+          fi
+          echo "image-ref=$image_ref" >> "$GITHUB_OUTPUT"
+          echo "digest=$manifest_digest" >> "$GITHUB_OUTPUT"
 
       # OIDC-signed SLSA build provenance — downstream consumers can
       # verify with `cosign verify-attestation --type slsaprovenance …`
@@ -226,10 +321,9 @@ jobs:
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
         with:
           subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ steps.build-and-push.outputs.digest }}
+          subject-digest: ${{ steps.manifest.outputs.digest }}
           push-to-registry: true
 
       - name: Verify Docker provenance and SBOM attestations
         run: |
-          IMAGE_REF="$(printf '%s\n' "${{ steps.meta.outputs.tags }}" | head -n 1)"
-          node scripts/verify-docker-attestations.mjs "$IMAGE_REF"
+          node scripts/verify-docker-attestations.mjs "${{ steps.manifest.outputs.image-ref }}"

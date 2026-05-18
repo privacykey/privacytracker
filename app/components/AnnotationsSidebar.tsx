@@ -798,7 +798,7 @@ export default function AnnotationsSidebar({
         className={
           "annotations-sidebar__body" +
           (layout === "split"
-            ? "annotations-sidebar__body--composing-split"
+            ? " annotations-sidebar__body--composing-split"
             : "")
         }
         id="annotations-sidebar-body"

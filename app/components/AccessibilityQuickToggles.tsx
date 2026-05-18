@@ -290,10 +290,14 @@ export default function AccessibilityQuickToggles() {
         triggerRef.current?.focus();
       }
     };
-    window.addEventListener("mousedown", onClick);
+    // `pointerdown` (not `mousedown`) so the popover closes on iOS
+    // Safari taps-outside. See `AppDetailView.tsx` outside-click handler
+    // for the canonical comment on the iOS mouse-event quirk — this is
+    // the same pattern used across every popover trigger in the app.
+    window.addEventListener("pointerdown", onClick);
     window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("pointerdown", onClick);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);

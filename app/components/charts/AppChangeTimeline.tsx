@@ -36,6 +36,7 @@ import { useTranslations } from "next-intl";
  */
 import { useEffect, useMemo, useState } from "react";
 import type { TimelineData } from "../../../lib/stats-views-shared";
+import { useShapesMode } from "../../../lib/use-shapes-mode";
 import EChart from "./EChart";
 
 type PresetKey = "30d" | "90d" | "6m" | "ytd" | "all";
@@ -116,6 +117,87 @@ const COLORS = {
   reviews: "#a855f7", // purple-500 — distinct from any change-type band
 } as const;
 
+// Per-band ECharts decals applied to `areaStyle.decal` when shape mode
+// (`html[data-a11y-shapes="on"]`) is on. The stacked-area chart relies
+// entirely on colour to tell six bands apart, which collapses to a
+// near-monochrome blob in protanopia / deuteranopia simulation. Layering
+// a distinct texture on each band's fill restores the per-band signal:
+//
+//   - added (privacy added, red)          → -45° dense stripes
+//     (matches the "track" tier in PrivacyHeatmap / SmallMultiples — the
+//     two most attention-worthy "this got worse" patterns share one
+//     visual)
+//   - removed (privacy removed, green)    → dot grid
+//     (matches the "linked" tier — neutral attention)
+//   - modified (amber)                    → cross-hatch
+//     (matches the "not linked" tier — least-severe attention)
+//   - policy (blue)                       → horizontal stripes (0°)
+//   - accessibilityAdded (cyan)           → vertical stripes (90°)
+//   - accessibilityRemoved (purple-blue)  → triangle dot grid
+//
+// Decal `color` uses a low-alpha black so the texture appears as a
+// shadow on top of the band's translucent fill colour — preserves the
+// underlying colour signal for sighted users while adding a perceptual
+// shape cue for everyone else.
+const BAND_DECALS = {
+  added: {
+    symbol: "rect",
+    rotation: -Math.PI / 4,
+    dashArrayX: [[3, 0]],
+    dashArrayY: [3, 4],
+    color: "rgba(0, 0, 0, 0.40)",
+  },
+  removed: {
+    symbol: "circle",
+    symbolSize: 0.5,
+    dashArrayX: [4, 4],
+    dashArrayY: [4, 4],
+    color: "rgba(0, 0, 0, 0.35)",
+  },
+  modified: {
+    symbol: "rect",
+    rotation: Math.PI / 4,
+    dashArrayX: [[3, 3]],
+    dashArrayY: [3, 3],
+    color: "rgba(0, 0, 0, 0.30)",
+  },
+  policy: {
+    symbol: "rect",
+    rotation: 0,
+    dashArrayX: [[3, 0]],
+    dashArrayY: [2, 4],
+    color: "rgba(0, 0, 0, 0.35)",
+  },
+  accessibilityAdded: {
+    symbol: "rect",
+    rotation: Math.PI / 2,
+    dashArrayX: [[3, 0]],
+    dashArrayY: [2, 4],
+    color: "rgba(0, 0, 0, 0.35)",
+  },
+  accessibilityRemoved: {
+    symbol: "triangle",
+    symbolSize: 0.6,
+    dashArrayX: [5, 5],
+    dashArrayY: [5, 5],
+    color: "rgba(0, 0, 0, 0.35)",
+  },
+} as const;
+
+// Overlay-line symbol differentiation. Both `syncs` and `reviews` are
+// already drawn as DASHED lines (and that wasn't going to change), but
+// dashed-vs-dashed alone fails when colour is muted. Pinning each line
+// to a distinct marker glyph means the two series still read apart at
+// a glance even when their stroke colours are similar after a
+// colour-blind transform. `circle` is the default ECharts symbol so
+// `syncs` stays visually neutral; `diamond` is a clearly different
+// silhouette for `reviews`. Applied unconditionally — these markers
+// look fine in default mode too, so we don't gate them on shape mode.
+const OVERLAY_SYMBOLS = {
+  syncs: "circle",
+  reviews: "diamond",
+} as const;
+
 export default function AppChangeTimeline({
   appId,
   showPresets = true,
@@ -149,6 +231,7 @@ export default function AppChangeTimeline({
   const [data, setData] = useState<TimelineData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const shapesMode = useShapesMode();
   // Collapsed by default would hide information the user just clicked
   // into, but the feature request was "can be hidden", not "hidden by
   // default" — so we open on mount and let them collapse if they want.
@@ -265,7 +348,12 @@ export default function AppChangeTimeline({
       lineStyle: { color },
       // Slightly translucent fill lets the user read a thin band at the
       // top of the stack without it being washed out by the one beneath.
-      areaStyle: { color: `${color}55` },
+      // When shape mode is on, layer the per-band decal texture on top
+      // of the translucent fill so the six stacked bands stay
+      // distinguishable in monochrome / colour-blind simulation.
+      areaStyle: shapesMode
+        ? { color: `${color}55`, decal: BAND_DECALS[key] }
+        : { color: `${color}55` },
     });
     // Overlay line — deliberately NOT in the `changes` stack, so the
     // contextual counter rides alongside without inflating the area.
@@ -281,6 +369,12 @@ export default function AppChangeTimeline({
       smooth: false,
       showSymbol: true,
       symbolSize: 5,
+      // Distinct symbol per overlay (`circle` for syncs, `diamond` for
+      // reviews) so the two ambient lines read apart at a glance even
+      // when their stroke colours are flattened by a colour-blind
+      // transform. Applied unconditionally — the markers look fine in
+      // default mode too.
+      symbol: OVERLAY_SYMBOLS[key],
       data: data.points.map((p) => p[key] ?? 0),
       itemStyle: { color },
       lineStyle: { color, type: "dashed", width: 1 },
@@ -292,6 +386,14 @@ export default function AppChangeTimeline({
     // with the stats-page chart intentionally.
     const lastIndex = labels.length - 1;
     return {
+      // ECharts treats per-series `areaStyle.decal` as part of its `aria`
+      // accessibility feature — the option is silently ignored unless
+      // `aria.decal.show` is true. Gate the whole `aria` block on shape
+      // mode so default-mode renders stay byte-identical to before this
+      // change (no behaviour shift for users who don't opt in). When
+      // shape mode is on, `enabled: true` + `decal.show: true` lights
+      // up the per-band `BAND_DECALS` patterns configured in `band()`.
+      aria: shapesMode ? { enabled: true, decal: { show: true } } : undefined,
       tooltip: {
         trigger: "axis",
         // `confine: true` keeps the tooltip inside the chart container
@@ -370,7 +472,7 @@ export default function AppChangeTimeline({
         overlay("reviews", COLORS.reviews, tChart("overlay_reviews")),
       ],
     };
-  }, [data, showLegend, tChart]);
+  }, [data, showLegend, shapesMode, tChart]);
 
   return (
     <div

@@ -569,6 +569,19 @@ html[data-theme-override="high-contrast"] .nav {
   margin-left: auto;
 }
 
+/* iOS Safari tap-responsiveness helper. `touch-action: manipulation`
+   opts out of Mobile Safari's tap-delay and double-tap-to-zoom
+   heuristics on the nav trigger buttons, so a single tap fires a
+   click event immediately rather than being queued waiting for a
+   possible gesture. Safe on every browser — no visual side effect. */
+.nav-menu-trigger,
+.notif-bell-btn,
+.task-center-trigger,
+.task-list-icon-btn,
+.nav-add-apps {
+  touch-action: manipulation;
+}
+
 /* Hamburger trigger — hidden by default, shown below 640px. */
 .nav-menu-trigger {
   display: none;
@@ -975,7 +988,9 @@ html[data-theme-override="high-contrast"] .nav {
 .search-icon {
   position: absolute;
   left: 11px;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-3);
   pointer-events: none;
 }
@@ -14355,6 +14370,21 @@ button.import-history-stat.is-active {
    Apps page — inline filter status (shown in the filter-tabs row)
    ───────────────────────────────────────────────────────────── */
 
+/* Dedicated row for active-filter pills. Lives between the main toolbar
+   (search + sort + device) and the risk/accessibility segmented toggles,
+   so however many pills are active they cluster together on a single
+   line that wraps as a unit — instead of scattering across the toolbar's
+   flex-wrap. Margin matches the toolbar's bottom margin so the visual
+   rhythm of stacked rows stays even. */
+.active-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: -12px; /* tighten against the toolbar above */
+  margin-bottom: 16px;
+}
+
 .filter-status {
   display: inline-flex;
   gap: 8px;
@@ -25938,6 +25968,60 @@ html[data-a11y-shapes="on"] .timeline-dot.wayback {
     0% 40%,
     40% 40%
   );
+}
+
+/* Shape mode extension — Per-App Severity Strips (SmallMultiples) and
+   their side-panel legend. Cells, legend swatches, and the preference
+   bar under each category icon all get a per-tier CSS gradient layered
+   over their existing fill colour, so colour-blind users can tell the
+   three severities apart in the strips view too. Patterns are tuned to
+   mirror the ECharts `decal` config in `PrivacyHeatmap.tsx` 1-for-1 so
+   a heatmap cell and a strip cell of the same severity look like the
+   same texture:
+     - track    → -45° solid diagonal stripes, 7-unit spacing  (red)
+     - linked   → dot grid, 8-unit spacing                     (orange)
+     - unlinked → ±45° cross-hatch, 6-unit spacing             (yellow)
+   Opacity matches the decal `color` value at each tier (0.40 / 0.35 /
+   0.30). Each rule also pins `background-color: var(--…)` to the
+   inline fill — required so `background-image` (the gradient) layers
+   over the colour rather than replacing it. Cells / swatches without
+   `data-sev` (empty / not-collected) get nothing and keep the no-data
+   styling. */
+html[data-a11y-shapes="on"] .sm-cell[data-sev="DATA_USED_TO_TRACK_YOU"],
+html[data-a11y-shapes="on"]
+  .sm-legend-swatch[data-sev="DATA_USED_TO_TRACK_YOU"],
+html[data-a11y-shapes="on"] .sm-category-pref[data-tier="tracking"] {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(0, 0, 0, 0.4) 0 3px,
+    transparent 3px 7px
+  );
+}
+html[data-a11y-shapes="on"] .sm-cell[data-sev="DATA_LINKED_TO_YOU"],
+html[data-a11y-shapes="on"] .sm-legend-swatch[data-sev="DATA_LINKED_TO_YOU"],
+html[data-a11y-shapes="on"] .sm-category-pref[data-tier="linked"] {
+  background-image: radial-gradient(
+    circle at center,
+    rgba(0, 0, 0, 0.35) 1.5px,
+    transparent 2px
+  );
+  background-size: 8px 8px;
+}
+html[data-a11y-shapes="on"] .sm-cell[data-sev="DATA_NOT_LINKED_TO_YOU"],
+html[data-a11y-shapes="on"]
+  .sm-legend-swatch[data-sev="DATA_NOT_LINKED_TO_YOU"],
+html[data-a11y-shapes="on"] .sm-category-pref[data-tier="not_linked"] {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(0, 0, 0, 0.3) 0 3px,
+      transparent 3px 6px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.3) 0 3px,
+      transparent 3px 6px
+    );
 }
 
 /* ─────────────────────────────────────────────────────

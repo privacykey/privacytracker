@@ -638,7 +638,14 @@ export default function AppDetailView({
     if (!menuOpen) {
       return;
     }
-    const onPointer = (e: MouseEvent) => {
+    // `pointerdown` (not `mousedown`) so the outside-click close path works
+    // on iOS Safari. Mobile Safari synthesises mouse events from touches
+    // unreliably — the menu was failing to open on iPhone because tapping
+    // the ⋯ trigger never fired a `mousedown` that the close handler could
+    // see, while pointer events fire consistently for touch + mouse + pen.
+    // Mirrors the convention already used by `Nav.tsx` (hamburger) and
+    // `TaskCenter.tsx` (panel close).
+    const onPointer = (e: PointerEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
@@ -648,10 +655,10 @@ export default function AppDetailView({
         setMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("pointerdown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
@@ -1592,7 +1599,7 @@ export default function AppDetailView({
               <div
                 className={`app-detail-privacy-types${
                   hashPulseTarget === "profile-mismatch"
-                    ? "app-detail-privacy-types--pulse"
+                    ? " app-detail-privacy-types--pulse"
                     : ""
                 }`}
                 id="profile-mismatch"

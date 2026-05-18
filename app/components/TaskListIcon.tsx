@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ResolvedTask, UserTaskId } from "../../lib/tasks";
 import TaskGateModal from "./TaskGateModal";
 import { useUserTasks } from "./UserTasksProvider";
@@ -54,13 +55,18 @@ export default function TaskListIcon() {
     if (!open || isMobile) {
       return;
     }
-    const handler = (e: MouseEvent) => {
+    // `pointerdown` (not `mousedown`) so the close-on-outside-tap path
+    // works on iOS Safari. Mobile Safari's synthetic `mousedown` from
+    // touch input is unreliable on interactive trigger buttons, which
+    // left popovers visually broken on iPhone. Pointer events fire
+    // consistently for touch + mouse + pen on every modern browser.
+    const handler = (e: PointerEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, [open, isMobile]);
 
   // Escape closes either variant.
@@ -210,40 +216,54 @@ export default function TaskListIcon() {
         )}
       </div>
 
-      {open && isMobile && (
-        <div
-          className="task-list-sheet-overlay"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setOpen(false);
-            }
-          }}
-          role="presentation"
-        >
+      {open &&
+        isMobile &&
+        typeof document !== "undefined" &&
+        // Portal the sheet overlay out of the nav. The nav uses
+        // `backdrop-filter`, which per CSS spec makes it the
+        // containing block for *every* `position: fixed` descendant
+        // — so the sheet's `inset: 0` was being clipped to the nav's
+        // own ~56px-tall box instead of the viewport, leaving only
+        // the bottom-aligned Done button visible on iPhone. Mounting
+        // at document.body breaks that ancestry and lets the overlay
+        // fill the actual viewport. Same trick applies to any future
+        // full-screen overlay rendered from inside a backdrop-filter
+        // ancestor.
+        createPortal(
           <div
-            aria-label={t("region_aria")}
-            className="task-list-sheet"
-            id="task-list-dropdown"
-            role="dialog"
+            className="task-list-sheet-overlay"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) {
+                setOpen(false);
+              }
+            }}
+            role="presentation"
           >
-            <div aria-hidden="true" className="task-list-sheet-handle" />
-            <TaskListDropdownContent
-              allDone={allDone}
-              onTaskClick={handleTaskClick}
-              tasks={visible}
-            />
-            <div className="task-list-sheet-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={() => setOpen(false)}
-                type="button"
-              >
-                {t("sheet_done")}
-              </button>
+            <div
+              aria-label={t("region_aria")}
+              className="task-list-sheet"
+              id="task-list-dropdown"
+              role="dialog"
+            >
+              <div aria-hidden="true" className="task-list-sheet-handle" />
+              <TaskListDropdownContent
+                allDone={allDone}
+                onTaskClick={handleTaskClick}
+                tasks={visible}
+              />
+              <div className="task-list-sheet-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setOpen(false)}
+                  type="button"
+                >
+                  {t("sheet_done")}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       <TaskGateModal
         onCancel={closeGate}

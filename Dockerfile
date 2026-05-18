@@ -4,12 +4,9 @@
 # package.json (`>=24.0.0 <26.0.0`) allows. Two reasons not to drift:
 #   1. Bumping past 25 means losing the bundled corepack (deprecated in
 #      Node 25, removed in Node 26).
-#   2. Node 26's arm64 binaries use newer CPU instructions (ARMv8.3-A
-#      BTI / PAC) that QEMU's user-mode emulation crashes on with
-#      `qemu: uncaught target signal 4 (Illegal instruction)` during
-#      `pnpm install` — multi-arch builds in CI use QEMU to cross-build
-#      arm64 from an amd64 runner. Sticking with Node 24 keeps the
-#      multi-arch image build green.
+#   2. Node/pnpm/native-addon installs are intentionally built on native
+#      runners per architecture in CI. Keeping the runtime pinned still avoids
+#      surprise native ABI churn between the amd64 and arm64 image legs.
 ARG NODE_IMAGE=node:24.15.0-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f
 ARG PNPM_VERSION=11.0.6
 
@@ -62,6 +59,7 @@ COPY --from=builder --chown=audit:audit /app/.next            ./.next
 COPY --from=builder --chown=audit:audit /app/node_modules     ./node_modules
 COPY --from=builder --chown=audit:audit /app/package.json     ./package.json
 COPY --from=builder --chown=audit:audit /app/next.config.js   ./next.config.js
+COPY --from=builder --chown=audit:audit /app/lib/db-worker.cjs ./lib/db-worker.cjs
 
 # Persistent data volume for SQLite. Pre-create so the non-root user owns it
 # even on first start (otherwise better-sqlite3 would try to mkdir inside a

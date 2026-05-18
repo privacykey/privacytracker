@@ -1733,8 +1733,8 @@ export default function ReviewRecommendationsView({
             <div
               className={`review-rec-backup-status${
                 backup.status === "done"
-                  ? "review-rec-backup-status-ok"
-                  : "review-rec-backup-status-warn"
+                  ? " review-rec-backup-status-ok"
+                  : " review-rec-backup-status-warn"
               }`}
               role="status"
             >
@@ -2584,7 +2584,10 @@ function ReplacingWithCombobox({
     if (!open) {
       return;
     }
-    function onDoc(e: MouseEvent) {
+    // `pointerdown` (not `mousedown`) so iOS Safari's touch input
+    // dismisses the suggestion dropdown on outside-tap. See
+    // `AppDetailView.tsx` for the canonical comment.
+    function onDoc(e: PointerEvent) {
       if (!containerRef.current) {
         return;
       }
@@ -2592,8 +2595,8 @@ function ReplacingWithCombobox({
         setOpen(false);
       }
     }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("pointerdown", onDoc);
+    return () => document.removeEventListener("pointerdown", onDoc);
   }, [open]);
 
   // Reset highlight whenever suggestions change so the up/down nav
@@ -2667,7 +2670,7 @@ function ReplacingWithCombobox({
               <li
                 aria-selected={active}
                 className={`review-rec-row-replacement-suggestion${
-                  active ? "is-active" : ""
+                  active ? " is-active" : ""
                 }`}
                 id={`${listboxId}-${i}`}
                 key={s.id}

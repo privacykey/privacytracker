@@ -116,14 +116,14 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
             return (
               <div
                 className={`layout-editor-preset-cell${
-                  isPending ? "has-pending-confirm" : ""
+                  isPending ? " has-pending-confirm" : ""
                 }`}
                 key={presetKey}
               >
                 <button
                   aria-checked={isActive}
                   className={`layout-editor-preset-pill${
-                    isActive ? "is-active" : ""
+                    isActive ? " is-active" : ""
                   }`}
                   data-preset={presetKey}
                   data-severity={meta.severityCls}

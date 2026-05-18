@@ -573,10 +573,13 @@ export default function DevMenu() {
         triggerRef.current?.focus();
       }
     };
-    window.addEventListener("mousedown", onClick);
+    // `pointerdown` (not `mousedown`) so iOS Safari closes the popover
+    // on tap-outside. See `AppDetailView.tsx` outside-click handler for
+    // the canonical comment on the iOS mouse-event-synthesis quirk.
+    window.addEventListener("pointerdown", onClick);
     window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("pointerdown", onClick);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -1928,8 +1931,8 @@ function DevFlagRow({
     <li
       className={
         "dev-menu-row" +
-        (isOverridden ? "is-overridden" : "") +
-        (isSelected ? "is-selected" : "")
+        (isOverridden ? " is-overridden" : "") +
+        (isSelected ? " is-selected" : "")
       }
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {

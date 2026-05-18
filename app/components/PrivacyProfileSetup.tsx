@@ -104,7 +104,7 @@ export default function PrivacyProfileSetup({ initialProfile }: Props) {
           <button
             aria-checked={enabled}
             aria-label={t("switch_aria")}
-            className={`switch-toggle${enabled ? "is-on" : ""}`}
+            className={`switch-toggle${enabled ? " is-on" : ""}`}
             disabled={saving}
             onClick={() => setEnabled(!enabled)}
             role="switch"

@@ -4,6 +4,34 @@ const withNextIntl = createNextIntlPlugin("./i18n.ts");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Allow LAN access to the dev server (HMR + RSC) when the developer
+  // opens `http://<host-ip>:3000` from a phone, second machine, or the
+  // Tauri webview (which uses 127.0.0.1 but can be configured to bind
+  // elsewhere). Next 16 blocks non-localhost dev-resource fetches by
+  // default. Wildcard the standard RFC1918 ranges — dev-only, no effect
+  // on production builds. Add specific hostnames here if you serve dev
+  // over a custom domain.
+  allowedDevOrigins: [
+    "192.168.*.*",
+    "10.*.*.*",
+    "172.16.*.*",
+    "172.17.*.*",
+    "172.18.*.*",
+    "172.19.*.*",
+    "172.20.*.*",
+    "172.21.*.*",
+    "172.22.*.*",
+    "172.23.*.*",
+    "172.24.*.*",
+    "172.25.*.*",
+    "172.26.*.*",
+    "172.27.*.*",
+    "172.28.*.*",
+    "172.29.*.*",
+    "172.30.*.*",
+    "172.31.*.*",
+    "*.local",
+  ],
   // Allow redirecting the build output dir for sandboxed / FUSE-mounted envs
   // where the default `.next` can't be unlinked.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),

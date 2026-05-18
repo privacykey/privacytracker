@@ -32,6 +32,7 @@ import {
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../../lib/privacy-profile";
 import type { MatrixData, SeverityId } from "../../../lib/stats-views-shared";
+import { useShapesMode } from "../../../lib/use-shapes-mode";
 import EChart from "./EChart";
 
 const SEV_COLOR: Record<string, string> = {
@@ -83,13 +84,21 @@ const SEV_DECAL: Record<string, Record<string, unknown>> = {
 // contrast version of the pattern so 2–3 repeats still read as a
 // texture. Off in default mode; switched on by the same shape-mode
 // observer that powers the cell decals.
+// CSS gradient mirrors of the per-tier ECharts decals. Densities here
+// match the cell decals exactly (see `SEV_DECAL` above) so the chart's
+// legend swatch, the SmallMultiples cells/swatches/pref-bars, and the
+// canvas-rendered heatmap cells all read as the same texture at a glance
+// when shape mode is on. The SmallMultiples CSS rules in `globals.css`
+// duplicate these values intentionally — CSS can't import from TS, so
+// keeping the densities in sync is a manual contract documented in the
+// CLAUDE.md "colour is never the sole semantic signal" section.
 const SEV_PATTERN: Record<string, string> = {
   DATA_USED_TO_TRACK_YOU:
-    "repeating-linear-gradient(-45deg, rgba(0,0,0,0.55) 0 1px, transparent 1px 3px)",
+    "repeating-linear-gradient(-45deg, rgba(0,0,0,0.40) 0 3px, transparent 3px 7px)",
   DATA_LINKED_TO_YOU:
-    "radial-gradient(circle at center, rgba(0,0,0,0.55) 0.8px, transparent 1.2px)",
+    "radial-gradient(circle at center, rgba(0,0,0,0.35) 1.5px, transparent 2px) 0 0 / 8px 8px",
   DATA_NOT_LINKED_TO_YOU:
-    "repeating-linear-gradient(45deg, rgba(0,0,0,0.40) 0 1px, transparent 1px 4px)",
+    "repeating-linear-gradient(45deg, rgba(0,0,0,0.30) 0 3px, transparent 3px 6px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.30) 0 3px, transparent 3px 6px)",
 };
 
 // Fixed page size. Chosen so the x-axis labels at 40° rotation stay readable
@@ -109,7 +118,16 @@ const PAGE_SIZE = 20;
 // itemStyle is optional on the borders because we only override when the
 // cell is a mismatch; non-mismatches inherit the series defaults.
 interface HeatmapCell {
-  itemStyle: { color: string; borderColor?: string; borderWidth?: number };
+  itemStyle: {
+    color: string;
+    borderColor?: string;
+    borderWidth?: number;
+    // ECharts' decal pattern config — applied per-cell when shape mode
+    // is on so colour-blind users see a texture overlay on top of the
+    // severity colour. Loosely typed because ECharts' decal shape
+    // accepts many keys (symbol, rotation, dashArrayX, dashArrayY, …).
+    decal?: Record<string, unknown>;
+  };
   value: [number, number, number, string, string];
 }
 
@@ -144,6 +162,7 @@ export default function PrivacyHeatmap() {
   const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<PrivacyProfile | null>(null);
+  const shapesMode = useShapesMode();
 
   // Filter state — persisted only within the component; resetting the page
   // when they change is handled by the effect below.
@@ -258,20 +277,33 @@ export default function PrivacyHeatmap() {
           observedTier &&
           TIER_RANK[observedTier] > TIER_RANK[pref]
         );
+        const baseItemStyle: HeatmapCell["itemStyle"] = mismatch
+          ? {
+              color: SEV_COLOR[sev] ?? "#555",
+              borderColor: "#ffffff",
+              borderWidth: 2,
+            }
+          : { color: SEV_COLOR[sev] ?? "#555" };
+        // In shape mode, layer a per-tier decal on top of the cell so
+        // colour-blind users can distinguish the three severities by
+        // texture as well as colour. `decal` is an additive property
+        // — `color` still wins for the base fill.
+        const decal = shapesMode ? SEV_DECAL[sev] : undefined;
         cells.push({
           value: [x, y, SEV_VALUE[sev] ?? 0, sev, mismatch ? "mm" : ""],
-          itemStyle: mismatch
-            ? {
-                color: SEV_COLOR[sev] ?? "#555",
-                borderColor: "#ffffff",
-                borderWidth: 2,
-              }
-            : { color: SEV_COLOR[sev] ?? "#555" },
+          itemStyle: decal ? { ...baseItemStyle, decal } : baseItemStyle,
         });
       });
     });
 
     return {
+      // ECharts treats per-cell `itemStyle.decal` as part of its `aria`
+      // accessibility feature — the option is silently ignored unless
+      // `aria.decal.show` is true. Without this, the per-tier decals set
+      // on each cell above never render. Gate on `shapesMode` so default
+      // mode stays untouched; `enabled: true` + `decal.show: true` flips
+      // the canvas into decal-honouring mode when the toggle is on.
+      aria: shapesMode ? { enabled: true, decal: { show: true } } : undefined,
       tooltip: {
         formatter: (p: any) => {
           const [x, y, , sev, mm] = p.value;
@@ -358,7 +390,7 @@ export default function PrivacyHeatmap() {
         },
       ],
     };
-  }, [data, pageApps, showPref, profileActive, profile]);
+  }, [data, pageApps, showPref, profileActive, profile, shapesMode]);
 
   if (error) {
     return (
@@ -504,15 +536,30 @@ export default function PrivacyHeatmap() {
         }}
       >
         <span>
-          <span style={swatch("#ff453a")} />
+          <span
+            style={swatch(
+              "#ff453a",
+              shapesMode ? SEV_PATTERN.DATA_USED_TO_TRACK_YOU : undefined
+            )}
+          />
           {tCharts("swatch_track")}
         </span>
         <span>
-          <span style={swatch("#ff9f0a")} />
+          <span
+            style={swatch(
+              "#ff9f0a",
+              shapesMode ? SEV_PATTERN.DATA_LINKED_TO_YOU : undefined
+            )}
+          />
           {tCharts("swatch_linked")}
         </span>
         <span>
-          <span style={swatch("#ffd60a")} />
+          <span
+            style={swatch(
+              "#ffd60a",
+              shapesMode ? SEV_PATTERN.DATA_NOT_LINKED_TO_YOU : undefined
+            )}
+          />
           {tCharts("swatch_not_linked")}
         </span>
         {/* Mismatch swatch mirrors the inset white border drawn on the
@@ -528,12 +575,16 @@ export default function PrivacyHeatmap() {
   );
 }
 
-const swatch = (c: string): React.CSSProperties => ({
+const swatch = (c: string, pattern?: string): React.CSSProperties => ({
   display: "inline-block",
   width: 10,
   height: 10,
   borderRadius: 2,
-  background: c,
+  // `pattern` is a CSS gradient string from `SEV_PATTERN` — layered
+  // above the flat colour so the swatch reads as "colour + texture"
+  // in shape mode, mirroring the cell decals exactly. When `pattern`
+  // is undefined the swatch falls back to colour-only behaviour.
+  background: pattern ? `${pattern}, ${c}` : c,
   marginRight: 6,
   verticalAlign: "middle",
 });

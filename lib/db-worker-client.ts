@@ -167,46 +167,37 @@ function spawnWorker(): WorkerLike | null {
     return null;
   }
   try {
-    // Resolve the worker file across dev (repo lib/) and standalone bundle
-    // (lib/db-worker.cjs copied next to the standalone root by
-    // scripts/stage-standalone.mjs). Webpack would rewrite a bare
-    // `require.resolve()`, so probe via fs.existsSync against a small
+    // Resolve the worker file across dev (repo lib/), Docker (/app/lib),
+    // and the standalone bundle (lib/db-worker.cjs copied next to the
+    // standalone root by scripts/stage-standalone.mjs). Webpack would rewrite
+    // a bare `require.resolve()`, so probe via fs.existsSync against a small
     // closed set of well-known paths.
     //
     // Security note: a previous iteration of this code probed
     // `process.cwd()/lib/db-worker.cjs` unconditionally, which would
     // let a local attacker who could write to the launch cwd plant a
     // malicious worker before the first bulk write. We mitigate that
-    // here by canonicalising every candidate via `fs.realpathSync` and
-    // refusing anything outside one of two known-good base dirs:
-    // `__dirname` (the running bundle) or the Tauri-sidecar cwd
-    // (`process.cwd()`, set by the shell to the standalone root —
-    // a read-only resource directory in shipped builds, the repo
-    // root in dev). Both are server-controlled; neither is reachable
-    // by a low-privilege attacker who doesn't already have write
-    // access to a trusted location.
+    // here by canonicalising every candidate and refusing symlinks that point
+    // outside the candidate's own directory. Keep the cwd candidate scoped to
+    // /lib; probing the project root makes Next/Turbopack trace the whole repo
+    // during production builds.
     const fs = require("node:fs");
     const candidates = [
       path.join(import.meta.dirname, "db-worker.cjs"),
-      path.join(process.cwd(), "lib", "db-worker.cjs"),
-      path.join(process.cwd(), "db-worker.cjs"),
+      path.join(
+        /*turbopackIgnore: true*/ process.cwd(),
+        "lib",
+        "db-worker.cjs"
+      ),
     ];
-    const allowedBases = [import.meta.dirname, process.cwd()].map((p) => {
-      try {
-        return fs.realpathSync(p);
-      } catch {
-        return p;
-      }
-    });
     const workerPath = candidates.find((p) => {
       try {
         if (!fs.existsSync(p)) {
           return false;
         }
+        const base = fs.realpathSync(path.dirname(p));
         const real = fs.realpathSync(p);
-        return allowedBases.some(
-          (base) => real.startsWith(base + path.sep) || real === base
-        );
+        return real.startsWith(base + path.sep);
       } catch {
         return false;
       }

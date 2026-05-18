@@ -260,7 +260,13 @@ export default function SmallMultiples() {
                       <div
                         aria-label={`Your preference: ${TIER_META[pref].shortLabel} at most`}
                         className="sm-category-pref"
-                        style={{ background: PREF_COLOR[pref] }}
+                        // `data-tier` is what the shape-mode CSS hooks
+                        // onto when `html[data-a11y-shapes="on"]` is set;
+                        // the per-tier gradient overlays the flat colour
+                        // so colour-blind users get a texture cue on
+                        // each preference bar.
+                        data-tier={pref}
+                        style={{ backgroundColor: PREF_COLOR[pref] }}
                       />
                     ) : (
                       <div
@@ -347,6 +353,14 @@ export default function SmallMultiples() {
                     return (
                       <div
                         aria-label={`${app.name}, ${cat.label}${meta?.description ? `, ${meta.description}` : ""}${isMismatch ? ", exceeds your preference" : ""}`}
+                        className="sm-cell"
+                        // `data-sev` exposes the severity tier to the
+                        // shape-mode CSS so colour-blind users get a
+                        // per-tier gradient overlay (diagonal stripes /
+                        // dots / cross-hatch) on top of the existing
+                        // red / orange / yellow fill. Omitted on empty
+                        // cells so the no-data styling stays untouched.
+                        data-sev={sev || undefined}
                         key={cat.identifier}
                         onMouseEnter={() =>
                           setHover({
@@ -359,7 +373,11 @@ export default function SmallMultiples() {
                         style={{
                           aspectRatio: "1",
                           borderRadius: 3,
-                          background: bg,
+                          // `backgroundColor` (not the `background`
+                          // shorthand) so the shape-mode CSS rule can
+                          // layer `background-image: <gradient>` on top
+                          // without the inline declaration nuking it.
+                          backgroundColor: bg,
                           border: sev
                             ? "none"
                             : "1px solid rgba(255,255,255,0.03)",
@@ -427,21 +445,24 @@ export default function SmallMultiples() {
           <span className="sm-legend-item">
             <span
               className="sm-legend-swatch"
-              style={{ background: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
+              data-sev="DATA_USED_TO_TRACK_YOU"
+              style={{ backgroundColor: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
             />
             Tracking
           </span>
           <span className="sm-legend-item">
             <span
               className="sm-legend-swatch"
-              style={{ background: SEV_COLOR.DATA_LINKED_TO_YOU }}
+              data-sev="DATA_LINKED_TO_YOU"
+              style={{ backgroundColor: SEV_COLOR.DATA_LINKED_TO_YOU }}
             />
             Linked
           </span>
           <span className="sm-legend-item">
             <span
               className="sm-legend-swatch"
-              style={{ background: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
+              data-sev="DATA_NOT_LINKED_TO_YOU"
+              style={{ backgroundColor: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
             />
             Not linked
           </span>

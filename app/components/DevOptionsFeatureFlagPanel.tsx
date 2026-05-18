@@ -857,7 +857,7 @@ export default function DevOptionsFeatureFlagPanel() {
         </div>
         <button
           aria-checked={floatingOverlayOn}
-          className={`switch-toggle${floatingOverlayOn ? "is-on" : ""}`}
+          className={`switch-toggle${floatingOverlayOn ? " is-on" : ""}`}
           onClick={toggleFloatingOverlay}
           role="switch"
           type="button"
@@ -1374,9 +1374,9 @@ function FlagListItem({
     <li
       className={
         "dev-options-flag-panel__flag-row" +
-        (isOverridden ? "is-overridden" : "") +
-        (row.wired ? "" : "is-unwired") +
-        (isSelected ? "is-selected" : "")
+        (isOverridden ? " is-overridden" : "") +
+        (row.wired ? "" : " is-unwired") +
+        (isSelected ? " is-selected" : "")
       }
       onBlurCapture={(e) => {
         // Keep the popover open while focus moves between children
@@ -1490,7 +1490,7 @@ function FlagListItem({
             return (
               <button
                 aria-checked={checked}
-                className={`segmented-toggle-btn${checked ? "is-active" : ""}`}
+                className={`segmented-toggle-btn${checked ? " is-active" : ""}`}
                 disabled={busy}
                 key={v}
                 onClick={() => onChange(v)}

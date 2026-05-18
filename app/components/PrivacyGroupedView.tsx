@@ -118,7 +118,23 @@ export default function PrivacyGroupedView({
 
       <div className="toolbar">
         <div className="search-input-wrap">
-          <span className="search-icon">⌕</span>
+          <span aria-hidden="true" className="search-icon">
+            <svg
+              aria-hidden="true"
+              fill="none"
+              focusable="false"
+              height="16"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </span>
           <input
             className="search-input"
             onChange={(e) => setSearch(e.target.value)}

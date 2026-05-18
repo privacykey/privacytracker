@@ -1273,7 +1273,23 @@ export default function AppGrid({
             className="search-input-wrap"
             data-flag-target="flag.appgrid.filter.search"
           >
-            <span className="search-icon">⌕</span>
+            <span aria-hidden="true" className="search-icon">
+              <svg
+                aria-hidden="true"
+                fill="none"
+                focusable="false"
+                height="16"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </span>
             <input
               aria-label={tGrid("filter_input_aria")}
               className="search-input"
@@ -1394,94 +1410,105 @@ export default function AppGrid({
               <span className="mismatch-toggle-count">{mismatchCount}</span>
             </button>
           )}
-        {f.filterActiveBanners && riskFilter && (
-          <div className={`filter-status filter-status-${riskFilter}`}>
-            <span className="filter-status-text">
-              <span className="filter-status-label">
-                {tGrid("filtering_by")}
-              </span>
-              <strong>{tRisk(`${riskFilter}_label`).toLowerCase()}</strong>
-            </span>
-            <button
-              aria-label={tGrid("clear_risk_aria")}
-              className="filter-status-clear"
-              onClick={clearRiskFilter}
-              title={tGrid("clear_filter_title")}
-              type="button"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        {f.filterActiveBanners && mismatchOnly && (
-          <div className="filter-status filter-status-mismatch">
-            <span className="filter-status-text">
-              <span className="filter-status-label">
-                {tGrid("filtering_by")}
-              </span>
-              <strong>profile mismatches</strong>
-            </span>
-            <button
-              aria-label={tGrid("clear_mismatch_aria")}
-              className="filter-status-clear"
-              onClick={() => setMismatchOnly(false)}
-              title={tGrid("clear_mismatch_title")}
-              type="button"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        {f.filterActiveBanners && accessibilityFilter && (
-          <div
-            className={`filter-status filter-status-access-${accessibilityFilter}`}
-          >
-            <span className="filter-status-text">
-              <span className="filter-status-label">
-                {tGrid("filtering_by")}
-              </span>
-              <strong>
-                {accessibilityFilter === "has"
-                  ? "has accessibility features"
-                  : "no accessibility features"}
-              </strong>
-            </span>
-            <button
-              aria-label={tGrid("clear_a11y_aria")}
-              className="filter-status-clear"
-              onClick={() => setAccessibilityFilter(null)}
-              title={tGrid("clear_a11y_title")}
-              type="button"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        {f.filterActiveBanners && deviceFilter && (
-          <div className="filter-status filter-status-device">
-            <span className="filter-status-text">
-              <span className="filter-status-label">
-                {tGrid("filtering_by")}
-              </span>
-              <strong>
-                {deviceFilter === "unattached"
-                  ? tGrid("device_filter_unattached_short")
-                  : (devices.find((d) => d.id === deviceFilter)?.name ??
-                    deviceFilter)}
-              </strong>
-            </span>
-            <button
-              aria-label={tGrid("clear_device_aria")}
-              className="filter-status-clear"
-              onClick={() => setDeviceFilter(null)}
-              title={tGrid("clear_device_title")}
-              type="button"
-            >
-              ✕
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Active-filter pills. Hoisted out of the toolbar so they cluster
+          predictably regardless of how many are active — keeping them
+          inside the toolbar made the flex-wrap scatter individual pills
+          to the next line or far edges. Rendered only when at least one
+          filter is active so we don't leave an empty row. */}
+      {f.filterActiveBanners &&
+        (riskFilter || mismatchOnly || accessibilityFilter || deviceFilter) && (
+          <div className="active-filters-row" role="region">
+            {riskFilter && (
+              <div className={`filter-status filter-status-${riskFilter}`}>
+                <span className="filter-status-text">
+                  <span className="filter-status-label">
+                    {tGrid("filtering_by")}
+                  </span>
+                  <strong>{tRisk(`${riskFilter}_label`).toLowerCase()}</strong>
+                </span>
+                <button
+                  aria-label={tGrid("clear_risk_aria")}
+                  className="filter-status-clear"
+                  onClick={clearRiskFilter}
+                  title={tGrid("clear_filter_title")}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {mismatchOnly && (
+              <div className="filter-status filter-status-mismatch">
+                <span className="filter-status-text">
+                  <span className="filter-status-label">
+                    {tGrid("filtering_by")}
+                  </span>
+                  <strong>profile mismatches</strong>
+                </span>
+                <button
+                  aria-label={tGrid("clear_mismatch_aria")}
+                  className="filter-status-clear"
+                  onClick={() => setMismatchOnly(false)}
+                  title={tGrid("clear_mismatch_title")}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {accessibilityFilter && (
+              <div
+                className={`filter-status filter-status-access-${accessibilityFilter}`}
+              >
+                <span className="filter-status-text">
+                  <span className="filter-status-label">
+                    {tGrid("filtering_by")}
+                  </span>
+                  <strong>
+                    {accessibilityFilter === "has"
+                      ? "has accessibility features"
+                      : "no accessibility features"}
+                  </strong>
+                </span>
+                <button
+                  aria-label={tGrid("clear_a11y_aria")}
+                  className="filter-status-clear"
+                  onClick={() => setAccessibilityFilter(null)}
+                  title={tGrid("clear_a11y_title")}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {deviceFilter && (
+              <div className="filter-status filter-status-device">
+                <span className="filter-status-text">
+                  <span className="filter-status-label">
+                    {tGrid("filtering_by")}
+                  </span>
+                  <strong>
+                    {deviceFilter === "unattached"
+                      ? tGrid("device_filter_unattached_short")
+                      : (devices.find((d) => d.id === deviceFilter)?.name ??
+                        deviceFilter)}
+                  </strong>
+                </span>
+                <button
+                  aria-label={tGrid("clear_device_aria")}
+                  className="filter-status-clear"
+                  onClick={() => setDeviceFilter(null)}
+                  title={tGrid("clear_device_title")}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
       {f.filterRiskButtons && (
         <div className="risk-filter-row">

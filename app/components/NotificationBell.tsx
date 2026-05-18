@@ -190,13 +190,17 @@ export default function NotificationBell({
     if (!open) {
       return;
     }
-    const handler = (e: MouseEvent) => {
+    // `pointerdown` (not `mousedown`) so iOS Safari's touch interactions
+    // close the dropdown reliably. Same fix pattern applied across every
+    // outside-click handler in the codebase — see `AppDetailView.tsx` for
+    // the canonical comment.
+    const handler = (e: PointerEvent) => {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, [open]);
 
   // Apply the user's per-type filter. The server still stores every type

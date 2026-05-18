@@ -5678,7 +5678,7 @@ export default function OnboardWizard({
                           CTA. */}
                           <li
                             className={
-                              "cfgutil-step" +
+                              "cfgutil-step " +
                               (cfgutilCheck?.appInstalled
                                 ? "cfgutil-step-done"
                                 : "cfgutil-step-pending")
@@ -5738,7 +5738,7 @@ export default function OnboardWizard({
                               guidance. */}
                           <li
                             className={
-                              "cfgutil-step" +
+                              "cfgutil-step " +
                               (cfgutilCheck?.available
                                 ? "cfgutil-step-done"
                                 : cfgutilCheck
@@ -5840,7 +5840,7 @@ export default function OnboardWizard({
                           button. */}
                           <li
                             className={
-                              "cfgutil-step" +
+                              "cfgutil-step " +
                               (cfgutilCheck?.available
                                 ? "cfgutil-step-ready"
                                 : "cfgutil-step-locked")
@@ -5989,7 +5989,7 @@ export default function OnboardWizard({
                                         return (
                                           <button
                                             aria-checked={selectedDevice}
-                                            className={`cfgutil-device-row${selectedDevice ? "is-selected" : ""}`}
+                                            className={`cfgutil-device-row${selectedDevice ? " is-selected" : ""}`}
                                             key={device.ecid}
                                             onClick={() => {
                                               setSelectedCfgutilEcid(
