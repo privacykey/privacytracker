@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hardened-runtime entitlements for the bundled Node helper that runs
+  the Next.js standalone server inside privacytracker.app.
+
+  Why each entry is here:
+
+  • allow-jit
+      V8 (Node's JS engine) JIT-compiles hot bytecode into native
+      x86_64/arm64 instructions at runtime, which the hardened runtime
+      otherwise blocks. Without this entitlement, Node aborts on
+      startup with EXC_BAD_ACCESS at the first JIT page allocation.
+
+  • allow-unsigned-executable-memory
+      Some V8 codepaths (notably the JIT-compiled regex matcher and
+      WebAssembly tier-up) write to memory pages that codesign would
+      otherwise verify as unsigned. allow-jit alone is not enough on
+      every Node version — both flags are the de-facto minimum.
+
+  • allow-dyld-environment-variables
+      Lets Node respect DYLD_LIBRARY_PATH etc. so the helper can find
+      adjacent .node bindings (better-sqlite3) when launched from
+      inside the .app bundle rather than a developer shell.
+
+  Deliberately NOT set:
+
+  • disable-library-validation
+      We codesign every .node binding we ship (see
+      scripts/stage-standalone.mjs). With validation left on, a
+      tampered .node will fail to load — that is exactly the
+      supply-chain protection we want.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+</dict>
+</plist>

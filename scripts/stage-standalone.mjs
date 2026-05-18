@@ -13,6 +13,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   renameSync,
   rmSync,
   statSync,
@@ -86,6 +87,59 @@ mkdirSync(path.dirname(tauriTarget), { recursive: true });
 cpSync(nextStandalone, tauriTarget, { recursive: true, dereference: true });
 console.log(`stage-standalone: staged to ${tauriTarget}`);
 
+// ── Prune build-time-only deps that survive Next's file tracing ─────
+// Next's `output: 'standalone'` walks the import graph but
+// over-includes a handful of packages that don't get imported at
+// runtime: SWC + esbuild are compile-time only, and sharp would only
+// be used by next/image's optimiser (which we disable in next.config
+// via images.unoptimized = true). Each of these ships unsigned
+// per-platform native binaries (`.node`, `.dylib`) that get tarred
+// into standalone.tar and then rejected by Apple's notarytool, since
+// notarytool now recurses into archives in `Contents/Resources/`
+// while Tauri's signing pass does not unpack them. Confirmed unused
+// via `grep -rn "from ['\"]\\(sharp\\|@swc/core\\|esbuild\\)" app
+// lib scripts instrumentation.ts` returning nothing.
+// Prune patterns are deliberately narrow:
+//   - `@swc+core@`  hits @swc/core itself
+//   - `@swc+core-`  hits @swc/core-darwin-arm64, -darwin-x64, etc.
+//   - We must NOT prune @swc/helpers — it's a runtime helper library
+//     that the SWC-compiled production bundle imports
+//     (_classCallCheck / _asyncToGenerator / _objectSpread / …). A
+//     looser `@swc+` prefix nukes it and the server crashes on first
+//     request.
+const PRUNE_PNPM_PREFIXES = [
+  "@swc+core@", //          @swc/core itself
+  "@swc+core-", //          @swc/core-darwin-{arm64,x64}, -linux-*, -win32-*
+  "@esbuild+", //           @esbuild/{darwin,linux,win32}-*
+  "esbuild@", //            esbuild itself
+  "sharp@", //              sharp itself
+  "@img+", //               @img/sharp-*, @img/sharp-libvips-*, @img/colour
+];
+// Top-level node_modules. `@swc/core` is a sub-path under @swc/ so the
+// adjacent @swc/helpers tree survives; the others are whole scopes /
+// flat dirs that can be removed wholesale.
+const PRUNE_TOPLEVEL = ["@swc/core", "@esbuild", "@img", "esbuild", "sharp"];
+
+const pnpmDir = path.join(tauriTarget, "node_modules", ".pnpm");
+if (existsSync(pnpmDir)) {
+  for (const entry of readdirSync(pnpmDir)) {
+    if (PRUNE_PNPM_PREFIXES.some((p) => entry.startsWith(p))) {
+      rmSync(path.join(pnpmDir, entry), { recursive: true, force: true });
+      console.log(`stage-standalone: pruned .pnpm/${entry}`);
+    }
+  }
+}
+const topLevelDir = path.join(tauriTarget, "node_modules");
+if (existsSync(topLevelDir)) {
+  for (const name of PRUNE_TOPLEVEL) {
+    const target = path.join(topLevelDir, name);
+    if (existsSync(target)) {
+      rmSync(target, { recursive: true, force: true });
+      console.log(`stage-standalone: pruned node_modules/${name}`);
+    }
+  }
+}
+
 // ── Wrap the bundled Node in a fake .app bundle (macOS only) ───────
 // Launching Node from inside a `.app` with a sibling Info.plist sets
 // `LSUIElement=true` early enough to keep the process out of the Dock.
@@ -157,6 +211,99 @@ if (process.platform === "darwin") {
 `;
   writeFileSync(path.join(helperContents, "Info.plist"), helperPlist);
   console.log(`stage-standalone: wrote helper bundle at ${helperApp}`);
+}
+
+// ── Codesign Mach-O binaries that will end up inside standalone.tar ─
+// Tauri's bundler signs the outer privacytracker.app and any sibling
+// binaries it can see, but treats standalone.tar as one opaque
+// resource — anything Mach-O inside the tar stays unsigned unless we
+// sign it here, BEFORE the tar is built. Apple's notarytool recurses
+// into archives in `Contents/Resources/` and rejects every unsigned
+// `.node` / `.dylib` it finds, which used to cascade into hundreds of
+// errors (now pruned down to just better-sqlite3 + the bundled Node).
+//
+// Skipped silently when APPLE_SIGNING_IDENTITY is unset — that's the
+// local-dev / unit-test path where we just want a buildable tarball,
+// not a notarizable one. The release workflow's tauri-action step
+// sets it from secrets.APPLE_SIGNING_IDENTITY before invoking
+// `tauri build`, which re-runs this script with the identity in env.
+if (process.platform === "darwin" && process.env.APPLE_SIGNING_IDENTITY) {
+  const identity = process.env.APPLE_SIGNING_IDENTITY;
+  const entitlements = path.join(repo, "src-tauri", "entitlements.plist");
+
+  /**
+   * Recursively walk the staged tree for `.node` and `.dylib` files.
+   * Native Node modules ship as Mach-O bundles with `.node` extension
+   * on macOS; transitively-linked C libraries land as `.dylib`. Both
+   * need the hardened-runtime flag + a secure timestamp; neither
+   * needs explicit entitlements because they inherit from the host
+   * process that loads them.
+   */
+  const walkMachOFiles = (dir) => {
+    const results = [];
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        results.push(...walkMachOFiles(full));
+      } else if (entry.isFile() && /\.(node|dylib)$/.test(entry.name)) {
+        results.push(full);
+      }
+    }
+    return results;
+  };
+
+  const machOFiles = walkMachOFiles(tauriTarget);
+  for (const file of machOFiles) {
+    console.log(
+      `stage-standalone: codesigning ${path.relative(tauriTarget, file)}`
+    );
+    execFileSync(
+      "codesign",
+      [
+        "--force",
+        "--sign",
+        identity,
+        "--timestamp",
+        "--options",
+        "runtime",
+        file,
+      ],
+      { stdio: "inherit" }
+    );
+  }
+
+  // The bundled Node helper is a standalone executable, so unlike the
+  // `.node` dylibs it needs its OWN entitlements — specifically the
+  // JIT + unsigned-executable-memory pair V8 demands under hardened
+  // runtime. See src-tauri/entitlements.plist for the rationale per
+  // entry.
+  const helperNode = path.join(
+    tauriTarget,
+    ".node-helper.app",
+    "Contents",
+    "MacOS",
+    "node"
+  );
+  if (existsSync(helperNode)) {
+    console.log(
+      `stage-standalone: codesigning ${path.relative(tauriTarget, helperNode)} (with entitlements)`
+    );
+    execFileSync(
+      "codesign",
+      [
+        "--force",
+        "--sign",
+        identity,
+        "--timestamp",
+        "--options",
+        "runtime",
+        "--entitlements",
+        entitlements,
+        helperNode,
+      ],
+      { stdio: "inherit" }
+    );
+  }
 }
 
 // Tarball the staged tree into a single file Tauri can bundle as a plain

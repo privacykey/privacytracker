@@ -52,6 +52,17 @@ const nextConfig = {
   // currently serves icons from; no wildcard fallback so an attacker who
   // discovers a future `evil.mzstatic.com` subdomain can't pipe arbitrary
   // bytes through /_next/image.
+  //
+  // `unoptimized: true` short-circuits the /_next/image endpoint and
+  // serves originals straight from the configured remote patterns. The
+  // optimiser relies on `sharp`, which ships unsigned platform-specific
+  // .node + libvips .dylib binaries — those get rejected by Apple's
+  // notarytool when Tauri tars them into the desktop release's
+  // standalone.tar (notarytool recurses into archives in
+  // Contents/Resources). Optimisation buys almost nothing for our
+  // workload anyway: App Store icons are already 100x100 / ~3 KB and
+  // every request rides loopback. <Image> still gives us layout, lazy-
+  // loading, and blur placeholders without the native dep.
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "is1-ssl.mzstatic.com" },
@@ -62,6 +73,7 @@ const nextConfig = {
     ],
     // Don't emit SVGs through the optimiser — SVG can carry script payloads.
     dangerouslyAllowSVG: false,
+    unoptimized: true,
   },
   // Defence-in-depth headers — also cover static asset responses that
   // proxy.ts's matcher excludes (`_next/static`, `_next/image`, fonts).
