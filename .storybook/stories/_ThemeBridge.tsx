@@ -14,6 +14,10 @@ import { useLayoutEffect } from "react";
  * directly from the URL — Storybook encodes globals as
  * `?globals=theme:dark;locale:zh`. We poll the URL on a short interval
  * so a toolbar flip is reflected in the docs page within ~200 ms.
+ *
+ * The bridge does NOT clean up the attribute on unmount — it stays set
+ * for the next page render, which avoids the brief "no override" flicker
+ * that happened when cleanup ran between toolbar flips.
  */
 function readTheme(): string {
   if (typeof window === "undefined") {
@@ -26,17 +30,26 @@ function readTheme(): string {
 
 function applyTheme(theme: string): void {
   const html = document.documentElement;
-  if (theme === "system") {
+  const current = html.getAttribute("data-theme-override");
+  const next = theme === "system" ? null : theme;
+  if (current === next) {
+    return;
+  }
+  if (next === null) {
     html.removeAttribute("data-theme-override");
   } else {
-    html.setAttribute("data-theme-override", theme);
+    html.setAttribute("data-theme-override", next);
   }
 }
 
 export function ThemeBridge() {
-  useLayoutEffect(() => {
+  // Apply synchronously on first render — guarantees the attribute is set
+  // before the swatches in the MDX page paint.
+  if (typeof document !== "undefined") {
     applyTheme(readTheme());
+  }
 
+  useLayoutEffect(() => {
     let last = readTheme();
     const id = window.setInterval(() => {
       const next = readTheme();
@@ -48,7 +61,6 @@ export function ThemeBridge() {
 
     return () => {
       window.clearInterval(id);
-      document.documentElement.removeAttribute("data-theme-override");
     };
   }, []);
 
