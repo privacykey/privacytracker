@@ -6,6 +6,14 @@ import { withTauriEnv } from "./decorators/with-tauri-env";
 import { withTheme } from "./decorators/with-theme";
 
 const preview: Preview = {
+  // Storybook 10 ignores `globalTypes[*].defaultValue`. Initial toolbar
+  // values must live here at the preview level — otherwise the toolbar
+  // can't update the global state on subsequent clicks and the canvas
+  // gets stuck on whatever was first selected.
+  initialGlobals: {
+    theme: "system",
+    locale: "en",
+  },
   parameters: {
     layout: "centered",
     controls: {
