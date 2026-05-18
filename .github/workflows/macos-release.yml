@@ -255,6 +255,7 @@ jobs:
       #   • Uploading the resulting artifacts to a draft release when a tag
       #     push fires this workflow (see `tagName` / `releaseName` below).
       - name: Build, sign, notarize, and upload
+        id: tauri
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5  # v0
         env:
           # --- GitHub Release upload ---
@@ -346,23 +347,61 @@ jobs:
           # that lists every platform we ship.
           includeUpdaterJson: false
 
-      # Stage the per-arch bundle artefacts (.app.tar.gz + .sig) so the
-      # assemble job can read signatures without re-running the build.
-      # The .dmg / .app are already attached to the draft release by the
-      # tauri-action step above; we only need the updater payloads here.
+      # Stage the per-arch updater signature so the assemble job can
+      # build a multi-platform latest.json without re-running tauri.
+      # Two gotchas the previous version walked into:
+      #
+      #   1. With `includeUpdaterJson: false` on tauri-action, the
+      #      action skips uploading the .sig file to the GitHub
+      #      release (even though Tauri's bundler emits one on disk),
+      #      so `gh release view v0.1.0` lists only .dmg + .app.tar.gz.
+      #   2. tauri-action also tidies the bundle dir after upload,
+      #      so the .sig file is no longer at
+      #      `src-tauri/target/<triple>/release/bundle/macos/*.sig`
+      #      by the time this step runs.
+      #
+      # Both are solved by reading the signature from the action's
+      # own `signature` step output (it caches the .sig contents
+      # before cleanup). The downloaded .app.tar.gz comes from the
+      # draft release itself, where the asset name carries the
+      # platform suffix — sturdier than poking at the bundle dir.
       - name: Stage updater payload for assemble job
         if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNATURE: ${{ steps.tauri.outputs.signature }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          BUNDLE=src-tauri/target/${{ matrix.target }}/release/bundle/macos
-          STAGE=updater-stage/${{ matrix.target }}
+          STAGE="updater-stage/${{ matrix.target }}"
           mkdir -p "$STAGE"
-          # Copy if present; tauri-action already uploaded these to the
-          # draft release, so a missing file here is the build silently
-          # skipping the updater payload — fail loud rather than ship a
-          # latest.json without this arch.
-          cp "$BUNDLE"/*.app.tar.gz     "$STAGE/"
-          cp "$BUNDLE"/*.app.tar.gz.sig "$STAGE/"
+
+          if [ -z "${TAURI_SIGNATURE}" ]; then
+            echo "::error::tauri-action did not expose a 'signature' output — assemble job will have nothing to merge"
+            exit 1
+          fi
+
+          # Pull the .app.tar.gz asset back from the draft release.
+          # tauri-action renames the local file before upload (e.g.
+          # privacytracker.app.tar.gz -> privacytracker_x64.app.tar.gz),
+          # so the release asset is the single source of truth for
+          # the filename here.
+          case "${{ matrix.target }}" in
+            aarch64-apple-darwin) ASSET_GLOB='privacytracker_aarch64.app.tar.gz' ;;
+            x86_64-apple-darwin)  ASSET_GLOB='privacytracker_x64.app.tar.gz'    ;;
+            *) echo "::error::unknown target ${{ matrix.target }}" ; exit 1 ;;
+          esac
+          gh release download "${RELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --pattern "${ASSET_GLOB}" \
+            --dir "$STAGE"
+
+          # Write the .sig sidecar from the action's output. The file
+          # name matches the .app.tar.gz so the assemble job's pair-
+          # matching logic finds them as siblings.
+          tarball="$(ls -1 "$STAGE"/*.app.tar.gz | head -n1)"
+          printf '%s' "${TAURI_SIGNATURE}" > "${tarball}.sig"
+
           ls -la "$STAGE"
 
       - name: Upload updater payload artefact
