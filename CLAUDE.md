@@ -16,7 +16,7 @@ pnpm test              # focused node:test suite
 pnpm lint:i18n         # check locales/*.json key parity against en.json
 ```
 
-The repo enforces pnpm via `"packageManager": "pnpm@11.0.6"` in
+The repo enforces pnpm via `"packageManager": "pnpm@11.1.2"` in
 `package.json` and ships a `pnpm-lock.yaml` / `pnpm-workspace.yaml`. All
 six GitHub workflows run `pnpm install --frozen-lockfile`. Using `npm`
 locally will mostly work against the pnpm lockfile but is unsupported

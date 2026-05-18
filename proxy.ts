@@ -47,14 +47,26 @@ function makeNonce(): string {
 }
 
 function buildCsp(nonce: string): string {
-  // Dev builds need 'unsafe-eval' for Next's HMR runtime and 'unsafe-inline'
-  // as a fallback for browsers that don't honour 'strict-dynamic' on inline
-  // scripts. Both directives are dropped in production where 'strict-dynamic'
-  // is enough to bootstrap Next's hydration via the nonce — every modern
-  // browser used as a Tauri WebView (WebKit, Chromium ≥ 52) supports it.
+  // Production uses strict-dynamic + a per-request nonce so Next's
+  // hydration scripts bootstrap cleanly and arbitrary inline JS is
+  // blocked. Every modern browser used as a Tauri WebView (WebKit,
+  // Chromium ≥ 52) honours strict-dynamic.
+  //
+  // Dev intentionally drops nonces and falls back to unsafe-inline /
+  // unsafe-eval. We learned this the hard way: when a nonce is present
+  // in the CSP request header, Next applies it to every internal
+  // chunk-loader / flight-data <script> tag on the server. The browser
+  // then strips that nonce from the DOM after executing the inline
+  // script (a security feature in the HTML spec). React 19 hydrates,
+  // sees the missing attribute, and floods the dev overlay with
+  // "tree hydrated but some attributes ... didn't match" warnings — a
+  // false positive that drowns out real mismatches. Production already
+  // never shows that overlay, so the dev/prod CSP split is purely
+  // about silencing dev noise; the security posture in prod is
+  // unchanged.
   const isDev = process.env.NODE_ENV !== "production";
   const scriptSrc = isDev
-    ? `'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline' 'unsafe-eval'`
+    ? "'self' 'unsafe-inline' 'unsafe-eval'"
     : `'self' 'nonce-${nonce}' 'strict-dynamic'`;
 
   return [
@@ -218,10 +230,20 @@ export function proxy(request: NextRequest) {
   // the discovered nonce to its hydration / RSC <script> tags. The
   // `x-nonce` request header is the canonical place server components
   // read the value via `headers().get('x-nonce')`.
+  //
+  // In dev we skip both forwards. `buildCsp` already drops `nonce-…`
+  // from the script-src in dev (see the comment there), so leaving
+  // them set would only confuse Next into nonce-decorating its
+  // internal flight-data scripts — which the browser then strips,
+  // which triggers a wall of React 19 hydration warnings the user
+  // can't action.
+  const isDev = process.env.NODE_ENV !== "production";
   const csp = buildCsp(nonce);
   const forwardedHeaders = new Headers(request.headers);
-  forwardedHeaders.set("x-nonce", nonce);
-  forwardedHeaders.set("Content-Security-Policy", csp);
+  if (!isDev) {
+    forwardedHeaders.set("x-nonce", nonce);
+    forwardedHeaders.set("Content-Security-Policy", csp);
+  }
 
   const res = NextResponse.next({ request: { headers: forwardedHeaders } });
   return attachSecurityHeaders(res, nonce);
