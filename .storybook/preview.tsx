@@ -1,5 +1,6 @@
 import type { Preview } from "@storybook/nextjs";
 import "../app/globals.css";
+import { ThemedDocsContainer } from "./decorators/themed-docs-container";
 import { withFeatureFlags } from "./decorators/with-feature-flags";
 import { withNextIntl } from "./decorators/with-next-intl";
 import { withTauriEnv } from "./decorators/with-tauri-env";
@@ -33,6 +34,13 @@ const preview: Preview = {
     a11y: {
       // Keep the default ruleset; surface violations inline for review.
       test: "todo",
+    },
+    // Custom docs container that wraps every MDX page with the same
+    // theme + locale logic the per-story decorators apply. Without
+    // this, MDX foundation pages (no embedded <Story> blocks) don't
+    // run decorators and the toolbar pickers don't drive their canvas.
+    docs: {
+      container: ThemedDocsContainer,
     },
     // App Router mocks for `next/navigation` (`useRouter`, `usePathname`,
     // `useSearchParams`). Without this every component that imports from
