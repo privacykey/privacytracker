@@ -354,6 +354,7 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
   const guard = requireMutationGuard(request, {
     action: "dev.seed_sample_data",
+    requireAdminToken: "configured",
     rateLimit: {
       keyPrefix: "dev.seed_sample_data",
       // Limit lifted from 6 to 30 per 10 min for the same reason as

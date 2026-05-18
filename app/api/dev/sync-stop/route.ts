@@ -24,6 +24,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   const guard = requireMutationGuard(request, {
     action: "dev.sync_stop",
+    requireAdminToken: "configured",
     rateLimit: {
       keyPrefix: "dev.sync_stop",
       limit: 10,

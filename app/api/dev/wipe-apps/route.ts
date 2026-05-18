@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
   const guard = requireMutationGuard(request, {
     action: "dev.wipe_apps",
+    requireAdminToken: "configured",
     rateLimit: {
       keyPrefix: "dev.wipe_apps",
       limit: 6,

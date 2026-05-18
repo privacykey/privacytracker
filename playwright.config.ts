@@ -5,8 +5,13 @@ const e2eDataDir = path.join(process.cwd(), ".playwright-data");
 const browserChannel =
   process.env.PLAYWRIGHT_BROWSER_CHANNEL ||
   (process.platform === "darwin" && !process.env.CI ? "chrome" : undefined);
+const e2eAdminToken =
+  process.env.PLAYWRIGHT_ADMIN_TOKEN ??
+  process.env.AUDITOR_ADMIN_TOKEN ??
+  "privacytracker-playwright-token";
 process.env.PRIVACYTRACKER_DATA_DIR = e2eDataDir;
 process.env.NEXT_TELEMETRY_DISABLED = "1";
+process.env.AUDITOR_ADMIN_TOKEN = e2eAdminToken;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -29,6 +34,9 @@ export default defineConfig({
     : [["list"]],
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    extraHTTPHeaders: {
+      "x-auditor-admin-token": e2eAdminToken,
+    },
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -41,6 +49,7 @@ export default defineConfig({
     env: {
       PRIVACYTRACKER_DATA_DIR: e2eDataDir,
       NEXT_TELEMETRY_DISABLED: "1",
+      AUDITOR_ADMIN_TOKEN: e2eAdminToken,
     },
   },
   projects: [

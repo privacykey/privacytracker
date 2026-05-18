@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  adminTokenConfigured,
   adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
@@ -22,7 +23,7 @@ export interface MutationGuardOptions {
    * Destructive/admin routes should leave this true. Set false for costly but
    * ordinary same-origin actions such as "sync now".
    */
-  requireAdminToken?: boolean;
+  requireAdminToken?: boolean | "configured";
 }
 
 export interface MutationGuardContext {
@@ -76,7 +77,45 @@ export function requireMutationGuard(
     };
   }
 
-  if (
+  if (requireAdminToken === "configured") {
+    if (!adminTokenConfigured()) {
+      recordAudit({
+        action: `${options.action}.admin_token_not_configured`,
+        actorIp,
+        userAgent,
+        success: false,
+        detail: "admin token must be configured for this route",
+      });
+      return {
+        ok: false,
+        actorIp,
+        userAgent,
+        response: NextResponse.json(
+          { error: "Admin token must be configured for this route" },
+          { status: 403 }
+        ),
+      };
+    }
+
+    if (!requestHasValidAdminToken(request)) {
+      recordAudit({
+        action: `${options.action}.unauthorised`,
+        actorIp,
+        userAgent,
+        success: false,
+        detail: "admin token required but missing or invalid",
+      });
+      return {
+        ok: false,
+        actorIp,
+        userAgent,
+        response: NextResponse.json(
+          { error: "Admin token required" },
+          { status: 401 }
+        ),
+      };
+    }
+  } else if (
     requireAdminToken &&
     adminTokenRequiredForRequest(request) &&
     !requestHasValidAdminToken(request)

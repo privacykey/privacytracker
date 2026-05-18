@@ -324,6 +324,13 @@ export async function hostResolvesToPublic(hostname: string): Promise<boolean> {
   }
 }
 
+function defaultResolveAndCheck(): boolean {
+  return !(
+    process.env.NEXT_PHASE === "phase-test" &&
+    process.env.PRIVACYTRACKER_SKIP_DNS_REBINDING_CHECK_FOR_TESTS === "1"
+  );
+}
+
 // ─────────────────────────────────────────────
 // safeFetch — bounded replacement for fetch()
 // ─────────────────────────────────────────────
@@ -393,7 +400,7 @@ export async function safeFetch(
   // into private hosts (Ollama et al), because the whole point of that
   // mode is to allow private resolutions. Callers that want the lookup
   // off for any other reason can pass `resolveAndCheck: false`.
-  const resolveAndCheck = options.resolveAndCheck ?? true;
+  const resolveAndCheck = options.resolveAndCheck ?? defaultResolveAndCheck();
   if (resolveAndCheck && !options.allowPrivateHosts) {
     const ok = await hostResolvesToPublic(url.hostname);
     if (!ok) {

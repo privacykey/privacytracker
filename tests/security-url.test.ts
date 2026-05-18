@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  safeFetch,
   sanitizePolicyUrl,
   validateAppStoreUrl,
   validateExternalUrl,
@@ -42,4 +43,32 @@ test("sanitizePolicyUrl persists only safe http(s) URLs", () => {
   );
   assert.equal(sanitizePolicyUrl("javascript:alert(1)"), "");
   assert.equal(sanitizePolicyUrl("http://127.0.0.1/privacy"), "");
+});
+
+test("safeFetch keeps unit tests offline while preserving explicit DNS checks", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = (async () =>
+    new Response("ok", {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+    })) as typeof fetch;
+  try {
+    const result = await safeFetch("https://example.invalid/privacy", {
+      allowedHosts: ["example.invalid"],
+      maxBytes: 32,
+    });
+    assert.equal(result.body.toString("utf8"), "ok");
+
+    await assert.rejects(
+      () =>
+        safeFetch("https://example.invalid/privacy", {
+          allowedHosts: ["example.invalid"],
+          maxBytes: 32,
+          resolveAndCheck: true,
+        }),
+      /did not resolve to a public address/
+    );
+  } finally {
+    global.fetch = originalFetch;
+  }
 });

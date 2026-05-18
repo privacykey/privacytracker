@@ -46,6 +46,7 @@ function isChangeEntry(value: unknown): value is ChangeEntry {
 export async function POST(request: Request) {
   const guard = requireMutationGuard(request, {
     action: "dev.seed_notification",
+    requireAdminToken: "configured",
     rateLimit: {
       keyPrefix: "dev.seed_notification",
       // E2E tests may seed multiple notifications across specs in a

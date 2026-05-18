@@ -133,6 +133,42 @@ test("destructive routes require admin token when configured", async () => {
   }
 });
 
+test("dev routes are disabled unless an admin token is configured", async () => {
+  const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
+  delete process.env.AUDITOR_ADMIN_TOKEN;
+  try {
+    const route = await import("../app/api/dev/wipe-apps/route");
+    const disabled = await route.POST(
+      new Request("http://127.0.0.1/api/dev/wipe-apps", {
+        method: "POST",
+        headers: {
+          host: "127.0.0.1",
+          origin: "http://127.0.0.1",
+        },
+      })
+    );
+    assert.equal(disabled.status, 403);
+
+    process.env.AUDITOR_ADMIN_TOKEN = "dev-secret";
+    const unauthorised = await route.POST(
+      new Request("http://127.0.0.1/api/dev/wipe-apps", {
+        method: "POST",
+        headers: {
+          host: "127.0.0.1",
+          origin: "http://127.0.0.1",
+        },
+      })
+    );
+    assert.equal(unauthorised.status, 401);
+  } finally {
+    if (previousToken === undefined) {
+      delete process.env.AUDITOR_ADMIN_TOKEN;
+    } else {
+      process.env.AUDITOR_ADMIN_TOKEN = previousToken;
+    }
+  }
+});
+
 test("destructive routes require admin token on non-local hosts", async () => {
   const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
   delete process.env.AUDITOR_ADMIN_TOKEN;

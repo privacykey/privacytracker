@@ -33,6 +33,7 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
   const guard = requireMutationGuard(request, {
     action: "dev.reset_changelog",
+    requireAdminToken: "configured",
     rateLimit: {
       keyPrefix: "dev.reset_changelog",
       limit: 6,
