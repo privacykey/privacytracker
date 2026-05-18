@@ -257,6 +257,18 @@ jobs:
       - name: Build, sign, notarize, and upload
         uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5  # v0
         env:
+          # --- GitHub Release upload ---
+          # tauri-action attaches the signed .dmg / .app.tar.gz to a
+          # draft release after notarization. The auto-provided
+          # GITHUB_TOKEN (scoped by the workflow's permissions: block
+          # above — contents: write) is enough; no PAT needed. Without
+          # this thread-through the action gets all the way through
+          # build + sign + notarize and then fails the job with
+          # `GITHUB_TOKEN is required`, leaving you with notarized
+          # artefacts that the runner discards on cleanup. Run
+          # #26036804294 hit exactly that wall.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
           # --- Apple Developer ID (signing) ---
           # APPLE_CERTIFICATE is the base64 of your Developer ID Application
           # p12 export. APPLE_SIGNING_IDENTITY is the human string that
