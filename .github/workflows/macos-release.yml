@@ -349,37 +349,35 @@ jobs:
 
       # Stage the per-arch updater signature so the assemble job can
       # build a multi-platform latest.json without re-running tauri.
-      # Two gotchas the previous version walked into:
+      # The hard part is getting a fresh .sig file that matches the
+      # .app.tar.gz on the draft release:
       #
-      #   1. With `includeUpdaterJson: false` on tauri-action, the
-      #      action skips uploading the .sig file to the GitHub
-      #      release (even though Tauri's bundler emits one on disk),
-      #      so `gh release view v0.1.0` lists only .dmg + .app.tar.gz.
-      #   2. tauri-action also tidies the bundle dir after upload,
-      #      so the .sig file is no longer at
-      #      `src-tauri/target/<triple>/release/bundle/macos/*.sig`
-      #      by the time this step runs.
+      #   1. tauri-action with `includeUpdaterJson: false` skips
+      #      uploading the .sig sidecar to the GitHub release
+      #      (`gh release view v0.1.0` lists only .dmg + .app.tar.gz).
+      #   2. The on-disk .sig in `src-tauri/.../bundle/macos/` is
+      #      stale: tauri-action repacks `privacytracker.app.tar.gz`
+      #      AFTER the bundler's initial sign, so the saved .sig is
+      #      against the pre-repack tarball.
+      #   3. This pinned action SHA doesn't populate a `signature`
+      #      output we can read directly — `steps.tauri.outputs.signature`
+      #      came through empty.
       #
-      # Both are solved by reading the signature from the action's
-      # own `signature` step output (it caches the .sig contents
-      # before cleanup). The downloaded .app.tar.gz comes from the
-      # draft release itself, where the asset name carries the
-      # platform suffix — sturdier than poking at the bundle dir.
+      # Re-sign the .app.tar.gz attached to the release with the same
+      # key tauri-action used. ed25519 is deterministic, so the
+      # resulting .sig is the canonical signature for those bytes —
+      # exactly what the auto-updater verifies on the client.
       - name: Stage updater payload for assemble job
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNATURE: ${{ steps.tauri.outputs.signature }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           STAGE="updater-stage/${{ matrix.target }}"
           mkdir -p "$STAGE"
-
-          if [ -z "${TAURI_SIGNATURE}" ]; then
-            echo "::error::tauri-action did not expose a 'signature' output — assemble job will have nothing to merge"
-            exit 1
-          fi
 
           # Pull the .app.tar.gz asset back from the draft release.
           # tauri-action renames the local file before upload (e.g.
@@ -396,11 +394,14 @@ jobs:
             --pattern "${ASSET_GLOB}" \
             --dir "$STAGE"
 
-          # Write the .sig sidecar from the action's output. The file
-          # name matches the .app.tar.gz so the assemble job's pair-
-          # matching logic finds them as siblings.
           tarball="$(ls -1 "$STAGE"/*.app.tar.gz | head -n1)"
-          printf '%s' "${TAURI_SIGNATURE}" > "${tarball}.sig"
+
+          # `tauri signer sign` reads TAURI_SIGNING_PRIVATE_KEY +
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD straight from env
+          # (per `tauri signer sign --help` — env fallbacks are
+          # documented on -k / -p). Writes the signature to
+          # <input>.sig next to the tarball.
+          pnpm tauri signer sign "${tarball}"
 
           ls -la "$STAGE"
 
