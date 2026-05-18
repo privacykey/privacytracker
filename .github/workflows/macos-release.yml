@@ -516,21 +516,28 @@ jobs:
         run: |
           set -euo pipefail
           # Map cargo target triples → Tauri platform keys.
-          declare -A PLATFORM_KEY=(
-            [aarch64-apple-darwin]=darwin-aarch64
-            [x86_64-apple-darwin]=darwin-x86_64
-          )
-
+          #
+          # A `case` statement instead of `declare -A` because GitHub's
+          # macOS runners ship `/bin/bash` 3.2 (the GPLv3-pinned Apple
+          # build) as the default shell for `run:` steps. bash 3.2
+          # silently no-ops `declare -A`, after which
+          # `[aarch64-apple-darwin]=…` parses as a subscript expansion
+          # against an unbound `aarch64` variable and `set -u` aborts
+          # with "aarch64: unbound variable" — exactly what bit the
+          # v0.1.0 attempt (run #26040267397).
           NOTES=$(cat release_notes.txt)
           PLATFORMS='{}'
 
           for ARCH_DIR in updater/updater-*/; do
             TRIPLE=$(basename "$ARCH_DIR" | sed 's/^updater-//')
-            KEY=${PLATFORM_KEY[$TRIPLE]:-}
-            if [ -z "$KEY" ]; then
-              echo "::warning::Unknown target triple $TRIPLE — skipping"
-              continue
-            fi
+            case "$TRIPLE" in
+              aarch64-apple-darwin) KEY=darwin-aarch64 ;;
+              x86_64-apple-darwin)  KEY=darwin-x86_64  ;;
+              *)
+                echo "::warning::Unknown target triple $TRIPLE — skipping"
+                continue
+                ;;
+            esac
 
             SIG_FILE=$(ls "$ARCH_DIR"*.app.tar.gz.sig 2>/dev/null | head -n1 || true)
             BIN_FILE=$(ls "$ARCH_DIR"*.app.tar.gz     2>/dev/null | head -n1 || true)
