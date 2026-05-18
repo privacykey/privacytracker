@@ -43,6 +43,30 @@ if (!existsSync(nextStandalone)) {
   process.exit(1);
 }
 
+// Idempotency guard for the CI release path. The macos-release workflow
+// pre-runs us inside its own step (with the signing keychain set up,
+// so codesign can find the cert) and then tauri-action's
+// `beforeBuildCommand: pnpm build:standalone` re-invokes us inside
+// `tauri build`. That second invocation runs in an environment where
+// tauri-action's separate keychain isn't yet visible to codesign,
+// which used to fail the build with "item could not be found in the
+// keychain". With STANDALONE_PRE_BUILT=1 set on the tauri-action env,
+// we honour the pre-built tarball and skip the rebuild. Local
+// developers (and the explicit pre-build step itself) leave the env
+// unset, so the redundancy only matters in CI.
+const tauriTarballPath = path.join(
+  repo,
+  "src-tauri",
+  "resources",
+  "standalone.tar"
+);
+if (process.env.STANDALONE_PRE_BUILT === "1" && existsSync(tauriTarballPath)) {
+  console.log(
+    `stage-standalone: STANDALONE_PRE_BUILT=1 and ${path.basename(tauriTarballPath)} exists — skipping rebuild`
+  );
+  process.exit(0);
+}
+
 // Copy static + public next to server.js.
 if (existsSync(nextStatic)) {
   rmSync(stagedStatic, { recursive: true, force: true });

@@ -165,6 +165,52 @@ jobs:
           # An unsuffixed copy too, for any host-side build probes.
           cp "src-tauri/binaries/node-${{ matrix.target }}" src-tauri/binaries/node
 
+      # Set up a dedicated signing keychain so the staging script
+      # below can codesign Mach-O binaries inside standalone.tar
+      # BEFORE the tarball gets sealed into the .app bundle.
+      # tauri-action sets up its own (separate) keychain for signing
+      # the outer .app, but it does so after `beforeBuildCommand`
+      # fires — too late to help us sign the contents we need to ship
+      # inside the tar. Two keychains on the search list co-exist
+      # cleanly; the cleanup step at the bottom removes ours.
+      - name: Set up staging signing keychain
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PASS="$(openssl rand -base64 24)"
+          KEYCHAIN_PATH="${RUNNER_TEMP}/staging.keychain-db"
+          CERT_PATH="${RUNNER_TEMP}/staging-cert.p12"
+          # Stash the path + password for later step env (and cleanup).
+          echo "STAGING_KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "$GITHUB_ENV"
+          echo "::add-mask::${KEYCHAIN_PASS}"
+          echo "STAGING_KEYCHAIN_PASS=${KEYCHAIN_PASS}" >> "$GITHUB_ENV"
+          umask 077
+          printf '%s' "${APPLE_CERTIFICATE}" | base64 --decode > "${CERT_PATH}"
+          security create-keychain -p "${KEYCHAIN_PASS}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "${KEYCHAIN_PASS}" "${KEYCHAIN_PATH}"
+          security import "${CERT_PATH}" \
+            -P "${APPLE_CERTIFICATE_PASSWORD}" \
+            -A -t cert -f pkcs12 \
+            -k "${KEYCHAIN_PATH}"
+          # Append our keychain to the user search list so codesign
+          # finds the cert without us having to pass --keychain everywhere.
+          security list-keychain -d user -s "${KEYCHAIN_PATH}" $(security list-keychain -d user | tr -d '" ')
+          # Permit codesign / productsign to access the private key
+          # without the interactive password prompt that runs would
+          # block on.
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "${KEYCHAIN_PASS}" "${KEYCHAIN_PATH}"
+          rm -f "${CERT_PATH}"
+          # Sanity-check: the identity must be visible to codesign
+          # right now, otherwise the staging step below will fail
+          # with the same "item could not be found in the keychain"
+          # the previous attempt died on.
+          security find-identity -v -p codesigning "${KEYCHAIN_PATH}"
+
       - name: Stage Next.js standalone bundle
         # TAURI_BUILD_TARGET tells scripts/stage-standalone.mjs which
         # Node binary to drop into the .node-helper.app bundle that
@@ -173,8 +219,14 @@ jobs:
         # without an explicit target the staging script would package
         # the host's arm64 Node into the Intel .app and crash on
         # launch on Intel Macs.
+        #
+        # APPLE_SIGNING_IDENTITY is the trigger for the codesign pass
+        # inside stage-standalone.mjs — without it the script prunes
+        # but does not sign, leaving notarytool to reject every
+        # surviving .node / .dylib inside standalone.tar.
         env:
           TAURI_BUILD_TARGET: ${{ matrix.target }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: pnpm build:standalone
 
       # Materialise the App Store Connect API key (.p8) to disk. The secret
@@ -245,6 +297,19 @@ jobs:
           # This export keeps the explicit-stage step (above) and the
           # tauri-action's implicit re-run consistent.
           TAURI_BUILD_TARGET: ${{ matrix.target }}
+
+          # --- Skip the redundant beforeBuildCommand re-stage ---
+          # stage-standalone has already run once above (in the
+          # explicit "Stage Next.js standalone bundle" step) with our
+          # staging keychain on the search list, which is where the
+          # codesign pass on every .node / .dylib inside standalone.tar
+          # actually succeeds. tauri-action's keychain isn't visible to
+          # codesign at the moment beforeBuildCommand fires inside
+          # `tauri build`, so without this guard the second run would
+          # wipe the pre-signed tarball and die on the codesign call.
+          # See the matching `STANDALONE_PRE_BUILT === '1'` early-exit
+          # in scripts/stage-standalone.mjs.
+          STANDALONE_PRE_BUILT: '1'
         with:
           # `pnpm tauri` without the trailing `--`. pnpm 11.0.x silently
           # stripped a trailing `--` separator before running the script;
@@ -307,6 +372,14 @@ jobs:
         run: |
           rm -f "${{ steps.write-api-key.outputs.p8_path }}" 2>/dev/null || true
           security delete-keychain build.keychain 2>/dev/null || true
+          # Our staging keychain (set up early in the job to let
+          # stage-standalone.mjs codesign Mach-O binaries inside
+          # standalone.tar before tar). Best-effort delete; the runner
+          # VM is destroyed at job-end anyway.
+          if [ -n "${STAGING_KEYCHAIN_PATH:-}" ] && [ -f "${STAGING_KEYCHAIN_PATH}" ]; then
+            security delete-keychain "${STAGING_KEYCHAIN_PATH}" 2>/dev/null || true
+            rm -f "${STAGING_KEYCHAIN_PATH}" 2>/dev/null || true
+          fi
 
   # ─────────────────────────────────────────────────────────────────────
   # Assemble a single multi-platform latest.json from the per-arch
