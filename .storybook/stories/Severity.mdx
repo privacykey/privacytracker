@@ -1,0 +1,43 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { SEVERITY_CONFIG } from '../../lib/privacy-meta';
+
+<Meta title="Foundations/Severity" />
+
+# Severity scale
+
+Apple's privacy labels group every data category into one of three severities.
+The visual treatment is driven by `SEVERITY_CONFIG` in `lib/privacy-meta.ts`
+and the matching `.severity-*` classes in `app/globals.css`.
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+  {Object.entries(SEVERITY_CONFIG).map(([key, meta]) => (
+    <div
+      key={key}
+      style={{
+        padding: 16,
+        background: 'var(--bg-2)',
+        borderRadius: 'var(--r-md)',
+        border: '1px solid var(--bg-3)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span className={`severity-badge ${meta.cls}`} style={{ padding: '4px 10px', borderRadius: 'var(--r-full)', fontSize: 13, fontWeight: 600 }}>
+          <span aria-hidden="true">{meta.icon}</span> {meta.label}
+        </span>
+      </div>
+      <p style={{ margin: 0, color: 'var(--text-2)', fontSize: 13, lineHeight: 1.45 }}>
+        {meta.description}
+      </p>
+      <code style={{ display: 'block', marginTop: 8, fontSize: 11, color: 'var(--text-3)' }}>
+        {meta.cls}
+      </code>
+    </div>
+  ))}
+</div>
+
+## Why each severity has an icon AND a label
+
+Per the project's WCAG 1.4.1 contract (no semantic by colour alone), each
+severity carries a glyph (👁 / 🔗 / 🔓) next to its label and tint. Toggle the
+toolbar to **High contrast** to confirm the glyphs and outlines stay legible
+without the tint doing the work.

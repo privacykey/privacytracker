@@ -1,0 +1,128 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Design tokens" />
+
+# Design tokens
+
+The `:root` block of `app/globals.css` defines a flat palette of CSS custom
+properties. These swatches read the live computed values, so switching the
+toolbar **Theme** between light / dark / high-contrast reflows the swatches in
+place — useful for confirming a token didn't drift across themes.
+
+export const TOKEN_GROUPS = [
+  {
+    title: 'Surface',
+    tokens: ['--bg', '--bg-2', '--bg-3', '--popover-bg', '--popover-border'],
+  },
+  {
+    title: 'Text',
+    tokens: ['--text', '--text-2', '--text-3'],
+  },
+  {
+    title: 'Accent',
+    tokens: [
+      '--blue', '--blue-dim', '--blue-hover',
+      '--red', '--red-dim',
+      '--orange', '--orange-dim',
+      '--yellow', '--yellow-dim',
+      '--green', '--green-dim',
+      '--teal', '--teal-dim',
+      '--rose', '--rose-dim',
+      '--purple', '--purple-dim',
+    ],
+  },
+  {
+    title: 'Radius',
+    tokens: ['--r-sm', '--r-md', '--r-lg', '--r-xl', '--r-full'],
+    asValue: true,
+  },
+  {
+    title: 'Shadow',
+    tokens: ['--shadow-sm', '--shadow-md', '--shadow-lg'],
+    asShadow: true,
+  },
+];
+
+export function Swatch({ token, asValue, asShadow }) {
+  const value =
+    typeof window === 'undefined'
+      ? ''
+      : getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+
+  if (asValue) {
+    return (
+      <div style={{ padding: 8, background: 'var(--bg-2)', borderRadius: 'var(--r-sm)', fontFamily: 'monospace', fontSize: 12 }}>
+        <div style={{ color: 'var(--text-3)' }}>{token}</div>
+        <div>{value}</div>
+      </div>
+    );
+  }
+
+  if (asShadow) {
+    return (
+      <div
+        style={{
+          padding: 12,
+          margin: 8,
+          background: 'var(--bg-2)',
+          borderRadius: 'var(--r-md)',
+          boxShadow: `var(${token})`,
+          fontFamily: 'monospace',
+          fontSize: 12,
+        }}
+      >
+        {token}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: 8,
+        background: 'var(--bg-2)',
+        borderRadius: 'var(--r-sm)',
+      }}
+    >
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 6,
+          background: `var(${token})`,
+          border: '1px solid var(--bg-3)',
+        }}
+        aria-hidden="true"
+      />
+      <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
+        <div>{token}</div>
+        <div style={{ color: 'var(--text-3)' }}>{value || '—'}</div>
+      </div>
+    </div>
+  );
+}
+
+{TOKEN_GROUPS.map((group) => (
+  <section key={group.title} style={{ marginTop: 20 }}>
+    <h2>{group.title}</h2>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 8,
+      }}
+    >
+      {group.tokens.map((token) => (
+        <Swatch
+          key={token}
+          token={token}
+          asValue={group.asValue}
+          asShadow={group.asShadow}
+        />
+      ))}
+    </div>
+  </section>
+))}

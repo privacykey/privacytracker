@@ -18,7 +18,8 @@
       "!!**/tools/out",
       "!!**/playwright-report",
       "!!**/test-results",
-      "!!**/public/fonts"
+      "!!**/public/fonts",
+      "!!**/storybook-static"
     ]
   },
   "linter": {

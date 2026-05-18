@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { CATEGORY_META } from '../../lib/privacy-meta';
+
+<Meta title="Foundations/Categories" />
+
+# Privacy categories
+
+Fourteen data categories taken straight from Apple's App Store privacy taxonomy.
+Each entry has an emoji glyph, a colour token (mapped to `--blue/--red/--orange/--text-3`),
+a label and a description. Defined in `lib/privacy-meta.ts` → `CATEGORY_META`.
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+  {Object.entries(CATEGORY_META).map(([key, meta]) => (
+    <div
+      key={key}
+      style={{
+        padding: 14,
+        background: 'var(--bg-2)',
+        borderRadius: 'var(--r-md)',
+        border: '1px solid var(--bg-3)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span aria-hidden="true" style={{ fontSize: 22, lineHeight: 1 }}>{meta.icon}</span>
+        <strong style={{ color: meta.color }}>{meta.label}</strong>
+      </div>
+      <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-2)', lineHeight: 1.45 }}>
+        {meta.description}
+      </p>
+      <code style={{ display: 'block', marginTop: 6, fontSize: 10, color: 'var(--text-3)' }}>
+        {key}
+      </code>
+    </div>
+  ))}
+</div>
