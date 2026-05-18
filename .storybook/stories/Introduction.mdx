@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Foundations/Introduction" />
+
+# privacytracker · Storybook
+
+Visual workshop for the React components in `app/components/`. Each story
+renders the component in isolation, with controls for its props and a
+toolbar for theme and locale.
+
+## How stories are organised
+
+| Sidebar group | What it contains |
+| --- | --- |
+| **Foundations** | Design tokens, severity scale, category meta — the visual vocabulary the components share. |
+| **L** | Leaf components — pure presentational, no i18n or feature-flag coupling. |
+| **I** | i18n-only components — wrapped in `NextIntlClientProvider`. |
+| **F** | Flag-aware components — get a fresh focus/override fixture per story. |
+
+## Adding a story
+
+Co-locate `Foo.stories.tsx` next to `Foo.tsx` in `app/components/`. Use the
+canonical CSF3 shape (`Meta` default export + named `Story` exports). The
+global decorators in `.storybook/preview.tsx` already wrap every story
+with the i18n provider, font + globals.css, theme attribute, and the
+feature-flag resolver — you only need to declare overrides via
+`parameters.focus` / `parameters.flagOverrides` when the component cares.
+
+## What's out of scope
+
+Data-coupled views (anything that fetches `/api/*` or accepts large
+server-resolved props) and server-only-tainted modules (anything that
+imports `lib/db`, `lib/*-server`, or `better-sqlite3` at the top level)
+don't have stories yet — they'll land in follow-up PRs once a fixtures
+layer exists.

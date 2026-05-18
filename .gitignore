@@ -90,3 +90,6 @@ pnpm-debug.log*
 # ── Smoke / scratch ──────────────────────────────────────────────────
 __smoketest.ts
 /tools/__pycache__
+
+*storybook.log
+storybook-static
