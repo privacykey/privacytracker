@@ -300,12 +300,30 @@ jobs:
           docker buildx imagetools create "${TAG_ARGS[@]}" "${DIGEST_ARGS[@]}"
 
           image_ref="$(printf '%s\n' "${{ steps.meta.outputs.tags }}" | head -n 1)"
-          manifest_digest="$(
-            docker buildx imagetools inspect "$image_ref" |
-              awk '/^Digest:/ { print $2; exit }'
-          )"
+          # GHCR's read replicas occasionally lag a beat behind the
+          # write path — `imagetools inspect` run within ~1s of the
+          # create above can return a transient registry error
+          # (exit 255), which under `set -euo pipefail` would otherwise
+          # bring down the whole step even though the manifest is
+          # already pushed and visible to consumers within a few
+          # seconds. Retry up to 5 times with 4s sleeps before giving
+          # up; total worst case ~20s, well under the job timeout.
+          manifest_digest=""
+          for attempt in 1 2 3 4 5; do
+            if inspect_output="$(docker buildx imagetools inspect "$image_ref" 2>&1)"; then
+              manifest_digest="$(printf '%s\n' "$inspect_output" | awk '/^Digest:/ { print $2; exit }')"
+              if [ -n "$manifest_digest" ]; then
+                break
+              fi
+              echo "Attempt ${attempt}: inspect succeeded but produced no Digest line, retrying..." >&2
+            else
+              echo "Attempt ${attempt}: inspect failed (registry propagation lag?), retrying..." >&2
+              echo "${inspect_output}" >&2
+            fi
+            sleep 4
+          done
           if [ -z "$manifest_digest" ]; then
-            echo "Failed to resolve manifest digest for $image_ref" >&2
+            echo "Failed to resolve manifest digest for $image_ref after 5 attempts" >&2
             exit 1
           fi
           echo "image-ref=$image_ref" >> "$GITHUB_OUTPUT"
