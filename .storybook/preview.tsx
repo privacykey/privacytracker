@@ -26,6 +26,17 @@ const preview: Preview = {
       // Keep the default ruleset; surface violations inline for review.
       test: "todo",
     },
+    // App Router mocks for `next/navigation` (`useRouter`, `usePathname`,
+    // `useSearchParams`). Without this every component that imports from
+    // `next/navigation` throws "router mocks not created yet" on render.
+    // Stories can override per-story via `parameters.nextjs.navigation`
+    // (pathname, query, segments, …) when they need a specific URL.
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: "/dashboard",
+      },
+    },
   },
   globalTypes: {
     theme: {
