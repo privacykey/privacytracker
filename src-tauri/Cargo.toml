@@ -1,6 +1,6 @@
 [package]
 name = "privacytracker"
-version = "0.1.0"
+version = "0.1.1"
 description = "privacytracker — Apple App Store privacy-label tracker (desktop shell)"
 authors = ["privacykey <contact@privacykey.org>"]
 edition = "2021"
