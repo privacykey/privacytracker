@@ -101,15 +101,29 @@ if (existsSync(workerSource)) {
   );
 }
 
-// Stage the whole thing into the tauri resources tree. We dereference
-// symlinks so the staged tree is portable — pnpm's `.next/standalone/
-// node_modules/next` is an absolute symlink into the repo's `.pnpm/`
-// store; without dereference, the symlink survives the copy + tar and
-// breaks the moment the user's repo path changes or `.next/standalone/`
-// is wiped (which `next build` does at the start of every build).
+// Stage the whole thing into the tauri resources tree. The symlinks
+// in `.next/standalone/node_modules/` are RELATIVE (e.g. `next ->
+// .pnpm/next@.../node_modules/next`), and we deliberately preserve
+// them — pnpm's standalone layout depends on Node walking through
+// `node_modules/<pkg>` symlinks back into the `.pnpm/<pkg>@<ver>/
+// node_modules/` directory, where peer-dep siblings (e.g. @swc/helpers
+// next to next) become reachable via Node's module resolution.
+//
+// We learned the hard way: `dereference: true` materialised every
+// symlink into an independent copy, then `tar -h` flattened the
+// result so the user's extracted tree had `node_modules/next/` as a
+// real directory with NO `node_modules/@swc/` sibling. `node
+// server.js` then died with `Cannot find module '@swc/helpers/_/
+// _interop_require_default'` — Next's runtime calls into @swc/helpers
+// for its compiled-output interop shims, and our flattened tree
+// dropped the entire pnpm-flat resolution path. `verbatimSymlinks:
+// true` (Node 22.7+) makes cpSync copy symlinks as-is.
 rmSync(tauriTarget, { recursive: true, force: true });
 mkdirSync(path.dirname(tauriTarget), { recursive: true });
-cpSync(nextStandalone, tauriTarget, { recursive: true, dereference: true });
+cpSync(nextStandalone, tauriTarget, {
+  recursive: true,
+  verbatimSymlinks: true,
+});
 console.log(`stage-standalone: staged to ${tauriTarget}`);
 
 // ── Prune build-time-only deps that survive Next's file tracing ─────
@@ -374,11 +388,15 @@ if (process.platform === "darwin" && process.env.APPLE_SIGNING_IDENTITY) {
 // inside dotfile-prefixed directories. Uncompressed because the contents
 // don't compress well and the Rust extract path stays flate2-free.
 //
-// `-h` dereferences symlinks during tar — belt-and-braces alongside the
-// cpSync(dereference:true) above. If any symlinks slip past cpSync (or
-// the stage helper runs on a stale staged tree), tar still emits the
-// real files. Without this, the sidecar extracts an unusable tree on
-// any machine where the absolute symlink target doesn't exist.
+// Symlinks are packed AS-IS (no `-h`). pnpm's standalone layout uses
+// relative symlinks (`node_modules/next -> .pnpm/next@.../node_modules/
+// next`), and dereferencing during tar flattens the tree such that
+// each package's peer-dep siblings inside `.pnpm/<pkg>@<ver>/
+// node_modules/` become unreachable to Node's module resolver — see
+// the cpSync block above for the failure mode that bit v0.1.0.
+// Modern macOS / Linux tar both preserve relative symlinks correctly
+// at extract time, so the user's installed tree mirrors the original
+// pnpm layout exactly.
 //
 // Atomic write via tmp + rename: `tauri dev` runs this script and the
 // sidecar boot in parallel, and a partial tarball would make the sidecar
@@ -392,7 +410,7 @@ const tauriTarball = path.join(
 );
 const tauriTarballTmp = `${tauriTarball}.tmp`;
 rmSync(tauriTarballTmp, { force: true });
-execFileSync("tar", ["-cf", tauriTarballTmp, "-h", "-C", tauriTarget, "."], {
+execFileSync("tar", ["-cf", tauriTarballTmp, "-C", tauriTarget, "."], {
   stdio: "inherit",
 });
 renameSync(tauriTarballTmp, tauriTarball);
