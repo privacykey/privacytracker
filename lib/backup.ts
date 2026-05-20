@@ -185,11 +185,12 @@ export interface BackupEnvelope {
  * Why "scrub at the source" rather than "redact at the route":
  * `exportBackup()` is also called by `lib/backup-snapshots.ts` to write
  * scheduled snapshot files to disk, so a route-level redaction would still
- * persist the plaintext key on the filesystem. Doing it here is the only
+ * persist plaintext secrets on the filesystem. Doing it here is the only
  * point that catches every code path — current and future.
  */
 export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
   "ai_api_key",
+  "notification_webhook_url",
 ]);
 
 /**
@@ -256,10 +257,10 @@ export function redactSensitiveSettingsRows(
  *
  * Reads are batched inside a single read transaction so the snapshot is
  * internally consistent even if a scraper tick or user action fires while
- * the export is in flight. Sensitive `app_settings` rows (currently:
- * `ai_api_key`) are scrubbed via {@link redactSensitiveSettingsRows} before
- * the envelope is returned — see {@link SENSITIVE_SETTING_KEYS} for the
- * full set and rationale.
+ * the export is in flight. Sensitive `app_settings` rows (currently: AI API
+ * keys and webhook destinations) are scrubbed via
+ * {@link redactSensitiveSettingsRows} before the envelope is returned — see
+ * {@link SENSITIVE_SETTING_KEYS} for the full set and rationale.
  */
 export function exportBackup(): BackupEnvelope {
   const tables: Record<string, BackupTable> = {};

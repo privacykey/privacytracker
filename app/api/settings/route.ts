@@ -26,12 +26,72 @@ import {
   validateExternalUrl,
 } from "../../../lib/security";
 
+const MASKED_SECRET_VALUE = "__SET__";
+const WEBHOOK_MASK = "***";
+
+function maskWebhookPathSegment(segment: string): string {
+  const first = segment.at(0);
+  return first ? `${first}${WEBHOOK_MASK}` : WEBHOOK_MASK;
+}
+
+function maskWebhookUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const url = new URL(trimmed);
+    url.username = "";
+    url.password = "";
+    url.search = "";
+    url.hash = "";
+
+    const parts = url.pathname.split("/").filter(Boolean);
+    if (parts.length === 0) {
+      return `${url.origin}/${WEBHOOK_MASK}`;
+    }
+
+    if (
+      url.hostname === "hooks.slack.com" &&
+      parts[0] === "services" &&
+      parts.length >= 4
+    ) {
+      return `${url.origin}/services/${maskWebhookPathSegment(
+        parts[1]
+      )}/${maskWebhookPathSegment(parts[2])}/${WEBHOOK_MASK}`;
+    }
+
+    const prefix =
+      parts[0] && /^[a-z][a-z0-9._-]{0,24}$/i.test(parts[0])
+        ? `${parts[0]}/`
+        : "";
+    return `${url.origin}/${prefix}${WEBHOOK_MASK}`;
+  } catch {
+    return "configured";
+  }
+}
+
+function isMaskedWebhookRoundTrip(
+  raw: string,
+  storedWebhookUrl: string
+): boolean {
+  if (raw === MASKED_SECRET_VALUE) {
+    return true;
+  }
+  if (!storedWebhookUrl) {
+    return false;
+  }
+  return raw === maskWebhookUrl(storedWebhookUrl) || raw === "configured";
+}
+
 export async function GET(request: Request) {
   // NOTE: ai_api_key is deliberately masked — the settings UI should treat
   // this as "set / not set" rather than a plaintext round-trip. The raw key
   // is still available via the `lib/scheduler` helpers on the server.
   const storedKey = getSetting("ai_api_key", "");
   const storedCountry = getSetting("app_country", "");
+  const storedWebhookUrl = getSetting("notification_webhook_url", "");
   return NextResponse.json({
     sync_schedule: getSetting("sync_schedule", "manual"),
     last_auto_sync: getSetting("last_auto_sync", "0"),
@@ -101,7 +161,10 @@ export async function GET(request: Request) {
     // shape; `frequency` decides whether each notification fires its
     // own POST ('immediate') or whether they're batched into a daily /
     // weekly summary.
-    notification_webhook_url: getSetting("notification_webhook_url", ""),
+    // Masked for the same reason as `ai_api_key`: clients can show that
+    // a webhook is configured without receiving the secret-bearing path.
+    notification_webhook_url: maskWebhookUrl(storedWebhookUrl),
+    notification_webhook_url_set: !!storedWebhookUrl,
     notification_webhook_format: getSetting(
       "notification_webhook_format",
       "generic"
@@ -216,7 +279,7 @@ export async function POST(request: Request) {
   if (body.ai_api_key !== undefined) {
     // Ignore the masked sentinel — it means the UI hasn't touched the key.
     const raw = String(body.ai_api_key ?? "");
-    if (raw !== "__SET__") {
+    if (raw !== MASKED_SECRET_VALUE) {
       // Trim + reject anything implausibly long; api keys are <=512 chars.
       if (raw.length > 512) {
         return NextResponse.json(
@@ -398,7 +461,12 @@ export async function POST(request: Request) {
 
   if (body.notification_webhook_url !== undefined) {
     const raw = String(body.notification_webhook_url ?? "").trim();
-    if (raw === "") {
+    const storedWebhookUrl = getSetting("notification_webhook_url", "");
+    if (isMaskedWebhookRoundTrip(raw, storedWebhookUrl)) {
+      // A masked value came back from a settings client that did not edit the
+      // webhook field. Preserve the real URL server-side instead of trying to
+      // validate or store the display string.
+    } else if (raw === "") {
       setSetting("notification_webhook_url", "");
     } else {
       // Webhook destinations are user-controlled and frequently land on

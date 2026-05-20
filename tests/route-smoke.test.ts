@@ -142,18 +142,22 @@ test("exportBackup scrubs sensitive app_settings values from the envelope", asyn
     "../lib/backup"
   );
 
-  // Persist a known plaintext key, then dump a backup envelope and assert
-  // that (a) the row is still present (so restore knows the column is
+  // Persist known plaintext secrets, then dump a backup envelope and assert
+  // that (a) each row is still present (so restore knows the column is
   // managed) and (b) its `value` column is empty so no secret leaks through
   // any caller of `exportBackup` — direct route, scheduled snapshot, or
   // future audit-bundle composer. Defence is at the lib layer because all
   // three call sites funnel through this one function.
   const sentinel = `sk-route-smoke-DO-NOT-LEAK-${Date.now()}`;
+  const webhookSentinel =
+    "https://hooks.slack.com/services/TROUTE/BROUTE/DO-NOT-LEAK";
   setSetting("ai_api_key", sentinel);
+  setSetting("notification_webhook_url", webhookSentinel);
 
   try {
     // Sanity check: the value really is in app_settings before we scrub.
     assert.equal(getSetting("ai_api_key", ""), sentinel);
+    assert.equal(getSetting("notification_webhook_url", ""), webhookSentinel);
 
     const envelope = exportBackup();
     const settings = envelope.tables.app_settings;
@@ -167,6 +171,11 @@ test("exportBackup scrubs sensitive app_settings values from the envelope", asyn
       serialised.includes(sentinel),
       false,
       "serialised backup envelope must not contain the plaintext API key"
+    );
+    assert.equal(
+      serialised.includes(webhookSentinel),
+      false,
+      "serialised backup envelope must not contain the plaintext webhook URL"
     );
 
     // Each sensitive key must appear in the dump as an empty-string value
@@ -184,8 +193,53 @@ test("exportBackup scrubs sensitive app_settings values from the envelope", asyn
       );
     }
   } finally {
-    // Clean up so other tests don't see the sentinel value.
+    // Clean up so other tests don't see the sentinel values.
     setSetting("ai_api_key", "");
+    setSetting("notification_webhook_url", "");
+  }
+});
+
+test("settings GET masks webhook URLs and POST preserves masked round-trips", async () => {
+  const { setSetting, getSetting } = await import("../lib/scheduler");
+  const settings = unwrapRoute(
+    (await import("../app/api/settings/route")) as RouteModule
+  );
+  assert.ok(settings.GET);
+  assert.ok(settings.POST);
+
+  const webhook =
+    "https://hooks.slack.com/services/T12345678/B98765432/very-secret-token";
+  setSetting("notification_webhook_url", webhook);
+
+  try {
+    const res = await settings.GET(
+      new Request("http://127.0.0.1/api/settings")
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.notification_webhook_url_set, true);
+    assert.equal(
+      body.notification_webhook_url,
+      "https://hooks.slack.com/services/T***/B***/***"
+    );
+    assert.equal(JSON.stringify(body).includes("very-secret-token"), false);
+
+    const postRes = await settings.POST(
+      new Request("http://127.0.0.1/api/settings", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-real-ip": "route-smoke-settings-webhook",
+        },
+        body: JSON.stringify({
+          notification_webhook_url: body.notification_webhook_url,
+        }),
+      })
+    );
+    assert.equal(postRes.status, 200);
+    assert.equal(getSetting("notification_webhook_url", ""), webhook);
+  } finally {
+    setSetting("notification_webhook_url", "");
   }
 });
 
