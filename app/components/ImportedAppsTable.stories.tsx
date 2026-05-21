@@ -52,6 +52,15 @@ const meta = {
       // eslint-disable-next-line no-console
       console.log("ImportedAppsTable.onRemove", id);
     },
+    // The textarea state is controlled by the parent wizard; in
+    // Storybook we just stub the props so the table renders. The
+    // "+ Add" button stays disabled because `pending` is empty —
+    // that's the expected initial state.
+    pending: "",
+    onPendingChange: (next: string) => {
+      // eslint-disable-next-line no-console
+      console.log("ImportedAppsTable.onPendingChange", next);
+    },
   },
 } satisfies Meta<typeof ImportedAppsTable>;
 export default meta;

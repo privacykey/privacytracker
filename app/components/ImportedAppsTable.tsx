@@ -30,7 +30,6 @@
  */
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 // Co-located CSS — Turbopack hot-reloads reliably this way; the giant
 // globals.css has burned us on incremental builds.
 import "./onboard-step2.css";
@@ -47,19 +46,34 @@ export interface ImportedAppEntryView {
 interface Props {
   entries: ImportedAppEntryView[];
   onAdd: (rawText: string) => void;
+  /**
+   * Controlled state for the "+ Add" textarea. Lifted out of this
+   * component so the parent wizard can (a) include the uncommitted
+   * draft in its `selectedCount` enable-the-Search-button check and
+   * (b) flush the draft into `importedApps` when the user clicks
+   * Search without first clicking "+ Add" — the most common
+   * discoverability snag in step 2.
+   */
+  onPendingChange: (next: string) => void;
   onRemove: (id: string) => void;
+  pending: string;
 }
 
-export default function ImportedAppsTable({ entries, onRemove, onAdd }: Props) {
+export default function ImportedAppsTable({
+  entries,
+  onRemove,
+  onAdd,
+  pending,
+  onPendingChange,
+}: Props) {
   const t = useTranslations("onboard.step2.table");
-  const [pending, setPending] = useState("");
 
   const handleSubmit = () => {
     if (pending.trim().length === 0) {
       return;
     }
     onAdd(pending);
-    setPending("");
+    onPendingChange("");
   };
 
   const isEmpty = entries.length === 0;
@@ -108,7 +122,7 @@ export default function ImportedAppsTable({ entries, onRemove, onAdd }: Props) {
         <textarea
           className="textarea imported-apps-table-add-input"
           data-testid="onboard-app-names"
-          onChange={(e) => setPending(e.target.value)}
+          onChange={(e) => onPendingChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();

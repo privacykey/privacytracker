@@ -744,6 +744,15 @@ export default function OnboardWizard({
    * table's "+ Add" input (committed to `importedApps` on submit).
    */
   const [importedApps, setImportedApps] = useState<ImportedAppEntry[]>([]);
+  /**
+   * Uncommitted draft text the user is typing/pasting into the
+   * ImportedAppsTable's "+ Add" textarea. Lifted out of the child so
+   * the search-button-disabled check can account for it (the button
+   * should be live the moment the user types a name, even before they
+   * click + Add) and so `handleSearch` can flush it inline before
+   * reading the names list. Stays "" outside step 2.
+   */
+  const [pendingAppText, setPendingAppText] = useState("");
   // Derived adapter maps so the rest of the wizard (developerHint lookups,
   // existing test expectations) can keep calling `.get(name.toLowerCase())`
   // until the call sites get refactored. The arrays still live in
@@ -1364,6 +1373,38 @@ export default function OnboardWizard({
     () => importedApps.filter((e) => !e.likelyWebClip).map((e) => e.name),
     [importedApps]
   );
+
+  /**
+   * Commit any uncommitted text in the ImportedAppsTable's "+ Add"
+   * textarea into `importedApps` and return the parsed names that
+   * landed on the list (post-dedup). Returning the names synchronously
+   * matters because `setImportedApps` doesn't flush before the calling
+   * frame finishes — `handleSearch` splices the returned list into its
+   * search batch inline so users who type names directly into the
+   * textarea and hit Search don't get an empty result set.
+   */
+  const flushPendingAppText = useCallback((): string[] => {
+    if (!pendingAppText.trim()) {
+      return [];
+    }
+    const parsed = parseManualAppText(pendingAppText);
+    if (parsed.length === 0) {
+      setPendingAppText("");
+      return [];
+    }
+    const existing = new Set(importedApps.map((e) => e.name.toLowerCase()));
+    const fresh = parsed.filter((n) => !existing.has(n.toLowerCase()));
+    if (fresh.length > 0) {
+      setImportedApps((prev) => [
+        ...prev,
+        ...fresh.map((name) =>
+          makeImportedAppEntry({ name, source: "manual" })
+        ),
+      ]);
+    }
+    setPendingAppText("");
+    return fresh;
+  }, [pendingAppText, importedApps]);
 
   const parseTextFile = useCallback((file: File) => {
     const reader = new FileReader();
@@ -3107,8 +3148,56 @@ export default function OnboardWizard({
   };
 
   const handleSearch = async () => {
-    const names = getNames();
-    if (names.length === 0) {
+    // Commit any staged text in the ImportedAppsTable's "+ Add"
+    // textarea before reading the search list. Users typing names
+    // directly into that input frequently click "Search App Store"
+    // expecting it to "just work" — without this auto-commit they'd
+    // discover the staging quirk the hard way (button stays disabled
+    // OR fires with empty input). `flushPendingAppText` returns the
+    // names that landed in `importedApps`; we splice them into the
+    // search list inline since `setImportedApps` doesn't settle
+    // before the read below.
+    const justCommitted = flushPendingAppText();
+    const allNames = [...getNames(), ...justCommitted].filter(
+      (n, i, arr) => arr.indexOf(n) === i
+    );
+
+    if (allNames.length === 0) {
+      return;
+    }
+
+    // Only re-search names that don't already have a SearchResult.
+    // Subsequent clicks of "Search App Store" (after the user has
+    // come back to step 2 to add a few more apps) used to nuke
+    // `searchResults` / `selected` / `skippedQueries` /
+    // `manuallyChosenQueries` wholesale, losing every candidate pick
+    // the user had made on the first pass. Merge mode preserves all
+    // of that and only fetches results for names that don't yet have
+    // a block, plus prunes results whose names the user removed from
+    // step 2 between searches.
+    const existingQueries = new Set(searchResults.map((r) => r.query));
+    const newNames = allNames.filter((n) => !existingQueries.has(n));
+
+    // Drop orphan results for names that are no longer in the list
+    // (the user removed them in step 2). Computed synchronously so
+    // the newNames-empty fast-path below reads the post-prune count
+    // — setSearchResults wouldn't settle before the next statement
+    // and we'd ship the user to step 3 with stale rows.
+    const liveNamesSet = new Set(allNames);
+    const prunedExisting = searchResults.filter((r) =>
+      liveNamesSet.has(r.query)
+    );
+    if (prunedExisting.length !== searchResults.length) {
+      setSearchResults(prunedExisting);
+    }
+
+    // No new names — every name is already searched. The user
+    // probably clicked Search again to advance the wizard; carry
+    // them forward to step 3 instead of refetching the world.
+    if (newNames.length === 0) {
+      if (prunedExisting.length > 0) {
+        setStep(3);
+      }
       return;
     }
 
@@ -3120,7 +3209,7 @@ export default function OnboardWizard({
     searchAbortRef.current = new AbortController();
     setSearchProgress({
       matched: 0,
-      total: names.length,
+      total: newNames.length,
       currentBatch: 0,
       totalBatches: 1,
     });
@@ -3137,7 +3226,7 @@ export default function OnboardWizard({
         queuedRetryAfterMs,
         bundleMatched,
         bundleLookupTotal,
-      } = await runMatchSearch(names, country);
+      } = await runMatchSearch(newNames, country);
 
       // Tell the console how many names the server failed to match so
       // power users can see the list in devtools. The split between
@@ -3166,7 +3255,7 @@ export default function OnboardWizard({
       // couldn't process yet go in as `status='queued'` with the retry
       // deadline, so the history view has a full record of the batch from
       // the moment it starts instead of waiting for the replay to land.
-      const newImportId = await createImportRecord(names.length);
+      const newImportId = await createImportRecord(newNames.length);
       if (newImportId) {
         setImportId(newImportId);
         const idMap = await writeImportItems(
@@ -3179,15 +3268,65 @@ export default function OnboardWizard({
           // landed in `results` nor in the queued tail still get written as
           // `unmatched` placeholders. Fixes the "total=N but itemCount=0"
           // symptom when /api/search dies before returning anything usable.
-          names
+          newNames
         );
-        setItemIdByQuery(idMap);
+        setItemIdByQuery((prev) => {
+          const merged = new Map(prev);
+          for (const [k, v] of idMap.entries()) {
+            merged.set(k, v);
+          }
+          return merged;
+        });
       }
 
-      setSearchResults(results);
-      setSelected(autoSelected);
-      setSkippedQueries(new Set());
-      setManuallyChosenQueries(new Set());
+      // Merge fresh results into the existing list. New blocks append;
+      // any block whose query the server returned again (shouldn't
+      // happen given the newNames filter above, but be robust) gets
+      // replaced in place.
+      setSearchResults((prev) => {
+        const incoming = new Map(results.map((r) => [r.query, r]));
+        const next = prev.map((r) => incoming.get(r.query) ?? r);
+        for (const r of results) {
+          if (!next.some((p) => p.query === r.query)) {
+            next.push(r);
+          }
+        }
+        return next;
+      });
+      // Merge selections — preserve any picks the user already made.
+      setSelected((prev) => {
+        const next = new Map(prev);
+        for (const [query, candidate] of autoSelected) {
+          if (!next.has(query)) {
+            next.set(query, candidate);
+          }
+        }
+        return next;
+      });
+      // Deliberately NOT resetting skippedQueries / manuallyChosenQueries —
+      // any block the user explicitly skipped or chose on a prior search
+      // stays in that state. Only orphaned skipped/manual entries (whose
+      // query was removed from importedApps in step 2) need pruning to
+      // avoid stale flags lingering across visits.
+      const allNamesSet = new Set(allNames);
+      setSkippedQueries((prev) => {
+        const next = new Set<string>();
+        for (const q of prev) {
+          if (allNamesSet.has(q)) {
+            next.add(q);
+          }
+        }
+        return next;
+      });
+      setManuallyChosenQueries((prev) => {
+        const next = new Set<string>();
+        for (const q of prev) {
+          if (allNamesSet.has(q)) {
+            next.add(q);
+          }
+        }
+        return next;
+      });
 
       // Rate-limit path: hand the queued tail to the layout-level provider so
       // the retry loop keeps running if the user navigates away, and still
@@ -3202,7 +3341,7 @@ export default function OnboardWizard({
           retryAfterMs: queuedRetryAfterMs,
         });
         console.warn(
-          `[search] iTunes rate-limited after ${results.length} of ${names.length} names; ` +
+          `[search] iTunes rate-limited after ${results.length} of ${newNames.length} names; ` +
             `${queuedRows.length} queued for replay in ${Math.round(queuedRetryAfterMs / 1000)}s.`
         );
       }
@@ -6354,9 +6493,11 @@ export default function OnboardWizard({
                     setImportedApps((prev) => [...prev, ...fresh]);
                   }
                 }}
+                onPendingChange={setPendingAppText}
                 onRemove={(id) =>
                   setImportedApps((prev) => prev.filter((e) => e.id !== id))
                 }
+                pending={pendingAppText}
               />
             )}
 
@@ -6423,7 +6564,12 @@ export default function OnboardWizard({
                 <button
                   className="btn btn-primary btn-lg"
                   data-testid="onboard-search"
-                  disabled={searching || selectedCount === 0 || ocring}
+                  disabled={
+                    searching ||
+                    (selectedCount === 0 &&
+                      pendingAppText.trim().length === 0) ||
+                    ocring
+                  }
                   onClick={handleSearch}
                   style={{ flex: 1 }}
                   type="button"
@@ -7154,6 +7300,8 @@ export default function OnboardWizard({
                                   const choice =
                                     triageChoices.get(result.query) ??
                                     "sideloaded";
+                                  const isEditing =
+                                    editingBlock === result.query;
                                   return (
                                     <li
                                       key={result.query}
@@ -7166,53 +7314,89 @@ export default function OnboardWizard({
                                         flexWrap: "wrap",
                                       }}
                                     >
-                                      <strong
-                                        style={{
-                                          flex: "1 1 220px",
-                                          minWidth: 0,
-                                        }}
-                                      >
-                                        {result.query}
-                                      </strong>
-                                      <label
-                                        htmlFor={`triage-${result.query}`}
-                                        style={{
-                                          fontSize: 12,
-                                          color: "var(--text-2)",
-                                        }}
-                                      >
-                                        Save as
-                                      </label>
-                                      <select
-                                        className="settings-input settings-select"
-                                        id={`triage-${result.query}`}
-                                        onChange={(e) => {
-                                          const next = new Map(triageChoices);
-                                          next.set(
-                                            result.query,
-                                            e.target.value as TriageChoice
-                                          );
-                                          setTriageChoices(next);
-                                        }}
-                                        style={{ minWidth: 180 }}
-                                        value={choice}
-                                      >
-                                        <option value="sideloaded">
-                                          Sideloaded / enterprise
-                                        </option>
-                                        <option value="testflight">
-                                          TestFlight beta
-                                        </option>
-                                        <option value="web_clip">
-                                          Safari web app
-                                        </option>
-                                        <option value="own_build">
-                                          Own build (Xcode)
-                                        </option>
-                                        <option value="skip">
-                                          Skip — don’t track
-                                        </option>
-                                      </select>
+                                      {isEditing ? (
+                                        <UnavailableRowEditor
+                                          busyEditing={
+                                            editingBlock === result.query &&
+                                            searching
+                                          }
+                                          initialQuery={result.query}
+                                          onCancel={() => setEditingBlock(null)}
+                                          onRetry={(nextQuery) => {
+                                            // handleBlockResearch reads
+                                            // `editingBlock` to flag the
+                                            // row as in-flight; it also
+                                            // clears `editingBlock` itself
+                                            // on completion / no-op.
+                                            void handleBlockResearch(
+                                              result.query,
+                                              nextQuery
+                                            );
+                                          }}
+                                        />
+                                      ) : (
+                                        <>
+                                          <strong
+                                            style={{
+                                              flex: "1 1 220px",
+                                              minWidth: 0,
+                                            }}
+                                          >
+                                            {result.query}
+                                          </strong>
+                                          <button
+                                            className="link-button-inline"
+                                            onClick={() =>
+                                              setEditingBlock(result.query)
+                                            }
+                                            style={{ fontSize: 13 }}
+                                            type="button"
+                                          >
+                                            Edit & retry
+                                          </button>
+                                          <label
+                                            htmlFor={`triage-${result.query}`}
+                                            style={{
+                                              fontSize: 12,
+                                              color: "var(--text-2)",
+                                            }}
+                                          >
+                                            Save as
+                                          </label>
+                                          <select
+                                            className="settings-input settings-select"
+                                            id={`triage-${result.query}`}
+                                            onChange={(e) => {
+                                              const next = new Map(
+                                                triageChoices
+                                              );
+                                              next.set(
+                                                result.query,
+                                                e.target.value as TriageChoice
+                                              );
+                                              setTriageChoices(next);
+                                            }}
+                                            style={{ minWidth: 180 }}
+                                            value={choice}
+                                          >
+                                            <option value="sideloaded">
+                                              Sideloaded / enterprise
+                                            </option>
+                                            <option value="testflight">
+                                              TestFlight beta
+                                            </option>
+                                            <option value="web_clip">
+                                              Safari web app
+                                            </option>
+                                            <option value="own_build">
+                                              Own build (Xcode)
+                                            </option>
+                                            <option value="skip">
+                                              Skip — don’t track
+                                            </option>
+                                          </select>
+                                        </>
+                                      )}
                                     </li>
                                   );
                                 })}
@@ -8347,6 +8531,81 @@ function PolicyPhaseCell({
       {result.detail && (
         <div className="policy-phase-detail">{result.detail}</div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Inline "Edit name & retry" affordance for each row in the
+ * "Not in the App Store" triage section. Lets the user fix
+ * capitalisation / typos / add a developer hint on a query that
+ * came back empty, and re-fire `/api/search` for JUST that one
+ * block via the existing `handleBlockResearch` path. Mirrors the
+ * matched-block edit affordance in `SearchResultBlock`; without
+ * this, the only way to retry a single unmatched query was to
+ * back out of step 3, fix the name in step 2's textarea, and
+ * re-run the whole search — which used to nuke every other pick
+ * the user had already made.
+ */
+function UnavailableRowEditor({
+  initialQuery,
+  busyEditing,
+  onRetry,
+  onCancel,
+}: {
+  busyEditing: boolean;
+  initialQuery: string;
+  onCancel: () => void;
+  onRetry: (nextQuery: string) => void;
+}) {
+  const [draft, setDraft] = useState(initialQuery);
+  const trimmed = draft.trim();
+  const canSubmit =
+    !busyEditing && trimmed.length > 0 && trimmed !== initialQuery;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        flex: "1 1 100%",
+        flexWrap: "wrap",
+      }}
+    >
+      <input
+        autoFocus
+        className="settings-input"
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && canSubmit) {
+            e.preventDefault();
+            onRetry(trimmed);
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            onCancel();
+          }
+        }}
+        placeholder="App name"
+        style={{ flex: "1 1 220px", minWidth: 0 }}
+        type="text"
+        value={draft}
+      />
+      <button
+        className="btn btn-primary btn-sm"
+        disabled={!canSubmit}
+        onClick={() => onRetry(trimmed)}
+        type="button"
+      >
+        {busyEditing ? <span className="spinner-sm" /> : "Search again"}
+      </button>
+      <button
+        className="btn btn-secondary btn-sm"
+        disabled={busyEditing}
+        onClick={onCancel}
+        type="button"
+      >
+        Cancel
+      </button>
     </div>
   );
 }
