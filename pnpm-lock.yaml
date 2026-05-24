@@ -74,13 +74,13 @@ importers:
         version: 1.60.0
       '@storybook/addon-a11y':
         specifier: ^10.4.0
-        version: 10.4.0(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
+        version: 10.4.0(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
       '@storybook/addon-docs':
         specifier: ^10.4.0
-        version: 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
+        version: 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       '@storybook/nextjs':
         specifier: ^10.4.0
-        version: 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(next@16.2.6(@babel/core@7.29.0)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(type-fest@4.41.0)(typescript@6.0.3)(webpack-hot-middleware@2.26.1)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
+        version: 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(next@16.2.6(@babel/core@7.29.0)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(type-fest@4.41.0)(typescript@6.0.3)(webpack-hot-middleware@2.26.1)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       '@tauri-apps/cli':
         specifier: ^2.11.2
         version: 2.11.2
@@ -100,8 +100,8 @@ importers:
         specifier: ^10.1.0
         version: 10.1.0
       storybook:
-        specifier: ^10.4.0
-        version: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+        specifier: ^10.4.1
+        version: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       tsx:
         specifier: ^4.22.1
         version: 4.22.1
@@ -114,8 +114,8 @@ importers:
 
 packages:
 
-  '@adobe/css-tools@4.4.4':
-    resolution: {integrity: sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg==}
+  '@adobe/css-tools@4.5.0':
+    resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -2710,6 +2710,7 @@ packages:
 
   dompurify@3.4.4:
     resolution: {integrity: sha512-r8K7KGKEcztXfA/nfabSYB2hg9tDphORJTdf8xprN/luSLGmNhOBN8dm1/SYjqLLet6YUFEXOcrdTuwryp/Bew==}
+    deprecated: Fixed a security issue introduced in 3.4.4
 
   domutils@2.8.0:
     resolution: {integrity: sha512-w96Cjofp72M5IIhpjgobBimYEfoPjx1Vx0BSX9P30WBdZW2WIKU0T1Bd0kz2eNZ9ikjKgHbEyKx8BB6H1L3h3A==}
@@ -3843,6 +3844,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.8.1:
+    resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   server-only@0.0.1:
     resolution: {integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==}
 
@@ -3916,8 +3922,8 @@ packages:
   stackframe@1.3.4:
     resolution: {integrity: sha512-oeVtt7eWQS+Na6F//S4kJ2K2VbRlS9D43mAlMyVpVWovy9o+jfgH8O9agzANzaiLjclA0oYzUXEM4PurhSUChw==}
 
-  storybook@10.4.0:
-    resolution: {integrity: sha512-zrtctbVa6xEXCXuE3vsiR0At31zLOtzj8QudN/GaBJLZl0Z2DfF1rDPtTxdAbAp11M2J/7JVHaTIQKXauQPbmg==}
+  storybook@10.4.1:
+    resolution: {integrity: sha512-V1Zd2e+gBFufqAQVZ1JR8KLqALsEZ3JYSBnWwQbKa6zCfWWanR6AFMyuOkLt2gZOgGp3h2Riuz88pGNVTQSG0A==}
     hasBin: true
     peerDependencies:
       '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -4269,8 +4275,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.20.1:
-    resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -4312,7 +4318,7 @@ packages:
 
 snapshots:
 
-  '@adobe/css-tools@4.4.4': {}
+  '@adobe/css-tools@4.5.0': {}
 
   '@babel/code-frame@7.29.0':
     dependencies:
@@ -5744,21 +5750,21 @@ snapshots:
 
   '@schummar/icu-type-parser@1.21.5': {}
 
-  '@storybook/addon-a11y@10.4.0(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
+  '@storybook/addon-a11y@10.4.0(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
     dependencies:
       '@storybook/global': 5.0.0
       axe-core: 4.11.4
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
 
-  '@storybook/addon-docs@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))':
+  '@storybook/addon-docs@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))':
     dependencies:
       '@mdx-js/react': 3.1.1(@types/react@19.2.14)(react@19.2.6)
-      '@storybook/csf-plugin': 10.4.0(esbuild@0.28.0)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
+      '@storybook/csf-plugin': 10.4.0(esbuild@0.28.0)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       '@storybook/icons': 2.0.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@storybook/react-dom-shim': 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
+      '@storybook/react-dom-shim': 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       ts-dedent: 2.2.0
     optionalDependencies:
       '@types/react': 19.2.14
@@ -5769,9 +5775,9 @@ snapshots:
       - vite
       - webpack
 
-  '@storybook/builder-webpack5@10.4.0(esbuild@0.28.0)(postcss@8.5.14)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)':
+  '@storybook/builder-webpack5@10.4.0(esbuild@0.28.0)(postcss@8.5.14)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)':
     dependencies:
-      '@storybook/core-webpack': 10.4.0(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
+      '@storybook/core-webpack': 10.4.0(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
       case-sensitive-paths-webpack-plugin: 2.4.0
       cjs-module-lexer: 1.4.3
       css-loader: 7.1.4(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
@@ -5779,7 +5785,7 @@ snapshots:
       fork-ts-checker-webpack-plugin: 9.1.0(typescript@6.0.3)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       html-webpack-plugin: 5.6.7(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       magic-string: 0.30.21
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       style-loader: 4.0.0(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       terser-webpack-plugin: 5.6.0(esbuild@0.28.0)(postcss@8.5.14)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       ts-dedent: 2.2.0
@@ -5805,14 +5811,14 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@storybook/core-webpack@10.4.0(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
+  '@storybook/core-webpack@10.4.0(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
     dependencies:
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       ts-dedent: 2.2.0
 
-  '@storybook/csf-plugin@10.4.0(esbuild@0.28.0)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))':
+  '@storybook/csf-plugin@10.4.0(esbuild@0.28.0)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))':
     dependencies:
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       unplugin: 2.3.11
     optionalDependencies:
       esbuild: 0.28.0
@@ -5825,7 +5831,7 @@ snapshots:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
 
-  '@storybook/nextjs@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(next@16.2.6(@babel/core@7.29.0)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(type-fest@4.41.0)(typescript@6.0.3)(webpack-hot-middleware@2.26.1)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))':
+  '@storybook/nextjs@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(esbuild@0.28.0)(next@16.2.6(@babel/core@7.29.0)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(type-fest@4.41.0)(typescript@6.0.3)(webpack-hot-middleware@2.26.1)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))':
     dependencies:
       '@babel/core': 7.29.0
       '@babel/plugin-syntax-bigint': 7.8.3(@babel/core@7.29.0)
@@ -5841,9 +5847,9 @@ snapshots:
       '@babel/preset-typescript': 7.28.5(@babel/core@7.29.0)
       '@babel/runtime': 7.29.2
       '@pmmmwh/react-refresh-webpack-plugin': 0.5.17(react-refresh@0.14.2)(type-fest@4.41.0)(webpack-hot-middleware@2.26.1)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
-      '@storybook/builder-webpack5': 10.4.0(esbuild@0.28.0)(postcss@8.5.14)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)
-      '@storybook/preset-react-webpack': 10.4.0(esbuild@0.28.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)
-      '@storybook/react': 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)
+      '@storybook/builder-webpack5': 10.4.0(esbuild@0.28.0)(postcss@8.5.14)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)
+      '@storybook/preset-react-webpack': 10.4.0(esbuild@0.28.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)
+      '@storybook/react': 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)
       '@types/semver': 7.7.1
       babel-loader: 9.2.1(@babel/core@7.29.0)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       css-loader: 6.11.0(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
@@ -5859,7 +5865,7 @@ snapshots:
       resolve-url-loader: 5.0.0
       sass-loader: 16.0.8(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       semver: 7.8.0
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       style-loader: 3.3.4(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.2.6)
       tsconfig-paths: 4.2.0
@@ -5895,9 +5901,9 @@ snapshots:
       - webpack-hot-middleware
       - webpack-plugin-serve
 
-  '@storybook/preset-react-webpack@10.4.0(esbuild@0.28.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)':
+  '@storybook/preset-react-webpack@10.4.0(esbuild@0.28.0)(postcss@8.5.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)':
     dependencies:
-      '@storybook/core-webpack': 10.4.0(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
+      '@storybook/core-webpack': 10.4.0(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
       '@storybook/react-docgen-typescript-plugin': 1.0.6--canary.9.0c3f3b7.0(typescript@6.0.3)(webpack@5.106.2(esbuild@0.28.0)(postcss@8.5.14))
       '@types/semver': 7.7.1
       magic-string: 0.30.21
@@ -5905,8 +5911,8 @@ snapshots:
       react-docgen: 7.1.1
       react-dom: 19.2.6(react@19.2.6)
       resolve: 1.22.12
-      semver: 7.8.0
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      semver: 7.8.1
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       tsconfig-paths: 4.2.0
       webpack: 5.106.2(esbuild@0.28.0)(postcss@8.5.14)
     optionalDependencies:
@@ -5941,24 +5947,24 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@storybook/react-dom-shim@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
+  '@storybook/react-dom-shim@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))':
     dependencies:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
     optionalDependencies:
       '@types/react': 19.2.14
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
 
-  '@storybook/react@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)':
+  '@storybook/react@10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(typescript@6.0.3)':
     dependencies:
       '@storybook/global': 5.0.0
-      '@storybook/react-dom-shim': 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
+      '@storybook/react-dom-shim': 10.4.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
       react: 19.2.6
       react-docgen: 8.0.3
       react-docgen-typescript: 2.4.0(typescript@6.0.3)
       react-dom: 19.2.6(react@19.2.6)
-      storybook: 10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      storybook: 10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
     optionalDependencies:
       '@types/react': 19.2.14
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
@@ -6102,7 +6108,7 @@ snapshots:
 
   '@testing-library/jest-dom@6.9.1':
     dependencies:
-      '@adobe/css-tools': 4.4.4
+      '@adobe/css-tools': 4.5.0
       aria-query: 5.3.2
       css.escape: 1.5.1
       dom-accessibility-api: 0.6.3
@@ -6720,7 +6726,7 @@ snapshots:
       postcss-modules-scope: 3.2.1(postcss@8.5.14)
       postcss-modules-values: 4.0.0(postcss@8.5.14)
       postcss-value-parser: 4.2.0
-      semver: 7.8.0
+      semver: 7.8.1
     optionalDependencies:
       webpack: 5.106.2(esbuild@0.28.0)(postcss@8.5.14)
 
@@ -6733,7 +6739,7 @@ snapshots:
       postcss-modules-scope: 3.2.1(postcss@8.5.14)
       postcss-modules-values: 4.0.0(postcss@8.5.14)
       postcss-value-parser: 4.2.0
-      semver: 7.8.0
+      semver: 7.8.1
     optionalDependencies:
       webpack: 5.106.2(esbuild@0.28.0)(postcss@8.5.14)
 
@@ -7076,7 +7082,7 @@ snapshots:
       minimatch: 3.1.5
       node-abort-controller: 3.1.1
       schema-utils: 3.3.0
-      semver: 7.8.0
+      semver: 7.8.1
       tapable: 2.3.3
       typescript: 6.0.3
       webpack: 5.106.2(esbuild@0.28.0)(postcss@8.5.14)
@@ -7519,7 +7525,7 @@ snapshots:
 
   node-abi@3.92.0:
     dependencies:
-      semver: 7.8.0
+      semver: 7.8.1
 
   node-abort-controller@3.1.1: {}
 
@@ -7768,7 +7774,7 @@ snapshots:
       cosmiconfig: 9.0.1(typescript@6.0.3)
       jiti: 2.7.0
       postcss: 8.5.14
-      semver: 7.8.0
+      semver: 7.8.1
     optionalDependencies:
       webpack: 5.106.2(esbuild@0.28.0)(postcss@8.5.14)
     transitivePeerDependencies:
@@ -8090,6 +8096,8 @@ snapshots:
 
   semver@7.8.0: {}
 
+  semver@7.8.1: {}
+
   server-only@0.0.1: {}
 
   set-function-length@1.2.2:
@@ -8113,7 +8121,7 @@ snapshots:
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
-      semver: 7.8.0
+      semver: 7.8.1
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
@@ -8200,7 +8208,7 @@ snapshots:
 
   stackframe@1.3.4: {}
 
-  storybook@10.4.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+  storybook@10.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)(@testing-library/dom@10.4.1)(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
     dependencies:
       '@storybook/global': 5.0.0
       '@storybook/icons': 2.0.2(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -8214,9 +8222,9 @@ snapshots:
       oxc-parser: 0.127.0
       oxc-resolver: 11.19.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.10.0)
       recast: 0.23.11
-      semver: 7.8.0
+      semver: 7.8.1
       use-sync-external-store: 1.6.0(react@19.2.6)
-      ws: 8.20.1
+      ws: 8.21.0
     optionalDependencies:
       '@types/react': 19.2.14
     transitivePeerDependencies:
@@ -8570,7 +8578,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.20.1: {}
+  ws@8.21.0: {}
 
   wsl-utils@0.1.0:
     dependencies:
