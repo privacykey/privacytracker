@@ -66,7 +66,7 @@
     "storybook": "^10.4.0",
     "@storybook/nextjs": "^10.4.0",
     "@storybook/addon-a11y": "^10.4.0",
-    "@storybook/addon-docs": "^10.4.0"
+    "@storybook/addon-docs": "^10.4.1"
   },
   "pnpm": {
     "//": "Install-script allow-list. pnpm v9+ blocks all install scripts by default; without this block the listed packages land in node_modules with their build steps skipped, breaking native bindings (better-sqlite3), platform binaries (esbuild, @swc/core, @tauri-apps/cli, unrs-resolver), libvips (sharp), language data (tesseract.js), and macOS fsevents (@parcel/watcher). Mirrored in pnpm-workspace.yaml for pnpm 10+, which reads `onlyBuiltDependencies` from the workspace file in preference to here. The `overrides` block lives in pnpm-workspace.yaml — keeping it in BOTH places caused [ERR_PNPM_LOCKFILE_CONFIG_MISMATCH] in CI because pnpm 10 reads overrides from the workspace file but writes them to the lockfile, and the comparison failed against package.json's stale copy.",
