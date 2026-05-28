@@ -10,9 +10,9 @@ import type { PolicyLensKey, PolicyRating } from "./policy-summary-meta";
 
 // ── Matrix (apps × category × severity) ───────────────────────────────
 export type SeverityId =
-  | "DATA_USED_TO_TRACK_YOU"
+  | "DATA_NOT_LINKED_TO_YOU"
   | "DATA_LINKED_TO_YOU"
-  | "DATA_NOT_LINKED_TO_YOU";
+  | "DATA_USED_TO_TRACK_YOU";
 
 export interface MatrixApp {
   categoryCount: number;

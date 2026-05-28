@@ -262,12 +262,12 @@
     "no_apps_with_level": "No {level} apps"
   },
   "severity": {
-    "data_used_to_track_you": "Data Used to Track You",
-    "data_linked_to_you": "Data Linked to You",
     "data_not_linked_to_you": "Data Not Linked to You",
-    "data_used_to_track_you_desc": "Data collected and linked with third-party data for the purpose of targeted advertising or advertising measurement.",
-    "data_linked_to_you_desc": "Data collected and tied to your identity via your account, device, or other details.",
-    "data_not_linked_to_you_desc": "Data collected in a way that is not tied to your identity (e.g., anonymized or aggregated data)."
+    "data_linked_to_you": "Data Linked to You",
+    "data_used_to_track_you": "Data Used to Track You",
+    "data_not_linked_to_you_desc": "Data the app collects but says is not tied back to your identity, usually because direct identifiers are removed before collection.",
+    "data_linked_to_you_desc": "Data the app can connect back to you, such as through your account, device, contact details, user ID, or another identifier.",
+    "data_used_to_track_you_desc": "Data the app or its partners use to recognize you across other companies' apps, websites, offline data sources, or data brokers."
   },
   "category": {
     "contact_info": "Contact Info",
@@ -1413,9 +1413,9 @@
       "filter_hide_no_categories_title": "Hide apps with no privacy categories collected",
       "prev_page_aria": "Previous page of apps",
       "next_page_aria": "Next page of apps",
-      "swatch_track": "Used to track you",
-      "swatch_linked": "Linked to you",
       "swatch_not_linked": "Not linked to you",
+      "swatch_linked": "Linked to you",
+      "swatch_track": "Used to track you",
       "swatch_exceeds_profile": "Exceeds your Privacy Profile",
       "no_pref_aria": "No preference set",
       "severity_legend_aria": "Severity colour key",

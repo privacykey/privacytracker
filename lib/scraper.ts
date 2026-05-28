@@ -23,6 +23,7 @@ import {
   createProfileMismatchNotification,
   createVersionUpdateNotification,
 } from "./notifications";
+import { comparePrivacyTypeDisplayOrder } from "./privacy-meta";
 import { getPolicyAnalysis, syncPrivacyPolicyAnalysis } from "./privacy-policy";
 import {
   type AppProfileFootprint,
@@ -2626,12 +2627,6 @@ export function getGroupedPrivacyView() {
   `)
     .all() as any[];
 
-  const severityOrder: Record<string, number> = {
-    DATA_USED_TO_TRACK_YOU: 0,
-    DATA_LINKED_TO_YOU: 1,
-    DATA_NOT_LINKED_TO_YOU: 2,
-  };
-
   // Category risk weight — red > orange > blue > neutral (matches CATEGORY_META.color).
   // Used to break ties when multiple categories have similar app counts within a severity.
   const categoryRiskWeight: Record<string, number> = {
@@ -2696,9 +2691,7 @@ export function getGroupedPrivacyView() {
           return b.apps.length - a.apps.length;
         }),
     }))
-    .sort(
-      (a: any, b: any) =>
-        (severityOrder[a.identifier] ?? 99) -
-        (severityOrder[b.identifier] ?? 99)
+    .sort((a: any, b: any) =>
+      comparePrivacyTypeDisplayOrder(a.identifier, b.identifier)
     );
 }

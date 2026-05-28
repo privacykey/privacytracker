@@ -33,9 +33,9 @@ const CATEGORY_NAMESPACE_KEY: Record<string, string> = {
 
 /** Map SEVERITY_CONFIG identifiers to the `severity.*` namespace key. */
 const SEVERITY_NAMESPACE_KEY: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: "data_used_to_track_you",
-  DATA_LINKED_TO_YOU: "data_linked_to_you",
   DATA_NOT_LINKED_TO_YOU: "data_not_linked_to_you",
+  DATA_LINKED_TO_YOU: "data_linked_to_you",
+  DATA_USED_TO_TRACK_YOU: "data_used_to_track_you",
 };
 
 /**
