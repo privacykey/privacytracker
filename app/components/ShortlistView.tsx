@@ -33,7 +33,11 @@ import {
   localiseBadgeLabel,
 } from "../../lib/i18n-meta";
 import { formatPriceLine, priceTooltip } from "../../lib/price-display";
-import { CATEGORY_META, SEVERITY_CONFIG } from "../../lib/privacy-meta";
+import {
+  CATEGORY_META,
+  SEVERITY_CONFIG,
+  sortPrivacyTypesForDisplay,
+} from "../../lib/privacy-meta";
 import type {
   AppProfileBadge,
   AppProfileFootprint,
@@ -51,6 +55,7 @@ import {
 } from "../../lib/privacy-profile";
 import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
+import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { SocialShareModal } from "./SocialShareModal";
 import { useTaskCenter } from "./TaskCenter";
 
@@ -1628,8 +1633,8 @@ function ShortlistEntryRow({
 
 /**
  * Horizontal privacy-labels block rendered beneath each shortlist row when
- * "Detailed view" is on. Three label-rows — Tracking, Linked to you, Not
- * linked — each with their categories as inline chips. Visible both on
+ * "Detailed view" is on. Three label rows — Not linked, Linked to you, and
+ * Tracking — each with their categories as inline chips. Visible both on
  * screen (so the user previews what's about to print) and in the print
  * stylesheet.
  *
@@ -1638,8 +1643,8 @@ function ShortlistEntryRow({
  *   - Zero privacy types → subtle note explaining the empty state (either
  *     Apple says "No Details Provided" or the shelf parser couldn't find
  *     anything — mirrors the drawer's logic).
- *   - Otherwise → one row per severity tier, ordered by how Apple ranks
- *     them (tracking first, then linked, then not-linked).
+ *   - Otherwise → one row per severity tier, ordered from least identifying
+ *     to most invasive: not-linked, linked, then tracking.
  */
 function ShortlistEntryDetailed({
   preview,
@@ -1683,21 +1688,20 @@ function PrivacyLabelsStack({
 }) {
   return (
     <>
-      {privacyTypes.map((type) => {
+      {sortPrivacyTypesForDisplay(privacyTypes).map((type) => {
         const sev = SEVERITY_CONFIG[type.identifier];
         const sevColor =
           type.identifier === "DATA_USED_TO_TRACK_YOU"
             ? "var(--red)"
             : type.identifier === "DATA_LINKED_TO_YOU"
               ? "var(--orange)"
-              : "var(--yellow)";
+              : "var(--cream)";
         return (
           <div className="shortlist-entry-detailed-row" key={type.identifier}>
             <span className="shortlist-entry-detailed-label">
-              <span
-                aria-hidden="true"
-                className="shortlist-entry-detailed-dot"
-                style={{ background: sevColor }}
+              <PrivacyTypeIcon
+                identifier={type.identifier}
+                style={{ color: sevColor }}
               />
               <span>{sev?.label ?? type.title}</span>
             </span>
@@ -1792,7 +1796,7 @@ function ShortlistMismatchBanner({
       title={tooltip}
     >
       <span aria-hidden="true" className="shortlist-mismatch-banner-icon">
-        {TIER_META[top.observed].icon}
+        <PrivacyTypeIcon tier={top.observed} />
       </span>
       <div className="shortlist-mismatch-banner-body">
         <div className="shortlist-mismatch-banner-title">
@@ -2104,26 +2108,20 @@ function PreviewBody({
             {tShortlist("section_privacy_labels")}
           </div>
           <div className="shortlist-types-list">
-            {preview.privacyTypes.map((type) => {
+            {sortPrivacyTypesForDisplay(preview.privacyTypes).map((type) => {
               const sev = SEVERITY_CONFIG[type.identifier];
               const sevColor =
                 type.identifier === "DATA_USED_TO_TRACK_YOU"
                   ? "var(--red)"
                   : type.identifier === "DATA_LINKED_TO_YOU"
                     ? "var(--orange)"
-                    : "var(--yellow)";
+                    : "var(--cream)";
               return (
                 <div className="shortlist-type-card" key={type.identifier}>
                   <div className="shortlist-type-header">
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: sevColor,
-                        display: "inline-block",
-                      }}
+                    <PrivacyTypeIcon
+                      identifier={type.identifier}
+                      style={{ color: sevColor }}
                     />
                     <span>{sev?.label ?? type.title}</span>
                   </div>

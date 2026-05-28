@@ -75,6 +75,8 @@
   --orange-dim: rgba(255, 159, 10, 0.12);
   --yellow: #ffd60a;
   --yellow-dim: rgba(255, 214, 10, 0.1);
+  --cream: #d8c7a3;
+  --cream-dim: rgba(216, 199, 163, 0.13);
   --green: #30d158;
   --green-dim: rgba(48, 209, 88, 0.12);
   /* Rose — reserved for privacy-profile mismatches so they read as a
@@ -154,6 +156,8 @@
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
     --blue: #0071e3;
     --blue-hover: #0077ed;
+    --cream: #7a643b;
+    --cream-dim: rgba(122, 100, 59, 0.12);
 
     /* Light-mode popover glass — more opacity because light content
        behind is harder to read through a translucent pane. */
@@ -187,6 +191,8 @@ html[data-theme-override="light"] {
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
   --blue: #0071e3;
   --blue-hover: #0077ed;
+  --cream: #7a643b;
+  --cream-dim: rgba(122, 100, 59, 0.12);
   --popover-bg: rgba(255, 255, 255, 0.94);
   --popover-border: rgba(0, 0, 0, 0.12);
   --popover-inner-highlight: rgba(255, 255, 255, 0.9);
@@ -1277,17 +1283,40 @@ html[data-theme-override="high-contrast"] .nav {
   border-radius: var(--r-full);
 }
 
-.severity-linked {
-  color: var(--red);
-  background: var(--red-dim);
+.privacy-type-icon {
+  flex: 0 0 auto;
+  width: 1.15em;
+  height: 1.15em;
+  overflow: visible;
+  vertical-align: -0.16em;
+  color: currentColor;
 }
-.severity-track {
+
+.privacy-type-icon__node {
+  fill: currentColor;
+  stroke: none;
+}
+
+.privacy-type-icon__muted {
+  opacity: 0.55;
+}
+
+.severity-badge .privacy-type-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.severity-linked {
   color: var(--orange);
   background: var(--orange-dim);
 }
+.severity-track {
+  color: var(--red);
+  background: var(--red-dim);
+}
 .severity-unlinked {
-  color: var(--yellow);
-  background: var(--yellow-dim);
+  color: var(--cream);
+  background: var(--cream-dim);
 }
 .severity-none {
   color: var(--green);
@@ -9030,7 +9059,7 @@ body.review-rec-print-active .review-rec-print a {
 
 /* Category header cell — wraps the emoji icon AND the user's preference
    bar together in a single grid cell so they scroll + hover as one unit.
-   The bar reuses the severity palette (red/orange/yellow) so it speaks the
+   The bar reuses the severity palette (red/orange/cream) so it speaks the
    same colour language as the strip cells below; that way the user can
    scan a column and spot anything darker than the bar without translation.
 */
@@ -12678,16 +12707,16 @@ button.import-history-stat.is-active {
 }
 
 .change-review-sev-chip-track {
-  color: var(--orange);
-  background: var(--orange-dim);
-}
-.change-review-sev-chip-linked {
   color: var(--red);
   background: var(--red-dim);
 }
+.change-review-sev-chip-linked {
+  color: var(--orange);
+  background: var(--orange-dim);
+}
 .change-review-sev-chip-unlinked {
-  color: var(--yellow);
-  background: var(--yellow-dim);
+  color: var(--cream);
+  background: var(--cream-dim);
 }
 .change-review-sev-chip-none {
   color: var(--text-3);
@@ -13375,7 +13404,7 @@ button.import-history-stat.is-active {
   border-radius: 999px;
 }
 
-/* Row of small chips summarising tracking / linked / unlinked counts.
+/* Row of small chips summarising unlinked / linked / tracking counts.
    Muted at rest — only reveal their severity colour on card hover so
    they read as secondary detail, not a second focal point. */
 .risk-chip-row {
@@ -13410,18 +13439,24 @@ button.import-history-stat.is-active {
 }
 
 .risk-chip-icon {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  width: 12px;
+  height: 12px;
   line-height: 1;
   opacity: 0.75;
-  filter: grayscale(0.7);
-  transition:
-    filter 0.15s,
-    opacity 0.15s;
+  transition: opacity 0.15s;
 }
 
 .app-card:hover .risk-chip-icon {
   opacity: 1;
-  filter: none;
+}
+
+.risk-chip > .privacy-type-icon,
+.risk-chip-icon .privacy-type-icon,
+.home-row-chip .privacy-type-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .app-card:hover .risk-chip-track {
@@ -13435,9 +13470,9 @@ button.import-history-stat.is-active {
   border-color: color-mix(in srgb, var(--orange) 25%, transparent);
 }
 .app-card:hover .risk-chip-unlinked {
-  color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 9%, transparent);
-  border-color: color-mix(in srgb, var(--blue) 22%, transparent);
+  color: var(--cream);
+  background: color-mix(in srgb, var(--cream) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cream) 30%, transparent);
 }
 
 /* Animated severity-tinted left strip — reveals on hover so it's not constant
@@ -13868,9 +13903,9 @@ button.import-history-stat.is-active {
   border-color: color-mix(in srgb, var(--orange) 25%, transparent);
 }
 .home-row-chip-unlinked {
-  color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 9%, transparent);
-  border-color: color-mix(in srgb, var(--blue) 22%, transparent);
+  color: var(--cream);
+  background: color-mix(in srgb, var(--cream) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cream) 30%, transparent);
 }
 
 /* Row — review variant */
@@ -19019,7 +19054,7 @@ button.import-history-stat.is-active {
    editor and offers four whole-profile shortcuts (Strict / Balanced /
    Anti-tracking / Permissive). The active preset pill picks up an
    accent border via the [data-severity] attribute so the colour walks
-   the same green→yellow→orange→red gradient the rest of the privacy
+   the same green→cream→orange→red gradient the rest of the privacy
    palette uses. */
 .privacy-profile-presets {
   display: flex;
@@ -19100,7 +19135,7 @@ button.import-history-stat.is-active {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-/* Severity-tinted accents on the active pill — green for strict, yellow
+/* Severity-tinted accents on the active pill — green for strict, cream
    for balanced, orange for anti-tracking, red for permissive. Reuses
    tokens already defined for severity badges so themes pick them up. */
 .privacy-profile-preset-pill.is-active[data-severity="severity-none"] {
@@ -19108,9 +19143,9 @@ button.import-history-stat.is-active {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 22%, transparent);
 }
 .privacy-profile-preset-pill.is-active[data-severity="severity-unlinked"] {
-  border-color: var(--yellow, var(--orange));
+  border-color: var(--cream, var(--text-2));
   box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--yellow, var(--orange)) 22%, transparent);
+    color-mix(in srgb, var(--cream, var(--text-2)) 24%, transparent);
 }
 .privacy-profile-preset-pill.is-active[data-severity="severity-linked"] {
   border-color: var(--orange);
@@ -19376,7 +19411,7 @@ button.import-history-stat.is-active {
 /* Pill picker — redesigned April 2026.
    ─────────────────────────────────────────────────────
    Earlier iterations used four vividly-coloured cells per row (green /
-   yellow / orange / red) with a palette "key" row on top. Users found
+   cream / orange / red) with a palette "key" row on top. Users found
    the rainbow confusing because the same colour carried different
    meanings on different rows (green "not collected" selected = strict,
    red "tracking" selected = lenient).
@@ -19429,7 +19464,7 @@ button.import-history-stat.is-active {
 
 /* One text pill per tier. Neutral by default; when selected, the pill fills
    with the severity colour that matches that tier in the stats heatmap and
-   everywhere else (green → yellow → orange → red, left to right). This
+   everywhere else (green → cream → orange → red, left to right). This
    gives the picker a left-to-right "strict → permissive" gradient and
    keeps the colour of your chosen threshold consistent with how that tier
    is shown on app cards and charts. The tier-specific rules come later in
@@ -19478,9 +19513,8 @@ button.import-history-stat.is-active {
 
 /* Tier-matched selected colours. Green (not_collected) through red
    (tracking) — the same palette used in the stats heatmap (SEV_COLOR in
-   charts/PrivacyHeatmap.tsx) and the severity badges. Yellow gets dark
-   text because yellow-on-white fails WCAG contrast; the other three have
-   enough luminance contrast to carry #fff. */
+   charts/PrivacyHeatmap.tsx) and the severity badges. Cream gets dark
+   text because filled cream is bright; the orange/red tiers carry #fff. */
 .privacy-profile-pill[data-tier="not_collected"].is-selected {
   color: #fff;
   background: var(--green);
@@ -19488,10 +19522,10 @@ button.import-history-stat.is-active {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 50%, transparent);
 }
 .privacy-profile-pill[data-tier="not_linked"].is-selected {
-  color: #1a1400;
-  background: var(--yellow);
-  border-color: var(--yellow);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--yellow) 50%, transparent);
+  color: #1d170d;
+  background: var(--cream);
+  border-color: var(--cream);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cream) 52%, transparent);
 }
 .privacy-profile-pill[data-tier="linked"].is-selected {
   color: #fff;
@@ -19520,13 +19554,13 @@ button.import-history-stat.is-active {
   border-color: var(--green);
 }
 .privacy-profile-bulk-pill[data-tier="not_linked"] {
-  color: var(--yellow);
-  background: color-mix(in srgb, var(--yellow) 10%, var(--surface-active));
-  border-color: color-mix(in srgb, var(--yellow) 45%, var(--border));
+  color: var(--cream);
+  background: color-mix(in srgb, var(--cream) 10%, var(--surface-active));
+  border-color: color-mix(in srgb, var(--cream) 45%, var(--border));
 }
 .privacy-profile-bulk-pill[data-tier="not_linked"]:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--yellow) 18%, var(--surface-active));
-  border-color: var(--yellow);
+  background: color-mix(in srgb, var(--cream) 18%, var(--surface-active));
+  border-color: var(--cream);
 }
 .privacy-profile-bulk-pill[data-tier="linked"] {
   color: var(--orange);
@@ -19981,7 +20015,7 @@ button.import-history-stat.is-active {
  * Lives inside .shortlist-group-header so the "why alternatives?" reason
  * is inline with the group title, not a separate banner row. Uses the
  * .severity-* colour palette so the pill matches tier chips elsewhere
- * in the app (compare view, home triage, tier meta icons).
+ * in the app (compare view, home triage, privacy-type icons).
  *
  * `margin-left: auto` pushes it to the right of the header row; the
  * header itself is flex-wrap: wrap, so on narrow screens it drops onto
@@ -20010,17 +20044,22 @@ button.import-history-stat.is-active {
   border-color: color-mix(in srgb, var(--red) 35%, transparent);
 }
 .shortlist-mismatch-banner.severity-linked {
-  background: color-mix(in srgb, var(--red) 6%, var(--surface));
-  border-color: color-mix(in srgb, var(--red) 28%, transparent);
+  background: color-mix(in srgb, var(--orange) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--orange) 32%, transparent);
 }
 .shortlist-mismatch-banner.severity-unlinked {
-  background: color-mix(in srgb, var(--yellow) 7%, var(--surface));
-  border-color: color-mix(in srgb, var(--yellow) 32%, transparent);
+  background: color-mix(in srgb, var(--cream) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--cream) 32%, transparent);
 }
 .shortlist-mismatch-banner-icon {
   flex-shrink: 0;
   font-size: 16px;
   line-height: 1;
+}
+
+.shortlist-mismatch-banner-icon .privacy-type-icon {
+  width: 18px;
+  height: 18px;
 }
 .shortlist-mismatch-banner-body {
   display: flex;
@@ -20146,12 +20185,10 @@ button.import-history-stat.is-active {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.shortlist-entry-detailed-dot {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.shortlist-entry-detailed-label .privacy-type-icon,
+.shortlist-type-header .privacy-type-icon {
+  width: 14px;
+  height: 14px;
 }
 .shortlist-entry-detailed-chips {
   display: flex;
@@ -25738,6 +25775,8 @@ html[data-theme-override="high-contrast"] {
   --red: #ff5a4d;
   --orange: #ffb84d;
   --yellow: #ffff00;
+  --cream: #ffffff;
+  --cream-dim: rgba(255, 255, 255, 0.18);
   --green: #5aff7a;
   --teal: #5affff;
   /* HC purple — boosted toward neon-violet so dev surfaces stay visible
@@ -25980,7 +26019,7 @@ html[data-a11y-shapes="on"] .timeline-dot.wayback {
    same texture:
      - track    → -45° solid diagonal stripes, 7-unit spacing  (red)
      - linked   → dot grid, 8-unit spacing                     (orange)
-     - unlinked → ±45° cross-hatch, 6-unit spacing             (yellow)
+     - unlinked → ±45° cross-hatch, 6-unit spacing             (cream)
    Opacity matches the decal `color` value at each tier (0.40 / 0.35 /
    0.30). Each rule also pins `background-color: var(--…)` to the
    inline fill — required so `background-image` (the gradient) layers
@@ -28877,9 +28916,9 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 22%, transparent);
 }
 .layout-editor-preset-pill.is-active[data-severity="severity-unlinked"] {
-  border-color: var(--yellow, var(--orange));
+  border-color: var(--cream, var(--text-2));
   box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--yellow, var(--orange)) 22%, transparent);
+    color-mix(in srgb, var(--cream, var(--text-2)) 24%, transparent);
 }
 .layout-editor-preset-pill.is-active[data-severity="severity-linked"] {
   border-color: var(--orange);
@@ -29275,9 +29314,9 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 22%, transparent);
 }
 .home-edit-toolbar-preset-pill.is-active[data-severity="severity-unlinked"] {
-  border-color: var(--yellow, var(--orange));
+  border-color: var(--cream, var(--text-2));
   box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--yellow, var(--orange)) 22%, transparent);
+    color-mix(in srgb, var(--cream, var(--text-2)) 24%, transparent);
 }
 .home-edit-toolbar-preset-pill.is-active[data-severity="severity-linked"] {
   border-color: var(--orange);

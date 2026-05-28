@@ -56,6 +56,7 @@ import {
   useDashboardLayoutSaver,
 } from "../../lib/use-dashboard-layout-saver";
 import BackgroundModeCallout from "./BackgroundModeCallout";
+import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
 
 // ─────────────────────────────────────────────
@@ -1113,7 +1114,7 @@ const RISK_TIER_ENTRIES: Array<{
     label: "High risk",
     rule: 'At least one data type declared as "Data Used to Track You".',
     meaning:
-      "The developer admits the app follows you across other apps and websites — usually for advertising or profiling.",
+      "The developer reports that the app or its partners can use this data to recognize you outside the app — usually for advertising, measurement, retargeting, or data brokers.",
     example:
       "Typical of large social networks and ad-supported free apps that share identifiers with data brokers.",
   },
@@ -1585,7 +1586,7 @@ function ConsiderReplacingSection({
               </div>
               {tierCls && (
                 <span aria-hidden className={`risk-chip ${tierCls}`}>
-                  {top ? TIER_META[top.observed].icon : ""}
+                  {top ? <PrivacyTypeIcon tier={top.observed} /> : null}
                 </span>
               )}
               <span className="profile-replace-row-count">
@@ -1665,19 +1666,22 @@ function RiskSection({
             <div className="home-row-body">
               <div className="home-row-title">{app.name}</div>
               <div className="home-row-sub">
-                {app.trackCount > 0 && (
-                  <span className="home-row-chip home-row-chip-track">
-                    👁 {app.trackCount} track
+                {app.unlinkedCount > 0 && (
+                  <span className="home-row-chip home-row-chip-unlinked">
+                    <PrivacyTypeIcon tier="not_linked" />
+                    {app.unlinkedCount} unlinked
                   </span>
                 )}
                 {app.linkedCount > 0 && (
                   <span className="home-row-chip home-row-chip-linked">
-                    🔗 {app.linkedCount} linked
+                    <PrivacyTypeIcon tier="linked" />
+                    {app.linkedCount} linked
                   </span>
                 )}
-                {app.unlinkedCount > 0 && (
-                  <span className="home-row-chip home-row-chip-unlinked">
-                    🔓 {app.unlinkedCount} unlinked
+                {app.trackCount > 0 && (
+                  <span className="home-row-chip home-row-chip-track">
+                    <PrivacyTypeIcon tier="tracking" />
+                    {app.trackCount} track
                   </span>
                 )}
               </div>

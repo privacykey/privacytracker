@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 /**
  * Apps × categories heatmap, cell colour = severity.
- *   track  → red, linked → orange, unlinked → yellow, empty → transparent.
+ *   unlinked → cream, linked → orange, track → red, empty → transparent.
  *
  * Shares the `MatrixData` payload with PrivacySankey and SmallMultiples —
  * they all hit /api/stats/matrix and stay consistent that way.
@@ -36,9 +36,9 @@ import { useShapesMode } from "../../../lib/use-shapes-mode";
 import EChart from "./EChart";
 
 const SEV_COLOR: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: "#ff453a",
+  DATA_NOT_LINKED_TO_YOU: "#d8c7a3",
   DATA_LINKED_TO_YOU: "#ff9f0a",
-  DATA_NOT_LINKED_TO_YOU: "#ffd60a",
+  DATA_USED_TO_TRACK_YOU: "#ff453a",
 };
 const SEV_VALUE: Record<string, number> = {
   DATA_USED_TO_TRACK_YOU: 3,
@@ -51,7 +51,7 @@ const SEV_VALUE: Record<string, number> = {
 // heatmap the same way the AppGrid change-dots and ChangelogTimeline
 // markers re-shape under the same flag. Patterns are layered ON TOP of
 // the existing colour (decals never replace `itemStyle.color`), so
-// sighted users still get the familiar red / orange / yellow gradient
+// sighted users still get the familiar red / orange / cream gradient
 // reinforced by texture. Distinct per tier and disjoint from each
 // other: dense diagonal stripes for the most severe (track), dots for
 // the middle (linked), wider cross-hatch for the least severe (unlinked).
@@ -362,16 +362,16 @@ export default function PrivacyHeatmap() {
         seriesIndex: 0,
         pieces: [
           {
-            value: SEV_VALUE.DATA_USED_TO_TRACK_YOU,
-            color: SEV_COLOR.DATA_USED_TO_TRACK_YOU,
+            value: SEV_VALUE.DATA_NOT_LINKED_TO_YOU,
+            color: SEV_COLOR.DATA_NOT_LINKED_TO_YOU,
           },
           {
             value: SEV_VALUE.DATA_LINKED_TO_YOU,
             color: SEV_COLOR.DATA_LINKED_TO_YOU,
           },
           {
-            value: SEV_VALUE.DATA_NOT_LINKED_TO_YOU,
-            color: SEV_COLOR.DATA_NOT_LINKED_TO_YOU,
+            value: SEV_VALUE.DATA_USED_TO_TRACK_YOU,
+            color: SEV_COLOR.DATA_USED_TO_TRACK_YOU,
           },
         ],
       },
@@ -538,11 +538,11 @@ export default function PrivacyHeatmap() {
         <span>
           <span
             style={swatch(
-              "#ff453a",
-              shapesMode ? SEV_PATTERN.DATA_USED_TO_TRACK_YOU : undefined
+              "#d8c7a3",
+              shapesMode ? SEV_PATTERN.DATA_NOT_LINKED_TO_YOU : undefined
             )}
           />
-          {tCharts("swatch_track")}
+          {tCharts("swatch_not_linked")}
         </span>
         <span>
           <span
@@ -556,11 +556,11 @@ export default function PrivacyHeatmap() {
         <span>
           <span
             style={swatch(
-              "#ffd60a",
-              shapesMode ? SEV_PATTERN.DATA_NOT_LINKED_TO_YOU : undefined
+              "#ff453a",
+              shapesMode ? SEV_PATTERN.DATA_USED_TO_TRACK_YOU : undefined
             )}
           />
-          {tCharts("swatch_not_linked")}
+          {tCharts("swatch_track")}
         </span>
         {/* Mismatch swatch mirrors the inset white border drawn on the
             actual cells so users can tie the legend back to what they see. */}

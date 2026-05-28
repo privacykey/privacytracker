@@ -5,7 +5,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 ## Commands
 
 ```bash
-npm install            # requires Node 24 LTS (see `engines` in package.json)
+npm install            # requires Node 24+ and <27 (see `engines` in package.json)
 npm run dev            # http://localhost:3000
 npm run build          # production build
 npm start              # serve the production build

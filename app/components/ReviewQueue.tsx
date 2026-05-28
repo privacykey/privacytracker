@@ -29,6 +29,7 @@ import {
 } from "../../lib/i18n-meta";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { VerdictValue } from "../../lib/verdict-types";
+import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import VerdictPill from "./VerdictPill";
 // Co-located CSS — Turbopack tracks this reliably alongside the
 // component; bundling into the 26k-line globals.css was leaving stale
@@ -1357,7 +1358,7 @@ function CategoryChips({
   app: QueueAppInput;
   t: ReturnType<typeof useTranslations>;
 }) {
-  // Track / Linked / Unlinked counts give a quick "what's collected" snapshot
+  // Unlinked / linked / tracking counts give a quick "what's collected" snapshot
   // without needing a per-card fetch. Skip the strip when all three are zero.
   const trk = app.trackCount ?? 0;
   const lnk = app.linkedCount ?? 0;
@@ -1375,22 +1376,22 @@ function CategoryChips({
       aria-label={t("card.top_categories_label")}
       className="review-queue-card-chips"
     >
-      {trk > 0 && (
-        <span className="review-queue-card-chip review-queue-card-chip-track">
-          <span aria-hidden="true" className="review-queue-card-chip-dot" />
-          {t("card.chip_tracking", { count: trk })}
+      {unl > 0 && (
+        <span className="review-queue-card-chip review-queue-card-chip-unlinked">
+          <PrivacyTypeIcon tier="not_linked" />
+          {t("card.chip_unlinked", { count: unl })}
         </span>
       )}
       {lnk > 0 && (
         <span className="review-queue-card-chip review-queue-card-chip-linked">
-          <span aria-hidden="true" className="review-queue-card-chip-dot" />
+          <PrivacyTypeIcon tier="linked" />
           {t("card.chip_linked", { count: lnk })}
         </span>
       )}
-      {unl > 0 && (
-        <span className="review-queue-card-chip review-queue-card-chip-unlinked">
-          <span aria-hidden="true" className="review-queue-card-chip-dot" />
-          {t("card.chip_unlinked", { count: unl })}
+      {trk > 0 && (
+        <span className="review-queue-card-chip review-queue-card-chip-track">
+          <PrivacyTypeIcon tier="tracking" />
+          {t("card.chip_tracking", { count: trk })}
         </span>
       )}
     </div>

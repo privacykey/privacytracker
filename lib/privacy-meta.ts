@@ -10,7 +10,6 @@ export interface CategoryMetaInfo {
 export interface SeverityMetaInfo {
   cls: string;
   description: string;
-  icon: string;
   label: string;
 }
 
@@ -113,26 +112,50 @@ export const CATEGORY_META: Record<string, CategoryMetaInfo> = {
   },
 };
 
+export const PRIVACY_TYPE_DISPLAY_ORDER = [
+  "DATA_NOT_LINKED_TO_YOU",
+  "DATA_LINKED_TO_YOU",
+  "DATA_USED_TO_TRACK_YOU",
+] as const;
+
+const PRIVACY_TYPE_DISPLAY_RANK: Record<string, number> = {
+  DATA_NOT_LINKED_TO_YOU: 0,
+  DATA_LINKED_TO_YOU: 1,
+  DATA_USED_TO_TRACK_YOU: 2,
+};
+
+export function comparePrivacyTypeDisplayOrder(a: string, b: string): number {
+  return (
+    (PRIVACY_TYPE_DISPLAY_RANK[a] ?? Number.MAX_SAFE_INTEGER) -
+    (PRIVACY_TYPE_DISPLAY_RANK[b] ?? Number.MAX_SAFE_INTEGER)
+  );
+}
+
+export function sortPrivacyTypesForDisplay<T extends { identifier: string }>(
+  items: readonly T[]
+): T[] {
+  return [...items].sort((a, b) =>
+    comparePrivacyTypeDisplayOrder(a.identifier, b.identifier)
+  );
+}
+
 export const SEVERITY_CONFIG: Record<string, SeverityMetaInfo> = {
-  DATA_USED_TO_TRACK_YOU: {
-    label: "Data Used to Track You",
-    cls: "severity-track",
-    icon: "👁",
+  DATA_NOT_LINKED_TO_YOU: {
+    label: "Data Not Linked to You",
+    cls: "severity-unlinked",
     description:
-      "Data collected and linked with third-party data for the purpose of targeted advertising or advertising measurement.",
+      "Data the app collects but says is not tied back to your identity, usually because direct identifiers are removed before collection.",
   },
   DATA_LINKED_TO_YOU: {
     label: "Data Linked to You",
     cls: "severity-linked",
-    icon: "🔗",
     description:
-      "Data collected and tied to your identity via your account, device, or other details.",
+      "Data the app can connect back to you, such as through your account, device, contact details, user ID, or another identifier.",
   },
-  DATA_NOT_LINKED_TO_YOU: {
-    label: "Data Not Linked to You",
-    cls: "severity-unlinked",
-    icon: "🔓",
+  DATA_USED_TO_TRACK_YOU: {
+    label: "Data Used to Track You",
+    cls: "severity-track",
     description:
-      "Data collected in a way that is not tied to your identity (e.g., anonymized or aggregated data).",
+      "Data the app or its partners use to recognize you across other companies' apps, websites, offline data sources, or data brokers.",
   },
 };

@@ -8,9 +8,9 @@ import { useTranslations } from "next-intl";
  * Layout:
  *   ┌──────────────────────────────────────┬───────────────┐
  *   │  📇 📍 🆔 📈   (icon header, sticky) │  [toggle]     │
- *   ├──────────────────────────────────────┤  🟥 Tracking  │
+ *   ├──────────────────────────────────────┤  🟨 Not linked│
  *   │  Instagram       ⬛ ⬛ ⬛ ⬛           │  🟧 Linked    │
- *   │  Duolingo        .  .  ⬛ .           │  🟨 Not linked│
+ *   │  Duolingo        .  .  ⬛ .           │  🟥 Tracking  │
  *   │  ...                                   │  HOVER INFO  │
  *   └──────────────────────────────────────┴───────────────┘
  *
@@ -49,26 +49,26 @@ import {
 import type { MatrixData } from "../../../lib/stats-views-shared";
 
 const SEV_COLOR: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: "#ff453a",
+  DATA_NOT_LINKED_TO_YOU: "#d8c7a3",
   DATA_LINKED_TO_YOU: "#ff9f0a",
-  DATA_NOT_LINKED_TO_YOU: "#ffd60a",
+  DATA_USED_TO_TRACK_YOU: "#ff453a",
 };
 /** Severity → translation-key map. The actual labels come from
  *  `stats.charts.swatch_*` so they stay in sync with the heatmap legend. */
 const SEV_LABEL_KEY: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: "swatch_track",
-  DATA_LINKED_TO_YOU: "swatch_linked",
   DATA_NOT_LINKED_TO_YOU: "swatch_not_linked",
+  DATA_LINKED_TO_YOU: "swatch_linked",
+  DATA_USED_TO_TRACK_YOU: "swatch_track",
 };
 const EMPTY = "#1d1d25";
 
 // Preference-tier colour. Reuses the severity palette so "your tolerance"
 // speaks the same colour language as the cells below it — if the bar under
-// Health & Fitness is yellow, any cell in that column darker than yellow
+// Health & Fitness is cream, any cell in that column warmer than cream
 // (orange/red) is a mismatch.
 const PREF_COLOR: Record<ProfileTier, string> = {
   not_collected: "var(--text-3)",
-  not_linked: "#ffd60a",
+  not_linked: "#d8c7a3",
   linked: "#ff9f0a",
   tracking: "#ff453a",
 };
@@ -358,7 +358,7 @@ export default function SmallMultiples() {
                         // shape-mode CSS so colour-blind users get a
                         // per-tier gradient overlay (diagonal stripes /
                         // dots / cross-hatch) on top of the existing
-                        // red / orange / yellow fill. Omitted on empty
+                        // red / orange / cream fill. Omitted on empty
                         // cells so the no-data styling stays untouched.
                         data-sev={sev || undefined}
                         key={cat.identifier}
@@ -445,10 +445,10 @@ export default function SmallMultiples() {
           <span className="sm-legend-item">
             <span
               className="sm-legend-swatch"
-              data-sev="DATA_USED_TO_TRACK_YOU"
-              style={{ backgroundColor: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
+              data-sev="DATA_NOT_LINKED_TO_YOU"
+              style={{ backgroundColor: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
             />
-            Tracking
+            Not linked
           </span>
           <span className="sm-legend-item">
             <span
@@ -461,10 +461,10 @@ export default function SmallMultiples() {
           <span className="sm-legend-item">
             <span
               className="sm-legend-swatch"
-              data-sev="DATA_NOT_LINKED_TO_YOU"
-              style={{ backgroundColor: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
+              data-sev="DATA_USED_TO_TRACK_YOU"
+              style={{ backgroundColor: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
             />
-            Not linked
+            Tracking
           </span>
           {prefOverlay && (
             <span className="sm-legend-item sm-legend-item--mismatch">

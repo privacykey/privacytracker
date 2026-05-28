@@ -5,8 +5,13 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { categoryLabel, severityLabel } from "../../lib/i18n-meta";
-import { CATEGORY_META, SEVERITY_CONFIG } from "../../lib/privacy-meta";
+import {
+  CATEGORY_META,
+  SEVERITY_CONFIG,
+  sortPrivacyTypesForDisplay,
+} from "../../lib/privacy-meta";
 import InfoTooltip from "./InfoTooltip";
+import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -58,8 +63,8 @@ export default function PrivacyGroupedView({
         return;
       }
       const rest = decodeURIComponent(hash.slice("#cat-".length));
-      // Privacy-type identifiers (DATA_USED_TO_TRACK_YOU, DATA_LINKED_TO_YOU,
-      // DATA_NOT_LINKED_TO_YOU) use underscores only — no hyphens — so the
+      // Privacy-type identifiers (DATA_NOT_LINKED_TO_YOU, DATA_LINKED_TO_YOU,
+      // DATA_USED_TO_TRACK_YOU) use underscores only — no hyphens — so the
       // first hyphen reliably separates the type id from the category id.
       const sep = rest.indexOf("-");
       if (sep > 0 && sep < rest.length - 1) {
@@ -75,19 +80,21 @@ export default function PrivacyGroupedView({
     return () => window.removeEventListener("hashchange", readHash);
   }, []);
 
-  const filtered = initialData
-    .map((group) => ({
-      ...group,
-      categories: group.categories.filter(
-        (c) =>
-          !search ||
-          c.title.toLowerCase().includes(search.toLowerCase()) ||
-          c.apps.some((a) =>
-            a.name.toLowerCase().includes(search.toLowerCase())
-          )
-      ),
-    }))
-    .filter((group) => group.categories.length > 0);
+  const filtered = sortPrivacyTypesForDisplay(
+    initialData
+      .map((group) => ({
+        ...group,
+        categories: group.categories.filter(
+          (c) =>
+            !search ||
+            c.title.toLowerCase().includes(search.toLowerCase()) ||
+            c.apps.some((a) =>
+              a.name.toLowerCase().includes(search.toLowerCase())
+            )
+        ),
+      }))
+      .filter((group) => group.categories.length > 0)
+  );
 
   if (initialData.length === 0) {
     return (
@@ -178,7 +185,6 @@ function PrivacySection({
   const cls = config?.cls ?? "severity-none";
   const label =
     severityLabel(tSev, group.identifier) ?? config?.label ?? group.title;
-  const icon = config?.icon ?? "🔍";
   const totalApps = new Set(
     group.categories.flatMap((c) => c.apps.map((a) => a.id))
   ).size;
@@ -203,7 +209,8 @@ function PrivacySection({
       <div className="pmap-section-header">
         <div className="pmap-section-header-main">
           <span className={`severity-badge ${cls}`}>
-            <span aria-hidden="true">{icon}</span> {label}
+            <PrivacyTypeIcon identifier={group.identifier} />
+            {label}
           </span>
           {config?.description && <InfoTooltip text={config.description} />}
         </div>

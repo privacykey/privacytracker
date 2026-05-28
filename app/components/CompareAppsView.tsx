@@ -52,6 +52,7 @@ import {
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../lib/privacy-profile";
 import type { ShortlistEntry } from "../../lib/shortlist-types";
+import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
 // ── Types (match the API shape in /api/compare/route.ts) ───────────────
 interface SlotData {
@@ -973,7 +974,7 @@ type RiskLevel = "high" | "moderate" | "low" | "minimal";
 /**
  * Mirror of AppGrid's `computeRiskLevel`, but counting categories
  * straight off SlotData.privacyTypes instead of the pre-aggregated
- * track/linked/unlinked columns that the grid passes through. Returns
+ * unlinked/linked/tracking columns that the grid passes through. Returns
  * `null` when there's no privacy data to assess (e.g. an app the
  * developer never filled labels for).
  */
@@ -2802,7 +2803,7 @@ function ProfilePrefCell({
         className={`severity-badge ${meta.severityCls}`}
         style={{ fontSize: 11 }}
       >
-        <span aria-hidden="true">{meta.icon}</span>
+        <PrivacyTypeIcon tier={allowed} />
         {meta.shortLabel}
       </span>
     </div>
@@ -3108,7 +3109,7 @@ function SeverityCell({
       ? "var(--red)"
       : cell.severity === "DATA_LINKED_TO_YOU"
         ? "var(--orange)"
-        : "var(--yellow)";
+        : "var(--cream)";
 
   // Profile-aware decoration — only light up when the user has opinionated
   // on this category. Observed rank comes from the worst tier seen for the

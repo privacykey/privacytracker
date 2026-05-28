@@ -15,11 +15,12 @@ import {
   normalizeCountry,
 } from "../../../lib/region";
 import { getSetting } from "../../../lib/scheduler";
+import PrivacyTypeIcon from "../../components/PrivacyTypeIcon";
 
 export const metadata: Metadata = {
   title: "Privacy Label Definitions — privacytracker",
   description:
-    "Definitions of Apple App Store privacy label terms — Data Used to Track You, Data Linked to You, Data Not Linked to You — and the data types developers may collect, with links to Apple\u2019s authoritative sources.",
+    "Definitions of Apple App Store privacy label terms — Data Not Linked to You, Data Linked to You, Data Used to Track You — and the data types developers may collect, with links to Apple\u2019s authoritative sources.",
 };
 
 // The page reads the stored storefront country from SQLite to build a
@@ -332,9 +333,9 @@ export default async function DefinitionsHelpPage({
   // gives us a single map for both class names and body lookups.
   const severityCards = [
     {
-      cfg: SEVERITY_CONFIG.DATA_USED_TO_TRACK_YOU,
-      key: "DATA_USED_TO_TRACK_YOU",
-      bodyKey: "track" as const,
+      cfg: SEVERITY_CONFIG.DATA_NOT_LINKED_TO_YOU,
+      key: "DATA_NOT_LINKED_TO_YOU",
+      bodyKey: "unlinked" as const,
     },
     {
       cfg: SEVERITY_CONFIG.DATA_LINKED_TO_YOU,
@@ -342,9 +343,9 @@ export default async function DefinitionsHelpPage({
       bodyKey: "linked" as const,
     },
     {
-      cfg: SEVERITY_CONFIG.DATA_NOT_LINKED_TO_YOU,
-      key: "DATA_NOT_LINKED_TO_YOU",
-      bodyKey: "unlinked" as const,
+      cfg: SEVERITY_CONFIG.DATA_USED_TO_TRACK_YOU,
+      key: "DATA_USED_TO_TRACK_YOU",
+      bodyKey: "track" as const,
     },
   ];
 
@@ -398,7 +399,7 @@ export default async function DefinitionsHelpPage({
               >
                 <header className="definitions-card-header">
                   <span className={`severity-badge ${cfg.cls}`}>
-                    <span aria-hidden="true">{cfg.icon}</span>{" "}
+                    <PrivacyTypeIcon identifier={key} />
                     {severityLabel(tSeverity, key) ?? cfg.label}
                   </span>
                 </header>

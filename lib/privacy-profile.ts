@@ -31,7 +31,6 @@ export const TIER_RANK: Record<ProfileTier, number> = {
 
 export interface TierMeta {
   description: string;
-  icon: string;
   label: string;
   severityCls: string; // reuse existing severity-* classes from globals.css
   shortLabel: string;
@@ -47,7 +46,6 @@ export const TIER_META: Record<ProfileTier, TierMeta> = {
     shortLabel: "Not collected",
     description: "The app cannot collect this category at all.",
     severityCls: "severity-none",
-    icon: "🚫",
   },
   not_linked: {
     value: "not_linked",
@@ -55,7 +53,6 @@ export const TIER_META: Record<ProfileTier, TierMeta> = {
     shortLabel: "Not linked",
     description: "OK if collected but not linked to your identity.",
     severityCls: "severity-unlinked",
-    icon: "🔓",
   },
   linked: {
     value: "linked",
@@ -63,7 +60,6 @@ export const TIER_META: Record<ProfileTier, TierMeta> = {
     shortLabel: "Linked",
     description: "OK if linked to you, but not used for third-party tracking.",
     severityCls: "severity-linked",
-    icon: "🔗",
   },
   tracking: {
     value: "tracking",
@@ -71,7 +67,6 @@ export const TIER_META: Record<ProfileTier, TierMeta> = {
     shortLabel: "Tracking",
     description: "OK at any tier, including third-party tracking.",
     severityCls: "severity-track",
-    icon: "👁",
   },
 };
 
@@ -79,9 +74,9 @@ export const TIER_META: Record<ProfileTier, TierMeta> = {
 // "not_collected" is implicit — the default when an app has no row.
 
 export const TYPE_IDENTIFIER_TO_TIER: Record<string, ProfileTier> = {
-  DATA_USED_TO_TRACK_YOU: "tracking",
-  DATA_LINKED_TO_YOU: "linked",
   DATA_NOT_LINKED_TO_YOU: "not_linked",
+  DATA_LINKED_TO_YOU: "linked",
+  DATA_USED_TO_TRACK_YOU: "tracking",
 };
 
 // Categories without a key are "no preference" and skipped during comparison.
@@ -138,7 +133,7 @@ export interface ProfilePresetMeta {
   label: string;
   /**
    * Reused severity class for the active-pill accent colour. Walks the
-   * existing palette: green → yellow → orange → red, mirroring the per-row
+   * existing palette: green → cream → orange → red, mirroring the per-row
    * pill colours in the editor.
    */
   severityCls: string;

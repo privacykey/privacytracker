@@ -51,7 +51,11 @@ import {
   type PolicySummary,
 } from "../../lib/policy-summary-meta";
 import { formatPriceLine, priceTooltip } from "../../lib/price-display";
-import { CATEGORY_META, SEVERITY_CONFIG } from "../../lib/privacy-meta";
+import {
+  CATEGORY_META,
+  SEVERITY_CONFIG,
+  sortPrivacyTypesForDisplay,
+} from "../../lib/privacy-meta";
 import {
   type PrivacyProfile,
   TIER_META,
@@ -65,6 +69,7 @@ import ChangelogTimeline from "./ChangelogTimeline";
 import CompareAppsView from "./CompareAppsView";
 import InfoTooltip from "./InfoTooltip";
 import { getLastNonAppPath } from "./NavigationHistoryTracker";
+import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import RateLimitBanner from "./RateLimitBanner";
 import { useTaskCenter } from "./TaskCenter";
 import VerdictPicker from "./VerdictPicker";
@@ -1610,7 +1615,7 @@ export default function AppDetailView({
                   scrollMarginTop: 80,
                 }}
               >
-                {app.privacyTypes.map((pt) => (
+                {sortPrivacyTypesForDisplay(app.privacyTypes).map((pt) => (
                   <PrivacyTypeSection
                     key={pt.id}
                     privacyType={pt}
@@ -4026,7 +4031,7 @@ function PrivacyTypeSection({
   const headerId = `accordion-header-${privacyType.identifier}`;
 
   // Translate the privacy-type identifier to the data-use tier the profile
-  // compares against. "DATA_USED_TO_TRACK_YOU" → "tracking", etc. Unknown
+  // compares against. "DATA_NOT_LINKED_TO_YOU" → "not_linked", etc. Unknown
   // identifiers fall through to no tier, disabling highlighting for this row.
   const typeTier = TYPE_IDENTIFIER_TO_TIER[privacyType.identifier] ?? null;
 
@@ -4081,7 +4086,7 @@ function PrivacyTypeSection({
         <div className="accordion-header-left">
           <div className="tooltip-inline">
             <span className={`severity-badge ${sev?.cls ?? "severity-none"}`}>
-              <span aria-hidden="true">{sev?.icon ?? "🔍"}</span>{" "}
+              <PrivacyTypeIcon identifier={privacyType.identifier} />
               {sev?.label ?? privacyType.title}
             </span>
             {sev?.description && <InfoTooltip text={sev.description} />}
