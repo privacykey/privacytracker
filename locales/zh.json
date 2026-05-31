@@ -2567,12 +2567,14 @@
     "task_sync_subtitle_count": "{count} 个应用",
     "task_progress_label": "{current} / {total}",
     "toast_changes_detected": "⚡ 在 {name} 中检测到变化",
-    "toast_app_up_to_date": "✓ 应用已是最新",
+    "toast_version_updated": "{name} 已更新到 v{version}；标签未变化",
+    "toast_app_up_to_date": "✓ App Store 标签未变化",
     "toast_sync_failed": "❌ 同步失败",
     "toast_all_synced": "✓ 已同步所有应用",
     "toast_n_synced": "✓ 已同步 {count} 个应用",
     "task_done_changes": "检测到 {count} 项变化",
-    "task_done_no_changes": "无变化",
+    "task_done_no_changes": "标签未变化",
+    "task_done_version_updated": "版本已更新到 v{version}；标签未变化",
     "task_done_synced": "已同步 {count} 个应用",
     "task_error_sync_failed": "同步失败",
     "toast_app_removed": "应用已移除",
@@ -2789,6 +2791,7 @@
     "hide_diff_button": "隐藏差异",
     "preview_text_button": "预览已捕获的文本",
     "hide_preview_button": "隐藏预览",
+    "version_updated_no_label_changes": "📱 新版本已发布：v{version}；标签未变化",
     "show_wayback_imports": "显示 Wayback 导入"
   },
   "onboard_status": {
@@ -3096,7 +3099,8 @@
       "labels_subtitle": "仅 App Store 标签 — 政策保留在「AI 政策」标签页",
       "resync_running": "正在重新同步 {name}",
       "completion_changes": "{count, plural, one {检测到 # 处变化} other {检测到 # 处变化}}",
-      "completion_no_changes": "无变化",
+      "completion_no_changes": "标签未变化",
+      "completion_version_updated": "版本已更新到 v{version}；标签未变化",
       "sync_failed_fallback": "同步失败"
     },
     "back_label": {
@@ -3116,7 +3120,8 @@
     },
     "toasts": {
       "sync_changes_detected": "{count, plural, one {⚡ 检测到 # 处变化！} other {⚡ 检测到 # 处变化！}}",
-      "sync_no_changes": "✓ 无变化 — 应用已是最新",
+      "sync_version_updated": "已更新到 v{version}；标签未变化",
+      "sync_no_changes": "✓ App Store 标签未变化",
       "sync_cancelled": "⊘ 同步已取消",
       "sync_failed": "❌ 同步失败"
     },

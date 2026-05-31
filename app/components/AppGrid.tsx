@@ -684,6 +684,19 @@ export default function AppGrid({
           "done",
           tGrid("task_done_changes", { count: result.changeCount })
         );
+      } else if (result?.versionChanged && result.currentVersion) {
+        showToast(
+          tGrid("toast_version_updated", {
+            name: appName,
+            version: result.currentVersion,
+          })
+        );
+        handle.complete(
+          "done",
+          tGrid("task_done_version_updated", {
+            version: result.currentVersion,
+          })
+        );
       } else {
         showToast(tGrid("toast_app_up_to_date"));
         handle.complete("done", tGrid("task_done_no_changes"));

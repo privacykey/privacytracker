@@ -2567,12 +2567,14 @@
     "task_sync_subtitle_count": "{count, plural, one {# app} other {# apps}}",
     "task_progress_label": "{current} / {total}",
     "toast_changes_detected": "⚡ Changes detected in {name}",
-    "toast_app_up_to_date": "✓ App is up to date",
+    "toast_version_updated": "{name} updated to v{version}; labels unchanged",
+    "toast_app_up_to_date": "✓ No App Store label changes",
     "toast_sync_failed": "❌ Sync failed",
     "toast_all_synced": "✓ All apps synced",
     "toast_n_synced": "✓ {count, plural, one {# app} other {# apps}} synced",
     "task_done_changes": "{count, plural, one {# change} other {# changes}} detected",
-    "task_done_no_changes": "No changes",
+    "task_done_no_changes": "No label changes",
+    "task_done_version_updated": "Version updated to v{version}; no label changes",
     "task_done_synced": "{count, plural, one {# app} other {# apps}} synced",
     "task_error_sync_failed": "Sync failed",
     "toast_app_removed": "App removed",
@@ -2789,6 +2791,7 @@
     "hide_diff_button": "Hide diff",
     "preview_text_button": "Preview captured text",
     "hide_preview_button": "Hide preview",
+    "version_updated_no_label_changes": "📱 New version released: v{version}; no label changes",
     "show_wayback_imports": "Show Wayback imports"
   },
   "onboard_status": {
@@ -3096,7 +3099,8 @@
       "labels_subtitle": "App Store labels only — policy stays on the AI Policy tab",
       "resync_running": "Re-syncing {name}",
       "completion_changes": "{count, plural, one {# change detected} other {# changes detected}}",
-      "completion_no_changes": "No changes",
+      "completion_no_changes": "No label changes",
+      "completion_version_updated": "Version updated to v{version}; no label changes",
       "sync_failed_fallback": "Sync failed"
     },
     "back_label": {
@@ -3116,7 +3120,8 @@
     },
     "toasts": {
       "sync_changes_detected": "{count, plural, one {⚡ # change detected!} other {⚡ # changes detected!}}",
-      "sync_no_changes": "✓ No changes — app is up to date",
+      "sync_version_updated": "Updated to v{version}; labels unchanged",
+      "sync_no_changes": "✓ No App Store label changes",
       "sync_cancelled": "⊘ Sync cancelled",
       "sync_failed": "❌ Sync failed"
     },

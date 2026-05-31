@@ -764,6 +764,10 @@ export type ScrapeResult =
       isNew: boolean;
       changesDetected: boolean;
       changeCount: number;
+      versionChanged: boolean;
+      previousVersion: string | null;
+      currentVersion: string | null;
+      versionUpdatedAt: number | null;
     }
   | { url: string; status: "rate_limited"; retryAfterMs: number; error: string }
   | { url: string; status: "error"; error: string };
@@ -1091,6 +1095,12 @@ export async function fetchAndParseApp(
       : [];
     const previousVersion = existingApp?.currentVersion ?? null;
     const previousVersionUpdatedAt = existingApp?.versionUpdatedAt ?? null;
+    const currentVersion = versionInfo.currentVersion;
+    const versionChanged =
+      !!existingApp &&
+      !!currentVersion &&
+      !!previousVersion &&
+      currentVersion !== previousVersion;
     const writePlan = prepareScrapeWritePlan(data, html);
     const newSnapshot = writePlan.snapshot;
     __scrapeAppName = name;
@@ -1174,6 +1184,8 @@ export async function fetchAndParseApp(
       trigger,
       activityType: __activityType,
       activityStartedAt: __activityStart,
+      versionChanged,
+      previousVersion,
     });
     markScrapePhase(__scrapeId, "committed");
 
@@ -1183,18 +1195,13 @@ export async function fetchAndParseApp(
     //   - The user hasn't disabled the versionUpdates notification type.
     // Debounced per-app inside `createVersionUpdateNotification` so a bulk
     // resync running through many apps in sequence doesn't spam the bell.
-    if (
-      existingApp &&
-      versionInfo.currentVersion &&
-      previousVersion &&
-      versionInfo.currentVersion !== previousVersion
-    ) {
+    if (versionChanged && currentVersion && previousVersion) {
       try {
         createVersionUpdateNotification({
           appId: appleId,
           appName: name,
           previousVersion,
-          currentVersion: versionInfo.currentVersion,
+          currentVersion,
           previousVersionUpdatedAt,
           currentVersionUpdatedAt: versionInfo.versionUpdatedAt,
         });
@@ -1269,6 +1276,10 @@ export async function fetchAndParseApp(
       isNew: !existingApp,
       changesDetected: changes.length > 0,
       changeCount: changes.length,
+      versionChanged,
+      previousVersion: versionChanged ? previousVersion : null,
+      currentVersion: versionChanged ? currentVersion : null,
+      versionUpdatedAt: versionChanged ? versionInfo.versionUpdatedAt : null,
     };
   } catch (error) {
     // Surface the failure in the activity log then rethrow so existing
@@ -1669,6 +1680,8 @@ interface CommitScrapedAppInput {
   trigger: SyncTrigger;
   url: string;
   versionInfo: VersionInfo;
+  versionChanged: boolean;
+  previousVersion: string | null;
   writePlan: ScrapeWritePlan;
 }
 
@@ -2412,6 +2425,15 @@ async function commitScrapedAppToDb(
 
   const activityEndedAt = Date.now();
   const durationMs = Math.max(0, activityEndedAt - input.activityStartedAt);
+  const activitySummary = hasChanges
+    ? `${input.changes.length} change${input.changes.length === 1 ? "" : "s"} detected`
+    : input.isNew
+      ? "New app added"
+      : input.versionChanged &&
+          input.previousVersion &&
+          input.versionInfo.currentVersion
+        ? `Version updated from v${input.previousVersion} to v${input.versionInfo.currentVersion}; no label changes`
+        : "No App Store label changes";
   statements.push({
     sql: `
       INSERT INTO activity_log
@@ -2424,15 +2446,19 @@ async function commitScrapedAppToDb(
       input.activityType,
       input.appleId,
       input.name,
-      hasChanges
-        ? `${input.changes.length} change${input.changes.length === 1 ? "" : "s"} detected`
-        : input.isNew
-          ? "New app added"
-          : "No changes",
+      activitySummary,
       JSON.stringify({
         changeCount: input.changes.length,
         isNew: input.isNew,
         hasPrivacyDetails: input.hasPrivacyDetails,
+        versionChanged: input.versionChanged,
+        previousVersion: input.versionChanged ? input.previousVersion : null,
+        currentVersion: input.versionChanged
+          ? input.versionInfo.currentVersion
+          : null,
+        versionUpdatedAt: input.versionChanged
+          ? input.versionInfo.versionUpdatedAt
+          : null,
       }),
       input.activityStartedAt,
       activityEndedAt,
