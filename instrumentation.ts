@@ -222,6 +222,25 @@ export async function register() {
       );
     }
 
+    // Boot-time clear of any wedged health-check lock. A crash mid health
+    // run could leave `health_check_running` stuck; a fresh process owns no
+    // run, so clear it unconditionally — same pattern as the import-queue
+    // clear above. See lib/health-check.ts.
+    try {
+      const { getSetting, setSetting } = await import("./lib/scheduler");
+      if (getSetting("health_check_running", "false") === "true") {
+        setSetting("health_check_running", "false");
+        console.warn(
+          "[HealthCheck] Cleared stale running lock from previous process"
+        );
+      }
+    } catch (e) {
+      console.error(
+        "[HealthCheck] Failed to clear stale running lock at startup:",
+        e
+      );
+    }
+
     // Independent ticker for the import queue. Runs on a tight 60s cadence
     // so 429-queued rows clear fast once Apple's rolling window resets.
     // `runImportQueueTick` itself no-ops when the queue is empty, when a
@@ -707,5 +726,36 @@ export async function register() {
     setTimeout(tickUpdateCheck, 25_000);
     setInterval(tickUpdateCheck, UPDATE_CHECK_INTERVAL_MS);
     console.log("[UpdateCheck] Ticker initialised (6h cadence, 24h cache)");
+
+    // Periodic health check + non-destructive self-heal. Re-applies the
+    // boot-time hygiene (stale dead-lock clears, stuck run_status reset) at
+    // runtime so a server that runs for days/weeks without a restart stays
+    // healthy, plus a PASSIVE WAL checkpoint and a structured report to the
+    // activity log. First run 60s after boot — AFTER the 8/10/12s resume
+    // healers — so a freshly-resumed run (mutex held + pending work) is never
+    // mistaken for a dead lock. Activity-log only (no bell). The job is
+    // synchronous and gates every write-heal on "no bulk job active".
+    // See lib/health-check.ts.
+    const HEALTH_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // daily
+    const tickHealthCheck = async () => {
+      try {
+        const { getSetting } = await import("./lib/scheduler");
+        if (getSetting("health_check_enabled", "true") === "false") {
+          return;
+        }
+        const { runHealthCheck } = await import("./lib/health-check");
+        const result = runHealthCheck({ trigger: "scheduled" });
+        if (!result.healthy) {
+          console.log(
+            `[HealthCheck] ${result.status} — ${result.heals.length} heal(s), ${result.checks.warnings.length} warning(s)`
+          );
+        }
+      } catch (e) {
+        console.error("[HealthCheck] Tick failed:", e);
+      }
+    };
+    setTimeout(tickHealthCheck, 60_000);
+    setInterval(tickHealthCheck, HEALTH_CHECK_INTERVAL_MS);
+    console.log("[HealthCheck] Scheduler initialised (24h cadence)");
   }
 }
