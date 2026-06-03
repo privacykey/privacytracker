@@ -285,6 +285,82 @@
     "diagnostics": "诊断",
     "other": "其他数据"
   },
+  "data_label_hint": {
+    "trigger_label": "这是什么意思？查看示例",
+    "popover_aria_label": "示例：{category}，{severity}",
+    "captions": {
+      "contact_info": {
+        "data_used_to_track_you": "在 App A 中输入你的邮箱并关闭它。打开 App B —— 它已经认识你了。当联系信息被用于追踪时，它就变成一把钥匙，能让从未登录过的应用直接识别你。",
+        "data_linked_to_you": "输入你的邮箱 —— 这个应用会把它固定到你在这里的个人档案上。从此你的每个操作都以这个身份记入档案，只在这一个应用里。",
+        "data_not_linked_to_you": "输入你的邮箱 —— 它被哈希处理后放入匿名批次。数据库返回的只是一个数字，不是你。"
+      },
+      "health_and_fitness": {
+        "data_used_to_track_you": "你的心率数据离开手表，重新以「为你推荐」的广告形式出现在完全不同的应用里，根据数字推断的内容定向投放。",
+        "data_linked_to_you": "你的训练数据固定到你在这里的档案。每一步、每个个人最佳、每个休息日都以你的名字归档 —— 只在这一个应用里。",
+        "data_not_linked_to_you": "你的活动数据与数百万人取平均。返回的趋势线是真实的；但你的名字已从中剥离。"
+      },
+      "financial_info": {
+        "data_used_to_track_you": "你的支付信息获得一个信用等级标签，这个等级跟随你穿过合作伙伴网络 —— 下一个应用已经知道该向谁推销。",
+        "data_linked_to_you": "你的卡和消费固定到你在这里的账户。他们知道你买什么、什么时候买、在哪里买，全都记在你的名下。",
+        "data_not_linked_to_you": "你的交易金额落入桶中。返回的汇总消费统计与你无关。"
+      },
+      "location": {
+        "data_used_to_track_you": "你的 GPS 轨迹离开你的手机，出现在数据经纪人的档案里 —— 同样的面包屑早已绘好，包括这个应用没理由看到的地方。",
+        "data_linked_to_you": "你的工作地点、家、周末去处都固定到你在这里的档案。应用记得你在哪里、去过哪里。",
+        "data_not_linked_to_you": "你的位置粗化到邮编或城市，加入人口热力图。图上没有任何一个点带有你的名字。"
+      },
+      "sensitive_info": {
+        "data_used_to_track_you": "你最私密的事实 —— 健康、身份、信仰 —— 被标记到追踪档案上，在应用之间跟随你。下一个应用知道这个应用从未说过的事情。",
+        "data_linked_to_you": "你最私密的事实归档在你这里的档案中。这一个应用现在了解你最脆弱的一面。",
+        "data_not_linked_to_you": "你的敏感数据被哈希处理；留下的是形状，不是实质。汇总趋势线不带你的名字。"
+      },
+      "contacts": {
+        "data_used_to_track_you": "你的通讯录离开你的手机。每个联系人都成为一把钥匙 —— 同样的关系网络出现在你朋友使用的应用里，把你引回他们身边。",
+        "data_linked_to_you": "你的联系人归档到你这里的档案中。应用按名字了解你的圈子；你拿不回这个事实。",
+        "data_not_linked_to_you": "你的联系人被哈希成匿名数字。构建出的关系图是真实的；但是谁的关系图已被剥离。"
+      },
+      "user_content": {
+        "data_used_to_track_you": "你的照片、语音笔记、消息离开应用 —— 用于训练模型或在远远超出这一个应用的地方构建档案。",
+        "data_linked_to_you": "你创造的一切归档在你这里的资料库里。应用了解你的脸、你的声音、你照片中的圈子。",
+        "data_not_linked_to_you": "你的内容加入匿名训练集。它教给模型的内容无法追溯到你。"
+      },
+      "browsing_history": {
+        "data_used_to_track_you": "你阅读的页面留下踪迹。无关应用里的广告早已针对你正在浏览的话题 —— 他们不需要问。",
+        "data_linked_to_you": "你阅读的页面归入你这里档案的「兴趣」中。应用知道你在好奇什么。",
+        "data_not_linked_to_you": "你的浏览数据按话题统计：「体育」、「旅游」、「金融」。统计是真实的；但是谁的统计已被剥离。"
+      },
+      "search_history": {
+        "data_used_to_track_you": "你在这里搜过的内容，以「推荐」商品的形式出现在你从未打开过的另一个应用里。查询是一把钥匙，能在别处打开你。",
+        "data_linked_to_you": "你的查询归档到你这里的档案中。他们知道你想知道什么。",
+        "data_not_linked_to_you": "你的查询被汇总成趋势。「本周有多少人搜索了 X」是真实的；但那些是谁的搜索已经消失了。"
+      },
+      "identifiers": {
+        "data_used_to_track_you": "你的广告 ID 是一个你看不见的条形码。当你打开其他应用时，它们会扫描它；每一个都知道之前来的是你。",
+        "data_linked_to_you": "你的账户或设备 ID 归档到你这里的档案中。应用知道每次访问都是同一个你。",
+        "data_not_linked_to_you": "匿名会话令牌取代了你的身份。应用收集的行为数据无法与你关联。"
+      },
+      "purchases": {
+        "data_used_to_track_you": "你在这里买的东西，以「你可能也喜欢」的形式出现在完全不同的商店里。你的收据是一把钥匙，能在零售网络中打开你。",
+        "data_linked_to_you": "你的订单记录归档在你这里的账户中。他们知道你买过什么、什么时候、下一步可能买什么。",
+        "data_not_linked_to_you": "你的购买在进入汇总前被匿名化处理。「本周卖了多少双鞋」是真实的；谁买的不是。"
+      },
+      "usage_data": {
+        "data_used_to_track_you": "你在这里的点击和滑动会被指纹化，这个指纹再次出现在另一个应用里，确认「是的，是同一个用户」。",
+        "data_linked_to_you": "你的行为归档到你这里的档案中。应用知道你如何使用它 —— 并相应地调整自己，让你留下来。",
+        "data_not_linked_to_you": "你的使用数据加入汇总。「高级用户每会话在这里点击 12 次」是真实的；但那些是谁的点击在汇总后无法存留。"
+      },
+      "diagnostics": {
+        "data_used_to_track_you": "崩溃日志带有设备指纹。另一个应用看到相同的指纹，悄悄地把你的两个会话关联起来 —— 即使在重装之后。",
+        "data_linked_to_you": "崩溃数据归档到你这里的设备档案中。对调试有用，但日志中仍然是你。",
+        "data_not_linked_to_you": "崩溃日志在发出前会被剥除标识符。漏洞可以复现；你不行。"
+      },
+      "other": {
+        "data_used_to_track_you": "应用未分类的数据仍然会离开。它会出现在数据经纪人活动的任何地方 —— 你可能永远不知道哪个应用看到了什么。",
+        "data_linked_to_you": "未分类的数据仍然归档到你这里的档案中。应用知道；你不知道它知道什么。",
+        "data_not_linked_to_you": "未分类的数据与其他一切一同落入匿名批次。无论它是什么，它都不再可追溯到你。"
+      }
+    }
+  },
   "audience": {
     "self": {
       "label": "为我自己",
@@ -320,9 +396,9 @@
   "onboarding": {
     "welcome": {
       "eyebrow": "欢迎",
-      "headline": "让我们设置你的隐私审查工具",
-      "subhead": "首先，你在为谁审查应用？",
-      "subhead_long": "首先，你在为谁审查应用？可以随时在设置中更改。",
+      "headline": "你打算如何使用 privacytracker？",
+      "subhead": "选择最接近的用途。",
+      "subhead_long": "选择最接近的用途。之后可以随时在设置中微调。",
       "skip": "暂时跳过",
       "next": "下一步",
       "back": "返回",
@@ -350,6 +426,87 @@
       "self_card": "审查你自己的应用",
       "loved_one_card": "为你关心的人审查应用",
       "guardian_card": "为孩子或被监护人审查应用"
+    }
+  },
+  "focus_purpose": {
+    "primary_aria": "主要用途",
+    "primary": {
+      "monitor": {
+        "title": "监控我的应用变化",
+        "body": "在 App Store 上的标签或政策发生变化时持续跟踪。"
+      },
+      "cleanup": {
+        "title": "清理我的手机",
+        "body": "查看应用是否符合你的隐私档案，然后移除或替换最严重的问题应用，寻找更合适的替代应用。"
+      },
+      "help": {
+        "title": "帮助别人做决定",
+        "body": "为另一位用户准备建议，或在这里监控他们的应用列表。"
+      },
+      "custom": {
+        "title": "自定义设置",
+        "body": "使用高级选项直接选择审查对象和目标。"
+      }
+    },
+    "animation": {
+      "labels": {
+        "contacts": "通讯录",
+        "health": "健康数据",
+        "identifiers": "标识符",
+        "location": "位置",
+        "purchases": "购买记录"
+      },
+      "monitor": {
+        "title": "1 项发生变化",
+        "change": "{app} 现在会跟踪你的{label}"
+      },
+      "cleanup": {
+        "delete": "删除"
+      },
+      "help": {
+        "title": "1 个应用不符合隐私档案",
+        "detail": "GameBox 在绿色和蓝色设备上新增了跟踪"
+      }
+    },
+    "help": {
+      "relationship_heading": "你在帮助谁？",
+      "relationship": {
+        "adult": {
+          "title": "另一位成年人或家庭成员",
+          "body": "你正在帮助他们理解应用，并决定保留哪些。"
+        },
+        "child": {
+          "title": "我管理的孩子或被监护人",
+          "body": "你需要面向监护人的控制和更严格的建议。"
+        }
+      },
+      "outcome_heading": "下一步是什么？",
+      "outcome": {
+        "handoff": {
+          "title": "准备建议，供他们导入",
+          "body": "导出一个可带入他们自己 privacytracker 副本的包。"
+        },
+        "monitor": {
+          "title": "在此副本中监控他们的应用",
+          "body": "在这里持续跟踪他们的应用，并设置后台检查。"
+        }
+      }
+    },
+    "secondary": {
+      "heading": "也可能有用",
+      "accessibility": {
+        "title": "无障碍标签",
+        "body": "显示无障碍声明，并进行档案匹配。"
+      },
+      "policy": {
+        "title": "隐私政策变化",
+        "body": "跟踪政策文本，并更容易完成后台监控设置。"
+      }
+    },
+    "advanced": {
+      "summary": "高级选项",
+      "audience": "审查对象",
+      "goals": "目标"
     }
   },
   "focus_strip": {
@@ -548,17 +705,34 @@
       "import_count": "{count, plural, one {导入 # 个应用 →} other {导入 # 个应用 →}}"
     },
     "profile_setup": {
-      "back_to_goals": "返回你的目标",
-      "back_aria": "返回你的目标",
+      "back_to_goals": "返回你的用途",
+      "back_aria": "返回你的用途",
       "eyebrow": "可选 · 大约需要一分钟",
-      "title": "设置你的隐私档案",
+      "title": "设置匹配档案",
       "subtitle": "告诉我们 <em>你</em> 愿意分享多少各类数据。我们会用这份档案对每个导入的应用进行对比，标记任何超出范围的项目，并提示可考虑替换的应用。完全可选 — 你可以跳过此步，稍后在「设置」里再配置。",
+      "recommend_subtitle": "隐私档案会告诉 privacytracker 哪些数据收集程度是你可以接受的。导入应用后，它会用于不匹配标记、替换提示和审查任务。",
       "switch_aria": "设置隐私档案",
       "switch_title": "设置隐私档案",
       "switch_hint_on": "已开启 — 每个导入的应用都会与下方设定的偏好进行对比。",
       "switch_hint_off": "已关闭 — 应用按原样展示，不进行对比。可以随时开启。",
+      "privacy_recommend_title": "推荐的隐私档案",
+      "privacy_recommend_body": "我们建议此关注重点使用「{preset}」预设。",
+      "privacy_intro_title": "隐私档案",
+      "privacy_intro_body": "为每个 App Store 隐私数据类别设置上限，privacytracker 就能标记超出范围的应用。",
+      "privacy_intro_description": "你可以在编辑器中从预设开始，也可以暂时关闭档案匹配。",
+      "privacy_badge": "隐私",
+      "activate_preset": "启用{preset}",
+      "customise": "自定义",
+      "customise_privacy": "自定义隐私档案",
+      "disable": "停用",
+      "a11y_customise_title": "无障碍偏好",
+      "a11y_customise_body": "选择使用这些应用的人需要或希望具备的无障碍功能。",
+      "a11y_customise_description": "这些选择只用于无障碍匹配。这里不会预先作为推荐选中任何功能。",
+      "a11y_badge": "无障碍",
+      "customise_a11y": "自定义无障碍需求",
       "saving": "正在保存…",
       "save_continue": "保存档案并继续 →",
+      "continue": "继续 →",
       "continue_no_profile": "不设档案直接继续 →",
       "skip": "暂时跳过",
       "save_failed": "保存隐私档案失败",
@@ -750,8 +924,8 @@
       }
     },
     "step1": {
-      "back_to_goals": "返回你的目标",
-      "back_aria": "返回你的目标",
+      "back_to_goals": "返回你的用途",
+      "back_aria": "返回你的用途",
       "subtitle": "选择最简单的导入方式。导入前可以随时切换方法。",
       "method_grid_aria": "导入方式",
       "advanced_grid_aria": "高级导入方式",
@@ -836,6 +1010,12 @@
       "with_understand_declutter": "我们会把「为什么收集此项」的细节与精简提示结合，便于据此采取行动。",
       "with_minimal": "我们将保持仪表板简洁 — 只显示需要决定的应用。",
       "with_accessibility": "我们将把无障碍数据和高对比度选项带到前台。"
+    },
+    "workflow": {
+      "self_monitor": "你的主要流程是监控应用变化。",
+      "self_cleanup": "你的主要流程是清理自己的手机。",
+      "other_handoff": "你的主要流程是准备建议，供别人导入。",
+      "other_monitor": "你的主要流程是在这里监控别人的应用。"
     },
     "enables_heading": "这会启用什么",
     "enable_chip_on": "已启用",
@@ -1117,6 +1297,10 @@
     "resync_apps_from_device": {
       "title": "重新同步 iPhone 上的应用",
       "body": "从你的设备重新导入应用列表，看看自上次以来添加或移除了哪些。"
+    },
+    "export_audit_bundle": {
+      "title": "导出交接用建议",
+      "body": "创建一份审计包，对方可以导入到自己的 privacytracker 副本中。"
     },
     "gate": {
       "title": "要不要先做这个？",
@@ -4529,6 +4713,117 @@
       "col_wired": "Wired",
       "wired_yes": "✓",
       "wired_no": "·"
+    }
+  },
+  "privacy_concepts_preview": {
+    "eyebrow": "原型",
+    "title": "隐私概念动画预览",
+    "intro": "一个独立的图库，用于在隐私标签卡片中上线前测试小型拟物化故事动画。",
+    "prototype_note": "未列出的原型页面：这里的动画暂时不会改变应用详情页或定义页。",
+    "gallery_aria": "隐私概念动画图库",
+    "aspect_map_aria": "隐私概念维度地图",
+    "variant_comparison": {
+      "aria": "应用图标呈现方式对比",
+      "label": "呈现方式对比",
+      "title": "同一个例子，两种应用呈现",
+      "summary": "完整图库现在使用主屏幕语境样式，同时这里保留抽象版本用于比较。"
+    },
+    "variants": {
+      "abstract": "抽象应用图标",
+      "homescreen": "主屏幕语境"
+    },
+    "beats": {
+      "tracking": {
+        "one": "动作",
+        "two": "信号",
+        "three": "结果"
+      },
+      "linked": {
+        "one": "收集",
+        "two": "关联",
+        "three": "资料"
+      },
+      "unlinked": {
+        "one": "收集",
+        "two": "去身份",
+        "three": "汇总"
+      }
+    },
+    "flows": {
+      "tracking": {
+        "label": "追踪",
+        "title": "用于追踪你的数据",
+        "summary": "跨情境识别：一个信号离开第一个应用，并帮助在其他地方识别同一个人。"
+      },
+      "linked": {
+        "label": "关联",
+        "title": "与你关联的数据",
+        "summary": "账户附着：收集的数据继续连接到应用内的资料、记录、账户或标识符。"
+      },
+      "unlinked": {
+        "label": "未关联",
+        "title": "未与你关联的数据",
+        "summary": "去身份化和汇总：直接身份会先被移除，然后数据进入更大的测量分组。"
+      }
+    },
+    "aspects": {
+      "cross_app_handoff": "跨应用交接",
+      "identifier_matching": "标识符匹配",
+      "movement_trail": "移动轨迹",
+      "retargeting_signal": "再营销信号",
+      "relationship_graph": "关系图谱",
+      "purchase_signal": "购买信号",
+      "profile_record": "资料记录",
+      "sensitive_profile": "敏感资料",
+      "financial_record": "财务记录",
+      "aggregate_measurement": "汇总测量",
+      "generic_tracking": "通用追踪"
+    },
+    "scenes": {
+      "email_tracker_handoff": {
+        "title": "邮箱让 App B 识别你",
+        "summary": "在 App A 输入的邮箱地址可能变成可识别标签，让 App B 或合作方知道同一个人回来了。"
+      },
+      "identifier_match": {
+        "title": "标识符让 App B 匹配你",
+        "summary": "设备或账户标识符可能经过合作方流转，然后让 App B 把活动重新连接到同一个资料。"
+      },
+      "location_trail": {
+        "title": "地点变成附近推荐",
+        "summary": "在 App A 到访过的地点可能作为移动信号流转，让 App B 之后显示附近推荐。"
+      },
+      "interest_retargeting": {
+        "title": "一次鞋子搜索变成广告",
+        "summary": "在 App A 搜索鞋子后，这个兴趣可能作为追踪信号流转，让 App B 之后推荐鞋子广告。"
+      },
+      "contacts_social_graph": {
+        "title": "通讯录变成好友推荐",
+        "summary": "上传的通讯录可以变成关系地图，让 App B 之后推荐人或连接。"
+      },
+      "purchase_retargeting": {
+        "title": "一次购买变成折扣优惠",
+        "summary": "收据或订单历史可能作为购物信号离开 App A，让 App B 显示折扣或相关优惠。"
+      },
+      "linked_profile_file": {
+        "title": "数据归档到你的账户",
+        "summary": "关联到你的数据会继续附着在账户或资料上，应用可以把它作为你的记录继续使用。"
+      },
+      "health_profile_link": {
+        "title": "健康活动进入资料",
+        "summary": "健康或健身数据可以保存在账户记录中，让日常习惯和目标成为应用资料的一部分。"
+      },
+      "financial_profile_link": {
+        "title": "财务数据变成账本",
+        "summary": "付款或财务详情可以关联到账户记录，并作为应用理解你的资料继续使用。"
+      },
+      "unlinked_telemetry": {
+        "title": "身份标签先被移除再汇总",
+        "summary": "未关联数据会去掉直接身份标签，再进入更大的趋势或测量分组。"
+      },
+      "generic_tracking": {
+        "title": "一个数据点在别处完成识别",
+        "summary": "收集到的数据点可能作为标签离开 App A，然后帮助 App B 在另一个情境中识别同一个人。"
+      }
     }
   },
   "background_mode_callout": {
