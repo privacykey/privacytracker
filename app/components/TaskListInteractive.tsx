@@ -103,7 +103,7 @@ export default function TaskListInteractive({
       if (task.state === "blocked") {
         const missing = task.prerequisites.find((prereqId) => {
           const prereq = tasks.find((x) => x.id === prereqId);
-          return !prereq || prereq.state !== "completed";
+          return prereq?.state !== "completed";
         });
         if (missing) {
           setGateTask(task);

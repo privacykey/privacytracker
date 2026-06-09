@@ -183,7 +183,7 @@ function readHealth(): DeploymentDiagnostics["health"] {
       | { ok: number }
       | undefined;
     const dbPingMs = Math.max(0, Date.now() - started);
-    if (!row || row.ok !== 1) {
+    if (row?.ok !== 1) {
       return {
         status: "degraded",
         dbPingMs,

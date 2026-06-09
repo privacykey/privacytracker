@@ -14,7 +14,7 @@ export async function GET() {
     const row = db.prepare("SELECT 1 as ok").get() as
       | { ok: number }
       | undefined;
-    if (!row || row.ok !== 1) {
+    if (row?.ok !== 1) {
       return NextResponse.json({ status: "degraded" }, { status: 503 });
     }
     return NextResponse.json({ status: "ok" });

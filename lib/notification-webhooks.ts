@@ -151,7 +151,7 @@ export async function postImmediateWebhook(
   notification: WebhookNotification
 ): Promise<void> {
   const cfg = readWebhookConfig();
-  if (!cfg || cfg.frequency !== "immediate") {
+  if (cfg?.frequency !== "immediate") {
     return;
   }
   const title = notification.appName
