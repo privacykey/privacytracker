@@ -474,7 +474,7 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
     // in the timeline, depending on when the import ran.
     const neighbours = [snapshots[i - 1], snapshots[i + 1]];
     for (const other of neighbours) {
-      if (!other || other.source !== "live" || !other.snapshot_json) {
+      if (other?.source !== "live" || !other.snapshot_json) {
         continue;
       }
       if (other.snapshot_json === row.snapshot_json) {
