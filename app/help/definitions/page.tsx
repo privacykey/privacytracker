@@ -17,11 +17,13 @@ import {
 import { getSetting } from "../../../lib/scheduler";
 import PrivacyTypeIcon from "../../components/PrivacyTypeIcon";
 
-export const metadata: Metadata = {
-  title: "Privacy Label Definitions — privacytracker",
-  description:
-    "Definitions of Apple App Store privacy label terms — Data Not Linked to You, Data Linked to You, Data Used to Track You — and the data types developers may collect, with links to Apple\u2019s authoritative sources.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("page_metadata");
+  return {
+    title: t("definitions_title"),
+    description: t("definitions_description"),
+  };
+}
 
 // The page reads the stored storefront country from SQLite to build a
 // country-specific transparency report link, so it must not be statically

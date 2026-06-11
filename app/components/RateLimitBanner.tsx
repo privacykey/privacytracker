@@ -12,6 +12,7 @@
  * banner re-appears on the next poll.
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RateLimitCategory } from "@/lib/rate-limit";
 
@@ -46,6 +47,9 @@ interface Props {
   variant?: "inline" | "floating";
 }
 
+// English fallback map — kept after the JSX swapped to translator
+// lookups; it documents what the `rate_limit_banner.<category>_*` keys
+// mean and covers the case where a translation key is missing.
 const HUMAN_LABEL: Record<RateLimitCategory, { title: string; what: string }> =
   {
     search: {
@@ -58,14 +62,24 @@ const HUMAN_LABEL: Record<RateLimitCategory, { title: string; what: string }> =
     },
   };
 
-function formatCountdown(remainingMs: number): string {
+type Translator = (
+  key: string,
+  values?: Record<string, string | number>
+) => string;
+
+function formatCountdown(remainingMs: number, t: Translator): string {
   const totalSec = Math.max(0, Math.ceil(remainingMs / 1000));
   if (totalSec < 60) {
-    return `${totalSec}s`;
+    return t("countdown_seconds", { seconds: totalSec });
   }
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
-  return s === 0 ? `${m}m` : `${m}m ${s.toString().padStart(2, "0")}s`;
+  return s === 0
+    ? t("countdown_minutes", { minutes: m })
+    : t("countdown_minutes_seconds", {
+        minutes: m,
+        seconds: s.toString().padStart(2, "0"),
+      });
 }
 
 export default function RateLimitBanner({
@@ -75,6 +89,7 @@ export default function RateLimitBanner({
   pollIntervalMs = 4500,
   pollWhenIdle = false,
 }: Props) {
+  const t = useTranslations("rate_limit_banner");
   // null until first fetch — render nothing so we don't flash an empty banner.
   const [snapshot, setSnapshot] = useState<RateLimitSnapshot | null>(null);
   // Local-clock countdown, recomputed every second from snapshot.resumeAt.
@@ -181,7 +196,19 @@ export default function RateLimitBanner({
     return null;
   }
 
-  const meta = HUMAN_LABEL[category];
+  // Localise title + body per category. The English fallback
+  // (`HUMAN_LABEL`) covers the case where a new category lands without
+  // a matching translation key.
+  const meta = (() => {
+    try {
+      return {
+        title: t(`${category}_title`),
+        what: t(`${category}_what`),
+      };
+    } catch {
+      return HUMAN_LABEL[category];
+    }
+  })();
   const className = `rate-limit-banner rate-limit-banner--${variant}`;
 
   return (
@@ -200,7 +227,10 @@ export default function RateLimitBanner({
           <div className="rate-limit-banner-sub">
             {meta.what}{" "}
             <span className="rate-limit-banner-countdown">
-              Auto-retry in <strong>{formatCountdown(remainingMs)}</strong>.
+              {t.rich("auto_retry", {
+                countdown: formatCountdown(remainingMs, t),
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
             </span>
           </div>
         </div>
@@ -211,7 +241,7 @@ export default function RateLimitBanner({
             onClick={() => void handleManualRetry()}
             type="button"
           >
-            {retrying ? "Retrying…" : "Retry now"}
+            {retrying ? t("retrying") : t("retry_now")}
           </button>
         </div>
       </div>
@@ -223,20 +253,17 @@ export default function RateLimitBanner({
             onClick={() => setShowDetails((d) => !d)}
             type="button"
           >
-            {showDetails ? "Hide details" : "Why is this happening?"}
+            {showDetails ? t("hide_details") : t("show_details")}
           </button>
           {showDetails && (
             <div className="rate-limit-banner-reason">
               <p>
-                Apple polices request volumes against their iTunes Search (
-                {category === "search"
-                  ? "used here"
-                  : "shared rolling-minute window"}
-                ) and App Store endpoints. When the rolling-minute counter
-                trips, further requests bounce until the window opens up again.
-                We pace requests under Apple&rsquo;s ceiling, but burst usage
-                (e.g. importing a long app list while a background sync runs)
-                can still cross the line.
+                {t("reason_body", {
+                  scope:
+                    category === "search"
+                      ? t("reason_scope_search")
+                      : t("reason_scope_scrape"),
+                })}
               </p>
               <p className="rate-limit-banner-reason-meta">
                 <code>{snapshot.reason}</code>

@@ -42,9 +42,12 @@ import TaskList from "../components/TaskList";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Home — privacytracker",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("page_metadata");
+  return {
+    title: t("home_title"),
+  };
+}
 
 interface DashboardPageProps {
   searchParams?: Promise<{ sample?: string; edit?: string }>;
@@ -239,6 +242,20 @@ export default async function DashboardPage({
     }
   })();
 
+  // Journey-strip vs legacy-list rendering of the tasks panel. Resolved
+  // here (not inside TaskList) so the variant choice sits next to the
+  // other dashboard flag reads; "list" is the safe fallback.
+  const taskJourneyVariant: "journey" | "list" = (() => {
+    try {
+      return resolveFlagFromDb("flag.dashboard.task_journey") === "on"
+        ? "journey"
+        : "list";
+    } catch (error) {
+      console.warn("[dashboard] task_journey flag resolution failed:", error);
+      return "list";
+    }
+  })();
+
   // Server-side visibility gate for the background-mode callout. The
   // callout renders only when the user hasn't already completed or
   // dismissed the wizard — both stored as epoch ms strings in
@@ -370,7 +387,11 @@ export default async function DashboardPage({
           ) : null
         }
         taskListSlot={
-          <TaskList candidates={userTaskCandidates} tasks={userTasks} />
+          <TaskList
+            candidates={userTaskCandidates}
+            tasks={userTasks}
+            variant={taskJourneyVariant}
+          />
         }
         triage={triage}
         userIntent={userIntent}

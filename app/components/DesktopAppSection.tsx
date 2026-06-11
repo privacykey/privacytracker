@@ -379,12 +379,8 @@ export default function DesktopAppSection() {
           type="checkbox"
         />
         <span>
-          <strong>Show menu bar icon</strong>
-          <span className="muted block">
-            Display the privacytracker icon in the macOS menu bar so you can
-            show / hide the window and trigger Sync now without opening the
-            Dock. Disable to keep the menu bar uncluttered.
-          </span>
+          <strong>{tDesk("tray_visible_label")}</strong>
+          <span className="muted block">{tDesk("tray_visible_help")}</span>
         </span>
       </label>
 

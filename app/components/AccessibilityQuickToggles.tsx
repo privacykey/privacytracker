@@ -657,23 +657,30 @@ export default function AccessibilityQuickToggles() {
                   {t("shapes_hint")}
                 </div>
                 <div aria-hidden="false" className="a11y-quick-shape-legend">
-                  <span
-                    aria-label={t("shapes_legend_privacy_aria")}
-                    className="a11y-quick-shape a11y-quick-shape-privacy"
-                    role="img"
-                    title={t("shapes_legend_privacy_title")}
-                  />
-                  <span className="a11y-quick-shape-text">
-                    {t("shapes_legend_privacy_text")}
+                  {/* Each shape+label is wrapped in its own inline-flex pair
+                      so flex-wrap on the parent breaks between pairs only
+                      — never between a glyph and the text describing it. */}
+                  <span className="a11y-quick-shape-pair">
+                    <span
+                      aria-label={t("shapes_legend_privacy_aria")}
+                      className="a11y-quick-shape a11y-quick-shape-privacy"
+                      role="img"
+                      title={t("shapes_legend_privacy_title")}
+                    />
+                    <span className="a11y-quick-shape-text">
+                      {t("shapes_legend_privacy_text")}
+                    </span>
                   </span>
-                  <span
-                    aria-label={t("shapes_legend_a11y_aria")}
-                    className="a11y-quick-shape a11y-quick-shape-accessibility"
-                    role="img"
-                    title={t("shapes_legend_a11y_title")}
-                  />
-                  <span className="a11y-quick-shape-text">
-                    {t("shapes_legend_a11y_text")}
+                  <span className="a11y-quick-shape-pair">
+                    <span
+                      aria-label={t("shapes_legend_a11y_aria")}
+                      className="a11y-quick-shape a11y-quick-shape-accessibility"
+                      role="img"
+                      title={t("shapes_legend_a11y_title")}
+                    />
+                    <span className="a11y-quick-shape-text">
+                      {t("shapes_legend_a11y_text")}
+                    </span>
                   </span>
                   {/* Third legend entry covers the ChangelogTimeline rail:
                       first-sync rows render as a diamond when shape mode is
@@ -682,14 +689,16 @@ export default function AccessibilityQuickToggles() {
                       / wayback — already map to glyphs from the AppGrid
                       vocabulary (triangle, square, plus), so adding them
                       here would just bloat the legend. */}
-                  <span
-                    aria-label={t("shapes_legend_timeline_aria")}
-                    className="a11y-quick-shape a11y-quick-shape-timeline"
-                    role="img"
-                    title={t("shapes_legend_timeline_title")}
-                  />
-                  <span className="a11y-quick-shape-text">
-                    {t("shapes_legend_timeline_text")}
+                  <span className="a11y-quick-shape-pair">
+                    <span
+                      aria-label={t("shapes_legend_timeline_aria")}
+                      className="a11y-quick-shape a11y-quick-shape-timeline"
+                      role="img"
+                      title={t("shapes_legend_timeline_title")}
+                    />
+                    <span className="a11y-quick-shape-text">
+                      {t("shapes_legend_timeline_text")}
+                    </span>
                   </span>
                 </div>
               </div>

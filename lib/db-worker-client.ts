@@ -182,8 +182,19 @@ function spawnWorker(): WorkerLike | null {
     // /lib; probing the project root makes Next/Turbopack trace the whole repo
     // during production builds.
     const fs = require("node:fs");
+    // `import.meta.dirname` only exists when this module runs as real
+    // Node ESM (tsx scripts, node:test). In the bundled `.next/server`
+    // chunks it compiles to `undefined`, and `path.join(undefined, …)`
+    // throws — which used to abort candidate construction before the
+    // cwd probe below ever ran, silently forcing every production
+    // process onto the inline fallback. Guard it so bundled runtimes
+    // (`next start`, Docker, the standalone sidecar) fall through to
+    // the cwd candidate, which all three layouts ship.
+    const moduleDir: string | undefined = import.meta.dirname;
     const candidates = [
-      path.join(import.meta.dirname, "db-worker.cjs"),
+      ...(typeof moduleDir === "string"
+        ? [path.join(moduleDir, "db-worker.cjs")]
+        : []),
       path.join(
         /*turbopackIgnore: true*/ process.cwd(),
         "lib",

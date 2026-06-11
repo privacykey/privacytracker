@@ -134,6 +134,24 @@ interface SearchResult {
   status?: "pending" | "matched" | "unmatched" | "skipped";
 }
 
+/**
+ * Thrown when /api/search is rejected by the security gate rather than
+ * failing on its own — proxy.ts returns 401 when a non-local host is
+ * missing the admin token, 403 for cross-origin mutations. These are
+ * deterministic per-request (every subsequent chunk fails the same way),
+ * so the search loop bails out immediately and `handleSearch` surfaces a
+ * distinct "API access is blocked" message instead of letting every row
+ * fall through to "Not in the App Store".
+ */
+class SearchAccessBlockedError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(`/api/search blocked with HTTP ${status}`);
+    this.name = "SearchAccessBlockedError";
+    this.status = status;
+  }
+}
+
 interface ScrapeStatus {
   changesDetected?: boolean;
   error?: string;
@@ -360,6 +378,7 @@ export default function OnboardWizard({
   // i18n migration. New keys here live under `onboard.*`.
   const tWiz = useTranslations("onboard.wizard_titles");
   const tMethod = useTranslations("onboard.methods");
+  const tSearchBlock = useTranslations("onboard.search_block");
   const tStepLabels = useTranslations("onboard.step_labels");
   const tStepIndicator = useTranslations("onboard.step_indicator");
   const tOnboard = useTranslations("onboard");
@@ -374,6 +393,7 @@ export default function OnboardWizard({
   const tModalRate = useTranslations("onboard.modals.rate_limit_pause");
   const tCfg = useTranslations("onboard.cfgutil");
   const tStatus = useTranslations("onboard_status");
+  const tPolicyRun = useTranslations("onboard.policy_run");
   // Localised method metadata. Returns the same shape the
   // original static lookup exposed so call-sites that read
   // `methodMeta[method].title` etc. don't have to know the
@@ -846,6 +866,27 @@ export default function OnboardWizard({
   const [rematchingRegion, setRematchingRegion] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  /**
+   * True when the last search failed because the security gate rejected
+   * the request (401/403 — non-local host without an admin token), as
+   * opposed to a transport/server error. Drives the "log in via
+   * Settings → Deployment" link rendered next to the error copy.
+   */
+  const [searchBlocked, setSearchBlocked] = useState(false);
+  /**
+   * Error from a single-block re-search on step 3 (`handleBlockResearch`).
+   * Kept separate from `searchError`, which only renders on step 2 —
+   * without this, a failed per-row retry was indistinguishable from
+   * "no results" and the row silently kept its stale state.
+   */
+  const [blockSearchError, setBlockSearchError] = useState("");
+  /**
+   * Query whose single-block re-search (`handleBlockResearch`) is in
+   * flight. Separate from `editingBlock` — which doubles as "this row's
+   * edit form is open" — so the plain Retry buttons can show a spinner
+   * without flipping their row into the editor UI.
+   */
+  const [blockSearching, setBlockSearching] = useState<string | null>(null);
   /**
    * Live progress for the chunked name-search loop. `null` whenever a
    * search isn't in flight; populated batch-by-batch so the user sees
@@ -1438,14 +1479,19 @@ export default function OnboardWizard({
       // they're looking at.
       if (parsed.truncated) {
         setImportInfo(
-          `Imported the first ${names.length} app names of ${parsed.totalRowsInSource} rows in the file. ` +
-            `The importer caps at ${MAX_IMPORT_ROWS} names per batch — re-run onboarding on the remaining rows to finish the audit.`
+          tStep2("import_info_truncated", {
+            count: names.length,
+            total: parsed.totalRowsInSource,
+            cap: MAX_IMPORT_ROWS,
+          })
         );
       } else if (names.length < parsed.totalRowsInSource) {
         const dropped = parsed.totalRowsInSource - names.length;
         setImportInfo(
-          `Imported ${names.length} app name${names.length === 1 ? "" : "s"} — ` +
-            `${dropped} row${dropped === 1 ? "" : "s"} looked like duplicates or non-name fields and were skipped.`
+          tStep2("import_info_deduped", {
+            count: names.length,
+            dropped,
+          })
         );
       } else {
         setImportInfo("");
@@ -2276,7 +2322,10 @@ export default function OnboardWizard({
           for (let index = 0; index < files.length; index += 1) {
             const file = files[index];
             setOcrMessage(
-              `Reading screenshot ${index + 1} of ${files.length}…`
+              tStep2("ocr_reading", {
+                current: index + 1,
+                total: files.length,
+              })
             );
             mark(`recognize[${index + 1}/${files.length}]: begin`, {
               name: file.name,
@@ -2325,14 +2374,9 @@ export default function OnboardWizard({
           // we did find still go into the table for review.
           const namesPerImage = names.length / Math.max(1, files.length);
           if (namesPerImage < 3) {
-            setOcrMessage(
-              `Extracted ${names.length} app name${names.length === 1 ? "" : "s"}, but this seems light. ` +
-                "If any apps are hidden inside folders they won\u2019t be picked up — try Settings → General → iPhone Storage for a complete list."
-            );
+            setOcrMessage(tStep2("ocr_light_result", { count: names.length }));
           } else {
-            setOcrMessage(
-              `Extracted ${names.length} app name${names.length === 1 ? "" : "s"}. Review the list below before searching.`
-            );
+            setOcrMessage(tStep2("ocr_extracted", { count: names.length }));
           }
         } finally {
           mark("worker.terminate: begin");
@@ -2841,12 +2885,20 @@ export default function OnboardWizard({
                 });
               }
             }
+          } else if (lookupRes.status === 401 || lookupRes.status === 403) {
+            // The security gate rejects bundle lookup and name search
+            // alike — falling through to phase 2 would just fail every
+            // chunk the same way.
+            throw new SearchAccessBlockedError(lookupRes.status);
           } else {
             console.warn(
               `[wizard] bundle-ID lookup returned HTTP ${lookupRes.status}; falling back to name search`
             );
           }
         } catch (err) {
+          if (err instanceof SearchAccessBlockedError) {
+            throw err;
+          }
           console.warn(
             "[wizard] bundle-ID lookup failed, falling back to name search:",
             err
@@ -2911,6 +2963,33 @@ export default function OnboardWizard({
           break;
         }
         if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            throw new SearchAccessBlockedError(res.status);
+          }
+          if (res.status === 429) {
+            // Our own /api/search rate limit (60 req/min per client) —
+            // distinct from Apple's upstream throttle (which arrives as
+            // a 200 with `rateLimited` in the body), but the remedy is
+            // the same: park this chunk plus everything not yet sent
+            // and let the QueuedSearchProvider replay after the window
+            // clears. Unlike the Apple path, chunk i itself was never
+            // processed, so it goes back in the queue too.
+            const retryAfterSeconds = Number(res.headers.get("Retry-After"));
+            const retryAfterMs =
+              Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+                ? retryAfterSeconds * 1000
+                : 30_000;
+            queuedRetryWindows.push(retryAfterMs);
+            for (let j = i; j < phase2Chunks.length; j++) {
+              for (const row of phase2Chunks[j]) {
+                queuedByName.set(row.name, row);
+              }
+            }
+            setSearchProgress((prev) =>
+              prev ? { ...prev, currentBatch: i + 1 } : prev
+            );
+            break;
+          }
           console.error(`[wizard] /api/search failed with ${res.status}`);
           setSearchError(
             tStatus("search_endpoint_error_prefix") +
@@ -3014,7 +3093,7 @@ export default function OnboardWizard({
             searchedCountry: searchCountry,
             sourceBundleId,
             sourceDeveloper,
-            note: "Apple paused this lookup. We will resume automatically.",
+            note: tStatus("search_apple_paused"),
           };
         }
         const phase2 = phase2ByQuery.get(name);
@@ -3176,7 +3255,29 @@ export default function OnboardWizard({
     // a block, plus prunes results whose names the user removed from
     // step 2 between searches.
     const existingQueries = new Set(searchResults.map((r) => r.query));
-    const newNames = allNames.filter((n) => !existingQueries.has(n));
+    const freshNames = allNames.filter((n) => !existingQueries.has(n));
+
+    // Also replay names whose previous search came back empty-handed —
+    // zero candidates and not yet resolved another way (skipped, saved as
+    // a manual app, or parked in the 429 replay queue). Coming back to
+    // step 2 and clicking "Search App Store" again is the natural retry
+    // gesture after a transient miss (iTunes hiccup, fixed typo upstream,
+    // an unblocked security gate), and the merge below replaces those
+    // blocks in place — a retry that still finds nothing is a UI no-op.
+    const retryNames = allNames.filter((n) => {
+      if (!existingQueries.has(n)) {
+        return false;
+      }
+      const existing = searchResults.find((r) => r.query === n);
+      return (
+        existing !== undefined &&
+        existing.candidates.length === 0 &&
+        existing.status !== "skipped" &&
+        !skippedQueries.has(n) &&
+        !manuallyChosenQueries.has(n)
+      );
+    });
+    const newNames = [...freshNames, ...retryNames];
 
     // Drop orphan results for names that are no longer in the list
     // (the user removed them in step 2). Computed synchronously so
@@ -3203,6 +3304,7 @@ export default function OnboardWizard({
 
     setSearching(true);
     setSearchError("");
+    setSearchBlocked(false);
     // Fresh AbortController per run — `cancelSearch` reaches into this
     // ref to abort the in-flight chunk; `runMatchSearch` reads
     // `signal.aborted` between chunks to break the loop early.
@@ -3348,8 +3450,21 @@ export default function OnboardWizard({
 
       setStep(3);
     } catch (error) {
-      console.error("[wizard] /api/search failed:", error);
-      setSearchError(tStatus("search_failed"));
+      if (error instanceof SearchAccessBlockedError) {
+        // Nothing was matched — the gate rejected the request before any
+        // lookup ran. Stay on step 2 with a message that says so, instead
+        // of marking every row "Not in the App Store".
+        console.error(
+          `[wizard] /api/search blocked by the security gate (HTTP ${error.status})`
+        );
+        setSearchBlocked(true);
+        setSearchError(
+          tStatus("search_access_blocked", { status: error.status })
+        );
+      } else {
+        console.error("[wizard] /api/search failed:", error);
+        setSearchError(tStatus("search_failed"));
+      }
     } finally {
       setSearching(false);
       setSearchProgress(null);
@@ -3443,7 +3558,8 @@ export default function OnboardWizard({
       return;
     }
 
-    setEditingBlock(originalQuery);
+    setBlockSearching(originalQuery);
+    setBlockSearchError("");
     try {
       // Resolution order for the seller hint the server uses to re-rank:
       //   1. An explicit value the user typed in the edit row.
@@ -3463,6 +3579,25 @@ export default function OnboardWizard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        // Don't touch the block — leaving it as-is and surfacing the
+        // failure beats silently keeping stale candidates (or worse,
+        // implying the edited name isn't in the App Store).
+        console.error(
+          `[wizard] block re-search failed with HTTP ${res.status}`
+        );
+        if (res.status === 401 || res.status === 403) {
+          setSearchBlocked(true);
+          setBlockSearchError(
+            tStatus("search_access_blocked", { status: res.status })
+          );
+        } else if (res.status === 429) {
+          setBlockSearchError(tStatus("search_rate_limited_retry"));
+        } else {
+          setBlockSearchError(tStatus("search_failed"));
+        }
+        return;
+      }
       const data = await res.json();
       const fresh: SearchResult | undefined = (data.results ?? [])[0];
       if (!fresh) {
@@ -3568,6 +3703,7 @@ export default function OnboardWizard({
       console.error("[wizard] handleBlockResearch failed:", error);
     } finally {
       setEditingBlock(null);
+      setBlockSearching(null);
     }
   };
 
@@ -3620,7 +3756,7 @@ export default function OnboardWizard({
           ? {
               ...result,
               status: "unmatched",
-              note: "Matching was cancelled before Apple resumed the search.",
+              note: tStatus("scrape_error_match_cancelled"),
             }
           : result
       )
@@ -3633,7 +3769,7 @@ export default function OnboardWizard({
       query,
       status: "unmatched" as const,
       country,
-      scrapeError: "Matching was cancelled before Apple resumed the search.",
+      scrapeError: tStatus("scrape_error_match_cancelled"),
     }));
     try {
       await fetch("/api/imports/items", {
@@ -4006,14 +4142,14 @@ export default function OnboardWizard({
     // lifecycle — the wizard is still the authoritative UI for per-app detail.
     const totalSteps = queue.length * 2; // fetch + summarise per app
     const policyTask = taskCenter.startTask({
-      title: "Regenerating privacy policies",
-      subtitle: `${queue.length} app${queue.length === 1 ? "" : "s"} · fetch + summarise`,
+      title: tPolicyRun("task_title"),
+      subtitle: tPolicyRun("task_subtitle", { count: queue.length }),
       kind: "policy",
       href: "/onboard",
       progress: {
         current: 0,
         total: totalSteps,
-        label: `0 / ${totalSteps} steps`,
+        label: tPolicyRun("task_steps_label", { done: 0, total: totalSteps }),
       },
       // `now` = immediate abort (matches the in-wizard "Stop now" button).
       onCancel: () => requestStop("now"),
@@ -4038,7 +4174,11 @@ export default function OnboardWizard({
           done += 1;
         }
       }
-      policyTask.setProgress(done, totalSteps, `${done} / ${totalSteps} steps`);
+      policyTask.setProgress(
+        done,
+        totalSteps,
+        tPolicyRun("task_steps_label", { done, total: totalSteps })
+      );
     };
 
     // ---- Phase 1: fetch ----
@@ -4834,12 +4974,9 @@ export default function OnboardWizard({
               👁
             </span>
             <div>
-              <strong>Preview mode</strong>
+              <strong>{tOnboard("preview_banner.lead")}</strong>
               <span className="wizard-preview-banner-sub">
-                {" "}
-                — you&rsquo;re viewing onboarding as a new user. The final
-                &ldquo;import &amp; sync&rdquo; step is suppressed so nothing
-                gets saved.
+                {tOnboard("preview_banner.body")}
               </span>
             </div>
           </div>
@@ -5194,7 +5331,7 @@ export default function OnboardWizard({
             <Link
               aria-label={tStep1("back_aria")}
               className="wizard-back-link"
-              href="/onboard/goals"
+              href="/welcome?customize=1"
             >
               <span aria-hidden="true">←</span> {tStep1("back_to_goals")}
             </Link>
@@ -5374,8 +5511,9 @@ export default function OnboardWizard({
                       className="wizard-note wizard-note-info"
                       style={{ margin: 0 }}
                     >
-                      Using {countryLabel(country)} based on your device region.
-                      Change it here if this phone uses another App Store.
+                      {tStep1("country_inferred", {
+                        label: countryLabel(country),
+                      })}
                     </div>
                   </div>
                 )}
@@ -6201,16 +6339,11 @@ export default function OnboardWizard({
                             <span>{cfgutilError}</span>
                             {cfgutilDiagnostic && (
                               <details className="cfgutil-diagnostic">
-                                <summary>Show diagnostic output</summary>
+                                <summary>{tCfg("diagnostic_summary")}</summary>
                                 <p className="cfgutil-diagnostic-hint">
-                                  This is the raw output cfgutil produced.
-                                  Common reasons for an empty result: the device
-                                  is locked (cfgutil can&rsquo;t enumerate apps
-                                  without a session), an unread{" "}
-                                  <em>Trust This Computer?</em> prompt is
-                                  sitting on the phone, or restrictions are
-                                  filtering installed apps. Copy and share this
-                                  block if you need help diagnosing.
+                                  {tCfg("diagnostic_hint_pre")}
+                                  <em>{tCfg("diagnostic_hint_trust")}</em>
+                                  {tCfg("diagnostic_hint_post")}
                                 </p>
                                 <pre className="cfgutil-diagnostic-pre">
                                   {cfgutilDiagnostic.length > 4096
@@ -6248,17 +6381,13 @@ export default function OnboardWizard({
                                 className="spinner spinner-large"
                               />
                               <h3 className="cfgutil-progress-title">
-                                Reading apps from your iPhone&hellip;
+                                {tCfg("progress_title")}
                               </h3>
                               <p className="cfgutil-progress-body">
-                                cfgutil is enumerating every installed app over
-                                USB. On a phone with 300&nbsp;+&nbsp;apps this
-                                can take up to a minute. The cursor may show a
-                                beach&nbsp;ball briefly &mdash; that&rsquo;s
-                                expected, the system call is synchronous.
+                                {tCfg("progress_body")}
                               </p>
                               <p className="cfgutil-progress-tip">
-                                Tip: keep the device unlocked while this runs.
+                                {tCfg("progress_tip")}
                               </p>
                             </div>
                           </div>
@@ -6512,6 +6641,14 @@ export default function OnboardWizard({
             {searchError && (
               <p style={{ color: "var(--red)", fontSize: 13, marginTop: 12 }}>
                 {searchError}
+                {searchBlocked && (
+                  <>
+                    {" "}
+                    <Link href="/dashboard/settings#deployment-diagnostics">
+                      {tStatus("search_access_blocked_link")}
+                    </Link>
+                  </>
+                )}
               </p>
             )}
 
@@ -6709,9 +6846,8 @@ export default function OnboardWizard({
             const sectionDefs = [
               {
                 id: "bundle",
-                title: "Matched by bundle ID",
-                description:
-                  "Highest-confidence matches from the identifier imported from the device. Untick a row to skip it — it stays in this section.",
+                title: tStep3("bundle_title"),
+                description: tStep3("bundle_description"),
                 results: visibleResults.filter(
                   (result) =>
                     statusFor(result) === "matched" &&
@@ -6720,9 +6856,8 @@ export default function OnboardWizard({
               },
               {
                 id: "name",
-                title: "Matched by name",
-                description:
-                  "Good matches from App Store search. Review rows with common app names or unexpected developers; unticking keeps the row here.",
+                title: tStep3("name_title"),
+                description: tStep3("name_description"),
                 results: visibleResults.filter(
                   (result) =>
                     statusFor(result) === "matched" &&
@@ -6731,9 +6866,8 @@ export default function OnboardWizard({
               },
               {
                 id: "review",
-                title: "Needs review",
-                description:
-                  "Ambiguous rows that need a manual pick before import.",
+                title: tStep3("review_title"),
+                description: tStep3("review_description"),
                 results: visibleResults.filter(
                   (result) => statusFor(result) === "pending"
                 ),
@@ -6746,18 +6880,16 @@ export default function OnboardWizard({
               // surface and keeps skipped rows from cluttering it.
               {
                 id: "unavailable",
-                title: "Not in the App Store",
-                description:
-                  "These didn’t resolve against iTunes Lookup or name search. Pick a source per row to save them as manual apps, or skip individually.",
+                title: tStep3("unavailable_title"),
+                description: tStep3("unavailable_description"),
                 results: visibleResults.filter(
                   (result) => statusFor(result) === "unmatched"
                 ),
               },
               {
                 id: "skipped",
-                title: "Skipped",
-                description:
-                  "Rows you explicitly skipped. They’re here so you can change your mind before continuing.",
+                title: tStep3("skipped_title"),
+                description: tStep3("skipped_description"),
                 results: visibleResults.filter(
                   (result) => statusFor(result) === "skipped"
                 ),
@@ -6787,6 +6919,23 @@ export default function OnboardWizard({
               <>
                 <h1 className="wizard-title">{tWiz("confirm_matches")}</h1>
                 <p className="wizard-subtitle">{tStep3("subtitle")}</p>
+
+                {blockSearchError && (
+                  <p
+                    role="alert"
+                    style={{ color: "var(--red)", fontSize: 13, marginTop: 12 }}
+                  >
+                    {blockSearchError}
+                    {searchBlocked && (
+                      <>
+                        {" "}
+                        <Link href="/dashboard/settings#deployment-diagnostics">
+                          {tStatus("search_access_blocked_link")}
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )}
 
                 {/* Top summary + skip-to-import banner. Surfaces the "you can
                 stop here" affordance so a 212-app review doesn't force
@@ -6818,9 +6967,7 @@ export default function OnboardWizard({
                           marginBottom: 4,
                         }}
                       >
-                        ✓ {effectiveCount}{" "}
-                        {effectiveCount === 1 ? "app is" : "apps are"} ready to
-                        import
+                        {tStep3("ready_lead", { count: effectiveCount })}
                       </div>
                       <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                         {(() => {
@@ -6836,18 +6983,24 @@ export default function OnboardWizard({
                           const parts: string[] = [];
                           if (reviewable > 0) {
                             parts.push(
-                              `${reviewable} multi-candidate ${reviewable === 1 ? "row needs" : "rows need"} a pick`
+                              tStep3("ready_part_review", {
+                                count: reviewable,
+                              })
                             );
                           }
                           if (unmatched > 0) {
                             parts.push(
-                              `${unmatched} ${unmatched === 1 ? "row didn’t" : "rows didn’t"} match anywhere`
+                              tStep3("ready_part_unmatched", {
+                                count: unmatched,
+                              })
                             );
                           }
                           if (parts.length === 0) {
-                            return "Click below to import these now, or scroll to review individual rows.";
+                            return tStep3("ready_all_clear");
                           }
-                          return `Skip the import below to handle them later, or scroll down: ${parts.join(", ")}.`;
+                          return tStep3("ready_more", {
+                            parts: parts.join(", "),
+                          });
                         })()}
                       </div>
                     </div>
@@ -6859,8 +7012,10 @@ export default function OnboardWizard({
                       type="button"
                     >
                       {pendingMatchCount > 0
-                        ? `Waiting for ${pendingMatchCount}…`
-                        : `Import ${effectiveCount} now →`}
+                        ? tStep3("ready_waiting", { count: pendingMatchCount })
+                        : tStep3("ready_import_now", {
+                            count: effectiveCount,
+                          })}
                     </button>
                   </div>
                 )}
@@ -7016,17 +7171,18 @@ export default function OnboardWizard({
                 <div className="onboard-match-toolbar">
                   <div>
                     <div className="onboard-match-toolbar-title">
-                      Matching in {countryLabel(country)} (
-                      {country.toUpperCase()})
+                      {tStep3("rematch_title", {
+                        label: countryLabel(country),
+                        code: country.toUpperCase(),
+                      })}
                     </div>
                     <div className="onboard-match-toolbar-sub">
-                      Change storefront here if the phone uses another App
-                      Store. Manual choices and skipped rows are preserved.
+                      {tStep3("rematch_sub")}
                     </div>
                   </div>
                   <div className="onboard-match-region-controls">
                     <select
-                      aria-label="Change App Store region and rematch"
+                      aria-label={tStep3("rematch_region_aria")}
                       className="settings-input settings-select"
                       disabled={rematchingRegion}
                       onChange={(event) =>
@@ -7048,10 +7204,10 @@ export default function OnboardWizard({
                     >
                       {rematchingRegion ? (
                         <>
-                          <span className="spinner-sm" /> Rematching…
+                          <span className="spinner-sm" /> {tStep3("rematching")}
                         </>
                       ) : (
-                        "Rematch this region"
+                        tStep3("rematch_button")
                       )}
                     </button>
                   </div>
@@ -7096,21 +7252,45 @@ export default function OnboardWizard({
                 )}
 
                 <div className="onboard-match-summary">
-                  <span>{summary.total} imported</span>
-                  <span>{summary.matched} matched</span>
-                  <span>{summary.bundle} exact bundle ID</span>
-                  <span>{summary.name} name/manual</span>
+                  <span>
+                    {tStep3("summary_chip_imported", { count: summary.total })}
+                  </span>
+                  <span>
+                    {tStep3("summary_chip_matched", { count: summary.matched })}
+                  </span>
+                  <span>
+                    {tStep3("summary_chip_bundle", { count: summary.bundle })}
+                  </span>
+                  <span>
+                    {tStep3("summary_chip_name", { count: summary.name })}
+                  </span>
                   {summary.pending > 0 && (
-                    <span>{summary.pending} pending</span>
+                    <span>
+                      {tStep3("summary_chip_pending", {
+                        count: summary.pending,
+                      })}
+                    </span>
                   )}
                   {summary.skipped > 0 && (
-                    <span>{summary.skipped} skipped</span>
+                    <span>
+                      {tStep3("summary_chip_skipped", {
+                        count: summary.skipped,
+                      })}
+                    </span>
                   )}
                   {summary.unavailable > 0 && (
-                    <span>{summary.unavailable} unavailable</span>
+                    <span>
+                      {tStep3("summary_chip_unavailable", {
+                        count: summary.unavailable,
+                      })}
+                    </span>
                   )}
                   {webClipEntries.length > 0 && (
-                    <span>{webClipEntries.length} web shortcuts</span>
+                    <span>
+                      {tStep3("webclip_count_chip", {
+                        count: webClipEntries.length,
+                      })}
+                    </span>
                   )}
                 </div>
 
@@ -7127,17 +7307,21 @@ export default function OnboardWizard({
                     <div className="onboard-match-section-header">
                       <div>
                         <h2 id="webclip-section-heading">
-                          🧭 Safari shortcuts{" "}
+                          {tStep3("webclip_title")}{" "}
                           <span
                             style={{ color: "var(--text-2)", fontWeight: 400 }}
                           >
-                            (not App Store apps)
+                            {tStep3("webclip_title_suffix")}
                           </span>
                         </h2>
                         <p>
                           {webClipSaveState === "saved"
-                            ? `Saved ${webClipSavedCount} as manual web apps. Visit Settings → Manual Apps to fill in privacy-policy URLs and notes.`
-                            : `${webClipEntries.length} rows look like home-screen shortcuts added from Safari. Saving them lands each one in Manual Apps with source = "Safari web app".`}
+                            ? tStep3("webclip_saved", {
+                                count: webClipSavedCount,
+                              })
+                            : tStep3("webclip_lead", {
+                                count: webClipEntries.length,
+                              })}
                         </p>
                       </div>
                       <span>{webClipEntries.length}</span>
@@ -7241,7 +7425,7 @@ export default function OnboardWizard({
                                 setWebClipSaveError(
                                   err instanceof Error
                                     ? err.message
-                                    : "Failed to save web apps"
+                                    : tStep3("webclip_save_failed")
                                 );
                               }
                             }}
@@ -7249,10 +7433,13 @@ export default function OnboardWizard({
                           >
                             {webClipSaveState === "saving" ? (
                               <>
-                                <span className="spinner-sm" /> Saving…
+                                <span className="spinner-sm" />{" "}
+                                {tStep3("webclip_saving")}
                               </>
                             ) : (
-                              `Save ${webClipEntries.length} as manual web apps`
+                              tStep3("webclip_save_cta", {
+                                count: webClipEntries.length,
+                              })
                             )}
                           </button>
                         </div>
@@ -7281,7 +7468,9 @@ export default function OnboardWizard({
                               <h2>{section.title}</h2>
                               <p>
                                 {unmatchedSaveState === "saved"
-                                  ? `Saved ${unmatchedSavedCount} as manual apps. Visit Settings → Manual Apps to add privacy-policy URLs or notes.`
+                                  ? tStep3("unavailable_saved", {
+                                      count: unmatchedSavedCount,
+                                    })
                                   : section.description}
                               </p>
                             </div>
@@ -7317,20 +7506,26 @@ export default function OnboardWizard({
                                       {isEditing ? (
                                         <UnavailableRowEditor
                                           busyEditing={
-                                            editingBlock === result.query &&
-                                            searching
+                                            blockSearching === result.query
                                           }
                                           initialQuery={result.query}
                                           onCancel={() => setEditingBlock(null)}
                                           onRetry={(nextQuery) => {
-                                            // handleBlockResearch reads
-                                            // `editingBlock` to flag the
-                                            // row as in-flight; it also
-                                            // clears `editingBlock` itself
-                                            // on completion / no-op.
+                                            // force=true so an unchanged
+                                            // name still replays the
+                                            // search — without it the
+                                            // "nothing changed" guard
+                                            // silently no-ops and the
+                                            // button feels broken.
+                                            // handleBlockResearch flags
+                                            // the row in-flight via
+                                            // `blockSearching` and closes
+                                            // the editor on completion.
                                             void handleBlockResearch(
                                               result.query,
-                                              nextQuery
+                                              nextQuery,
+                                              undefined,
+                                              true
                                             );
                                           }}
                                         />
@@ -7346,13 +7541,38 @@ export default function OnboardWizard({
                                           </strong>
                                           <button
                                             className="link-button-inline"
+                                            disabled={blockSearching !== null}
+                                            onClick={() =>
+                                              void handleBlockResearch(
+                                                result.query,
+                                                result.query,
+                                                undefined,
+                                                true
+                                              )
+                                            }
+                                            style={{ fontSize: 13 }}
+                                            title={tSearchBlock("retry_title")}
+                                            type="button"
+                                          >
+                                            {blockSearching === result.query ? (
+                                              <>
+                                                <span className="spinner-sm" />{" "}
+                                                {tSearchBlock("retry_busy")}
+                                              </>
+                                            ) : (
+                                              tSearchBlock("retry_search")
+                                            )}
+                                          </button>
+                                          <button
+                                            className="link-button-inline"
+                                            disabled={blockSearching !== null}
                                             onClick={() =>
                                               setEditingBlock(result.query)
                                             }
                                             style={{ fontSize: 13 }}
                                             type="button"
                                           >
-                                            Edit & retry
+                                            {tSearchBlock("edit_retry")}
                                           </button>
                                           <label
                                             htmlFor={`triage-${result.query}`}
@@ -7361,7 +7581,7 @@ export default function OnboardWizard({
                                               color: "var(--text-2)",
                                             }}
                                           >
-                                            Save as
+                                            {tSearchBlock("save_as_label")}
                                           </label>
                                           <select
                                             className="settings-input settings-select"
@@ -7380,19 +7600,19 @@ export default function OnboardWizard({
                                             value={choice}
                                           >
                                             <option value="sideloaded">
-                                              Sideloaded / enterprise
+                                              {tStep3("triage_sideloaded")}
                                             </option>
                                             <option value="testflight">
-                                              TestFlight beta
+                                              {tStep3("triage_testflight")}
                                             </option>
                                             <option value="web_clip">
-                                              Safari web app
+                                              {tStep3("triage_web_clip")}
                                             </option>
                                             <option value="own_build">
-                                              Own build (Xcode)
+                                              {tStep3("triage_own_build")}
                                             </option>
                                             <option value="skip">
-                                              Skip — don’t track
+                                              {tStep3("triage_skip")}
                                             </option>
                                           </select>
                                         </>
@@ -7491,7 +7711,7 @@ export default function OnboardWizard({
                                       setUnmatchedSaveError(
                                         err instanceof Error
                                           ? err.message
-                                          : "Failed to save manual apps"
+                                          : tStep3("unavailable_save_failed")
                                       );
                                     }
                                   }}
@@ -7499,10 +7719,13 @@ export default function OnboardWizard({
                                 >
                                   {unmatchedSaveState === "saving" ? (
                                     <>
-                                      <span className="spinner-sm" /> Saving…
+                                      <span className="spinner-sm" />{" "}
+                                      {tStep3("unavailable_saving")}
                                     </>
                                   ) : (
-                                    `Save ${section.results.length} as manual apps`
+                                    tStep3("unavailable_save_cta", {
+                                      count: section.results.length,
+                                    })
                                   )}
                                 </button>
                               </div>
@@ -7569,7 +7792,7 @@ export default function OnboardWizard({
                                   result.query.toLowerCase()
                                 ) ?? ""
                               }
-                              editing={editingBlock === result.query}
+                              editing={blockSearching === result.query}
                               key={result.query}
                               onChoose={(candidate) => {
                                 if (candidate === null) {
@@ -7679,7 +7902,7 @@ export default function OnboardWizard({
                     type="button"
                   >
                     {pendingMatchCount > 0
-                      ? `Waiting for ${pendingMatchCount} match${pendingMatchCount === 1 ? "" : "es"}…`
+                      ? tStep3("waiting_matches", { count: pendingMatchCount })
                       : tStep3("import_count", { count: effectiveCount })}
                   </button>
                 </div>
@@ -8558,10 +8781,13 @@ function UnavailableRowEditor({
   onCancel: () => void;
   onRetry: (nextQuery: string) => void;
 }) {
+  const t = useTranslations("onboard.search_block");
   const [draft, setDraft] = useState(initialQuery);
   const trimmed = draft.trim();
-  const canSubmit =
-    !busyEditing && trimmed.length > 0 && trimmed !== initialQuery;
+  // Unchanged text is still submittable — the parent passes force=true,
+  // so "Search again" replays the same query (useful after a transient
+  // iTunes miss or a since-unblocked security gate).
+  const canSubmit = !busyEditing && trimmed.length > 0;
   return (
     <div
       style={{
@@ -8585,7 +8811,7 @@ function UnavailableRowEditor({
             onCancel();
           }
         }}
-        placeholder="App name"
+        placeholder={t("edit_app_name")}
         style={{ flex: "1 1 220px", minWidth: 0 }}
         type="text"
         value={draft}
@@ -8596,7 +8822,7 @@ function UnavailableRowEditor({
         onClick={() => onRetry(trimmed)}
         type="button"
       >
-        {busyEditing ? <span className="spinner-sm" /> : "Search again"}
+        {busyEditing ? <span className="spinner-sm" /> : t("search_again")}
       </button>
       <button
         className="btn btn-secondary btn-sm"
@@ -8604,7 +8830,7 @@ function UnavailableRowEditor({
         onClick={onCancel}
         type="button"
       >
-        Cancel
+        {t("cancel")}
       </button>
     </div>
   );
@@ -8697,11 +8923,11 @@ function SearchResultBlock({
         : "unmatched");
   const matchMethodLabel =
     result.matchSource === "bundle"
-      ? "Exact bundle ID"
+      ? t("method_bundle")
       : result.matchSource === "manual"
-        ? "Manual choice"
+        ? t("method_manual")
         : result.matchSource === "name"
-          ? "Name match"
+          ? t("method_name")
           : null;
   const storefrontLabel = result.searchedCountry
     ? countryLabel(result.searchedCountry)
@@ -8833,7 +9059,9 @@ function SearchResultBlock({
                 matchMethodLabel) && (
                 <div className="search-result-query-pills">
                   {status === "pending" && (
-                    <span className="search-result-pending">Pending</span>
+                    <span className="search-result-pending">
+                      {t("pending_pill")}
+                    </span>
                   )}
                   {chosen && (
                     <span
@@ -8911,10 +9139,9 @@ function SearchResultBlock({
       {status === "pending" ? (
         <div className="search-result-empty search-result-pending-body">
           <p className="search-result-empty-copy">
-            Apple paused this match. We will fill in the App Store details after
-            the cooldown; import waits so this app is not silently skipped.
+            {t("pending_copy")}
             {result.sourceBundleId
-              ? ` Bundle ID: ${result.sourceBundleId}.`
+              ? t("pending_bundle_suffix", { id: result.sourceBundleId })
               : ""}
           </p>
           <div className="search-result-empty-actions">
@@ -8932,7 +9159,12 @@ function SearchResultBlock({
         <div className="search-result-empty">
           <p className="search-result-empty-copy">
             {result.sourceBundleId
-              ? `No App Store record for bundle ID ${result.sourceBundleId}${storefrontLabel ? ` in ${storefrontLabel}` : ""}. The app may be unavailable in this region, delisted, or installed outside the App Store.`
+              ? storefrontLabel
+                ? t("no_record_bundle_storefront", {
+                    id: result.sourceBundleId,
+                    storefront: storefrontLabel,
+                  })
+                : t("no_record_bundle", { id: result.sourceBundleId })
               : `${t("no_matches_lead")}${isEditing ? t("no_matches_editing") : t("no_matches_idle")}`}
           </p>
           {!isEditing && (

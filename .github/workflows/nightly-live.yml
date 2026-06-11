@@ -44,9 +44,9 @@ jobs:
           RUN_LIVE_TESTS: '1'
           RUN_NIGHTLY_LIVE_TESTS: '1'
         run: |
-          node --import tsx --import ./tests/setup-env.ts --test \
-            tests/live-clock-app.test.ts \
-            tests/live-apps-nightly.test.ts
+          node --import tsx --import ./tests/helpers/setup-env.ts --test \
+            tests/app/live-clock-app.test.ts \
+            tests/app/live-apps-nightly.test.ts
 
       - name: Summarise live-check policy
         if: always()

@@ -1172,6 +1172,9 @@ function ShortlistGroupCard({
   showInstalledGrouping: boolean;
 }) {
   const tShortlist = useTranslations("shortlist");
+  // Price + IAP copy for the source-app inline price — shared namespace
+  // with the entry-row chips and AppDetailView's pill.
+  const tPriceChip = useTranslations("price_chip");
   // Split the group's entries into "Installed" (tracked candidates — apps the
   // user already has in their library) and "Not installed" (App Store
   // previews). Keeping them as two sections reads more naturally than one
@@ -1269,7 +1272,7 @@ function ShortlistGroupCard({
               banner; doubling the chip count would crowd the row.
             */}
             {(() => {
-              const line = formatPriceLine({
+              const line = formatPriceLine(tPriceChip, {
                 priceFormatted: group.sourceApp.priceFormatted,
                 priceCurrency: group.sourceApp.priceCurrency,
                 hasIap: group.sourceApp.hasIap,
@@ -1282,7 +1285,7 @@ function ShortlistGroupCard({
                   {" · "}
                   <span
                     className="shortlist-source-price"
-                    title={priceTooltip({
+                    title={priceTooltip(tPriceChip, {
                       priceFormatted: group.sourceApp.priceFormatted,
                       priceCurrency: group.sourceApp.priceCurrency,
                       hasIap: group.sourceApp.hasIap,
@@ -1415,6 +1418,9 @@ function ShortlistEntryRow({
 }) {
   const tShortlist = useTranslations("shortlist");
   const tBadge = useTranslations("profile_badge");
+  // Price + IAP chip copy — shared namespace with the group header's
+  // inline price and AppDetailView's pill.
+  const tPriceChip = useTranslations("price_chip");
   // Prefer the server-computed badge when present (tracked candidates).
   // Otherwise fall back to the client-side prefetch result. Tracked rows
   // never set `liveBadge`, so there's no conflict to worry about.
@@ -1547,7 +1553,7 @@ function ShortlistEntryRow({
             English so non-technical recipients aren't left guessing.
           */}
             {(() => {
-              const line = formatPriceLine({
+              const line = formatPriceLine(tPriceChip, {
                 priceFormatted: entry.candidatePriceFormatted,
                 priceCurrency: entry.candidatePriceCurrency,
                 hasIap: entry.candidateHasIap,
@@ -1558,7 +1564,7 @@ function ShortlistEntryRow({
               return (
                 <span
                   className="shortlist-chip shortlist-chip-price"
-                  title={priceTooltip({
+                  title={priceTooltip(tPriceChip, {
                     priceFormatted: entry.candidatePriceFormatted,
                     priceCurrency: entry.candidatePriceCurrency,
                     hasIap: entry.candidateHasIap,
@@ -1577,10 +1583,14 @@ function ShortlistEntryRow({
         <div className="shortlist-entry-actions">
           {showPreview && (
             <button
-              aria-label={`Preview ${entry.candidateName}`}
+              aria-label={tShortlist("preview_entry_aria", {
+                name: entry.candidateName,
+              })}
               className="shortlist-preview-pill"
               onClick={() => onPreview(entry)}
-              title={`Open a quick privacy preview for ${entry.candidateName}`}
+              title={tShortlist("preview_entry_title", {
+                name: entry.candidateName,
+              })}
               type="button"
             >
               <span aria-hidden="true" className="shortlist-preview-pill-icon">
@@ -1596,10 +1606,14 @@ function ShortlistEntryRow({
             print via .shortlist-entry-actions display rules. */}
           {showShare && (
             <button
-              aria-label={`Share comparison with ${entry.candidateName}`}
+              aria-label={tShortlist("share_comparison_aria", {
+                name: entry.candidateName,
+              })}
               className="btn btn-ghost btn-sm"
               onClick={onShare}
-              title={`Generate a social share image comparing against ${entry.candidateName}`}
+              title={tShortlist("share_comparison_title", {
+                name: entry.candidateName,
+              })}
               type="button"
             >
               ↗ Share
@@ -1615,7 +1629,9 @@ function ShortlistEntryRow({
           </a>
           {showRemove && (
             <button
-              aria-label={`Remove ${entry.candidateName} from shortlist`}
+              aria-label={tShortlist("remove_entry_aria", {
+                name: entry.candidateName,
+              })}
               className="btn btn-ghost btn-sm shortlist-remove-btn"
               disabled={busy}
               onClick={() => onRemove(entry)}
@@ -1849,7 +1865,9 @@ function PreviewDrawer({
       role="presentation"
     >
       <aside
-        aria-label={`Preview of ${entry.candidateName}`}
+        aria-label={tShortlist("preview_of_aria", {
+          name: entry.candidateName,
+        })}
         aria-modal="true"
         className="shortlist-drawer"
         // Stop clicks bubbling to the backdrop (which would close).
@@ -1933,7 +1951,7 @@ function PreviewDrawer({
         <div className="shortlist-drawer-body">
           {state.kind === "loading" && (
             <div className="empty-state" style={{ padding: 24 }}>
-              <span className="spinner-sm" /> Fetching live App Store data…
+              <span className="spinner-sm" /> {tShortlist("fetching_live_data")}
             </div>
           )}
           {state.kind === "error" && (
@@ -1941,7 +1959,7 @@ function PreviewDrawer({
               className="empty-state"
               style={{ padding: 24, color: "var(--red)" }}
             >
-              Preview failed: {state.message}
+              {tShortlist("preview_failed_message", { message: state.message })}
             </div>
           )}
           {state.kind === "ready" && (

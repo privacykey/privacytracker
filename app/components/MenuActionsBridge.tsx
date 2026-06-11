@@ -20,10 +20,12 @@
  * so the handlers are alive on every page.
  */
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { getDiagnosticsReport } from "../../lib/desktop";
 
 export default function MenuActionsBridge() {
+  const t = useTranslations("menu_actions");
   const [status, setStatus] = useState<{
     message: string;
     tone: "ok" | "error";
@@ -46,7 +48,7 @@ export default function MenuActionsBridge() {
       try {
         const report = await getDiagnosticsReport();
         if (!report) {
-          setStatus({ message: "Diagnostics unavailable.", tone: "error" });
+          setStatus({ message: t("diagnostics_unavailable"), tone: "error" });
           return;
         }
         if (navigator.clipboard?.writeText) {
@@ -63,13 +65,13 @@ export default function MenuActionsBridge() {
           textarea.remove();
         }
         setStatus({
-          message: "Diagnostics report copied to clipboard.",
+          message: t("diagnostics_copied"),
           tone: "ok",
         });
       } catch (err) {
         console.warn("[MenuActionsBridge] copy-diagnostics failed:", err);
         setStatus({
-          message: "Failed to copy diagnostics report.",
+          message: t("diagnostics_copy_failed"),
           tone: "error",
         });
       }

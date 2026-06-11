@@ -19,7 +19,7 @@ Docker (production): `docker compose up --build -d`. The SQLite DB is bind-mount
 
 The test suite is intentionally small and focused (`npm test`). Container healthchecks hit `GET /api/ready` (DB reachable + data directory writable). `GET /api/health` stays as the simpler liveness probe for uptime checks.
 
-Separate Python companion tool in `tools/ios-app-import/` (stdlib-only, Python 3.9+): `python3 tools/ios-app-import/export_ios_apps.py --mode backup|device`. It is *not* wired into the Node app — it produces a `.txt`/`.csv` that the user feeds back into the web onboarding flow.
+Separate Python companion script in `scripts/ios-app-import/` (stdlib-only, Python 3.9+): `python3 scripts/ios-app-import/export_ios_apps.py --mode backup|device`. It is *not* wired into the Node app — it produces a `.txt`/`.csv` that the user feeds back into the web onboarding flow.
 
 ## Architecture
 
@@ -125,7 +125,7 @@ On startup, `instrumentation.ts` schedules three staggered resume checks (8s / 1
 
 The editor takes an optional `confirmOnPresetApply` prop (default `true`). When the local state is non-empty and doesn't already match the clicked preset, an inline confirm bubble appears under the pill before overwriting; the bubble is the only place a preset can wipe user customisations. `PrivacyProfileSetup` (the onboarding screen) sets it to `hasExistingProfile` so first-time users — whose editor state is just a preloaded `DEFAULT_PROFILE` — can explore presets without nag confirms. `SettingsView` keeps the default `true`.
 
-**Adding a new preset.** (1) Append the key to `PROFILE_PRESET_KEYS`, (2) add complete tier maps under `PROFILE_PRESETS`, (3) add meta under `PROFILE_PRESET_META` (pick a `severityCls` so the active-pill accent walks the green→red gradient sensibly), (4) add `labels.<key>` + `descriptions.<key>` strings under `settings.profile_editor.presets` in `locales/en.json` (Crowdin handles other locales — see Translations), and (5) extend the asserts in `tests/profile-presets.test.ts` if the new preset has invariants worth pinning.
+**Adding a new preset.** (1) Append the key to `PROFILE_PRESET_KEYS`, (2) add complete tier maps under `PROFILE_PRESETS`, (3) add meta under `PROFILE_PRESET_META` (pick a `severityCls` so the active-pill accent walks the green→red gradient sensibly), (4) add `labels.<key>` + `descriptions.<key>` strings under `settings.profile_editor.presets` in `locales/en.json` (Crowdin handles other locales — see Translations), and (5) extend the asserts in `tests/app/profile-presets.test.ts` if the new preset has invariants worth pinning.
 
 **Audit-bundle pass-through.** `buildAuditBundle` runs `matchPreset(getPrivacyProfile())` at export time and emits the result as `recommender_profile_preset` (alongside the raw `recommender_profile`). The field is optional in the bundle type so v1/v2 readers keep working unchanged — `BUNDLE_VERSION` stays at 2 since the field is purely additive. The importer reads it back through to `ImportSummary.recommenderProfilePreset` and `recommender_profile_suggestion.preset` in `app_settings`; `AuditBundleImport.tsx` renders "Recommender used the *Strict* preset" both in the preview modal and the post-import banner using the existing `settings.profile_editor.presets.labels.*` strings.
 

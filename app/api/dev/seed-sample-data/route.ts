@@ -359,7 +359,7 @@ export async function POST(request: Request) {
       keyPrefix: "dev.seed_sample_data",
       // Limit lifted from 6 to 30 per 10 min for the same reason as
       // /api/reset's: the E2E suite calls this from ~7 specs per run
-      // (see e2e/*.spec.ts), and the original cap was tight enough
+      // (see tests/e2e/*.spec.ts), and the original cap was tight enough
       // that adding a single new spec tipped the suite into cascade
       // failures. Same-origin + the audit log are the actual
       // guardrails; this limiter is just defence-in-depth against a

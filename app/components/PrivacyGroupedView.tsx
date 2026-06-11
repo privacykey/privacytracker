@@ -10,6 +10,7 @@ import {
   SEVERITY_CONFIG,
   sortPrivacyTypesForDisplay,
 } from "../../lib/privacy-meta";
+import { scrollPulse } from "../../lib/scroll-pulse";
 import InfoTooltip from "./InfoTooltip";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
@@ -258,7 +259,8 @@ function CategoryCard({
 
   // Scroll + pulse when this card is the deep-link target. Drives the pulse
   // through React state (rather than classList.add) so the reconciler can't
-  // accidentally strip the class during a concurrent re-render.
+  // accidentally strip the class during a concurrent re-render. The rAF /
+  // timer choreography lives in lib/scroll-pulse.ts.
   useEffect(() => {
     if (!isTarget) {
       return;
@@ -268,19 +270,7 @@ function CategoryCard({
       return;
     }
     setExpanded(true);
-    setPulsing(false);
-    // One-frame delay: gives the browser time to paint the neutral state
-    // before we flip to `pulsing=true`, which guarantees the keyframes
-    // animate from 0% instead of skipping straight to the settled values.
-    const rafId = requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      setPulsing(true);
-    });
-    const timer = window.setTimeout(() => setPulsing(false), 1900);
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.clearTimeout(timer);
-    };
+    return scrollPulse(el, { onPulse: setPulsing, block: "start" });
   }, [isTarget]);
 
   const MAX_ICONS = 5;
@@ -349,13 +339,13 @@ function CategoryCard({
             )}
           </span>
           <span className="pmap-card-subtitle">
-            {category.apps.length} app{category.apps.length === 1 ? "" : "s"}
+            {tMap("card_app_count", { count: category.apps.length })}
             {isSensitive && (
               <span
                 className="pmap-card-sensitive-chip"
                 title={tMap("sensitive_category_title")}
               >
-                sensitive
+                {tMap("sensitive_chip")}
               </span>
             )}
           </span>
@@ -386,7 +376,10 @@ function CategoryCard({
            an aria-label that makes its purpose unambiguous and keyboard
            users can reach it via Tab. */
         <button
-          aria-label={`Show all ${category.apps.length} app${category.apps.length === 1 ? "" : "s"} in ${label}`}
+          aria-label={tMap("preview_show_all_aria", {
+            count: category.apps.length,
+            label,
+          })}
           className="pmap-card-preview"
           onClick={() => setExpanded(true)}
           type="button"

@@ -44,6 +44,7 @@ import {
   describeWorstMismatchLocalised,
   TIER_META,
 } from "../../lib/privacy-profile";
+import { scrollPulse } from "../../lib/scroll-pulse";
 import type {
   RecentActivityEntry,
   ReviewableApp,
@@ -58,6 +59,7 @@ import {
 import BackgroundModeCallout from "./BackgroundModeCallout";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
+import Toast from "./Toast";
 
 // ─────────────────────────────────────────────
 // Small helpers
@@ -79,7 +81,6 @@ function handleHashClick(
     return;
   }
   e.preventDefault();
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
   // Also shift keyboard focus to the destination so tabbing continues
   // from there and screen readers announce the new landing point. If
   // the target isn't naturally focusable, give it a temporary
@@ -88,11 +89,9 @@ function handleHashClick(
     el.setAttribute("tabindex", "-1");
   }
   el.focus({ preventScroll: true });
-  el.classList.remove("home-pulse");
-  // Reflow so the animation re-triggers if the class was already present.
-  void el.offsetWidth;
-  el.classList.add("home-pulse");
-  window.setTimeout(() => el.classList.remove("home-pulse"), 1400);
+  // Fire-and-forget from a click handler: scrollPulse self-cancels the
+  // previous run on repeat clicks, so no handle to keep here.
+  scrollPulse(el, { className: "home-pulse", durationMs: 1400 });
   if (history?.replaceState) {
     history.replaceState(null, "", hash);
   }
@@ -580,7 +579,7 @@ export default function HomeView({
         return <Fragment key={id}>{node}</Fragment>;
       })}
       {showLayoutEditorLink && <LayoutEditorFooterLink />}
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
     </div>
   );
 }
@@ -613,6 +612,7 @@ function EditModeShell({
   saver: UseDashboardLayoutSaverResult;
   toast: string;
 }) {
+  const t = useTranslations("dashboard.layout_editor");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -641,10 +641,7 @@ function EditModeShell({
           items={effectiveLayout.order as string[]}
           strategy={verticalListSortingStrategy}
         >
-          <div
-            aria-label="Editable dashboard cards"
-            className="home-edit-cards"
-          >
+          <div aria-label={t("edit_cards_aria")} className="home-edit-cards">
             {effectiveLayout.order.map((id) => {
               const realNode = hiddenSet.has(id) ? null : renderers[id]?.();
               const hidden = hiddenSet.has(id);
@@ -675,7 +672,7 @@ function EditModeShell({
         {saver.liveMessage}
       </div>
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
     </div>
   );
 }
@@ -1832,20 +1829,21 @@ function ActivitySection({ activity }: { activity: RecentActivityEntry[] }) {
 // ─────────────────────────────────────────────
 
 function GlanceSection({ triage }: { triage: TriageData }) {
+  const t = useTranslations("dashboard.glance");
   const hasChanges = triage.changesThisWeek > 0;
   return (
     <section className="home-section home-section-glance">
       <div className="home-glance-grid">
         <GlanceStat
           href="/dashboard/apps"
-          label="Apps tracked"
-          subtitle="View full app list"
+          label={t("apps_tracked")}
+          subtitle={t("apps_tracked_sub")}
           value={triage.totalApps}
         />
         <GlanceStat
           href="/dashboard/privacy"
-          label="Privacy categories"
-          subtitle="Open Privacy Map"
+          label={t("categories")}
+          subtitle={t("categories_sub")}
           value={triage.totalCategories}
         />
         <GlanceStat
@@ -1854,19 +1852,21 @@ function GlanceSection({ triage }: { triage: TriageData }) {
               ? "/dashboard/apps?risk=high"
               : "/dashboard/apps"
           }
-          label="High risk"
+          label={t("high_risk")}
           subtitle={
             triage.highRiskCount > 0
-              ? "Tracking or sensitive data"
-              : "No tracking detected"
+              ? t("high_risk_sub_some")
+              : t("high_risk_sub_none")
           }
           tone={triage.highRiskCount > 0 ? "warn" : "ok"}
           value={triage.highRiskCount}
         />
         <GlanceStat
           href={hasChanges ? "#changes-to-review" : "/dashboard/stats"}
-          label="Changes this week"
-          subtitle={hasChanges ? "Review what shifted" : "Nothing new detected"}
+          label={t("changes_week")}
+          subtitle={
+            hasChanges ? t("changes_week_sub_some") : t("changes_week_sub_none")
+          }
           tone={hasChanges ? "warn" : "ok"}
           value={triage.changesThisWeek}
         />

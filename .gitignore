@@ -22,8 +22,8 @@
 
 # ── Test / coverage artifacts ────────────────────────────────────────
 # Playwright stores screenshots, traces, videos, HTML reports, and
-# throwaway SQLite data here during E2E runs. Keep the actual `e2e/`
-# specs tracked, but never commit run output.
+# throwaway SQLite data here during E2E runs. Keep the actual
+# `tests/e2e/` specs tracked, but never commit run output.
 /test-results/
 /playwright-report/
 /blob-report/
@@ -89,7 +89,8 @@ pnpm-debug.log*
 
 # ── Smoke / scratch ──────────────────────────────────────────────────
 __smoketest.ts
-/tools/__pycache__
+/scripts/**/__pycache__/
+/tests/**/__pycache__/
 
 *storybook.log
 storybook-static

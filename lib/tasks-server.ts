@@ -9,7 +9,7 @@
  */
 
 import db from "./db";
-import { getActiveFocus } from "./feature-flag-storage";
+import { getActiveFocus, getActiveFocusWorkflow } from "./feature-flag-storage";
 import { getPrivacyProfile } from "./privacy-profile-server";
 import { getSetting, setSetting } from "./scheduler";
 import {
@@ -117,6 +117,7 @@ export function setUserTasksState(next: UserTasksStateBlob): void {
 export function buildTaskCompletionContext(
   focus = getActiveFocus()
 ): TaskCompletionContext {
+  const workflow = getActiveFocusWorkflow(focus);
   const hasProfile = (() => {
     try {
       const p = getPrivacyProfile();
@@ -168,8 +169,10 @@ export function buildTaskCompletionContext(
 
   return {
     focus,
+    workflow,
     hasPrivacyProfile: hasProfile,
     anyAppDetailVisitedAt: numericSetting("task_visit.app_detail_at"),
+    auditBundleLastExportedAt: numericSetting("audit_bundle_last_exported_at"),
     privacyMapVisitedAt: numericSetting("task_visit.privacy_map_at"),
     compareVisitedAt: numericSetting("task_visit.compare_at"),
     verdictCount,

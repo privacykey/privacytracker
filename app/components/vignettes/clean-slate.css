@@ -1,0 +1,436 @@
+/* ─────────────────────────────────────────────────────
+   CLEAN SLATE — output-first vignette exploration.
+
+   A fresh take on three labels (Location, Browsing
+   History, Financial Info) where the entire point is the
+   OUTPUT: the concrete real-world thing the data becomes.
+   The motif on the left is the existing "capture" scene;
+   everything authored here is the right-hand payoff.
+
+   All loops are 6s to stay in lockstep with the shipping
+   motif animations. Like the rest of the vignette set,
+   each keyframe's END state is the meaningful punchline,
+   so prefers-reduced-motion (which globals.css collapses
+   to 0.01ms) snaps straight to the finished scene.
+
+   Shared timeline across every output (6s loop):
+     0–16%  : motif still capturing — pulses arm
+     16–34% : three pulses cross the gap into the zone
+     28–44% : the output surface (card / phone / slip) lands
+     40–70% : the payoff content reveals (rows, price, ad)
+     64–78% : the verdict stamp / final beat thumps in
+     78–100%: hold so the reader can absorb the outcome
+───────────────────────────────────────────────────── */
+
+/* ── Travelling pulses (shared by all six outputs) ──── */
+
+.v-cs .v-cs-pulse {
+  opacity: 0;
+}
+.v-cs .v-cs-pulse-1 {
+  animation: v-cs-pulse-travel 6s ease-in-out both;
+}
+.v-cs .v-cs-pulse-2 {
+  animation: v-cs-pulse-travel 6s ease-in-out 0.12s both;
+}
+.v-cs .v-cs-pulse-3 {
+  animation: v-cs-pulse-travel 6s ease-in-out 0.24s both;
+}
+
+@keyframes v-cs-pulse-travel {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  16% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(34px);
+  }
+  36%,
+  100% {
+    opacity: 0;
+    transform: translateX(34px);
+  }
+}
+
+/* ── Output surface lands (card / phone / slip) ─────── */
+
+.v-cs .v-cs-surface {
+  opacity: 0;
+  animation: v-cs-surface-in 6s ease-out both;
+}
+
+@keyframes v-cs-surface-in {
+  0%,
+  28% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  44%,
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* The printed-slip variant drops from a slot instead of rising. */
+.v-cs .v-cs-surface--drop {
+  animation: v-cs-surface-drop 6s ease-out both;
+}
+
+@keyframes v-cs-surface-drop {
+  0%,
+  28% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  44%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Payoff rows — staggered reveal 40–70% ──────────── */
+
+.v-cs .v-cs-row {
+  opacity: 0;
+}
+.v-cs .v-cs-row-1 {
+  animation: v-cs-row-in 6s ease-out both;
+}
+.v-cs .v-cs-row-2 {
+  animation: v-cs-row-in 6s ease-out 0.3s both;
+}
+.v-cs .v-cs-row-3 {
+  animation: v-cs-row-in 6s ease-out 0.6s both;
+}
+.v-cs .v-cs-row-4 {
+  animation: v-cs-row-in 6s ease-out 0.9s both;
+}
+
+@keyframes v-cs-row-in {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  52%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Verdict stamp — thumps on at 64–78% ────────────── */
+
+.v-cs .v-cs-stamp {
+  opacity: 0;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: v-cs-stamp-in 6s ease-out both;
+}
+
+@keyframes v-cs-stamp-in {
+  0%,
+  64% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-3deg);
+  }
+  72% {
+    opacity: 0.96;
+    transform: scale(1.1) rotate(-3deg);
+  }
+  78%,
+  100% {
+    opacity: 0.95;
+    transform: scale(1) rotate(-3deg);
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   LOCATION · output — "Home + daily pattern".
+   Uses only the shared surface / row / stamp primitives:
+   the address reveals first (row-1), the routine cascades
+   below it (rows 2–4), the IDENTIFIED stamp punctuates.
+───────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────
+   BROWSING · output A — "It followed you here".
+   An unrelated phone wakes up and an ad slot fills with
+   the exact product you were just looking at.
+───────────────────────────────────────────────────── */
+
+/* Shared by every retarget-style track output (browsing, search,
+   purchases, usage, sensitive, contact info): the unrelated surface
+   wakes up, then the ad / notification slot fills. */
+.v-cs .v-cs-othersite {
+  opacity: 0;
+  animation: v-cs-surface-in 6s ease-out both;
+}
+.v-cs .v-cs-adslot {
+  opacity: 0;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: v-cs-ad-fill 6s ease-out both;
+}
+
+@keyframes v-cs-ad-fill {
+  0%,
+  48% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  58% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  64%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   FINANCIAL · capture motif — "App A" reading salary +
+   assets. Salary types into the field first, then the
+   asset rows cascade in. All complete before the output's
+   pulses fire so the cause (profile) precedes the effect
+   (pricier airfare).
+───────────────────────────────────────────────────── */
+
+/* Generic clean-slate CAPTURE-motif primitives (`.v-csm`). Any bespoke
+   left-side capture scene uses these: a typed field, staggered rows, a
+   value pop, and a downward scan sweep. They all complete in the first
+   ~45% so the cause (capture) lands before the output's effect. */
+.v-csm .v-csm-salary {
+  clip-path: inset(0 0 0 0);
+  animation: v-csm-type 6s steps(8, end) both;
+}
+.v-csm .v-csm-row-1 {
+  opacity: 0;
+  animation: v-csm-asset-in 6s ease-out 0.3s both;
+}
+.v-csm .v-csm-row-2 {
+  opacity: 0;
+  animation: v-csm-asset-in 6s ease-out 0.55s both;
+}
+.v-csm .v-csm-row-3 {
+  opacity: 0;
+  animation: v-csm-asset-in 6s ease-out 0.8s both;
+}
+.v-csm .v-csm-row-4 {
+  opacity: 0;
+  animation: v-csm-asset-in 6s ease-out 1.05s both;
+}
+.v-csm .v-csm-pop {
+  opacity: 0;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: v-csm-pop 6s ease-out both;
+}
+.v-csm .v-csm-scan {
+  animation: v-csm-scan 6s ease-in-out both;
+}
+
+@keyframes v-csm-type {
+  0%,
+  4% {
+    clip-path: inset(0 100% 0 0);
+  }
+  22%,
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes v-csm-asset-in {
+  0%,
+  14% {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  32%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes v-csm-pop {
+  0%,
+  8% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  26%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* A scan line sweeps down the captured surface once. */
+@keyframes v-csm-scan {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  10% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(44px);
+  }
+  50%,
+  100% {
+    opacity: 0;
+    transform: translateY(44px);
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   FINANCIAL · output — "A pricier airfare for you".
+   The airfare total crossfades from a base price up to a
+   profiled price with an upward arrow — driven by the
+   salary + assets captured on the left.
+───────────────────────────────────────────────────── */
+
+/* Price-jump primitives — generic (used by Financial airfare + Health
+   premium). Old price reveals then fades to struck, new price pops in
+   with an upward arrow. */
+.v-cs .v-cs-price-old {
+  opacity: 0;
+  animation: v-cs-price-old 6s ease-in-out both;
+}
+.v-cs .v-cs-price-new {
+  opacity: 0;
+  animation: v-cs-price-new 6s ease-out both;
+}
+.v-cs .v-cs-arrow {
+  opacity: 0;
+  animation: v-cs-row-in 6s ease-out 0.55s both;
+}
+
+@keyframes v-cs-price-old {
+  0%,
+  40% {
+    opacity: 0;
+  }
+  46% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 1;
+  }
+  66%,
+  100% {
+    /* The base price stays visible but struck-through-faded so the
+       jump from old→new reads clearly in the end frame. */
+    opacity: 0.45;
+  }
+}
+
+@keyframes v-cs-price-new {
+  0%,
+  62% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  72%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   Generic fade used by secondary chrome in several
+   outputs (zone labels, sublines).
+───────────────────────────────────────────────────── */
+
+.v-cs .v-cs-fade {
+  opacity: 0;
+  animation: v-cs-fade-late 6s ease-out both;
+}
+
+@keyframes v-cs-fade-late {
+  0%,
+  46% {
+    opacity: 0;
+  }
+  60%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   Linking lines (`.v-cs-link`) — draw last, after the
+   surfaces/rows have settled, so the "stitch" reads as
+   the final action. Used by the Identifiers output where
+   several apps converge onto one profile.
+───────────────────────────────────────────────────── */
+
+.v-cs .v-cs-link {
+  stroke-dasharray: 64;
+  stroke-dashoffset: 64;
+  animation: v-cs-link-draw 6s ease-out both;
+}
+
+@keyframes v-cs-link-draw {
+  0%,
+  58% {
+    stroke-dashoffset: 64;
+  }
+  80%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+   Tier 3 — "not linked to you": identifiers stripped at
+   source. A red strike draws through each direct
+   identifier, the identifier text fades back to a redacted
+   ghost, and the de-identified version is what remains.
+───────────────────────────────────────────────────── */
+
+.v-cs .v-cs-strike {
+  stroke-dasharray: 70;
+  stroke-dashoffset: 70;
+  animation: v-cs-strike-draw 6s ease-out both;
+}
+
+@keyframes v-cs-strike-draw {
+  0%,
+  40% {
+    stroke-dashoffset: 70;
+  }
+  54%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.v-cs .v-cs-redact {
+  animation: v-cs-redact-out 6s ease-out both;
+}
+
+@keyframes v-cs-redact-out {
+  0%,
+  48% {
+    opacity: 1;
+  }
+  60%,
+  100% {
+    opacity: 0.28;
+  }
+}

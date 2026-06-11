@@ -20,6 +20,7 @@ import BulkSelectBar from "./BulkSelectBar";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
+import Toast from "./Toast";
 import VerdictPill from "./VerdictPill";
 
 interface App {
@@ -684,6 +685,19 @@ export default function AppGrid({
         handle.complete(
           "done",
           tGrid("task_done_changes", { count: result.changeCount })
+        );
+      } else if (result?.versionChanged && result.currentVersion) {
+        showToast(
+          tGrid("toast_version_updated", {
+            name: appName,
+            version: result.currentVersion,
+          })
+        );
+        handle.complete(
+          "done",
+          tGrid("task_done_version_updated", {
+            version: result.currentVersion,
+          })
         );
       } else {
         showToast(tGrid("toast_app_up_to_date"));
@@ -2170,7 +2184,7 @@ export default function AppGrid({
         </div>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
 
       {/* Floating compare dock — shows once the user has picked at least one
           app. Lets them see what's selected, compare (when 2 are picked), or

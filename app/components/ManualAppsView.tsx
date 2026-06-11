@@ -77,8 +77,8 @@ function formatDate(ms: number): string {
 }
 
 export default function ManualAppsView({ initialApps, sources }: Props) {
-  // i18n — page title, form titles, empty state. Per-row chrome and the
-  // form field labels stay English in v1; tracked under the sweep.
+  // i18n — page chrome, form titles, field labels + hints, empty state,
+  // per-row chrome, and the delete-confirm modal.
   const tManual = useTranslations("manual_apps");
   // Source-meta labels (web app / TestFlight / personal / sideloaded)
   // come from `manual_app_source.<value>_{label,short,desc}` so the
@@ -321,9 +321,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       if (res.status === 409) {
         // Already exists — a sibling tab restored it, or the user
         // double-pressed Cmd+Z. Drop the op without an error toast.
-        // Hardcoded string for now; the surface is small and adding
-        // an i18n key per locale for "nothing to undo" can come later.
-        setFlash("↶ Nothing to undo");
+        setFlash(tManual("flash_nothing_to_undo"));
         return;
       }
       if (!res.ok) {
@@ -349,7 +347,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
         }
         return [...prevApps, body.app];
       });
-      setFlash(`Restored “${body.app.name}”.`);
+      setFlash(tManual("flash_restored", { name: body.app.name }));
       setError("");
     } catch (err) {
       console.error("[manual-apps] undo failed:", err);
@@ -357,8 +355,8 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
         err instanceof Error ? err.message : tManual("errors.delete_failed")
       );
     }
-    // tManual is the only outer dep we touch (for the error-fallback
-    // string); ESLint can't tell it's stable across renders. The async
+    // tManual is the only outer dep we touch (for the flash + error
+    // strings); ESLint can't tell it's stable across renders. The async
     // undo reads its target from a ref so it doesn't need to re-render
     // when the stack changes.
   }, [tManual]);
@@ -399,7 +397,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
       // /restore endpoint so any external links still work after
       // restoration.
       pushManualUndo(app);
-      setFlash(`Removed “${app.name}”. Press ⌘Z to undo.`);
+      setFlash(tManual("flash_removed_undo", { name: app.name }));
       if (editingId === app.id) {
         closeForm();
       }
@@ -418,13 +416,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
         <div>
           <div className="manual-apps-eyebrow">{tManual("eyebrow")}</div>
           <h1 className="manual-apps-title">{tManual("page_title")}</h1>
-          <p className="manual-apps-intro">
-            Track installs that don’t have an App Store listing — Safari web
-            apps, TestFlight betas, personal Xcode builds, and sideloaded apps
-            from third-party marketplaces. The App Store privacy labels won’t
-            apply to these, so record what you know (privacy policy link,
-            developer, notes) and keep them in one place.
-          </p>
+          <p className="manual-apps-intro">{tManual("intro")}</p>
         </div>
 
         {!(creating || editingId) && (
@@ -434,10 +426,10 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
               onClick={openCreate}
               type="button"
             >
-              + Add manual app
+              {tManual("add_button")}
             </button>
             <Link className="btn btn-ghost" href="/dashboard">
-              Back to dashboard
+              {tManual("back_to_dashboard")}
             </Link>
           </div>
         )}
@@ -462,13 +454,13 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
 
           <form className="manual-apps-form" onSubmit={onSubmit}>
             <label className="manual-apps-field">
-              <span className="manual-apps-label">Name</span>
+              <span className="manual-apps-label">{tManual("name_label")}</span>
               <input
                 className="settings-input"
                 disabled={busy}
                 maxLength={120}
                 onChange={(e) => update({ name: e.target.value })}
-                placeholder="e.g. News of the World (web app)"
+                placeholder={tManual("name_placeholder")}
                 required
                 type="text"
                 value={form.name}
@@ -537,13 +529,12 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                 disabled={busy}
                 maxLength={512}
                 onChange={(e) => update({ privacyPolicyUrl: e.target.value })}
-                placeholder="https://example.com/privacy"
+                placeholder={tManual("policy_url_placeholder")}
                 type="url"
                 value={form.privacyPolicyUrl}
               />
               <span className="manual-apps-hint">
-                Since there’s no App Store listing, paste the developer’s
-                privacy policy link if one exists.
+                {tManual("policy_url_hint")}
               </span>
             </label>
 
@@ -562,14 +553,15 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                   value={form.sourceUrl}
                 />
                 <span className="manual-apps-hint">
-                  Optional. TestFlight invite, GitHub repository, marketplace
-                  listing — whatever lets a reviewer look it up.
+                  {tManual("source_link_hint")}
                 </span>
               </label>
             )}
 
             <label className="manual-apps-field">
-              <span className="manual-apps-label">Notes</span>
+              <span className="manual-apps-label">
+                {tManual("notes_label")}
+              </span>
               <textarea
                 className="settings-input manual-apps-textarea"
                 disabled={busy}
@@ -601,7 +593,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                 onClick={closeForm}
                 type="button"
               >
-                Cancel
+                {tManual("cancel")}
               </button>
               {editingId && (
                 <button
@@ -615,7 +607,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                   }}
                   type="button"
                 >
-                  Delete
+                  {tManual("delete")}
                 </button>
               )}
             </div>
@@ -630,9 +622,9 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
           </div>
           <h2>{tManual("empty_title")}</h2>
           <p>
-            Add a Safari web app, TestFlight beta, personal build, or sideloaded
-            install to track it alongside your App Store apps. Use{" "}
-            <strong>+ Add manual app</strong> above to start.
+            {tManual.rich("empty_body_rich", {
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
           </p>
         </section>
       ) : (
@@ -662,7 +654,9 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                         )}
                         <span aria-hidden="true"> · </span>
                         <span className="manual-apps-row-updated">
-                          Updated {formatDate(app.updatedAt)}
+                          {tManual("row_updated", {
+                            date: formatDate(app.updatedAt),
+                          })}
                         </span>
                       </div>
                     </div>
@@ -714,7 +708,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                     className="btn btn-sm btn-secondary"
                     href={`/manual-apps/${encodeURIComponent(app.id)}`}
                   >
-                    View
+                    {tManual("row_view")}
                   </Link>
                   <button
                     className="btn btn-sm btn-ghost"
@@ -722,7 +716,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                     onClick={() => openEdit(app)}
                     type="button"
                   >
-                    Edit
+                    {tManual("row_edit")}
                   </button>
                   <button
                     className="btn btn-sm btn-danger"
@@ -730,7 +724,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                     onClick={() => onDelete(app)}
                     type="button"
                   >
-                    Remove
+                    {tManual("row_remove")}
                   </button>
                 </div>
               </li>
@@ -769,12 +763,10 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
           >
             <div className="modal-badge">{tManual("remove_modal_badge")}</div>
             <h2 className="modal-title" id="manual-delete-title">
-              Remove {pendingDelete.name}?
+              {tManual("remove_modal_title", { name: pendingDelete.name })}
             </h2>
             <p className="modal-copy" id="manual-delete-copy">
-              This deletes the manual app entry along with its source URL,
-              developer field, and any notes you&rsquo;ve attached. You can
-              recreate the entry later if you change your mind.
+              {tManual("remove_modal_body")}
             </p>
             <div className="modal-actions">
               <button
@@ -783,7 +775,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                 onClick={() => setPendingDelete(null)}
                 type="button"
               >
-                Cancel
+                {tManual("cancel")}
               </button>
               <button
                 autoFocus

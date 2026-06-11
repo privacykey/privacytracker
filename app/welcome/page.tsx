@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { getActiveFocus } from "@/lib/feature-flag-storage";
+import {
+  getActiveFocus,
+  getActiveFocusWorkflow,
+} from "@/lib/feature-flag-storage";
 import { getSetting } from "@/lib/scheduler";
 import WelcomeSplash from "../components/WelcomeSplash";
 
@@ -32,7 +35,17 @@ export default function WelcomePage() {
   // Empty-string default tells "not yet written" apart from a stored 'self'.
   const audienceStored = getSetting("flag.focus.audience", "") !== "";
 
-  const initialAudience = audienceStored && focus ? focus.audience : null;
+  const initialFocus =
+    audienceStored && focus
+      ? {
+          audience: focus.audience,
+          understand: focus.goals.has("understand"),
+          declutter: focus.goals.has("declutter"),
+          minimal: focus.goals.has("minimal"),
+          accessibility: focus.goals.has("accessibility"),
+          workflow: getActiveFocusWorkflow(focus),
+        }
+      : null;
 
-  return <WelcomeSplash initialAudience={initialAudience} />;
+  return <WelcomeSplash initialFocus={initialFocus} />;
 }

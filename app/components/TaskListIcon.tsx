@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ResolvedTask, UserTaskId } from "../../lib/tasks";
 import TaskGateModal from "./TaskGateModal";
+import UserTasksMutationAlert from "./UserTasksMutationAlert";
 import { useUserTasks } from "./UserTasksProvider";
 import "./task-list.css";
 
@@ -292,16 +293,24 @@ function TaskListDropdownContent({
   if (allDone) {
     return (
       <div className="task-list-empty">
+        <UserTasksMutationAlert />
         <p>{t("all_done_short")}</p>
       </div>
     );
   }
   return (
-    <ul className="task-list-rows">
-      {tasks.map((task) => (
-        <TaskRow key={task.id} onClick={() => onTaskClick(task)} task={task} />
-      ))}
-    </ul>
+    <>
+      <UserTasksMutationAlert />
+      <ul className="task-list-rows">
+        {tasks.map((task) => (
+          <TaskRow
+            key={task.id}
+            onClick={() => onTaskClick(task)}
+            task={task}
+          />
+        ))}
+      </ul>
+    </>
   );
 }
 

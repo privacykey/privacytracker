@@ -10,6 +10,7 @@ import {
 } from "../../lib/date-format";
 import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { scrollPulse } from "../../lib/scroll-pulse";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
 import AuditBundleExport from "./AuditBundleExport";
 import AuditBundleImport from "./AuditBundleImport";
@@ -25,6 +26,7 @@ import SettingsAutoSaveToast, {
 import SettingsSidebar from "./SettingsSidebar";
 import { useTaskCenter } from "./TaskCenter";
 import TasksResetRow from "./TasksResetRow";
+import Toast from "./Toast";
 
 /**
  * localStorage key for the "Also log save events to Task Center"
@@ -445,6 +447,7 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   backup_export: "Backup export",
   backup_restore: "Backup restore",
   reset: "Reset",
+  health_check: "Health check",
 };
 
 const ACTIVITY_TYPE_ICONS: Record<string, string> = {
@@ -457,6 +460,7 @@ const ACTIVITY_TYPE_ICONS: Record<string, string> = {
   backup_export: "💾",
   backup_restore: "⟲",
   reset: "⚠",
+  health_check: "🩺",
 };
 
 /** Rough "N minutes ago" formatter — coarse enough for a log view. */
@@ -800,6 +804,7 @@ export default function SettingsView({
   const tSettings = useTranslations("settings");
   const tSections = useTranslations("settings.sections");
   const tBulkPhase = useTranslations("settings.bulk_phase");
+  const tBulkStream = useTranslations("settings.bulk_stream");
   const tAiOptions = useTranslations("ai_options");
   // Per-section subtitle copy + the App Store Region card's controls
   // + the accessibility-labels card's checkbox copy. Pulled out of the
@@ -996,10 +1001,26 @@ export default function SettingsView({
     useState(false);
   const [deploymentDiagnosticsError, setDeploymentDiagnosticsError] =
     useState("");
+  /**
+   * True when GET /api/deployment/diagnostics was rejected by the proxy's
+   * non-local admin gate (401/403) rather than failing on its own. Renders
+   * the unlock form instead of the generic "unable to load" card — the
+   * diagnostics card is the login destination every blocked surface links
+   * to, so it must stay usable while locked.
+   */
+  const [deploymentDiagnosticsLocked, setDeploymentDiagnosticsLocked] =
+    useState(false);
   const [copyingDeploymentDiagnostics, setCopyingDeploymentDiagnostics] =
     useState(false);
   const [adminTokenInput, setAdminTokenInput] = useState("");
   const [adminTokenUnlocked, setAdminTokenUnlocked] = useState(false);
+  /**
+   * Whether AUDITOR_ADMIN_TOKEN is configured server-side, read from the
+   * gate-exempt /api/auth/admin-token/status endpoint so it's available
+   * even while the diagnostics payload itself is locked. Defaults true so
+   * the unlock form doesn't flash out while the status call is in flight.
+   */
+  const [adminTokenConfigured, setAdminTokenConfigured] = useState(true);
   const [schedule, setSchedule] = useState<Schedule>("manual");
   const [country, setCountry] = useState<string>(DEFAULT_COUNTRY);
   const [savedCountry, setSavedCountry] = useState<string>(DEFAULT_COUNTRY);
@@ -1434,10 +1455,21 @@ export default function SettingsView({
         cache: "no-store",
       });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          // The proxy's non-local admin gate, not a server failure. Flip
+          // the locked state so the section renders the unlock form —
+          // every blocked surface links here to log in, so a dead
+          // "unable to load" card would strand the user.
+          setDeploymentDiagnosticsLocked(true);
+          setDeploymentDiagnostics(null);
+          setDeploymentDiagnosticsError("");
+          return;
+        }
         throw new Error(`HTTP ${res.status}`);
       }
       const data = (await res.json()) as DeploymentDiagnostics;
       setDeploymentDiagnostics(data);
+      setDeploymentDiagnosticsLocked(false);
       setDeploymentDiagnosticsError("");
     } catch (error) {
       console.warn("[settings] loadDeploymentDiagnostics failed:", error);
@@ -1456,7 +1488,11 @@ export default function SettingsView({
         setAdminTokenUnlocked(false);
         return;
       }
-      const data = (await res.json()) as { unlocked?: boolean };
+      const data = (await res.json()) as {
+        configured?: boolean;
+        unlocked?: boolean;
+      };
+      setAdminTokenConfigured(Boolean(data.configured));
       setAdminTokenUnlocked(Boolean(data.unlocked));
     } catch {
       setAdminTokenUnlocked(false);
@@ -1482,6 +1518,10 @@ export default function SettingsView({
       setAdminTokenInput("");
       setAdminTokenUnlocked(true);
       showToast(tDeploy("admin_unlock_saved"));
+      // The gate just opened — re-pull the data it was hiding so the
+      // section populates without a manual refresh.
+      void loadDeploymentDiagnostics();
+      void loadBackupSnapshots();
     } catch {
       showToast(tDeploy("admin_unlock_failed"));
     }
@@ -1552,6 +1592,12 @@ export default function SettingsView({
     try {
       const res = await fetch("/api/backup/snapshots", { cache: "no-store" });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          // Locked by the non-local admin gate. The deployment card's
+          // unlock form explains the state; a toast on every settings
+          // visit would just be noise. Re-fetched after unlock.
+          return;
+        }
         throw new Error(`HTTP ${res.status}`);
       }
       applyBackupSnapshotPayload((await res.json()) as BackupSnapshotsPayload);
@@ -1779,8 +1825,8 @@ export default function SettingsView({
     endpoint: "/api/notification-prefs",
     method: "PUT",
     buildBody: (value) => ({ prefs: sanitizeNotificationPrefs(value) }),
-    successMessage: "Notifications saved",
-    taskLabel: "Notification preferences updated",
+    successMessage: tNotifPrefsCard("toast_saved"),
+    taskLabel: tNotifPrefsCard("task_label_saved"),
     onSaved: (value, response) => {
       const fromResponse = (response as { prefs?: NotificationPrefs } | null)
         ?.prefs;
@@ -1840,9 +1886,11 @@ export default function SettingsView({
     method: "PUT",
     buildBody: (value) => ({ profile: value }),
     successMessage: (value) =>
-      value ? "Privacy profile saved" : "Privacy profile cleared",
+      value ? tPrivProfile("toast_saved") : tPrivProfile("toast_cleared"),
     taskLabel: (value) =>
-      value ? "Privacy profile updated" : "Privacy profile cleared",
+      value
+        ? tPrivProfile("task_label_updated")
+        : tPrivProfile("task_label_cleared"),
     onSaved: (value) => {
       // Capture what was on the server BEFORE this save committed so
       // Cmd-Z can replay it. We read off `savedProfile` (the watermark
@@ -1955,9 +2003,11 @@ export default function SettingsView({
     method: "PUT",
     buildBody: (value) => ({ profile: value }),
     successMessage: (value) =>
-      value ? "Accessibility profile saved" : "Accessibility profile cleared",
+      value ? tA11yProfile("toast_saved") : tA11yProfile("toast_cleared"),
     taskLabel: (value) =>
-      value ? "Accessibility profile updated" : "Accessibility profile cleared",
+      value
+        ? tA11yProfile("task_label_updated")
+        : tA11yProfile("task_label_cleared"),
     onSaved: (value) => {
       // Mirror the privacy-profile undo capture above. Pushing onto
       // the same stack lets a single Cmd-Z handler replay either
@@ -2092,9 +2142,9 @@ export default function SettingsView({
     buildBody: (value) => ({ policy_diff_alert_days: value }),
     successMessage: (value) =>
       value === 0
-        ? "Policy alert disabled"
-        : `Policy alert set to ${value} days`,
-    taskLabel: (value) => `Policy alert → ${value} days`,
+        ? tPolicyAlerts("toast_disabled")
+        : tPolicyAlerts("toast_set", { days: value }),
+    taskLabel: (value) => tPolicyAlerts("task_label", { days: value }),
     onSaved: (value) => {
       // Re-baseline the input so the user sees the canonical integer
       // form (no leading zeros, etc.).
@@ -2119,7 +2169,7 @@ export default function SettingsView({
       // this input for inline errors yet (the JSX is dense).
       pushSettingsToast({
         kind: "error",
-        message: "Policy alert must be 0–3650 days",
+        message: tPolicyAlerts("invalid_range"),
       });
       return;
     }
@@ -2143,11 +2193,13 @@ export default function SettingsView({
     successMessage: ({ enabled, minutes }) =>
       enabled
         ? minutes === 0
-          ? "Policy throttle: no cooldown"
-          : `Policy throttle set to ${minutes} min`
-        : "Policy throttle disabled",
+          ? tPolicyThrottle("toast_no_cooldown")
+          : tPolicyThrottle("toast_set", { minutes })
+        : tPolicyThrottle("toast_disabled"),
     taskLabel: ({ enabled, minutes }) =>
-      `Policy throttle → ${enabled ? `${minutes} min` : "off"}`,
+      enabled
+        ? tPolicyThrottle("task_label_on", { minutes })
+        : tPolicyThrottle("task_label_off"),
     onSaved: ({ minutes }) => setScrapeThrottleMinutes(String(minutes)),
   });
 
@@ -2160,9 +2212,13 @@ export default function SettingsView({
     endpoint: "/api/settings",
     buildBody: ({ disabled }) => ({ policy_scrape_disabled: disabled }),
     successMessage: ({ disabled }) =>
-      disabled ? "Policy scraping disabled" : "Policy scraping re-enabled",
+      disabled
+        ? tPolicyThrottle("scrape_disabled_toast_on")
+        : tPolicyThrottle("scrape_disabled_toast_off"),
     taskLabel: ({ disabled }) =>
-      `Policy scraping → ${disabled ? "disabled" : "enabled"}`,
+      disabled
+        ? tPolicyThrottle("scrape_disabled_task_label_on")
+        : tPolicyThrottle("scrape_disabled_task_label_off"),
   });
 
   /** Compose the current scrape-throttle pair from React state and
@@ -2184,7 +2240,7 @@ export default function SettingsView({
     if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10_080) {
       pushSettingsToast({
         kind: "error",
-        message: "Policy throttle must be 0–10080 min",
+        message: tPolicyThrottle("invalid_range"),
       });
       return;
     }
@@ -2212,9 +2268,12 @@ export default function SettingsView({
     buildBody: (value) => value,
     successMessage: (value) =>
       value.enabled
-        ? `Backup snapshots: every ${value.intervalHours}h, keep ${value.retentionCount}`
-        : "Backup snapshots disabled",
-    taskLabel: "Backup snapshot settings updated",
+        ? tBackupCard("snapshots_toast_set", {
+            hours: value.intervalHours,
+            count: value.retentionCount,
+          })
+        : tBackupCard("snapshots_toast_disabled"),
+    taskLabel: tBackupCard("snapshots_task_label"),
     onSaved: (_value, response) => {
       if (response) {
         applyBackupSnapshotPayload(response as BackupSnapshotsPayload);
@@ -2248,27 +2307,36 @@ export default function SettingsView({
     buildBody: (value) => ({ ai_timeout_direct_ms: value }),
     successMessage: (value) =>
       value === ""
-        ? "Direct timeout reset to default"
-        : `Direct timeout set to ${value} ms`,
-    taskLabel: (value) => `AI direct timeout → ${value || "default"}`,
+        ? tDevAiTimeouts("toast_direct_reset")
+        : tDevAiTimeouts("toast_direct_set", { value }),
+    taskLabel: (value) =>
+      tDevAiTimeouts("task_label_direct", {
+        value: value || tDevAiTimeouts("task_label_default_value"),
+      }),
   });
   const aiTimeoutChunkAutoSave = useSettingsAutoSave<string>({
     endpoint: "/api/settings",
     buildBody: (value) => ({ ai_timeout_chunk_ms: value }),
     successMessage: (value) =>
       value === ""
-        ? "Chunk timeout reset to default"
-        : `Chunk timeout set to ${value} ms`,
-    taskLabel: (value) => `AI chunk timeout → ${value || "default"}`,
+        ? tDevAiTimeouts("toast_chunk_reset")
+        : tDevAiTimeouts("toast_chunk_set", { value }),
+    taskLabel: (value) =>
+      tDevAiTimeouts("task_label_chunk", {
+        value: value || tDevAiTimeouts("task_label_default_value"),
+      }),
   });
   const aiTimeoutMergeAutoSave = useSettingsAutoSave<string>({
     endpoint: "/api/settings",
     buildBody: (value) => ({ ai_timeout_merge_ms: value }),
     successMessage: (value) =>
       value === ""
-        ? "Merge timeout reset to default"
-        : `Merge timeout set to ${value} ms`,
-    taskLabel: (value) => `AI merge timeout → ${value || "default"}`,
+        ? tDevAiTimeouts("toast_merge_reset")
+        : tDevAiTimeouts("toast_merge_set", { value }),
+    taskLabel: (value) =>
+      tDevAiTimeouts("task_label_merge", {
+        value: value || tDevAiTimeouts("task_label_default_value"),
+      }),
   });
 
   /** Validator shared by all three AI timeout fields. Empty → ok (means
@@ -2920,7 +2988,8 @@ export default function SettingsView({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const msg = data?.error ?? `Retry failed (HTTP ${res.status})`;
+        const msg =
+          data?.error ?? tToast("retry_failed_http", { status: res.status });
         showToast(tToast("save_failed_with_message", { message: msg }));
         return;
       }
@@ -3125,15 +3194,11 @@ export default function SettingsView({
       router.refresh();
 
       if (failed === 0) {
-        showToast(
-          `✓ Retried ${succeeded} import${succeeded === 1 ? "" : "s"} successfully`
-        );
+        showToast(tToast("retry_all_success", { succeeded }));
       } else if (succeeded === 0) {
-        showToast(
-          `❌ Retry failed for all ${failed} item${failed === 1 ? "" : "s"}`
-        );
+        showToast(tToast("retry_all_all_failed", { failed }));
       } else {
-        showToast(`⚠ Retried ${succeeded} — ${failed} still failing`);
+        showToast(tToast("retry_all_partial", { succeeded, failed }));
       }
     } catch (error) {
       console.error("[settings] retry-all failed:", error);
@@ -3199,7 +3264,8 @@ export default function SettingsView({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        const msg = data?.error ?? `Retry failed (HTTP ${res.status})`;
+        const msg =
+          data?.error ?? tToast("retry_failed_http", { status: res.status });
         showToast(tToast("save_failed_with_message", { message: msg }));
         return;
       }
@@ -3226,18 +3292,20 @@ export default function SettingsView({
       // Toast the outcome so the user has clear feedback even when the
       // row is offscreen / collapsed.
       if (data?.status === "imported") {
-        showToast(`✓ Imported "${updated?.appName ?? item.query}"`);
+        showToast(
+          tToast("imported_app", { name: updated?.appName ?? item.query })
+        );
       } else if (data?.status === "error") {
-        showToast("Retry failed — see row for details");
+        showToast(tToast("retry_failed_see_row"));
       } else if (data?.rateLimited?.retryAfterMs) {
         const sec = Math.round(data.rateLimited.retryAfterMs / 1000);
-        showToast(`Apple rate-limited us — auto-retry in ~${sec}s`);
+        showToast(tToast("rate_limited_auto_retry", { seconds: sec }));
       }
     } catch (err) {
       console.error("[settings] single-item retry failed:", err);
       showToast(
         tToast("save_failed_with_message", {
-          message: "Retry failed. Check your connection.",
+          message: tToast("retry_failed_connection"),
         })
       );
     } finally {
@@ -4037,12 +4105,13 @@ export default function SettingsView({
   // /privacy-policy page — it scrolls the card into view and flashes it
   // with the same pulse animation as the Privacy Map cards. The pulse is
   // fired by toggling the `.settings-section-pulse` class (defined in
-  // globals.css) for 1.6s. We force a reflow between remove→add so
-  // re-clicking the same anchor re-triggers the animation.
+  // globals.css) via the shared scroll-pulse helper, which owns the
+  // re-trigger / cleanup choreography.
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+    let cancelPulse: (() => void) | null = null;
     const syncFromHash = () => {
       const hash = window.location.hash;
       if (hash === "#ai-timeouts") {
@@ -4069,26 +4138,21 @@ export default function SettingsView({
         if (!el) {
           return;
         }
-        // Smooth-scroll via rAF so the pulse starts after the scroll
-        // begins, not in the middle of the initial paint. Without this
-        // the animation occasionally gets clobbered by the browser's
-        // scroll-restoration before the class applies.
-        requestAnimationFrame(() => {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-          el.classList.remove("settings-section-pulse");
-          // Force reflow so the re-added class restarts the keyframes.
-          void el.offsetWidth;
-          el.classList.add("settings-section-pulse");
-          window.setTimeout(
-            () => el.classList.remove("settings-section-pulse"),
-            1900
-          );
+        cancelPulse?.();
+        cancelPulse = scrollPulse(el, {
+          className: "settings-section-pulse",
+          block: "start",
         });
       }
     };
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
+    return () => {
+      window.removeEventListener("hashchange", syncFromHash);
+      // Without this, navigating away mid-pulse left the class-removal
+      // timeout running against a detached node.
+      cancelPulse?.();
+    };
   }, []);
 
   // One-second tick to keep queued-row countdowns ("next retry in ~42s")
@@ -4126,11 +4190,16 @@ export default function SettingsView({
     buildBody: (value) => ({ sync_schedule: value }),
     successMessage: (value) =>
       value === "manual"
-        ? "Sync set to manual"
+        ? tSchedule("toast_manual")
         : value === "daily"
-          ? "Sync scheduled daily"
-          : "Sync scheduled weekly",
-    taskLabel: (value) => `Sync schedule → ${value}`,
+          ? tSchedule("toast_daily")
+          : tSchedule("toast_weekly"),
+    taskLabel: (value) =>
+      value === "manual"
+        ? tSchedule("task_label_manual")
+        : value === "daily"
+          ? tSchedule("task_label_daily")
+          : tSchedule("task_label_weekly"),
     onSaved: () => {
       void Promise.all([
         loadStatus(),
@@ -4163,9 +4232,11 @@ export default function SettingsView({
     buildBody: (value) => ({ app_country: value }),
     successMessage: (value) => {
       const opt = COUNTRY_OPTIONS.find((o) => o.code === value);
-      return opt ? `Region set to ${opt.label}` : "Region saved";
+      return opt
+        ? tRegion("toast_set", { label: opt.label })
+        : tRegion("toast_saved");
     },
-    taskLabel: (value) => `Region → ${value.toUpperCase()}`,
+    taskLabel: (value) => tRegion("task_label", { code: value.toUpperCase() }),
     onSaved: (value) => {
       setSavedCountry(value);
       void (async () => {
@@ -4433,12 +4504,12 @@ export default function SettingsView({
     }),
     successMessage: (v) =>
       v.provider === "disabled"
-        ? "AI summaries disabled"
-        : `AI provider saved (${v.provider})`,
+        ? tAiProvider("toast_disabled")
+        : tAiProvider("toast_saved", { provider: v.provider }),
     taskLabel: (v) =>
       v.provider === "disabled"
-        ? "AI summaries disabled"
-        : `AI provider → ${v.provider}`,
+        ? tAiProvider("toast_disabled")
+        : tAiProvider("task_label", { provider: v.provider }),
     onSaved: () => {
       // loadSettings re-pulls the canonical state including the masked
       // apiKey marker, so subsequent saves don't accidentally re-send
@@ -4498,8 +4569,8 @@ export default function SettingsView({
     // protected by its own sync_running mutex).
     const controller = new AbortController();
     const handle = taskCenter.startTask({
-      title: "Syncing App Store pages",
-      subtitle: "Scanning App Store for label changes",
+      title: tSyncStatus("task_title"),
+      subtitle: tSyncStatus("task_subtitle"),
       kind: "sync",
       href: "/dashboard/settings",
       onCancel: () => controller.abort(),
@@ -4513,9 +4584,12 @@ export default function SettingsView({
       const data = await res.json();
       if (data.skipped) {
         showToast(tToast("sync_already_running"));
-        handle.complete("done", "Another sync was already running");
+        handle.complete("done", tSyncStatus("task_already_running"));
       } else {
-        const msg = `${data.synced} apps synced · ${data.changes} change${data.changes === 1 ? "" : "s"}`;
+        const msg = tSyncStatus("task_done", {
+          synced: data.synced,
+          changes: data.changes,
+        });
         showToast(
           tToast("sync_done", { synced: data.synced, changes: data.changes })
         );
@@ -4529,7 +4603,10 @@ export default function SettingsView({
       if ((err as Error)?.name !== "AbortError") {
         console.error("[settings] Manual sync trigger failed:", err);
         showToast(tToast("sync_failed"));
-        handle.complete("error", (err as Error)?.message ?? "Sync failed");
+        handle.complete(
+          "error",
+          (err as Error)?.message ?? tSyncStatus("task_failed")
+        );
       }
     }
     setSyncing(false);
@@ -4553,11 +4630,11 @@ export default function SettingsView({
     const controller = new AbortController();
     const taskTitle =
       phase === "all"
-        ? "Summarising all privacy policies"
-        : "Re-scraping all privacy policies";
+        ? tPolicyCard("task_title_summarise")
+        : tPolicyCard("task_title_scrape");
     const handle = taskCenter.startTask({
       title: taskTitle,
-      subtitle: "Preparing…",
+      subtitle: tPolicyCard("task_preparing"),
       kind: "sync",
       href: "/dashboard/settings#privacy-policies-bulk",
       onCancel: () => controller.abort(),
@@ -4584,7 +4661,8 @@ export default function SettingsView({
         // limited) / 500 — surface the message verbatim.
         const errBody = await res.json().catch(() => null);
         const message =
-          errBody?.error ?? `Bulk policy sync failed (${res.status})`;
+          errBody?.error ??
+          tPolicyCard("bulk_failed_http", { status: res.status });
         showToast(tToast("save_failed_with_message", { message }));
         handle.complete("error", message);
         setPolicyBulkSummary(message);
@@ -4620,13 +4698,19 @@ export default function SettingsView({
 
           if (event.type === "batch-start") {
             handle.update({
-              subtitle: `Queued ${event.total} app${event.total === 1 ? "" : "s"}…`,
+              subtitle: tBulkStream("queued_subtitle", {
+                total: Number(event.total ?? 0),
+              }),
             });
           } else if (event.type === "app-start") {
             const n = (event.index ?? 0) + 1;
             const total = event.total ?? "?";
             handle.update({
-              subtitle: `${n}/${total} · ${event.name}`,
+              subtitle: tBulkStream("progress_subtitle", {
+                current: n,
+                total,
+                name: event.name,
+              }),
             });
           } else if (event.type === "phase") {
             const inner = event.phase ?? {};
@@ -4653,38 +4737,49 @@ export default function SettingsView({
                 ? "✓"
                 : "⚠";
             handle.update({
-              subtitle: `${n}/${total} · ${badge} ${event.name}`,
+              subtitle: tBulkStream("progress_subtitle_badged", {
+                current: n,
+                total,
+                badge,
+                name: event.name,
+              }),
             });
           } else if (event.type === "summary") {
             totals = event.totals;
           } else if (event.type === "error") {
-            throw new Error(event.error ?? "Bulk sync failed");
+            throw new Error(event.error ?? tPolicyCard("bulk_stream_error"));
           }
         }
       }
 
       if (totals) {
-        const parts = [`${totals.succeeded} ok`];
+        const parts = [
+          tPolicyCard("bulk_part_ok", { count: totals.succeeded }),
+        ];
         if (totals.failed) {
-          parts.push(`${totals.failed} failed`);
+          parts.push(tPolicyCard("bulk_part_failed", { count: totals.failed }));
         }
         if (totals.throttled) {
-          parts.push(`${totals.throttled} throttled`);
+          parts.push(
+            tPolicyCard("bulk_part_throttled", { count: totals.throttled })
+          );
         }
-        const verb = phase === "all" ? "summarise" : "scrape";
-        const line = `Bulk policy ${verb}: ${parts.join(", ")}`;
+        const line = tPolicyCard(
+          phase === "all" ? "bulk_line_summarise" : "bulk_line_scrape",
+          { parts: parts.join(", ") }
+        );
         setPolicyBulkSummary(line);
         handle.complete(totals.failed > 0 ? "error" : "done", line);
         showToast(totals.failed > 0 ? `⚠ ${line}` : `✓ ${line}`);
       } else {
-        handle.complete("done", "Finished");
+        handle.complete("done", tPolicyCard("task_finished"));
       }
     } catch (err) {
       if ((err as Error)?.name === "AbortError") {
-        handle.complete("error", "Cancelled");
+        handle.complete("error", tPolicyCard("task_cancelled"));
       } else {
         console.error("[settings] Bulk policy sync failed:", err);
-        const message = (err as Error)?.message ?? "Bulk policy sync failed";
+        const message = (err as Error)?.message ?? tPolicyCard("bulk_failed");
         showToast(tToast("save_failed_with_message", { message }));
         handle.complete("error", message);
         setPolicyBulkSummary(message);
@@ -4733,8 +4828,8 @@ export default function SettingsView({
 
     const controller = new AbortController();
     const handle = taskCenter.startTask({
-      title: "Importing privacy-label history",
-      subtitle: "Preparing…",
+      title: tWayback("task_title"),
+      subtitle: tWayback("task_preparing"),
       kind: "sync",
       href: "/dashboard/settings#wayback-import",
       onCancel: () => {
@@ -4766,7 +4861,8 @@ export default function SettingsView({
       if (!(res.ok && res.body)) {
         const errBody = await res.json().catch(() => null);
         const message =
-          errBody?.error ?? `Wayback import failed (${res.status})`;
+          errBody?.error ??
+          tWayback("bulk_failed_http", { status: res.status });
         showToast(tToast("save_failed_with_message", { message }));
         handle.complete("error", message);
         setWaybackSummary(message);
@@ -4800,7 +4896,9 @@ export default function SettingsView({
           if (event.type === "batch-start") {
             setWaybackRunStatus("running");
             handle.update({
-              subtitle: `Queued ${event.total} app${event.total === 1 ? "" : "s"}…`,
+              subtitle: tBulkStream("queued_subtitle", {
+                total: Number(event.total ?? 0),
+              }),
             });
             setWaybackProgress((prev) => ({
               ...(prev ?? {
@@ -4820,7 +4918,13 @@ export default function SettingsView({
           } else if (event.type === "app-start") {
             const n = (event.index ?? 0) + 1;
             const total = event.total ?? "?";
-            handle.update({ subtitle: `${n}/${total} · ${event.name}` });
+            handle.update({
+              subtitle: tBulkStream("progress_subtitle", {
+                current: n,
+                total,
+                name: event.name,
+              }),
+            });
             setWaybackProgress((prev) =>
               prev
                 ? {
@@ -4843,7 +4947,12 @@ export default function SettingsView({
             const badge =
               event.error || failed > 0 ? "⚠" : imported > 0 ? "⟳" : "✓";
             handle.update({
-              subtitle: `${n}/${total} · ${badge} ${event.name}`,
+              subtitle: tBulkStream("progress_subtitle_badged", {
+                current: n,
+                total,
+                badge,
+                name: event.name,
+              }),
             });
             setWaybackProgress((prev) =>
               prev
@@ -4873,7 +4982,7 @@ export default function SettingsView({
             terminalStatus = "paused";
             const remaining = Number(event.summary?.remaining ?? 0);
             const total = Number(event.summary?.total ?? 0);
-            const line = `Wayback import paused — ${remaining} of ${total} app${total === 1 ? "" : "s"} remaining`;
+            const line = tWayback("bulk_paused", { remaining, total });
             setWaybackSummary(line);
             handle.complete("cancelled", line);
             showToast(line);
@@ -4881,45 +4990,48 @@ export default function SettingsView({
             terminalStatus = "idle";
             const remaining = Number(event.summary?.remaining ?? 0);
             const total = Number(event.summary?.total ?? 0);
-            const line = `Wayback import cancelled — ${remaining} of ${total} app${total === 1 ? "" : "s"} not processed`;
+            const line = tWayback("bulk_cancelled", { remaining, total });
             setWaybackSummary(line);
             handle.complete("cancelled", line);
             showToast(line);
           } else if (event.type === "error") {
-            throw new Error(event.error ?? "Wayback import failed");
+            throw new Error(event.error ?? tWayback("bulk_failed"));
           }
         }
       }
 
       if (totals) {
         const parts: string[] = [];
-        parts.push(`${totals.imported} imported`);
+        parts.push(tWayback("bulk_part_imported", { count: totals.imported }));
         if (totals.unchanged) {
-          parts.push(`${totals.unchanged} no-op`);
+          parts.push(tWayback("bulk_part_no_op", { count: totals.unchanged }));
         }
         if (totals.skipped) {
-          parts.push(`${totals.skipped} skipped`);
+          parts.push(tWayback("bulk_part_skipped", { count: totals.skipped }));
         }
         if (totals.failed) {
-          parts.push(`${totals.failed} failed`);
+          parts.push(tWayback("bulk_part_failed", { count: totals.failed }));
         }
-        const line = `Wayback import across ${totals.appsAttempted} app${totals.appsAttempted === 1 ? "" : "s"}: ${parts.join(", ")}`;
+        const line = tWayback("bulk_summary", {
+          count: totals.appsAttempted,
+          parts: parts.join(", "),
+        });
         setWaybackSummary(line);
         terminalStatus = "idle";
         handle.complete(totals.failed > 0 ? "error" : "done", line);
         showToast(totals.failed > 0 ? `⚠ ${line}` : `✓ ${line}`);
       } else if (!terminalStatus) {
         terminalStatus = "idle";
-        handle.complete("done", "Finished");
+        handle.complete("done", tWayback("task_finished"));
       }
     } catch (err) {
       if ((err as Error)?.name === "AbortError") {
         terminalStatus = "cancel_requested";
         setWaybackRunStatus("cancel_requested");
-        handle.complete("cancelled", "Cancelling Wayback import…");
+        handle.complete("cancelled", tWayback("cancel_requested"));
       } else {
         console.error("[settings] Wayback import failed:", err);
-        const message = (err as Error)?.message ?? "Wayback import failed";
+        const message = (err as Error)?.message ?? tWayback("bulk_failed");
         showToast(tToast("save_failed_with_message", { message }));
         handle.complete("error", message);
         setWaybackSummary(message);
@@ -5083,8 +5195,13 @@ export default function SettingsView({
     endpoint: "/api/settings",
     buildBody: (value) => ({ wayback_show_imported: value }),
     successMessage: (value) =>
-      value ? "Showing imported Wayback rows" : "Hiding imported Wayback rows",
-    taskLabel: (value) => `Wayback rows → ${value ? "visible" : "hidden"}`,
+      value
+        ? tWayback("toast_show_imported_on")
+        : tWayback("toast_show_imported_off"),
+    taskLabel: (value) =>
+      value
+        ? tWayback("task_label_show_imported_on")
+        : tWayback("task_label_show_imported_off"),
     onSaved: (value) => setSavedWaybackShowImported(value),
   });
   const saveWaybackShowImported = async (next: boolean) => {
@@ -5108,9 +5225,11 @@ export default function SettingsView({
     endpoint: "/api/settings",
     buildBody: (value) => ({ track_accessibility_labels: value }),
     successMessage: (value) =>
-      value ? "Tracking accessibility labels" : "Hiding accessibility labels",
+      value ? tA11yLabels("toast_visible") : tA11yLabels("toast_hidden"),
     taskLabel: (value) =>
-      `Accessibility labels → ${value ? "visible" : "hidden"}`,
+      value
+        ? tA11yLabels("task_label_visible")
+        : tA11yLabels("task_label_hidden"),
     onSaved: (value) => setSavedTrackAccessibility(value),
   });
   const saveTrackAccessibility = async (next: boolean) => {
@@ -8755,6 +8874,58 @@ ollama serve`}
                       )}
                     </button>
                   </>
+                ) : deploymentDiagnosticsLocked ? (
+                  // The non-local admin gate rejected the diagnostics read.
+                  // This card is the login destination every blocked surface
+                  // links to, so the unlock form must render even though the
+                  // diagnostics payload (and its adminTokenConfigured flag)
+                  // is unavailable — `adminTokenConfigured` comes from the
+                  // gate-exempt /api/auth/admin-token/status instead.
+                  <div className="settings-help-card" role="status">
+                    <div className="settings-help-title">
+                      {tDeploy("locked_title")}
+                    </div>
+                    <p className="settings-help-copy">
+                      {adminTokenConfigured
+                        ? tDeploy("locked_body")
+                        : tDeploy("locked_body_no_token")}
+                    </p>
+                    {adminTokenConfigured && (
+                      <div className="deployment-admin-controls">
+                        <label className="settings-field" style={{ gap: 6 }}>
+                          <span className="settings-field-label">
+                            {tDeploy("admin_token_input")}
+                          </span>
+                          <input
+                            autoComplete="off"
+                            className="settings-input"
+                            onChange={(event) =>
+                              setAdminTokenInput(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                saveSessionAdminToken();
+                              }
+                            }}
+                            placeholder={tDeploy("admin_token_placeholder")}
+                            type="password"
+                            value={adminTokenInput}
+                          />
+                        </label>
+                        <div className="deployment-admin-actions">
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!adminTokenInput.trim()}
+                            onClick={saveSessionAdminToken}
+                            type="button"
+                          >
+                            {tDeploy("admin_unlock")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="settings-help-card" role="status">
                     <div className="settings-help-title">
@@ -9621,7 +9792,7 @@ ollama serve`}
               )}
               {/* Data Export */}
               {settingsAdminExportOn && (
-                <div className="settings-section" id="export">
+                <div className="settings-section" id="export-data">
                   <h2 className="settings-section-title">
                     {tSections("export_data")}
                   </h2>
@@ -9651,8 +9822,7 @@ ollama serve`}
                       marginTop: 12,
                     }}
                   >
-                    CSV includes one row per data type. JSON includes the full
-                    nested structure.
+                    {tExportCard("formats_note")}
                   </p>
 
                   {/* Round 3 PR 5: audit-bundle export. Gated by
@@ -9671,10 +9841,10 @@ ollama serve`}
                       className="btn btn-secondary"
                       disabled
                       style={{ marginLeft: 8 }}
-                      title="PDF audit-bundle export is not available yet."
+                      title={tExportCard("audit_pdf_unavailable_title")}
                       type="button"
                     >
-                      ⬇ Audit bundle (PDF) — coming soon
+                      {tExportCard("audit_pdf_coming_soon")}
                     </button>
                   )}
                 </div>
@@ -10662,7 +10832,7 @@ ollama serve`}
         </div>
       </div>
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
 
       {(restoreStage === "confirm" || restoreStage === "applying") &&
         restorePreview && (
@@ -11142,6 +11312,9 @@ ollama serve`}
  * always had.
  */
 function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
+  const tTroubleshoot = useTranslations(
+    "settings.dev_options.activity_log.troubleshoot"
+  );
   const detail = row.detail;
   if (!detail) {
     return null;
@@ -11162,41 +11335,42 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
   if (fetchDiag) {
     if (typeof fetchDiag.httpStatus === "number") {
       diagnosticLines.push({
-        label: "HTTP status",
+        label: tTroubleshoot("label_http_status"),
         value: String(fetchDiag.httpStatus),
       });
     }
     if (typeof fetchDiag.origin === "string") {
-      const ORIGIN_LABELS: Record<string, string> = {
-        direct: "Direct fetch (Safari UA)",
-        browser_retry: "Browser retry (Chrome headers)",
-        wayback: "Wayback Machine fallback",
-        normalize: "Locale-normalised URL",
+      // Map raw origin identifiers to locale keys; unknown values fall
+      // back to the raw string rather than rendering a missing-key error.
+      const ORIGIN_LABEL_KEYS: Record<string, string> = {
+        direct: "origin_direct",
+        browser_retry: "origin_browser_retry",
+        wayback: "origin_wayback",
+        normalize: "origin_normalize",
       };
+      const originKey = ORIGIN_LABEL_KEYS[fetchDiag.origin as string];
       diagnosticLines.push({
-        label: "Which attempt failed",
-        value:
-          ORIGIN_LABELS[fetchDiag.origin as string] ?? String(fetchDiag.origin),
+        label: tTroubleshoot("label_failed_attempt"),
+        value: originKey ? tTroubleshoot(originKey) : String(fetchDiag.origin),
       });
     }
     if (typeof fetchDiag.contentType === "string" && fetchDiag.contentType) {
       diagnosticLines.push({
-        label: "Content-Type",
+        label: tTroubleshoot("label_content_type"),
         value: fetchDiag.contentType as string,
       });
     }
     if (typeof fetchDiag.networkHint === "string" && fetchDiag.networkHint) {
-      const NETWORK_HINT_LABELS: Record<string, string> = {
-        timeout: "Timeout (no response in time)",
-        dns: "DNS lookup failure",
-        connection_reset: "Connection reset mid-request",
-        network: "Generic network failure",
+      const NETWORK_HINT_LABEL_KEYS: Record<string, string> = {
+        timeout: "network_timeout",
+        dns: "network_dns",
+        connection_reset: "network_connection_reset",
+        network: "network_generic",
       };
+      const hintKey = NETWORK_HINT_LABEL_KEYS[fetchDiag.networkHint as string];
       diagnosticLines.push({
-        label: "Network",
-        value:
-          NETWORK_HINT_LABELS[fetchDiag.networkHint as string] ??
-          String(fetchDiag.networkHint),
+        label: tTroubleshoot("label_network"),
+        value: hintKey ? tTroubleshoot(hintKey) : String(fetchDiag.networkHint),
       });
     }
   }
@@ -11230,7 +11404,9 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
     <div className="activity-log-detail-wrap">
       {showTroubleshoot && (
         <div className="activity-log-troubleshoot">
-          <div className="activity-log-troubleshoot-title">Troubleshoot</div>
+          <div className="activity-log-troubleshoot-title">
+            {tTroubleshoot("title")}
+          </div>
           {errorMessage && (
             <div className="activity-log-troubleshoot-message">
               {errorMessage}
@@ -11253,7 +11429,7 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
             <dl className="activity-log-troubleshoot-facts">
               {requestedUrl && (
                 <div className="activity-log-troubleshoot-fact">
-                  <dt>Requested URL</dt>
+                  <dt>{tTroubleshoot("label_requested_url")}</dt>
                   <dd>
                     <a
                       href={requestedUrl}
@@ -11267,7 +11443,7 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
               )}
               {finalUrl && finalUrl !== requestedUrl && (
                 <div className="activity-log-troubleshoot-fact">
-                  <dt>Final URL</dt>
+                  <dt>{tTroubleshoot("label_final_url")}</dt>
                   <dd>
                     <a
                       href={finalUrl}
@@ -11283,7 +11459,9 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
           )}
           {troubleshoot.length > 0 && (
             <>
-              <div className="activity-log-troubleshoot-subtitle">Try</div>
+              <div className="activity-log-troubleshoot-subtitle">
+                {tTroubleshoot("try_title")}
+              </div>
               <ul className="activity-log-troubleshoot-hints">
                 {troubleshoot.map((hint, index) => (
                   <li key={index}>{hint}</li>
@@ -11294,7 +11472,7 @@ function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
         </div>
       )}
       <details className="activity-log-detail-raw">
-        <summary>Raw JSON</summary>
+        <summary>{tTroubleshoot("raw_json")}</summary>
         <pre className="activity-log-detail">
           {JSON.stringify(detail, null, 2)}
         </pre>

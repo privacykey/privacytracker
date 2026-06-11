@@ -13,6 +13,7 @@ import {
   formatDate as formatDateWithMode,
 } from "../../lib/date-format";
 import { useDateFormat } from "../../lib/date-format-hook";
+import { scrollPulse } from "../../lib/scroll-pulse";
 import AppChangeTimeline from "./charts/AppChangeTimeline";
 
 // Local aliases so the existing rendering code that references SnapshotRow
@@ -745,6 +746,14 @@ export default function ChangelogTimeline({
 
           const isFirst = i === lastSnapshotIndex;
           const snapshotPosition = i === firstSnapshotIndex ? 0 : 1;
+          const previousLiveSnapshot = visibleRows
+            .slice(i + 1)
+            .find(
+              (candidate): candidate is SnapshotRow =>
+                candidate.kind === "snapshot" &&
+                candidate.source !== "wayback" &&
+                !!candidate.app_version
+            );
 
           return (
             <TimelineSnapshotItem
@@ -754,6 +763,7 @@ export default function ChangelogTimeline({
               isFirst={isFirst}
               key={row.id}
               previews={previews}
+              previousAppVersion={previousLiveSnapshot?.app_version ?? null}
               pulsed={pulsed}
               showMatchesLiveSyncBadge={tf.matchesLiveSyncBadge}
               showPolicyDiffToggle={tf.policyDiffToggle}
@@ -790,6 +800,7 @@ function TimelineSnapshotItem({
   snapshot,
   isFirst,
   snapshotPosition,
+  previousAppVersion,
   pulsed,
   previews,
   diffs,
@@ -806,6 +817,7 @@ function TimelineSnapshotItem({
   snapshot: SnapshotRow;
   isFirst: boolean;
   snapshotPosition: number;
+  previousAppVersion: string | null;
   pulsed: { id: string; nonce: number } | null;
   previews: Record<string, PreviewState>;
   diffs: Record<string, DiffState>;
@@ -836,6 +848,12 @@ function TimelineSnapshotItem({
   const dateMode = useDateFormat();
   const changes = snapshot.changes_summary ?? [];
   const isWayback = snapshot.source === "wayback";
+  const versionChangedWithoutLabelChanges =
+    !(isFirst || isWayback) &&
+    changes.length === 0 &&
+    !!snapshot.app_version &&
+    !!previousAppVersion &&
+    snapshot.app_version !== previousAppVersion;
   // Reusing the row's own id as the dependency key: when `pulsed.id` is us,
   // we run the scroll+flash effect; the monotonic `nonce` is what restarts
   // the animation on repeat clicks of the same review → snapshot link.
@@ -848,18 +866,10 @@ function TimelineSnapshotItem({
       return;
     }
     const el = document.getElementById(`snapshot-${snapshot.id}`);
-    setPulsing(false);
-    const raf = requestAnimationFrame(() => {
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      setPulsing(true);
-    });
-    const timer = window.setTimeout(() => setPulsing(false), 1900);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(timer);
-    };
+    if (!el) {
+      return;
+    }
+    return scrollPulse(el, { onPulse: setPulsing, block: "center" });
   }, [isTarget, pulseNonce, snapshot.id]);
 
   return (
@@ -985,9 +995,13 @@ function TimelineSnapshotItem({
             className="timeline-card-title"
             style={{ color: "var(--text-2)" }}
           >
-            {isWayback
-              ? "🕰 Wayback snapshot — no differences from previous"
-              : "✓ No changes detected"}
+            {versionChangedWithoutLabelChanges
+              ? tTimeline("version_updated_no_label_changes", {
+                  version: snapshot.app_version ?? "",
+                })
+              : isWayback
+                ? "🕰 Wayback snapshot — no differences from previous"
+                : "✓ No changes detected"}
           </div>
         ) : (
           <>

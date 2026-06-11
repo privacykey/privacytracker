@@ -16,6 +16,25 @@ import {
   type ProfileTier,
   TIER_META,
 } from "../../lib/privacy-profile";
+import DataLabelHint from "./DataLabelHint";
+
+/**
+ * Which severity story the row's hover vignette plays, keyed by the
+ * tier the user has selected on that row. The hint follows the
+ * selection live: pick "Tracking" and the hover shows the
+ * used-to-track-you consequence, pick "Linked" and it swaps to the
+ * calmer same-company story, and so on.
+ *
+ * "Not collected" (and "no preference") have no data-flow story of
+ * their own — nothing is collected — so they show the worst-case
+ * tracking vignette: it's the thing that threshold guards against.
+ */
+const TIER_TO_HINT_SEVERITY: Record<ProfileTier, string> = {
+  tracking: "DATA_USED_TO_TRACK_YOU",
+  linked: "DATA_LINKED_TO_YOU",
+  not_linked: "DATA_NOT_LINKED_TO_YOU",
+  not_collected: "DATA_USED_TO_TRACK_YOU",
+};
 
 interface Props {
   /**
@@ -44,7 +63,7 @@ interface Props {
  *
  * Selected pills are coloured by tier to match the severity palette used
  * everywhere else in the app (stats heatmap, severity badges, freshness
- * pills): green for "not collected", yellow for "not linked", orange for
+ * pills): green for "not collected", cream for "not linked", orange for
  * "linked", red for "tracking". This way the picker reads as a visual
  * gradient from strict (green, left) to permissive (red, right), and the
  * chosen pill's colour reinforces how invasive the threshold is at a
@@ -295,6 +314,24 @@ export default function PrivacyProfileEditor({
                 <div className="privacy-profile-row-text">
                   <div className="privacy-profile-row-title">
                     {categoryLabel(tCat, key) ?? meta.label}
+                    {/* Skeuomorphic hover hint for this data type. The
+                        severity follows the tier selected on this row —
+                        pick "Tracking" and the vignette plays the
+                        used-to-track-you consequence, pick "Linked" or
+                        "Not linked" and it swaps to that tier's story.
+                        Rows with no selection (or "Not collected") show
+                        the worst-case tracking story, since that's what
+                        the threshold guards against. DataLabelHint keys
+                        its stage on the severity, so changing a pill
+                        while the bubble is open replays the animation. */}
+                    <DataLabelHint
+                      identifier={key}
+                      severity={
+                        current
+                          ? TIER_TO_HINT_SEVERITY[current]
+                          : "DATA_USED_TO_TRACK_YOU"
+                      }
+                    />
                   </div>
                   <div className="privacy-profile-row-desc">
                     {meta.description}

@@ -18,6 +18,7 @@ import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import MenuActionsBridge from "./components/MenuActionsBridge";
 import NavigationHistoryTracker from "./components/NavigationHistoryTracker";
 import NextDevIndicatorRepositioner from "./components/NextDevIndicatorRepositioner";
+import NonLocalReadOnlyBanner from "./components/NonLocalReadOnlyBanner";
 import { QueuedSearchProvider } from "./components/QueuedSearchProvider";
 import SiteInfoHint from "./components/SiteInfoHint";
 import { TaskCenterProvider } from "./components/TaskCenter";
@@ -26,11 +27,13 @@ import { UserTasksProvider } from "./components/UserTasksProvider";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "privacytracker — iOS App Privacy Labels",
-  description:
-    "Monitor, track, and get alerted when iOS apps change their privacy labels.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("page_metadata");
+  return {
+    title: t("root_title"),
+    description: t("root_description"),
+  };
+}
 
 // maximumScale = 1 stops iOS Safari from auto-zooming on focus, which on
 // dense tables pushed the page into horizontal-scroll mode. Users can
@@ -57,6 +60,7 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const tFooter = await getTranslations("footer");
+  const tNojs = await getTranslations("nojs");
 
   // Per-request CSP nonce, minted by proxy.ts and forwarded via the
   // `x-nonce` request header. Read here and threaded into every inline
@@ -320,42 +324,34 @@ export default async function RootLayout({
                 />
                 <span className="nojs-brand-name">privacytracker</span>
               </section>
-              <span className="nojs-eyebrow">JavaScript required</span>
+              <span className="nojs-eyebrow">{tNojs("eyebrow")}</span>
               <h1 className="nojs-title" id="nojs-title">
-                This app needs JavaScript to run
+                {tNojs("title")}
               </h1>
-              <p className="nojs-subtitle">
-                privacytracker renders its dashboard, onboarding wizard, and
-                privacy-label timelines on the client. Without JavaScript
-                there&apos;s nothing to show.
-              </p>
+              <p className="nojs-subtitle">{tNojs("subtitle")}</p>
               <ol className="nojs-list">
                 <li className="nojs-list-item">
                   <span aria-hidden="true" className="nojs-list-num">
                     1
                   </span>
-                  <span>Re-enable JavaScript in your browser settings.</span>
+                  <span>{tNojs("step_enable")}</span>
                 </li>
                 <li className="nojs-list-item">
                   <span aria-hidden="true" className="nojs-list-num">
                     2
                   </span>
-                  <span>
-                    If you use a content blocker, allowlist this domain.
-                  </span>
+                  <span>{tNojs("step_allowlist")}</span>
                 </li>
                 <li className="nojs-list-item">
                   <span aria-hidden="true" className="nojs-list-num">
                     3
                   </span>
-                  <span>Refresh the page.</span>
+                  <span>{tNojs("step_refresh")}</span>
                 </li>
               </ol>
               <p className="nojs-hint">
-                In most browsers, JavaScript lives under:
-                <span className="nojs-code">
-                  Settings → Privacy &amp; security → Site settings → JavaScript
-                </span>
+                {tNojs("hint_lead")}
+                <span className="nojs-code">{tNojs("hint_path")}</span>
               </p>
             </main>
           </div>
@@ -392,6 +388,10 @@ export default async function RootLayout({
                   in src-tauri/src/app_menu.rs; this component is the
                   webview-side counterpart. */}
                   <MenuActionsBridge />
+                  {/* Read-only notice — only renders when served from a
+                  non-local host without the admin-token cookie, i.e. when
+                  proxy.ts will 401 every write. */}
+                  <NonLocalReadOnlyBanner />
                   {/* Focus preview banner — only renders when a preview is staged. */}
                   <FocusPreviewBanner />
                   {/* Update banner — polls /api/update-status; self-gated on

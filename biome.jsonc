@@ -14,12 +14,15 @@
       "!!**/src-tauri/target",
       "!!**/src-tauri/binaries",
       "!!**/src-tauri/resources/standalone",
-      "!!**/tools/__pycache__",
-      "!!**/tools/out",
+      "!!**/scripts/**/__pycache__",
       "!!**/playwright-report",
       "!!**/test-results",
       "!!**/public/fonts",
-      "!!**/storybook-static"
+      "!!**/storybook-static",
+      // Standalone design-preview HTML files at the repo root. They're
+      // visual references for ourselves, not production code, so they
+      // don't need to pass the React/Next a11y rule set.
+      "!!*.html"
     ]
   },
   "linter": {

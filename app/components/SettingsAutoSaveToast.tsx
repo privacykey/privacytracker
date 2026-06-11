@@ -13,6 +13,7 @@
  * push also writes a synthetic auto-completed Task Center entry.
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTaskCenter } from "./TaskCenter";
 
@@ -62,6 +63,7 @@ export default function SettingsAutoSaveToast({
 }: {
   mirrorToTaskCenter?: boolean;
 }) {
+  const t = useTranslations("autosave_toast");
   const [state, setState] = useState<ToastState | null>(null);
   const [fading, setFading] = useState(false);
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -172,7 +174,7 @@ export default function SettingsAutoSaveToast({
       {detail.kind === "info" && <span aria-hidden="true">ℹ</span>}
       <span className="settings-autosave-toast-text">{detail.message}</span>
       <button
-        aria-label="Dismiss"
+        aria-label={t("dismiss")}
         className="settings-autosave-toast-dismiss"
         onClick={(e) => {
           // Don't bubble to the wrapper's onClick (dismiss would run twice).

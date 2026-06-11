@@ -14,6 +14,11 @@ import {
   type FocusState,
   HARD_DEFAULTS,
 } from "./feature-flag-rules";
+import {
+  type FocusWorkflow,
+  inferFocusWorkflow,
+  isFocusWorkflow,
+} from "./focus-workflow";
 import { getSetting, setSetting } from "./scheduler";
 
 // ============================================================================
@@ -99,6 +104,21 @@ export function getActiveFocus(): FocusState {
   return { audience, goals, aiConfigured };
 }
 
+export function getActiveFocusWorkflow(
+  focus: FocusState = getActiveFocus()
+): FocusWorkflow {
+  const raw = getSetting("flag.focus.workflow", "");
+  if (isFocusWorkflow(raw)) {
+    return raw;
+  }
+  return inferFocusWorkflow({
+    audience: focus.audience,
+    understand: focus.goals.has("understand"),
+    declutter: focus.goals.has("declutter"),
+    minimal: focus.goals.has("minimal"),
+  });
+}
+
 /** Write the active focus atomically (single transaction). */
 export function setActiveFocus(
   focus: Pick<FocusState, "audience"> & {
@@ -106,14 +126,24 @@ export function setActiveFocus(
     declutter: boolean;
     minimal: boolean;
     accessibility: boolean;
+    workflow?: FocusWorkflow;
   }
 ): void {
   const transaction = db.transaction(() => {
+    const workflow =
+      focus.workflow ??
+      inferFocusWorkflow({
+        audience: focus.audience,
+        understand: focus.understand,
+        declutter: focus.declutter,
+        minimal: focus.minimal,
+      });
     setSetting("flag.focus.audience", focus.audience);
     setSetting("flag.focus.goal.understand", String(focus.understand));
     setSetting("flag.focus.goal.declutter", String(focus.declutter));
     setSetting("flag.focus.goal.minimal", String(focus.minimal));
     setSetting("flag.focus.goal.accessibility", String(focus.accessibility));
+    setSetting("flag.focus.workflow", workflow);
     // Stamp the change so YourFocusCard can render "Focus updated {date}".
     setSetting("flag.focus.updated_at", String(Date.now()));
   });

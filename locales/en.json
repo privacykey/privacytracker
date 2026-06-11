@@ -285,6 +285,82 @@
     "diagnostics": "Diagnostics",
     "other": "Other Data"
   },
+  "data_label_hint": {
+    "trigger_label": "What does this mean? Show example",
+    "popover_aria_label": "Example: {category}, {severity}",
+    "captions": {
+      "contact_info": {
+        "data_used_to_track_you": "Give one app your email, and a week later your inbox fills with brands you never signed up with. Your address got passed along — and it finds you by name.",
+        "data_linked_to_you": "Your name, email and phone run your account here — they sign you in, send your receipts, track your delivery. Tied to you, kept in this one app.",
+        "data_not_linked_to_you": "Your address is struck out before anything is stored. What's kept is a sign-up tally — domains and countries — with no addresses in it."
+      },
+      "health_and_fitness": {
+        "data_used_to_track_you": "Your step count leaves the app and reaches an insurer's model. Low-activity weeks read as risk — and your premium gets recalculated upward.",
+        "data_linked_to_you": "Your workouts are filed under your name here — weekly trends, streaks, rest days. The app knows your body's patterns and keeps them to itself.",
+        "data_not_linked_to_you": "Your sample is stripped of identity and pooled with 50,000 others. The averages are real; none of them point back to you."
+      },
+      "financial_info": {
+        "data_used_to_track_you": "Enter your salary and assets, and a booking site quotes you a higher airfare — same seat, same flight, priced for what they know you can pay.",
+        "data_linked_to_you": "Your card and balance are pinned to your account here — saved for checkout, under your name, visible to this app only.",
+        "data_not_linked_to_you": "Your amount drops into an anonymous total. The aggregate spend stat is real; your slice of it can't be traced back."
+      },
+      "location": {
+        "data_used_to_track_you": "Your GPS trail pins your home address and your daily pattern — when you leave, when you're back. Enough to identify you without ever asking your name.",
+        "data_linked_to_you": "Your home, your work, your morning commute get filed against your profile here. The app remembers your routine — and keeps it in-app.",
+        "data_not_linked_to_you": "Your pings are pooled by area before storage — one dot among 48,210 in your region today, with no names and no device IDs."
+      },
+      "sensitive_info": {
+        "data_used_to_track_you": "Nothing was asked. Your faith and politics were inferred from what you read and joined, packaged into an audience segment, and sold — 'Why this ad?' quietly names it.",
+        "data_linked_to_you": "The app holds its guess about your beliefs and uses it to tune what you see — inside this one app, not sold on.",
+        "data_not_linked_to_you": "Your identity is struck from the signal at source. What survives is a regional count — one of 64,000 — with no names attached."
+      },
+      "contacts": {
+        "data_used_to_track_you": "Share your address book and the app builds a file on Sarah — her name, her number, who she knows — though she never signed up for anything.",
+        "data_linked_to_you": "Your contacts are filed against your profile to power 'people you may know'. The app knows your circle; it stays in this app.",
+        "data_not_linked_to_you": "Your contacts are reduced to a count before storage. '312 contacts' is all that survives — no names, no numbers."
+      },
+      "user_content": {
+        "data_used_to_track_you": "Your photo library becomes training data. The model learns your face from your own pictures — and can now recognise it anywhere.",
+        "data_linked_to_you": "Your photos are filed in your library here — backed up under your account so your devices stay in sync. Yours, in this one app.",
+        "data_not_linked_to_you": "Owner and location are stripped from each image first. Your photo becomes one of 10 million in an anonymous pool."
+      },
+      "browsing_history": {
+        "data_used_to_track_you": "The product page you looked at follows you. An ad for the same shoes turns up inside a completely unrelated app — matched to you.",
+        "data_linked_to_you": "The pages you read are filed into 'interests' on your profile here, and your feed quietly reshapes around them.",
+        "data_not_linked_to_you": "Your visit is counted as a topic tally — sport, travel, finance. The counts are real; who visited is stripped."
+      },
+      "search_history": {
+        "data_used_to_track_you": "Search for pasta recipes here, and a chef's-knife ad meets you inside an unrelated news app. Your query travelled — and it was matched to you.",
+        "data_linked_to_you": "Your queries stay on your profile here — type 'pa' and it already suggests your pasta searches. Convenient, and contained to this app.",
+        "data_not_linked_to_you": "Your query is struck from the log and folded into trends. 'Pasta recipes is trending' is real; whose searches made it isn't kept."
+      },
+      "identifiers": {
+        "data_used_to_track_you": "Your device's advertising ID is the same in every app. Three apps compare notes, the IDs line up — and three separate yous become one profile.",
+        "data_linked_to_you": "Your account ID ties your phone, tablet and laptop together — the same you across devices, inside this one service.",
+        "data_not_linked_to_you": "A throwaway session token stands in for your identity, then expires. The behaviour data can't be walked back to you."
+      },
+      "purchases": {
+        "data_used_to_track_you": "Buy a dog bowl and puppy food, and an ad for puppy gear meets you inside an unrelated puzzle app. Your receipt told a story — and it was matched to you.",
+        "data_linked_to_you": "Your orders are filed in your account — for receipts and easy reorder. They know what you bought; it isn't sold on.",
+        "data_not_linked_to_you": "Your name comes off the receipt before storage. '$51 · pet store · today' joins the aggregate; who paid isn't kept."
+      },
+      "usage_data": {
+        "data_used_to_track_you": "The app learns your weak moment — 11pm, every night. A notification lands on your lock screen at 11:04, timed to pull you back in.",
+        "data_linked_to_you": "Where you left off is kept on your profile so the app can drop you straight back in — 60% through the article. Used here, not sold.",
+        "data_not_linked_to_you": "Your user id is struck from each event. Your tap becomes +1 on a product-analytics funnel — open, browse, buy — with no user attached."
+      },
+      "diagnostics": {
+        "data_used_to_track_you": "A crash report's boring facts — model, OS, battery — combine into a fingerprint. In a crowd of phones, exactly one matches: yours.",
+        "data_linked_to_you": "Your crash is ticketed against your account, the bug gets reproduced, and the fix ships back to your device. Tied to you so they can fix your bug.",
+        "data_not_linked_to_you": "The device id is struck before the report ships. Your crash becomes +1 on a dashboard — 0.3% of sessions — with no devices in it."
+      },
+      "other": {
+        "data_used_to_track_you": "The label only says 'other'. Whatever it is, it's filed with everything else they hold on you — matched to you, contents undisclosed.",
+        "data_linked_to_you": "Unnamed data sits on file with your account, used 'for app functionality' — which is all the label says. Kept in this one app.",
+        "data_not_linked_to_you": "The user id is struck from each record at source. What's kept is a pile of misc records with no one attached — yours points at nobody."
+      }
+    }
+  },
   "audience": {
     "self": {
       "label": "For me",
@@ -320,9 +396,9 @@
   "onboarding": {
     "welcome": {
       "eyebrow": "Welcome",
-      "headline": "Let's set up your privacy auditor",
-      "subhead": "First, who are you auditing for?",
-      "subhead_long": "First, who are you auditing for? You can change this any time in Settings.",
+      "headline": "What are you using privacytracker for?",
+      "subhead": "Choose the closest purpose.",
+      "subhead_long": "Choose the closest purpose. You can fine-tune this any time in Settings.",
       "skip": "Skip for now",
       "next": "Next",
       "back": "Back",
@@ -350,6 +426,87 @@
       "self_card": "Audit your own apps",
       "loved_one_card": "Audit apps for someone you care about",
       "guardian_card": "Audit apps for a child or dependant"
+    }
+  },
+  "focus_purpose": {
+    "primary_aria": "Primary purpose",
+    "primary": {
+      "monitor": {
+        "title": "Monitor my apps for changes",
+        "body": "Keeps track when labels or policies change on the App Store."
+      },
+      "cleanup": {
+        "title": "Clean up my phone",
+        "body": "See if apps match your privacy profile, then remove or replace the worst offenders to find better suited apps."
+      },
+      "help": {
+        "title": "Help someone else decide",
+        "body": "Prepare recommendations for another person or monitor their app list here."
+      },
+      "custom": {
+        "title": "Custom setup",
+        "body": "Use advanced options to choose the audience and goals directly."
+      }
+    },
+    "animation": {
+      "labels": {
+        "contacts": "contacts",
+        "health": "health data",
+        "identifiers": "identifiers",
+        "location": "location",
+        "purchases": "purchases"
+      },
+      "monitor": {
+        "title": "1 item changed",
+        "change": "{app} now tracks your {label}"
+      },
+      "cleanup": {
+        "delete": "Delete"
+      },
+      "help": {
+        "title": "1 app does not meet privacy profile",
+        "detail": "GameBox added tracking on green and blue devices"
+      }
+    },
+    "help": {
+      "relationship_heading": "Who are you helping?",
+      "relationship": {
+        "adult": {
+          "title": "Another adult or family member",
+          "body": "You are helping them understand their apps and decide what to keep."
+        },
+        "child": {
+          "title": "A child or dependent I manage",
+          "body": "You need guardian-oriented controls and stricter recommendations."
+        }
+      },
+      "outcome_heading": "What happens next?",
+      "outcome": {
+        "handoff": {
+          "title": "Prepare recommendations for them to import",
+          "body": "Export a bundle they can bring into their own copy of privacytracker."
+        },
+        "monitor": {
+          "title": "Monitor their apps in this copy",
+          "body": "Keep tracking their apps here and set up background checks."
+        }
+      }
+    },
+    "secondary": {
+      "heading": "Also useful",
+      "accessibility": {
+        "title": "Accessibility labels",
+        "body": "Show accessibility declarations and profile matching."
+      },
+      "policy": {
+        "title": "Privacy policy changes",
+        "body": "Track policy text and make background monitoring easy to finish."
+      }
+    },
+    "advanced": {
+      "summary": "Advanced options",
+      "audience": "Audience",
+      "goals": "Goals"
     }
   },
   "focus_strip": {
@@ -493,7 +650,12 @@
         "cancel": "Cancel",
         "cancel_title": "Stop the search after the current batch (partial matches are kept)",
         "hint": "Apple rate-limits large batches — bigger imports may take a minute. Anything not matched lands in the next step where you can retry."
-      }
+      },
+      "import_info_truncated": "Imported the first {count} app names of {total} rows in the file. The importer caps at {cap} names per batch — re-run onboarding on the remaining rows to finish the audit.",
+      "import_info_deduped": "{count, plural, one {Imported # app name} other {Imported # app names}} — {dropped, plural, one {{dropped} row} other {{dropped} rows}} looked like duplicates or non-name fields and were skipped.",
+      "ocr_reading": "Reading screenshot {current} of {total}…",
+      "ocr_light_result": "{count, plural, one {Extracted {count} app name} other {Extracted {count} app names}}, but this seems light. If any apps are hidden inside folders they won’t be picked up — try Settings → General → iPhone Storage for a complete list.",
+      "ocr_extracted": "{count, plural, one {Extracted {count} app name} other {Extracted {count} app names}}. Review the list below before searching."
     },
     "step4": {
       "subtitle_running": "Fetching privacy labels from the App Store and saving your first snapshot. The next step looks at each app's privacy policy.",
@@ -544,21 +706,85 @@
       "unmatched_lead": "{count, plural, one {# app didn't match the App Store.} other {# apps didn't match the App Store.}}",
       "unmatched_body": " You can retry / edit each one individually below, or skip them all in one click to import only the apps that did match.",
       "unmatched_skip_all": "Skip all unmatched",
+      "bundle_title": "Matched by bundle ID",
+      "bundle_description": "Highest-confidence matches from the identifier imported from the device. Untick a row to skip it — it stays in this section.",
+      "name_title": "Matched by name",
+      "name_description": "Good matches from App Store search. Review rows with common app names or unexpected developers; unticking keeps the row here.",
+      "review_title": "Needs review",
+      "review_description": "Ambiguous rows that need a manual pick before import.",
+      "skipped_title": "Skipped",
+      "skipped_description": "Rows you explicitly skipped. They’re here so you can change your mind before continuing.",
+      "unavailable_title": "Not in the App Store",
+      "unavailable_description": "These didn’t resolve against iTunes Lookup or name search. Pick a source per row to save them as manual apps, or skip individually.",
+      "unavailable_saved": "Saved {count} as manual apps. Visit Settings → Manual Apps to add privacy-policy URLs or notes.",
+      "unavailable_save_cta": "Save {count} as manual apps",
+      "unavailable_saving": "Saving…",
+      "unavailable_save_failed": "Failed to save manual apps",
+      "triage_sideloaded": "Sideloaded / enterprise",
+      "triage_testflight": "TestFlight beta",
+      "triage_web_clip": "Safari web app",
+      "triage_own_build": "Own build (Xcode)",
+      "triage_skip": "Skip — don’t track",
+      "webclip_title": "🧭 Safari shortcuts",
+      "webclip_title_suffix": "(not App Store apps)",
+      "webclip_lead": "{count} rows look like home-screen shortcuts added from Safari. Saving them lands each one in Manual Apps with source = \"Safari web app\".",
+      "webclip_saved": "Saved {count} as manual web apps. Visit Settings → Manual Apps to fill in privacy-policy URLs and notes.",
+      "webclip_save_cta": "Save {count} as manual web apps",
+      "webclip_saving": "Saving…",
+      "webclip_save_failed": "Failed to save web apps",
+      "webclip_count_chip": "{count} web shortcuts",
       "back": "← Back",
-      "import_count": "{count, plural, one {Import # app →} other {Import # apps →}}"
+      "import_count": "{count, plural, one {Import # app →} other {Import # apps →}}",
+      "ready_lead": "{count, plural, one {✓ # app is ready to import} other {✓ # apps are ready to import}}",
+      "ready_part_review": "{count, plural, one {# multi-candidate row needs a pick} other {# multi-candidate rows need a pick}}",
+      "ready_part_unmatched": "{count, plural, one {# row didn’t match anywhere} other {# rows didn’t match anywhere}}",
+      "ready_all_clear": "Click below to import these now, or scroll to review individual rows.",
+      "ready_more": "Skip the import below to handle them later, or scroll down: {parts}.",
+      "ready_waiting": "Waiting for {count}…",
+      "ready_import_now": "Import {count} now →",
+      "waiting_matches": "{count, plural, one {Waiting for # match…} other {Waiting for # matches…}}",
+      "rematch_region_aria": "Change App Store region and rematch",
+      "rematching": "Rematching…",
+      "rematch_button": "Rematch this region",
+      "rematch_title": "Matching in {label} ({code})",
+      "rematch_sub": "Change storefront here if the phone uses another App Store. Manual choices and skipped rows are preserved.",
+      "summary_chip_imported": "{count} imported",
+      "summary_chip_matched": "{count} matched",
+      "summary_chip_bundle": "{count} exact bundle ID",
+      "summary_chip_name": "{count} name/manual",
+      "summary_chip_pending": "{count} pending",
+      "summary_chip_skipped": "{count} skipped",
+      "summary_chip_unavailable": "{count} unavailable"
     },
     "profile_setup": {
-      "back_to_goals": "Back to your goals",
-      "back_aria": "Back to your goals",
+      "back_to_goals": "Back to your purpose",
+      "back_aria": "Back to your purpose",
       "eyebrow": "Optional · takes about a minute",
-      "title": "Set up your privacy profile",
+      "title": "Set up matching profiles",
       "subtitle": "Tell us how much each kind of data <em>you</em> are willing to share. We'll compare every app you import against this profile, flag anything that goes further, and surface apps you may want to replace. Totally optional — you can skip this and set it up later from Settings.",
+      "recommend_subtitle": "A privacy profile tells privacytracker what data collection is acceptable to you. It powers mismatch badges, replacement prompts, and review tasks after you import apps.",
       "switch_aria": "Set up a privacy profile",
       "switch_title": "Set up a privacy profile",
       "switch_hint_on": "On — every app you import will be compared against the preferences you set below.",
       "switch_hint_off": "Off — apps are shown as-is without a comparison. You can turn this on any time.",
+      "privacy_recommend_title": "Recommended privacy profile",
+      "privacy_recommend_body": "We recommend the {preset} preset for this focus.",
+      "privacy_intro_title": "Privacy profile",
+      "privacy_intro_body": "Set limits for each App Store privacy data category, then privacytracker can flag apps that go beyond them.",
+      "privacy_intro_description": "You can start from a preset inside the editor or leave profile matching off until later.",
+      "privacy_badge": "Privacy",
+      "activate_preset": "Activate {preset}",
+      "customise": "Customise",
+      "customise_privacy": "Customise privacy profile",
+      "disable": "Disable",
+      "a11y_customise_title": "Accessibility preferences",
+      "a11y_customise_body": "Choose the accessibility features that are required or nice to have for the person using the apps.",
+      "a11y_customise_description": "These choices are only used for accessibility matching. Nothing is preselected as a recommendation.",
+      "a11y_badge": "Accessibility",
+      "customise_a11y": "Customise accessibility needs",
       "saving": "Saving…",
       "save_continue": "Save profile and continue →",
+      "continue": "Continue →",
       "continue_no_profile": "Continue without a profile →",
       "skip": "Skip for now",
       "save_failed": "Failed to save privacy profile",
@@ -587,7 +813,10 @@
       "verb_done": "Done",
       "verb_failed": "Failed",
       "verb_skipped": "Skipped",
-      "elapsed_suffix": "{time} elapsed"
+      "elapsed_suffix": "{time} elapsed",
+      "task_title": "Regenerating privacy policies",
+      "task_subtitle": "{count, plural, one {# app · fetch + summarise} other {# apps · fetch + summarise}}",
+      "task_steps_label": "{done} / {total} steps"
     },
     "search_block": {
       "edit_app_name": "App name",
@@ -611,12 +840,23 @@
       "retry_busy": "Retrying…",
       "retry_search": "↻ Retry search",
       "retry_title": "Re-run the same search — useful when iTunes returned 429 (rate limited) the first time.",
+      "edit_retry": "Edit & retry",
+      "save_as_label": "Save as",
+      "search_again": "Search again",
       "edit_name_seller": "✎ Edit name / seller",
       "candidate_tracking_aria": "Already tracking",
       "candidate_tracking_chip": "● Tracking",
       "show_less": "Show less",
       "see_other_chosen": "{count, plural, one {See # other match} other {See # other matches}}",
-      "see_other_unchosen": "{count, plural, one {+ # other match} other {+ # other matches}}"
+      "see_other_unchosen": "{count, plural, one {+ # other match} other {+ # other matches}}",
+      "method_bundle": "Exact bundle ID",
+      "method_manual": "Manual choice",
+      "method_name": "Name match",
+      "pending_pill": "Pending",
+      "pending_copy": "Apple paused this match. We will fill in the App Store details after the cooldown; import waits so this app is not silently skipped.",
+      "pending_bundle_suffix": " Bundle ID: {id}.",
+      "no_record_bundle": "No App Store record for bundle ID {id}. The app may be unavailable in this region, delisted, or installed outside the App Store.",
+      "no_record_bundle_storefront": "No App Store record for bundle ID {id} in {storefront}. The app may be unavailable in this region, delisted, or installed outside the App Store."
     },
     "already_tracked": {
       "summary": "{count, plural, one {# app already tracked from {device} — already matched.} other {# apps already tracked from {device} — already matched.}}",
@@ -712,7 +952,14 @@
       "error_unknown_version": "This cfgutil build does not support the old version check. Click Re-check so we can use the device-list check instead.",
       "error_trust": "The device is not ready yet. Unlock it, tap Trust on the device if prompted, then refresh devices.",
       "error_timeout": "cfgutil took too long to respond. Unplug and reconnect the device, make sure it is unlocked, then try again.",
-      "error_generic": "cfgutil reported: {detail}"
+      "error_generic": "cfgutil reported: {detail}",
+      "diagnostic_summary": "Show diagnostic output",
+      "diagnostic_hint_pre": "This is the raw output cfgutil produced. Common reasons for an empty result: the device is locked (cfgutil can’t enumerate apps without a session), an unread ",
+      "diagnostic_hint_trust": "Trust This Computer?",
+      "diagnostic_hint_post": " prompt is sitting on the phone, or restrictions are filtering installed apps. Copy and share this block if you need help diagnosing.",
+      "progress_title": "Reading apps from your iPhone…",
+      "progress_body": "cfgutil is enumerating every installed app over USB. On a phone with 300 + apps this can take up to a minute. The cursor may show a beach ball briefly — that’s expected, the system call is synchronous.",
+      "progress_tip": "Tip: keep the device unlocked while this runs."
     },
     "modals": {
       "restore_backup": {
@@ -750,8 +997,8 @@
       }
     },
     "step1": {
-      "back_to_goals": "Back to your goals",
-      "back_aria": "Back to your goals",
+      "back_to_goals": "Back to your purpose",
+      "back_aria": "Back to your purpose",
       "subtitle": "Choose the import path that feels easiest. You can switch methods at any time before importing.",
       "method_grid_aria": "Import method",
       "advanced_grid_aria": "Advanced import methods",
@@ -769,7 +1016,8 @@
       "continue_with": "Continue with {method} →",
       "restore_lead": "Migrating or reinstalling?",
       "restore_busy": "Reading backup…",
-      "restore_link": "Restore from a backup file"
+      "restore_link": "Restore from a backup file",
+      "country_inferred": "Using {label} based on your device region. Change it here if this phone uses another App Store."
     },
     "methods": {
       "screenshots": {
@@ -796,6 +1044,10 @@
         "blurb": "Paste or type app names and we'll match them against the App Store automatically. Pairs beautifully with iOS Live Text.",
         "hint": "Works anywhere — on iPhone you can copy text straight out of a screenshot with Live Text."
       }
+    },
+    "preview_banner": {
+      "lead": "Preview mode",
+      "body": " — you’re viewing onboarding as a new user. The final “import & sync” step is suppressed so nothing gets saved."
     }
   },
   "language_suggestion": {
@@ -836,6 +1088,12 @@
       "with_understand_declutter": "We'll mix \"why is this collected\" detail with declutter prompts so you can act on what you learn.",
       "with_minimal": "We'll keep the dashboard quiet — just the apps that need a decision.",
       "with_accessibility": "We'll bring accessibility data and high-contrast options forward."
+    },
+    "workflow": {
+      "self_monitor": "Your main workflow is monitoring apps for changes.",
+      "self_cleanup": "Your main workflow is cleaning up your own phone.",
+      "other_handoff": "Your main workflow is preparing recommendations for someone else to import.",
+      "other_monitor": "Your main workflow is monitoring someone else's apps here."
     },
     "enables_heading": "What this turns on",
     "enable_chip_on": "On",
@@ -910,7 +1168,16 @@
     "focus_edit_title": "Adjust focus — privacytracker",
     "focus_edit_description": "Change who you are auditing for and what you want from the app.",
     "layout_edit_title": "Customise dashboard — privacytracker",
-    "layout_edit_description": "Pick a preset or fine-tune the order and visibility of cards on your home dashboard."
+    "layout_edit_description": "Pick a preset or fine-tune the order and visibility of cards on your home dashboard.",
+    "root_title": "privacytracker — iOS App Privacy Labels",
+    "root_description": "Monitor, track, and get alerted when iOS apps change their privacy labels.",
+    "not_found_title": "404 — Page not found · privacytracker",
+    "not_found_description": "The page you're looking for doesn't exist.",
+    "diagnostics_title": "Diagnostics · privacytracker",
+    "diagnostics_description": "Live runtime metrics for the Node sidecar — memory, event-loop lag, slow queries.",
+    "definitions_title": "Privacy Label Definitions — privacytracker",
+    "definitions_description": "Definitions of Apple App Store privacy label terms — Data Not Linked to You, Data Linked to You, Data Used to Track You — and the data types developers may collect, with links to Apple’s authoritative sources.",
+    "home_title": "Home — privacytracker"
   },
   "ai_disclosure_page": {
     "metadata_title": "AI Disclosure — privacytracker",
@@ -1067,56 +1334,66 @@
     "dialog_aria": "App tour"
   },
   "tasks": {
-    "heading": "Things to try, tailored for you",
+    "heading": "Your privacy check-up",
     "region_aria": "Suggested tasks tailored for you",
-    "attribution": "For you, the {audience}",
+    "attribution": "Tailored to your focus: {audience}",
     "attribution_change_aria": "Change your focus",
     "attribution_change_label": "Change",
-    "collapsed_chip_label": "Tasks ✓ · Show all",
+    "collapsed_chip_label": "Check-up done · Show all",
     "collapsed_chip_aria": "Expand the tasks panel",
     "empty_all_dismissed": "Nothing pending right now.",
     "all_done_short": "You're all set — nothing pending.",
     "dismiss_action": "Dismiss",
     "dismiss_aria": "Dismiss {task}",
     "sheet_done": "Done",
-    "add_tray_heading": "What else do you want to do?",
+    "add_tray_heading": "More things you can do",
     "add_tray_chip_aria": "Add task: {title}",
+    "journey": {
+      "progress": "{done} of {total} done",
+      "strip_aria": "Your check-up steps",
+      "cta": "Take me there",
+      "skip": "Skip for now"
+    },
     "audiences": {
-      "self": "self-auditor",
-      "loved_one": "recommender",
-      "guardian": "guardian"
+      "self": "checking my own apps",
+      "loved_one": "recommending for someone else",
+      "guardian": "watching over a family device"
     },
     "view_privacy_map": {
-      "title": "Explore the privacy map",
-      "body": "See, at a glance, what data your apps are gathering — grouped by category."
+      "title": "See what your apps collect",
+      "body": "One map of every app's data appetite, grouped by what it can reveal about you."
     },
     "open_any_app_detail": {
-      "title": "Open an app's privacy page",
-      "body": "Dig into one app: labels, policy, timeline, and AI summary."
+      "title": "Open one app's report",
+      "body": "The labels, the policy in plain words, and how it has changed over time — for any single app."
     },
     "create_privacy_profile": {
-      "title": "Create your privacy profile",
-      "body": "Tell us what you're comfortable with so we can flag apps that exceed it."
+      "title": "Say what you're comfortable with",
+      "body": "A one-minute profile. From then on, every app is measured against your line, not ours."
     },
     "review_mismatches": {
-      "title": "Review apps that exceed your profile",
-      "body": "Mark each as safe, replace, or uninstall — we'll keep track of your decisions."
+      "title": "Deal with apps that cross your line",
+      "body": "We flag what goes further than you allowed — keep, replace, or remove each one."
     },
     "compare_two_apps": {
       "title": "Compare two apps side by side",
-      "body": "Pick alternatives and see which one collects less of what you care about."
+      "body": "Considering an alternative? See which one collects less of what you care about."
     },
     "setup_background_mode": {
-      "title": "Keep track of apps in the background",
-      "body": "Switch on auto-sync (or, on desktop, finish the Background Mode wizard) so the app keeps watching for changes on its own."
+      "title": "Let it watch in the background",
+      "body": "Turn on auto-sync so changes to any app's labels get caught without you checking."
     },
     "remove_apps_from_phone": {
-      "title": "Remove apps from your phone",
-      "body": "Mark which apps to uninstall and we'll guide you through removing them — needs a privacy profile so we know what you're filtering out."
+      "title": "Clear flagged apps off your phone",
+      "body": "Mark what to uninstall and we'll walk you through removing them from the device."
     },
     "resync_apps_from_device": {
-      "title": "Re-sync apps from your iPhone",
-      "body": "Import a fresh app list from one of your devices and see what's been added or removed since last time."
+      "title": "Pull a fresh app list from your iPhone",
+      "body": "Re-import from a device to see what's been added or removed since last time."
+    },
+    "export_audit_bundle": {
+      "title": "Hand your findings to the other person",
+      "body": "Export a bundle they can import into their own copy of privacytracker."
     },
     "gate": {
       "title": "Try this first?",
@@ -1124,7 +1401,18 @@
       "primary": "Take me to {prerequisite}",
       "secondary": "Continue anyway",
       "close_aria": "Close"
-    }
+    },
+    "mutation_blocked": "This change was blocked by the server's security gate (HTTP {status}). Non-local access needs the admin token.",
+    "mutation_blocked_link": "Log in in Settings → Deployment.",
+    "mutation_failed": "Couldn't update the task (HTTP {status}). Try again.",
+    "mutation_failed_network": "Couldn't update the task. Check your connection and try again."
+  },
+  "nonlocal_banner": {
+    "aria": "Read-only access notice",
+    "label": "Read-only",
+    "body": "Admin token needed to make changes from this IP address in",
+    "link": "Settings → Deployment.",
+    "dismiss": "Dismiss"
   },
   "devices": {
     "page_title": "Devices",
@@ -1227,7 +1515,76 @@
         "toast_undone": "Undone — {key} restored to {value}",
         "toast_undone_cleared": "Undone — {key} override cleared",
         "toast_nothing": "Nothing to undo"
-      }
+      },
+      "subtitle_loading": "Loading…",
+      "subtitle_no_overrides": "No overrides — every flag is using its computed default.",
+      "subtitle_overridden": "{count, plural, one {# flag overridden} other {# flags overridden}}",
+      "import_success": "{count, plural, one {Imported # override} other {Imported # overrides}}",
+      "import_skipped_suffix": " · {count, plural, one {skipped # unknown row} other {skipped # unknown rows}}",
+      "import_failed": "Import failed.",
+      "wired_filter_title": "{wired} of {total} flags are currently consumed by component code; the rest are placeholder.",
+      "accordion_flag_count": "{count, plural, one {# flag} other {# flags}}",
+      "accordion_overridden_suffix": " · {count} overridden",
+      "row_select_aria": "Select {key} for highlight",
+      "row_unwired_note": "This flag is in the registry but no component reads it yet — toggling it has no observable effect today. Wiring lands in a future PR.",
+      "row_override_aria": "Override value for {key}",
+      "row_clear_aria": "Clear override for {key}",
+      "row_clear_title": "Clear override (revert to computed default)",
+      "surfaces": {
+        "about": "About",
+        "appgrid": "App grid",
+        "dashboard": "Dashboard",
+        "desktop": "Desktop (Tauri)",
+        "detail": "App detail",
+        "devopts": "Developer options",
+        "global": "Global",
+        "help": "Help",
+        "legal": "Legal",
+        "nav": "Navigation",
+        "notifications": "Notifications",
+        "onboarding": "Onboarding",
+        "page": "Secondary pages",
+        "settings": "Settings",
+        "shortlist": "Shortlist",
+        "stats": "Stats",
+        "taskcenter": "Task center"
+      },
+      "dev_menu_trigger": {
+        "title": "Dev menu trigger",
+        "hint": "Pin a 🛠 button to the bottom-right of every page (next to the accessibility quick-toggle) so you can inspect + override the flags relevant to the current page, run quick admin actions (sync, wipe apps, reset changelog, seed test data), switch language, audience, and goals without leaving the page. Press <kbd>g</kbd> then <kbd>f</kbd> anywhere to jump back here."
+      },
+      "kill_switch": {
+        "title": "Feature flag system is disabled.",
+        "body": "Hard defaults are active. Your overrides aren’t being applied.",
+        "re_enable": "Re-enable"
+      },
+      "load_error": "Couldn’t load flags: {error}",
+      "retry": "Retry",
+      "unwired_explainer": "{wired} of {total} flags currently produce a visible change when toggled. Unwired flags are marked “<em>no effect yet</em>” — they exist in the registry but their consuming components ship in subsequent PRs.",
+      "row_unwired_badge": "no effect yet",
+      "value_label": {
+        "on": "On",
+        "off": "Off",
+        "collapsed": "Collapsed"
+      },
+      "row_tag_custom": "custom",
+      "row_tag_default": "default",
+      "row_tag_would_be": "would be {default}",
+      "row_show_me_where": "Show me where →",
+      "importing": "Importing…",
+      "import_modal": {
+        "copy": "Importing <code>{name}</code> will <strong>overwrite every existing flag override</strong> with the contents of the file. Flags whose entry has <code>override: null</code> revert to their computed default. The quarantine table and your focus + audience are preserved; only per-flag overrides change.",
+        "confirm": "Import & overwrite",
+        "badge": "Destructive action",
+        "title": "Import flag state?",
+        "cancel": "Cancel"
+      },
+      "import_error_invalid_json": "File is not valid JSON.",
+      "import_error_missing_flags": "File is missing a top-level `flags` array. Use a file produced by \"Export current flag state as JSON\".",
+      "import_state": "Import flag state from JSON",
+      "load_error_fallback": "Failed to load flags",
+      "empty_search": "No flags match \"{search}\".",
+      "empty": "No flags to show."
     }
   },
   "migration_error": {
@@ -1435,7 +1792,10 @@
       "timeline_summary": "{count, plural, one {# change · {bucket}ly buckets} other {# changes · {bucket}ly buckets}}",
       "timeline_empty_title": "No privacy changes recorded in this range.",
       "timeline_empty_body": "Widen the window or re-sync some apps."
-    }
+    },
+    "toast_synced": "✓ {name} synced",
+    "toast_sync_failed": "❌ Sync failed",
+    "n_changes": "{count, plural, one {# change} other {# changes}}"
   },
   "changelog_timeline": {
     "wayback_capture_fallback": "Wayback capture",
@@ -1509,7 +1869,10 @@
     "empty_no_data_post": " to see their privacy breakdown here.",
     "empty_no_match": "No matching results",
     "sensitive_category_title": "This category is particularly sensitive",
-    "preview_hint_tap": "Tap to view"
+    "preview_hint_tap": "Tap to view",
+    "preview_show_all_aria": "Show all {count, plural, one {# app} other {# apps}} in {label}",
+    "card_app_count": "{count, plural, one {# app} other {# apps}}",
+    "sensitive_chip": "sensitive"
   },
   "shortlist": {
     "page_title": "Shortlist",
@@ -1558,7 +1921,15 @@
     "no_section_recognised": "The App Store page didn't expose a privacy section we recognise.",
     "section_privacy_labels": "Privacy labels",
     "section_privacy_policy": "Privacy policy",
-    "section_your_note": "Your note"
+    "section_your_note": "Your note",
+    "preview_entry_aria": "Preview {name}",
+    "preview_entry_title": "Open a quick privacy preview for {name}",
+    "share_comparison_aria": "Share comparison with {name}",
+    "share_comparison_title": "Generate a social share image comparing against {name}",
+    "remove_entry_aria": "Remove {name} from shortlist",
+    "preview_of_aria": "Preview of {name}",
+    "fetching_live_data": "Fetching live App Store data…",
+    "preview_failed_message": "Preview failed: {message}"
   },
   "compare": {
     "page_title": "Compare apps",
@@ -1671,7 +2042,27 @@
     "a11y_unfilled_unavailable_title": "Accessibility labels aren't available for {name}",
     "a11y_unfilled_no_features_left_short": "The developer filed the accessibility shelf on the App Store listing but didn't claim support for any features. Rows on the left will all show as missing.",
     "a11y_unfilled_no_features_right_short": "The developer filed the accessibility shelf on the App Store listing but didn't claim support for any features. Rows on the right will all show as missing.",
-    "a11y_unfilled_unavailable_short": "Apple's accessibility nutrition-labels shelf is only present for apps that declare at least one supported feature. Sync the app (or pick a preview from the App Store) to refresh the data."
+    "a11y_unfilled_unavailable_short": "Apple's accessibility nutrition-labels shelf is only present for apps that declare at least one supported feature. Sync the app (or pick a preview from the App Store) to refresh the data.",
+    "shortlist_view_aria": "View your shortlist ({count, plural, one {# entry} other {# entries}})",
+    "profile_pill_no_categories": "no profile categories",
+    "profile_pill_matches": "matches profile",
+    "profile_pill_over_limit": "{count} over limit",
+    "profile_pill_title": "{label}: {body}",
+    "profile_pill_title_scored": "{label}: {body} (of {total} scored)",
+    "app_not_filled_labels": "{name} hasn’t filled in privacy labels yet",
+    "exceeds_pref_mark_title": "Exceeds your preference: {observed} (you allow {allowed})",
+    "within_pref_mark_title": "Within your preference: {observed} (you allow {allowed})",
+    "updating_comparison": "Updating comparison…",
+    "a11y_count_aria": "{declared} of {total} accessibility features declared",
+    "a11y_count_title": "Declares {declared} of {total} accessibility features",
+    "compare_mode_privacy": "Privacy",
+    "compare_mode_accessibility": "Accessibility",
+    "compare_mode_both": "Both",
+    "shared_count": "{count} shared",
+    "only_in_count": "{count} only in {name}",
+    "profile_pill_label": "{label}:",
+    "slot_a_label": "App A",
+    "slot_b_label": "App B"
   },
   "live_text_modal": {
     "close_aria": "Close",
@@ -1706,12 +2097,12 @@
       "source_attribution": "Source: Apple App Store privacy labels",
       "fetching": "Fetching privacy data…",
       "no_labels": "No privacy labels available",
-      "tier_tracking": "Used to track",
-      "tier_linked": "Linked to you",
       "tier_not_linked": "Not linked",
+      "tier_linked": "Linked to you",
+      "tier_tracking": "Used to track",
+      "kicker_not_linked": "UNLINKED CATEGORIES",
       "kicker_linked": "LINKED CATEGORIES",
       "kicker_tracking": "TRACKED CATEGORIES",
-      "kicker_not_linked": "UNLINKED CATEGORIES",
       "unknown_app": "Unknown app"
     }
   },
@@ -1782,13 +2173,8 @@
   "manual_apps": {
     "page_title": "Manual apps",
     "empty_title": "No manual apps yet",
-    "empty_body": "Add a web clip, TestFlight beta, sideloaded app, or personal build to track it alongside your App Store apps.",
     "form_title_add": "Add manual app",
     "form_title_edit": "Edit manual app",
-    "delete_title": "Delete this app?",
-    "delete_body": "We'll remove {name} and stop tracking it. You can re-add it later.",
-    "delete_confirm": "Delete app",
-    "delete_cancel": "Keep tracking",
     "eyebrow": "Outside the App Store",
     "source_group_aria": "Source type",
     "source_legend": "Source",
@@ -1814,7 +2200,28 @@
       "delete_failed": "Failed to delete"
     },
     "flash_saved": "Saved changes.",
-    "flash_added": "Added “{name}”."
+    "flash_added": "Added “{name}”.",
+    "name_label": "Name",
+    "name_placeholder": "e.g. News of the World (web app)",
+    "policy_url_placeholder": "https://example.com/privacy",
+    "policy_url_hint": "Since there’s no App Store listing, paste the developer’s privacy policy link if one exists.",
+    "source_link_hint": "Optional. TestFlight invite, GitHub repository, marketplace listing — whatever lets a reviewer look it up.",
+    "notes_label": "Notes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "intro": "Track installs that don’t have an App Store listing — Safari web apps, TestFlight betas, personal Xcode builds, and sideloaded apps from third-party marketplaces. The App Store privacy labels won’t apply to these, so record what you know (privacy policy link, developer, notes) and keep them in one place.",
+    "add_button": "+ Add manual app",
+    "back_to_dashboard": "Back to dashboard",
+    "empty_body_rich": "Add a Safari web app, TestFlight beta, personal build, or sideloaded install to track it alongside your App Store apps. Use <strong>+ Add manual app</strong> above to start.",
+    "row_updated": "Updated {date}",
+    "row_view": "View",
+    "row_edit": "Edit",
+    "row_remove": "Remove",
+    "remove_modal_title": "Remove {name}?",
+    "remove_modal_body": "This deletes the manual app entry along with its source URL, developer field, and any notes you’ve attached. You can recreate the entry later if you change your mind.",
+    "flash_nothing_to_undo": "↶ Nothing to undo",
+    "flash_removed_undo": "Removed “{name}”. Press ⌘Z to undo.",
+    "flash_restored": "Restored “{name}”."
   },
   "dev_menu_panel": {
     "title": "Developer menu",
@@ -2326,7 +2733,7 @@
     },
     "risk_tiers": {
       "high_rule": "At least one data type declared as \"Data Used to Track You\".",
-      "high_meaning": "The developer admits the app follows you across other apps and websites — usually for advertising or profiling.",
+      "high_meaning": "The developer reports that the app or its partners can use this data to recognize you outside the app — usually for advertising, measurement, retargeting, or data brokers.",
       "high_example": "Typical of large social networks and ad-supported free apps that share identifiers with data brokers.",
       "moderate_rule": "No cross-app tracking, but three or more data types linked to your identity.",
       "moderate_meaning": "The app ties a lot of data to your account. It stays inside the app, but the developer still holds a rich profile of you.",
@@ -2435,7 +2842,20 @@
           "activity_section": "Recent scrapes, imports, and edits across your library.",
           "risk_tier_legend": "Collapsible reference for how each risk tier is defined."
         }
-      }
+      },
+      "edit_cards_aria": "Editable dashboard cards"
+    },
+    "glance": {
+      "apps_tracked": "Apps tracked",
+      "apps_tracked_sub": "View full app list",
+      "categories": "Privacy categories",
+      "categories_sub": "Open Privacy Map",
+      "high_risk": "High risk",
+      "high_risk_sub_some": "Tracking or sensitive data",
+      "high_risk_sub_none": "No tracking detected",
+      "changes_week": "Changes this week",
+      "changes_week_sub_some": "Review what shifted",
+      "changes_week_sub_none": "Nothing new detected"
     }
   },
   "app_grid": {
@@ -2567,12 +2987,14 @@
     "task_sync_subtitle_count": "{count, plural, one {# app} other {# apps}}",
     "task_progress_label": "{current} / {total}",
     "toast_changes_detected": "⚡ Changes detected in {name}",
-    "toast_app_up_to_date": "✓ App is up to date",
+    "toast_version_updated": "{name} updated to v{version}; labels unchanged",
+    "toast_app_up_to_date": "✓ No App Store label changes",
     "toast_sync_failed": "❌ Sync failed",
     "toast_all_synced": "✓ All apps synced",
     "toast_n_synced": "✓ {count, plural, one {# app} other {# apps}} synced",
     "task_done_changes": "{count, plural, one {# change} other {# changes}} detected",
-    "task_done_no_changes": "No changes",
+    "task_done_no_changes": "No label changes",
+    "task_done_version_updated": "Version updated to v{version}; no label changes",
     "task_done_synced": "{count, plural, one {# app} other {# apps}} synced",
     "task_error_sync_failed": "Sync failed",
     "toast_app_removed": "App removed",
@@ -2789,6 +3211,7 @@
     "hide_diff_button": "Hide diff",
     "preview_text_button": "Preview captured text",
     "hide_preview_button": "Hide preview",
+    "version_updated_no_label_changes": "📱 New version released: v{version}; no label changes",
     "show_wayback_imports": "Show Wayback imports"
   },
   "onboard_status": {
@@ -2827,8 +3250,13 @@
     "scrape_error_no_result": "Search did not return a result for this name",
     "search_endpoint_error_prefix": "The App Store search endpoint returned an error. Your list was saved as ",
     "search_failed": "Search failed. Please check your connection and try again.",
+    "search_access_blocked": "App Store search was blocked by this server's security gate (HTTP {status}). Accessing the app from a non-local address requires the admin token, so your apps were not checked against the App Store.",
+    "search_access_blocked_link": "Log in with the admin token in Settings → Deployment, then retry.",
+    "search_rate_limited_retry": "The search endpoint is rate-limited right now. Wait a moment and try again.",
     "ai_base_url_model_required": "Base URL and model are required.",
-    "ai_api_key_required": "An API key is required for this provider."
+    "ai_api_key_required": "An API key is required for this provider.",
+    "scrape_error_match_cancelled": "Matching was cancelled before Apple resumed the search.",
+    "search_apple_paused": "Apple paused this lookup. We will resume automatically."
   },
   "bundle_import_banner": {
     "fallback_name": "your friend",
@@ -3062,7 +3490,8 @@
       "label_with_note": "{phase} — {note}",
       "last_run_with_error": "Last run: {phase} (error)",
       "last_run": "Last run: {phase}",
-      "full_trace": "{count, plural, one {Full trace (# entry)} other {Full trace (# entries)}}"
+      "full_trace": "{count, plural, one {Full trace (# entry)} other {Full trace (# entries)}}",
+      "last_run_at": "Last run: {date}"
     },
     "policy_meta": {
       "fetched_from": "Fetched from {host}",
@@ -3090,13 +3519,24 @@
       "status_unsupported_content_type": "The linked policy could not be summarised automatically because it is not an HTML or text document.",
       "status_too_short": "The fetched policy text was too short to analyse reliably.",
       "status_analysis_error_with_summary": "The latest AI refresh failed, so this summary may be out of date.",
-      "status_analysis_error": "The privacy policy was fetched, but the AI summary could not be generated."
+      "status_analysis_error": "The privacy policy was fetched, but the AI summary could not be generated.",
+      "word_count": "~{count} words",
+      "model": "Model: {model}",
+      "policy_fetched": "Policy fetched {date}",
+      "summary_updated": "Summary updated {date}",
+      "origin_direct": "Direct fetch",
+      "origin_direct_hint": "Fetched straight from the developer’s privacy-policy link.",
+      "origin_browser_retry": "Retried as browser",
+      "origin_browser_retry_hint": "The first fetch was blocked, so we retried with a desktop-browser header bundle.",
+      "origin_wayback": "From Wayback Machine",
+      "origin_wayback_hint": "The live policy page blocked us, so this summary uses the most recent archived copy."
     },
     "task_titles": {
       "labels_subtitle": "App Store labels only — policy stays on the AI Policy tab",
       "resync_running": "Re-syncing {name}",
       "completion_changes": "{count, plural, one {# change detected} other {# changes detected}}",
-      "completion_no_changes": "No changes",
+      "completion_no_changes": "No label changes",
+      "completion_version_updated": "Version updated to v{version}; no label changes",
       "sync_failed_fallback": "Sync failed"
     },
     "back_label": {
@@ -3116,9 +3556,21 @@
     },
     "toasts": {
       "sync_changes_detected": "{count, plural, one {⚡ # change detected!} other {⚡ # changes detected!}}",
-      "sync_no_changes": "✓ No changes — app is up to date",
+      "sync_version_updated": "Updated to v{version}; labels unchanged",
+      "sync_no_changes": "✓ No App Store label changes",
       "sync_cancelled": "⊘ Sync cancelled",
-      "sync_failed": "❌ Sync failed"
+      "sync_failed": "❌ Sync failed",
+      "review_snoozed": "🔔 Reminders snoozed for {duration}",
+      "review_marked_reviewed": "✓ Changes marked as reviewed",
+      "review_dismissed": "✕ Changes dismissed",
+      "review_unsnoozed": "↻ Reminders resumed",
+      "review_action_failed": "❌ Could not record \"{action}\"",
+      "review_undo_failed": "❌ Couldn’t undo that action",
+      "review_undo_nothing": "↶ Nothing to undo",
+      "review_undo_reviewed": "✓ Restored unreviewed changes",
+      "review_undo_dismissed": "✓ Restored dismissed changes",
+      "review_undo_snoozed": "↻ Resumed reminders (undid snooze)",
+      "review_undo_unsnoozed": "🔔 Re-snoozed reminders"
     },
     "import_source": {
       "screenshots": "Screenshots",
@@ -3155,10 +3607,12 @@
         "one_week": "1 week",
         "two_weeks": "2 weeks",
         "one_month": "1 month",
-        "until_next_change": "Until next change"
+        "until_next_change": "Until next change",
+        "one_day": "1 day"
       },
       "mark_reviewed": "Mark as reviewed",
-      "view_details": "View details"
+      "view_details": "View details",
+      "view_policy_change": "View policy change →"
     },
     "policy": {
       "section_title": "AI Policy",
@@ -3200,6 +3654,72 @@
       "inspect_policy_text": "Inspect the first 6000 chars of the most recently scraped policy.",
       "categories_exceed_profile": "These categories are collected at a stricter tier than your privacy profile allows.",
       "a11y_feature_post_build": "Feature introduced by Apple after this build — captured from the live listing but not in the canonical baseline yet."
+    },
+    "a11y_chip_aria": "{count} accessibility features — view details",
+    "policy_safety_heading": "Safety summary for minors",
+    "policy_ai_disclaimer_lead": "AI-generated summary.",
+    "policy_ai_disclaimer_body": " The overview, highlights, and lens ratings below are produced by a language model reading the scraped policy text. It can miss clauses, misinterpret legal phrasing, or rate sections incorrectly. Always verify anything you act on against the original document",
+    "policy_ai_disclaimer_source_link": "open source policy ↗",
+    "policy_ai_disclaimer_wayback_link": "Wayback backup ↗",
+    "policy_diff_alert": {
+      "age_today": "today",
+      "age_yesterday": "yesterday",
+      "age_days_ago": "{count, plural, one {# day ago} other {# days ago}}",
+      "lead": "Privacy policy text changed {age}.",
+      "body": " This change was first captured {date}, inside the {days}-day alert window configured in Settings.",
+      "view_diff": "View diff on the History tab →"
+    },
+    "mismatch_chip": {
+      "aria": "{count, plural, one {# category don’t match your privacy profile} other {# categories don’t match your privacy profile}}",
+      "label": "⚠ {count, plural, one {# doesn’t match your privacy profile} other {# don’t match your privacy profile}}"
+    },
+    "mismatch_title": "{label}: {observed} (you allow {allowed} at most)",
+    "a11y_disclaimer": "These labels are declared by the developer and are not independently verified by Apple. Treat them as a signal of intent, not a conformance certificate.",
+    "policy_chunk_notes": {
+      "summary": "Per-chunk notes ({count, plural, one {# chunk} other {# chunks}})",
+      "summary_hint": "— intermediate AI output used to build the merged summary above",
+      "chunk_heading": "Chunk {index} of {total}"
+    },
+    "policy_preview": {
+      "truncated_note": "… (truncated — only the first slice is stored for preview)",
+      "header": "Scraped policy text (first {count} chars)",
+      "showing_of": "Showing {shown} of {total} chars",
+      "total_chars": "{total} chars total"
+    },
+    "a11y_profile_key_hint": "Rows you marked are outlined in teal — tap <link>Settings</link> to edit.",
+    "a11y_profile_key_tier_missing": "· {count} missing",
+    "back_to": "← Back to {label}",
+    "synced_relative": "Synced {relative}",
+    "changes_to_review": "⚡ {count, plural, one {# change to review} other {# changes to review}}",
+    "released_title": "Released {date}",
+    "updated_relative": "Updated {relative}",
+    "first_seen": "First seen {date}",
+    "view_on_app_store": "View on App Store ↗",
+    "privacy_policy_link": "Privacy Policy ↗",
+    "label_definitions_link": "Label definitions",
+    "apple_app_hint": "This is an Apple app. For Apple’s own privacy labels — including Messages, Maps, Safari, Mail, Health, and more — see <apple>apple.com/au/privacy/labels ↗</apple>. For definitions of the terms on this page, see the <defs>in-app definitions reference</defs>.",
+    "policy_fetch_scope_note": "The policy text is fetched on demand from this tab only — it is not re-scraped by the per-app Re-sync button or the Settings “Sync All” job.",
+    "policy_change_strip": {
+      "since_date": "since {date}",
+      "since_fallback": "since the last analysis",
+      "held_steady": "Ratings held steady, but the overview or highlights were rewritten in the latest analysis."
+    },
+    "a11y_summary": {
+      "of_total": "of {count} canonical features declared",
+      "coverage": "{pct}% of the features Apple surfaces on App Store listings are claimed by this developer.",
+      "shelf_empty": "Apple’s accessibility shelf is empty for this app — the developer hasn’t declared any supported features yet.",
+      "last_synced": "Last synced {date}"
+    },
+    "a11y_profile_key_all_declared": "{count, plural, one {All # preferred feature declared} other {All # preferred features declared}}",
+    "a11y_profile_key_missing_count": "{missing} of {total} not declared",
+    "a11y_profile_key_tier_required": "required",
+    "a11y_profile_key_tier_nice": "nice to have",
+    "a11y_feature_new_badge": "NEW",
+    "a11y_pref_chip": {
+      "required": "Required",
+      "required_desc": "I won't use an app that doesn't declare this feature.",
+      "nice": "Nice",
+      "nice_desc": "I'd prefer apps that declare this, but it's not a deal-breaker."
     }
   },
   "privacy_policy_page": {
@@ -3284,9 +3804,9 @@
       "authoritative_sources": "Authoritative sources"
     },
     "severity_bodies": {
-      "track": "Data collected about you in this app is linked with data from other companies' apps, websites, or offline properties for targeted advertising or advertising measurement, or shared with data brokers. Tracking is the highest-severity bucket because your activity is combined with third-party data to profile you across services.",
-      "linked": "Data that is associated with your identity — via your account, device, contact details, or another identifier — but is not used to track you across other companies. Examples include an account profile, support tickets, or purchase history tied to your user ID.",
-      "unlinked": "Data that is collected in a way that is not tied to your identity. The developer must remove direct identifiers (name, account ID, device ID, etc.) before collection and must not attempt to re-link the data later."
+      "unlinked": "Data the app collects but says is not tied back to your identity. To fit this bucket, direct identifiers should be removed before collection, and the developer should not try to reconnect the data to you later.",
+      "linked": "Data the app can connect back to you, such as through your account, device, contact details, user ID, or another identifier. This does not automatically mean the data is sold or used for ads; it may be used for app features, support, personalization, analytics, purchases, or security.",
+      "track": "Data the app or its partners use to recognize you outside this app. Apple uses this bucket when app data is linked with data from other companies' apps, websites, or offline sources for targeted ads or ad measurement, or when app data is shared with a data broker. This is the highest-severity bucket because it can follow activity across services."
     },
     "labels_support_link": "About privacy information on the App Store and the app's product page ↗",
     "labels_support_lead": "Apple maintains the full definitions on its support site:",
@@ -3308,7 +3828,7 @@
     "sources_intro": "privacytracker surfaces the labels the developer declared, but the definitions themselves come from Apple. For the source of truth, see:",
     "sources": {
       "labels_support_link": "About privacy information on the App Store (support.apple.com) ↗",
-      "labels_support_outro": "— official definitions of “Data Used to Track You”, “Data Linked to You”, and “Data Not Linked to You”.",
+      "labels_support_outro": "— official definitions of “Data Not Linked to You”, “Data Linked to You”, and “Data Used to Track You”.",
       "developer_details_link": "App Privacy Details (developer.apple.com) ↗",
       "developer_details_outro": "— the developer-facing reference: every data type, every purpose, and what must be disclosed.",
       "labels_overview_link": "Privacy labels for Apple apps (apple.com/au/privacy/labels) ↗",
@@ -3437,13 +3957,18 @@
     },
     "region": {
       "storefront_label": "Storefront",
-      "current": "✓ This is the current region"
+      "current": "✓ This is the current region",
+      "toast_set": "Region set to {label}",
+      "toast_saved": "Region saved",
+      "task_label": "Region → {code}"
     },
     "notification_prefs_card": {
       "reset_defaults": "Reset to defaults",
       "up_to_date": "✓ Preferences up to date",
       "autosave_log_label": "Also log settings auto-saves to the Task Center",
-      "autosave_log_help": "Each successful or failed settings save adds a one-line entry to the Task Center dropdown. Off by default — most people just want the bottom-of-screen toast. Stored per-browser."
+      "autosave_log_help": "Each successful or failed settings save adds a one-line entry to the Task Center dropdown. Off by default — most people just want the bottom-of-screen toast. Stored per-browser.",
+      "toast_saved": "Notifications saved",
+      "task_label_saved": "Notification preferences updated"
     },
     "schedule": {
       "manual_label": "Manual",
@@ -3452,7 +3977,13 @@
       "daily_desc": "Every 24 hours automatically",
       "weekly_label": "Weekly",
       "weekly_desc": "Once a week automatically",
-      "current": "✓ This is the current schedule"
+      "current": "✓ This is the current schedule",
+      "toast_manual": "Sync set to manual",
+      "toast_daily": "Sync scheduled daily",
+      "toast_weekly": "Sync scheduled weekly",
+      "task_label_manual": "Sync schedule → manual",
+      "task_label_daily": "Sync schedule → daily",
+      "task_label_weekly": "Sync schedule → weekly"
     },
     "sync_status": {
       "last_sync": "Last Sync",
@@ -3463,7 +3994,12 @@
       "idle": "✓ Idle",
       "loading": "Loading…",
       "syncing": "Syncing App Store pages…",
-      "sync_now": "↻ Sync All App Store Pages Now"
+      "sync_now": "↻ Sync All App Store Pages Now",
+      "task_title": "Syncing App Store pages",
+      "task_subtitle": "Scanning App Store for label changes",
+      "task_already_running": "Another sync was already running",
+      "task_done": "{changes, plural, one {{synced} apps synced · # change} other {{synced} apps synced · # changes}}",
+      "task_failed": "Sync failed"
     },
     "deployment_diagnostics_card": {
       "loading": "Checking deployment…",
@@ -3517,7 +4053,10 @@
       "copy_failed": "Could not copy the support bundle.",
       "unavailable_title": "Diagnostics unavailable",
       "unavailable_body": "The diagnostics endpoint did not respond. Check the server log for details.",
-      "try_again": "Try again"
+      "try_again": "Try again",
+      "locked_title": "Locked — admin token required",
+      "locked_body": "You're connecting from a non-local address, so deployment diagnostics (and other sensitive data) stay hidden until you log in with the admin token.",
+      "locked_body_no_token": "You're connecting from a non-local address and this server has no admin token configured, so this data can't be unlocked. Start the server with AUDITOR_ADMIN_TOKEN set, or browse from the machine itself (localhost)."
     },
     "privacy_policies_card": {
       "rescrape_busy": "Re-scraping policies…",
@@ -3528,7 +4067,20 @@
       "summarise_title": "Re-download each policy and re-run the AI summary for every app, even if the text is unchanged. Uses AI credits.",
       "force_label": "Force re-scrape (bypass the throttle for this batch)",
       "force_help": "By default, bulk scraping respects the per-app cooldown set in “Policy Scrape Throttle” above so a recently-fetched app isn't hit again. Tick this to override the throttle for this batch only — the global setting stays unchanged.",
-      "last_run_lead": "Last run:"
+      "last_run_lead": "Last run:",
+      "task_title_summarise": "Summarising all privacy policies",
+      "task_title_scrape": "Re-scraping all privacy policies",
+      "task_preparing": "Preparing…",
+      "bulk_part_ok": "{count} ok",
+      "bulk_part_failed": "{count} failed",
+      "bulk_part_throttled": "{count} throttled",
+      "bulk_line_summarise": "Bulk policy summarise: {parts}",
+      "bulk_line_scrape": "Bulk policy scrape: {parts}",
+      "task_finished": "Finished",
+      "task_cancelled": "Cancelled",
+      "bulk_failed_http": "Bulk policy sync failed ({status})",
+      "bulk_failed": "Bulk policy sync failed",
+      "bulk_stream_error": "Bulk sync failed"
     },
     "backup_card": {
       "download_title": "Download backup",
@@ -3570,11 +4122,17 @@
       "snapshots_latest": "Latest snapshots",
       "snapshots_none": "No local snapshots yet.",
       "snapshots_file_meta": "{date} · {size}",
-      "snapshots_download": "Download"
+      "snapshots_download": "Download",
+      "snapshots_toast_set": "Backup snapshots: every {hours}h, keep {count}",
+      "snapshots_toast_disabled": "Backup snapshots disabled",
+      "snapshots_task_label": "Backup snapshot settings updated"
     },
     "export_card": {
       "csv": "⬇ Download CSV",
-      "json": "⬇ Download JSON"
+      "json": "⬇ Download JSON",
+      "audit_pdf_unavailable_title": "PDF audit-bundle export is not available yet.",
+      "formats_note": "CSV includes one row per data type. JSON includes the full nested structure.",
+      "audit_pdf_coming_soon": "⬇ Audit bundle (PDF) — coming soon"
     },
     "ai": {
       "status_off": "Summaries are off",
@@ -3582,7 +4140,10 @@
       "provider": {
         "title": "1 · Provider",
         "desc": "Pick who summarises the policy text. Everything else adapts to what you choose here.",
-        "backend_label": "Backend"
+        "backend_label": "Backend",
+        "toast_disabled": "AI summaries disabled",
+        "toast_saved": "AI provider saved ({provider})",
+        "task_label": "AI provider → {provider}"
       },
       "connection": {
         "title": "2 · Connection",
@@ -3740,7 +4301,26 @@
         "empty_filter": "No {filter} events match the current filters.",
         "empty_default": "No activity recorded yet. Trigger a re-sync or let the scheduled sync run, then refresh.",
         "showing": "Showing {current} of {total}",
-        "load_more": "Load more"
+        "load_more": "Load more",
+        "troubleshoot": {
+          "label_http_status": "HTTP status",
+          "label_failed_attempt": "Which attempt failed",
+          "label_content_type": "Content-Type",
+          "label_network": "Network",
+          "origin_direct": "Direct fetch (Safari UA)",
+          "origin_browser_retry": "Browser retry (Chrome headers)",
+          "origin_wayback": "Wayback Machine fallback",
+          "origin_normalize": "Locale-normalised URL",
+          "network_timeout": "Timeout (no response in time)",
+          "network_dns": "DNS lookup failure",
+          "network_connection_reset": "Connection reset mid-request",
+          "network_generic": "Generic network failure",
+          "title": "Troubleshoot",
+          "label_requested_url": "Requested URL",
+          "label_final_url": "Final URL",
+          "try_title": "Try",
+          "raw_json": "Raw JSON"
+        }
       },
       "activity_types": {
         "scrape": "Initial scrape",
@@ -3762,7 +4342,17 @@
         "chunk_help": "Per chunk when the policy is split into several pieces.",
         "merge_label": "Chunk-merge (ms)",
         "merge_help": "Final step that emits the full lens summary. Usually the slowest.",
-        "footer": "Changes are persisted with the rest of the AI settings — scroll back up and click <save>Save AI Settings</save> to apply."
+        "footer": "Changes are persisted with the rest of the AI settings — scroll back up and click <save>Save AI Settings</save> to apply.",
+        "toast_direct_reset": "Direct timeout reset to default",
+        "toast_direct_set": "Direct timeout set to {value} ms",
+        "task_label_direct": "AI direct timeout → {value}",
+        "toast_chunk_reset": "Chunk timeout reset to default",
+        "toast_chunk_set": "Chunk timeout set to {value} ms",
+        "task_label_chunk": "AI chunk timeout → {value}",
+        "toast_merge_reset": "Merge timeout reset to default",
+        "toast_merge_set": "Merge timeout set to {value} ms",
+        "task_label_merge": "AI merge timeout → {value}",
+        "task_label_default_value": "default"
       },
       "presets": {
         "lead": "Presets (v0.1.0):",
@@ -3825,7 +4415,23 @@
         "cancel": "Cancel",
         "removing": "Removing…",
         "confirm": "Remove imported history"
-      }
+      },
+      "task_title": "Importing privacy-label history",
+      "task_preparing": "Preparing…",
+      "task_finished": "Finished",
+      "bulk_paused": "{total, plural, one {Wayback import paused — {remaining} of # app remaining} other {Wayback import paused — {remaining} of # apps remaining}}",
+      "bulk_cancelled": "{total, plural, one {Wayback import cancelled — {remaining} of # app not processed} other {Wayback import cancelled — {remaining} of # apps not processed}}",
+      "bulk_summary": "{count, plural, one {Wayback import across # app: {parts}} other {Wayback import across # apps: {parts}}}",
+      "bulk_part_imported": "{count} imported",
+      "bulk_part_no_op": "{count} no-op",
+      "bulk_part_skipped": "{count} skipped",
+      "bulk_part_failed": "{count} failed",
+      "toast_show_imported_on": "Showing imported Wayback rows",
+      "toast_show_imported_off": "Hiding imported Wayback rows",
+      "task_label_show_imported_on": "Wayback rows → visible",
+      "task_label_show_imported_off": "Wayback rows → hidden",
+      "bulk_failed_http": "Wayback import failed ({status})",
+      "bulk_failed": "Wayback import failed"
     },
     "reset_app_card": {
       "reset_button": "Reset all data",
@@ -3880,7 +4486,15 @@
       "sync_failed": "❌ Sync failed",
       "reset_failed_fallback": "Reset failed",
       "reset_failed": "❌ Reset failed",
-      "save_failed_with_message": "❌ {message}"
+      "save_failed_with_message": "❌ {message}",
+      "retry_all_success": "{succeeded, plural, one {✓ Retried # import successfully} other {✓ Retried # imports successfully}}",
+      "retry_all_all_failed": "{failed, plural, one {❌ Retry failed for all # item} other {❌ Retry failed for all # items}}",
+      "retry_all_partial": "⚠ Retried {succeeded} — {failed} still failing",
+      "imported_app": "✓ Imported \"{name}\"",
+      "retry_failed_see_row": "Retry failed — see row for details",
+      "rate_limited_auto_retry": "Apple rate-limited us — auto-retry in ~{seconds}s",
+      "retry_failed_http": "Retry failed (HTTP {status})",
+      "retry_failed_connection": "Retry failed. Check your connection."
     },
     "time": {
       "queue_now": "now",
@@ -4002,7 +4616,9 @@
       "status_diagnostics_copied_clipboard": "Diagnostics copied to clipboard",
       "status_diagnostics_copied": "Diagnostics copied",
       "touchid_reason_enable": "enable Touch ID unlock for privacytracker",
-      "touchid_reason_test": "test Touch ID for privacytracker"
+      "touchid_reason_test": "test Touch ID for privacytracker",
+      "tray_visible_label": "Show menu bar icon",
+      "tray_visible_help": "Display the privacytracker icon in the macOS menu bar so you can show / hide the window and trigger Sync now without opening the Dock. Disable to keep the menu bar uncluttered."
     },
     "import_history_card": {
       "subtitle": "Every batch of apps you added during onboarding lives here. Review what each app matched with, fix a wrong match, or roll a whole import back.",
@@ -4182,7 +4798,11 @@
     },
     "policy_alerts": {
       "field_label": "Alert window (days)",
-      "field_help": "Default 90. Set to <strong>0</strong> to disable the banner entirely. Changes still appear on the History tab regardless."
+      "field_help": "Default 90. Set to <strong>0</strong> to disable the banner entirely. Changes still appear on the History tab regardless.",
+      "toast_disabled": "Policy alert disabled",
+      "toast_set": "Policy alert set to {days} days",
+      "task_label": "Policy alert → {days} days",
+      "invalid_range": "Policy alert must be 0–3650 days"
     },
     "policy_throttle": {
       "enabled_label": "Throttle enabled",
@@ -4190,7 +4810,17 @@
       "cooldown_help": "Default 60. Set to <strong>0</strong> to allow every Re-sync through without waiting. Max 10 080 (one week).",
       "scrape_disabled_label": "Disable policy scraping",
       "scrape_disabled_help": "When on, privacytracker <strong>never fetches privacy policies</strong> in the background — no per-app auto-fetch after an App Store sync, no bulk runs, no scheduled refreshes. The manual <em>Re-scrape</em> buttons return an error too. Existing cached policies and their AI summaries stay intact, and you can still re-summarise from cached text. Use this to completely stop background policy activity.",
-      "throttle_inert_when_disabled": "Throttle has no effect while policy scraping is disabled above."
+      "throttle_inert_when_disabled": "Throttle has no effect while policy scraping is disabled above.",
+      "toast_no_cooldown": "Policy throttle: no cooldown",
+      "toast_set": "Policy throttle set to {minutes} min",
+      "toast_disabled": "Policy throttle disabled",
+      "task_label_on": "Policy throttle → {minutes} min",
+      "task_label_off": "Policy throttle → off",
+      "scrape_disabled_toast_on": "Policy scraping disabled",
+      "scrape_disabled_toast_off": "Policy scraping re-enabled",
+      "scrape_disabled_task_label_on": "Policy scraping → disabled",
+      "scrape_disabled_task_label_off": "Policy scraping → enabled",
+      "invalid_range": "Policy throttle must be 0–10080 min"
     },
     "privacy_profile_card": {
       "toggle_title": "Use a privacy profile",
@@ -4198,7 +4828,11 @@
       "hint_off": "Off — apps are shown as-is with no comparison.",
       "saved_count": "{count, plural, one {✓ Saved · # category compared} other {✓ Saved · # categories compared}}",
       "unsaved_no_profile": "No profile set — apps are shown without comparison.",
-      "empty_warn": "Pick a tier for at least one category, or turn the toggle off."
+      "empty_warn": "Pick a tier for at least one category, or turn the toggle off.",
+      "toast_saved": "Privacy profile saved",
+      "toast_cleared": "Privacy profile cleared",
+      "task_label_updated": "Privacy profile updated",
+      "task_label_cleared": "Privacy profile cleared"
     },
     "accessibility_profile_card": {
       "toggle_title": "Use an accessibility profile",
@@ -4206,7 +4840,11 @@
       "hint_off": "Off — apps are shown as-is with no accessibility comparison.",
       "saved_count": "{count, plural, one {✓ Saved · # feature compared} other {✓ Saved · # features compared}}",
       "unsaved_no_profile": "No profile set — apps are shown without accessibility comparison.",
-      "empty_warn": "Pick a preference for at least one feature, or turn the toggle off."
+      "empty_warn": "Pick a preference for at least one feature, or turn the toggle off.",
+      "toast_saved": "Accessibility profile saved",
+      "toast_cleared": "Accessibility profile cleared",
+      "task_label_updated": "Accessibility profile updated",
+      "task_label_cleared": "Accessibility profile cleared"
     },
     "modals": {
       "restore_backup": {
@@ -4247,7 +4885,11 @@
     },
     "accessibility_labels_card": {
       "checkbox_lead": "Show accessibility labels in the app",
-      "checkbox_help": "When on, the app detail page shows a blue chip with the feature list, the Stats page includes an accessibility coverage chart, and the grid has a filter for apps that do/don't declare any features. Turning this off hides those surfaces but does NOT stop data collection — flipping it back on later reveals the history that was captured in the meantime."
+      "checkbox_help": "When on, the app detail page shows a blue chip with the feature list, the Stats page includes an accessibility coverage chart, and the grid has a filter for apps that do/don't declare any features. Turning this off hides those surfaces but does NOT stop data collection — flipping it back on later reveals the history that was captured in the meantime.",
+      "toast_visible": "Tracking accessibility labels",
+      "toast_hidden": "Hiding accessibility labels",
+      "task_label_visible": "Accessibility labels → visible",
+      "task_label_hidden": "Accessibility labels → hidden"
     },
     "review_queue_card": {
       "progress_bar_label": "Show progress bar in the review queue",
@@ -4305,6 +4947,11 @@
       "app_name_eg": "e.g. Instagram",
       "developer_eg": "e.g. Meta Platforms, Inc.",
       "name_eg": "e.g. Sarah"
+    },
+    "bulk_stream": {
+      "queued_subtitle": "{total, plural, one {Queued {total} app…} other {Queued {total} apps…}}",
+      "progress_subtitle": "{current}/{total} · {name}",
+      "progress_subtitle_badged": "{current}/{total} · {badge} {name}"
     }
   },
   "common": {
@@ -4340,7 +4987,6 @@
     "refresh": "Refresh",
     "done": "Done"
   },
-
   "diagnostics_page": {
     "title": "Diagnostics",
     "subtitle": "Live runtime metrics for the Node sidecar. Polls every {seconds}s.",
@@ -4525,6 +5171,91 @@
       "col_wired": "Wired",
       "wired_yes": "✓",
       "wired_no": "·"
+    },
+    "stall_banner": "Server hasn't responded for {seconds}s. Below is the last snapshot from {time}. Client-side panels (long tasks, fetch activity) are still live.",
+    "stall_banner_earlier_poll": "an earlier poll",
+    "errors": {
+      "runtime_poll_timeout": "runtime poll timed out after 10s",
+      "fetch_failed": "fetch failed",
+      "clear_failed_http": "Clear failed: HTTP {status}",
+      "clear_failed": "clear failed",
+      "toggle_failed_http": "Toggle failed: HTTP {status}",
+      "toggle_failed": "toggle failed",
+      "integrity_check_failed_http": "Integrity check failed: HTTP {status}",
+      "integrity_check_failed": "integrity check failed",
+      "download_failed": "download failed",
+      "copy_failed": "copy failed"
+    },
+    "table_headers": {
+      "time": "Time",
+      "method": "Method",
+      "url": "URL",
+      "status": "Status",
+      "duration": "Duration",
+      "outcome": "Outcome"
+    },
+    "card_scrape_activity": {
+      "col_running": "Running",
+      "col_last_phase": "Last phase",
+      "col_phase_age": "Phase age",
+      "col_resync": "Resync",
+      "recent_heading": "Recent scrapes",
+      "empty": "No scrapes captured yet. Start an import or hit Re-sync on an app.",
+      "col_app": "App",
+      "col_total": "Total",
+      "col_per_phase": "Per-phase ms",
+      "title": "Scrape activity",
+      "in_flight_pill": "{count} in flight",
+      "in_progress_heading": "In progress",
+      "help": "{total} scrapes since start. Phases: apple_fetched → parsed → committed → policy_done. If a scrape sits on a single phase for many seconds, that's the bottleneck."
+    },
+    "card_api_timings": {
+      "empty": "No API calls captured yet. Slow + errored requests are always recorded; fast ones are 1-in-5 sampled.",
+      "col_route": "Route",
+      "title": "Recent API calls",
+      "slow_pill": "slow ≥ {ms}ms",
+      "help": "{total} requests since start · {slow} slow or errored · showing latest {showing}."
+    },
+    "card_db_worker": {
+      "empty": "No DB worker batches captured yet. Bulk onboarding writes will appear here.",
+      "col_mode": "Mode",
+      "col_statements": "Statements",
+      "col_changes": "Changes",
+      "col_error": "Error",
+      "title": "DB worker batches",
+      "inline_fallback_pill": "inline fallback",
+      "pending_pill": "{count} pending",
+      "help": "{total} batches since start · {failed} failed · {inline} inline ({pct}%) · showing latest {showing}."
+    },
+    "card_client_activity": {
+      "long_tasks_heading": "Long tasks",
+      "long_tasks_count": "({count} most recent)",
+      "long_tasks_empty": "No long tasks captured.",
+      "long_tasks_empty_responsive": "The main thread has been responsive.",
+      "long_tasks_empty_webkit": "On WebKit the PerformanceObserver fallback uses rAF gaps; only large stalls show up here.",
+      "col_source": "Source",
+      "fetch_heading": "Fetch activity (slow ≥ {ms}ms)",
+      "fetch_empty": "No slow or in-flight fetches.",
+      "col_phase": "Phase",
+      "import_heading": "Import events (latest {count})",
+      "col_event": "Event",
+      "col_detail": "Detail",
+      "title": "Client activity (renderer)",
+      "long_task_pill": "long task ≥ {ms}ms",
+      "raf_fallback_pill": "rAF fallback",
+      "help": "{longTasks} long tasks · {slowFetches} slow fetches · {failed} failed · {inflight} in flight",
+      "help_oldest_pending": "oldest pending {seconds}s",
+      "help_capturing": "capturing for {duration}",
+      "clear_button": "Clear client rings"
+    },
+    "format": {
+      "relative_just_now": "just now",
+      "relative_seconds_ago": "{seconds}s ago",
+      "relative_minutes_ago": "{minutes}m ago",
+      "relative_hours_ago": "{hours}h ago",
+      "duration_ms": "{value} ms",
+      "duration_s": "{value} s",
+      "duration_min": "{value} min"
     }
   },
   "background_mode_callout": {
@@ -4595,5 +5326,83 @@
       "start_label": "Start",
       "end_label": "End"
     }
+  },
+  "diagnostics_link": {
+    "title": "Live runtime metrics: memory, event-loop lag, slow queries",
+    "label": "Diagnostics"
+  },
+  "not_found": {
+    "eyebrow": "Page not found",
+    "title": "We couldn't find that page",
+    "subtitle": "The URL you followed doesn't match anything we're tracking. It may have moved, been removed, or never existed.",
+    "back_to": "← Back to {label}",
+    "home": "Home",
+    "go_to_dashboard": "Go to dashboard",
+    "hint": "Looking for an app? Try the <link>tracked apps list</link>.",
+    "back_labels": {
+      "app": "app",
+      "apps": "Apps",
+      "privacy_map": "Privacy Map",
+      "stats": "Stats",
+      "manual_apps": "Manual apps",
+      "settings": "Settings",
+      "import_history": "Import history",
+      "shortlist": "Shortlist",
+      "compare": "Compare",
+      "dashboard": "Dashboard",
+      "onboarding": "Onboarding",
+      "welcome": "Welcome",
+      "definitions": "Definitions",
+      "privacy_policy": "Privacy Policy",
+      "legal": "Legal",
+      "previous_page": "previous page"
+    }
+  },
+  "nojs": {
+    "eyebrow": "JavaScript required",
+    "title": "This app needs JavaScript to run",
+    "subtitle": "privacytracker renders its dashboard, onboarding wizard, and privacy-label timelines on the client. Without JavaScript there's nothing to show.",
+    "step_enable": "Re-enable JavaScript in your browser settings.",
+    "step_allowlist": "If you use a content blocker, allowlist this domain.",
+    "step_refresh": "Refresh the page.",
+    "hint_lead": "In most browsers, JavaScript lives under:",
+    "hint_path": "Settings → Privacy & security → Site settings → JavaScript"
+  },
+  "rate_limit_banner": {
+    "search_title": "Apple search service is throttled",
+    "search_what": "Apple has rate-limited iTunes Search lookups from this app. New search results may be missing or stale until this clears.",
+    "scrape_title": "Apple App Store is throttled",
+    "scrape_what": "Apple is temporarily blocking App Store page reads. Re-syncs and new imports can't fetch fresh privacy labels until this clears.",
+    "auto_retry": "Auto-retry in <strong>{countdown}</strong>.",
+    "countdown_seconds": "{seconds}s",
+    "countdown_minutes": "{minutes}m",
+    "countdown_minutes_seconds": "{minutes}m {seconds}s",
+    "retrying": "Retrying…",
+    "retry_now": "Retry now",
+    "hide_details": "Hide details",
+    "show_details": "Why is this happening?",
+    "reason_body": "Apple polices request volumes against their iTunes Search ({scope}) and App Store endpoints. When the rolling-minute counter trips, further requests bounce until the window opens up again. We pace requests under Apple’s ceiling, but burst usage (e.g. importing a long app list while a background sync runs) can still cross the line.",
+    "reason_scope_search": "used here",
+    "reason_scope_scrape": "shared rolling-minute window"
+  },
+  "github_issue_link": {
+    "lead": "Not what you're expecting?",
+    "action": "Raise an issue on GitHub →"
+  },
+  "menu_actions": {
+    "diagnostics_unavailable": "Diagnostics unavailable.",
+    "diagnostics_copied": "Diagnostics report copied to clipboard.",
+    "diagnostics_copy_failed": "Failed to copy diagnostics report."
+  },
+  "autosave_toast": {
+    "dismiss": "Dismiss"
+  },
+  "price_chip": {
+    "line_iap": "{price} · IAP",
+    "tooltip_no_data": "No pricing data captured yet.",
+    "tooltip_paid": "Costs {price} on the App Store.",
+    "tooltip_free": "Free to download from the App Store.",
+    "tooltip_iap_yes": "Offers in-app purchases — features or content can be unlocked for additional payment.",
+    "tooltip_iap_no": "No in-app purchases reported on the listing."
   }
 }

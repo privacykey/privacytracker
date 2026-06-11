@@ -54,6 +54,7 @@ export type FlagKey =
   | "flag.global.accessibility_toggles"
   | "flag.global.site_info_hint"
   | "flag.global.info_tooltips"
+  | "flag.global.label_hints"
   | "flag.global.about_modal"
   | "flag.global.social_share"
   | "flag.global.live_text_modal"
@@ -92,6 +93,13 @@ export type FlagKey =
   // this off is a global kill-switch for the inline surface only; the nav icon
   // has its own flag.
   | "flag.dashboard.task_list"
+  // Journey-strip rendering of the tasks panel: same resolved tasks, drawn
+  // as a stepped path (done → current → upcoming) with one detail card for
+  // the current step, instead of the flat row list. Off falls back to the
+  // legacy list rendering — this flag is the kill-switch for the strip
+  // VISUAL only; `flag.dashboard.task_list` still controls whether the
+  // panel exists at all.
+  | "flag.dashboard.task_journey"
   // Device-aware re-sync CTAs. Off hides the "Re-sync from this device"
   // button on the Review wizard's Action step and the Tasks-panel chip;
   // the Devices settings page has its own flag.
@@ -356,6 +364,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.global.accessibility_toggles": "on", // floating a11y panel — universal benefit
   "flag.global.site_info_hint": "on", // legal/privacy footer pill — compliance
   "flag.global.info_tooltips": "on", // help with discovery for new users
+  "flag.global.label_hints": "on", // skeuomorphic hover vignettes on privacy data labels
   "flag.global.about_modal": "on", // version + creator info
   "flag.global.social_share": "off", // off-by-default; loved_one elevates
   "flag.global.live_text_modal": "on", // mobile import helper
@@ -386,6 +395,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.dashboard.sample_data_banner": "off", // only on while sample apps present
   "flag.dashboard.background_mode_wizard": "on", // Tauri-only callout — runtime-gated on isDesktop()
   "flag.dashboard.task_list": "on", // audience-aware tasks panel at the top of HomeView
+  "flag.dashboard.task_journey": "on", // journey-strip rendering of the tasks panel (off = legacy flat list)
   "flag.dashboard.device_resync_cta": "on", // "Re-sync from this device" CTAs on Review wizard + Tasks chip
   "flag.dashboard.layout_editor.visible": "on", // "Customise dashboard…" footer link + editor route gate
 
@@ -406,7 +416,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.appgrid.card.profile_badge": "on", // profile-match badge
   "flag.appgrid.card.freshness_chip": "on", // 'synced N days ago'
   "flag.appgrid.card.risk_pill": "on", // risk classification pill
-  "flag.appgrid.card.risk_chips": "on", // track/linked/unlinked mini-chips
+  "flag.appgrid.card.risk_chips": "on", // unlinked/linked/track mini-chips
   "flag.appgrid.card.resync_button": "on", // per-card refresh
   "flag.appgrid.card.delete_button": "on", // per-card delete
   "flag.appgrid.card.verdict_pill": "on", // per-card user verdict pill (Safe/Replace/Uninstall)
@@ -650,6 +660,7 @@ export const AUDIENCE_RULES: Record<
   guardian: {
     "flag.global.keyboard_shortcuts": "off", // carers rarely know keyboard shortcuts
     "flag.global.info_tooltips": "off", // less hover help needed in simpler workflow
+    "flag.global.label_hints": "off", // animated label hints muted for carer workflow
     "flag.devopts.ai.debug_logging": "off", // diagnostic noise
     "flag.settings.ai.debug_logging": "off", // diagnostic noise (settings copy)
     "flag.settings.policies.wayback_import": "off", // archive deep-dive isn't a carer concern
@@ -730,6 +741,7 @@ export const GOAL_RULES: Record<
     // Mirror guardian's hide list (minimal applies after audience layer — explicit re-state for self/loved_one users picking minimal)
     "flag.global.keyboard_shortcuts": "off", // hide power-user nav
     "flag.global.info_tooltips": "off", // less chrome
+    "flag.global.label_hints": "off", // less chrome
     "flag.global.about_modal": "off", // about dialog is non-essential
     "flag.global.live_text_modal": "off", // hide unless actively needed
     "flag.devopts.visible": "off", // dev opts hidden

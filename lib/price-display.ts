@@ -3,6 +3,10 @@
  * Apple's localised `formattedPrice` verbatim so the chip matches the
  * App Store listing. `formatPriceLine` returns null when there's no
  * price data — UI should hide the chip rather than guess "Free".
+ *
+ * Both renderers take a `price_chip`-scoped translator (the loose
+ * `(key, values?) => string` shape — see `lib/i18n-meta.ts`) so the
+ * copy localises without this module importing React or next-intl.
  */
 
 export interface PriceFields {
@@ -12,6 +16,12 @@ export interface PriceFields {
   priceFormatted?: string | null;
 }
 
+/** Minimal translator shape — pass a `useTranslations("price_chip")` result. */
+type PriceChipTranslator = (
+  key: string,
+  values?: Record<string, string | number>
+) => string;
+
 /** Has the lookup successfully populated a price string? */
 export function hasPriceData(p: PriceFields): boolean {
   return typeof p.priceFormatted === "string" && p.priceFormatted.length > 0;
@@ -19,38 +29,40 @@ export function hasPriceData(p: PriceFields): boolean {
 
 /**
  * Build the chip text. Combines the formatted price with an IAP
- * indicator when `hasIap === 1`. Returns null when there's no price
- * data. `hasIap === 0` and `hasIap === null` both collapse to no
- * suffix — IAP detection is best-effort, so absence is silent.
+ * indicator (`line_iap`) when `hasIap === 1`. Returns null when
+ * there's no price data. `hasIap === 0` and `hasIap === null` both
+ * collapse to no suffix — IAP detection is best-effort, so absence is
+ * silent.
  */
-export function formatPriceLine(p: PriceFields): string | null {
+export function formatPriceLine(
+  t: PriceChipTranslator,
+  p: PriceFields
+): string | null {
   if (!hasPriceData(p)) {
     return null;
   }
   const base = p.priceFormatted!;
   if (p.hasIap === 1) {
-    return `${base} · IAP`;
+    return t("line_iap", { price: base });
   }
   return base;
 }
 
-/** Tooltip copy for the price chip, spelling out each part in plain English. */
-export function priceTooltip(p: PriceFields): string {
+/** Tooltip copy for the price chip, spelling out each part in plain language. */
+export function priceTooltip(t: PriceChipTranslator, p: PriceFields): string {
   if (!hasPriceData(p)) {
-    return "No pricing data captured yet.";
+    return t("tooltip_no_data");
   }
   const parts: string[] = [];
   parts.push(
     p.priceAmount && p.priceAmount > 0
-      ? `Costs ${p.priceFormatted} on the App Store.`
-      : "Free to download from the App Store."
+      ? t("tooltip_paid", { price: p.priceFormatted! })
+      : t("tooltip_free")
   );
   if (p.hasIap === 1) {
-    parts.push(
-      "Offers in-app purchases — features or content can be unlocked for additional payment."
-    );
+    parts.push(t("tooltip_iap_yes"));
   } else if (p.hasIap === 0) {
-    parts.push("No in-app purchases reported on the listing.");
+    parts.push(t("tooltip_iap_no"));
   }
   return parts.join(" ");
 }

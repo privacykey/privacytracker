@@ -9,12 +9,21 @@ const e2eAdminToken =
   process.env.PLAYWRIGHT_ADMIN_TOKEN ??
   process.env.AUDITOR_ADMIN_TOKEN ??
   "privacytracker-playwright-token";
+const e2eBaseURL =
+  process.env.PLAYWRIGHT_BASE_URL ??
+  `http://127.0.0.1:${process.env.PLAYWRIGHT_PORT ?? "3000"}`;
+const e2eServerURL = new URL(e2eBaseURL);
+const e2eServerHost = e2eServerURL.hostname || "127.0.0.1";
+const e2eServerPort =
+  (process.env.PLAYWRIGHT_PORT ?? e2eServerURL.port) || "3000";
+const e2eReadyURL = new URL("/api/ready", e2eBaseURL).toString();
 process.env.PRIVACYTRACKER_DATA_DIR = e2eDataDir;
 process.env.NEXT_TELEMETRY_DISABLED = "1";
 process.env.AUDITOR_ADMIN_TOKEN = e2eAdminToken;
+process.env.PLAYWRIGHT_BASE_URL = e2eBaseURL;
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./tests/e2e",
   timeout: 45_000,
   expect: {
     timeout: 10_000,
@@ -33,7 +42,7 @@ export default defineConfig({
     ? [["github"], ["html", { open: "never" }]]
     : [["list"]],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    baseURL: e2eBaseURL,
     extraHTTPHeaders: {
       "x-auditor-admin-token": e2eAdminToken,
     },
@@ -41,9 +50,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command:
-      "rm -rf .playwright-data && mkdir -p .playwright-data && npm run build && HOSTNAME=127.0.0.1 npm start",
-    url: "http://127.0.0.1:3000/api/ready",
+    command: `rm -rf .playwright-data && mkdir -p .playwright-data && npm run build && npm start -- -H ${e2eServerHost} -p ${e2eServerPort}`,
+    url: e2eReadyURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {

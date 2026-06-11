@@ -24,11 +24,16 @@ interface TaskListProps {
    *  the panel renders without a fetch. May be omitted in non-dashboard
    *  contexts. */
   tasks?: ResolvedTask[];
+  /** Journey-strip vs legacy flat-list rendering. Resolved from
+   *  `flag.dashboard.task_journey` by the dashboard page; defaults to
+   *  the legacy list so non-dashboard callers are unaffected. */
+  variant?: "journey" | "list";
 }
 
 export default function TaskList({
   tasks: tasksProp,
   candidates: candidatesProp,
+  variant = "list",
 }: TaskListProps) {
   const tasks = tasksProp ?? safeResolveTasks();
   const candidates = candidatesProp ?? safeResolveCandidates();
@@ -57,6 +62,7 @@ export default function TaskList({
         audience={audience}
         initialCandidates={candidates}
         initialTasks={tasks}
+        variant={variant}
         visibleRows={visibleRows}
       />
     </section>

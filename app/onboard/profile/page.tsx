@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { getAccessibilityProfile } from "@/lib/accessibility-profile-server";
+import {
+  getActiveFocus,
+  getActiveFocusWorkflow,
+} from "@/lib/feature-flag-storage";
 import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { recommendedPrivacyPresetForFocus } from "@/lib/onboarding-purpose";
 import { getSetting } from "@/lib/scheduler";
 import { getPrivacyProfile } from "../../../lib/privacy-profile-server";
 import PrivacyProfileSetup from "../../components/PrivacyProfileSetup";
@@ -30,21 +36,41 @@ export default function PrivacyProfileOnboardPage() {
 
   // Either profile-setup flag resolving on keeps the page reachable;
   // both off redirects to /onboard so the wizard isn't bypassed.
-  const profileSetupOn = (() => {
+  const profileSetup = (() => {
     try {
-      return (
-        resolveFlagFromDb("flag.onboarding.privacy_profile_setup") === "on" ||
-        resolveFlagFromDb("flag.onboarding.accessibility_profile_setup") ===
-          "on"
-      );
+      return {
+        privacy:
+          resolveFlagFromDb("flag.onboarding.privacy_profile_setup") === "on",
+        accessibility:
+          resolveFlagFromDb("flag.onboarding.accessibility_profile_setup") ===
+          "on",
+      };
     } catch {
-      return true;
+      return { privacy: true, accessibility: true };
     }
   })();
-  if (!profileSetupOn) {
+  if (!(profileSetup.privacy || profileSetup.accessibility)) {
     redirect("/onboard");
   }
 
+  const focus = getActiveFocus();
+  const workflow = getActiveFocusWorkflow(focus);
   const initialProfile = getPrivacyProfile();
-  return <PrivacyProfileSetup initialProfile={initialProfile} />;
+  const initialA11yProfile = getAccessibilityProfile();
+  const recommendedPreset = recommendedPrivacyPresetForFocus(focus, workflow);
+  const showPrivacySetup = profileSetup.privacy;
+  const showAccessibilitySetup = profileSetup.accessibility;
+  if (!(showPrivacySetup || showAccessibilitySetup)) {
+    redirect("/onboard");
+  }
+
+  return (
+    <PrivacyProfileSetup
+      initialA11yProfile={initialA11yProfile}
+      initialProfile={initialProfile}
+      recommendedPreset={recommendedPreset}
+      showAccessibilitySetup={showAccessibilitySetup}
+      showPrivacySetup={showPrivacySetup}
+    />
+  );
 }

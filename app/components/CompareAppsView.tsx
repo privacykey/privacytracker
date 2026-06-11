@@ -560,7 +560,7 @@ export default function CompareAppsView({
               onClick={() => setCompareMode("privacy")}
               type="button"
             >
-              Privacy
+              {tCompare("compare_mode_privacy")}
             </button>
             <button
               aria-pressed={compareMode === "accessibility"}
@@ -568,7 +568,7 @@ export default function CompareAppsView({
               onClick={() => setCompareMode("accessibility")}
               type="button"
             >
-              Accessibility
+              {tCompare("compare_mode_accessibility")}
             </button>
             <button
               aria-pressed={compareMode === "both"}
@@ -577,13 +577,13 @@ export default function CompareAppsView({
               title={tCompare("both_mode_title")}
               type="button"
             >
-              Both
+              {tCompare("compare_mode_both")}
             </button>
           </div>
           <Link
             aria-label={
               shortlistCount > 0
-                ? `View your shortlist (${shortlistCount} ${shortlistCount === 1 ? "entry" : "entries"})`
+                ? tCompare("shortlist_view_aria", { count: shortlistCount })
                 : tCompare("shortlist_view_empty_title")
             }
             className="compare-shortlist-cta"
@@ -613,7 +613,7 @@ export default function CompareAppsView({
       >
         {lockPinned && pinnedSlot === "A" && specA ? (
           <PinnedSlot
-            label="App A"
+            label={tCompare("slot_a_label")}
             library={library}
             slot={slotA}
             spec={specA}
@@ -622,7 +622,7 @@ export default function CompareAppsView({
           <SlotCard
             enableShortlistOnResults={!!sourceIdForA}
             isShortlisted={isShortlistedFor(sourceIdForA)}
-            label="App A"
+            label={tCompare("slot_a_label")}
             library={library}
             onChange={setSpecA}
             onToggleShortlist={toggleShortlistFor(sourceIdForA)}
@@ -634,7 +634,7 @@ export default function CompareAppsView({
         )}
         {lockPinned && pinnedSlot === "B" && specB ? (
           <PinnedSlot
-            label="App B"
+            label={tCompare("slot_b_label")}
             library={library}
             slot={slotB}
             spec={specB}
@@ -648,7 +648,7 @@ export default function CompareAppsView({
             // dropdown is the wrong starting point.
             initialMode={fromReview && !specB ? "search" : undefined}
             isShortlisted={isShortlistedFor(sourceIdForB)}
-            label="App B"
+            label={tCompare("slot_b_label")}
             library={library}
             onChange={setSpecB}
             onToggleShortlist={toggleShortlistFor(sourceIdForB)}
@@ -2597,12 +2597,12 @@ function ComparisonTable({
             alignItems: "center",
           }}
         >
-          <span>{both} shared</span>
+          <span>{tCompare("shared_count", { count: both })}</span>
           <span>
-            {onlyA} only in {a.name}
+            {tCompare("only_in_count", { count: onlyA, name: a.name })}
           </span>
           <span>
-            {onlyB} only in {b.name}
+            {tCompare("only_in_count", { count: onlyB, name: b.name })}
           </span>
           {hasActiveProfile && (
             <span
@@ -2736,6 +2736,8 @@ function ProfileSummaryPill({
   label: string;
   counts: { mismatches: number; total: number };
 }) {
+  // i18n — translations for the pill body + title within this helper.
+  const tCompare = useTranslations("compare");
   const tone: "ok" | "warn" | "bad" =
     counts.total === 0
       ? "ok"
@@ -2746,16 +2748,26 @@ function ProfileSummaryPill({
           : "warn";
   const body =
     counts.total === 0
-      ? "no profile categories"
+      ? tCompare("profile_pill_no_categories")
       : counts.mismatches === 0
-        ? "matches profile"
-        : `${counts.mismatches} over limit`;
+        ? tCompare("profile_pill_matches")
+        : tCompare("profile_pill_over_limit", { count: counts.mismatches });
   return (
     <span
       className={`compare-profile-pill match-${tone}`}
-      title={`${label}: ${body}${counts.total > 0 ? ` (of ${counts.total} scored)` : ""}`}
+      title={
+        counts.total > 0
+          ? tCompare("profile_pill_title_scored", {
+              label,
+              body,
+              total: counts.total,
+            })
+          : tCompare("profile_pill_title", { label, body })
+      }
     >
-      <span className="compare-profile-pill-label">{label}:</span>
+      <span className="compare-profile-pill-label">
+        {tCompare("profile_pill_label", { label })}
+      </span>
       <span>{body}</span>
     </span>
   );
@@ -2835,13 +2847,13 @@ function NoDataNotice({
     aUnfilled && bUnfilled
       ? tCompare("neither_filled_labels")
       : aUnfilled
-        ? `${a.name} hasn\u2019t filled in privacy labels yet`
-        : `${b.name} hasn\u2019t filled in privacy labels yet`;
+        ? tCompare("app_not_filled_labels", { name: a.name })
+        : tCompare("app_not_filled_labels", { name: b.name });
 
   // Per-slot explanation, matching the AppDetailView copy so users see the
   // same story in every surface.
   const reasonFor = (slot: SlotData) =>
-    `${slot.name}: Apple shows "No Details Provided". The developer will be required to provide privacy details when they submit their next app update.`;
+    tCompare("no_details_provided_title", { name: slot.name });
 
   // Deep-link the dev's privacy policy — this is the highest-signal thing
   // the user can do next. If the slot doesn't have one captured we fall
@@ -3125,12 +3137,18 @@ function SeverityCell({
       if (observedRank > allowedRank) {
         mark = {
           kind: "warn",
-          title: `Exceeds your preference: ${observedLabel} (you allow ${allowedLabel})`,
+          title: tCompare("exceeds_pref_mark_title", {
+            observed: observedLabel,
+            allowed: allowedLabel,
+          }),
         };
       } else {
         mark = {
           kind: "ok",
-          title: `Within your preference: ${observedLabel} (you allow ${allowedLabel})`,
+          title: tCompare("within_pref_mark_title", {
+            observed: observedLabel,
+            allowed: allowedLabel,
+          }),
         };
       }
     }
@@ -3472,12 +3490,12 @@ function AccessibilityComparisonTable({
           alignItems: "center",
         }}
       >
-        <span>{bothCount} shared</span>
+        <span>{tCompare("shared_count", { count: bothCount })}</span>
         <span>
-          {onlyACount} only in {a.name}
+          {tCompare("only_in_count", { count: onlyACount, name: a.name })}
         </span>
         <span>
-          {onlyBCount} only in {b.name}
+          {tCompare("only_in_count", { count: onlyBCount, name: b.name })}
         </span>
         {refreshing && (
           <span
@@ -3497,7 +3515,7 @@ function AccessibilityComparisonTable({
               fontWeight: 600,
             }}
           >
-            <span className="spinner-sm" /> Updating comparison…
+            <span className="spinner-sm" /> {tCompare("updating_comparison")}
           </span>
         )}
       </div>
@@ -3854,6 +3872,9 @@ function AccessibilitySlotHeader({
  * cognition too, so a generic person reads more honestly here.
  */
 function AccessibilityCountChip({ slot }: { slot: SlotData }) {
+  // i18n — translations for the chip aria/title within this helper. The
+  // hook must run unconditionally, so it sits above the early return.
+  const tCompare = useTranslations("compare");
   if (slot.hasAccessibilityLabels !== 1) {
     return null;
   }
@@ -3866,9 +3887,12 @@ function AccessibilityCountChip({ slot }: { slot: SlotData }) {
   const displayTotal = Math.max(declared, total);
   return (
     <span
-      aria-label={`${declared} of ${displayTotal} accessibility features declared`}
+      aria-label={tCompare("a11y_count_aria", {
+        declared,
+        total: displayTotal,
+      })}
       className="compare-slot-chip compare-slot-chip-a11y"
-      title={`Declares ${declared} of ${displayTotal} accessibility features`}
+      title={tCompare("a11y_count_title", { declared, total: displayTotal })}
     >
       <span aria-hidden="true">🧍</span>
       {declared}/{displayTotal}

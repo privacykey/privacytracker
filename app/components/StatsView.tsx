@@ -14,6 +14,7 @@ import PrivacySankey from "./charts/PrivacySankey";
 import PrivacyTimeline from "./charts/PrivacyTimeline";
 import SmallMultiples from "./charts/SmallMultiples";
 import InfoTooltip from "./InfoTooltip";
+import Toast from "./Toast";
 
 type TimeT = (key: string, values?: Record<string, string | number>) => string;
 function timeAgo(t: TimeT, ts: number): string {
@@ -302,11 +303,11 @@ export default function StatsView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ urls: [url], resync: true }),
       });
-      showToast(`✓ ${name} synced`);
+      showToast(tStats("toast_synced", { name }));
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
       console.error(`[stats] Re-sync failed for ${name} (${url}):`, error);
-      showToast("❌ Sync failed");
+      showToast(tStats("toast_sync_failed"));
     }
     setReSyncing(null);
   };
@@ -616,7 +617,7 @@ export default function StatsView({
                 const descLine =
                   isSynthetic && n.change_summary[0]?.description
                     ? n.change_summary[0].description
-                    : `${n.change_summary.length} change${n.change_summary.length === 1 ? "" : "s"}${n.change_summary[0] ? ` · ${n.change_summary[0].description}` : ""}`;
+                    : `${tStats("n_changes", { count: n.change_summary.length })}${n.change_summary[0] ? ` · ${n.change_summary[0].description}` : ""}`;
                 return (
                   <Link className="recent-change-row" href={href} key={n.id}>
                     {n.iconUrl ? (
@@ -834,7 +835,7 @@ export default function StatsView({
         </section>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
     </div>
   );
 }

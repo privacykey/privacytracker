@@ -76,11 +76,23 @@ export default function FocusPreviewBanner() {
           declutter: preview.declutter,
           minimal: preview.minimal,
           accessibility: preview.accessibility,
+          workflow: preview.workflow,
         }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? t("save_failed_default"));
+      }
+      for (const taskId of preview.taskOptIns ?? []) {
+        try {
+          await fetch("/api/user-tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: taskId, action: "opt_in" }),
+          });
+        } catch (error) {
+          console.warn("[FocusPreviewBanner] task opt-in failed:", error);
+        }
       }
       // Hard reload so server-rendered surfaces (Nav, YourFocusCard,
       // callouts) flush. router.refresh() doesn't reliably re-execute
