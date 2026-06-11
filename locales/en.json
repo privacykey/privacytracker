@@ -1331,8 +1331,8 @@
   "nonlocal_banner": {
     "aria": "Read-only access notice",
     "label": "Read-only",
-    "body": "Changes are locked from this address.",
-    "link": "Unlock in Settings → Deployment.",
+    "body": "Admin token needed to make changes from this IP address in",
+    "link": "Settings → Deployment.",
     "dismiss": "Dismiss"
   },
   "devices": {
