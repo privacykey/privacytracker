@@ -998,10 +998,26 @@ export default function SettingsView({
     useState(false);
   const [deploymentDiagnosticsError, setDeploymentDiagnosticsError] =
     useState("");
+  /**
+   * True when GET /api/deployment/diagnostics was rejected by the proxy's
+   * non-local admin gate (401/403) rather than failing on its own. Renders
+   * the unlock form instead of the generic "unable to load" card — the
+   * diagnostics card is the login destination every blocked surface links
+   * to, so it must stay usable while locked.
+   */
+  const [deploymentDiagnosticsLocked, setDeploymentDiagnosticsLocked] =
+    useState(false);
   const [copyingDeploymentDiagnostics, setCopyingDeploymentDiagnostics] =
     useState(false);
   const [adminTokenInput, setAdminTokenInput] = useState("");
   const [adminTokenUnlocked, setAdminTokenUnlocked] = useState(false);
+  /**
+   * Whether AUDITOR_ADMIN_TOKEN is configured server-side, read from the
+   * gate-exempt /api/auth/admin-token/status endpoint so it's available
+   * even while the diagnostics payload itself is locked. Defaults true so
+   * the unlock form doesn't flash out while the status call is in flight.
+   */
+  const [adminTokenConfigured, setAdminTokenConfigured] = useState(true);
   const [schedule, setSchedule] = useState<Schedule>("manual");
   const [country, setCountry] = useState<string>(DEFAULT_COUNTRY);
   const [savedCountry, setSavedCountry] = useState<string>(DEFAULT_COUNTRY);
@@ -1436,10 +1452,21 @@ export default function SettingsView({
         cache: "no-store",
       });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          // The proxy's non-local admin gate, not a server failure. Flip
+          // the locked state so the section renders the unlock form —
+          // every blocked surface links here to log in, so a dead
+          // "unable to load" card would strand the user.
+          setDeploymentDiagnosticsLocked(true);
+          setDeploymentDiagnostics(null);
+          setDeploymentDiagnosticsError("");
+          return;
+        }
         throw new Error(`HTTP ${res.status}`);
       }
       const data = (await res.json()) as DeploymentDiagnostics;
       setDeploymentDiagnostics(data);
+      setDeploymentDiagnosticsLocked(false);
       setDeploymentDiagnosticsError("");
     } catch (error) {
       console.warn("[settings] loadDeploymentDiagnostics failed:", error);
@@ -1458,7 +1485,11 @@ export default function SettingsView({
         setAdminTokenUnlocked(false);
         return;
       }
-      const data = (await res.json()) as { unlocked?: boolean };
+      const data = (await res.json()) as {
+        configured?: boolean;
+        unlocked?: boolean;
+      };
+      setAdminTokenConfigured(Boolean(data.configured));
       setAdminTokenUnlocked(Boolean(data.unlocked));
     } catch {
       setAdminTokenUnlocked(false);
@@ -1484,6 +1515,10 @@ export default function SettingsView({
       setAdminTokenInput("");
       setAdminTokenUnlocked(true);
       showToast(tDeploy("admin_unlock_saved"));
+      // The gate just opened — re-pull the data it was hiding so the
+      // section populates without a manual refresh.
+      void loadDeploymentDiagnostics();
+      void loadBackupSnapshots();
     } catch {
       showToast(tDeploy("admin_unlock_failed"));
     }
@@ -1554,6 +1589,12 @@ export default function SettingsView({
     try {
       const res = await fetch("/api/backup/snapshots", { cache: "no-store" });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          // Locked by the non-local admin gate. The deployment card's
+          // unlock form explains the state; a toast on every settings
+          // visit would just be noise. Re-fetched after unlock.
+          return;
+        }
         throw new Error(`HTTP ${res.status}`);
       }
       applyBackupSnapshotPayload((await res.json()) as BackupSnapshotsPayload);
@@ -8757,6 +8798,58 @@ ollama serve`}
                       )}
                     </button>
                   </>
+                ) : deploymentDiagnosticsLocked ? (
+                  // The non-local admin gate rejected the diagnostics read.
+                  // This card is the login destination every blocked surface
+                  // links to, so the unlock form must render even though the
+                  // diagnostics payload (and its adminTokenConfigured flag)
+                  // is unavailable — `adminTokenConfigured` comes from the
+                  // gate-exempt /api/auth/admin-token/status instead.
+                  <div className="settings-help-card" role="status">
+                    <div className="settings-help-title">
+                      {tDeploy("locked_title")}
+                    </div>
+                    <p className="settings-help-copy">
+                      {adminTokenConfigured
+                        ? tDeploy("locked_body")
+                        : tDeploy("locked_body_no_token")}
+                    </p>
+                    {adminTokenConfigured && (
+                      <div className="deployment-admin-controls">
+                        <label className="settings-field" style={{ gap: 6 }}>
+                          <span className="settings-field-label">
+                            {tDeploy("admin_token_input")}
+                          </span>
+                          <input
+                            autoComplete="off"
+                            className="settings-input"
+                            onChange={(event) =>
+                              setAdminTokenInput(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                saveSessionAdminToken();
+                              }
+                            }}
+                            placeholder={tDeploy("admin_token_placeholder")}
+                            type="password"
+                            value={adminTokenInput}
+                          />
+                        </label>
+                        <div className="deployment-admin-actions">
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!adminTokenInput.trim()}
+                            onClick={saveSessionAdminToken}
+                            type="button"
+                          >
+                            {tDeploy("admin_unlock")}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="settings-help-card" role="status">
                     <div className="settings-help-title">

@@ -6886,9 +6886,8 @@ export default function OnboardWizard({
               // surface and keeps skipped rows from cluttering it.
               {
                 id: "unavailable",
-                title: "Not in the App Store",
-                description:
-                  "These didn’t resolve against iTunes Lookup or name search. Pick a source per row to save them as manual apps, or skip individually.",
+                title: tStep3("unavailable_title"),
+                description: tStep3("unavailable_description"),
                 results: visibleResults.filter(
                   (result) => statusFor(result) === "unmatched"
                 ),
@@ -7438,7 +7437,9 @@ export default function OnboardWizard({
                               <h2>{section.title}</h2>
                               <p>
                                 {unmatchedSaveState === "saved"
-                                  ? `Saved ${unmatchedSavedCount} as manual apps. Visit Settings → Manual Apps to add privacy-policy URLs or notes.`
+                                  ? tStep3("unavailable_saved", {
+                                      count: unmatchedSavedCount,
+                                    })
                                   : section.description}
                               </p>
                             </div>
@@ -7540,7 +7541,7 @@ export default function OnboardWizard({
                                             style={{ fontSize: 13 }}
                                             type="button"
                                           >
-                                            Edit & retry
+                                            {tSearchBlock("edit_retry")}
                                           </button>
                                           <label
                                             htmlFor={`triage-${result.query}`}
@@ -7549,7 +7550,7 @@ export default function OnboardWizard({
                                               color: "var(--text-2)",
                                             }}
                                           >
-                                            Save as
+                                            {tSearchBlock("save_as_label")}
                                           </label>
                                           <select
                                             className="settings-input settings-select"
@@ -7568,19 +7569,19 @@ export default function OnboardWizard({
                                             value={choice}
                                           >
                                             <option value="sideloaded">
-                                              Sideloaded / enterprise
+                                              {tStep3("triage_sideloaded")}
                                             </option>
                                             <option value="testflight">
-                                              TestFlight beta
+                                              {tStep3("triage_testflight")}
                                             </option>
                                             <option value="web_clip">
-                                              Safari web app
+                                              {tStep3("triage_web_clip")}
                                             </option>
                                             <option value="own_build">
-                                              Own build (Xcode)
+                                              {tStep3("triage_own_build")}
                                             </option>
                                             <option value="skip">
-                                              Skip — don’t track
+                                              {tStep3("triage_skip")}
                                             </option>
                                           </select>
                                         </>
@@ -7679,7 +7680,7 @@ export default function OnboardWizard({
                                       setUnmatchedSaveError(
                                         err instanceof Error
                                           ? err.message
-                                          : "Failed to save manual apps"
+                                          : tStep3("unavailable_save_failed")
                                       );
                                     }
                                   }}
@@ -7687,10 +7688,13 @@ export default function OnboardWizard({
                                 >
                                   {unmatchedSaveState === "saving" ? (
                                     <>
-                                      <span className="spinner-sm" /> Saving…
+                                      <span className="spinner-sm" />{" "}
+                                      {tStep3("unavailable_saving")}
                                     </>
                                   ) : (
-                                    `Save ${section.results.length} as manual apps`
+                                    tStep3("unavailable_save_cta", {
+                                      count: section.results.length,
+                                    })
                                   )}
                                 </button>
                               </div>
@@ -8746,6 +8750,7 @@ function UnavailableRowEditor({
   onCancel: () => void;
   onRetry: (nextQuery: string) => void;
 }) {
+  const t = useTranslations("onboard.search_block");
   const [draft, setDraft] = useState(initialQuery);
   const trimmed = draft.trim();
   // Unchanged text is still submittable — the parent passes force=true,
@@ -8775,7 +8780,7 @@ function UnavailableRowEditor({
             onCancel();
           }
         }}
-        placeholder="App name"
+        placeholder={t("edit_app_name")}
         style={{ flex: "1 1 220px", minWidth: 0 }}
         type="text"
         value={draft}
@@ -8786,7 +8791,7 @@ function UnavailableRowEditor({
         onClick={() => onRetry(trimmed)}
         type="button"
       >
-        {busyEditing ? <span className="spinner-sm" /> : "Search again"}
+        {busyEditing ? <span className="spinner-sm" /> : t("search_again")}
       </button>
       <button
         className="btn btn-secondary btn-sm"
@@ -8794,7 +8799,7 @@ function UnavailableRowEditor({
         onClick={onCancel}
         type="button"
       >
-        Cancel
+        {t("cancel")}
       </button>
     </div>
   );
