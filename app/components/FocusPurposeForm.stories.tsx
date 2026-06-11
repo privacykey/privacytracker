@@ -1,0 +1,95 @@
+import type { Meta, StoryObj } from "@storybook/nextjs";
+import FocusPurposeForm from "./FocusPurposeForm";
+
+const meta = {
+  title: "I/FocusPurposeForm",
+  component: FocusPurposeForm,
+  parameters: { layout: "padded" },
+  args: {
+    mode: "onboarding",
+    title: "What brings you here?",
+    subtitle: "Pick a starting point — you can change this any time.",
+    submitLabel: "Continue",
+    savingLabel: "Saving…",
+    cancelLabel: "Back",
+    initial: {
+      audience: "self",
+      understand: true,
+      declutter: false,
+      minimal: false,
+      accessibility: false,
+      workflow: "self_monitor",
+    },
+    // Required callback — no-op in isolation (no `@storybook/test` dep in repo).
+    onSubmit: () => {
+      // intentionally empty
+    },
+  },
+} satisfies Meta<typeof FocusPurposeForm>;
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+/** The default onboarding entry — "keep an eye on my own apps". */
+export const Onboarding: Story = {};
+
+/** Same form embedded in settings: shows the cancel affordance + eyebrow. */
+export const Settings: Story = {
+  args: {
+    mode: "settings",
+    eyebrow: "Your focus",
+    title: "Edit your focus",
+    subtitle: "Tune what privacytracker watches for and how it frames it.",
+    submitLabel: "Save changes",
+    onCancel: () => {
+      // intentionally empty
+    },
+  },
+};
+
+/** Declutter starting point — understand off, declutter on. */
+export const Declutter: Story = {
+  args: {
+    initial: {
+      audience: "self",
+      understand: false,
+      declutter: true,
+      minimal: false,
+      accessibility: false,
+      workflow: "self_cleanup",
+    },
+  },
+};
+
+/** Helping a loved one — the audience-aware copy and motifs shift. */
+export const HelpingLovedOne: Story = {
+  args: {
+    initial: {
+      audience: "loved_one",
+      understand: true,
+      declutter: true,
+      minimal: false,
+      accessibility: false,
+      workflow: "other_handoff",
+    },
+  },
+};
+
+/** Advanced options expanded on mount (the `?customize=1` deep-link path). */
+export const AdvancedOpen: Story = {
+  args: { advancedInitiallyOpen: true },
+};
+
+/** Mid-submit: the form is disabled and shows the saving label. */
+export const Saving: Story = {
+  args: { saving: true },
+};
+
+/** A server-side error surfaced back into the form. */
+export const WithError: Story = {
+  args: { error: "Couldn't save your focus — please try again." },
+};
+
+export const ChineseLocale: Story = {
+  globals: { locale: "zh" },
+};
