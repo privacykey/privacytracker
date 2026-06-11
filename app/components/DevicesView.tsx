@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import Toast from "./Toast";
 import "./device-sync.css";
 
 /**
@@ -160,21 +161,23 @@ export default function DevicesView({
       <h1 className="settings-section-title">{t("page_title")}</h1>
       <p className="settings-section-subtitle">{t("page_subtitle")}</p>
 
-      {resyncToast && (
-        <div className="toast" role="status" style={{ marginBottom: 16 }}>
-          {t("resync_toast", {
-            added: resyncToast.added,
-            removed: resyncToast.removed,
-            orphaned: resyncToast.orphaned,
-          })}
-          {resyncToast.merged > 0 && (
-            <>
-              {" · "}
-              {t("resync_toast_merged", { count: resyncToast.merged })}
-            </>
-          )}
-        </div>
-      )}
+      <Toast style={{ marginBottom: 16 }}>
+        {resyncToast && (
+          <>
+            {t("resync_toast", {
+              added: resyncToast.added,
+              removed: resyncToast.removed,
+              orphaned: resyncToast.orphaned,
+            })}
+            {resyncToast.merged > 0 && (
+              <>
+                {" · "}
+                {t("resync_toast_merged", { count: resyncToast.merged })}
+              </>
+            )}
+          </>
+        )}
+      </Toast>
 
       {devices.length === 0 && (
         <div className="devices-empty">{t("empty")}</div>

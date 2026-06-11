@@ -14,6 +14,7 @@ import PrivacySankey from "./charts/PrivacySankey";
 import PrivacyTimeline from "./charts/PrivacyTimeline";
 import SmallMultiples from "./charts/SmallMultiples";
 import InfoTooltip from "./InfoTooltip";
+import Toast from "./Toast";
 
 type TimeT = (key: string, values?: Record<string, string | number>) => string;
 function timeAgo(t: TimeT, ts: number): string {
@@ -834,7 +835,7 @@ export default function StatsView({
         </section>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
     </div>
   );
 }

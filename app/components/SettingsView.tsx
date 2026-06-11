@@ -10,6 +10,7 @@ import {
 } from "../../lib/date-format";
 import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { scrollPulse } from "../../lib/scroll-pulse";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
 import AuditBundleExport from "./AuditBundleExport";
 import AuditBundleImport from "./AuditBundleImport";
@@ -25,6 +26,7 @@ import SettingsAutoSaveToast, {
 import SettingsSidebar from "./SettingsSidebar";
 import { useTaskCenter } from "./TaskCenter";
 import TasksResetRow from "./TasksResetRow";
+import Toast from "./Toast";
 
 /**
  * localStorage key for the "Also log save events to Task Center"
@@ -4080,12 +4082,13 @@ export default function SettingsView({
   // /privacy-policy page — it scrolls the card into view and flashes it
   // with the same pulse animation as the Privacy Map cards. The pulse is
   // fired by toggling the `.settings-section-pulse` class (defined in
-  // globals.css) for 1.6s. We force a reflow between remove→add so
-  // re-clicking the same anchor re-triggers the animation.
+  // globals.css) via the shared scroll-pulse helper, which owns the
+  // re-trigger / cleanup choreography.
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+    let cancelPulse: (() => void) | null = null;
     const syncFromHash = () => {
       const hash = window.location.hash;
       if (hash === "#ai-timeouts") {
@@ -4112,26 +4115,21 @@ export default function SettingsView({
         if (!el) {
           return;
         }
-        // Smooth-scroll via rAF so the pulse starts after the scroll
-        // begins, not in the middle of the initial paint. Without this
-        // the animation occasionally gets clobbered by the browser's
-        // scroll-restoration before the class applies.
-        requestAnimationFrame(() => {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-          el.classList.remove("settings-section-pulse");
-          // Force reflow so the re-added class restarts the keyframes.
-          void el.offsetWidth;
-          el.classList.add("settings-section-pulse");
-          window.setTimeout(
-            () => el.classList.remove("settings-section-pulse"),
-            1900
-          );
+        cancelPulse?.();
+        cancelPulse = scrollPulse(el, {
+          className: "settings-section-pulse",
+          block: "start",
         });
       }
     };
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
+    return () => {
+      window.removeEventListener("hashchange", syncFromHash);
+      // Without this, navigating away mid-pulse left the class-removal
+      // timeout running against a detached node.
+      cancelPulse?.();
+    };
   }, []);
 
   // One-second tick to keep queued-row countdowns ("next retry in ~42s")
@@ -10757,7 +10755,7 @@ ollama serve`}
         </div>
       </div>
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
 
       {(restoreStage === "confirm" || restoreStage === "applying") &&
         restorePreview && (

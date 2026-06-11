@@ -20,6 +20,7 @@ import BulkSelectBar from "./BulkSelectBar";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
+import Toast from "./Toast";
 import VerdictPill from "./VerdictPill";
 
 interface App {
@@ -2183,7 +2184,7 @@ export default function AppGrid({
         </div>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
 
       {/* Floating compare dock — shows once the user has picked at least one
           app. Lets them see what's selected, compare (when 2 are picked), or

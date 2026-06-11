@@ -72,6 +72,7 @@ import { getLastNonAppPath } from "./NavigationHistoryTracker";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import RateLimitBanner from "./RateLimitBanner";
 import { useTaskCenter } from "./TaskCenter";
+import Toast from "./Toast";
 import VerdictPicker from "./VerdictPicker";
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -1881,7 +1882,7 @@ export default function AppDetailView({
         </div>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
 
       {/* Annotations sidebar (round 3 PR 4). Gated by
           flag.detail.annotations_sidebar (server-resolved). 'on' means

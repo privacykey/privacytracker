@@ -44,6 +44,7 @@ import {
   describeWorstMismatchLocalised,
   TIER_META,
 } from "../../lib/privacy-profile";
+import { scrollPulse } from "../../lib/scroll-pulse";
 import type {
   RecentActivityEntry,
   ReviewableApp,
@@ -58,6 +59,7 @@ import {
 import BackgroundModeCallout from "./BackgroundModeCallout";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
+import Toast from "./Toast";
 
 // ─────────────────────────────────────────────
 // Small helpers
@@ -79,7 +81,6 @@ function handleHashClick(
     return;
   }
   e.preventDefault();
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
   // Also shift keyboard focus to the destination so tabbing continues
   // from there and screen readers announce the new landing point. If
   // the target isn't naturally focusable, give it a temporary
@@ -88,11 +89,9 @@ function handleHashClick(
     el.setAttribute("tabindex", "-1");
   }
   el.focus({ preventScroll: true });
-  el.classList.remove("home-pulse");
-  // Reflow so the animation re-triggers if the class was already present.
-  void el.offsetWidth;
-  el.classList.add("home-pulse");
-  window.setTimeout(() => el.classList.remove("home-pulse"), 1400);
+  // Fire-and-forget from a click handler: scrollPulse self-cancels the
+  // previous run on repeat clicks, so no handle to keep here.
+  scrollPulse(el, { className: "home-pulse", durationMs: 1400 });
   if (history?.replaceState) {
     history.replaceState(null, "", hash);
   }
@@ -580,7 +579,7 @@ export default function HomeView({
         return <Fragment key={id}>{node}</Fragment>;
       })}
       {showLayoutEditorLink && <LayoutEditorFooterLink />}
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
     </div>
   );
 }
@@ -675,7 +674,7 @@ function EditModeShell({
         {saver.liveMessage}
       </div>
 
-      {toast && <div className="toast">{toast}</div>}
+      <Toast>{toast}</Toast>
     </div>
   );
 }

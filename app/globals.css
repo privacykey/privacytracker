@@ -114,6 +114,17 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
 
+  /* Motion — shared easing tokens. New animations should reach for one
+     of these instead of minting another cubic-bezier literal:
+     - --ease-out-soft   : gentle decelerate — pings, coachmark moves/pops
+     - --ease-out-snappy : brisk decelerate — press / sheen feedback
+     - --ease-out-glide  : long settling glide — progress-bar widths
+     - --ease-standard   : symmetric in-out — elements relocating */
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-out-snappy: cubic-bezier(0.2, 0.9, 0.2, 1);
+  --ease-out-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
   /* Popover surface — shared "liquid glass" treatment for dropdowns,
      popups, sheets. Keeping these in variables means tinting the whole
      popover family at once (dark vs. light, or a future high-contrast
@@ -820,7 +831,12 @@ html[data-theme-override="high-contrast"] .nav {
   font-weight: 600;
   white-space: nowrap;
   border-radius: var(--r-full);
-  transition: all 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s,
+    opacity 0.15s;
 }
 
 .btn:disabled {
@@ -887,7 +903,9 @@ html[data-theme-override="high-contrast"] .nav {
   font-size: 14px;
   color: var(--text-2);
   border-radius: var(--r-sm);
-  transition: all 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .icon-btn:hover {
@@ -1049,7 +1067,9 @@ html[data-theme-override="high-contrast"] .nav {
   font-weight: 500;
   color: var(--text-2);
   border-radius: var(--r-full);
-  transition: all 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .sort-tab.active {
@@ -1163,51 +1183,78 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 3px;
   align-items: center;
   pointer-events: none;
+  /* Stacking-context fence for the halo pseudo-elements below: keeps
+     their z-index:-1 tucked between the dot disc and the rest of the
+     card instead of escaping behind the app icon. */
+  isolation: isolate;
 }
 
 .change-dot {
+  position: relative;
   flex-shrink: 0;
   width: 12px;
   height: 12px;
   border: 2px solid var(--bg);
   border-radius: 50%;
-  animation: pulse 2s infinite;
+}
+
+/* Pulsing halo. Painted ONCE as a static disc on the pseudo-element;
+   the loop animates only transform + opacity so it runs entirely on
+   the compositor — no per-frame repaint, unlike the old box-shadow
+   spread keyframes. The disc starts exactly under the (opaque) dot,
+   so only the annulus that scales past the edge ever shows. Colour
+   comes from --halo-color, so one @keyframes serves every variant. */
+.change-dot::after {
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  content: "";
+  background: var(--halo-color);
+  border-radius: 50%;
+  animation: halo-breathe 2s infinite;
 }
 
 /* Privacy-label / privacy-policy pending changes — same orange palette
    the single-dot badge always used, so nothing visually regresses for
    users whose current pending bundle is privacy-only. */
 .change-dot-privacy {
+  --halo-color: rgba(255, 159, 10, 0.4);
   background: var(--orange);
-  animation-name: pulse;
 }
 
 /* Accessibility-label pending changes. Blue ties the dot to the
    detail-page chip / grid filter / stats chart — the whole accessibility
-   surface reads as one colour family. The pulse is keyed off a
-   separate @keyframes so the glow-colour tracks the dot itself. */
+   surface reads as one colour family. The halo colour tracks the dot
+   via --halo-color. */
 .change-dot-accessibility {
+  --halo-color: rgba(10, 132, 255, 0.4);
   background: var(--blue);
-  animation-name: pulse-accessibility;
 }
 
-@keyframes pulse {
+/* Shared compositor-only pulse: grow past the dot edge while fading,
+   then breathe back in. --halo-scale = (dot + 2×spread) / dot, so the
+   peak matches the 5px box-shadow spread it replaced. */
+@keyframes halo-breathe {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(255, 159, 10, 0.4);
+    opacity: 1;
+    transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(255, 159, 10, 0);
+    opacity: 0;
+    transform: scale(var(--halo-scale, 1.83));
   }
 }
 
-@keyframes pulse-accessibility {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.4);
+/* One-shot variant for "something just happened" flashes. */
+@keyframes halo-burst {
+  0% {
+    opacity: 1;
+    transform: scale(1);
   }
-  50% {
-    box-shadow: 0 0 0 5px rgba(10, 132, 255, 0);
+  100% {
+    opacity: 0;
+    transform: scale(var(--halo-burst-scale, 3.5));
   }
 }
 
@@ -3329,7 +3376,10 @@ html[data-theme-override="high-contrast"] .nav {
   font-size: 12px;
   font-weight: 700;
   border-radius: 50%;
-  transition: all 0.2s;
+  transition:
+    color 0.2s,
+    background 0.2s,
+    box-shadow 0.2s;
 }
 
 .wizard-step-circle.inactive {
@@ -3432,7 +3482,10 @@ html[data-theme-override="high-contrast"] .nav {
   font-weight: 500;
   color: var(--text-2);
   border-radius: var(--r-full);
-  transition: all 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
 }
 
 .wizard-toggle-btn.active {
@@ -4237,26 +4290,37 @@ html[data-theme-override="high-contrast"] .nav {
   opacity: 0.6;
 }
 
+/* Shimmer = a static base tint plus a highlight band that sweeps via
+   transform (compositor-only). The old version slid background-position,
+   which repaints the bar on every frame for as long as the skeleton is
+   on screen. Base 6% + 9% band over it ≈ the old 14% gradient peak. */
 @keyframes cfgutil-skeleton-shimmer {
   0% {
-    background-position: -160px 0;
+    transform: translateX(-100%);
   }
   100% {
-    background-position: 160px 0;
+    transform: translateX(100%);
   }
 }
 
 .cfgutil-device-skeleton {
+  position: relative;
   display: block;
   height: 10px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  border-radius: 4px;
+}
+.cfgutil-device-skeleton::after {
+  position: absolute;
+  inset: 0;
+  content: "";
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--text) 6%, transparent) 0%,
-    color-mix(in srgb, var(--text) 14%, transparent) 50%,
-    color-mix(in srgb, var(--text) 6%, transparent) 100%
+    transparent 0%,
+    color-mix(in srgb, var(--text) 9%, transparent) 50%,
+    transparent 100%
   );
-  background-size: 160px 100%;
-  border-radius: 4px;
   animation: cfgutil-skeleton-shimmer 1.1s ease-in-out infinite;
 }
 .cfgutil-device-skeleton--name {
@@ -8251,6 +8315,25 @@ body.review-rec-print-active .review-rec-print a {
   }
 }
 
+/* Exit mirror of toastIn — applied by the shared <Toast> wrapper (and
+   DeviceConnectedToast's dismiss) for the final 200ms before unmount,
+   so dismissal is symmetric with the entrance instead of a hard blink.
+   Keep the duration in sync with TOAST_OUT_MS in Toast.tsx. */
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+}
+.toast.toast-leaving,
+.device-connect-toast.device-connect-toast-leaving {
+  animation: toastOut 0.2s ease both;
+}
+
 /* ─────────────────────────────────────────────────────
    Responsive
 ───────────────────────────────────────────────────── */
@@ -8616,7 +8699,7 @@ body.review-rec-print-active .review-rec-print a {
   height: 100%;
   padding-left: 10px;
   border-radius: var(--r-full);
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.6s var(--ease-out-glide);
 }
 
 .bar-count {
@@ -9361,7 +9444,9 @@ body.review-rec-print-active .review-rec-print a {
   color: var(--text-2);
   cursor: pointer;
   border-radius: var(--r-md);
-  transition: all 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .notif-bell-btn:hover {
@@ -9890,7 +9975,9 @@ body.review-rec-print-active .review-rec-print a {
   background: transparent;
   border: 2px solid var(--border);
   border-radius: var(--r-lg);
-  transition: all 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .schedule-option:hover {
@@ -18582,6 +18669,8 @@ button.import-history-stat.is-active {
   background: var(--surface-1, transparent);
   border: 1px solid var(--border);
   border-radius: 999px;
+  /* Fence for the dot's z-index:-1 halo pseudo — see .change-dot-group. */
+  isolation: isolate;
   transition:
     background 0.15s ease,
     color 0.15s ease,
@@ -18599,42 +18688,38 @@ button.import-history-stat.is-active {
 }
 
 .activity-log-live-dot {
+  position: relative;
   width: 8px;
   height: 8px;
   background: #22c55e;
   border-radius: 50%;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45);
-  animation: activity-live-pulse 2s infinite;
+}
+/* Compositor-only halo — shares halo-breathe / halo-burst with
+   .change-dot. 8px dot + 5px spread → scale (8 + 10) / 8 = 2.25;
+   the strong burst's old 10px spread → (8 + 20) / 8 = 3.5. */
+.activity-log-live-dot::after {
+  --halo-scale: 2.25;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background: rgba(34, 197, 94, 0.45);
+  border-radius: 50%;
+  animation: halo-breathe 2s infinite;
 }
 .activity-log-live-toggle.is-paused .activity-log-live-dot {
   background: var(--text-3, #9ca3af);
-  box-shadow: none;
-  animation: none;
+}
+.activity-log-live-toggle.is-paused .activity-log-live-dot::after {
+  display: none;
 }
 .activity-log-live-toggle.just-pulsed {
   background: rgba(34, 197, 94, 0.08);
   border-color: rgba(34, 197, 94, 0.55);
 }
-.activity-log-live-toggle.just-pulsed .activity-log-live-dot {
-  animation: activity-live-pulse-strong 1.2s ease-out 1;
-}
-
-@keyframes activity-live-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45);
-  }
-  50% {
-    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
-  }
-}
-@keyframes activity-live-pulse-strong {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.75);
-  }
-  100% {
-    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-  }
+.activity-log-live-toggle.just-pulsed .activity-log-live-dot::after {
+  background: rgba(34, 197, 94, 0.75);
+  animation: halo-burst 1.2s ease-out 1;
 }
 
 .activity-log-empty {
@@ -19029,7 +19114,7 @@ button.import-history-stat.is-active {
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 0 0 0.5px rgba(0, 0, 0, 0.08);
   transform: translateY(-50%) translateX(0);
-  transition: transform 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 180ms var(--ease-standard);
 }
 .switch-toggle.is-on .switch-toggle-thumb {
   transform: translateY(-50%) translateX(18px);
@@ -21877,7 +21962,22 @@ button.import-history-stat.is-active {
   background: var(--orange, #ff9500);
   border: 2px solid var(--bg);
   border-radius: 50%;
-  animation: pulse 1.5s infinite;
+  animation: dev-menu-pulse 1.5s infinite;
+}
+
+/* Dev-only box-shadow pulse. The user-facing dots (.change-dot,
+   .activity-log-live-dot, .diagnostics-status-dot) moved to the
+   compositor-friendly halo pseudo-element; these two dev-menu
+   surfaces are transient and devopts-gated, so they keep the simple
+   box-shadow loop rather than re-plumb the popover's stacking. */
+@keyframes dev-menu-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 159, 10, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(255, 159, 10, 0);
+  }
 }
 
 /* Dropdown popover. Anchors UP from the trigger (rather than down,
@@ -22369,7 +22469,7 @@ button.import-history-stat.is-active {
   color: #fff;
   background: var(--red, #ff453a);
   border-color: var(--red, #ff453a);
-  animation: pulse 1.4s infinite;
+  animation: dev-menu-pulse 1.4s infinite;
 }
 
 .dev-menu-action-toast {
@@ -23031,7 +23131,7 @@ button.import-history-stat.is-active {
   border: 2px solid #a855f7;
   border-radius: 50%;
   opacity: 0;
-  animation: flag-highlight-ping 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) infinite;
+  animation: flag-highlight-ping 1.6s var(--ease-out-soft) infinite;
 }
 /* Stagger the three rings so they fan outward in sequence. After
    the third ring fires the entire FlagHighlightHandler will tear
@@ -23082,8 +23182,7 @@ button.import-history-stat.is-active {
      --dx, --dy = final translation (px, signed)
      --rot      = final rotation (deg) */
   transform: translate(-50%, -50%);
-  animation: flag-highlight-confetti 0.85s cubic-bezier(0.2, 0.7, 0.2, 1)
-    forwards;
+  animation: flag-highlight-confetti 0.85s var(--ease-out-soft) forwards;
 }
 
 @keyframes flag-highlight-confetti {
@@ -25929,6 +26028,13 @@ html[data-a11y-shapes="on"] .change-dot {
   filter: drop-shadow(0 0 0 transparent);
 }
 
+/* The halo pseudo would be clipped into the triangle / star polygon and
+   read as an in-shape tint rather than a glow — hide it so the shape
+   stays crisp (the old box-shadow glow was clipped away here too). */
+html[data-a11y-shapes="on"] .change-dot::after {
+  display: none;
+}
+
 html[data-a11y-shapes="on"] .change-dot-privacy {
   /* Downward-pointing triangle — the "caution / heads-up" glyph for pending
      privacy changes. */
@@ -27773,7 +27879,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     background 0.18s ease,
     border-color 0.18s ease,
     box-shadow 0.18s ease,
-    transform 0.18s cubic-bezier(0.2, 0.9, 0.2, 1);
+    transform 0.18s var(--ease-out-snappy);
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option::before,
@@ -27862,7 +27968,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     0 9px 15px rgba(0, 0, 0, 0.18);
   transition:
     box-shadow 0.18s ease,
-    transform 0.18s cubic-bezier(0.2, 0.9, 0.2, 1);
+    transform 0.18s var(--ease-out-snappy);
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option:hover .welcome-card-icon {
@@ -27890,7 +27996,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent),
     color-mix(in srgb, var(--blue, #0a84ff) 26%, var(--surface));
-  animation: focus-purpose-press 0.28s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: focus-purpose-press 0.28s var(--ease-out-snappy);
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-title {
@@ -29373,10 +29479,10 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   /* Smooth motion when the spotlight moves between steps. Position
      + size animations together create the "spotlight slides" feel. */
   transition:
-    top 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    left 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    width 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
-    height 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    top 220ms var(--ease-out-soft),
+    left 220ms var(--ease-out-soft),
+    width 220ms var(--ease-out-soft),
+    height 220ms var(--ease-out-soft);
 }
 
 /* Tooltip card. Fixed-position so it tracks the spotlight even when
@@ -29405,7 +29511,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   /* Pop animation when the tooltip first paints or moves between
      steps. The CSS transition handles position; the keyframe handles
      the entrance feel. */
-  animation: coachmark-tooltip-pop 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: coachmark-tooltip-pop 220ms var(--ease-out-soft);
 }
 
 .coachmark-tooltip:focus-visible {
@@ -30190,6 +30296,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   display: flex;
   gap: 10px;
   align-items: center;
+  /* Fence for the dot's z-index:-1 halo pseudo — see .change-dot-group. */
+  isolation: isolate;
 }
 .diagnostics-status-dot {
   width: 10px;
@@ -30205,21 +30313,23 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     color-mix(in srgb, var(--warning, #d97706) 18%, transparent);
 }
 .diagnostics-status--danger .diagnostics-status-dot {
+  position: relative;
   background: var(--danger, #dc2626);
   box-shadow: 0 0 0 4px
     color-mix(in srgb, var(--danger, #dc2626) 18%, transparent);
-  animation: diagnostics-status-pulse 1.6s ease-in-out infinite;
 }
-@keyframes diagnostics-status-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 4px
-      color-mix(in srgb, var(--danger, #dc2626) 18%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 0 7px
-      color-mix(in srgb, var(--danger, #dc2626) 10%, transparent);
-  }
+/* The static 4px ring above stays as a box-shadow (painted once);
+   only the breathing glow loops, on the compositor. 10px dot: the
+   old 7px peak spread → scale (10 + 14) / 10 = 2.4. */
+.diagnostics-status--danger .diagnostics-status-dot::after {
+  --halo-scale: 2.4;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background: color-mix(in srgb, var(--danger, #dc2626) 12%, transparent);
+  border-radius: 50%;
+  animation: halo-breathe 1.6s ease-in-out infinite;
 }
 .diagnostics-status-title {
   margin: 0;

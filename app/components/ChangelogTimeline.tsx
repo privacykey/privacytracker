@@ -13,6 +13,7 @@ import {
   formatDate as formatDateWithMode,
 } from "../../lib/date-format";
 import { useDateFormat } from "../../lib/date-format-hook";
+import { scrollPulse } from "../../lib/scroll-pulse";
 import AppChangeTimeline from "./charts/AppChangeTimeline";
 
 // Local aliases so the existing rendering code that references SnapshotRow
@@ -865,18 +866,10 @@ function TimelineSnapshotItem({
       return;
     }
     const el = document.getElementById(`snapshot-${snapshot.id}`);
-    setPulsing(false);
-    const raf = requestAnimationFrame(() => {
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      setPulsing(true);
-    });
-    const timer = window.setTimeout(() => setPulsing(false), 1900);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(timer);
-    };
+    if (!el) {
+      return;
+    }
+    return scrollPulse(el, { onPulse: setPulsing, block: "center" });
   }, [isTarget, pulseNonce, snapshot.id]);
 
   return (

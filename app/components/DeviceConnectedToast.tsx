@@ -16,8 +16,11 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type ConnectedDevice, isDesktop } from "../../lib/desktop";
+
+/* Matches the `toastOut` animation duration in globals.css. */
+const TOAST_OUT_MS = 200;
 
 type ToastT = (
   key: string,
@@ -81,6 +84,19 @@ export default function DeviceConnectedToast() {
   const [pending, setPending] = useState<ConnectedDevice | null>(null);
   const [dismissedEcids, setDismissedEcids] = useState<Set<string>>(new Set());
   const [gateOpen, setGateOpen] = useState<boolean | null>(null);
+  // Dismissal plays the toastOut animation for TOAST_OUT_MS before the
+  // toast actually unmounts; `leaving` drives the CSS class, the ref
+  // holds the timer so unmount can cancel it.
+  const [leaving, setLeaving] = useState(false);
+  const leaveTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (leaveTimerRef.current !== null) {
+        window.clearTimeout(leaveTimerRef.current);
+      }
+    },
+    []
+  );
 
   // Read the cfgutil_imported_at gate once on mount. We only subscribe to
   // the USB attach event when the gate is open — users who have never
@@ -176,16 +192,22 @@ export default function DeviceConnectedToast() {
   }, [gateOpen]);
 
   const dismiss = useCallback(() => {
-    setDismissedEcids((prev) => {
-      if (!pending) {
-        return prev;
-      }
-      const next = new Set(prev);
-      next.add(pending.ecid);
-      return next;
-    });
-    setPending(null);
-  }, [pending]);
+    if (!pending || leaving) {
+      return;
+    }
+    const ecid = pending.ecid;
+    setLeaving(true);
+    leaveTimerRef.current = window.setTimeout(() => {
+      leaveTimerRef.current = null;
+      setDismissedEcids((prev) => {
+        const next = new Set(prev);
+        next.add(ecid);
+        return next;
+      });
+      setPending(null);
+      setLeaving(false);
+    }, TOAST_OUT_MS);
+  }, [pending, leaving]);
 
   // Hidden in the web build so server-side renders match.
   if (!(isDesktop() && pending)) {
@@ -208,7 +230,7 @@ export default function DeviceConnectedToast() {
     <div
       aria-label={tToast("aria_connected", { name: displayName })}
       aria-live="polite"
-      className="device-connect-toast"
+      className={`device-connect-toast${leaving ? " device-connect-toast-leaving" : ""}`}
       role="dialog"
     >
       <div aria-hidden="true" className="device-connect-toast-icon">
