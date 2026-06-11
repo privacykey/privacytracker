@@ -534,3 +534,111 @@ browserFlow(
     await expect(page.locator(".search-result-item")).toHaveCount(0);
   }
 );
+
+// ---------------------------------------------------------------------------
+// Spec: retrying unmatched names — step-2 re-search and the triage row
+// ---------------------------------------------------------------------------
+//
+// Two retry gestures for a name whose first search found nothing:
+//
+//   1. Go back to step 2 and click "Search App Store" again — names whose
+//      block has zero candidates (and that the user hasn't skipped or
+//      saved as manual) are replayed, not treated as already-final.
+//   2. Click "↻ Retry search" directly on the "Not in the App Store"
+//      triage row — replays the same query (force) with a spinner, no
+//      text edit required.
+//
+// Both tests mock /api/search to miss on the first call and hit on the
+// second, simulating a transient iTunes miss that later resolves.
+
+/**
+ * Install a /api/search mock that returns zero candidates for the first
+ * `missCount` calls, then serves FIXTURES. Returns a counter object so
+ * specs can assert how many search calls were made.
+ */
+async function mockSearchMissThenHit(page: Page, missCount: number) {
+  const counter = { calls: 0 };
+  await page.route("**/api/search", async (route) => {
+    counter.calls++;
+    const body = route.request().postDataJSON() as {
+      rows?: Array<{ name?: string }>;
+    };
+    const rows = body.rows ?? [];
+    const results = rows.map((row) => {
+      const query = (row.name ?? "").trim();
+      const candidates =
+        counter.calls <= missCount
+          ? []
+          : (FIXTURES[query] ?? []).map((c) => ({ ...c, searchQuery: query }));
+      return { query, candidates };
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ results }),
+    });
+  });
+  return counter;
+}
+
+browserFlow(
+  "going back to step 2 and searching again retries unmatched names",
+  async ({ page }) => {
+    const counter = await mockSearchMissThenHit(page, 1);
+    await openWizardToTextEntry(page);
+
+    await page.getByTestId("onboard-app-names").fill("Clock");
+    await page.getByTestId("imported-apps-add").click();
+    await page.getByTestId("onboard-search").click();
+
+    // First pass: no candidates → Clock lands in the "Not in the App
+    // Store" triage section with its Edit & retry affordance.
+    await expect(
+      page.getByRole("button", { name: "Edit & retry" })
+    ).toBeVisible();
+    await expect(page.getByTestId("onboard-confirm-import")).toBeDisabled();
+
+    // Back to step 2, search again. The unmatched name must be replayed
+    // (previously the merge-mode filter treated any existing block as
+    // final and silently skipped straight to step 3).
+    await page.getByRole("button", { name: "← Back" }).click();
+    await expect(page.getByTestId("onboard-app-names")).toBeVisible();
+    await page.getByTestId("onboard-search").click();
+
+    // Second pass hits: Clock resolves to a confirmed match.
+    const block = page.locator(".search-result-item").filter({
+      hasText: "Clock",
+    });
+    await expect(block).toHaveCount(1);
+    await expect(block.locator(".search-result-confirmed")).toHaveCount(1);
+    await expect(page.getByTestId("onboard-confirm-import")).toBeEnabled();
+    expect(counter.calls).toBeGreaterThanOrEqual(2);
+  }
+);
+
+browserFlow(
+  "triage-row Retry search replays the same query without a text edit",
+  async ({ page }) => {
+    await mockSearchMissThenHit(page, 1);
+    await openWizardToTextEntry(page);
+
+    await page.getByTestId("onboard-app-names").fill("Music");
+    await page.getByTestId("imported-apps-add").click();
+    await page.getByTestId("onboard-search").click();
+
+    // First pass misses → triage row with the new plain-Retry button.
+    const retryBtn = page.getByRole("button", { name: /retry search/i });
+    await expect(retryBtn).toBeVisible();
+
+    // Click Retry — same query, no edit. The row resolves into a
+    // confirmed match block and leaves the triage section.
+    await retryBtn.click();
+    const block = page.locator(".search-result-item").filter({
+      hasText: "Music",
+    });
+    await expect(block).toHaveCount(1);
+    await expect(block.locator(".search-result-confirmed")).toHaveCount(1);
+    await expect(retryBtn).toHaveCount(0);
+    await expect(page.getByTestId("onboard-confirm-import")).toBeEnabled();
+  }
+);

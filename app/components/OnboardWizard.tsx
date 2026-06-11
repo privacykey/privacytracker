@@ -378,6 +378,7 @@ export default function OnboardWizard({
   // i18n migration. New keys here live under `onboard.*`.
   const tWiz = useTranslations("onboard.wizard_titles");
   const tMethod = useTranslations("onboard.methods");
+  const tSearchBlock = useTranslations("onboard.search_block");
   const tStepLabels = useTranslations("onboard.step_labels");
   const tStepIndicator = useTranslations("onboard.step_indicator");
   const tOnboard = useTranslations("onboard");
@@ -878,6 +879,13 @@ export default function OnboardWizard({
    * "no results" and the row silently kept its stale state.
    */
   const [blockSearchError, setBlockSearchError] = useState("");
+  /**
+   * Query whose single-block re-search (`handleBlockResearch`) is in
+   * flight. Separate from `editingBlock` — which doubles as "this row's
+   * edit form is open" — so the plain Retry buttons can show a spinner
+   * without flipping their row into the editor UI.
+   */
+  const [blockSearching, setBlockSearching] = useState<string | null>(null);
   /**
    * Live progress for the chunked name-search loop. `null` whenever a
    * search isn't in flight; populated batch-by-batch so the user sees
@@ -3243,7 +3251,29 @@ export default function OnboardWizard({
     // a block, plus prunes results whose names the user removed from
     // step 2 between searches.
     const existingQueries = new Set(searchResults.map((r) => r.query));
-    const newNames = allNames.filter((n) => !existingQueries.has(n));
+    const freshNames = allNames.filter((n) => !existingQueries.has(n));
+
+    // Also replay names whose previous search came back empty-handed —
+    // zero candidates and not yet resolved another way (skipped, saved as
+    // a manual app, or parked in the 429 replay queue). Coming back to
+    // step 2 and clicking "Search App Store" again is the natural retry
+    // gesture after a transient miss (iTunes hiccup, fixed typo upstream,
+    // an unblocked security gate), and the merge below replaces those
+    // blocks in place — a retry that still finds nothing is a UI no-op.
+    const retryNames = allNames.filter((n) => {
+      if (!existingQueries.has(n)) {
+        return false;
+      }
+      const existing = searchResults.find((r) => r.query === n);
+      return (
+        existing !== undefined &&
+        existing.candidates.length === 0 &&
+        existing.status !== "skipped" &&
+        !skippedQueries.has(n) &&
+        !manuallyChosenQueries.has(n)
+      );
+    });
+    const newNames = [...freshNames, ...retryNames];
 
     // Drop orphan results for names that are no longer in the list
     // (the user removed them in step 2). Computed synchronously so
@@ -3524,7 +3554,7 @@ export default function OnboardWizard({
       return;
     }
 
-    setEditingBlock(originalQuery);
+    setBlockSearching(originalQuery);
     setBlockSearchError("");
     try {
       // Resolution order for the seller hint the server uses to re-rank:
@@ -3669,6 +3699,7 @@ export default function OnboardWizard({
       console.error("[wizard] handleBlockResearch failed:", error);
     } finally {
       setEditingBlock(null);
+      setBlockSearching(null);
     }
   };
 
@@ -7443,20 +7474,26 @@ export default function OnboardWizard({
                                       {isEditing ? (
                                         <UnavailableRowEditor
                                           busyEditing={
-                                            editingBlock === result.query &&
-                                            searching
+                                            blockSearching === result.query
                                           }
                                           initialQuery={result.query}
                                           onCancel={() => setEditingBlock(null)}
                                           onRetry={(nextQuery) => {
-                                            // handleBlockResearch reads
-                                            // `editingBlock` to flag the
-                                            // row as in-flight; it also
-                                            // clears `editingBlock` itself
-                                            // on completion / no-op.
+                                            // force=true so an unchanged
+                                            // name still replays the
+                                            // search — without it the
+                                            // "nothing changed" guard
+                                            // silently no-ops and the
+                                            // button feels broken.
+                                            // handleBlockResearch flags
+                                            // the row in-flight via
+                                            // `blockSearching` and closes
+                                            // the editor on completion.
                                             void handleBlockResearch(
                                               result.query,
-                                              nextQuery
+                                              nextQuery,
+                                              undefined,
+                                              true
                                             );
                                           }}
                                         />
@@ -7472,6 +7509,31 @@ export default function OnboardWizard({
                                           </strong>
                                           <button
                                             className="link-button-inline"
+                                            disabled={blockSearching !== null}
+                                            onClick={() =>
+                                              void handleBlockResearch(
+                                                result.query,
+                                                result.query,
+                                                undefined,
+                                                true
+                                              )
+                                            }
+                                            style={{ fontSize: 13 }}
+                                            title={tSearchBlock("retry_title")}
+                                            type="button"
+                                          >
+                                            {blockSearching === result.query ? (
+                                              <>
+                                                <span className="spinner-sm" />{" "}
+                                                {tSearchBlock("retry_busy")}
+                                              </>
+                                            ) : (
+                                              tSearchBlock("retry_search")
+                                            )}
+                                          </button>
+                                          <button
+                                            className="link-button-inline"
+                                            disabled={blockSearching !== null}
                                             onClick={() =>
                                               setEditingBlock(result.query)
                                             }
@@ -7695,7 +7757,7 @@ export default function OnboardWizard({
                                   result.query.toLowerCase()
                                 ) ?? ""
                               }
-                              editing={editingBlock === result.query}
+                              editing={blockSearching === result.query}
                               key={result.query}
                               onChoose={(candidate) => {
                                 if (candidate === null) {
@@ -8686,8 +8748,10 @@ function UnavailableRowEditor({
 }) {
   const [draft, setDraft] = useState(initialQuery);
   const trimmed = draft.trim();
-  const canSubmit =
-    !busyEditing && trimmed.length > 0 && trimmed !== initialQuery;
+  // Unchanged text is still submittable — the parent passes force=true,
+  // so "Search again" replays the same query (useful after a transient
+  // iTunes miss or a since-unblocked security gate).
+  const canSubmit = !busyEditing && trimmed.length > 0;
   return (
     <div
       style={{
