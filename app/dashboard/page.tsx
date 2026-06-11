@@ -42,9 +42,12 @@ import TaskList from "../components/TaskList";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Home — privacytracker",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("page_metadata");
+  return {
+    title: t("home_title"),
+  };
+}
 
 interface DashboardPageProps {
   searchParams?: Promise<{ sample?: string; edit?: string }>;

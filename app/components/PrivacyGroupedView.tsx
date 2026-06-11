@@ -339,13 +339,13 @@ function CategoryCard({
             )}
           </span>
           <span className="pmap-card-subtitle">
-            {category.apps.length} app{category.apps.length === 1 ? "" : "s"}
+            {tMap("card_app_count", { count: category.apps.length })}
             {isSensitive && (
               <span
                 className="pmap-card-sensitive-chip"
                 title={tMap("sensitive_category_title")}
               >
-                sensitive
+                {tMap("sensitive_chip")}
               </span>
             )}
           </span>
@@ -376,7 +376,10 @@ function CategoryCard({
            an aria-label that makes its purpose unambiguous and keyboard
            users can reach it via Tab. */
         <button
-          aria-label={`Show all ${category.apps.length} app${category.apps.length === 1 ? "" : "s"} in ${label}`}
+          aria-label={tMap("preview_show_all_aria", {
+            count: category.apps.length,
+            label,
+          })}
           className="pmap-card-preview"
           onClick={() => setExpanded(true)}
           type="button"

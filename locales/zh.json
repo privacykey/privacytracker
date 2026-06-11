@@ -650,7 +650,12 @@
         "cancel": "取消",
         "cancel_title": "在当前批次完成后停止（已匹配的结果会保留）",
         "hint": "Apple 对大批量进行限速 —— 较大导入可能需要一分钟。未匹配项会进入下一步供你重试。"
-      }
+      },
+      "import_info_truncated": "已导入文件中前 {count} 个应用名称（文件共 {total} 行）。导入器每批最多 {cap} 个名称 — 请对剩余行重新运行引导以完成审计。",
+      "import_info_deduped": "{count, plural, one {已导入 # 个应用名称} other {已导入 # 个应用名称}} — {dropped, plural, one {有 {dropped} 行} other {有 {dropped} 行}}看起来是重复项或非名称字段，已被跳过。",
+      "ocr_reading": "正在读取第 {current} 张截图（共 {total} 张）…",
+      "ocr_light_result": "{count, plural, one {已提取 {count} 个应用名称} other {已提取 {count} 个应用名称}}，但数量似乎偏少。藏在文件夹里的应用不会被识别 — 可前往「设置 → 通用 → iPhone 储存空间」获取完整列表。",
+      "ocr_extracted": "{count, plural, one {已提取 {count} 个应用名称} other {已提取 {count} 个应用名称}}。请在搜索前先检查下方列表。"
     },
     "step4": {
       "subtitle_running": "正在从 App Store 获取隐私标签并保存第一份快照。下一步将查看每个应用的隐私政策。",
@@ -701,6 +706,14 @@
       "unmatched_lead": "{count, plural, one {有 # 个应用没有匹配到 App Store。} other {有 # 个应用没有匹配到 App Store。}}",
       "unmatched_body": " 你可以在下方逐个重试 / 编辑，也可以一键全部跳过，只导入匹配成功的应用。",
       "unmatched_skip_all": "全部跳过",
+      "bundle_title": "通过 Bundle ID 匹配",
+      "bundle_description": "基于从设备导入的标识符得到的最高置信度匹配。取消勾选某行即可跳过 — 该行仍会保留在本分组中。",
+      "name_title": "通过名称匹配",
+      "name_description": "来自 App Store 搜索的较佳匹配。请检查名称常见或开发者异常的行；取消勾选后该行仍保留在此处。",
+      "review_title": "需要检查",
+      "review_description": "存在歧义的行，需要手动选择后才能导入。",
+      "skipped_title": "已跳过",
+      "skipped_description": "你明确跳过的行。它们保留在这里，方便你在继续之前改变主意。",
       "unavailable_title": "不在 App Store 中",
       "unavailable_description": "这些应用未能通过 iTunes 查询或名称搜索匹配。可逐行选择来源并保存为手动应用，或逐个跳过。",
       "unavailable_saved": "已将 {count} 个保存为手动应用。前往「设置 → 手动应用」补充隐私政策链接或备注。",
@@ -712,8 +725,36 @@
       "triage_web_clip": "Safari 网页应用",
       "triage_own_build": "自行构建（Xcode）",
       "triage_skip": "跳过 — 不跟踪",
+      "webclip_title": "🧭 Safari 快捷方式",
+      "webclip_title_suffix": "（非 App Store 应用）",
+      "webclip_lead": "有 {count} 行看起来是从 Safari 添加的主屏幕快捷方式。保存后，每一项都会进入「手动应用」，来源为「Safari 网页应用」。",
+      "webclip_saved": "已将 {count} 个保存为手动网页应用。前往「设置 → 手动应用」补充隐私政策链接和备注。",
+      "webclip_save_cta": "保存 {count} 个为手动网页应用",
+      "webclip_saving": "正在保存…",
+      "webclip_save_failed": "保存网页应用失败",
+      "webclip_count_chip": "{count} 个网页快捷方式",
       "back": "← 返回",
-      "import_count": "{count, plural, one {导入 # 个应用 →} other {导入 # 个应用 →}}"
+      "import_count": "{count, plural, one {导入 # 个应用 →} other {导入 # 个应用 →}}",
+      "ready_lead": "{count, plural, one {✓ # 个应用已准备好导入} other {✓ # 个应用已准备好导入}}",
+      "ready_part_review": "{count, plural, one {# 行有多个候选项，需要手动选择} other {# 行有多个候选项，需要手动选择}}",
+      "ready_part_unmatched": "{count, plural, one {# 行没有任何匹配} other {# 行没有任何匹配}}",
+      "ready_all_clear": "点击下方立即导入这些应用，或滚动逐行检查。",
+      "ready_more": "可先跳过下方的导入、稍后再处理，或向下滚动查看：{parts}。",
+      "ready_waiting": "等待 {count} 个…",
+      "ready_import_now": "立即导入 {count} 个 →",
+      "waiting_matches": "{count, plural, one {正在等待 # 个匹配…} other {正在等待 # 个匹配…}}",
+      "rematch_region_aria": "更改 App Store 地区并重新匹配",
+      "rematching": "正在重新匹配…",
+      "rematch_button": "重新匹配此地区",
+      "rematch_title": "正在 {label}（{code}）地区进行匹配",
+      "rematch_sub": "如果手机使用的是其他 App Store 地区，可在此处更换商店。手动选择和已跳过的行都会保留。",
+      "summary_chip_imported": "已导入 {count} 个",
+      "summary_chip_matched": "已匹配 {count} 个",
+      "summary_chip_bundle": "Bundle ID 精确匹配 {count} 个",
+      "summary_chip_name": "名称/手动匹配 {count} 个",
+      "summary_chip_pending": "待处理 {count} 个",
+      "summary_chip_skipped": "已跳过 {count} 个",
+      "summary_chip_unavailable": "不可用 {count} 个"
     },
     "profile_setup": {
       "back_to_goals": "返回你的用途",
@@ -772,7 +813,10 @@
       "verb_done": "完成",
       "verb_failed": "失败",
       "verb_skipped": "已跳过",
-      "elapsed_suffix": "已耗时 {time}"
+      "elapsed_suffix": "已耗时 {time}",
+      "task_title": "正在重新生成隐私政策",
+      "task_subtitle": "{count, plural, one {# 个应用 · 抓取 + 总结} other {# 个应用 · 抓取 + 总结}}",
+      "task_steps_label": "{done} / {total} 步"
     },
     "search_block": {
       "edit_app_name": "应用名称",
@@ -804,7 +848,15 @@
       "candidate_tracking_chip": "● 跟踪中",
       "show_less": "收起",
       "see_other_chosen": "{count, plural, one {查看另外 # 个匹配项} other {查看另外 # 个匹配项}}",
-      "see_other_unchosen": "{count, plural, one {+ # 个其他匹配项} other {+ # 个其他匹配项}}"
+      "see_other_unchosen": "{count, plural, one {+ # 个其他匹配项} other {+ # 个其他匹配项}}",
+      "method_bundle": "Bundle ID 精确匹配",
+      "method_manual": "手动选择",
+      "method_name": "名称匹配",
+      "pending_pill": "等待中",
+      "pending_copy": "Apple 暂停了这次匹配。冷却结束后我们会补全 App Store 详情；导入会等待，以免这个应用被悄悄跳过。",
+      "pending_bundle_suffix": " Bundle ID：{id}。",
+      "no_record_bundle": "App Store 中没有 Bundle ID 为 {id} 的记录。该应用可能在此地区不可用、已下架，或并非通过 App Store 安装。",
+      "no_record_bundle_storefront": "在 {storefront} 的 App Store 中没有 Bundle ID 为 {id} 的记录。该应用可能在此地区不可用、已下架，或并非通过 App Store 安装。"
     },
     "already_tracked": {
       "summary": "{count, plural, one {{device} 上已跟踪 # 款应用 — 已匹配。} other {{device} 上已跟踪 # 款应用 — 已匹配。}}",
@@ -900,7 +952,14 @@
       "error_unknown_version": "这个 cfgutil 版本不支持旧的版本检查。请点击「重新检查」，我们会改用设备列表检查。",
       "error_trust": "设备尚未准备好。请解锁设备，在弹窗中点击「信任」，然后刷新设备。",
       "error_timeout": "cfgutil 响应超时。请拔下并重新连接设备，确认设备已解锁后再试。",
-      "error_generic": "cfgutil 返回：{detail}"
+      "error_generic": "cfgutil 返回：{detail}",
+      "diagnostic_summary": "显示诊断输出",
+      "diagnostic_hint_pre": "这是 cfgutil 产生的原始输出。结果为空的常见原因：设备已锁定（cfgutil 在没有会话时无法枚举应用）、手机上有一条未处理的「",
+      "diagnostic_hint_trust": "要信任此电脑吗？",
+      "diagnostic_hint_post": "」提示，或限制设置过滤了已安装的应用。如需协助诊断，可复制并分享此区块。",
+      "progress_title": "正在从你的 iPhone 读取应用…",
+      "progress_body": "cfgutil 正在通过 USB 枚举每一个已安装的应用。如果手机上装有 300 多个应用，这一步可能需要长达一分钟。期间光标可能会短暂显示成彩球 — 这是正常现象，因为该系统调用是同步执行的。",
+      "progress_tip": "提示：运行期间请保持设备解锁。"
     },
     "modals": {
       "restore_backup": {
@@ -957,7 +1016,8 @@
       "continue_with": "使用「{method}」继续 →",
       "restore_lead": "迁移或重装？",
       "restore_busy": "正在读取备份…",
-      "restore_link": "从备份文件恢复"
+      "restore_link": "从备份文件恢复",
+      "country_inferred": "已根据你的设备地区使用 {label}。如果这台手机使用其他 App Store，可在此处更改。"
     },
     "methods": {
       "screenshots": {
@@ -984,6 +1044,10 @@
         "blurb": "粘贴或输入应用名称，我们会自动从 App Store 匹配。与 iOS 实况文本配合使用效果极佳。",
         "hint": "在任何设备上都能用 — 在 iPhone 上可直接用「实况文本」从截图中复制文字。"
       }
+    },
+    "preview_banner": {
+      "lead": "预览模式",
+      "body": " — 你正在以新用户身份预览引导流程。最后的「导入并同步」步骤已被禁用，因此不会保存任何内容。"
     }
   },
   "language_suggestion": {
@@ -1104,7 +1168,16 @@
     "focus_edit_title": "调整关注重点 — privacytracker",
     "focus_edit_description": "更改你正在为谁审查应用，以及你希望从应用中获得什么。",
     "layout_edit_title": "自定义仪表板 — privacytracker",
-    "layout_edit_description": "选择预设或微调主页仪表板上各卡片的顺序和可见性。"
+    "layout_edit_description": "选择预设或微调主页仪表板上各卡片的顺序和可见性。",
+    "root_title": "privacytracker — iOS 应用隐私标签",
+    "root_description": "监控并跟踪 iOS 应用的隐私标签，并在标签变化时收到提醒。",
+    "not_found_title": "404 — 页面未找到 · privacytracker",
+    "not_found_description": "你要找的页面不存在。",
+    "diagnostics_title": "诊断 · privacytracker",
+    "diagnostics_description": "Node 边车进程的实时运行指标 — 内存、事件循环延迟、慢查询。",
+    "definitions_title": "隐私标签定义 — privacytracker",
+    "definitions_description": "Apple App Store 隐私标签术语的定义 — 未与你关联的数据、与你关联的数据、用于追踪你的数据 — 以及开发者可能收集的数据类型，并附 Apple 权威来源链接。",
+    "home_title": "主页 — privacytracker"
   },
   "ai_disclosure_page": {
     "metadata_title": "AI 披露 — privacytracker",
@@ -1442,7 +1515,76 @@
         "toast_undone": "已撤销 — {key} 已恢复为 {value}",
         "toast_undone_cleared": "已撤销 — {key} 的覆盖已清除",
         "toast_nothing": "没有可撤销的操作"
-      }
+      },
+      "subtitle_loading": "加载中…",
+      "subtitle_no_overrides": "没有覆盖项 — 每个标志都在使用其计算默认值。",
+      "subtitle_overridden": "{count, plural, one {已覆盖 # 个标志} other {已覆盖 # 个标志}}",
+      "import_success": "{count, plural, one {已导入 # 个覆盖项} other {已导入 # 个覆盖项}}",
+      "import_skipped_suffix": " · {count, plural, one {已跳过 # 个无法识别的行} other {已跳过 # 个无法识别的行}}",
+      "import_failed": "导入失败。",
+      "wired_filter_title": "{total} 个标志中目前有 {wired} 个被组件代码读取；其余为占位标志。",
+      "accordion_flag_count": "{count, plural, one {# 个标志} other {# 个标志}}",
+      "accordion_overridden_suffix": " · 已覆盖 {count} 个",
+      "row_select_aria": "选中 {key} 以高亮显示",
+      "row_unwired_note": "此标志已在注册表中，但目前还没有组件读取它 — 现在切换它不会产生可见效果。接线会在后续的 PR 中加入。",
+      "row_override_aria": "{key} 的覆盖值",
+      "row_clear_aria": "清除 {key} 的覆盖",
+      "row_clear_title": "清除覆盖（恢复为计算默认值）",
+      "surfaces": {
+        "about": "关于",
+        "appgrid": "应用网格",
+        "dashboard": "仪表板",
+        "desktop": "桌面（Tauri）",
+        "detail": "应用详情",
+        "devopts": "开发者选项",
+        "global": "全局",
+        "help": "帮助",
+        "legal": "法律",
+        "nav": "导航",
+        "notifications": "通知",
+        "onboarding": "引导",
+        "page": "次级页面",
+        "settings": "设置",
+        "shortlist": "候选清单",
+        "stats": "统计",
+        "taskcenter": "任务中心"
+      },
+      "dev_menu_trigger": {
+        "title": "开发者菜单触发按钮",
+        "hint": "在每个页面的右下角固定一个 🛠 按钮（紧邻无障碍快捷开关），让你无需离开页面即可查看并覆盖与当前页面相关的标志、运行快捷管理操作（同步、清空应用、重置变更日志、播种测试数据）、切换语言、审查对象和目标。在任意位置按 <kbd>g</kbd> 再按 <kbd>f</kbd> 即可跳回此处。"
+      },
+      "kill_switch": {
+        "title": "功能标志系统已禁用。",
+        "body": "硬默认值已生效。你的覆盖项未被应用。",
+        "re_enable": "重新启用"
+      },
+      "load_error": "无法加载标志：{error}",
+      "retry": "重试",
+      "unwired_explainer": "{total} 个标志中目前有 {wired} 个在切换时会产生可见变化。未接线的标志会被标记为「<em>尚无效果</em>」 — 它们已存在于注册表中，但读取它们的组件会在后续的 PR 中加入。",
+      "row_unwired_badge": "尚无效果",
+      "value_label": {
+        "on": "开启",
+        "off": "关闭",
+        "collapsed": "折叠"
+      },
+      "row_tag_custom": "自定义",
+      "row_tag_default": "默认",
+      "row_tag_would_be": "默认会是 {default}",
+      "row_show_me_where": "查看使用位置 →",
+      "importing": "导入中…",
+      "import_modal": {
+        "copy": "导入 <code>{name}</code> 会用该文件的内容<strong>覆盖现有的每一个标志覆盖项</strong>。条目为 <code>override: null</code> 的标志会恢复为其计算默认值。隔离表以及你的关注重点和审查对象会保留；仅按标志的覆盖项会发生变化。",
+        "confirm": "导入并覆盖",
+        "badge": "破坏性操作",
+        "title": "导入标志状态？",
+        "cancel": "取消"
+      },
+      "import_error_invalid_json": "文件不是有效的 JSON。",
+      "import_error_missing_flags": "文件缺少顶层 `flags` 数组。请使用由「将当前标志状态导出为 JSON」生成的文件。",
+      "import_state": "从 JSON 导入标志状态",
+      "load_error_fallback": "加载标志失败",
+      "empty_search": "没有与「{search}」匹配的标志。",
+      "empty": "没有可显示的标志。"
     }
   },
   "migration_error": {
@@ -1650,7 +1792,10 @@
       "timeline_summary": "{count, plural, one {# 处变化 · 按{bucket}分桶} other {# 处变化 · 按{bucket}分桶}}",
       "timeline_empty_title": "此区间内未记录隐私变化。",
       "timeline_empty_body": "请放宽时间窗口，或重新同步部分应用。"
-    }
+    },
+    "toast_synced": "✓ 已同步 {name}",
+    "toast_sync_failed": "❌ 同步失败",
+    "n_changes": "{count, plural, one {# 处变化} other {# 处变化}}"
   },
   "changelog_timeline": {
     "wayback_capture_fallback": "Wayback 抓取",
@@ -1724,7 +1869,10 @@
     "empty_no_data_post": "，即可在此查看它们的隐私明细。",
     "empty_no_match": "没有匹配结果",
     "sensitive_category_title": "此类别尤为敏感",
-    "preview_hint_tap": "点击查看"
+    "preview_hint_tap": "点击查看",
+    "preview_show_all_aria": "显示「{label}」中的全部 {count} 个应用",
+    "card_app_count": "{count} 个应用",
+    "sensitive_chip": "敏感"
   },
   "shortlist": {
     "page_title": "候选清单",
@@ -1773,7 +1921,15 @@
     "no_section_recognised": "App Store 页面未暴露我们能识别的隐私部分。",
     "section_privacy_labels": "隐私标签",
     "section_privacy_policy": "隐私政策",
-    "section_your_note": "你的备注"
+    "section_your_note": "你的备注",
+    "preview_entry_aria": "预览 {name}",
+    "preview_entry_title": "打开 {name} 的快速隐私预览",
+    "share_comparison_aria": "分享与 {name} 的对比",
+    "share_comparison_title": "生成与 {name} 对比的社交分享图片",
+    "remove_entry_aria": "将 {name} 从候选清单中移除",
+    "preview_of_aria": "{name} 的预览",
+    "fetching_live_data": "正在获取 App Store 实时数据…",
+    "preview_failed_message": "预览失败：{message}"
   },
   "compare": {
     "page_title": "对比应用",
@@ -1886,7 +2042,27 @@
     "a11y_unfilled_unavailable_title": "{name} 暂无可用的无障碍标签",
     "a11y_unfilled_no_features_left_short": "开发者在 App Store 上填写了无障碍清单，但没有声明支持任何功能。左侧的所有行都会显示为缺失。",
     "a11y_unfilled_no_features_right_short": "开发者在 App Store 上填写了无障碍清单，但没有声明支持任何功能。右侧的所有行都会显示为缺失。",
-    "a11y_unfilled_unavailable_short": "Apple 的无障碍营养标签清单仅会出现在至少声明了一项支持功能的应用上。同步该应用（或从 App Store 选择预览）以刷新数据。"
+    "a11y_unfilled_unavailable_short": "Apple 的无障碍营养标签清单仅会出现在至少声明了一项支持功能的应用上。同步该应用（或从 App Store 选择预览）以刷新数据。",
+    "shortlist_view_aria": "查看候选清单（{count, plural, one {# 条记录} other {# 条记录}}）",
+    "profile_pill_no_categories": "无档案类别",
+    "profile_pill_matches": "符合档案",
+    "profile_pill_over_limit": "{count} 项超出限制",
+    "profile_pill_title": "{label}：{body}",
+    "profile_pill_title_scored": "{label}：{body}（共 {total} 项计分）",
+    "app_not_filled_labels": "{name} 还未填写隐私标签",
+    "exceeds_pref_mark_title": "超出你的偏好：{observed}（你允许 {allowed}）",
+    "within_pref_mark_title": "符合你的偏好：{observed}（你允许 {allowed}）",
+    "updating_comparison": "正在更新对比…",
+    "a11y_count_aria": "已声明 {total} 项无障碍功能中的 {declared} 项",
+    "a11y_count_title": "声明支持 {total} 项无障碍功能中的 {declared} 项",
+    "compare_mode_privacy": "隐私",
+    "compare_mode_accessibility": "无障碍",
+    "compare_mode_both": "两者",
+    "shared_count": "两者共有 {count} 项",
+    "only_in_count": "{name} 独有 {count} 项",
+    "profile_pill_label": "{label}：",
+    "slot_a_label": "应用 A",
+    "slot_b_label": "应用 B"
   },
   "live_text_modal": {
     "close_aria": "关闭",
@@ -1997,13 +2173,8 @@
   "manual_apps": {
     "page_title": "手动添加的应用",
     "empty_title": "尚无手动添加的应用",
-    "empty_body": "添加网页快捷方式、TestFlight 测试版、旁加载应用或个人构建版，与 App Store 应用一同跟踪。",
     "form_title_add": "添加手动应用",
     "form_title_edit": "编辑手动应用",
-    "delete_title": "删除此应用？",
-    "delete_body": "我们将移除 {name} 并停止跟踪。你可以稍后重新添加。",
-    "delete_confirm": "删除应用",
-    "delete_cancel": "继续跟踪",
     "eyebrow": "App Store 之外",
     "source_group_aria": "来源类型",
     "source_legend": "来源",
@@ -2029,7 +2200,28 @@
       "delete_failed": "删除失败"
     },
     "flash_saved": "更改已保存。",
-    "flash_added": "已添加「{name}」。"
+    "flash_added": "已添加「{name}」。",
+    "name_label": "名称",
+    "name_placeholder": "例如：News of the World（网页应用）",
+    "policy_url_placeholder": "https://example.com/privacy",
+    "policy_url_hint": "由于没有 App Store 列表，如果开发者提供了隐私政策链接，请粘贴在这里。",
+    "source_link_hint": "可选。TestFlight 邀请、GitHub 仓库、市场列表 — 任何能让审查者查到它的链接。",
+    "notes_label": "备注",
+    "cancel": "取消",
+    "delete": "删除",
+    "intro": "跟踪没有 App Store 列表的安装项 — Safari 网页应用、TestFlight 测试版、个人 Xcode 构建版，以及来自第三方市场的旁加载应用。App Store 隐私标签不适用于它们，所以请记录你所了解的信息（隐私政策链接、开发者、备注），并集中保存在一处。",
+    "add_button": "+ 添加手动应用",
+    "back_to_dashboard": "返回仪表板",
+    "empty_body_rich": "添加 Safari 网页应用、TestFlight 测试版、个人构建版或旁加载安装，与你的 App Store 应用一同跟踪。点按上方的 <strong>+ 添加手动应用</strong> 开始。",
+    "row_updated": "更新于 {date}",
+    "row_view": "查看",
+    "row_edit": "编辑",
+    "row_remove": "移除",
+    "remove_modal_title": "移除 {name}？",
+    "remove_modal_body": "这会删除该手动应用条目，连同其来源 URL、开发者字段以及你附加的所有备注。如果你改变主意，可以稍后重新创建该条目。",
+    "flash_nothing_to_undo": "↶ 没有可撤销的操作",
+    "flash_removed_undo": "已移除「{name}」。按 ⌘Z 撤销。",
+    "flash_restored": "已恢复「{name}」。"
   },
   "dev_menu_panel": {
     "title": "开发者菜单",
@@ -2650,7 +2842,20 @@
           "activity_section": "你的应用库最近的抓取、导入和编辑活动。",
           "risk_tier_legend": "可折叠的风险等级定义参考。"
         }
-      }
+      },
+      "edit_cards_aria": "可编辑的仪表板卡片"
+    },
+    "glance": {
+      "apps_tracked": "跟踪的应用",
+      "apps_tracked_sub": "查看完整应用列表",
+      "categories": "隐私类别",
+      "categories_sub": "打开隐私地图",
+      "high_risk": "高风险",
+      "high_risk_sub_some": "存在跟踪或敏感数据",
+      "high_risk_sub_none": "未检测到跟踪",
+      "changes_week": "本周变化",
+      "changes_week_sub_some": "查看发生的变化",
+      "changes_week_sub_none": "未检测到新变化"
     }
   },
   "app_grid": {
@@ -3049,7 +3254,9 @@
     "search_access_blocked_link": "请在「设置 → 部署」中使用管理员令牌登录，然后重试。",
     "search_rate_limited_retry": "搜索端点当前已被限流。请稍候片刻再重试。",
     "ai_base_url_model_required": "需要填写 Base URL 与模型。",
-    "ai_api_key_required": "此提供方需要 API 密钥。"
+    "ai_api_key_required": "此提供方需要 API 密钥。",
+    "scrape_error_match_cancelled": "匹配已在 Apple 恢复搜索之前被取消。",
+    "search_apple_paused": "Apple 暂停了此次查询。我们会自动恢复。"
   },
   "bundle_import_banner": {
     "fallback_name": "你的朋友",
@@ -3283,7 +3490,8 @@
       "label_with_note": "{phase} — {note}",
       "last_run_with_error": "上次运行：{phase}（错误）",
       "last_run": "上次运行：{phase}",
-      "full_trace": "{count, plural, one {完整轨迹（# 条）} other {完整轨迹（# 条）}}"
+      "full_trace": "{count, plural, one {完整轨迹（# 条）} other {完整轨迹（# 条）}}",
+      "last_run_at": "上次运行：{date}"
     },
     "policy_meta": {
       "fetched_from": "抓取自 {host}",
@@ -3311,7 +3519,17 @@
       "status_unsupported_content_type": "链接的政策不是 HTML 或纯文本文档，无法自动生成摘要。",
       "status_too_short": "抓取到的政策文本过短，难以可靠分析。",
       "status_analysis_error_with_summary": "最近一次 AI 刷新失败，下面的摘要可能已经过时。",
-      "status_analysis_error": "隐私政策已抓取，但未能生成 AI 摘要。"
+      "status_analysis_error": "隐私政策已抓取，但未能生成 AI 摘要。",
+      "word_count": "约 {count} 词",
+      "model": "模型：{model}",
+      "policy_fetched": "政策抓取于 {date}",
+      "summary_updated": "摘要更新于 {date}",
+      "origin_direct": "直接抓取",
+      "origin_direct_hint": "直接从开发者的隐私政策链接抓取。",
+      "origin_browser_retry": "已按浏览器重试",
+      "origin_browser_retry_hint": "首次抓取被拦截，因此我们改用桌面浏览器请求头重试。",
+      "origin_wayback": "来自 Wayback Machine",
+      "origin_wayback_hint": "在线政策页面拦截了我们，因此此摘要使用最近的存档副本。"
     },
     "task_titles": {
       "labels_subtitle": "仅 App Store 标签 — 政策保留在「AI 政策」标签页",
@@ -3341,7 +3559,18 @@
       "sync_version_updated": "已更新到 v{version}；标签未变化",
       "sync_no_changes": "✓ App Store 标签未变化",
       "sync_cancelled": "⊘ 同步已取消",
-      "sync_failed": "❌ 同步失败"
+      "sync_failed": "❌ 同步失败",
+      "review_snoozed": "🔔 提醒将暂缓 {duration}",
+      "review_marked_reviewed": "✓ 变化已标记为已查看",
+      "review_dismissed": "✕ 变化已忽略",
+      "review_unsnoozed": "↻ 提醒已恢复",
+      "review_action_failed": "❌ 无法记录「{action}」",
+      "review_undo_failed": "❌ 无法撤销该操作",
+      "review_undo_nothing": "↶ 没有可撤销的操作",
+      "review_undo_reviewed": "✓ 已恢复为未查看的变化",
+      "review_undo_dismissed": "✓ 已恢复被忽略的变化",
+      "review_undo_snoozed": "↻ 提醒已恢复（已撤销暂缓）",
+      "review_undo_unsnoozed": "🔔 提醒已重新暂缓"
     },
     "import_source": {
       "screenshots": "截图",
@@ -3378,10 +3607,12 @@
         "one_week": "1 周",
         "two_weeks": "2 周",
         "one_month": "1 个月",
-        "until_next_change": "直到下次变化"
+        "until_next_change": "直到下次变化",
+        "one_day": "1 天"
       },
       "mark_reviewed": "标记为已查看",
-      "view_details": "查看详情"
+      "view_details": "查看详情",
+      "view_policy_change": "查看政策变化 →"
     },
     "policy": {
       "section_title": "AI 政策",
@@ -3423,6 +3654,72 @@
       "inspect_policy_text": "查看最近抓取的政策的前 6000 个字符。",
       "categories_exceed_profile": "这些类别的收集层级比你的隐私档案允许的更严格。",
       "a11y_feature_post_build": "Apple 在此版本之后引入的功能 — 已从在线列表捕获，但尚未纳入规范基线。"
+    },
+    "a11y_chip_aria": "{count} 项无障碍功能 — 查看详情",
+    "policy_safety_heading": "未成年人安全摘要",
+    "policy_ai_disclaimer_lead": "AI 生成的摘要。",
+    "policy_ai_disclaimer_body": " 下方的概览、要点和各维度评分均由语言模型读取抓取到的政策文本生成。它可能遗漏条款、误读法律措辞，或对部分内容给出不准确的评分。任何要据此采取的行动，请务必与原始文档核对",
+    "policy_ai_disclaimer_source_link": "打开源政策 ↗",
+    "policy_ai_disclaimer_wayback_link": "Wayback 备份 ↗",
+    "policy_diff_alert": {
+      "age_today": "今天",
+      "age_yesterday": "昨天",
+      "age_days_ago": "{count, plural, one {# 天前} other {# 天前}}",
+      "lead": "隐私政策文本已更改（{age}）。",
+      "body": " 此变化首次捕获于 {date}，处于「设置」中配置的 {days} 天提醒窗口内。",
+      "view_diff": "在「变更历史」标签页查看差异 →"
+    },
+    "mismatch_chip": {
+      "aria": "{count} 个类别与你的隐私档案不匹配",
+      "label": "⚠ {count} 项与你的隐私档案不匹配"
+    },
+    "mismatch_title": "{label}：{observed}（你最多允许 {allowed}）",
+    "a11y_disclaimer": "这些标签由开发者自行声明，未经 Apple 独立验证。请将其视为开发者意向的信号，而非合规证书。",
+    "policy_chunk_notes": {
+      "summary": "各分块笔记（{count} 个分块）",
+      "summary_hint": "— 用于生成上方合并摘要的中间 AI 输出",
+      "chunk_heading": "第 {index} 个分块，共 {total} 个"
+    },
+    "policy_preview": {
+      "truncated_note": "…（已截断 — 仅保存第一段供预览）",
+      "header": "已抓取的政策文本（前 {count} 个字符）",
+      "showing_of": "显示 {shown} / {total} 个字符",
+      "total_chars": "共 {total} 个字符"
+    },
+    "a11y_profile_key_hint": "你标记的行会以青色描边显示 — 点击<link>设置</link>即可编辑。",
+    "a11y_profile_key_tier_missing": "· {count} 项缺失",
+    "back_to": "← 返回{label}",
+    "synced_relative": "同步于{relative}",
+    "changes_to_review": "⚡ {count, plural, one {# 项变化待查看} other {# 项变化待查看}}",
+    "released_title": "发布于 {date}",
+    "updated_relative": "更新于{relative}",
+    "first_seen": "首次发现 {date}",
+    "view_on_app_store": "在 App Store 查看 ↗",
+    "privacy_policy_link": "隐私政策 ↗",
+    "label_definitions_link": "标签定义",
+    "apple_app_hint": "这是一款 Apple 应用。Apple 自家应用（包括信息、地图、Safari、邮件、健康等）的隐私标签请见 <apple>apple.com/au/privacy/labels ↗</apple>。关于本页术语的定义，请参阅<defs>应用内定义参考</defs>。",
+    "policy_fetch_scope_note": "政策文本仅在此标签页按需抓取 — 不会被单个应用的「重新同步」按钮或「设置」中的「全部同步」任务重新抓取。",
+    "policy_change_strip": {
+      "since_date": "自 {date} 起",
+      "since_fallback": "自上次分析以来",
+      "held_steady": "评级保持不变，但最新一次分析重写了概述或要点。"
+    },
+    "a11y_summary": {
+      "of_total": "/ {count} 项规范功能已声明",
+      "coverage": "该开发者声明了 Apple 在 App Store 页面上展示的功能中的 {pct}%。",
+      "shelf_empty": "此应用的 Apple 无障碍部分为空 — 开发者尚未声明任何支持的功能。",
+      "last_synced": "上次同步于 {date}"
+    },
+    "a11y_profile_key_all_declared": "{count, plural, one {你偏好的 # 项功能已全部声明} other {你偏好的 # 项功能已全部声明}}",
+    "a11y_profile_key_missing_count": "{total} 项中有 {missing} 项未声明",
+    "a11y_profile_key_tier_required": "需要",
+    "a11y_profile_key_tier_nice": "最好有",
+    "a11y_feature_new_badge": "新",
+    "a11y_pref_chip": {
+      "required": "需要",
+      "required_desc": "我不会使用未声明此功能的应用。",
+      "nice": "最好有",
+      "nice_desc": "我更偏好声明此功能的应用，但这不是硬性要求。"
     }
   },
   "privacy_policy_page": {
@@ -3660,13 +3957,18 @@
     },
     "region": {
       "storefront_label": "店面",
-      "current": "✓ 当前已是此地区"
+      "current": "✓ 当前已是此地区",
+      "toast_set": "地区已设为 {label}",
+      "toast_saved": "地区已保存",
+      "task_label": "地区 → {code}"
     },
     "notification_prefs_card": {
       "reset_defaults": "恢复默认",
       "up_to_date": "✓ 偏好已是最新",
       "autosave_log_label": "Also log settings auto-saves to the Task Center",
-      "autosave_log_help": "Each successful or failed settings save adds a one-line entry to the Task Center dropdown. Off by default — most people just want the bottom-of-screen toast. Stored per-browser."
+      "autosave_log_help": "Each successful or failed settings save adds a one-line entry to the Task Center dropdown. Off by default — most people just want the bottom-of-screen toast. Stored per-browser.",
+      "toast_saved": "通知设置已保存",
+      "task_label_saved": "通知偏好已更新"
     },
     "schedule": {
       "manual_label": "手动",
@@ -3675,7 +3977,13 @@
       "daily_desc": "每 24 小时自动同步一次",
       "weekly_label": "每周",
       "weekly_desc": "每周自动同步一次",
-      "current": "✓ 当前已是此计划"
+      "current": "✓ 当前已是此计划",
+      "toast_manual": "同步已设为手动",
+      "toast_daily": "已安排每天自动同步",
+      "toast_weekly": "已安排每周自动同步",
+      "task_label_manual": "同步计划 → 手动",
+      "task_label_daily": "同步计划 → 每天",
+      "task_label_weekly": "同步计划 → 每周"
     },
     "sync_status": {
       "last_sync": "上次同步",
@@ -3686,7 +3994,12 @@
       "idle": "✓ 空闲",
       "loading": "加载中…",
       "syncing": "正在同步 App Store 页面…",
-      "sync_now": "↻ 立即同步所有 App Store 页面"
+      "sync_now": "↻ 立即同步所有 App Store 页面",
+      "task_title": "正在同步 App Store 页面",
+      "task_subtitle": "正在扫描 App Store 检查标签变化",
+      "task_already_running": "另一个同步已在运行",
+      "task_done": "{changes, plural, one {已同步 {synced} 个应用 · # 处变化} other {已同步 {synced} 个应用 · # 处变化}}",
+      "task_failed": "同步失败"
     },
     "deployment_diagnostics_card": {
       "loading": "正在检查部署…",
@@ -3754,7 +4067,20 @@
       "summarise_title": "为每个应用重新下载政策并重新运行 AI 摘要，即使文本未变化也会运行。会消耗 AI 配额。",
       "force_label": "强制重新抓取（本次批量跳过限速）",
       "force_help": "默认情况下，批量抓取会遵守上方「政策抓取限速」中设置的每应用冷却时间，避免对最近抓取过的应用重复请求。勾选此项可仅在本次批量中覆盖限速 — 全局设置保持不变。",
-      "last_run_lead": "上次运行："
+      "last_run_lead": "上次运行：",
+      "task_title_summarise": "正在总结所有隐私政策",
+      "task_title_scrape": "正在重新抓取所有隐私政策",
+      "task_preparing": "正在准备…",
+      "bulk_part_ok": "{count} 个成功",
+      "bulk_part_failed": "{count} 个失败",
+      "bulk_part_throttled": "{count} 个被限速",
+      "bulk_line_summarise": "批量政策总结：{parts}",
+      "bulk_line_scrape": "批量政策抓取：{parts}",
+      "task_finished": "已完成",
+      "task_cancelled": "已取消",
+      "bulk_failed_http": "批量政策同步失败（{status}）",
+      "bulk_failed": "批量政策同步失败",
+      "bulk_stream_error": "批量同步失败"
     },
     "backup_card": {
       "download_title": "下载备份",
@@ -3796,11 +4122,17 @@
       "snapshots_latest": "最新快照",
       "snapshots_none": "还没有本地快照。",
       "snapshots_file_meta": "{date} · {size}",
-      "snapshots_download": "下载"
+      "snapshots_download": "下载",
+      "snapshots_toast_set": "备份快照：每 {hours} 小时一次，保留 {count} 个",
+      "snapshots_toast_disabled": "备份快照已禁用",
+      "snapshots_task_label": "备份快照设置已更新"
     },
     "export_card": {
       "csv": "⬇ 下载 CSV",
-      "json": "⬇ 下载 JSON"
+      "json": "⬇ 下载 JSON",
+      "audit_pdf_unavailable_title": "PDF 审计包导出暂不可用。",
+      "formats_note": "CSV 每种数据类型一行；JSON 包含完整的嵌套结构。",
+      "audit_pdf_coming_soon": "⬇ 审计包（PDF）— 即将推出"
     },
     "ai": {
       "status_off": "摘要已关闭",
@@ -3808,7 +4140,10 @@
       "provider": {
         "title": "1 · 服务方",
         "desc": "选择由谁来总结政策文本。后续选项会根据这里的选择自动调整。",
-        "backend_label": "后端"
+        "backend_label": "后端",
+        "toast_disabled": "AI 摘要已关闭",
+        "toast_saved": "AI 服务方已保存（{provider}）",
+        "task_label": "AI 服务方 → {provider}"
       },
       "connection": {
         "title": "2 · 连接",
@@ -3966,7 +4301,26 @@
         "empty_filter": "当前筛选条件下没有 {filter} 事件。",
         "empty_default": "暂无活动记录。请触发一次重新同步，或等待定时同步运行，再点击刷新。",
         "showing": "显示 {current} / {total}",
-        "load_more": "加载更多"
+        "load_more": "加载更多",
+        "troubleshoot": {
+          "label_http_status": "HTTP 状态码",
+          "label_failed_attempt": "失败的尝试",
+          "label_content_type": "Content-Type",
+          "label_network": "网络",
+          "origin_direct": "直接抓取（Safari UA）",
+          "origin_browser_retry": "浏览器重试（Chrome 请求头）",
+          "origin_wayback": "Wayback Machine 回退",
+          "origin_normalize": "区域规范化 URL",
+          "network_timeout": "超时（未及时收到响应）",
+          "network_dns": "DNS 解析失败",
+          "network_connection_reset": "连接在请求中途被重置",
+          "network_generic": "一般网络故障",
+          "title": "故障排查",
+          "label_requested_url": "请求的 URL",
+          "label_final_url": "最终 URL",
+          "try_title": "建议尝试",
+          "raw_json": "原始 JSON"
+        }
       },
       "activity_types": {
         "scrape": "首次抓取",
@@ -3988,7 +4342,17 @@
         "chunk_help": "政策被切分为多块时，每一块的超时时长。",
         "merge_label": "分块合并（毫秒）",
         "merge_help": "输出完整透镜摘要的最后一步。通常是最慢的一步。",
-        "footer": "改动会与其余 AI 设置一同保存 — 请滚动到上方点击 <save>保存 AI 设置</save> 以生效。"
+        "footer": "改动会与其余 AI 设置一同保存 — 请滚动到上方点击 <save>保存 AI 设置</save> 以生效。",
+        "toast_direct_reset": "直接摘要超时已重置为默认值",
+        "toast_direct_set": "直接摘要超时已设为 {value} 毫秒",
+        "task_label_direct": "AI 直接摘要超时 → {value}",
+        "toast_chunk_reset": "分块超时已重置为默认值",
+        "toast_chunk_set": "分块超时已设为 {value} 毫秒",
+        "task_label_chunk": "AI 分块超时 → {value}",
+        "toast_merge_reset": "分块合并超时已重置为默认值",
+        "toast_merge_set": "分块合并超时已设为 {value} 毫秒",
+        "task_label_merge": "AI 分块合并超时 → {value}",
+        "task_label_default_value": "默认"
       },
       "presets": {
         "lead": "预设（v0.1.0）：",
@@ -4051,7 +4415,23 @@
         "cancel": "取消",
         "removing": "正在移除…",
         "confirm": "移除导入的历史"
-      }
+      },
+      "task_title": "正在导入隐私标签历史",
+      "task_preparing": "正在准备…",
+      "task_finished": "已完成",
+      "bulk_paused": "{total, plural, one {Wayback 导入已暂停 — 还剩 {remaining} / # 个应用} other {Wayback 导入已暂停 — 还剩 {remaining} / # 个应用}}",
+      "bulk_cancelled": "{total, plural, one {Wayback 导入已取消 — {remaining} / # 个应用未处理} other {Wayback 导入已取消 — {remaining} / # 个应用未处理}}",
+      "bulk_summary": "{count, plural, one {Wayback 导入覆盖 # 个应用：{parts}} other {Wayback 导入覆盖 # 个应用：{parts}}}",
+      "bulk_part_imported": "已导入 {count} 个",
+      "bulk_part_no_op": "{count} 个无变化",
+      "bulk_part_skipped": "已跳过 {count} 个",
+      "bulk_part_failed": "{count} 个失败",
+      "toast_show_imported_on": "已显示导入的 Wayback 条目",
+      "toast_show_imported_off": "已隐藏导入的 Wayback 条目",
+      "task_label_show_imported_on": "Wayback 条目 → 显示",
+      "task_label_show_imported_off": "Wayback 条目 → 隐藏",
+      "bulk_failed_http": "Wayback 导入失败（{status}）",
+      "bulk_failed": "Wayback 导入失败"
     },
     "reset_app_card": {
       "reset_button": "重置所有数据",
@@ -4106,7 +4486,15 @@
       "sync_failed": "❌ 同步失败",
       "reset_failed_fallback": "重置失败",
       "reset_failed": "❌ 重置失败",
-      "save_failed_with_message": "❌ {message}"
+      "save_failed_with_message": "❌ {message}",
+      "retry_all_success": "{succeeded, plural, one {✓ 已成功重试 # 个导入} other {✓ 已成功重试 # 个导入}}",
+      "retry_all_all_failed": "{failed, plural, one {❌ 全部 # 个项目重试失败} other {❌ 全部 # 个项目重试失败}}",
+      "retry_all_partial": "⚠ 已重试 {succeeded} 个 — {failed} 个仍然失败",
+      "imported_app": "✓ 已导入「{name}」",
+      "retry_failed_see_row": "重试失败 — 详情见对应行",
+      "rate_limited_auto_retry": "Apple 已限速 — 约 {seconds} 秒后自动重试",
+      "retry_failed_http": "重试失败（HTTP {status}）",
+      "retry_failed_connection": "重试失败。请检查网络连接。"
     },
     "time": {
       "queue_now": "现在",
@@ -4228,7 +4616,9 @@
       "status_diagnostics_copied_clipboard": "诊断报告已复制到剪贴板",
       "status_diagnostics_copied": "诊断报告已复制",
       "touchid_reason_enable": "为 privacytracker 启用 Touch ID 解锁",
-      "touchid_reason_test": "为 privacytracker 测试 Touch ID"
+      "touchid_reason_test": "为 privacytracker 测试 Touch ID",
+      "tray_visible_label": "显示菜单栏图标",
+      "tray_visible_help": "在 macOS 菜单栏中显示 privacytracker 图标，可随时显示 / 隐藏窗口，或无需打开 Dock 即可触发「Sync now」。关闭后可保持菜单栏整洁。"
     },
     "import_history_card": {
       "subtitle": "你在引导过程中添加的每一批应用都保存在这里。可以查看每个应用匹配到了哪一项、纠正错误的匹配，或者整体回滚某一次导入。",
@@ -4408,7 +4798,11 @@
     },
     "policy_alerts": {
       "field_label": "提醒窗口（天）",
-      "field_help": "默认 90 天。设为 <strong>0</strong> 可完全关闭横幅。无论开关与否，变更都会出现在「历史」标签页。"
+      "field_help": "默认 90 天。设为 <strong>0</strong> 可完全关闭横幅。无论开关与否，变更都会出现在「历史」标签页。",
+      "toast_disabled": "政策提醒已关闭",
+      "toast_set": "政策提醒已设为 {days} 天",
+      "task_label": "政策提醒 → {days} 天",
+      "invalid_range": "政策提醒必须在 0–3650 天之间"
     },
     "policy_throttle": {
       "enabled_label": "启用节流",
@@ -4416,7 +4810,17 @@
       "cooldown_help": "默认 60 分钟。设为 <strong>0</strong> 表示每次重新同步都不等待直接放行。最大 10 080（一周）。",
       "scrape_disabled_label": "禁用隐私政策抓取",
       "scrape_disabled_help": "开启后，privacytracker <strong>不会在后台抓取任何隐私政策</strong> — 不再在每次 App Store 同步后自动抓取、不再批量运行、不再按计划刷新。手动「重新抓取」按钮也会返回错误。已缓存的政策及其 AI 摘要会保留下来，你仍可从缓存文本重新生成摘要。用此选项可彻底停止后台政策活动。",
-      "throttle_inert_when_disabled": "在上方禁用隐私政策抓取时，节流设置不会生效。"
+      "throttle_inert_when_disabled": "在上方禁用隐私政策抓取时，节流设置不会生效。",
+      "toast_no_cooldown": "政策抓取限速：无冷却时间",
+      "toast_set": "政策抓取限速已设为 {minutes} 分钟",
+      "toast_disabled": "政策抓取限速已禁用",
+      "task_label_on": "政策抓取限速 → {minutes} 分钟",
+      "task_label_off": "政策抓取限速 → 关闭",
+      "scrape_disabled_toast_on": "隐私政策抓取已禁用",
+      "scrape_disabled_toast_off": "隐私政策抓取已重新启用",
+      "scrape_disabled_task_label_on": "隐私政策抓取 → 禁用",
+      "scrape_disabled_task_label_off": "隐私政策抓取 → 启用",
+      "invalid_range": "政策抓取限速必须在 0–10080 分钟之间"
     },
     "privacy_profile_card": {
       "toggle_title": "使用隐私偏好档案",
@@ -4424,7 +4828,11 @@
       "hint_off": "已关闭 — 应用按原样显示，不进行任何对比。",
       "saved_count": "{count, plural, one {✓ 已保存 · 已对比 # 个类别} other {✓ 已保存 · 已对比 # 个类别}}",
       "unsaved_no_profile": "尚未设置档案 — 应用将不进行对比直接展示。",
-      "empty_warn": "请至少为一个类别选择一个等级，或将开关关闭。"
+      "empty_warn": "请至少为一个类别选择一个等级，或将开关关闭。",
+      "toast_saved": "隐私偏好档案已保存",
+      "toast_cleared": "隐私偏好档案已清除",
+      "task_label_updated": "隐私偏好档案已更新",
+      "task_label_cleared": "隐私偏好档案已清除"
     },
     "accessibility_profile_card": {
       "toggle_title": "使用无障碍档案",
@@ -4432,7 +4840,11 @@
       "hint_off": "已关闭 — 应用按原样显示，不进行无障碍对比。",
       "saved_count": "{count, plural, one {✓ 已保存 · 已对比 # 项功能} other {✓ 已保存 · 已对比 # 项功能}}",
       "unsaved_no_profile": "尚未设置档案 — 应用将不进行无障碍对比直接展示。",
-      "empty_warn": "请至少为一个功能选择一个偏好，或将开关关闭。"
+      "empty_warn": "请至少为一个功能选择一个偏好，或将开关关闭。",
+      "toast_saved": "无障碍档案已保存",
+      "toast_cleared": "无障碍档案已清除",
+      "task_label_updated": "无障碍档案已更新",
+      "task_label_cleared": "无障碍档案已清除"
     },
     "modals": {
       "restore_backup": {
@@ -4473,7 +4885,11 @@
     },
     "accessibility_labels_card": {
       "checkbox_lead": "在应用中显示无障碍标签",
-      "checkbox_help": "开启时：应用详情页显示带功能列表的蓝色徽章，「统计」页加入无障碍覆盖率图表，「应用」列表多出一行无障碍筛选。关闭只是隐藏这些界面，并不会停止数据收集 — 之后重新开启时，可看到这段时间内捕获的历史记录。"
+      "checkbox_help": "开启时：应用详情页显示带功能列表的蓝色徽章，「统计」页加入无障碍覆盖率图表，「应用」列表多出一行无障碍筛选。关闭只是隐藏这些界面，并不会停止数据收集 — 之后重新开启时，可看到这段时间内捕获的历史记录。",
+      "toast_visible": "已显示无障碍标签",
+      "toast_hidden": "已隐藏无障碍标签",
+      "task_label_visible": "无障碍标签 → 显示",
+      "task_label_hidden": "无障碍标签 → 隐藏"
     },
     "review_queue_card": {
       "progress_bar_label": "在审阅队列中显示进度条",
@@ -4531,6 +4947,11 @@
       "app_name_eg": "例如 Instagram",
       "developer_eg": "例如 Meta Platforms, Inc.",
       "name_eg": "例如 王小明"
+    },
+    "bulk_stream": {
+      "queued_subtitle": "{total, plural, one {已排队 {total} 个应用…} other {已排队 {total} 个应用…}}",
+      "progress_subtitle": "{current}/{total} · {name}",
+      "progress_subtitle_badged": "{current}/{total} · {badge} {name}"
     }
   },
   "common": {
@@ -4750,6 +5171,91 @@
       "col_wired": "Wired",
       "wired_yes": "✓",
       "wired_no": "·"
+    },
+    "stall_banner": "服务器已 {seconds} 秒无响应。下方是 {time} 的最后一次快照。客户端面板（长任务、fetch 活动）仍在实时更新。",
+    "stall_banner_earlier_poll": "较早的一次轮询",
+    "errors": {
+      "runtime_poll_timeout": "运行时轮询在 10 秒后超时",
+      "fetch_failed": "请求失败",
+      "clear_failed_http": "清除失败：HTTP {status}",
+      "clear_failed": "清除失败",
+      "toggle_failed_http": "切换失败：HTTP {status}",
+      "toggle_failed": "切换失败",
+      "integrity_check_failed_http": "完整性检查失败：HTTP {status}",
+      "integrity_check_failed": "完整性检查失败",
+      "download_failed": "下载失败",
+      "copy_failed": "复制失败"
+    },
+    "table_headers": {
+      "time": "时间",
+      "method": "方法",
+      "url": "URL",
+      "status": "状态",
+      "duration": "耗时",
+      "outcome": "结果"
+    },
+    "card_scrape_activity": {
+      "col_running": "已运行",
+      "col_last_phase": "最近阶段",
+      "col_phase_age": "阶段停留",
+      "col_resync": "重新同步",
+      "recent_heading": "最近抓取",
+      "empty": "尚未捕获任何抓取记录。请开始一次导入，或在某个应用上点击“重新同步”。",
+      "col_app": "应用",
+      "col_total": "总计",
+      "col_per_phase": "各阶段 ms",
+      "title": "抓取活动",
+      "in_flight_pill": "{count} 个进行中",
+      "in_progress_heading": "进行中",
+      "help": "自启动以来共 {total} 次抓取。阶段：apple_fetched → parsed → committed → policy_done。若某次抓取在单个阶段停留多秒，瓶颈就在该阶段。"
+    },
+    "card_api_timings": {
+      "empty": "尚未捕获任何 API 调用。慢请求和出错请求总会被记录；快速请求按 1/5 抽样。",
+      "col_route": "路由",
+      "title": "最近的 API 调用",
+      "slow_pill": "慢 ≥ {ms}ms",
+      "help": "自启动以来 {total} 次请求 · {slow} 次缓慢或出错 · 显示最新 {showing} 条。"
+    },
+    "card_db_worker": {
+      "empty": "尚未捕获任何 DB worker 批次。批量引导导入的写入将显示在这里。",
+      "col_mode": "模式",
+      "col_statements": "语句数",
+      "col_changes": "变更数",
+      "col_error": "错误",
+      "title": "DB worker 批次",
+      "inline_fallback_pill": "inline 回退",
+      "pending_pill": "{count} 个待处理",
+      "help": "自启动以来 {total} 个批次 · {failed} 个失败 · {inline} 个 inline（{pct}%）· 显示最新 {showing} 条。"
+    },
+    "card_client_activity": {
+      "long_tasks_heading": "长任务",
+      "long_tasks_count": "（最近 {count} 条）",
+      "long_tasks_empty": "尚未捕获长任务。",
+      "long_tasks_empty_responsive": "主线程一直保持响应。",
+      "long_tasks_empty_webkit": "在 WebKit 上，PerformanceObserver 的回退方案通过 rAF 间隔检测；只有较大的卡顿才会显示在这里。",
+      "col_source": "来源",
+      "fetch_heading": "Fetch 活动（慢 ≥ {ms}ms）",
+      "fetch_empty": "没有缓慢或进行中的 fetch 请求。",
+      "col_phase": "阶段",
+      "import_heading": "导入事件（最新 {count} 条）",
+      "col_event": "事件",
+      "col_detail": "详情",
+      "title": "客户端活动（渲染进程）",
+      "long_task_pill": "长任务 ≥ {ms}ms",
+      "raf_fallback_pill": "rAF 回退",
+      "help": "{longTasks} 个长任务 · {slowFetches} 次缓慢 fetch · {failed} 次失败 · {inflight} 个进行中",
+      "help_oldest_pending": "最早的待处理请求已 {seconds} 秒",
+      "help_capturing": "已捕获 {duration}",
+      "clear_button": "清除客户端环形缓冲区"
+    },
+    "format": {
+      "relative_just_now": "刚刚",
+      "relative_seconds_ago": "{seconds} 秒前",
+      "relative_minutes_ago": "{minutes} 分钟前",
+      "relative_hours_ago": "{hours} 小时前",
+      "duration_ms": "{value} ms",
+      "duration_s": "{value} 秒",
+      "duration_min": "{value} 分钟"
     }
   },
   "background_mode_callout": {
@@ -4820,5 +5326,83 @@
       "start_label": "开始",
       "end_label": "结束"
     }
+  },
+  "diagnostics_link": {
+    "title": "实时运行时指标：内存、事件循环延迟、慢查询",
+    "label": "诊断"
+  },
+  "not_found": {
+    "eyebrow": "页面未找到",
+    "title": "我们找不到该页面",
+    "subtitle": "你访问的 URL 与我们跟踪的任何内容都不匹配。它可能已被移动、删除，或从未存在过。",
+    "back_to": "← 返回{label}",
+    "home": "首页",
+    "go_to_dashboard": "前往仪表板",
+    "hint": "在找某个应用？试试<link>已跟踪应用列表</link>。",
+    "back_labels": {
+      "app": "应用详情",
+      "apps": "应用",
+      "privacy_map": "隐私地图",
+      "stats": "统计",
+      "manual_apps": "自定义应用",
+      "settings": "设置",
+      "import_history": "导入历史",
+      "shortlist": "候选清单",
+      "compare": "比较",
+      "dashboard": "仪表板",
+      "onboarding": "开始使用",
+      "welcome": "欢迎页",
+      "definitions": "标签定义",
+      "privacy_policy": "隐私政策",
+      "legal": "法律声明",
+      "previous_page": "上一页"
+    }
+  },
+  "nojs": {
+    "eyebrow": "需要 JavaScript",
+    "title": "此应用需要 JavaScript 才能运行",
+    "subtitle": "privacytracker 的仪表板、引导向导和隐私标签时间线均在客户端渲染。没有 JavaScript 就无法显示任何内容。",
+    "step_enable": "在浏览器设置中重新启用 JavaScript。",
+    "step_allowlist": "如果你使用内容拦截器，请将本域名加入允许列表。",
+    "step_refresh": "刷新页面。",
+    "hint_lead": "在大多数浏览器中，JavaScript 设置位于：",
+    "hint_path": "设置 → 隐私与安全 → 网站设置 → JavaScript"
+  },
+  "rate_limit_banner": {
+    "search_title": "Apple 搜索服务已被限流",
+    "search_what": "Apple 已对本应用的 iTunes Search 查询进行限流。在限制解除前，新的搜索结果可能缺失或过时。",
+    "scrape_title": "Apple App Store 已被限流",
+    "scrape_what": "Apple 暂时阻止了 App Store 页面读取。在限制解除前，重新同步和新的导入都无法获取最新的隐私标签。",
+    "auto_retry": "将在 <strong>{countdown}</strong> 后自动重试。",
+    "countdown_seconds": "{seconds} 秒",
+    "countdown_minutes": "{minutes} 分钟",
+    "countdown_minutes_seconds": "{minutes} 分 {seconds} 秒",
+    "retrying": "正在重试…",
+    "retry_now": "立即重试",
+    "hide_details": "隐藏详情",
+    "show_details": "为什么会出现这种情况？",
+    "reason_body": "Apple 会对其 iTunes Search（{scope}）与 App Store 端点的请求量进行管控。当滚动一分钟计数器被触发时，后续请求都会被拒绝，直到窗口重新放开。我们会把请求频率控制在 Apple 的上限之内，但突发用量（例如在后台同步运行时导入一长串应用列表）仍可能越过限制。",
+    "reason_scope_search": "此处使用",
+    "reason_scope_scrape": "共享同一滚动分钟窗口"
+  },
+  "github_issue_link": {
+    "lead": "与预期不符？",
+    "action": "在 GitHub 上提交 issue →"
+  },
+  "menu_actions": {
+    "diagnostics_unavailable": "诊断不可用。",
+    "diagnostics_copied": "诊断报告已复制到剪贴板。",
+    "diagnostics_copy_failed": "复制诊断报告失败。"
+  },
+  "autosave_toast": {
+    "dismiss": "关闭"
+  },
+  "price_chip": {
+    "line_iap": "{price} · 内购",
+    "tooltip_no_data": "尚未获取价格数据。",
+    "tooltip_paid": "在 App Store 上售价 {price}。",
+    "tooltip_free": "可在 App Store 免费下载。",
+    "tooltip_iap_yes": "提供 App 内购买 — 部分功能或内容需要额外付费解锁。",
+    "tooltip_iap_no": "应用页面未标示 App 内购买。"
   }
 }

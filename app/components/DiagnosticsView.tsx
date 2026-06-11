@@ -263,6 +263,16 @@ interface FlagRow {
 
 // ── Formatting helpers ────────────────────────────────────────────────
 
+/** Minimal translator shape so the formatting helpers stay outside the
+ *  component tree. Callers pass a `diagnostics_page.format`-scoped
+ *  translator from useTranslations. Numeric values are pre-stringified
+ *  before interpolation so ICU number formatting (locale grouping)
+ *  can't alter the output. */
+type FormatTranslator = (
+  key: string,
+  values?: Record<string, string | number>
+) => string;
+
 function formatUptime(seconds: number): string {
   if (seconds < 60) {
     return `${seconds}s`;
@@ -277,18 +287,24 @@ function formatUptime(seconds: number): string {
   return `${hours}h ${remMins.toString().padStart(2, "0")}m`;
 }
 
-function formatRelative(at: number): string {
+function formatRelative(t: FormatTranslator, at: number): string {
   const delta = Date.now() - at;
   if (delta < 1000) {
-    return "just now";
+    return t("relative_just_now");
   }
   if (delta < 60_000) {
-    return `${Math.floor(delta / 1000)}s ago`;
+    return t("relative_seconds_ago", {
+      seconds: String(Math.floor(delta / 1000)),
+    });
   }
   if (delta < 3_600_000) {
-    return `${Math.floor(delta / 60_000)}m ago`;
+    return t("relative_minutes_ago", {
+      minutes: String(Math.floor(delta / 60_000)),
+    });
   }
-  return `${Math.floor(delta / 3_600_000)}h ago`;
+  return t("relative_hours_ago", {
+    hours: String(Math.floor(delta / 3_600_000)),
+  });
 }
 
 function formatMs(value: number | null | undefined): string {
@@ -320,14 +336,14 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function formatDuration(ms: number): string {
+function formatDuration(t: FormatTranslator, ms: number): string {
   if (ms < 1000) {
-    return `${Math.round(ms)} ms`;
+    return t("duration_ms", { value: String(Math.round(ms)) });
   }
   if (ms < 60_000) {
-    return `${(ms / 1000).toFixed(1)} s`;
+    return t("duration_s", { value: (ms / 1000).toFixed(1) });
   }
-  return `${Math.round(ms / 60_000)} min`;
+  return t("duration_min", { value: String(Math.round(ms / 60_000)) });
 }
 
 // ── Status rollup ─────────────────────────────────────────────────────
@@ -352,14 +368,17 @@ interface StatusSummary {
  * note keys. Conservative: any one signal in `danger` makes the whole
  * banner red; any one in `warn` makes it yellow.
  */
-function rollupStatus(state: {
-  runtime: RuntimeMetrics | null;
-  database: DatabaseHealth | null;
-  disk: DiskSnapshot | null;
-  errors: ErrorLogEntry[];
-  jobs: ActiveJobs | null;
-  rateLimits: RateLimits | null;
-}): StatusSummary {
+function rollupStatus(
+  state: {
+    runtime: RuntimeMetrics | null;
+    database: DatabaseHealth | null;
+    disk: DiskSnapshot | null;
+    errors: ErrorLogEntry[];
+    jobs: ActiveJobs | null;
+    rateLimits: RateLimits | null;
+  },
+  tFormat: FormatTranslator
+): StatusSummary {
   const notes: StatusNote[] = [];
   let overall: Severity = "ok";
   const bump = (sev: Severity) => {
@@ -434,7 +453,7 @@ function rollupStatus(state: {
         params: {
           cats: stuck.join(" + "),
           remaining: stuck
-            .map((c) => formatDuration(rl[c].cooldownRemainingMs))
+            .map((c) => formatDuration(tFormat, rl[c].cooldownRemainingMs))
             .join(" / "),
         },
       });
@@ -484,6 +503,8 @@ async function fetchMergedDiagnosticsBundle(): Promise<string> {
 export default function DiagnosticsView() {
   const t = useTranslations("diagnostics_page");
   const tToolbar = useTranslations("diagnostics_page.toolbar");
+  const tErrors = useTranslations("diagnostics_page.errors");
+  const tFormat = useTranslations("diagnostics_page.format");
 
   const [metrics, setMetrics] = useState<RuntimeMetrics | null>(null);
   const [database, setDatabase] = useState<DatabaseHealth | null>(null);
@@ -574,9 +595,9 @@ export default function DiagnosticsView() {
       const msg =
         e instanceof Error
           ? e.name === "AbortError"
-            ? "runtime poll timed out after 10s"
+            ? tErrors("runtime_poll_timeout")
             : e.message
-          : "fetch failed";
+          : tErrors("fetch_failed");
       setError(msg);
       if (lastRuntimeAt) {
         setServerStallMs(Date.now() - lastRuntimeAt);
@@ -720,14 +741,14 @@ export default function DiagnosticsView() {
         setHistory({ p99: [], rssMb: [], heapPct: [], cpuPct: [] });
         setError(null);
       } else {
-        setError(`Clear failed: HTTP ${runtimeRes.status}`);
+        setError(tErrors("clear_failed_http", { status: runtimeRes.status }));
       }
       if (errorsRes.ok) {
         const body = (await errorsRes.json()) as { entries: ErrorLogEntry[] };
         setErrors(body.entries);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "clear failed");
+      setError(e instanceof Error ? e.message : tErrors("clear_failed"));
     } finally {
       setBusy(null);
     }
@@ -750,10 +771,10 @@ export default function DiagnosticsView() {
         const body = (await r.json()) as RuntimeMetrics;
         setMetrics(body);
       } else {
-        setError(`Toggle failed: HTTP ${r.status}`);
+        setError(tErrors("toggle_failed_http", { status: r.status }));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "toggle failed");
+      setError(e instanceof Error ? e.message : tErrors("toggle_failed"));
     } finally {
       setBusy(null);
     }
@@ -771,10 +792,12 @@ export default function DiagnosticsView() {
         const body = (await r.json()) as DatabaseHealth;
         setDatabase(body);
       } else {
-        setError(`Integrity check failed: HTTP ${r.status}`);
+        setError(tErrors("integrity_check_failed_http", { status: r.status }));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "integrity check failed");
+      setError(
+        e instanceof Error ? e.message : tErrors("integrity_check_failed")
+      );
     } finally {
       setBusy(null);
     }
@@ -803,7 +826,7 @@ export default function DiagnosticsView() {
       // Revoke after a short delay so the download has time to start.
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "download failed");
+      setError(e instanceof Error ? e.message : tErrors("download_failed"));
     }
   }, []);
 
@@ -832,7 +855,7 @@ export default function DiagnosticsView() {
       window.setTimeout(() => setCopyState("idle"), 2500);
     } catch (e) {
       setCopyState("err");
-      setError(e instanceof Error ? e.message : "copy failed");
+      setError(e instanceof Error ? e.message : tErrors("copy_failed"));
       window.setTimeout(() => setCopyState("idle"), 2500);
     } finally {
       setBusy(null);
@@ -850,14 +873,17 @@ export default function DiagnosticsView() {
 
   const status = useMemo(
     () =>
-      rollupStatus({
-        runtime: metrics,
-        database,
-        disk,
-        errors,
-        jobs,
-        rateLimits,
-      }),
+      rollupStatus(
+        {
+          runtime: metrics,
+          database,
+          disk,
+          errors,
+          jobs,
+          rateLimits,
+        },
+        tFormat
+      ),
     [metrics, database, disk, errors, jobs, rateLimits]
   );
 
@@ -939,10 +965,12 @@ export default function DiagnosticsView() {
             color: "var(--orange)",
           }}
         >
-          Server hasn&apos;t responded for {Math.round(serverStallMs / 1000)}s.
-          Below is the last snapshot from{" "}
-          {lastRuntimeAt ? formatRelative(lastRuntimeAt) : "an earlier poll"}.
-          Client-side panels (long tasks, fetch activity) are still live.
+          {t("stall_banner", {
+            seconds: Math.round(serverStallMs / 1000),
+            time: lastRuntimeAt
+              ? formatRelative(tFormat, lastRuntimeAt)
+              : t("stall_banner_earlier_poll"),
+          })}
         </div>
       )}
 
@@ -1260,6 +1288,7 @@ function DatabaseCard({
 }) {
   const t = useTranslations("diagnostics_page.card_database");
   const tLoad = useTranslations("diagnostics_page");
+  const tFormat = useTranslations("diagnostics_page.format");
   if (!database) {
     return (
       <section className="diagnostics-card">
@@ -1329,9 +1358,9 @@ function DatabaseCard({
             {database.integrityCheck.status === "ok" ? "✓" : "✗"}{" "}
             {database.integrityCheck.status}
             {" · "}
-            {formatRelative(database.integrityCheck.checkedAt)}
+            {formatRelative(tFormat, database.integrityCheck.checkedAt)}
             {" · "}
-            {formatDuration(database.integrityCheck.durationMs)}
+            {formatDuration(tFormat, database.integrityCheck.durationMs)}
           </span>
         )}
       </div>
@@ -1342,6 +1371,7 @@ function DatabaseCard({
 function DiskCard({ disk }: { disk: DiskSnapshot | null }) {
   const t = useTranslations("diagnostics_page.card_disk");
   const tLoad = useTranslations("diagnostics_page");
+  const tFormat = useTranslations("diagnostics_page.format");
   if (!disk) {
     return (
       <section className="diagnostics-card">
@@ -1398,7 +1428,7 @@ function DiskCard({ disk }: { disk: DiskSnapshot | null }) {
           label={t("last_backup")}
           value={
             disk.lastBackupSnapshotAt
-              ? formatRelative(disk.lastBackupSnapshotAt)
+              ? formatRelative(tFormat, disk.lastBackupSnapshotAt)
               : t("last_backup_none")
           }
         />
@@ -1485,6 +1515,7 @@ function BackgroundJobsCard({ jobs }: { jobs: ActiveJobs | null }) {
 function RateLimitsCard({ rateLimits }: { rateLimits: RateLimits | null }) {
   const t = useTranslations("diagnostics_page.card_rate_limits");
   const tLoad = useTranslations("diagnostics_page");
+  const tFormat = useTranslations("diagnostics_page.format");
   if (!rateLimits) {
     return (
       <section className="diagnostics-card">
@@ -1535,7 +1566,7 @@ function RateLimitsCard({ rateLimits }: { rateLimits: RateLimits | null }) {
                 </td>
                 <td>
                   {v.cooldownActive
-                    ? formatDuration(v.cooldownRemainingMs)
+                    ? formatDuration(tFormat, v.cooldownRemainingMs)
                     : dash}
                 </td>
                 <td>
@@ -1566,6 +1597,7 @@ function SlowQueryCard({
   onToggleProfiling: () => void;
 }) {
   const t = useTranslations("diagnostics_page.card_slow_query");
+  const tFormat = useTranslations("diagnostics_page.format");
   return (
     <section className="diagnostics-card diagnostics-card--wide">
       <header className="diagnostics-card-header">
@@ -1630,7 +1662,7 @@ function SlowQueryCard({
                 return (
                   <tr key={`${q.at}-${i}`}>
                     <td title={new Date(q.at).toISOString()}>
-                      {formatRelative(q.at)}
+                      {formatRelative(tFormat, q.at)}
                     </td>
                     <td className={sevCls}>{formatMs(q.durationMs)} ms</td>
                     <td>
@@ -1658,6 +1690,7 @@ function SlowQueryCard({
 
 function ErrorLogCard({ entries }: { entries: ErrorLogEntry[] }) {
   const t = useTranslations("diagnostics_page.card_error_log");
+  const tFormat = useTranslations("diagnostics_page.format");
   return (
     <section className="diagnostics-card diagnostics-card--wide">
       <header className="diagnostics-card-header">
@@ -1682,7 +1715,7 @@ function ErrorLogCard({ entries }: { entries: ErrorLogEntry[] }) {
               {entries.map((e, i) => (
                 <tr key={`${e.at}-${i}`}>
                   <td title={new Date(e.at).toISOString()}>
-                    {formatRelative(e.at)}
+                    {formatRelative(tFormat, e.at)}
                   </td>
                   <td>
                     <code
@@ -1722,25 +1755,27 @@ function ScrapeActivityCard({
 }: {
   activity: NonNullable<RuntimeMetrics["scrapeActivity"]>;
 }) {
+  const t = useTranslations("diagnostics_page.card_scrape_activity");
+  const tCols = useTranslations("diagnostics_page.table_headers");
+  const tFormat = useTranslations("diagnostics_page.format");
   const { inProgress, recent } = activity;
   return (
     <section className="diagnostics-card diagnostics-card--wide">
       <header className="diagnostics-card-header">
         <h2 className="diagnostics-card-title">
-          Scrape activity
+          {t("title")}
           {inProgress.length > 0 && (
             <span
               className="diagnostics-pill diagnostics-severity-warn"
               style={{ marginLeft: 8 }}
             >
-              <span aria-hidden="true">⚠</span> {inProgress.length} in flight
+              <span aria-hidden="true">⚠</span>{" "}
+              {t("in_flight_pill", { count: String(inProgress.length) })}
             </span>
           )}
         </h2>
         <p className="diagnostics-card-help">
-          {activity.totalSinceStart.toLocaleString()} scrapes since start.
-          Phases: apple_fetched → parsed → committed → policy_done. If a scrape
-          sits on a single phase for many seconds, that&apos;s the bottleneck.
+          {t("help", { total: activity.totalSinceStart.toLocaleString() })}
         </p>
       </header>
 
@@ -1754,17 +1789,17 @@ function ScrapeActivityCard({
               color: "var(--text-2)",
             }}
           >
-            In progress
+            {t("in_progress_heading")}
           </h3>
           <div className="diagnostics-table-wrap">
             <table className="diagnostics-table">
               <thead>
                 <tr>
-                  <th style={{ width: 80 }}>Running</th>
-                  <th>URL</th>
-                  <th>Last phase</th>
-                  <th style={{ width: 100 }}>Phase age</th>
-                  <th style={{ width: 70 }}>Resync</th>
+                  <th style={{ width: 80 }}>{t("col_running")}</th>
+                  <th>{tCols("url")}</th>
+                  <th>{t("col_last_phase")}</th>
+                  <th style={{ width: 100 }}>{t("col_phase_age")}</th>
+                  <th style={{ width: 70 }}>{t("col_resync")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1820,22 +1855,20 @@ function ScrapeActivityCard({
           color: "var(--text-2)",
         }}
       >
-        Recent scrapes
+        {t("recent_heading")}
       </h3>
       {recent.length === 0 ? (
-        <div className="diagnostics-empty">
-          No scrapes captured yet. Start an import or hit Re-sync on an app.
-        </div>
+        <div className="diagnostics-empty">{t("empty")}</div>
       ) : (
         <div className="diagnostics-table-wrap">
           <table className="diagnostics-table">
             <thead>
               <tr>
-                <th style={{ width: 90 }}>Time</th>
-                <th>App</th>
-                <th style={{ width: 80 }}>Outcome</th>
-                <th style={{ width: 90 }}>Total</th>
-                <th>Per-phase ms</th>
+                <th style={{ width: 90 }}>{tCols("time")}</th>
+                <th>{t("col_app")}</th>
+                <th style={{ width: 80 }}>{tCols("outcome")}</th>
+                <th style={{ width: 90 }}>{t("col_total")}</th>
+                <th>{t("col_per_phase")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1863,7 +1896,7 @@ function ScrapeActivityCard({
                 return (
                   <tr key={s.id}>
                     <td title={new Date(s.startedAt).toISOString()}>
-                      {formatRelative(s.startedAt)}
+                      {formatRelative(tFormat, s.startedAt)}
                     </td>
                     <td className="diagnostics-sql">
                       <code>{s.appName ?? s.url}</code>
@@ -1916,6 +1949,9 @@ function ApiTimingsCard({
 }: {
   timings: NonNullable<RuntimeMetrics["apiTimings"]>;
 }) {
+  const t = useTranslations("diagnostics_page.card_api_timings");
+  const tCols = useTranslations("diagnostics_page.table_headers");
+  const tFormat = useTranslations("diagnostics_page.format");
   const sorted = useMemo(
     () => [...timings.recent].sort((a, b) => b.at - a.at),
     [timings.recent]
@@ -1924,53 +1960,52 @@ function ApiTimingsCard({
     <section className="diagnostics-card diagnostics-card--wide">
       <header className="diagnostics-card-header">
         <h2 className="diagnostics-card-title">
-          Recent API calls
+          {t("title")}
           <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
-            slow ≥ {timings.thresholdMs}ms
+            {t("slow_pill", { ms: String(timings.thresholdMs) })}
           </span>
         </h2>
         <p className="diagnostics-card-help">
-          {timings.totalSinceStart.toLocaleString()} requests since start ·{" "}
-          {timings.slowSinceStart.toLocaleString()} slow or errored · showing
-          latest {sorted.length}.
+          {t("help", {
+            total: timings.totalSinceStart.toLocaleString(),
+            slow: timings.slowSinceStart.toLocaleString(),
+            showing: String(sorted.length),
+          })}
         </p>
       </header>
       {sorted.length === 0 ? (
-        <div className="diagnostics-empty">
-          No API calls captured yet. Slow + errored requests are always
-          recorded; fast ones are 1-in-5 sampled.
-        </div>
+        <div className="diagnostics-empty">{t("empty")}</div>
       ) : (
         <div className="diagnostics-table-wrap">
           <table className="diagnostics-table">
             <thead>
               <tr>
-                <th style={{ width: 90 }}>Time</th>
-                <th style={{ width: 60 }}>Method</th>
-                <th>Route</th>
-                <th style={{ width: 80 }}>Status</th>
-                <th style={{ width: 90 }}>Duration</th>
+                <th style={{ width: 90 }}>{tCols("time")}</th>
+                <th style={{ width: 60 }}>{tCols("method")}</th>
+                <th>{t("col_route")}</th>
+                <th style={{ width: 80 }}>{tCols("status")}</th>
+                <th style={{ width: 90 }}>{tCols("duration")}</th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t, i) => {
-                const erroring = t.status === 0 || t.status >= 400;
-                const slow = t.durationMs >= timings.thresholdMs;
+              {sorted.map((rec, i) => {
+                const erroring = rec.status === 0 || rec.status >= 400;
+                const slow = rec.durationMs >= timings.thresholdMs;
                 const cls = erroring
                   ? "diagnostics-severity-danger"
                   : slow
                     ? "diagnostics-severity-warn"
                     : "";
                 return (
-                  <tr key={`${t.at}-${i}`}>
-                    <td title={new Date(t.at).toISOString()}>
-                      {formatRelative(t.at)}
+                  <tr key={`${rec.at}-${i}`}>
+                    <td title={new Date(rec.at).toISOString()}>
+                      {formatRelative(tFormat, rec.at)}
                     </td>
                     <td>
-                      <code>{t.method}</code>
+                      <code>{rec.method}</code>
                     </td>
                     <td className="diagnostics-sql">
-                      <code>{t.route}</code>
+                      <code>{rec.route}</code>
                     </td>
                     <td>
                       <code
@@ -1978,11 +2013,11 @@ function ApiTimingsCard({
                           erroring ? "diagnostics-severity-danger" : ""
                         }
                       >
-                        {t.status || (t.error ? "ERR" : "—")}
+                        {rec.status || (rec.error ? "ERR" : "—")}
                       </code>
                     </td>
                     <td>
-                      <code className={cls}>{formatMs(t.durationMs)} ms</code>
+                      <code className={cls}>{formatMs(rec.durationMs)} ms</code>
                     </td>
                   </tr>
                 );
@@ -1996,6 +2031,9 @@ function ApiTimingsCard({
 }
 
 function DbWorkerCard({ timings }: { timings: DbWorkerTimings }) {
+  const t = useTranslations("diagnostics_page.card_db_worker");
+  const tCols = useTranslations("diagnostics_page.table_headers");
+  const tFormat = useTranslations("diagnostics_page.format");
   const sorted = useMemo(
     () => [...timings.recent].sort((a, b) => b.at - a.at),
     [timings.recent]
@@ -2008,42 +2046,42 @@ function DbWorkerCard({ timings }: { timings: DbWorkerTimings }) {
     <section className="diagnostics-card diagnostics-card--wide">
       <header className="diagnostics-card-header">
         <h2 className="diagnostics-card-title">
-          DB worker batches
+          {t("title")}
           {!timings.workerEnabled && (
             <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
-              inline fallback
+              {t("inline_fallback_pill")}
             </span>
           )}
           {timings.pendingRequests > 0 && (
             <span className="diagnostics-pill" style={{ marginLeft: 6 }}>
-              {timings.pendingRequests} pending
+              {t("pending_pill", { count: String(timings.pendingRequests) })}
             </span>
           )}
         </h2>
         <p className="diagnostics-card-help">
-          {timings.totalSinceStart.toLocaleString()} batches since start ·{" "}
-          {timings.failedSinceStart.toLocaleString()} failed ·{" "}
-          {timings.inlineSinceStart.toLocaleString()} inline ({inlinePct}%) ·{" "}
-          showing latest {sorted.length}.
+          {t("help", {
+            total: timings.totalSinceStart.toLocaleString(),
+            failed: timings.failedSinceStart.toLocaleString(),
+            inline: timings.inlineSinceStart.toLocaleString(),
+            pct: String(inlinePct),
+            showing: String(sorted.length),
+          })}
         </p>
       </header>
       {sorted.length === 0 ? (
-        <div className="diagnostics-empty">
-          No DB worker batches captured yet. Bulk onboarding writes will appear
-          here.
-        </div>
+        <div className="diagnostics-empty">{t("empty")}</div>
       ) : (
         <div className="diagnostics-table-wrap">
           <table className="diagnostics-table">
             <thead>
               <tr>
-                <th style={{ width: 90 }}>Time</th>
-                <th style={{ width: 80 }}>Mode</th>
-                <th style={{ width: 90 }}>Outcome</th>
-                <th style={{ width: 90 }}>Statements</th>
-                <th style={{ width: 80 }}>Changes</th>
-                <th style={{ width: 90 }}>Duration</th>
-                <th>Error</th>
+                <th style={{ width: 90 }}>{tCols("time")}</th>
+                <th style={{ width: 80 }}>{t("col_mode")}</th>
+                <th style={{ width: 90 }}>{tCols("outcome")}</th>
+                <th style={{ width: 90 }}>{t("col_statements")}</th>
+                <th style={{ width: 80 }}>{t("col_changes")}</th>
+                <th style={{ width: 90 }}>{tCols("duration")}</th>
+                <th>{t("col_error")}</th>
               </tr>
             </thead>
             <tbody>
@@ -2053,7 +2091,7 @@ function DbWorkerCard({ timings }: { timings: DbWorkerTimings }) {
                 return (
                   <tr key={`${batch.at}-${i}`}>
                     <td title={new Date(batch.at).toISOString()}>
-                      {formatRelative(batch.at)}
+                      {formatRelative(tFormat, batch.at)}
                     </td>
                     <td>
                       <code
@@ -2128,6 +2166,9 @@ function ClientActivityCard({
   snapshot: ClientDiagnosticsSnapshot;
   onClear: () => void;
 }) {
+  const t = useTranslations("diagnostics_page.card_client_activity");
+  const tCols = useTranslations("diagnostics_page.table_headers");
+  const tFormat = useTranslations("diagnostics_page.format");
   const longTasksSorted = useMemo(
     () =>
       [...snapshot.longTasks.recent].sort((a, b) => b.at - a.at).slice(0, 30),
@@ -2164,31 +2205,45 @@ function ClientActivityCard({
         >
           <div>
             <h2 className="diagnostics-card-title">
-              Client activity (renderer)
+              {t("title")}
               <span className="diagnostics-pill" style={{ marginLeft: 8 }}>
-                long task ≥ {snapshot.longTasks.thresholdMs}ms
+                {t("long_task_pill", {
+                  ms: String(snapshot.longTasks.thresholdMs),
+                })}
               </span>
               {!snapshot.longTaskObserverActive && (
                 <span className="diagnostics-pill" style={{ marginLeft: 6 }}>
-                  rAF fallback
+                  {t("raf_fallback_pill")}
                 </span>
               )}
             </h2>
             <p className="diagnostics-card-help">
-              {snapshot.longTasks.totalSinceStart.toLocaleString()} long tasks ·{" "}
-              {snapshot.fetches.slowCount.toLocaleString()} slow fetches ·{" "}
-              {snapshot.fetches.failedCount.toLocaleString()} failed ·{" "}
-              {inflight.length} in flight
+              {t("help", {
+                longTasks: snapshot.longTasks.totalSinceStart.toLocaleString(),
+                slowFetches: snapshot.fetches.slowCount.toLocaleString(),
+                failed: snapshot.fetches.failedCount.toLocaleString(),
+                inflight: String(inflight.length),
+              })}
               {inflight.length > 0 && longestInflight > 1000 && (
-                <> · oldest pending {Math.round(longestInflight / 100) / 10}s</>
+                <>
+                  {" · "}
+                  {t("help_oldest_pending", {
+                    seconds: String(Math.round(longestInflight / 100) / 10),
+                  })}
+                </>
               )}
               {installedAgo > 0 && (
-                <> · capturing for {formatDuration(installedAgo)}</>
+                <>
+                  {" · "}
+                  {t("help_capturing", {
+                    duration: formatDuration(tFormat, installedAgo),
+                  })}
+                </>
               )}
             </p>
           </div>
           <button className="btn btn-secondary" onClick={onClear} type="button">
-            Clear client rings
+            {t("clear_button")}
           </button>
         </div>
       </header>
@@ -2210,35 +2265,35 @@ function ClientActivityCard({
               color: "var(--text-2)",
             }}
           >
-            Long tasks{" "}
+            {t("long_tasks_heading")}{" "}
             {longTasksSorted.length > 0 &&
-              `(${longTasksSorted.length} most recent)`}
+              t("long_tasks_count", { count: longTasksSorted.length })}
           </h3>
           {longTasksSorted.length === 0 ? (
             <div
               className="diagnostics-empty"
               style={{ padding: 12, fontSize: 12 }}
             >
-              No long tasks captured.{" "}
+              {t("long_tasks_empty")}{" "}
               {snapshot.longTaskObserverActive
-                ? "The main thread has been responsive."
-                : "On WebKit the PerformanceObserver fallback uses rAF gaps; only large stalls show up here."}
+                ? t("long_tasks_empty_responsive")
+                : t("long_tasks_empty_webkit")}
             </div>
           ) : (
             <div className="diagnostics-table-wrap">
               <table className="diagnostics-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 90 }}>Time</th>
-                    <th style={{ width: 100 }}>Duration</th>
-                    <th>Source</th>
+                    <th style={{ width: 90 }}>{tCols("time")}</th>
+                    <th style={{ width: 100 }}>{tCols("duration")}</th>
+                    <th>{t("col_source")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {longTasksSorted.map((lt, i) => (
                     <tr key={`${lt.at}-${i}`}>
                       <td title={new Date(lt.at).toISOString()}>
-                        {formatRelative(lt.at)}
+                        {formatRelative(tFormat, lt.at)}
                       </td>
                       <td>
                         <code
@@ -2272,25 +2327,25 @@ function ClientActivityCard({
               color: "var(--text-2)",
             }}
           >
-            Fetch activity (slow ≥ {snapshot.fetches.slowThresholdMs}ms)
+            {t("fetch_heading", { ms: snapshot.fetches.slowThresholdMs })}
           </h3>
           {inflight.length === 0 && recentFetches.length === 0 ? (
             <div
               className="diagnostics-empty"
               style={{ padding: 12, fontSize: 12 }}
             >
-              No slow or in-flight fetches.
+              {t("fetch_empty")}
             </div>
           ) : (
             <div className="diagnostics-table-wrap">
               <table className="diagnostics-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 60 }}>Phase</th>
-                    <th style={{ width: 60 }}>Method</th>
-                    <th>URL</th>
-                    <th style={{ width: 80 }}>Status</th>
-                    <th style={{ width: 90 }}>Duration</th>
+                    <th style={{ width: 60 }}>{t("col_phase")}</th>
+                    <th style={{ width: 60 }}>{tCols("method")}</th>
+                    <th>{tCols("url")}</th>
+                    <th style={{ width: 80 }}>{tCols("status")}</th>
+                    <th style={{ width: 90 }}>{tCols("duration")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2370,22 +2425,22 @@ function ClientActivityCard({
               color: "var(--text-2)",
             }}
           >
-            Import events (latest {importEventsSorted.length})
+            {t("import_heading", { count: importEventsSorted.length })}
           </h3>
           <div className="diagnostics-table-wrap">
             <table className="diagnostics-table">
               <thead>
                 <tr>
-                  <th style={{ width: 90 }}>Time</th>
-                  <th style={{ width: 200 }}>Event</th>
-                  <th>Detail</th>
+                  <th style={{ width: 90 }}>{tCols("time")}</th>
+                  <th style={{ width: 200 }}>{t("col_event")}</th>
+                  <th>{t("col_detail")}</th>
                 </tr>
               </thead>
               <tbody>
                 {importEventsSorted.map((ev, i) => (
                   <tr key={`${ev.at}-${i}`}>
                     <td title={new Date(ev.at).toISOString()}>
-                      {formatRelative(ev.at)}
+                      {formatRelative(tFormat, ev.at)}
                     </td>
                     <td>
                       <code>{ev.name}</code>

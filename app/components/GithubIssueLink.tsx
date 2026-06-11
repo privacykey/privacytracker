@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 /**
@@ -34,6 +35,7 @@ function clamp(value: string, max: number): string {
 }
 
 export default function GithubIssueLink({ className }: { className?: string }) {
+  const t = useTranslations("github_issue_link");
   const [href, setHref] = useState<string>(FALLBACK_HREF);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function GithubIssueLink({ className }: { className?: string }) {
       rel="noopener noreferrer"
       target="_blank"
     >
-      Not what you&apos;re expecting? <span>Raise an issue on GitHub →</span>
+      {t("lead")} <span>{t("action")}</span>
     </a>
   );
 }

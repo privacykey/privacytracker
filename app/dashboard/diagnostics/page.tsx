@@ -11,16 +11,19 @@
  * "weird state" is exactly when the user wants to look at it.
  */
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import DiagnosticsView from "../../components/DiagnosticsView";
 import Nav from "../../components/Nav";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Diagnostics · privacytracker",
-  description:
-    "Live runtime metrics for the Node sidecar — memory, event-loop lag, slow queries.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("page_metadata");
+  return {
+    title: t("diagnostics_title"),
+    description: t("diagnostics_description"),
+  };
+}
 
 export default function DiagnosticsPage() {
   return (

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import GithubIssueLink from "./components/GithubIssueLink";
 
-export const metadata: Metadata = {
-  title: "404 — Page not found · privacytracker",
-  description: "The page you're looking for doesn't exist.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("page_metadata");
+  return {
+    title: t("not_found_title"),
+    description: t("not_found_description"),
+  };
+}
 
 /**
  * App Router catches every unknown URL with this file. It's a server
@@ -20,58 +24,59 @@ export const metadata: Metadata = {
  */
 
 /**
- * Map a same-origin pathname to a short human label for the back button.
- * Mirrors `resolveBackLink` in `app/help/definitions/page.tsx`, but operates
- * on the `Referer` header instead of a `?from=` query param because callers
- * don't opt into linking to the 404 page.
+ * Map a same-origin pathname to a `not_found.back_labels.*` translation key
+ * for the back button. Mirrors `resolveBackLink` in
+ * `app/help/definitions/page.tsx`, but operates on the `Referer` header
+ * instead of a `?from=` query param because callers don't opt into linking
+ * to the 404 page.
  */
-function pathToLabel(path: string): string {
+function pathToLabelKey(path: string): string {
   if (path.startsWith("/apps/")) {
     return "app";
   }
   if (path === "/dashboard/apps") {
-    return "Apps";
+    return "apps";
   }
   if (path === "/dashboard/privacy") {
-    return "Privacy Map";
+    return "privacy_map";
   }
   if (path === "/dashboard/stats") {
-    return "Stats";
+    return "stats";
   }
   if (path === "/dashboard/manual-apps") {
-    return "Manual apps";
+    return "manual_apps";
   }
   if (path === "/dashboard/settings") {
-    return "Settings";
+    return "settings";
   }
   if (path === "/dashboard/settings/import-history") {
-    return "Import history";
+    return "import_history";
   }
   if (path === "/dashboard/shortlist") {
-    return "Shortlist";
+    return "shortlist";
   }
   if (path === "/dashboard/compare") {
-    return "Compare";
+    return "compare";
   }
   if (path === "/dashboard") {
-    return "Dashboard";
+    return "dashboard";
   }
   if (path === "/onboard") {
-    return "Onboarding";
+    return "onboarding";
   }
   if (path === "/welcome") {
-    return "Welcome";
+    return "welcome";
   }
   if (path === "/help/definitions") {
-    return "Definitions";
+    return "definitions";
   }
   if (path === "/privacy-policy") {
-    return "Privacy Policy";
+    return "privacy_policy";
   }
   if (path === "/legal") {
-    return "Legal";
+    return "legal";
   }
-  return "previous page";
+  return "previous_page";
 }
 
 /**
@@ -86,7 +91,7 @@ function pathToLabel(path: string): string {
  */
 async function resolveBackLink(): Promise<{
   href: string;
-  label: string;
+  labelKey: string;
 } | null> {
   try {
     const h = await headers();
@@ -129,13 +134,14 @@ async function resolveBackLink(): Promise<{
       return null;
     }
 
-    return { href: path + url.search, label: pathToLabel(path) };
+    return { href: path + url.search, labelKey: pathToLabelKey(path) };
   } catch {
     return null;
   }
 }
 
 export default async function NotFound() {
+  const t = await getTranslations("not_found");
   const back = await resolveBackLink();
 
   return (
@@ -385,14 +391,11 @@ export default async function NotFound() {
         <p aria-hidden="true" className="notfound-code">
           404
         </p>
-        <span className="notfound-eyebrow">Page not found</span>
+        <span className="notfound-eyebrow">{t("eyebrow")}</span>
         <h1 className="notfound-title" id="notfound-title">
-          We couldn&apos;t find that page
+          {t("title")}
         </h1>
-        <p className="notfound-subtitle">
-          The URL you followed doesn&apos;t match anything we&apos;re tracking.
-          It may have moved, been removed, or never existed.
-        </p>
+        <p className="notfound-subtitle">{t("subtitle")}</p>
         <div className="notfound-actions">
           {back ? (
             <>
@@ -400,29 +403,30 @@ export default async function NotFound() {
                 className="notfound-btn notfound-btn-primary"
                 href={back.href}
               >
-                ← Back to {back.label}
+                {t("back_to", { label: t(`back_labels.${back.labelKey}`) })}
               </Link>
               <Link className="notfound-btn notfound-btn-secondary" href="/">
-                Home
+                {t("home")}
               </Link>
             </>
           ) : (
             <>
               <Link className="notfound-btn notfound-btn-primary" href="/">
-                Home
+                {t("home")}
               </Link>
               <Link
                 className="notfound-btn notfound-btn-secondary"
                 href="/dashboard"
               >
-                Go to dashboard
+                {t("go_to_dashboard")}
               </Link>
             </>
           )}
         </div>
         <p className="notfound-hint">
-          Looking for an app? Try the{" "}
-          <Link href="/dashboard/apps">tracked apps list</Link>.
+          {t.rich("hint", {
+            link: (chunks) => <Link href="/dashboard/apps">{chunks}</Link>,
+          })}
         </p>
         {/* Bottom "report a bug" link. The GithubIssueLink client component
             builds a prefilled issue URL using window.location.href and

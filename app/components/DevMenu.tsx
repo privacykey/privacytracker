@@ -268,6 +268,8 @@ function readInitialEnabled(): boolean {
 
 export default function DevMenu() {
   const tDev = useTranslations("dev_menu_panel");
+  // Shared with TaskCenter's footer link — same target page, same hint.
+  const tDiagLink = useTranslations("diagnostics_link");
   const devOptsVisible = useFlag("flag.devopts.visible") === "on";
   const pathname = usePathname() || "/";
   const router = useRouter();
@@ -1720,9 +1722,9 @@ export default function DevMenu() {
               className="dev-menu-deep-link"
               href="/dashboard/diagnostics"
               onClick={() => setOpen(false)}
-              title="Live runtime metrics: memory, event-loop lag, slow queries"
+              title={tDiagLink("title")}
             >
-              ⏱ Diagnostics
+              ⏱ {tDiagLink("label")}
             </Link>
             {/* Quick-export entry. Drops the current override set onto
                 the clipboard in the same JSON shape the bulk-import

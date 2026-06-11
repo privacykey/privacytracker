@@ -14,10 +14,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import {
-  A11Y_PREFERENCE_META,
-  type AccessibilityPreference,
-  type AccessibilityProfile,
+import type {
+  AccessibilityPreference,
+  AccessibilityProfile,
 } from "../../lib/accessibility-profile";
 import {
   CANONICAL_ACCESSIBILITY_FEATURES,
@@ -37,6 +36,8 @@ import { useDateFormat } from "../../lib/date-format-hook";
 import {
   categoryDescription as i18nCategoryDescription,
   categoryLabel as i18nCategoryLabel,
+  severityDescription as i18nSeverityDescription,
+  severityLabel as i18nSeverityLabel,
 } from "../../lib/i18n-meta";
 import {
   type AppPolicyAnalysis,
@@ -58,7 +59,6 @@ import {
 } from "../../lib/privacy-meta";
 import {
   type PrivacyProfile,
-  TIER_META,
   TIER_RANK,
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../lib/privacy-profile";
@@ -622,6 +622,11 @@ export default function AppDetailView({
   // (which would violate React's hooks rules anyway).
   const tDetail = useTranslations("app_detail");
   const tDetailTabs = useTranslations("app_detail.tabs");
+  // The delete-failure toast reuses the AppGrid copy so the two delete
+  // flows stay word-for-word identical (see deleteApp below).
+  const tAppGrid = useTranslations("app_grid");
+  // Price + IAP chip copy — shared namespace with ShortlistView's chips.
+  const tPriceChip = useTranslations("price_chip");
   // Category-label translators originally lived here, but the
   // category-card render runs inside the PrivacyTypeSection sub-
   // component (see line ~3060), and React's hooks rules mean each
@@ -967,7 +972,7 @@ export default function AppDetailView({
       router.push(backDestination.href);
     } catch (error) {
       console.error("[app-detail] Delete failed:", error);
-      showToast("❌ Delete failed");
+      showToast(tAppGrid("toast_delete_failed"));
       setDeleting(false);
     }
   };
@@ -1003,7 +1008,7 @@ export default function AppDetailView({
         href={backDestination.href}
         style={{ marginBottom: 24, display: "inline-flex" }}
       >
-        ← Back to {backDestination.label}
+        {tDetail("back_to", { label: backDestination.label })}
       </Link>
 
       {/* Hero */}
@@ -1031,7 +1036,9 @@ export default function AppDetailView({
           <div className="detail-hero-meta">
             {f.headerFreshnessBadge && (
               <span className={`freshness-badge ${freshnessClass()}`}>
-                Synced {daysSince(app.lastSynced)}
+                {tDetail("synced_relative", {
+                  relative: daysSince(app.lastSynced),
+                })}
               </span>
             )}
 
@@ -1040,8 +1047,9 @@ export default function AppDetailView({
                 className="severity-badge severity-track change-badge-link"
                 href="#what-changed"
               >
-                ⚡ {reviewState.totalCount} change
-                {reviewState.totalCount === 1 ? "" : "s"} to review
+                {tDetail("changes_to_review", {
+                  count: reviewState.totalCount,
+                })}
               </a>
             )}
 
@@ -1050,7 +1058,9 @@ export default function AppDetailView({
                 className="detail-version-pill"
                 title={
                   app.versionUpdatedAt
-                    ? `Released ${formatDate(app.versionUpdatedAt)}`
+                    ? tDetail("released_title", {
+                        date: formatDate(app.versionUpdatedAt),
+                      })
                     : undefined
                 }
               >
@@ -1061,7 +1071,9 @@ export default function AppDetailView({
                       ·
                     </span>
                     <span className="detail-version-date">
-                      Updated {daysSince(app.versionUpdatedAt)}
+                      {tDetail("updated_relative", {
+                        relative: daysSince(app.versionUpdatedAt),
+                      })}
                     </span>
                   </>
                 )}
@@ -1079,7 +1091,7 @@ export default function AppDetailView({
               copy never claims "no IAP" without evidence.
             */}
             {(() => {
-              const line = formatPriceLine({
+              const line = formatPriceLine(tPriceChip, {
                 priceAmount: app.priceAmount,
                 priceCurrency: app.priceCurrency,
                 priceFormatted: app.priceFormatted,
@@ -1091,7 +1103,7 @@ export default function AppDetailView({
               return (
                 <span
                   className="detail-price-pill"
-                  title={priceTooltip({
+                  title={priceTooltip(tPriceChip, {
                     priceAmount: app.priceAmount,
                     priceCurrency: app.priceCurrency,
                     priceFormatted: app.priceFormatted,
@@ -1116,7 +1128,9 @@ export default function AppDetailView({
               trackAccessibility &&
               app.hasAccessibilityLabels === 1 && (
                 <button
-                  aria-label={`${app.accessibilityFeatures?.length ?? 0} accessibility features — view details`}
+                  aria-label={tDetail("a11y_chip_aria", {
+                    count: app.accessibilityFeatures?.length ?? 0,
+                  })}
                   className="detail-a11y-chip"
                   onClick={() => setTab("accessibility")}
                   title={tDetail("tooltips.view_a11y_features")}
@@ -1140,7 +1154,7 @@ export default function AppDetailView({
                     <path d="M9 18l3-3.5L15 18" />
                   </svg>
                   <span>
-                    Accessibility
+                    {tDetailTabs("accessibility")}
                     {typeof app.accessibilityFeatures?.length === "number" && (
                       <>
                         {" "}
@@ -1181,7 +1195,9 @@ export default function AppDetailView({
               )}
 
             <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-              First seen {formatDate(app.firstSeen || app.lastSynced)}
+              {tDetail("first_seen", {
+                date: formatDate(app.firstSeen || app.lastSynced),
+              })}
             </span>
 
             {isSafeExternalHref(app.url) && (
@@ -1191,7 +1207,7 @@ export default function AppDetailView({
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                View on App Store ↗
+                {tDetail("view_on_app_store")}
               </a>
             )}
 
@@ -1202,7 +1218,7 @@ export default function AppDetailView({
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                Privacy Policy ↗
+                {tDetail("privacy_policy_link")}
               </a>
             )}
 
@@ -1218,7 +1234,7 @@ export default function AppDetailView({
               }}
               title={tDetail("tooltips.read_apple_definitions")}
             >
-              Label definitions
+              {tDetail("label_definitions_link")}
             </Link>
           </div>
         </div>
@@ -1341,25 +1357,27 @@ export default function AppDetailView({
             ⓘ
           </span>
           <span>
-            This is an Apple app. For Apple&rsquo;s own privacy labels &mdash;
-            including Messages, Maps, Safari, Mail, Health, and more &mdash; see{" "}
-            <a
-              href="https://www.apple.com/au/privacy/labels/"
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              apple.com/au/privacy/labels ↗
-            </a>
-            . For definitions of the terms on this page, see the{" "}
-            <Link
-              href={{
-                pathname: "/help/definitions",
-                query: { from: `/apps/${app.id}`, label: app.name },
-              }}
-            >
-              in-app definitions reference
-            </Link>
-            .
+            {tDetail.rich("apple_app_hint", {
+              apple: (chunks) => (
+                <a
+                  href="https://www.apple.com/au/privacy/labels/"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {chunks}
+                </a>
+              ),
+              defs: (chunks) => (
+                <Link
+                  href={{
+                    pathname: "/help/definitions",
+                    query: { from: `/apps/${app.id}`, label: app.name },
+                  }}
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
           </span>
         </div>
       )}
@@ -2007,15 +2025,16 @@ function formatEventDate(ts: number) {
 }
 
 /**
- * Preset labels for the snooze menu. Mirrors `SNOOZE_DAYS_OPTIONS` in
- * `lib/changelog.ts` — kept as a parallel map rather than computing from
- * the tuple so we can phrase each option in natural language ("1 day",
- * "1 week", "1 month") instead of "N days".
+ * i18n keys (under `app_detail.change_review.snooze_options`) for the snooze
+ * menu's preset labels. Mirrors `SNOOZE_DAYS_OPTIONS` in `lib/changelog.ts` —
+ * kept as a parallel map rather than computing from the tuple so we can
+ * phrase each option in natural language ("1 day", "1 week", "1 month")
+ * instead of "N days".
  */
-const SNOOZE_LABELS: Record<SnoozeDays, string> = {
-  1: "1 day",
-  7: "1 week",
-  30: "1 month",
+const SNOOZE_LABEL_KEYS: Record<SnoozeDays, string> = {
+  1: "one_day",
+  7: "one_week",
+  30: "one_month",
 };
 
 function formatSnoozeDate(ts: number) {
@@ -2133,19 +2152,19 @@ function ChangeReviewPanel({
       // us to it). Drop the op silently and tell the user nothing was
       // restored, rather than spamming an error toast.
       if (res.status === 410) {
-        onShowToast("↶ Nothing to undo");
+        onShowToast(tDetail("toasts.review_undo_nothing"));
         return;
       }
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
-      const labelMap: Record<ReviewAction, string> = {
-        reviewed: "✓ Restored unreviewed changes",
-        dismissed: "✓ Restored dismissed changes",
-        snoozed: "↻ Resumed reminders (undid snooze)",
-        unsnoozed: "🔔 Re-snoozed reminders",
+      const toastKeyMap: Record<ReviewAction, string> = {
+        reviewed: "toasts.review_undo_reviewed",
+        dismissed: "toasts.review_undo_dismissed",
+        snoozed: "toasts.review_undo_snoozed",
+        unsnoozed: "toasts.review_undo_unsnoozed",
       };
-      onShowToast(labelMap[target.actionLabel]);
+      onShowToast(tDetail(toastKeyMap[target.actionLabel]));
       // Tell the parent to refetch so the panel state realigns with the
       // restored db row. onAcknowledged is the wrong callback to fire
       // here (it would clear the unack state on the parent again);
@@ -2154,7 +2173,7 @@ function ChangeReviewPanel({
       onRefreshHistory();
     } catch (error) {
       console.error("[app-detail] review undo failed:", error);
-      onShowToast("❌ Couldn’t undo that action");
+      onShowToast(tDetail("toasts.review_undo_failed"));
     }
   }, [app.id, onRefreshHistory, onShowToast, undoStack]);
 
@@ -2213,7 +2232,7 @@ function ChangeReviewPanel({
       return { ok: true, snoozeUntil: data?.record?.snooze_until ?? null };
     } catch (error) {
       console.error(`[app-detail] ${action} failed:`, error);
-      onShowToast(`❌ Could not record "${action}"`);
+      onShowToast(tDetail("toasts.review_action_failed", { action }));
       return { ok: false };
     } finally {
       setBusy(null);
@@ -2223,7 +2242,7 @@ function ChangeReviewPanel({
   const handleReviewed = async () => {
     const result = await postAction("reviewed");
     if (result.ok) {
-      onShowToast("✓ Changes marked as reviewed");
+      onShowToast(tDetail("toasts.review_marked_reviewed"));
       onAcknowledged();
       onRefreshHistory();
     }
@@ -2232,7 +2251,7 @@ function ChangeReviewPanel({
   const handleDismiss = async () => {
     const result = await postAction("dismissed");
     if (result.ok) {
-      onShowToast("✕ Changes dismissed");
+      onShowToast(tDetail("toasts.review_dismissed"));
       onAcknowledged();
       onRefreshHistory();
     }
@@ -2242,7 +2261,13 @@ function ChangeReviewPanel({
     setSnoozeMenuOpen(false);
     const result = await postAction("snoozed", { snoozeDays: days });
     if (result.ok && result.snoozeUntil) {
-      onShowToast(`🔔 Reminders snoozed for ${SNOOZE_LABELS[days]}`);
+      onShowToast(
+        tDetail("toasts.review_snoozed", {
+          duration: tDetail(
+            `change_review.snooze_options.${SNOOZE_LABEL_KEYS[days]}`
+          ),
+        })
+      );
       onSnoozed(result.snoozeUntil);
       onRefreshHistory();
     }
@@ -2251,7 +2276,7 @@ function ChangeReviewPanel({
   const handleUnsnooze = async () => {
     const result = await postAction("unsnoozed");
     if (result.ok) {
-      onShowToast("↻ Reminders resumed");
+      onShowToast(tDetail("toasts.review_unsnoozed"));
       onUnsnoozed();
       onRefreshHistory();
     }
@@ -2410,7 +2435,9 @@ function ChangeReviewPanel({
                       role="menuitem"
                       type="button"
                     >
-                      {SNOOZE_LABELS[days]}
+                      {tDetail(
+                        `change_review.snooze_options.${SNOOZE_LABEL_KEYS[days]}`
+                      )}
                     </button>
                   ))}
                 </div>
@@ -2433,6 +2460,21 @@ function ChangeReviewPanel({
   );
 }
 
+/**
+ * Map the `classifyChange` severity class back to the `severity.*` locale
+ * namespace key, so the chip renders the localised label while the English
+ * `SEVERITY_CONFIG.label` stays the matcher for the (English) server-side
+ * change descriptions.
+ */
+const SEVERITY_I18N_KEY: Record<
+  Exclude<ChangeClassification["severity"], "none">,
+  string
+> = {
+  track: "data_used_to_track_you",
+  linked: "data_linked_to_you",
+  unlinked: "data_not_linked_to_you",
+};
+
 function ChangeReviewEvent({
   event,
   onViewChange,
@@ -2440,6 +2482,8 @@ function ChangeReviewEvent({
   event: UnacknowledgedChangeEvent;
   onViewChange?: () => void;
 }) {
+  const tDetail = useTranslations("app_detail");
+  const tSeverity = useTranslations("severity");
   return (
     <div className="change-review-event">
       <div className="change-review-event-date">
@@ -2474,7 +2518,9 @@ function ChangeReviewEvent({
                   <span
                     className={`change-review-sev-chip change-review-sev-chip-${cls.severity}`}
                   >
-                    {cls.severityLabel}
+                    {cls.severity === "none"
+                      ? cls.severityLabel
+                      : tSeverity(SEVERITY_I18N_KEY[cls.severity])}
                   </span>
                 )}
                 {entry.details && entry.details.length > 0 && (
@@ -2498,7 +2544,7 @@ function ChangeReviewEvent({
                     onClick={onViewChange}
                     type="button"
                   >
-                    View policy change →
+                    {tDetail("change_review.view_policy_change")}
                   </button>
                 )}
               </div>
@@ -2893,34 +2939,44 @@ function PolicySummaryPanel({
   if (analysis?.sourceWordCount) {
     metadata.push({
       key: "words",
-      label: `~${analysis.sourceWordCount.toLocaleString()} words`,
+      label: tDetail("policy_meta.word_count", {
+        count: analysis.sourceWordCount.toLocaleString(),
+      }),
     });
   }
-  if (originMeta) {
+  if (originMeta && analysis?.sourceOrigin) {
+    // `originMeta` is non-null only for known origins, so the dynamic
+    // `policy_meta.origin_*` key below always resolves; the English
+    // POLICY_SOURCE_ORIGIN_META labels stay as documentation + fallback
+    // for plain-text (non-React) composers.
     metadata.push({
       key: "origin",
-      label: originMeta.label,
-      hint: originMeta.hint,
-      cls: `policy-meta-origin policy-meta-origin-${analysis?.sourceOrigin ?? "direct"}`,
+      label: tDetail(`policy_meta.origin_${analysis.sourceOrigin}`),
+      hint: tDetail(`policy_meta.origin_${analysis.sourceOrigin}_hint`),
+      cls: `policy-meta-origin policy-meta-origin-${analysis.sourceOrigin}`,
     });
   }
   if (analysis?.model) {
     metadata.push({
       key: "model",
-      label: `Model: ${analysis.model}`,
+      label: tDetail("policy_meta.model", { model: analysis.model }),
       cls: "policy-meta-model",
     });
   }
   if (analysis?.sourceFetchedAt) {
     metadata.push({
       key: "fetched",
-      label: `Policy fetched ${formatDate(analysis.sourceFetchedAt)}`,
+      label: tDetail("policy_meta.policy_fetched", {
+        date: formatDate(analysis.sourceFetchedAt),
+      }),
     });
   }
   if (analysis?.updatedAt) {
     metadata.push({
       key: "analysed",
-      label: `Summary updated ${formatDate(analysis.updatedAt)}`,
+      label: tDetail("policy_meta.summary_updated", {
+        date: formatDate(analysis.updatedAt),
+      }),
     });
   }
 
@@ -2940,9 +2996,7 @@ function PolicySummaryPanel({
           </h2>
         </div>
         <p className="policy-summary-disclaimer">
-          The policy text is fetched on demand from this tab only — it is not
-          re-scraped by the per-app Re-sync button or the Settings &ldquo;Sync
-          All&rdquo; job.
+          {tDetail("policy_fetch_scope_note")}
         </p>
       </div>
 
@@ -3182,7 +3236,8 @@ function PolicySummaryPanel({
                 className="policy-safety-summary__heading"
                 id="policy-safety-summary-heading"
               >
-                <span aria-hidden="true">🛡</span> Safety summary for minors
+                <span aria-hidden="true">🛡</span>{" "}
+                {tDetail("policy_safety_heading")}
               </h3>
               <p className="policy-safety-summary__paragraph">
                 {analysis.summary.safetySummary.paragraph}
@@ -3313,6 +3368,7 @@ function PolicyRecentChangeBanner({
   onViewDiff: () => void;
   formatDate: (ts: number) => string;
 }) {
+  const tDetail = useTranslations("app_detail");
   if (!recentPolicyChange || policyDiffAlertDays <= 0) {
     return null;
   }
@@ -3323,10 +3379,10 @@ function PolicyRecentChangeBanner({
   const ageDays = Math.floor(ageMs / (24 * 60 * 60 * 1000));
   const ageCopy =
     ageDays === 0
-      ? "today"
+      ? tDetail("policy_diff_alert.age_today")
       : ageDays === 1
-        ? "yesterday"
-        : `${ageDays} days ago`;
+        ? tDetail("policy_diff_alert.age_yesterday")
+        : tDetail("policy_diff_alert.age_days_ago", { count: ageDays });
 
   return (
     <div className="policy-diff-alert" role="status">
@@ -3334,15 +3390,17 @@ function PolicyRecentChangeBanner({
         📝
       </span>
       <div className="policy-diff-alert-body">
-        <strong>Privacy policy text changed {ageCopy}.</strong> This change was
-        first captured {formatDate(recentPolicyChange.changedAt)}, inside the{" "}
-        {policyDiffAlertDays}-day alert window configured in Settings.{" "}
+        <strong>{tDetail("policy_diff_alert.lead", { age: ageCopy })}</strong>
+        {tDetail("policy_diff_alert.body", {
+          date: formatDate(recentPolicyChange.changedAt),
+          days: policyDiffAlertDays,
+        })}{" "}
         <button
           className="policy-diff-alert-link"
           onClick={onViewDiff}
           type="button"
         >
-          View diff on the History tab →
+          {tDetail("policy_diff_alert.view_diff")}
         </button>
       </div>
     </div>
@@ -3523,7 +3581,7 @@ function PolicyRunLogStrip({
               fontSize: 12,
             }}
           >
-            Last run: {lastRunLabel}
+            {tLog("last_run_at", { date: lastRunLabel })}
           </span>
         )}
       </div>
@@ -3563,6 +3621,7 @@ function PolicyPreviewBlock({
   preview: string;
   totalLength: number;
 }) {
+  const tDetail = useTranslations("app_detail");
   const truncated = totalLength > preview.length;
   return (
     <div
@@ -3584,12 +3643,19 @@ function PolicyPreviewBlock({
         }}
       >
         <strong>
-          Scraped policy text (first {preview.length.toLocaleString()} chars)
+          {tDetail("policy_preview.header", {
+            count: preview.length.toLocaleString(),
+          })}
         </strong>
         <span style={{ color: "var(--text-3, #6c7c94)" }}>
           {truncated
-            ? `Showing ${preview.length.toLocaleString()} of ${totalLength.toLocaleString()} chars`
-            : `${totalLength.toLocaleString()} chars total`}
+            ? tDetail("policy_preview.showing_of", {
+                shown: preview.length.toLocaleString(),
+                total: totalLength.toLocaleString(),
+              })
+            : tDetail("policy_preview.total_chars", {
+                total: totalLength.toLocaleString(),
+              })}
         </span>
       </div>
       <pre
@@ -3605,8 +3671,7 @@ function PolicyPreviewBlock({
         }}
       >
         {preview}
-        {truncated &&
-          "\n\n… (truncated — only the first slice is stored for preview)"}
+        {truncated && `\n\n${tDetail("policy_preview.truncated_note")}`}
       </pre>
     </div>
   );
@@ -3629,6 +3694,7 @@ function AiSummaryDisclaimer({
   policyUrl?: string | null;
   archiveUrl?: string | null;
 }) {
+  const tDetail = useTranslations("app_detail");
   return (
     <div
       className="policy-ai-disclaimer"
@@ -3649,11 +3715,8 @@ function AiSummaryDisclaimer({
         🤖
       </span>
       <span>
-        <strong>AI-generated summary.</strong> The overview, highlights, and
-        lens ratings below are produced by a language model reading the scraped
-        policy text. It can miss clauses, misinterpret legal phrasing, or rate
-        sections incorrectly. Always verify anything you act on against the
-        original document
+        <strong>{tDetail("policy_ai_disclaimer_lead")}</strong>
+        {tDetail("policy_ai_disclaimer_body")}
         {isSafeExternalHref(policyUrl) && (
           <>
             {" — "}
@@ -3663,7 +3726,7 @@ function AiSummaryDisclaimer({
               rel="noopener noreferrer"
               target="_blank"
             >
-              open source policy ↗
+              {tDetail("policy_ai_disclaimer_source_link")}
             </a>
           </>
         )}
@@ -3676,7 +3739,7 @@ function AiSummaryDisclaimer({
               rel="noopener noreferrer"
               target="_blank"
             >
-              Wayback backup ↗
+              {tDetail("policy_ai_disclaimer_wayback_link")}
             </a>
           </>
         )}
@@ -3708,7 +3771,7 @@ function PolicyChunkNotesBlock({ notes }: { notes: PolicyChunkNote[] }) {
       }}
     >
       <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-        Per-chunk notes ({notes.length} chunk{notes.length === 1 ? "" : "s"})
+        {tDetail("policy_chunk_notes.summary", { count: notes.length })}
         <span
           style={{
             color: "var(--text-3, #6c7c94)",
@@ -3716,7 +3779,7 @@ function PolicyChunkNotesBlock({ notes }: { notes: PolicyChunkNote[] }) {
             marginLeft: 8,
           }}
         >
-          — intermediate AI output used to build the merged summary above
+          {tDetail("policy_chunk_notes.summary_hint")}
         </span>
       </summary>
       <div
@@ -3738,7 +3801,10 @@ function PolicyChunkNotesBlock({ notes }: { notes: PolicyChunkNote[] }) {
             }}
           >
             <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              Chunk {index + 1} of {notes.length}
+              {tDetail("policy_chunk_notes.chunk_heading", {
+                index: index + 1,
+                total: notes.length,
+              })}
             </div>
             <p
               style={{
@@ -3883,6 +3949,10 @@ function PolicyChangeStrip({
   // i18n — for the from→to rating badges in each lens-shift row.
   const tRating = useTranslations("policy_rating");
   const tDetail = useTranslations("app_detail");
+  // Lens labels read from the shared `policy_lens.*` namespace (same as the
+  // lens grid). `shift.label` keeps the English POLICY_LENSES fallback for
+  // any non-canonical key a stored summary might carry.
+  const tLens = useTranslations("policy_lens");
   const shifts = diffLensRatings(current.lenses, previous.lenses);
 
   // If ratings didn't move but overview/highlights changed, surface that too —
@@ -3898,8 +3968,10 @@ function PolicyChangeStrip({
   }
 
   const sinceLabel = previousAt
-    ? `since ${formatDate(previousAt)}`
-    : "since the last analysis";
+    ? tDetail("policy_change_strip.since_date", {
+        date: formatDate(previousAt),
+      })
+    : tDetail("policy_change_strip.since_fallback");
 
   return (
     <div className="policy-change-strip">
@@ -3926,7 +3998,11 @@ function PolicyChangeStrip({
                 className={`policy-change-shift policy-change-shift-${direction}`}
                 key={shift.key}
               >
-                <span className="policy-change-shift-label">{shift.label}</span>
+                <span className="policy-change-shift-label">
+                  {POLICY_LENSES.some((lens) => lens.key === shift.key)
+                    ? tLens(shift.key)
+                    : shift.label}
+                </span>
                 <span className="policy-change-shift-flow">
                   <span className={`policy-rating-badge ${fromMeta.cls}`}>
                     {tRating(shift.from)}
@@ -3947,8 +4023,7 @@ function PolicyChangeStrip({
         </ul>
       ) : (
         <p className="policy-change-strip-note">
-          Ratings held steady, but the overview or highlights were rewritten in
-          the latest analysis.
+          {tDetail("policy_change_strip.held_steady")}
         </p>
       )}
     </div>
@@ -4037,8 +4112,23 @@ function PrivacyTypeSection({
   // `tCategory` / `tCategoryDesc` aren't in scope across the boundary.
   const tCategory = useTranslations("category");
   const tCategoryDesc = useTranslations("category_descriptions");
+  // Reused from AppGrid — `app_grid.n_categories_aria` is the byte-identical
+  // "{n} categories" plural the visible count below needs.
+  const tAppGrid = useTranslations("app_grid");
+  // Severity badge label + tooltip, and the tier words in the mismatch
+  // tooltip, all resolve through their shared locale namespaces; the
+  // English meta maps stay as fallbacks for unknown identifiers.
+  const tSeverity = useTranslations("severity");
+  const tTierShort = useTranslations("privacy_profile_tier_short");
   const [open, setOpen] = useState(true); // default open
   const sev = SEVERITY_CONFIG[privacyType.identifier];
+  const sevLabel =
+    i18nSeverityLabel(tSeverity, privacyType.identifier) ??
+    sev?.label ??
+    privacyType.title;
+  const sevDescription =
+    i18nSeverityDescription(tSeverity, privacyType.identifier) ??
+    sev?.description;
   // Stable ids so aria-controls / id match even across re-renders.
   const panelId = `accordion-panel-${privacyType.identifier}`;
   const headerId = `accordion-header-${privacyType.identifier}`;
@@ -4100,23 +4190,24 @@ function PrivacyTypeSection({
           <div className="tooltip-inline">
             <span className={`severity-badge ${sev?.cls ?? "severity-none"}`}>
               <PrivacyTypeIcon identifier={privacyType.identifier} />
-              {sev?.label ?? privacyType.title}
+              {sevLabel}
             </span>
-            {sev?.description && <InfoTooltip text={sev.description} />}
+            {sevDescription && <InfoTooltip text={sevDescription} />}
           </div>
           <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-            {privacyType.categories.length} categor
-            {privacyType.categories.length === 1 ? "y" : "ies"}
+            {tAppGrid("n_categories_aria", {
+              count: privacyType.categories.length,
+            })}
           </span>
           {hasMismatches && (
             <span
-              aria-label={`${mismatchedCats.size} categor${mismatchedCats.size === 1 ? "y" : "ies"} don${"\u2019"}t match your privacy profile`}
+              aria-label={tDetail("mismatch_chip.aria", {
+                count: mismatchedCats.size,
+              })}
               className="accordion-mismatch-chip"
               title={tDetail("tooltips.categories_exceed_profile")}
             >
-              ⚠ {mismatchedCats.size}{" "}
-              {mismatchedCats.size === 1 ? "doesn\u2019t" : "don\u2019t"} match
-              your privacy profile
+              {tDetail("mismatch_chip.label", { count: mismatchedCats.size })}
             </span>
           )}
         </div>
@@ -4177,11 +4268,13 @@ function PrivacyTypeSection({
                 if (!allowed) {
                   return;
                 }
-                const observedLabel =
-                  TIER_META[typeTier].shortLabel.toLowerCase();
-                const allowedLabel =
-                  TIER_META[allowed].shortLabel.toLowerCase();
-                return `${localisedLabel}: ${observedLabel} (you allow ${allowedLabel} at most)`;
+                const observedLabel = tTierShort(typeTier).toLowerCase();
+                const allowedLabel = tTierShort(allowed).toLowerCase();
+                return tDetail("mismatch_title", {
+                  label: localisedLabel,
+                  observed: observedLabel,
+                  allowed: allowedLabel,
+                });
               })();
               return (
                 /*
@@ -4373,23 +4466,17 @@ function AccessibilityPanel({
         <div className="a11y-summary-headline">
           <span className="a11y-summary-count">{declaredCount}</span>
           <span className="a11y-summary-total">
-            of {canonicalCount} canonical features declared
+            {tDetail("a11y_summary.of_total", { count: canonicalCount })}
           </span>
         </div>
         <div className="a11y-summary-sub">
-          {app.hasAccessibilityLabels === 1 ? (
-            <>
-              {coveragePct}% of the features Apple surfaces on App Store
-              listings are claimed by this developer.
-            </>
-          ) : (
-            <>
-              Apple&rsquo;s accessibility shelf is empty for this app &mdash;
-              the developer hasn&rsquo;t declared any supported features yet.
-            </>
-          )}{" "}
+          {app.hasAccessibilityLabels === 1
+            ? tDetail("a11y_summary.coverage", { pct: coveragePct })
+            : tDetail("a11y_summary.shelf_empty")}{" "}
           <span className="a11y-summary-synced">
-            Last synced {formatDate(app.lastSynced)}
+            {tDetail("a11y_summary.last_synced", {
+              date: formatDate(app.lastSynced),
+            })}
           </span>
         </div>
       </div>
@@ -4408,19 +4495,17 @@ function AccessibilityPanel({
         >
           <div className="a11y-profile-key-header">
             <span className="a11y-profile-key-eyebrow">
-              Your accessibility preferences
+              {tDetail("actions.your_a11y_prefs_aria")}
             </span>
             <span className="a11y-profile-key-summary">
-              {totalMissingPreferred === 0 ? (
-                <>
-                  All {totalPreferred} preferred feature
-                  {totalPreferred === 1 ? "" : "s"} declared
-                </>
-              ) : (
-                <>
-                  {totalMissingPreferred} of {totalPreferred} not declared
-                </>
-              )}
+              {totalMissingPreferred === 0
+                ? tDetail("a11y_profile_key_all_declared", {
+                    count: totalPreferred,
+                  })
+                : tDetail("a11y_profile_key_missing_count", {
+                    missing: totalMissingPreferred,
+                    total: totalPreferred,
+                  })}
             </span>
           </div>
           <div className="a11y-profile-key-tiers">
@@ -4428,10 +4513,12 @@ function AccessibilityPanel({
               <span className="a11y-profile-key-tier a11y-profile-key-tier-required">
                 <span aria-hidden="true" className="a11y-profile-key-swatch" />
                 <strong>{preferenceStats.required.total}</strong>{" "}
-                {A11Y_PREFERENCE_META.required.label.toLowerCase()}
+                {tDetail("a11y_profile_key_tier_required")}
                 {preferenceStats.required.missing > 0 && (
                   <span className="a11y-profile-key-tier-missing">
-                    · {preferenceStats.required.missing} missing
+                    {tDetail("a11y_profile_key_tier_missing", {
+                      count: preferenceStats.required.missing,
+                    })}
                   </span>
                 )}
               </span>
@@ -4440,30 +4527,32 @@ function AccessibilityPanel({
               <span className="a11y-profile-key-tier a11y-profile-key-tier-nice">
                 <span aria-hidden="true" className="a11y-profile-key-swatch" />
                 <strong>{preferenceStats.nice.total}</strong>{" "}
-                {A11Y_PREFERENCE_META.nice.label.toLowerCase()}
+                {tDetail("a11y_profile_key_tier_nice")}
                 {preferenceStats.nice.missing > 0 && (
                   <span className="a11y-profile-key-tier-missing">
-                    · {preferenceStats.nice.missing} missing
+                    {tDetail("a11y_profile_key_tier_missing", {
+                      count: preferenceStats.nice.missing,
+                    })}
                   </span>
                 )}
               </span>
             )}
           </div>
           <div className="a11y-profile-key-hint">
-            Rows you marked are outlined in teal — tap{" "}
-            <Link href="/dashboard/settings#accessibility-profile">
-              Settings
-            </Link>{" "}
-            to edit.
+            {tDetail.rich("a11y_profile_key_hint", {
+              link: (chunks) => (
+                <Link href="/dashboard/settings#accessibility-profile">
+                  {chunks}
+                </Link>
+              ),
+            })}
           </div>
         </div>
       )}
 
       {/* Informational note — self-declared labels are a signal, not proof. */}
       <p className="a11y-disclaimer" role="note">
-        <span aria-hidden="true">ⓘ</span> These labels are declared by the
-        developer and are not independently verified by Apple. Treat them as a
-        signal of intent, not a conformance certificate.
+        <span aria-hidden="true">ⓘ</span> {tDetail("a11y_disclaimer")}
       </p>
 
       <div className="a11y-feature-list">
@@ -4519,15 +4608,15 @@ function AccessibilityPanel({
                     className="a11y-feature-new-badge"
                     title={tDetail("tooltips.a11y_feature_post_build")}
                   >
-                    NEW
+                    {tDetail("a11y_feature_new_badge")}
                   </span>
                 )}
                 {row.preference && (
                   <span
                     className={`a11y-feature-pref-chip a11y-feature-pref-chip-${row.preference}`}
-                    title={A11Y_PREFERENCE_META[row.preference].description}
+                    title={tDetail(`a11y_pref_chip.${row.preference}_desc`)}
                   >
-                    {A11Y_PREFERENCE_META[row.preference].shortLabel}
+                    {tDetail(`a11y_pref_chip.${row.preference}`)}
                   </span>
                 )}
               </div>

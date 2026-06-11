@@ -728,6 +728,8 @@ export function TaskCenterTrigger() {
   // dismiss aria). Per-row task copy is composed dynamically and stays
   // English for now.
   const t = useTranslations("task_center");
+  // Shared with DevMenu's footer link — same target page, same hint.
+  const tDiagLink = useTranslations("diagnostics_link");
   // Wave I: short-circuit when `flag.taskcenter.widget` resolves off.
   // The Nav already gates `flag.nav.task_center_trigger`; this is the
   // belt-and-braces gate on the widget itself so future surfaces that
@@ -1012,9 +1014,9 @@ export function TaskCenterTrigger() {
                 className="task-center-footer-link"
                 href="/dashboard/diagnostics"
                 onClick={() => setOpen(false)}
-                title="Live runtime metrics: memory, event-loop lag, slow queries"
+                title={tDiagLink("title")}
               >
-                ⏱ Diagnostics
+                ⏱ {tDiagLink("label")}
               </Link>
             </div>
           )}
