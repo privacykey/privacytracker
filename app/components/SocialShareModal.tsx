@@ -74,17 +74,17 @@ const PALETTE = {
   textMuted: "#8b98a5",
   textFaint: "#5a6876",
   brand: "#5ac8fa",
-  tracking: "#ff9f0a", // matches --orange / .severity-track
-  linked: "#ff453a", // matches --red / .severity-linked
-  notLinked: "#ffd60a", // matches --yellow / .severity-unlinked
+  tracking: "#ff453a", // matches --red / .severity-track
+  linked: "#ff9f0a", // matches --orange / .severity-linked
+  notLinked: "#d8c7a3", // matches --cream / .severity-unlinked
 } as const;
 
 type Tier = "tracking" | "linked" | "not_linked";
 
 const TIER_ORDER: Array<{ tier: Tier; color: string }> = [
-  { tier: "tracking", color: PALETTE.tracking },
-  { tier: "linked", color: PALETTE.linked },
   { tier: "not_linked", color: PALETTE.notLinked },
+  { tier: "linked", color: PALETTE.linked },
+  { tier: "tracking", color: PALETTE.tracking },
 ];
 
 /**

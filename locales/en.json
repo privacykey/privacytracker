@@ -290,74 +290,74 @@
     "popover_aria_label": "Example: {category}, {severity}",
     "captions": {
       "contact_info": {
-        "data_used_to_track_you": "Type your email into App A and close it. App B opens — it already knows you. When contact details are used for tracking, they become a key that unlocks you across apps you've never logged into.",
-        "data_linked_to_you": "Type your email — this app pins it to your profile here. Every action you take from now on is filed under that identity, in this one app.",
-        "data_not_linked_to_you": "Type your email — it's hashed and dropped into an anonymous batch. The number that comes back from the database is just a number, not you."
+        "data_used_to_track_you": "Give one app your email, and a week later your inbox fills with brands you never signed up with. Your address got passed along — and it finds you by name.",
+        "data_linked_to_you": "Your name, email and phone run your account here — they sign you in, send your receipts, track your delivery. Tied to you, kept in this one app.",
+        "data_not_linked_to_you": "Your address is struck out before anything is stored. What's kept is a sign-up tally — domains and countries — with no addresses in it."
       },
       "health_and_fitness": {
-        "data_used_to_track_you": "Your heart-rate data leaves the watch and resurfaces as a 'recommended for you' ad in a completely different app, targeting whatever the numbers suggest about you.",
-        "data_linked_to_you": "Your workouts get pinned to your profile here. Every step, every PB, every rest day is filed under your name — in this one app.",
-        "data_not_linked_to_you": "Your activity gets averaged with millions of others. The trend lines that come back are real; your name has been stripped from them."
+        "data_used_to_track_you": "Your step count leaves the app and reaches an insurer's model. Low-activity weeks read as risk — and your premium gets recalculated upward.",
+        "data_linked_to_you": "Your workouts are filed under your name here — weekly trends, streaks, rest days. The app knows your body's patterns and keeps them to itself.",
+        "data_not_linked_to_you": "Your sample is stripped of identity and pooled with 50,000 others. The averages are real; none of them point back to you."
       },
       "financial_info": {
-        "data_used_to_track_you": "Your payment details earn a credit-tier label, and that tier follows you across the partner network — the next app already knows who to pitch to.",
-        "data_linked_to_you": "Your card and spending get pinned to your account here. They know what you buy, when, and where, all under your name.",
-        "data_not_linked_to_you": "Your transaction amount drops into the bucket. The aggregate spend stat that comes back doesn't point to you."
+        "data_used_to_track_you": "Enter your salary and assets, and a booking site quotes you a higher airfare — same seat, same flight, priced for what they know you can pay.",
+        "data_linked_to_you": "Your card and balance are pinned to your account here — saved for checkout, under your name, visible to this app only.",
+        "data_not_linked_to_you": "Your amount drops into an anonymous total. The aggregate spend stat is real; your slice of it can't be traced back."
       },
       "location": {
-        "data_used_to_track_you": "Your GPS trail leaves your phone and surfaces in a data broker's dossier with the same breadcrumbs already drawn — including places this app had no reason to see.",
-        "data_linked_to_you": "Your work, your home, your weekend spots get filed against your profile here. The app remembers where you are and where you've been.",
-        "data_not_linked_to_you": "Your location coarsens to a postcode or city and joins the population heat-map. No dot on it has your name."
+        "data_used_to_track_you": "Your GPS trail pins your home address and your daily pattern — when you leave, when you're back. Enough to identify you without ever asking your name.",
+        "data_linked_to_you": "Your home, your work, your morning commute get filed against your profile here. The app remembers your routine — and keeps it in-app.",
+        "data_not_linked_to_you": "Your pings are pooled by area before storage — one dot among 48,210 in your region today, with no names and no device IDs."
       },
       "sensitive_info": {
-        "data_used_to_track_you": "Your most private facts — health, identity, beliefs — get tagged onto a tracker profile that follows you between apps. The next app knows things this one's never spoken.",
-        "data_linked_to_you": "Your most private facts get filed against your profile here. This one app now knows you at your most vulnerable.",
-        "data_not_linked_to_you": "Your sensitive entries are hashed; what remains is shape, not substance. The aggregate trend lines don't carry your name."
+        "data_used_to_track_you": "Nothing was asked. Your faith and politics were inferred from what you read and joined, packaged into an audience segment, and sold — 'Why this ad?' quietly names it.",
+        "data_linked_to_you": "The app holds its guess about your beliefs and uses it to tune what you see — inside this one app, not sold on.",
+        "data_not_linked_to_you": "Your identity is struck from the signal at source. What survives is a regional count — one of 64,000 — with no names attached."
       },
       "contacts": {
-        "data_used_to_track_you": "Your address book leaves your phone. Each contact becomes a key — and the same web of relationships appears in apps your friends use, drawing you back to them.",
-        "data_linked_to_you": "Your contacts get filed against your profile here. The app knows your circle by name; you don't get to take that back.",
-        "data_not_linked_to_you": "Your contacts are hashed into anonymous numbers. The graph that gets built is real; whose graph it is gets stripped."
+        "data_used_to_track_you": "Share your address book and the app builds a file on Sarah — her name, her number, who she knows — though she never signed up for anything.",
+        "data_linked_to_you": "Your contacts are filed against your profile to power 'people you may know'. The app knows your circle; it stays in this app.",
+        "data_not_linked_to_you": "Your contacts are reduced to a count before storage. '312 contacts' is all that survives — no names, no numbers."
       },
       "user_content": {
-        "data_used_to_track_you": "Your photos, voice notes, and messages leave the app — used to train models or build profiles in places far beyond this one.",
-        "data_linked_to_you": "Everything you create gets filed in your library here. The app knows your face, your voice, the circle in your photos.",
-        "data_not_linked_to_you": "Your content joins anonymous training sets. What it taught the model isn't traceable back to you."
+        "data_used_to_track_you": "Your photo library becomes training data. The model learns your face from your own pictures — and can now recognise it anywhere.",
+        "data_linked_to_you": "Your photos are filed in your library here — backed up under your account so your devices stay in sync. Yours, in this one app.",
+        "data_not_linked_to_you": "Owner and location are stripped from each image first. Your photo becomes one of 10 million in an anonymous pool."
       },
       "browsing_history": {
-        "data_used_to_track_you": "The pages you read leave a trail. An ad in an unrelated app already targets the topic you were browsing — they didn't have to ask.",
-        "data_linked_to_you": "The pages you read get filed into 'interests' on your profile here. The app knows what you're curious about.",
-        "data_not_linked_to_you": "Your browsing is tallied as topics: 'sport', 'travel', 'finance'. The tally is real; whose tally it is gets stripped."
+        "data_used_to_track_you": "The product page you looked at follows you. An ad for the same shoes turns up inside a completely unrelated app — matched to you.",
+        "data_linked_to_you": "The pages you read are filed into 'interests' on your profile here, and your feed quietly reshapes around them.",
+        "data_not_linked_to_you": "Your visit is counted as a topic tally — sport, travel, finance. The counts are real; who visited is stripped."
       },
       "search_history": {
-        "data_used_to_track_you": "What you searched for here resurfaces as a 'recommended' product in a different app you've never opened. The query is a key that opens you elsewhere.",
-        "data_linked_to_you": "Your queries get filed into your profile here. They know what you wanted to know.",
-        "data_not_linked_to_you": "Your queries get aggregated into trends. 'How many people searched for X this week' is real; whose searches they were is gone."
+        "data_used_to_track_you": "Search for pasta recipes here, and a chef's-knife ad meets you inside an unrelated news app. Your query travelled — and it was matched to you.",
+        "data_linked_to_you": "Your queries stay on your profile here — type 'pa' and it already suggests your pasta searches. Convenient, and contained to this app.",
+        "data_not_linked_to_you": "Your query is struck from the log and folded into trends. 'Pasta recipes is trending' is real; whose searches made it isn't kept."
       },
       "identifiers": {
-        "data_used_to_track_you": "Your advertising ID is a barcode you can't see. As you open other apps, they scan it; each one now knows it was you who came before.",
-        "data_linked_to_you": "Your account or device IDs get filed against your profile here. The app knows it's the same you across visits.",
-        "data_not_linked_to_you": "An anonymous session token replaces your identity. The behaviour data the app collects can't be tied back to you."
+        "data_used_to_track_you": "Your device's advertising ID is the same in every app. Three apps compare notes, the IDs line up — and three separate yous become one profile.",
+        "data_linked_to_you": "Your account ID ties your phone, tablet and laptop together — the same you across devices, inside this one service.",
+        "data_not_linked_to_you": "A throwaway session token stands in for your identity, then expires. The behaviour data can't be walked back to you."
       },
       "purchases": {
-        "data_used_to_track_you": "What you bought here surfaces as 'you might also like' in a completely different shop. Your receipts are a key that opens you across the retail network.",
-        "data_linked_to_you": "Your order history gets filed in your account here. They know what you've bought, when, and what's likely next.",
-        "data_not_linked_to_you": "Your purchases are anonymised before they hit the aggregate. 'How many shoes were sold this week' is real; who bought them is not."
+        "data_used_to_track_you": "Buy a dog bowl and puppy food, and an ad for puppy gear meets you inside an unrelated puzzle app. Your receipt told a story — and it was matched to you.",
+        "data_linked_to_you": "Your orders are filed in your account — for receipts and easy reorder. They know what you bought; it isn't sold on.",
+        "data_not_linked_to_you": "Your name comes off the receipt before storage. '$51 · pet store · today' joins the aggregate; who paid isn't kept."
       },
       "usage_data": {
-        "data_used_to_track_you": "How you tap and scroll here gets fingerprinted, and that fingerprint reappears in another app to confirm 'yep, same user'.",
-        "data_linked_to_you": "Your behaviour gets filed in your profile here. The app knows how you use it — and adjusts itself to keep you in.",
-        "data_not_linked_to_you": "Your usage joins the aggregate. 'Power users tap here 12 times per session' is real; whose taps they were doesn't survive the aggregation."
+        "data_used_to_track_you": "The app learns your weak moment — 11pm, every night. A notification lands on your lock screen at 11:04, timed to pull you back in.",
+        "data_linked_to_you": "Where you left off is kept on your profile so the app can drop you straight back in — 60% through the article. Used here, not sold.",
+        "data_not_linked_to_you": "Your user id is struck from each event. Your tap becomes +1 on a product-analytics funnel — open, browse, buy — with no user attached."
       },
       "diagnostics": {
-        "data_used_to_track_you": "Crash logs carry a device fingerprint. Another app sees the same fingerprint and silently links your two sessions — even across reinstalls.",
-        "data_linked_to_you": "Crash data gets filed against your device profile here. Useful for debugging, but it's still you in the log.",
-        "data_not_linked_to_you": "Crash logs are stripped of identifiers before they ship. The bug is reproducible; you aren't."
+        "data_used_to_track_you": "A crash report's boring facts — model, OS, battery — combine into a fingerprint. In a crowd of phones, exactly one matches: yours.",
+        "data_linked_to_you": "Your crash is ticketed against your account, the bug gets reproduced, and the fix ships back to your device. Tied to you so they can fix your bug.",
+        "data_not_linked_to_you": "The device id is struck before the report ships. Your crash becomes +1 on a dashboard — 0.3% of sessions — with no devices in it."
       },
       "other": {
-        "data_used_to_track_you": "Data the app didn't categorise still leaves. It surfaces wherever data brokers operate — you may never know which app saw what.",
-        "data_linked_to_you": "Uncategorised data still gets filed against your profile here. The app knows; you don't know what it knows.",
-        "data_not_linked_to_you": "Uncategorised data drops into the anonymous batch with everything else. Whatever it was, it's not traceable to you anymore."
+        "data_used_to_track_you": "The label only says 'other'. Whatever it is, it's filed with everything else they hold on you — matched to you, contents undisclosed.",
+        "data_linked_to_you": "Unnamed data sits on file with your account, used 'for app functionality' — which is all the label says. Kept in this one app.",
+        "data_not_linked_to_you": "The user id is struck from each record at source. What's kept is a pile of misc records with no one attached — yours points at nobody."
       }
     }
   },
@@ -4529,7 +4529,6 @@
     "refresh": "Refresh",
     "done": "Done"
   },
-
   "diagnostics_page": {
     "title": "Diagnostics",
     "subtitle": "Live runtime metrics for the Node sidecar. Polls every {seconds}s.",
@@ -4714,117 +4713,6 @@
       "col_wired": "Wired",
       "wired_yes": "✓",
       "wired_no": "·"
-    }
-  },
-  "privacy_concepts_preview": {
-    "eyebrow": "Prototype",
-    "title": "Privacy concept animation preview",
-    "intro": "A standalone gallery for testing small skeuomorphic storyboards before they appear inside privacy-label cards.",
-    "prototype_note": "Unlisted prototype page: animations here do not change the live app detail or definitions pages yet.",
-    "gallery_aria": "Privacy concept animation gallery",
-    "aspect_map_aria": "Privacy concept aspect map",
-    "variant_comparison": {
-      "aria": "App icon presentation comparison",
-      "label": "Presentation comparison",
-      "title": "One example, two app treatments",
-      "summary": "The full gallery now uses the homescreen context treatment, while this comparison keeps the abstract version visible for review."
-    },
-    "variants": {
-      "abstract": "Abstract app icons",
-      "homescreen": "Homescreen context"
-    },
-    "beats": {
-      "tracking": {
-        "one": "Action",
-        "two": "Signal",
-        "three": "Result"
-      },
-      "linked": {
-        "one": "Collect",
-        "two": "Attach",
-        "three": "Profile"
-      },
-      "unlinked": {
-        "one": "Collect",
-        "two": "Strip ID",
-        "three": "Aggregate"
-      }
-    },
-    "flows": {
-      "tracking": {
-        "label": "Tracking",
-        "title": "Data Used to Track You",
-        "summary": "Cross-context recognition: a signal leaves the first app and helps recognise the same person elsewhere."
-      },
-      "linked": {
-        "label": "Linked",
-        "title": "Data Linked to You",
-        "summary": "Account attachment: collected data stays connected to a profile, record, account, or identifier inside the app."
-      },
-      "unlinked": {
-        "label": "Not linked",
-        "title": "Data Not Linked to You",
-        "summary": "De-identification and aggregation: direct identity is removed before the data joins a broader measurement bucket."
-      }
-    },
-    "aspects": {
-      "cross_app_handoff": "Cross-app handoff",
-      "identifier_matching": "Identifier matching",
-      "movement_trail": "Movement trail",
-      "retargeting_signal": "Retargeting signal",
-      "relationship_graph": "Relationship graph",
-      "purchase_signal": "Purchase signal",
-      "profile_record": "Profile record",
-      "sensitive_profile": "Sensitive profile",
-      "financial_record": "Financial record",
-      "aggregate_measurement": "Aggregate measurement",
-      "generic_tracking": "Generic tracking"
-    },
-    "scenes": {
-      "email_tracker_handoff": {
-        "title": "Email makes App B recognise you",
-        "summary": "An email address entered in App A can become a recognisable tag, so App B or a partner knows the same person is back."
-      },
-      "identifier_match": {
-        "title": "An identifier makes App B match you",
-        "summary": "A device or account identifier can move through a partner, then let App B connect activity back to the same profile."
-      },
-      "location_trail": {
-        "title": "A place becomes a nearby suggestion",
-        "summary": "A place visited in App A can travel as a movement signal, so App B can later show a nearby suggestion."
-      },
-      "interest_retargeting": {
-        "title": "A shoe search becomes an ad",
-        "summary": "Search for shoes in App A and that interest can travel as a tracking signal, so App B can suggest a shoe ad later."
-      },
-      "contacts_social_graph": {
-        "title": "Contacts become friend suggestions",
-        "summary": "An address book upload can become a relationship map, so App B can suggest people or connections later."
-      },
-      "purchase_retargeting": {
-        "title": "A purchase becomes a discount offer",
-        "summary": "A receipt or order history can leave App A as a shopping signal, so App B can show a discount or related offer."
-      },
-      "linked_profile_file": {
-        "title": "Data is filed to your account",
-        "summary": "Linked data stays attached to an account or profile, so the app can keep using it as part of your record."
-      },
-      "health_profile_link": {
-        "title": "Health activity joins a profile",
-        "summary": "Health or fitness data can be kept with an account record, making routines and goals part of the app's profile."
-      },
-      "financial_profile_link": {
-        "title": "Financial data becomes a ledger",
-        "summary": "Payment or financial details can be tied to an account record and reused as part of the app's view of you."
-      },
-      "unlinked_telemetry": {
-        "title": "Identity is stripped before aggregation",
-        "summary": "Unlinked data drops the direct identity tag and joins a broader trend or measurement bucket."
-      },
-      "generic_tracking": {
-        "title": "A data point becomes recognition elsewhere",
-        "summary": "A collected data point can leave App A as a tag, then help App B recognise the same person in another context."
-      }
     }
   },
   "background_mode_callout": {

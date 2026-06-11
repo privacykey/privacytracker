@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-pnpm install           # requires Node 24 LTS (see `engines` in package.json) and pnpm 11 (see `packageManager`)
+pnpm install           # requires Node 24+ and <27 (see `engines` in package.json) and pnpm 11 (see `packageManager`)
 pnpm dev               # http://localhost:3000
 pnpm build             # production build
 pnpm start             # serve the production build

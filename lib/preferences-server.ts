@@ -64,24 +64,28 @@ export function setUserIntent(value: UserIntent): void {
       setSetting("flag.focus.goal.understand", "true");
       setSetting("flag.focus.goal.declutter", "false");
       setSetting("flag.focus.goal.minimal", "false");
+      setSetting("flag.focus.workflow", "self_monitor");
       break;
     case "cleanup":
       setSetting("flag.focus.audience", "self");
       setSetting("flag.focus.goal.understand", "false");
       setSetting("flag.focus.goal.declutter", "true");
       setSetting("flag.focus.goal.minimal", "false");
+      setSetting("flag.focus.workflow", "self_cleanup");
       break;
     case "hygiene":
       setSetting("flag.focus.audience", "self");
       setSetting("flag.focus.goal.understand", "true");
       setSetting("flag.focus.goal.declutter", "true");
       setSetting("flag.focus.goal.minimal", "false");
+      setSetting("flag.focus.workflow", "custom");
       break;
     case "family":
       setSetting("flag.focus.audience", "guardian");
       setSetting("flag.focus.goal.understand", "true");
       setSetting("flag.focus.goal.declutter", "false");
       setSetting("flag.focus.goal.minimal", "false");
+      setSetting("flag.focus.workflow", "custom");
       break;
   }
 }
@@ -91,6 +95,7 @@ export function setUserIntent(value: UserIntent): void {
 export function clearUserIntent(): void {
   setSetting(LEGACY_KEY, "");
   setSetting("flag.focus.audience", "");
+  setSetting("flag.focus.workflow", "");
 }
 
 // ── Dashboard banner dismissal ──────────────────────────────────────────

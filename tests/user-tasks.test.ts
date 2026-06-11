@@ -41,8 +41,10 @@ function emptyCtx(
 ): TaskCompletionContext {
   return {
     focus: overrides.focus ?? focus({}),
+    workflow: overrides.workflow ?? "custom",
     hasPrivacyProfile: false,
     anyAppDetailVisitedAt: null,
+    auditBundleLastExportedAt: null,
     privacyMapVisitedAt: null,
     compareVisitedAt: null,
     verdictCount: 0,
@@ -57,7 +59,7 @@ function emptyCtx(
 
 const NOW = 1_700_000_000_000; // arbitrary fixed epoch for deterministic tests
 
-test("TASK_DEFS has the eight expected task ids in order", () => {
+test("TASK_DEFS has the nine expected task ids in order", () => {
   const ids = TASK_DEFS.map((d) => d.id);
   assert.deepEqual(ids, [
     "view_privacy_map",
@@ -68,6 +70,7 @@ test("TASK_DEFS has the eight expected task ids in order", () => {
     "setup_background_mode",
     "remove_apps_from_phone",
     "resync_apps_from_device",
+    "export_audit_bundle",
   ] satisfies UserTaskId[]);
 });
 
@@ -290,6 +293,7 @@ test("getOptInCandidates surfaces opt-in tasks not yet opted in", () => {
   const ids = candidates.map((c) => c.id);
   assert.ok(ids.includes("setup_background_mode"));
   assert.ok(ids.includes("remove_apps_from_phone"));
+  assert.ok(!ids.includes("export_audit_bundle"));
 });
 
 test("getOptInCandidates omits tasks the user has already opted in to", () => {
@@ -379,6 +383,52 @@ test("remove_apps_from_phone completes once at least one uninstall verdict is se
   );
   assert.equal(
     r.find((x) => x.id === "remove_apps_from_phone")!.state,
+    "completed"
+  );
+});
+
+test("export_audit_bundle appears only for handoff workflow and completes after export", () => {
+  const f = focus({ audience: "loved_one", understand: true, declutter: true });
+  const noWorkflow = emptyCtx({ focus: f, workflow: "other_monitor" });
+  let candidates = getOptInCandidates(
+    f,
+    noWorkflow,
+    { tasks: {} },
+    { isDesktop: false }
+  );
+  assert.ok(!candidates.some((c) => c.id === "export_audit_bundle"));
+
+  const handoff = emptyCtx({ focus: f, workflow: "other_handoff" });
+  candidates = getOptInCandidates(
+    f,
+    handoff,
+    { tasks: {} },
+    { isDesktop: false }
+  );
+  assert.ok(candidates.some((c) => c.id === "export_audit_bundle"));
+
+  const optedIn = {
+    tasks: { export_audit_bundle: { opted_in_at: NOW } },
+  };
+  let resolved = resolveTasks(f, handoff, optedIn, { isDesktop: false }, NOW);
+  assert.equal(
+    resolved.find((x) => x.id === "export_audit_bundle")!.state,
+    "ready"
+  );
+
+  resolved = resolveTasks(
+    f,
+    emptyCtx({
+      focus: f,
+      workflow: "other_handoff",
+      auditBundleLastExportedAt: NOW,
+    }),
+    optedIn,
+    { isDesktop: false },
+    NOW
+  );
+  assert.equal(
+    resolved.find((x) => x.id === "export_audit_bundle")!.state,
     "completed"
   );
 });

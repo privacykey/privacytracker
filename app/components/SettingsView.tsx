@@ -9623,7 +9623,7 @@ ollama serve`}
               )}
               {/* Data Export */}
               {settingsAdminExportOn && (
-                <div className="settings-section" id="export">
+                <div className="settings-section" id="export-data">
                   <h2 className="settings-section-title">
                     {tSections("export_data")}
                   </h2>

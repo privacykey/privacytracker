@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import FocusEditForm from "@/app/components/FocusEditForm";
 import Nav from "@/app/components/Nav";
-import { getActiveFocus } from "@/lib/feature-flag-storage";
+import {
+  getActiveFocus,
+  getActiveFocusWorkflow,
+} from "@/lib/feature-flag-storage";
 
 /**
  * /dashboard/settings/focus — single-screen audience + goals editor
@@ -27,6 +30,7 @@ export default function FocusEditPage() {
   // Default to `self` if audience was somehow blank — the radiogroup
   // needs an initial value. Shouldn't be reachable in practice.
   const initialAudience = focus.audience ?? "self";
+  const initialWorkflow = getActiveFocusWorkflow(focus);
 
   return (
     <>
@@ -37,6 +41,7 @@ export default function FocusEditPage() {
         initialDeclutter={focus.goals.has("declutter")}
         initialMinimal={focus.goals.has("minimal")}
         initialUnderstand={focus.goals.has("understand")}
+        initialWorkflow={initialWorkflow}
       />
     </>
   );

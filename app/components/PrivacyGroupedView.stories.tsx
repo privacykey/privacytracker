@@ -5,7 +5,7 @@ const SAMPLE_DATA = [
   {
     identifier: "DATA_USED_TO_TRACK_YOU",
     title: "Data Used to Track You",
-    detail: "Data collected and linked with third-party data for targeted ads.",
+    detail: "Data used to recognize you across other companies' apps or sites.",
     categories: [
       {
         identifier: "IDENTIFIERS",
@@ -27,7 +27,8 @@ const SAMPLE_DATA = [
   {
     identifier: "DATA_LINKED_TO_YOU",
     title: "Data Linked to You",
-    detail: "Data tied to your identity via account or device.",
+    detail:
+      "Data the app can connect back to your account, device, or another identifier.",
     categories: [
       {
         identifier: "CONTACT_INFO",

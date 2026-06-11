@@ -17,6 +17,7 @@ import type {
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { QueueAppInput } from "../../lib/review-queue";
 import BulkSelectBar from "./BulkSelectBar";
+import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
 import VerdictPill from "./VerdictPill";
@@ -1980,15 +1981,15 @@ export default function AppGrid({
                         aria-label={tGrid("label_breakdown_aria")}
                         className="risk-chip-row"
                       >
-                        {t > 0 && (
+                        {u > 0 && (
                           <span
-                            className="risk-chip risk-chip-track"
-                            title={tGrid("track_chip_title", { count: t })}
+                            className="risk-chip risk-chip-unlinked"
+                            title={tGrid("unlinked_chip_title", { count: u })}
                           >
                             <span aria-hidden="true" className="risk-chip-icon">
-                              👁
+                              <PrivacyTypeIcon tier="not_linked" />
                             </span>
-                            <span className="risk-chip-count">{t}</span>
+                            <span className="risk-chip-count">{u}</span>
                           </span>
                         )}
                         {l > 0 && (
@@ -1997,20 +1998,20 @@ export default function AppGrid({
                             title={tGrid("linked_chip_title", { count: l })}
                           >
                             <span aria-hidden="true" className="risk-chip-icon">
-                              🔗
+                              <PrivacyTypeIcon tier="linked" />
                             </span>
                             <span className="risk-chip-count">{l}</span>
                           </span>
                         )}
-                        {u > 0 && (
+                        {t > 0 && (
                           <span
-                            className="risk-chip risk-chip-unlinked"
-                            title={tGrid("unlinked_chip_title", { count: u })}
+                            className="risk-chip risk-chip-track"
+                            title={tGrid("track_chip_title", { count: t })}
                           >
                             <span aria-hidden="true" className="risk-chip-icon">
-                              🔓
+                              <PrivacyTypeIcon tier="tracking" />
                             </span>
-                            <span className="risk-chip-count">{u}</span>
+                            <span className="risk-chip-count">{t}</span>
                           </span>
                         )}
                       </div>

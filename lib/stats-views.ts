@@ -18,7 +18,11 @@ import type {
   PolicySummary,
 } from "./policy-summary-meta";
 import { POLICY_LENSES, POLICY_RATINGS } from "./policy-summary-meta";
-import { CATEGORY_META, SEVERITY_CONFIG } from "./privacy-meta";
+import {
+  CATEGORY_META,
+  PRIVACY_TYPE_DISPLAY_ORDER,
+  SEVERITY_CONFIG,
+} from "./privacy-meta";
 import type {
   MatrixApp,
   MatrixCategory,
@@ -48,11 +52,7 @@ export type {
   TimelinePoint,
 };
 
-const SEVERITY_ORDER: SeverityId[] = [
-  "DATA_USED_TO_TRACK_YOU",
-  "DATA_LINKED_TO_YOU",
-  "DATA_NOT_LINKED_TO_YOU",
-];
+const SEVERITY_ORDER: SeverityId[] = [...PRIVACY_TYPE_DISPLAY_ORDER];
 
 // ──────────────────────────────────────────────────────────────────────
 // Matrix — apps × category × severity

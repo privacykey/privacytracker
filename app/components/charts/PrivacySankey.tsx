@@ -95,9 +95,9 @@ const CHART_THEME: Record<"light" | "dark", ChartTheme> = {
   },
 };
 const SEV_COLOR: Record<string, string> = {
-  DATA_USED_TO_TRACK_YOU: "#ff453a",
+  DATA_NOT_LINKED_TO_YOU: "#d8c7a3",
   DATA_LINKED_TO_YOU: "#ff9f0a",
-  DATA_NOT_LINKED_TO_YOU: "#ffd60a",
+  DATA_USED_TO_TRACK_YOU: "#ff453a",
 };
 
 // Prefixes used inside ECharts to keep node names unique across columns.

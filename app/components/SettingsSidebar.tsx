@@ -149,7 +149,12 @@ const SECTION_GROUPS: SectionGroup[] = [
         icon: "🕰",
         i18nKey: "historical_import",
       },
-      { id: "export", label: "Export Data", icon: "⬇", i18nKey: "export_data" },
+      {
+        id: "export-data",
+        label: "Export Data",
+        icon: "⬇",
+        i18nKey: "export_data",
+      },
       { id: "reset", label: "Reset App", icon: "⚠", i18nKey: "reset_app" },
       {
         id: "developer",

@@ -762,6 +762,7 @@ export default function ChangelogTimeline({
               isFirst={isFirst}
               key={row.id}
               previews={previews}
+              previousAppVersion={previousLiveSnapshot?.app_version ?? null}
               pulsed={pulsed}
               showMatchesLiveSyncBadge={tf.matchesLiveSyncBadge}
               showPolicyDiffToggle={tf.policyDiffToggle}
@@ -770,7 +771,6 @@ export default function ChangelogTimeline({
               showVersionChip={tf.versionChip}
               snapshot={row}
               snapshotPosition={snapshotPosition}
-              previousAppVersion={previousLiveSnapshot?.app_version ?? null}
               toggleDiff={toggleDiff}
               togglePreview={togglePreview}
             />
@@ -848,8 +848,7 @@ function TimelineSnapshotItem({
   const changes = snapshot.changes_summary ?? [];
   const isWayback = snapshot.source === "wayback";
   const versionChangedWithoutLabelChanges =
-    !isFirst &&
-    !isWayback &&
+    !(isFirst || isWayback) &&
     changes.length === 0 &&
     !!snapshot.app_version &&
     !!previousAppVersion &&

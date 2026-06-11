@@ -450,11 +450,9 @@
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 999px;
 }
-.review-queue-card-chip-dot {
-  width: 6px;
-  height: 6px;
-  background: currentColor;
-  border-radius: 50%;
+.review-queue-card-chip .privacy-type-icon {
+  width: 14px;
+  height: 14px;
 }
 .review-queue-card-chip-track {
   color: #b91c1c;
@@ -467,9 +465,9 @@
   border-color: #fed7aa;
 }
 .review-queue-card-chip-unlinked {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  color: #7a5f2a;
+  background: #fff8e8;
+  border-color: #ead9b8;
 }
 .review-queue-card-categories-empty {
   font-size: 12px;

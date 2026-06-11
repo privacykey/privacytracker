@@ -19,6 +19,7 @@ import type {
   Modifier,
   PrimaryGoal,
 } from "./feature-flag-rules";
+import type { FocusWorkflow } from "./focus-workflow";
 
 export type UserTaskId =
   | "view_privacy_map"
@@ -28,11 +29,13 @@ export type UserTaskId =
   | "compare_two_apps"
   | "setup_background_mode"
   | "remove_apps_from_phone"
-  | "resync_apps_from_device";
+  | "resync_apps_from_device"
+  | "export_audit_bundle";
 
 /** Frozen snapshot fed to every `completionCheck`. Built once per resolve. */
 export interface TaskCompletionContext {
   anyAppDetailVisitedAt: number | null;
+  auditBundleLastExportedAt: number | null;
   backgroundWizardCompletedAt: number | null;
   compareVisitedAt: number | null;
   focus: FocusState;
@@ -53,6 +56,7 @@ export interface TaskCompletionContext {
   syncSchedule: string | null;
   uninstallVerdictCount: number;
   verdictCount: number;
+  workflow: FocusWorkflow;
 }
 
 export interface UserTaskDef {
@@ -65,7 +69,11 @@ export interface UserTaskDef {
   /** Server-safe inclusion predicate. `env.isDesktop` is supplied by the
    *  caller — the server resolver passes `false`; the client provider
    *  refines after its own `isDesktop()` check. */
-  includedWhen: (focus: FocusState, env: { isDesktop: boolean }) => boolean;
+  includedWhen: (
+    focus: FocusState,
+    env: { isDesktop: boolean },
+    ctx: TaskCompletionContext
+  ) => boolean;
   /** When `true`, the task is hidden from the panel until the user
    *  explicitly opts in via the chip tray (writes `opted_in_at` to the
    *  blob). When `false` / undefined, the task is governed only by
@@ -174,6 +182,15 @@ export const TASK_DEFS: UserTaskDef[] = [
     // Auto-complete once the user has done a re-sync at least once.
     completionCheck: (ctx) => ctx.lastResyncAt > 0,
   },
+  {
+    id: "export_audit_bundle",
+    route: "/dashboard/settings#export-data",
+    prerequisites: [],
+    i18nKey: "export_audit_bundle",
+    includedWhen: (_focus, _env, ctx) => ctx.workflow === "other_handoff",
+    optInOnly: true,
+    completionCheck: (ctx) => ctx.auditBundleLastExportedAt != null,
+  },
 ];
 
 export type ResolvedTaskState =
@@ -277,7 +294,7 @@ export function resolveTasks(
 ): ResolvedTask[] {
   // Visible = passes includedWhen AND (not optInOnly OR opted in).
   const visibleDefs = TASK_DEFS.filter((d) => {
-    if (!d.includedWhen(focus, env)) {
+    if (!d.includedWhen(focus, env, ctx)) {
       return false;
     }
     if (d.optInOnly && !blob.tasks[d.id]?.opted_in_at) {
@@ -347,7 +364,7 @@ export function getOptInCandidates(
     if (!d.optInOnly) {
       return false;
     }
-    if (!d.includedWhen(focus, env)) {
+    if (!d.includedWhen(focus, env, ctx)) {
       return false;
     }
     if (blob.tasks[d.id]?.opted_in_at) {
