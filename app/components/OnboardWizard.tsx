@@ -134,6 +134,24 @@ interface SearchResult {
   status?: "pending" | "matched" | "unmatched" | "skipped";
 }
 
+/**
+ * Thrown when /api/search is rejected by the security gate rather than
+ * failing on its own — proxy.ts returns 401 when a non-local host is
+ * missing the admin token, 403 for cross-origin mutations. These are
+ * deterministic per-request (every subsequent chunk fails the same way),
+ * so the search loop bails out immediately and `handleSearch` surfaces a
+ * distinct "API access is blocked" message instead of letting every row
+ * fall through to "Not in the App Store".
+ */
+class SearchAccessBlockedError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(`/api/search blocked with HTTP ${status}`);
+    this.name = "SearchAccessBlockedError";
+    this.status = status;
+  }
+}
+
 interface ScrapeStatus {
   changesDetected?: boolean;
   error?: string;
@@ -846,6 +864,20 @@ export default function OnboardWizard({
   const [rematchingRegion, setRematchingRegion] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  /**
+   * True when the last search failed because the security gate rejected
+   * the request (401/403 — non-local host without an admin token), as
+   * opposed to a transport/server error. Drives the "log in via
+   * Settings → Deployment" link rendered next to the error copy.
+   */
+  const [searchBlocked, setSearchBlocked] = useState(false);
+  /**
+   * Error from a single-block re-search on step 3 (`handleBlockResearch`).
+   * Kept separate from `searchError`, which only renders on step 2 —
+   * without this, a failed per-row retry was indistinguishable from
+   * "no results" and the row silently kept its stale state.
+   */
+  const [blockSearchError, setBlockSearchError] = useState("");
   /**
    * Live progress for the chunked name-search loop. `null` whenever a
    * search isn't in flight; populated batch-by-batch so the user sees
@@ -2841,12 +2873,20 @@ export default function OnboardWizard({
                 });
               }
             }
+          } else if (lookupRes.status === 401 || lookupRes.status === 403) {
+            // The security gate rejects bundle lookup and name search
+            // alike — falling through to phase 2 would just fail every
+            // chunk the same way.
+            throw new SearchAccessBlockedError(lookupRes.status);
           } else {
             console.warn(
               `[wizard] bundle-ID lookup returned HTTP ${lookupRes.status}; falling back to name search`
             );
           }
         } catch (err) {
+          if (err instanceof SearchAccessBlockedError) {
+            throw err;
+          }
           console.warn(
             "[wizard] bundle-ID lookup failed, falling back to name search:",
             err
@@ -2911,6 +2951,33 @@ export default function OnboardWizard({
           break;
         }
         if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            throw new SearchAccessBlockedError(res.status);
+          }
+          if (res.status === 429) {
+            // Our own /api/search rate limit (60 req/min per client) —
+            // distinct from Apple's upstream throttle (which arrives as
+            // a 200 with `rateLimited` in the body), but the remedy is
+            // the same: park this chunk plus everything not yet sent
+            // and let the QueuedSearchProvider replay after the window
+            // clears. Unlike the Apple path, chunk i itself was never
+            // processed, so it goes back in the queue too.
+            const retryAfterSeconds = Number(res.headers.get("Retry-After"));
+            const retryAfterMs =
+              Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+                ? retryAfterSeconds * 1000
+                : 30_000;
+            queuedRetryWindows.push(retryAfterMs);
+            for (let j = i; j < phase2Chunks.length; j++) {
+              for (const row of phase2Chunks[j]) {
+                queuedByName.set(row.name, row);
+              }
+            }
+            setSearchProgress((prev) =>
+              prev ? { ...prev, currentBatch: i + 1 } : prev
+            );
+            break;
+          }
           console.error(`[wizard] /api/search failed with ${res.status}`);
           setSearchError(
             tStatus("search_endpoint_error_prefix") +
@@ -3203,6 +3270,7 @@ export default function OnboardWizard({
 
     setSearching(true);
     setSearchError("");
+    setSearchBlocked(false);
     // Fresh AbortController per run — `cancelSearch` reaches into this
     // ref to abort the in-flight chunk; `runMatchSearch` reads
     // `signal.aborted` between chunks to break the loop early.
@@ -3348,8 +3416,21 @@ export default function OnboardWizard({
 
       setStep(3);
     } catch (error) {
-      console.error("[wizard] /api/search failed:", error);
-      setSearchError(tStatus("search_failed"));
+      if (error instanceof SearchAccessBlockedError) {
+        // Nothing was matched — the gate rejected the request before any
+        // lookup ran. Stay on step 2 with a message that says so, instead
+        // of marking every row "Not in the App Store".
+        console.error(
+          `[wizard] /api/search blocked by the security gate (HTTP ${error.status})`
+        );
+        setSearchBlocked(true);
+        setSearchError(
+          tStatus("search_access_blocked", { status: error.status })
+        );
+      } else {
+        console.error("[wizard] /api/search failed:", error);
+        setSearchError(tStatus("search_failed"));
+      }
     } finally {
       setSearching(false);
       setSearchProgress(null);
@@ -3444,6 +3525,7 @@ export default function OnboardWizard({
     }
 
     setEditingBlock(originalQuery);
+    setBlockSearchError("");
     try {
       // Resolution order for the seller hint the server uses to re-rank:
       //   1. An explicit value the user typed in the edit row.
@@ -3463,6 +3545,25 @@ export default function OnboardWizard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        // Don't touch the block — leaving it as-is and surfacing the
+        // failure beats silently keeping stale candidates (or worse,
+        // implying the edited name isn't in the App Store).
+        console.error(
+          `[wizard] block re-search failed with HTTP ${res.status}`
+        );
+        if (res.status === 401 || res.status === 403) {
+          setSearchBlocked(true);
+          setBlockSearchError(
+            tStatus("search_access_blocked", { status: res.status })
+          );
+        } else if (res.status === 429) {
+          setBlockSearchError(tStatus("search_rate_limited_retry"));
+        } else {
+          setBlockSearchError(tStatus("search_failed"));
+        }
+        return;
+      }
       const data = await res.json();
       const fresh: SearchResult | undefined = (data.results ?? [])[0];
       if (!fresh) {
@@ -6512,6 +6613,14 @@ export default function OnboardWizard({
             {searchError && (
               <p style={{ color: "var(--red)", fontSize: 13, marginTop: 12 }}>
                 {searchError}
+                {searchBlocked && (
+                  <>
+                    {" "}
+                    <Link href="/dashboard/settings#deployment-diagnostics">
+                      {tStatus("search_access_blocked_link")}
+                    </Link>
+                  </>
+                )}
               </p>
             )}
 
@@ -6787,6 +6896,23 @@ export default function OnboardWizard({
               <>
                 <h1 className="wizard-title">{tWiz("confirm_matches")}</h1>
                 <p className="wizard-subtitle">{tStep3("subtitle")}</p>
+
+                {blockSearchError && (
+                  <p
+                    role="alert"
+                    style={{ color: "var(--red)", fontSize: 13, marginTop: 12 }}
+                  >
+                    {blockSearchError}
+                    {searchBlocked && (
+                      <>
+                        {" "}
+                        <Link href="/dashboard/settings#deployment-diagnostics">
+                          {tStatus("search_access_blocked_link")}
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                )}
 
                 {/* Top summary + skip-to-import banner. Surfaces the "you can
                 stop here" affordance so a 212-app review doesn't force

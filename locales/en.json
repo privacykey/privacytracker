@@ -3014,6 +3014,9 @@
     "scrape_error_no_result": "Search did not return a result for this name",
     "search_endpoint_error_prefix": "The App Store search endpoint returned an error. Your list was saved as ",
     "search_failed": "Search failed. Please check your connection and try again.",
+    "search_access_blocked": "App Store search was blocked by this server's security gate (HTTP {status}). Accessing the app from a non-local address requires the admin token, so your apps were not checked against the App Store.",
+    "search_access_blocked_link": "Log in with the admin token in Settings → Deployment, then retry.",
+    "search_rate_limited_retry": "The search endpoint is rate-limited right now. Wait a moment and try again.",
     "ai_base_url_model_required": "Base URL and model are required.",
     "ai_api_key_required": "An API key is required for this provider."
   },

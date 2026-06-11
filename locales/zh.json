@@ -3014,6 +3014,9 @@
     "scrape_error_no_result": "未搜索到此名称对应的结果",
     "search_endpoint_error_prefix": "App Store 搜索端点返回错误。你的列表已保存为 ",
     "search_failed": "搜索失败。请检查网络连接后重试。",
+    "search_access_blocked": "App Store 搜索被此服务器的安全防护拦截（HTTP {status}）。从非本机地址访问应用需要管理员令牌，因此你的应用尚未与 App Store 进行匹配。",
+    "search_access_blocked_link": "请在「设置 → 部署」中使用管理员令牌登录，然后重试。",
+    "search_rate_limited_retry": "搜索端点当前已被限流。请稍候片刻再重试。",
     "ai_base_url_model_required": "需要填写 Base URL 与模型。",
     "ai_api_key_required": "此提供方需要 API 密钥。"
   },

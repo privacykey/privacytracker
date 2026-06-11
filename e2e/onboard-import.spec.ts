@@ -489,3 +489,48 @@ browserFlow(
     ).toHaveCount(0);
   }
 );
+
+// ---------------------------------------------------------------------------
+// Spec: security gate blocks /api/search → step 2 explains why
+// ---------------------------------------------------------------------------
+//
+// proxy.ts returns 401 for mutating API calls from non-local hosts that
+// lack the admin token (e.g. browsing the app via a LAN IP). The wizard
+// used to swallow that response and mark every row "unmatched", telling
+// users their apps weren't in the App Store. Pin the fixed contract:
+// the wizard stays on step 2, renders the security-gate explanation
+// with the Settings → Deployment login link, and never creates step-3
+// result blocks for rows that were never actually searched.
+
+browserFlow(
+  "security-gate 401 on search stays on step 2 with the blocked message",
+  async ({ page }) => {
+    await page.route("**/api/search", (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "Admin token required for non-local API access",
+        }),
+      })
+    );
+    await openWizardToTextEntry(page);
+
+    await page.getByTestId("onboard-app-names").fill("facebook\nebay");
+    await page.getByTestId("imported-apps-add").click();
+    await page.getByTestId("onboard-search").click();
+
+    // The gate explanation renders on step 2 with the login deep-link.
+    await expect(
+      page.getByText(/blocked by this server's security gate \(HTTP 401\)/)
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /log in with the admin token/i })
+    ).toBeVisible();
+
+    // Still on step 2 — the names input is present and no step-3
+    // result blocks (or "Not in the App Store" rows) were created.
+    await expect(page.getByTestId("onboard-app-names")).toBeVisible();
+    await expect(page.locator(".search-result-item")).toHaveCount(0);
+  }
+);
