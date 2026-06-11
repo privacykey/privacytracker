@@ -42,8 +42,8 @@ README.md
 CLAUDE.md
 docs
 
-# Python companion tool — not part of the Node app
-tools
+# Python companion script — not part of the Node app
+scripts/ios-app-import
 
 # Smoketest script — not part of the runtime
 __smoketest.ts

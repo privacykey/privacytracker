@@ -76,7 +76,7 @@ export default async function ExportAppListHelpPage() {
             <p className="help-section-copy">{t("helper_section_copy")}</p>
             <pre className="help-code">
               <code>
-                python3 tools/ios-app-import/export_ios_apps.py --mode backup
+                python3 scripts/ios-app-import/export_ios_apps.py --mode backup
               </code>
             </pre>
           </section>
@@ -86,7 +86,7 @@ export default async function ExportAppListHelpPage() {
             <p className="help-section-copy">{t("device_section_copy")}</p>
             <pre className="help-code">
               <code>
-                python3 tools/ios-app-import/export_ios_apps.py --mode device
+                python3 scripts/ios-app-import/export_ios_apps.py --mode device
               </code>
             </pre>
           </section>
