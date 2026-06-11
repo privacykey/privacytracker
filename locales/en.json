@@ -1331,8 +1331,8 @@
   "nonlocal_banner": {
     "aria": "Read-only access notice",
     "label": "Read-only",
-    "body": "You're browsing from a non-local address, so this server's security gate blocks changes — searches, imports and task updates will fail.",
-    "link": "Log in with the admin token in Settings → Deployment.",
+    "body": "Changes are locked from this address.",
+    "link": "Unlock in Settings → Deployment.",
     "dismiss": "Dismiss"
   },
   "devices": {
