@@ -91,6 +91,92 @@ test("resync detects privacy-label diffs, bumps change count, and writes a notif
   });
 });
 
+test("resync reports version updates separately from label diffs", async () => {
+  const privacyItems = [
+    privacyType("DATA_LINKED_TO_YOU", "Data Linked to You", [
+      ["CONTACT_INFO", "Contact Info"],
+    ]),
+  ];
+  installScraperFetchMock({
+    appHtml: appStoreHtml({
+      id: "2007",
+      name: "Version Fixture",
+      privacyItems,
+    }),
+    releaseDate: "2026-01-01T00:00:00Z",
+    version: "1.0",
+  });
+  await fetchAndParseApp(
+    "https://apps.apple.com/us/app/version-fixture/id2007",
+    false,
+    false,
+    "import"
+  );
+
+  installScraperFetchMock({
+    appHtml: appStoreHtml({
+      id: "2007",
+      name: "Version Fixture",
+      privacyItems,
+    }),
+    releaseDate: "2026-02-01T00:00:00Z",
+    version: "2.0",
+  });
+  const result = await fetchAndParseApp(
+    "https://apps.apple.com/us/app/version-fixture/id2007",
+    true,
+    false,
+    "manual"
+  );
+
+  assert.equal(result.changesDetected, false);
+  assert.equal(result.changeCount, 0);
+  assert.equal(result.versionChanged, true);
+  assert.equal(result.previousVersion, "1.0");
+  assert.equal(result.currentVersion, "2.0");
+
+  const app = db
+    .prepare("SELECT currentVersion, changeCount FROM apps WHERE id = ?")
+    .get("2007") as { changeCount: number; currentVersion: string };
+  assert.equal(app.currentVersion, "2.0");
+  assert.equal(app.changeCount, 0);
+
+  const latestSnapshot = db
+    .prepare(`
+    SELECT changes_detected, changes_summary, app_version
+    FROM privacy_snapshots
+    WHERE app_id = ?
+    ORDER BY scraped_at DESC
+    LIMIT 1
+  `)
+    .get("2007") as {
+    app_version: string | null;
+    changes_detected: number;
+    changes_summary: string | null;
+  };
+  assert.equal(latestSnapshot.changes_detected, 0);
+  assert.equal(latestSnapshot.changes_summary, "[]");
+  assert.equal(latestSnapshot.app_version, "2.0");
+
+  const notification = db
+    .prepare("SELECT change_summary FROM notifications WHERE app_id = ?")
+    .get("2007") as { change_summary: string };
+  assert.match(notification.change_summary, /version_update/);
+  assert.match(notification.change_summary, /v1\.0 to v2\.0/);
+
+  const activity = db
+    .prepare(`
+    SELECT summary, detail
+    FROM activity_log
+    WHERE app_id = ? AND type = 'resync'
+    ORDER BY started_at DESC
+    LIMIT 1
+  `)
+    .get("2007") as { detail: string; summary: string };
+  assert.match(activity.summary, /Version updated from v1\.0 to v2\.0/);
+  assert.equal(JSON.parse(activity.detail).versionChanged, true);
+});
+
 test("privacyHeader legacy purposes are flattened into privacy categories", async () => {
   installScraperFetchMock({
     appHtml: appStoreHtml({
@@ -271,7 +357,11 @@ interface AppWithPrivacy {
   }>;
 }
 
-function installScraperFetchMock(input: { appHtml: string; version?: string }) {
+function installScraperFetchMock(input: {
+  appHtml: string;
+  releaseDate?: string;
+  version?: string;
+}) {
   global.fetch = (async (raw: string | URL | Request) => {
     const url = String(raw);
     if (url.startsWith("https://apps.apple.com/")) {
@@ -287,7 +377,8 @@ function installScraperFetchMock(input: { appHtml: string; version?: string }) {
           results: [
             {
               version: input.version ?? "1.0",
-              currentVersionReleaseDate: "2026-01-01T00:00:00Z",
+              currentVersionReleaseDate:
+                input.releaseDate ?? "2026-01-01T00:00:00Z",
               price: 0,
               currency: "USD",
               formattedPrice: "Free",

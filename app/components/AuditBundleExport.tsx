@@ -5,14 +5,14 @@
  * `loved_one`-audience user produce a `.audit.json` file they can
  * share with someone they're recommending privacy choices to.
  *
- * The button + panel are gated by `flag.settings.admin.export.audit_bundle`.
- * The client-side `useFlag` hook doesn't bootstrap from server state on
- * fresh page loads (it returns the hard default of `'off'` until an
- * override mutation fires), so we round-trip `/api/feature-flags` on
- * mount to resolve the flag's actual value for the user's current
- * focus. The server enforces the same gate authoritatively
- * (`/api/export/audit-bundle` returns 403 when off) — the client probe
- * is only there to hide the button when it would 403 anyway.
+ * The button + panel are gated by `flag.settings.admin.export.audit_bundle`,
+ * or by the handoff workflow selected during onboarding. The client-side
+ * `useFlag` hook doesn't bootstrap from server state on fresh page loads
+ * (it returns the hard default of `'off'` until an override mutation fires),
+ * so we round-trip `/api/feature-flags` and `/api/focus` on mount to
+ * resolve the actual gate. The server enforces the same gate
+ * authoritatively (`/api/export/audit-bundle` returns 403 when off) — the
+ * client probe is only there to hide the button when it would 403 anyway.
  *
  * The panel is collapsed by default and expands on click — same
  * "two-state" pattern the import widget uses for its preview modal.
@@ -38,11 +38,13 @@ export default function AuditBundleExport() {
   const [error, setError] = useState<string | null>(null);
 
   // Resolve the gate against actual server state. Failing closed (set
-  // to false on any error) keeps the button hidden when we can't
+  // to false when both probes fail) keeps the button hidden when we can't
   // confirm the gate, which matches what the server enforces anyway.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      let flagAllowed = false;
+      let workflowAllowed = false;
       try {
         const res = await fetch("/api/feature-flags");
         if (!res.ok) {
@@ -54,13 +56,24 @@ export default function AuditBundleExport() {
         const row = data.flags.find(
           (f) => f.key === "flag.settings.admin.export.audit_bundle"
         );
-        if (!cancelled) {
-          setEnabled(row?.currentValue === "on");
-        }
+        flagAllowed = row?.currentValue === "on";
       } catch {
-        if (!cancelled) {
-          setEnabled(false);
+        flagAllowed = false;
+      }
+
+      try {
+        const res = await fetch("/api/focus");
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
         }
+        const data = (await res.json()) as { workflow?: string };
+        workflowAllowed = data.workflow === "other_handoff";
+      } catch {
+        workflowAllowed = false;
+      }
+
+      if (!cancelled) {
+        setEnabled(flagAllowed || workflowAllowed);
       }
     })();
     return () => {

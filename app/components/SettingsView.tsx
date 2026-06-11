@@ -445,6 +445,7 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   backup_export: "Backup export",
   backup_restore: "Backup restore",
   reset: "Reset",
+  health_check: "Health check",
 };
 
 const ACTIVITY_TYPE_ICONS: Record<string, string> = {
@@ -457,6 +458,7 @@ const ACTIVITY_TYPE_ICONS: Record<string, string> = {
   backup_export: "💾",
   backup_restore: "⟲",
   reset: "⚠",
+  health_check: "🩺",
 };
 
 /** Rough "N minutes ago" formatter — coarse enough for a log view. */
@@ -9621,7 +9623,7 @@ ollama serve`}
               )}
               {/* Data Export */}
               {settingsAdminExportOn && (
-                <div className="settings-section" id="export">
+                <div className="settings-section" id="export-data">
                   <h2 className="settings-section-title">
                     {tSections("export_data")}
                   </h2>

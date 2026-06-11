@@ -12,8 +12,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireMutationGuard } from "@/lib/api-guards";
 import { buildAuditBundle, buildBundleFilename } from "@/lib/audit-bundle";
-import { getActiveFocus } from "@/lib/feature-flag-storage";
+import {
+  getActiveFocus,
+  getActiveFocusWorkflow,
+} from "@/lib/feature-flag-storage";
 import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { workflowAllowsAuditBundle } from "@/lib/focus-workflow";
+import { setSetting } from "@/lib/scheduler";
 import { readOptionalBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -60,10 +65,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Gate: only callable when the bundle export flag is on. Client surfaces
-  // hide the button when off, but the API is the authoritative gate.
+  const focus = (() => {
+    try {
+      return getActiveFocus();
+    } catch {
+      return null;
+    }
+  })();
+  const workflow = focus ? getActiveFocusWorkflow(focus) : null;
+
+  // Gate: callable when the bundle export flag is on OR the purpose workflow
+  // says the user is preparing a handoff bundle. Client surfaces hide the
+  // button when off, but the API is the authoritative gate.
   try {
-    if (resolveFlagFromDb("flag.settings.admin.export.audit_bundle") !== "on") {
+    if (
+      resolveFlagFromDb("flag.settings.admin.export.audit_bundle") !== "on" &&
+      !workflowAllowsAuditBundle(workflow)
+    ) {
       return NextResponse.json(
         { error: "Audit-bundle export is not enabled for your focus" },
         { status: 403 }
@@ -77,14 +95,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-
-  const focus = (() => {
-    try {
-      return getActiveFocus();
-    } catch {
-      return null;
-    }
-  })();
 
   let bundle: ReturnType<typeof buildAuditBundle> | undefined;
   try {
@@ -104,6 +114,7 @@ export async function POST(request: NextRequest) {
 
   const filename = buildBundleFilename(body.recommenderName ?? null);
   const json = JSON.stringify(bundle, null, 2);
+  setSetting("audit_bundle_last_exported_at", String(Date.now()));
 
   return new NextResponse(json, {
     status: 200,

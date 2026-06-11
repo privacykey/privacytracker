@@ -92,7 +92,12 @@ export type ActivityType =
   // editor saves at every keystroke, so custom-to-custom edits never
   // fire — `describeLayoutTransition` in lib/dashboard-layout.ts is the
   // gate.
-  | "dashboard_layout_applied";
+  | "dashboard_layout_applied"
+  // Periodic (24h) server health check + non-destructive self-heal. One row
+  // per run (status ok/partial/error); the detail blob is the full
+  // HealthCheckResult. Written by lib/health-check.ts — the activity log is
+  // the sole surface for this job (no bell/webhook).
+  | "health_check";
 
 export type ActivityStatus = "ok" | "error" | "partial" | "cancelled";
 

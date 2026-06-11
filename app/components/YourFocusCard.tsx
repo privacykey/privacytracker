@@ -14,7 +14,11 @@ import { getTranslations } from "next-intl/server";
 import { formatDate } from "@/lib/date-format";
 import { getDateFormatPreference } from "@/lib/date-format-server";
 import db from "@/lib/db";
-import { getActiveFocus, getFocusUpdatedAt } from "@/lib/feature-flag-storage";
+import {
+  getActiveFocus,
+  getActiveFocusWorkflow,
+  getFocusUpdatedAt,
+} from "@/lib/feature-flag-storage";
 import { resolveFlagFromDb } from "@/lib/feature-flags-server";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 
@@ -86,6 +90,7 @@ export default async function YourFocusCard() {
   // Set state — chip strip in audience · goals · modifier order.
   const audienceChip = tAudience(`${focus.audience}.label`);
   const goalChips = describeGoals(focus.goals, tGoal);
+  const workflow = getActiveFocusWorkflow(focus);
   const accessibilityActive = focus.goals.has("accessibility");
   const isLovedOne = focus.audience === "loved_one";
   // Gate the annotation count behind `flag.dashboard.annotation_banner`
@@ -114,6 +119,9 @@ export default async function YourFocusCard() {
   }
   if (accessibilityActive) {
     summarySentences.push(t("summary.with_accessibility"));
+  }
+  if (workflow !== "custom") {
+    summarySentences.push(t(`workflow.${workflow}`));
   }
   const summary = summarySentences.join(" ");
 

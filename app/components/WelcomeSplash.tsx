@@ -1,101 +1,79 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type KeyboardEvent, useEffect, useState } from "react";
-import type { Audience } from "@/lib/feature-flag-rules";
+import { useState } from "react";
+import type { PurposeFocusInput } from "@/lib/onboarding-purpose";
 import { seedSampleApps } from "@/lib/sample-apps";
+import type { UserTaskId } from "@/lib/tasks";
 import { useFlag } from "../../lib/feature-flags-hooks";
-
-/**
- * Onboarding screen 1 — WHO are you auditing apps for?
- *
- * Three radio cards (self / loved_one / guardian) with arrow-key navigation,
- * plus a "Try with sample data" escape hatch and a "Skip for now" link that
- * sets `audience = self` silently.
- *
- * Replaces the pre-v1 four-card intent picker. The new audience choice
- * drives the entire focus system; goals are picked on the next screen
- * (`/onboard/goals`).
- *
- * Accessibility: WCAG AA. Cards are `role="radio"` inside a
- * `role="radiogroup"`, navigated by ↑/↓/←/→ and selected by Space/Enter.
- * Touch targets are ≥44×44px on mobile.
- *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
- */
-
-/**
- * Audience cards rendered on screen 1. Labels + subtext come from
- * `locales/<locale>.json` under `audience.<value>.{label,subtext}` —
- * shared with WelcomeSplash, GoalsScreen pre-fill copy, and the focus
- * edit form. Only the icon stays hard-coded because emoji glyphs are
- * language-agnostic.
- */
-const AUDIENCE_VALUES: ReadonlyArray<{ value: Audience; icon: string }> = [
-  { value: "self", icon: "👤" },
-  { value: "loved_one", icon: "🤝" },
-  { value: "guardian", icon: "🛡️" },
-];
+import FocusPurposeForm from "./FocusPurposeForm";
 
 interface Props {
-  /** If revisiting (e.g. via Settings → Focus → Adjust), pre-select the current audience. */
-  initialAudience?: Audience | null;
+  initialFocus: PurposeFocusInput | null;
 }
 
-export default function WelcomeSplash({ initialAudience }: Props) {
-  const router = useRouter();
-  // Onboarding screen-1 copy. Uses three namespaces:
-  //   - `onboarding.welcome` for the page chrome (headline, subhead, buttons)
-  //   - `audience` for the three card labels + subtexts (shared across surfaces)
-  //   - `onboarding.audience_aria` for screen-reader card descriptions
-  const t = useTranslations("onboarding.welcome");
-  const tAudience = useTranslations("audience");
-  const tAria = useTranslations("onboarding.audience_aria");
-  const tCommon = useTranslations("common");
+const DEFAULT_FOCUS: PurposeFocusInput = {
+  audience: "self",
+  understand: true,
+  declutter: false,
+  minimal: false,
+  accessibility: false,
+  workflow: "self_monitor",
+};
 
-  // Wave I — onboarding screen-1 flags. The audience-picker itself can be
-  // hidden (skipping straight to /onboard/goals with the legacy 'self'
-  // default), and its bottom-of-card "Skip for now" link is gated
-  // separately so admins can keep the picker but force a deliberate
-  // choice. The "Try with sample data" escape hatch likewise has its
-  // own flag so guardians (curated workflow) don't see a "skip the real
-  // setup" affordance during onboarding.
-  const audiencePickerOn = useFlag("flag.onboarding.audience_picker") === "on";
-  const audiencePickerSkipOn =
-    useFlag("flag.onboarding.audience_picker.skip") === "on";
+export default function WelcomeSplash({ initialFocus }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const t = useTranslations("onboarding.welcome");
+  const tCommon = useTranslations("common");
   const sampleDataButtonOn =
     useFlag("flag.onboarding.sample_data_button") === "on";
+  const audiencePickerSkipOn =
+    useFlag("flag.onboarding.audience_picker.skip") === "on";
 
-  const [selected, setSelected] = useState<Audience | null>(
-    initialAudience ?? null
-  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Sync to props change (revisit case)
-  useEffect(() => {
-    setSelected(initialAudience ?? null);
-  }, [initialAudience]);
+  async function optInTasks(taskIds: UserTaskId[]) {
+    for (const id of taskIds) {
+      try {
+        await fetch("/api/user-tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, action: "opt_in" }),
+        });
+      } catch (taskError) {
+        console.warn("[welcome] task opt-in failed:", taskError);
+      }
+    }
+  }
 
-  async function commitAndContinue(audience: Audience) {
+  async function commitAndContinue(
+    focus: PurposeFocusInput & { taskOptIns?: UserTaskId[] }
+  ) {
     setSaving(true);
     setError("");
     try {
-      // Set the audience now; goals get set on the next screen.
-      // We pass empty primary goals here — screen 2 will overwrite them
-      // with the user's actual goal selections (or the silent default).
       const res = await fetch("/api/focus", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audience, understand: true }),
+        body: JSON.stringify({
+          audience: focus.audience,
+          understand: focus.understand,
+          declutter: focus.declutter,
+          minimal: focus.minimal,
+          accessibility: focus.accessibility,
+          workflow: focus.workflow,
+        }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error ?? t("save_failed"));
       }
-      router.push("/onboard/goals");
+      await optInTasks(focus.taskOptIns ?? []);
+      router.push("/onboard/profile");
     } catch (err) {
       console.error("[welcome] save failed:", err);
       setError(err instanceof Error ? err.message : t("save_failed"));
@@ -103,159 +81,71 @@ export default function WelcomeSplash({ initialAudience }: Props) {
     }
   }
 
-  function handleContinue() {
-    if (!selected) {
-      return;
-    }
-    void commitAndContinue(selected);
-  }
-
   function handleSkip() {
-    // Skip = set audience to 'self' silently and advance to screen 2.
-    void commitAndContinue("self");
+    void commitAndContinue({ ...DEFAULT_FOCUS, taskOptIns: [] });
   }
 
   function handleSampleData() {
-    // Sample-data mode: seed sessionStorage with 10 demo apps + route to
-    // /dashboard?sample=1. The query param tells the server-side dashboard
-    // to skip the no-apps-redirect; the SampleModeView client component
-    // then reads sessionStorage and renders the demo apps inline.
     seedSampleApps();
     void fetch("/api/focus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ audience: "self", understand: true }),
+      body: JSON.stringify(DEFAULT_FOCUS),
     }).finally(() => {
       router.push("/dashboard?sample=1");
     });
   }
 
-  // Arrow-key navigation between cards (WCAG AA).
-  function handleCardKeyDown(
-    e: KeyboardEvent<HTMLButtonElement>,
-    index: number
-  ) {
-    if (saving) {
-      return;
-    }
-    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-      e.preventDefault();
-      const next = (index + 1) % AUDIENCE_VALUES.length;
-      setSelected(AUDIENCE_VALUES[next].value);
-      focusCard(next);
-    } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-      e.preventDefault();
-      const prev =
-        (index - 1 + AUDIENCE_VALUES.length) % AUDIENCE_VALUES.length;
-      setSelected(AUDIENCE_VALUES[prev].value);
-      focusCard(prev);
-    }
-  }
-
-  function focusCard(index: number) {
-    const id = `audience-card-${AUDIENCE_VALUES[index].value}`;
-    document.getElementById(id)?.focus();
-  }
-
-  return (
-    <div className="wizard-outer">
-      <div className="wizard-card wizard-card-wide">
-        <div className="welcome-eyebrow">{t("eyebrow")}</div>
-        <h1 className="wizard-title">{t("headline")}</h1>
-        <p className="wizard-subtitle">{t("subhead_long")}</p>
-
-        {audiencePickerOn && (
-          <div
-            aria-label={t("subhead")}
-            className="method-grid welcome-grid audience-grid"
-            role="radiogroup"
-          >
-            {AUDIENCE_VALUES.map((option, index) => {
-              const isSelected = selected === option.value;
-              return (
-                <button
-                  aria-checked={isSelected}
-                  aria-label={tAria(`${option.value}_card`)}
-                  className={`method-card welcome-card audience-card ${isSelected ? "active" : ""}`}
-                  disabled={saving}
-                  id={`audience-card-${option.value}`}
-                  key={option.value}
-                  onClick={() => setSelected(option.value)}
-                  onDoubleClick={() => commitAndContinue(option.value)}
-                  onKeyDown={(e) => handleCardKeyDown(e, index)}
-                  role="radio"
-                  tabIndex={
-                    isSelected || (selected === null && index === 0) ? 0 : -1
-                  }
-                  type="button"
-                >
-                  <div className="method-card-top">
-                    <span aria-hidden="true" className="welcome-card-icon">
-                      {option.icon}
-                    </span>
-                    <span aria-hidden="true" className="method-card-radio">
-                      {isSelected ? "✓" : ""}
-                    </span>
-                  </div>
-                  <div className="method-card-title">
-                    {tAudience(`${option.value}.label`)}
-                  </div>
-                  <p className="method-card-copy">
-                    {tAudience(`${option.value}.subtext`)}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {error && (
-          <div aria-live="assertive" className="welcome-error" role="alert">
-            {error}
-          </div>
-        )}
-
-        <div className="welcome-actions">
+  const footer = (
+    <>
+      {sampleDataButtonOn && (
+        <div className="welcome-tertiary">
           <button
-            className="btn btn-primary"
-            disabled={!selected || saving}
-            onClick={handleContinue}
+            className="welcome-link welcome-sample-data"
+            disabled={saving}
+            onClick={handleSampleData}
             type="button"
           >
-            {saving ? tCommon("saving") : t("next")}
+            {t("sample_data_button")} →
           </button>
-          {audiencePickerSkipOn && (
-            <button
-              className="btn btn-ghost welcome-skip"
-              disabled={saving}
-              onClick={handleSkip}
-              type="button"
-            >
-              {t("skip")}
-            </button>
-          )}
         </div>
+      )}
 
-        {sampleDataButtonOn && (
-          <div className="welcome-tertiary">
-            <button
-              className="welcome-link welcome-sample-data"
-              disabled={saving}
-              onClick={handleSampleData}
-              type="button"
-            >
-              {t("sample_data_button")} →
-            </button>
-          </div>
-        )}
+      <p className="welcome-footnote">
+        {t("footnote_prompt")}{" "}
+        <Link className="welcome-link" href="/help/focus">
+          {t("help_link")}
+        </Link>
+      </p>
+    </>
+  );
 
-        <p className="welcome-footnote">
-          {t("footnote_prompt")}{" "}
-          <Link className="welcome-link" href="/help/focus">
-            {t("help_link")}
-          </Link>
-        </p>
-      </div>
-    </div>
+  return (
+    <FocusPurposeForm
+      advancedInitiallyOpen={searchParams?.get("customize") === "1"}
+      error={error}
+      extraActions={
+        audiencePickerSkipOn ? (
+          <button
+            className="btn btn-ghost welcome-skip"
+            disabled={saving}
+            onClick={handleSkip}
+            type="button"
+          >
+            {t("skip")}
+          </button>
+        ) : null
+      }
+      eyebrow={t("eyebrow")}
+      footer={footer}
+      initial={initialFocus ?? DEFAULT_FOCUS}
+      mode="onboarding"
+      onSubmit={(resolved) => commitAndContinue(resolved)}
+      saving={saving}
+      savingLabel={tCommon("saving")}
+      submitLabel={t("next")}
+      subtitle={t("subhead_long")}
+      title={t("headline")}
+    />
   );
 }

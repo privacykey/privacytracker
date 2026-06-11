@@ -33,6 +33,8 @@ function resetState() {
   setSetting("task_visit.compare_at", "");
   setSetting("background_wizard_completed_at", "");
   setSetting("sync_schedule", "");
+  setSetting("flag.focus.workflow", "");
+  setSetting("audit_bundle_last_exported_at", "");
   setSetting("device_resync.last_committed_at", "");
   savePrivacyProfile(null);
   try {

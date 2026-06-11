@@ -9,7 +9,16 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import type { Audience } from "@/lib/feature-flag-rules";
-import { getActiveFocus, setActiveFocus } from "@/lib/feature-flag-storage";
+import {
+  getActiveFocus,
+  getActiveFocusWorkflow,
+  setActiveFocus,
+} from "@/lib/feature-flag-storage";
+import {
+  type FocusWorkflow,
+  inferFocusWorkflow,
+  isFocusWorkflow,
+} from "@/lib/focus-workflow";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +30,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const focus = getActiveFocus();
+  const workflow = getActiveFocusWorkflow(focus);
   return NextResponse.json({
     audience: focus.audience,
     understand: focus.goals.has("understand"),
@@ -28,6 +38,7 @@ export async function GET() {
     minimal: focus.goals.has("minimal"),
     accessibility: focus.goals.has("accessibility"),
     aiConfigured: focus.aiConfigured,
+    workflow,
   });
 }
 
@@ -37,6 +48,7 @@ interface FocusBody {
   declutter?: boolean;
   minimal?: boolean;
   understand?: boolean;
+  workflow?: FocusWorkflow;
 }
 
 const VALID_AUDIENCES: readonly Audience[] = ["self", "loved_one", "guardian"];
@@ -62,6 +74,16 @@ export async function POST(request: NextRequest) {
   let declutter = Boolean(body.declutter);
   const minimal = Boolean(body.minimal);
   const accessibility = Boolean(body.accessibility);
+  const workflow = body.workflow;
+  if (workflow !== undefined && !isFocusWorkflow(workflow)) {
+    return NextResponse.json(
+      {
+        error:
+          "workflow must be one of: self_monitor, self_cleanup, other_handoff, other_monitor, custom",
+      },
+      { status: 400 }
+    );
+  }
 
   // Mutual exclusion: minimal can't combine with understand or declutter.
   // If client sent both, minimal wins (matches the screen 2 UI behaviour
@@ -73,9 +95,19 @@ export async function POST(request: NextRequest) {
     // Silent fallback per §4.2 — empty primary goals defaults to understand.
     understand = true;
   }
+  const finalWorkflow =
+    workflow ??
+    inferFocusWorkflow({ audience, understand, declutter, minimal });
 
   try {
-    setActiveFocus({ audience, understand, declutter, minimal, accessibility });
+    setActiveFocus({
+      audience,
+      understand,
+      declutter,
+      minimal,
+      accessibility,
+      workflow: finalWorkflow,
+    });
   } catch (e) {
     console.error("[/api/focus] write failed:", e);
     return NextResponse.json(
@@ -90,5 +122,6 @@ export async function POST(request: NextRequest) {
     declutter,
     minimal,
     accessibility,
+    workflow: finalWorkflow,
   });
 }

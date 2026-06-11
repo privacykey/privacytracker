@@ -12,6 +12,12 @@
  */
 
 import type { Audience } from "./feature-flag-rules";
+import {
+  type FocusWorkflow,
+  inferFocusWorkflow,
+  isFocusWorkflow,
+} from "./focus-workflow";
+import type { UserTaskId } from "./tasks";
 
 const STORAGE_KEY = "focus_preview";
 const HINT_KEY = "focus_preview_hint_shown";
@@ -33,8 +39,16 @@ export interface FocusPreview {
   minimal: boolean;
   /** Epoch ms when the user staged this preview. Used by the banner. */
   startedAt: number;
+  taskOptIns?: UserTaskId[];
   understand: boolean;
+  workflow: FocusWorkflow;
 }
+
+const PREVIEW_TASK_IDS: readonly UserTaskId[] = [
+  "setup_background_mode",
+  "remove_apps_from_phone",
+  "export_audit_bundle",
+];
 
 /**
  * Read the current preview, or null when nothing's staged. Returns null
@@ -68,12 +82,23 @@ export function getPreviewFocus(): FocusPreview | null {
     ) {
       return null;
     }
+    const understand = Boolean(parsed.understand);
+    const declutter = Boolean(parsed.declutter);
+    const minimal = Boolean(parsed.minimal);
     return {
       audience,
-      understand: Boolean(parsed.understand),
-      declutter: Boolean(parsed.declutter),
-      minimal: Boolean(parsed.minimal),
+      understand,
+      declutter,
+      minimal,
       accessibility: Boolean(parsed.accessibility),
+      workflow: isFocusWorkflow(parsed.workflow)
+        ? parsed.workflow
+        : inferFocusWorkflow({ audience, understand, declutter, minimal }),
+      taskOptIns: Array.isArray(parsed.taskOptIns)
+        ? parsed.taskOptIns.filter((id: unknown): id is UserTaskId =>
+            PREVIEW_TASK_IDS.includes(id as UserTaskId)
+          )
+        : undefined,
       startedAt:
         typeof parsed.startedAt === "number" ? parsed.startedAt : Date.now(),
     };

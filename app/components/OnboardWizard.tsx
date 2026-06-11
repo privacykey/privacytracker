@@ -5194,7 +5194,7 @@ export default function OnboardWizard({
             <Link
               aria-label={tStep1("back_aria")}
               className="wizard-back-link"
-              href="/onboard/goals"
+              href="/welcome?customize=1"
             >
               <span aria-hidden="true">←</span> {tStep1("back_to_goals")}
             </Link>

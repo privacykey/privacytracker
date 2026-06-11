@@ -745,6 +745,14 @@ export default function ChangelogTimeline({
 
           const isFirst = i === lastSnapshotIndex;
           const snapshotPosition = i === firstSnapshotIndex ? 0 : 1;
+          const previousLiveSnapshot = visibleRows
+            .slice(i + 1)
+            .find(
+              (candidate): candidate is SnapshotRow =>
+                candidate.kind === "snapshot" &&
+                candidate.source !== "wayback" &&
+                !!candidate.app_version
+            );
 
           return (
             <TimelineSnapshotItem
@@ -754,6 +762,7 @@ export default function ChangelogTimeline({
               isFirst={isFirst}
               key={row.id}
               previews={previews}
+              previousAppVersion={previousLiveSnapshot?.app_version ?? null}
               pulsed={pulsed}
               showMatchesLiveSyncBadge={tf.matchesLiveSyncBadge}
               showPolicyDiffToggle={tf.policyDiffToggle}
@@ -790,6 +799,7 @@ function TimelineSnapshotItem({
   snapshot,
   isFirst,
   snapshotPosition,
+  previousAppVersion,
   pulsed,
   previews,
   diffs,
@@ -806,6 +816,7 @@ function TimelineSnapshotItem({
   snapshot: SnapshotRow;
   isFirst: boolean;
   snapshotPosition: number;
+  previousAppVersion: string | null;
   pulsed: { id: string; nonce: number } | null;
   previews: Record<string, PreviewState>;
   diffs: Record<string, DiffState>;
@@ -836,6 +847,12 @@ function TimelineSnapshotItem({
   const dateMode = useDateFormat();
   const changes = snapshot.changes_summary ?? [];
   const isWayback = snapshot.source === "wayback";
+  const versionChangedWithoutLabelChanges =
+    !(isFirst || isWayback) &&
+    changes.length === 0 &&
+    !!snapshot.app_version &&
+    !!previousAppVersion &&
+    snapshot.app_version !== previousAppVersion;
   // Reusing the row's own id as the dependency key: when `pulsed.id` is us,
   // we run the scroll+flash effect; the monotonic `nonce` is what restarts
   // the animation on repeat clicks of the same review → snapshot link.
@@ -985,9 +1002,13 @@ function TimelineSnapshotItem({
             className="timeline-card-title"
             style={{ color: "var(--text-2)" }}
           >
-            {isWayback
-              ? "🕰 Wayback snapshot — no differences from previous"
-              : "✓ No changes detected"}
+            {versionChangedWithoutLabelChanges
+              ? tTimeline("version_updated_no_label_changes", {
+                  version: snapshot.app_version ?? "",
+                })
+              : isWayback
+                ? "🕰 Wayback snapshot — no differences from previous"
+                : "✓ No changes detected"}
           </div>
         ) : (
           <>

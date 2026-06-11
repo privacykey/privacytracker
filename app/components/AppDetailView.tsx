@@ -900,6 +900,18 @@ export default function AppDetailView({
             count: result.changeCount,
           })
         );
+      } else if (result?.versionChanged && result.currentVersion) {
+        showToast(
+          tDetail("toasts.sync_version_updated", {
+            version: result.currentVersion,
+          })
+        );
+        handle.complete(
+          "done",
+          tDetail("task_titles.completion_version_updated", {
+            version: result.currentVersion,
+          })
+        );
       } else {
         showToast(tDetail("toasts.sync_no_changes"));
         handle.complete("done", tDetail("task_titles.completion_no_changes"));

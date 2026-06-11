@@ -82,6 +82,8 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.global.site_info_hint",
   "flag.global.accessibility_toggles",
   "flag.global.info_tooltips",
+  // DataLabelHint short-circuits to null when off.
+  "flag.global.label_hints",
   "flag.global.social_share",
   "flag.global.live_text_modal",
   "flag.dashboard.annotation_banner",
