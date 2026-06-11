@@ -1261,60 +1261,66 @@
     "dialog_aria": "App tour"
   },
   "tasks": {
-    "heading": "Things to try, tailored for you",
+    "heading": "Your privacy check-up",
     "region_aria": "Suggested tasks tailored for you",
-    "attribution": "For you, the {audience}",
+    "attribution": "Tailored to your focus: {audience}",
     "attribution_change_aria": "Change your focus",
     "attribution_change_label": "Change",
-    "collapsed_chip_label": "Tasks ✓ · Show all",
+    "collapsed_chip_label": "Check-up done · Show all",
     "collapsed_chip_aria": "Expand the tasks panel",
     "empty_all_dismissed": "Nothing pending right now.",
     "all_done_short": "You're all set — nothing pending.",
     "dismiss_action": "Dismiss",
     "dismiss_aria": "Dismiss {task}",
     "sheet_done": "Done",
-    "add_tray_heading": "What else do you want to do?",
+    "add_tray_heading": "More things you can do",
     "add_tray_chip_aria": "Add task: {title}",
+    "journey": {
+      "progress": "{done} of {total} done",
+      "strip_aria": "Your check-up steps",
+      "cta": "Take me there",
+      "skip": "Skip for now"
+    },
     "audiences": {
-      "self": "self-auditor",
-      "loved_one": "recommender",
-      "guardian": "guardian"
+      "self": "checking my own apps",
+      "loved_one": "recommending for someone else",
+      "guardian": "watching over a family device"
     },
     "view_privacy_map": {
-      "title": "Explore the privacy map",
-      "body": "See, at a glance, what data your apps are gathering — grouped by category."
+      "title": "See what your apps collect",
+      "body": "One map of every app's data appetite, grouped by what it can reveal about you."
     },
     "open_any_app_detail": {
-      "title": "Open an app's privacy page",
-      "body": "Dig into one app: labels, policy, timeline, and AI summary."
+      "title": "Open one app's report",
+      "body": "The labels, the policy in plain words, and how it has changed over time — for any single app."
     },
     "create_privacy_profile": {
-      "title": "Create your privacy profile",
-      "body": "Tell us what you're comfortable with so we can flag apps that exceed it."
+      "title": "Say what you're comfortable with",
+      "body": "A one-minute profile. From then on, every app is measured against your line, not ours."
     },
     "review_mismatches": {
-      "title": "Review apps that exceed your profile",
-      "body": "Mark each as safe, replace, or uninstall — we'll keep track of your decisions."
+      "title": "Deal with apps that cross your line",
+      "body": "We flag what goes further than you allowed — keep, replace, or remove each one."
     },
     "compare_two_apps": {
       "title": "Compare two apps side by side",
-      "body": "Pick alternatives and see which one collects less of what you care about."
+      "body": "Considering an alternative? See which one collects less of what you care about."
     },
     "setup_background_mode": {
-      "title": "Keep track of apps in the background",
-      "body": "Switch on auto-sync (or, on desktop, finish the Background Mode wizard) so the app keeps watching for changes on its own."
+      "title": "Let it watch in the background",
+      "body": "Turn on auto-sync so changes to any app's labels get caught without you checking."
     },
     "remove_apps_from_phone": {
-      "title": "Remove apps from your phone",
-      "body": "Mark which apps to uninstall and we'll guide you through removing them — needs a privacy profile so we know what you're filtering out."
+      "title": "Clear flagged apps off your phone",
+      "body": "Mark what to uninstall and we'll walk you through removing them from the device."
     },
     "resync_apps_from_device": {
-      "title": "Re-sync apps from your iPhone",
-      "body": "Import a fresh app list from one of your devices and see what's been added or removed since last time."
+      "title": "Pull a fresh app list from your iPhone",
+      "body": "Re-import from a device to see what's been added or removed since last time."
     },
     "export_audit_bundle": {
-      "title": "Export recommendations for handoff",
-      "body": "Create an audit bundle the other person can import into their own copy of privacytracker."
+      "title": "Hand your findings to the other person",
+      "body": "Export a bundle they can import into their own copy of privacytracker."
     },
     "gate": {
       "title": "Try this first?",

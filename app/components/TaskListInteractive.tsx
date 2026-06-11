@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Audience } from "../../lib/feature-flag-rules";
 import type { OptInCandidate, ResolvedTask, UserTaskId } from "../../lib/tasks";
 import TaskGateModal from "./TaskGateModal";
@@ -25,14 +25,20 @@ interface TaskListInteractiveProps {
   audience: Audience;
   initialCandidates: OptInCandidate[];
   initialTasks: ResolvedTask[];
+  /** Journey-strip vs legacy flat-list rendering — see TaskList. */
+  variant?: "journey" | "list";
   visibleRows: ResolvedTask[];
 }
 
+/* Collapsed glyph alphabet: done / not-done is the only distinction a
+ * row needs to carry visually. `blocked` deliberately renders like
+ * `ready` — the gate modal explains the prerequisite when clicked,
+ * and a padlock on a first-run surface punished exploration. */
 const STATE_GLYPH: Record<ResolvedTask["state"], string> = {
   ready: "○",
-  in_progress: "◐",
+  in_progress: "○",
   completed: "✓",
-  blocked: "🔒",
+  blocked: "○",
   dismissed: "–",
 };
 
@@ -40,6 +46,7 @@ export default function TaskListInteractive({
   initialTasks,
   initialCandidates,
   audience,
+  variant = "list",
   visibleRows: initialVisibleRows,
 }: TaskListInteractiveProps) {
   const t = useTranslations("tasks");
@@ -70,6 +77,54 @@ export default function TaskListInteractive({
   // Use provider candidates after first fetch; before that, render from
   // the server-resolved list so the chip tray appears on first paint.
   const candidates = provider.ready ? provider.candidates : initialCandidates;
+
+  // Journey-mode partition, in TASK_DEFS order (NOT the open-first sort
+  // above — the strip's geometry is the sequence). Core tasks
+  // (optedInAt == null) are the path; opted-in extras render as rows
+  // under the "more things" tray.
+  const journeySource = provider.ready ? tasks : initialTasks;
+  const journeySteps = useMemo(
+    () =>
+      journeySource.filter(
+        (x) => x.state !== "dismissed" && x.optedInAt == null
+      ),
+    [journeySource]
+  );
+  const journeyExtras = useMemo(
+    () =>
+      journeySource.filter(
+        (x) => x.state !== "dismissed" && x.optedInAt != null
+      ),
+    [journeySource]
+  );
+  const currentIdx = journeySteps.findIndex((x) => x.state !== "completed");
+  const doneCount = journeySteps.filter((x) => x.state === "completed").length;
+  const anyCompleted = journeySource.some((x) => x.state === "completed");
+
+  // Tick-pop choreography: a step that flips to completed DURING this
+  // session gets a one-shot pop animation. First paint never pops —
+  // returning users shouldn't see their old progress re-celebrate.
+  const prevCompletedRef = useRef<Set<UserTaskId> | null>(null);
+  const [poppedIds, setPoppedIds] = useState<ReadonlySet<UserTaskId>>(
+    new Set()
+  );
+  useEffect(() => {
+    const completedNow = new Set(
+      tasks.filter((x) => x.state === "completed").map((x) => x.id)
+    );
+    const prev = prevCompletedRef.current;
+    prevCompletedRef.current = completedNow;
+    if (!prev) {
+      return;
+    }
+    const fresh = [...completedNow].filter((id) => !prev.has(id));
+    if (fresh.length === 0) {
+      return;
+    }
+    setPoppedIds(new Set(fresh));
+    const timer = window.setTimeout(() => setPoppedIds(new Set()), 700);
+    return () => window.clearTimeout(timer);
+  }, [tasks]);
 
   // "All settled" = everything is completed AND there's nothing left to
   // opt into. Otherwise we keep the panel expanded so the user can act.
@@ -181,97 +236,205 @@ export default function TaskListInteractive({
     );
   }
 
+  const renderRow = (task: ResolvedTask) => (
+    <li className={`task-list-row task-list-row-${task.state}`} key={task.id}>
+      <button
+        className="task-list-row-btn"
+        onClick={() => void handleTaskClick(task)}
+        type="button"
+      >
+        <span aria-hidden="true" className="task-list-row-glyph">
+          {STATE_GLYPH[task.state]}
+        </span>
+        <span className="task-list-row-text">
+          <span className="task-list-row-title">{t(`${task.id}.title`)}</span>
+          <span className="task-list-row-body">{t(`${task.id}.body`)}</span>
+        </span>
+        <span aria-hidden="true" className="task-list-row-arrow">
+          →
+        </span>
+      </button>
+      {task.state !== "completed" && (
+        <button
+          aria-label={t("dismiss_aria", { task: t(`${task.id}.title`) })}
+          className="task-list-row-dismiss"
+          onClick={() => void handleDismiss(task)}
+          type="button"
+        >
+          {t("dismiss_action")}
+        </button>
+      )}
+    </li>
+  );
+
+  const renderChips = () => (
+    <ul className="task-list-add-tray-chips">
+      {candidates.map((candidate) => (
+        <li className="task-list-add-tray-chip-li" key={candidate.id}>
+          <button
+            aria-label={t("add_tray_chip_aria", {
+              title: t(`${candidate.id}.title`),
+            })}
+            className="task-list-add-tray-chip"
+            onClick={() => void handleOptIn(candidate.id)}
+            type="button"
+          >
+            <span aria-hidden="true" className="task-list-add-tray-chip-plus">
+              +
+            </span>
+            <span>{t(`${candidate.id}.title`)}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const headerEl = (progress: { done: number; total: number } | null) => (
+    <header className="task-list-card-header">
+      <div className="task-list-card-titles">
+        <h2 className="task-list-card-heading" id="task-list-heading">
+          {t("heading")}
+        </h2>
+        <p className="task-list-card-attribution">
+          {t("attribution", { audience: tAudience(audience) })}{" "}
+          <Link
+            aria-label={t("attribution_change_aria")}
+            className="task-list-card-attribution-link"
+            href="/dashboard/settings/focus"
+          >
+            {t("attribution_change_label")}
+          </Link>
+        </p>
+      </div>
+      {progress && progress.total > 0 && (
+        <span className="task-list-progress-pill">
+          {t("journey.progress", progress)}
+        </span>
+      )}
+    </header>
+  );
+
+  // The opt-in tray waits until the user has completed at least one
+  // task — asking a brand-new user "what else do you want to do?"
+  // before they've done anything was part of why the panel read as a
+  // chore list. Already-opted-in extras always stay visible.
+  const trayChipsVisible = candidates.length > 0 && anyCompleted;
+
+  if (variant === "journey") {
+    const current = currentIdx >= 0 ? journeySteps[currentIdx] : null;
+    const showExtras = journeyExtras.length > 0 || trayChipsVisible;
+    return (
+      <>
+        {headerEl({ done: doneCount, total: journeySteps.length })}
+        <UserTasksMutationAlert />
+        {journeySteps.length === 0 ? (
+          <p className="task-list-empty">{t("empty_all_dismissed")}</p>
+        ) : (
+          <>
+            <ol
+              aria-label={t("journey.strip_aria")}
+              className="task-journey-strip"
+            >
+              {journeySteps.map((task, i) => (
+                <li className="task-journey-step" key={task.id}>
+                  {i > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className={`task-journey-seg${
+                        journeySteps[i - 1].state === "completed"
+                          ? " is-filled"
+                          : ""
+                      }`}
+                    >
+                      <span className="task-journey-seg-fill" />
+                    </span>
+                  )}
+                  <button
+                    aria-current={i === currentIdx ? "step" : undefined}
+                    aria-label={t(`${task.id}.title`)}
+                    className={`task-journey-node${
+                      task.state === "completed" ? " is-done" : ""
+                    }${i === currentIdx ? " is-current" : ""}${
+                      poppedIds.has(task.id) ? " is-popped" : ""
+                    }`}
+                    onClick={() => void handleTaskClick(task)}
+                    title={t(`${task.id}.title`)}
+                    type="button"
+                  >
+                    {task.state === "completed" ? "✓" : i + 1}
+                  </button>
+                </li>
+              ))}
+            </ol>
+            {current && (
+              <div className="task-journey-detail" key={current.id}>
+                <div className="task-journey-detail-text">
+                  <p className="task-journey-detail-title">
+                    {t(`${current.id}.title`)}
+                  </p>
+                  <p className="task-journey-detail-body">
+                    {t(`${current.id}.body`)}
+                  </p>
+                </div>
+                <div className="task-journey-detail-actions">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => void handleTaskClick(current)}
+                    type="button"
+                  >
+                    {t("journey.cta")}
+                  </button>
+                  <button
+                    className="task-journey-skip"
+                    onClick={() => void handleDismiss(current)}
+                    type="button"
+                  >
+                    {t("journey.skip")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        {showExtras && (
+          <div className="task-list-add-tray">
+            <p className="task-list-add-tray-heading">
+              {t("add_tray_heading")}
+            </p>
+            {journeyExtras.length > 0 && (
+              <ul className="task-list-rows task-journey-extras">
+                {journeyExtras.map(renderRow)}
+              </ul>
+            )}
+            {trayChipsVisible && renderChips()}
+          </div>
+        )}
+        <TaskGateModal
+          onCancel={closeGate}
+          onContinueAnyway={handleContinueAnyway}
+          onGotoPrerequisite={handleGotoPrereq}
+          open={Boolean(gateTask && gatePrerequisiteId)}
+          prerequisiteId={gatePrerequisiteId}
+          task={gateTask}
+        />
+      </>
+    );
+  }
+
   return (
     <>
-      <header className="task-list-card-header">
-        <div className="task-list-card-titles">
-          <h2 className="task-list-card-heading" id="task-list-heading">
-            {t("heading")}
-          </h2>
-          <p className="task-list-card-attribution">
-            {t("attribution", { audience: tAudience(audience) })}{" "}
-            <Link
-              aria-label={t("attribution_change_aria")}
-              className="task-list-card-attribution-link"
-              href="/dashboard/settings/focus"
-            >
-              {t("attribution_change_label")}
-            </Link>
-          </p>
-        </div>
-      </header>
+      {headerEl({ done: doneCount, total: journeySteps.length })}
       <UserTasksMutationAlert />
       {visibleRows.length === 0 ? (
         <p className="task-list-empty">{t("empty_all_dismissed")}</p>
       ) : (
-        <ul className="task-list-rows">
-          {visibleRows.map((task) => (
-            <li
-              className={`task-list-row task-list-row-${task.state}`}
-              key={task.id}
-            >
-              <button
-                className="task-list-row-btn"
-                onClick={() => void handleTaskClick(task)}
-                type="button"
-              >
-                <span aria-hidden="true" className="task-list-row-glyph">
-                  {STATE_GLYPH[task.state]}
-                </span>
-                <span className="task-list-row-text">
-                  <span className="task-list-row-title">
-                    {t(`${task.id}.title`)}
-                  </span>
-                  <span className="task-list-row-body">
-                    {t(`${task.id}.body`)}
-                  </span>
-                </span>
-                <span aria-hidden="true" className="task-list-row-arrow">
-                  →
-                </span>
-              </button>
-              {task.state !== "completed" && (
-                <button
-                  aria-label={t("dismiss_aria", {
-                    task: t(`${task.id}.title`),
-                  })}
-                  className="task-list-row-dismiss"
-                  onClick={() => void handleDismiss(task)}
-                  type="button"
-                >
-                  {t("dismiss_action")}
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <ul className="task-list-rows">{visibleRows.map(renderRow)}</ul>
       )}
 
-      {candidates.length > 0 && (
+      {trayChipsVisible && (
         <div className="task-list-add-tray">
           <p className="task-list-add-tray-heading">{t("add_tray_heading")}</p>
-          <ul className="task-list-add-tray-chips">
-            {candidates.map((candidate) => (
-              <li className="task-list-add-tray-chip-li" key={candidate.id}>
-                <button
-                  aria-label={t("add_tray_chip_aria", {
-                    title: t(`${candidate.id}.title`),
-                  })}
-                  className="task-list-add-tray-chip"
-                  onClick={() => void handleOptIn(candidate.id)}
-                  type="button"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="task-list-add-tray-chip-plus"
-                  >
-                    +
-                  </span>
-                  <span>{t(`${candidate.id}.title`)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          {renderChips()}
         </div>
       )}
 

@@ -93,6 +93,13 @@ export type FlagKey =
   // this off is a global kill-switch for the inline surface only; the nav icon
   // has its own flag.
   | "flag.dashboard.task_list"
+  // Journey-strip rendering of the tasks panel: same resolved tasks, drawn
+  // as a stepped path (done → current → upcoming) with one detail card for
+  // the current step, instead of the flat row list. Off falls back to the
+  // legacy list rendering — this flag is the kill-switch for the strip
+  // VISUAL only; `flag.dashboard.task_list` still controls whether the
+  // panel exists at all.
+  | "flag.dashboard.task_journey"
   // Device-aware re-sync CTAs. Off hides the "Re-sync from this device"
   // button on the Review wizard's Action step and the Tasks-panel chip;
   // the Devices settings page has its own flag.
@@ -388,6 +395,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.dashboard.sample_data_banner": "off", // only on while sample apps present
   "flag.dashboard.background_mode_wizard": "on", // Tauri-only callout — runtime-gated on isDesktop()
   "flag.dashboard.task_list": "on", // audience-aware tasks panel at the top of HomeView
+  "flag.dashboard.task_journey": "on", // journey-strip rendering of the tasks panel (off = legacy flat list)
   "flag.dashboard.device_resync_cta": "on", // "Re-sync from this device" CTAs on Review wizard + Tasks chip
   "flag.dashboard.layout_editor.visible": "on", // "Customise dashboard…" footer link + editor route gate
 

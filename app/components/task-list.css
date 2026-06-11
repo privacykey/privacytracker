@@ -430,3 +430,193 @@
   color: var(--blue, #0a84ff);
   text-decoration: underline;
 }
+
+/* ─────────────────────────────────────────────
+ * Journey strip (flag.dashboard.task_journey)
+ * ───────────────────────────────────────────── */
+.task-list-progress-pill {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+  background: var(--surface, rgba(127, 127, 127, 0.08));
+  border-radius: 999px;
+}
+
+.task-journey-strip {
+  display: flex;
+  align-items: center;
+  padding: 4px 2px;
+  margin: 10px 0 14px;
+  list-style: none;
+}
+.task-journey-step {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+}
+.task-journey-step:first-child {
+  flex: 0 0 auto;
+}
+
+.task-journey-seg {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  margin: 0 6px;
+  overflow: hidden;
+  background: var(--border, rgba(127, 127, 127, 0.2));
+  border-radius: 1px;
+}
+/* Fill slides in via transform so a step completing mid-session animates
+   the path forward; SSR renders the settled state with no entry motion. */
+.task-journey-seg-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--green, #30d158);
+  transform: translateX(-101%);
+  transition: transform 0.5s ease;
+}
+.task-journey-seg.is-filled .task-journey-seg-fill {
+  transform: translateX(0);
+}
+
+.task-journey-node {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-3);
+  cursor: pointer;
+  background: var(--surface, rgba(127, 127, 127, 0.06));
+  border: 1.5px solid var(--border-strong, rgba(127, 127, 127, 0.3));
+  border-radius: 50%;
+  isolation: isolate;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+.task-journey-node:hover,
+.task-journey-node:focus-visible {
+  color: var(--text);
+  border-color: var(--text-3);
+}
+.task-journey-node.is-done {
+  color: var(--green, #30d158);
+  background: var(--green-dim, rgba(48, 209, 88, 0.12));
+  border-color: color-mix(in srgb, var(--green, #30d158) 55%, transparent);
+}
+.task-journey-node.is-current {
+  color: var(--blue, #0a84ff);
+  border-color: var(--blue, #0a84ff);
+}
+/* Compositor-only halo on the current step — reuses the shared
+   `halo-breathe` keyframes from globals.css (same pattern as
+   .change-dot); only transform/opacity animate. */
+.task-journey-node.is-current::after {
+  --halo-scale: 1.6;
+  position: absolute;
+  inset: -1.5px;
+  z-index: -1;
+  content: "";
+  background: rgba(10, 132, 255, 0.3);
+  border-radius: 50%;
+  animation: halo-breathe 2s infinite;
+}
+/* One-shot celebration when a step flips to done during this session.
+   First paint never pops (see prevCompletedRef in the component). */
+.task-journey-node.is-popped {
+  animation: task-journey-pop 0.45s ease;
+}
+@keyframes task-journey-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.task-journey-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface, rgba(127, 127, 127, 0.06));
+  border-radius: var(--r-md, 12px);
+  animation: task-journey-detail-in 0.24s ease;
+}
+@keyframes task-journey-detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.task-journey-detail-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.task-journey-detail-body {
+  max-width: 52ch;
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.task-journey-detail-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  align-items: center;
+}
+.task-journey-skip {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text-3);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+.task-journey-skip:hover,
+.task-journey-skip:focus-visible {
+  color: var(--text-2);
+  text-decoration: underline;
+}
+.task-journey-extras {
+  margin-bottom: 8px;
+}
+
+/* Demote per-row Dismiss to a hover/focus affordance on pointer devices —
+   a first-run panel where every row leads with "Dismiss" reads as a chore
+   list. Touch devices (no hover) keep it always visible. */
+@media (hover: hover) {
+  .task-list-row-dismiss {
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .task-list-row:hover .task-list-row-dismiss,
+  .task-list-row:focus-within .task-list-row-dismiss {
+    opacity: 1;
+  }
+}

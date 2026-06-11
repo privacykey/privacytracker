@@ -1261,60 +1261,66 @@
     "dialog_aria": "应用引导"
   },
   "tasks": {
-    "heading": "为你量身定制的尝试事项",
+    "heading": "你的隐私体检",
     "region_aria": "为你量身定制的建议任务",
-    "attribution": "为你这位{audience}",
+    "attribution": "已按你的关注点定制：{audience}",
     "attribution_change_aria": "更改你的关注重点",
     "attribution_change_label": "更改",
-    "collapsed_chip_label": "任务 ✓ · 查看全部",
+    "collapsed_chip_label": "体检完成 · 查看全部",
     "collapsed_chip_aria": "展开任务面板",
     "empty_all_dismissed": "目前没有待办事项。",
     "all_done_short": "全部完成 — 暂无待办。",
     "dismiss_action": "忽略",
     "dismiss_aria": "忽略 {task}",
     "sheet_done": "完成",
-    "add_tray_heading": "你还想做点什么？",
+    "add_tray_heading": "你还可以做这些",
     "add_tray_chip_aria": "添加任务：{title}",
+    "journey": {
+      "progress": "已完成 {done} / {total}",
+      "strip_aria": "你的体检步骤",
+      "cta": "带我去",
+      "skip": "暂时跳过"
+    },
     "audiences": {
-      "self": "自我审查者",
-      "loved_one": "推荐者",
-      "guardian": "监护人"
+      "self": "检查我自己的应用",
+      "loved_one": "为别人提供建议",
+      "guardian": "守护家人的设备"
     },
     "view_privacy_map": {
-      "title": "浏览隐私地图",
-      "body": "一眼看清你的应用在收集什么数据 — 按类别分组。"
+      "title": "看看你的应用都收集了什么",
+      "body": "一张地图汇总每个应用的数据胃口，按「能暴露你什么」来分组。"
     },
     "open_any_app_detail": {
-      "title": "打开某个应用的隐私页面",
-      "body": "深入查看一个应用：标签、政策、时间线和 AI 摘要。"
+      "title": "打开一个应用的报告",
+      "body": "标签、用大白话讲的隐私政策、以及它随时间的变化 — 任选一个应用看看。"
     },
     "create_privacy_profile": {
-      "title": "创建你的隐私档案",
-      "body": "告诉我们你能接受什么，我们好标记出超出你容忍范围的应用。"
+      "title": "说说你能接受什么",
+      "body": "一分钟完成设置。之后每个应用都用你的底线来衡量，而不是我们的。"
     },
     "review_mismatches": {
-      "title": "审阅超出档案的应用",
-      "body": "为每个应用标记安全、替换或卸载 — 我们会记住你的决定。"
+      "title": "处理越线的应用",
+      "body": "我们会标记超出你允许范围的应用 — 逐个决定保留、替换还是卸载。"
     },
     "compare_two_apps": {
       "title": "并排对比两个应用",
-      "body": "挑选替代方案，看看哪一个更少收集你在意的数据。"
+      "body": "在考虑替代品？看看哪一个更少收集你在意的数据。"
     },
     "setup_background_mode": {
-      "title": "让应用在后台持续追踪",
-      "body": "打开自动同步（桌面端可完成「后台模式」向导），让应用自动监测变化。"
+      "title": "让它在后台盯着",
+      "body": "开启自动同步，应用标签一有变化就会被发现，无需你主动检查。"
     },
     "remove_apps_from_phone": {
-      "title": "从手机上移除应用",
-      "body": "标记需要卸载的应用，我们会引导你完成移除 — 需要先有隐私档案，这样我们才知道你想筛掉什么。"
+      "title": "把越线应用清出手机",
+      "body": "标记要卸载的应用，我们会一步步引导你从设备上移除。"
     },
     "resync_apps_from_device": {
-      "title": "重新同步 iPhone 上的应用",
-      "body": "从你的设备重新导入应用列表，看看自上次以来添加或移除了哪些。"
+      "title": "从 iPhone 拉取最新应用列表",
+      "body": "从设备重新导入应用，看看自上次以来添加或移除了哪些。"
     },
     "export_audit_bundle": {
-      "title": "导出交接用建议",
-      "body": "创建一份审计包，对方可以导入到自己的 privacytracker 副本中。"
+      "title": "把你的结论交给对方",
+      "body": "导出一份审计包，对方可以导入到自己的 privacytracker 副本中。"
     },
     "gate": {
       "title": "要不要先做这个？",
