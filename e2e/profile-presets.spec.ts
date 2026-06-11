@@ -4,13 +4,16 @@ import { expect, test } from "@playwright/test";
  * E2E coverage for the privacy-profile preset row introduced alongside
  * the existing per-category strip. The flow under test:
  *
- *   1. First-time user lands on /onboard/profile with the toggle off
- *      and no saved profile.
- *   2. Toggling on shows the editor pre-loaded with DEFAULT_PROFILE
- *      (the "Balanced" preset is highlighted by matchPreset).
+ *   1. First-time user with a declutter-goal focus lands on
+ *      /onboard/profile with no saved profile. The privacy section
+ *      renders with a recommended Balanced preset and an
+ *      Activate / Customise / Disable choice row
+ *      (recommendedPrivacyPresetForFocus → 'balanced' for declutter).
+ *   2. Clicking "Customise" opens the editor pre-loaded with the
+ *      recommended (Balanced) profile.
  *   3. Clicking the Strict preset pill applies Strict to every row
- *      without a confirm bubble (first-time flow opts out of confirms
- *      via PrivacyProfileSetup → confirmOnPresetApply={hasExistingProfile}).
+ *      without a confirm bubble (onboarding passes
+ *      confirmOnPresetApply={false}).
  *   4. Editing a single per-category pill drops the Strict pill's
  *      .is-active highlight, signalling "this is now custom".
  *
@@ -30,20 +33,21 @@ const sameOriginHeaders = {
 const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
 
 test.beforeEach(async ({ request }) => {
-  // Pre-seed focus state so /onboard/profile renders normally. The page
-  // redirects to /onboard when both flag.onboarding.privacy_profile_setup
-  // and flag.onboarding.accessibility_profile_setup resolve to 'off'. The
-  // accessibility modifier flips the a11y_profile_setup flag on, which
-  // is enough to keep the page rendering. (As of the GOAL_RULES.declutter
-  // fix, declutter also flips privacy_profile_setup on — but we leave it
-  // off here so the first-time-user path runs against the same gate
-  // onboarding-clock.spec.ts uses.)
+  // Pre-seed focus state so /onboard/profile renders the privacy
+  // section. The page only renders that section when
+  // flag.onboarding.privacy_profile_setup resolves 'on', which the
+  // declutter goal rule provides (GOAL_RULES.declutter). Declutter also
+  // makes recommendedPrivacyPresetForFocus return 'balanced', so the
+  // section mounts in its recommended-preset shape with the
+  // Activate / Customise / Disable choice row. The accessibility
+  // modifier additionally flips accessibility_profile_setup on, keeping
+  // the a11y section covered alongside.
   const focus = await request.post("/api/focus", {
     headers: sameOriginHeaders,
     data: {
       audience: "self",
       understand: true,
-      declutter: false,
+      declutter: true,
       minimal: false,
       accessibility: true,
     },
@@ -80,16 +84,17 @@ browserFlow(
   async ({ page }) => {
     await page.goto("/onboard/profile");
 
-    // The toggle starts off for first-time users (PrivacyProfileSetup wires
-    // enabled-state to hasExistingProfile, which is false on a cleared DB).
-    // /onboard/profile renders only the privacy-profile setup card, so a
-    // page-wide switch role lookup is unambiguous here.
-    const toggle = page.getByRole("switch");
-    await expect(toggle).toBeVisible();
-    if ((await toggle.getAttribute("aria-checked")) !== "true") {
-      await toggle.click();
-    }
-    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    // The declutter focus seeded in beforeEach gives the privacy section
+    // a recommended Balanced preset, so it renders the
+    // Activate / Customise / Disable choice row. "Customise" (exact —
+    // the a11y section's button is "Customise accessibility needs")
+    // opens the editor pre-loaded with the recommended profile.
+    const customise = page.getByRole("button", {
+      exact: true,
+      name: "Customise",
+    });
+    await expect(customise).toBeVisible();
+    await customise.click();
 
     const strictPreset = page.locator(
       '.privacy-profile-preset-pill[data-preset="strict"]'
@@ -101,16 +106,17 @@ browserFlow(
 
     // Click Strict and verify it becomes the active preset. We deliberately
     // don't pre-assert which preset (if any) is highlighted on first mount —
-    // the editor's local state seeds from DEFAULT_PROFILE which equals
-    // PROFILE_PRESETS.balanced, so in theory Balanced lights up immediately,
-    // but the user-visible contract is "click a preset → it activates", and
-    // that's what matters. Initial-mount highlighting is exercised by the
-    // unit tests in tests/profile-presets.test.ts.
+    // the editor's local state seeds from the recommended profile, which
+    // equals PROFILE_PRESETS.balanced for the declutter focus, so in theory
+    // Balanced lights up immediately, but the user-visible contract is
+    // "click a preset → it activates", and that's what matters.
+    // Initial-mount highlighting is exercised by the unit tests in
+    // tests/profile-presets.test.ts.
     await strictPreset.click();
 
     // Strict picks up `.is-active`. No inline confirm bubble appears because
-    // PrivacyProfileSetup passes `confirmOnPresetApply={hasExistingProfile}`,
-    // which is false for first-time users.
+    // onboarding passes `confirmOnPresetApply={false}` — first-time users
+    // explore presets without nag confirms.
     await expect(strictPreset).toHaveClass(/is-active/);
     await expect(strictPreset).toHaveAttribute("aria-checked", "true");
     await expect(balancedPreset).not.toHaveClass(/is-active/);
@@ -155,7 +161,7 @@ browserFlow(
 // ---------------------------------------------------------------------------
 //
 // Onboarding skips the overwrite-confirm bubble for first-time users
-// (PrivacyProfileSetup passes confirmOnPresetApply={hasExistingProfile}).
+// (PrivacyProfileSetup passes confirmOnPresetApply={false}).
 // Settings is the OTHER side of that prop — when a returning user clicks
 // a preset pill that doesn't match their saved profile, the editor must
 // pop the inline confirm bubble before applying.
