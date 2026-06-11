@@ -1308,7 +1308,18 @@
       "primary": "去做 {prerequisite}",
       "secondary": "仍然继续",
       "close_aria": "关闭"
-    }
+    },
+    "mutation_blocked": "此更改被服务器的安全防护拦截（HTTP {status}）。从非本机地址访问需要管理员令牌。",
+    "mutation_blocked_link": "请在「设置 → 部署」中登录。",
+    "mutation_failed": "无法更新任务（HTTP {status}）。请重试。",
+    "mutation_failed_network": "无法更新任务。请检查网络连接后重试。"
+  },
+  "nonlocal_banner": {
+    "aria": "只读访问提示",
+    "label": "只读",
+    "body": "你正在从非本机地址访问，此服务器的安全防护会拦截更改 — 搜索、导入和任务更新将失败。",
+    "link": "请在「设置 → 部署」中使用管理员令牌登录。",
+    "dismiss": "关闭"
   },
   "devices": {
     "page_title": "设备",

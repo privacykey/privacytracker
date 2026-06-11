@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Audience } from "../../lib/feature-flag-rules";
 import type { OptInCandidate, ResolvedTask, UserTaskId } from "../../lib/tasks";
 import TaskGateModal from "./TaskGateModal";
+import UserTasksMutationAlert from "./UserTasksMutationAlert";
 import { useUserTasks } from "./UserTasksProvider";
 
 /**
@@ -199,6 +200,7 @@ export default function TaskListInteractive({
           </p>
         </div>
       </header>
+      <UserTasksMutationAlert />
       {visibleRows.length === 0 ? (
         <p className="task-list-empty">{t("empty_all_dismissed")}</p>
       ) : (

@@ -27404,6 +27404,59 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     color-mix(in srgb, var(--accent-warn, #f59e0b) 50%, transparent);
 }
 
+/* Read-only notice for non-local origins (NonLocalReadOnlyBanner).
+ * Same layout skeleton as .focus-preview-banner, blue-tinted because
+ * it is informational state, not a staged change awaiting a decision. */
+.nonlocal-banner {
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: color-mix(in srgb, var(--blue, #0a84ff) 16%, var(--bg, #08080f));
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--blue, #0a84ff) 45%, transparent);
+}
+
+.nonlocal-banner__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  padding: 10px 18px;
+  margin: 0 auto;
+}
+
+.nonlocal-banner__copy {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.nonlocal-banner__label {
+  margin-right: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--blue, #0a84ff) 80%, var(--text));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nonlocal-banner__body {
+  color: var(--text-2);
+}
+
+.nonlocal-banner__link {
+  color: var(--blue, #0a84ff);
+  text-decoration: underline;
+}
+
+.nonlocal-banner__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
 .focus-preview-banner__inner {
   display: flex;
   flex-wrap: wrap;

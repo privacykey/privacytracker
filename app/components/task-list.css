@@ -409,3 +409,24 @@
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* ─────────────────────────────────────────────
+ * Mutation-failure alert — rendered by UserTasksMutationAlert inside the
+ * dropdown/sheet and the dashboard card when a task POST is rejected
+ * (401/403 = proxy security gate, 0 = network, else server error).
+ * ───────────────────────────────────────────── */
+.task-list-mutation-alert {
+  padding: 8px 10px;
+  margin: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent-error, #ef4444) 12%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--accent-error, #ef4444) 35%, transparent);
+  border-radius: 8px;
+}
+.task-list-mutation-alert a {
+  color: var(--blue, #0a84ff);
+  text-decoration: underline;
+}

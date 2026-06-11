@@ -30,6 +30,14 @@ interface UserTasksContextValue {
   candidates: OptInCandidate[];
   dismissTask: (id: UserTaskId) => Promise<void>;
   loading: boolean;
+  /**
+   * Why the last mutation failed, or null when the last one succeeded.
+   * `status` is the HTTP status (0 for network errors). Consumers render
+   * this near the task list — 401/403 means the proxy security gate
+   * rejected the write (non-local host without the admin token), which
+   * users can fix via the Settings → Deployment login.
+   */
+  mutationError: { status: number } | null;
   optInTask: (id: UserTaskId) => Promise<void>;
   /** Has the first fetch completed? Lets surfaces avoid a flash of
    *  "all tasks pending" when they actually render before the API resolves. */
@@ -63,6 +71,9 @@ export function UserTasksProvider({
   const [candidates, setCandidates] = useState<OptInCandidate[]>([]);
   const [ready, setReady] = useState<boolean>(Boolean(initialTasks?.length));
   const [loading, setLoading] = useState<boolean>(false);
+  const [mutationError, setMutationError] = useState<{
+    status: number;
+  } | null>(null);
   const desktopRef = useRef<boolean>(false);
 
   // Snapshot the runtime environment once. `isDesktop()` is stable for
@@ -123,65 +134,52 @@ export function UserTasksProvider({
     []
   );
 
-  const startTask = useCallback(
-    async (id: UserTaskId, opts?: { missingPrerequisite?: UserTaskId }) => {
+  // Shared POST runner for the three mutations. Failures land in
+  // `mutationError` so the task surfaces can explain a click that did
+  // nothing — previously a gate-rejected 401 only reached the console
+  // and the row silently stayed put. A later successful mutation (or
+  // the gate unlocking) clears the message.
+  const runMutation = useCallback(
+    async (label: string, body: Record<string, unknown>) => {
       try {
         const res = await fetch("/api/user-tasks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id,
-            action: "start",
-            missingPrerequisite: opts?.missingPrerequisite,
-          }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+          console.warn(`[user-tasks] ${label} failed: HTTP ${res.status}`);
+          setMutationError({ status: res.status });
+          return;
         }
+        setMutationError(null);
         applyMutationResponse(await res.json());
       } catch (error) {
-        console.warn("[user-tasks] startTask failed:", error);
+        console.warn(`[user-tasks] ${label} failed:`, error);
+        setMutationError({ status: 0 });
       }
     },
     [applyMutationResponse]
+  );
+
+  const startTask = useCallback(
+    (id: UserTaskId, opts?: { missingPrerequisite?: UserTaskId }) =>
+      runMutation("startTask", {
+        id,
+        action: "start",
+        missingPrerequisite: opts?.missingPrerequisite,
+      }),
+    [runMutation]
   );
 
   const dismissTask = useCallback(
-    async (id: UserTaskId) => {
-      try {
-        const res = await fetch("/api/user-tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, action: "dismiss" }),
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        applyMutationResponse(await res.json());
-      } catch (error) {
-        console.warn("[user-tasks] dismissTask failed:", error);
-      }
-    },
-    [applyMutationResponse]
+    (id: UserTaskId) => runMutation("dismissTask", { id, action: "dismiss" }),
+    [runMutation]
   );
 
   const optInTask = useCallback(
-    async (id: UserTaskId) => {
-      try {
-        const res = await fetch("/api/user-tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, action: "opt_in" }),
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        applyMutationResponse(await res.json());
-      } catch (error) {
-        console.warn("[user-tasks] optInTask failed:", error);
-      }
-    },
-    [applyMutationResponse]
+    (id: UserTaskId) => runMutation("optInTask", { id, action: "opt_in" }),
+    [runMutation]
   );
 
   // Refine the task list with the runtime `isDesktop` flag. The server
@@ -202,6 +200,7 @@ export function UserTasksProvider({
     tasks: refinedTasks,
     candidates,
     loading,
+    mutationError,
     ready,
     startTask,
     dismissTask,
@@ -227,6 +226,7 @@ export function useUserTasks(): UserTasksContextValue {
       tasks: [],
       candidates: [],
       loading: false,
+      mutationError: null,
       ready: false,
       startTask: async () => {},
       dismissTask: async () => {},

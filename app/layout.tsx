@@ -18,6 +18,7 @@ import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import MenuActionsBridge from "./components/MenuActionsBridge";
 import NavigationHistoryTracker from "./components/NavigationHistoryTracker";
 import NextDevIndicatorRepositioner from "./components/NextDevIndicatorRepositioner";
+import NonLocalReadOnlyBanner from "./components/NonLocalReadOnlyBanner";
 import { QueuedSearchProvider } from "./components/QueuedSearchProvider";
 import SiteInfoHint from "./components/SiteInfoHint";
 import { TaskCenterProvider } from "./components/TaskCenter";
@@ -392,6 +393,10 @@ export default async function RootLayout({
                   in src-tauri/src/app_menu.rs; this component is the
                   webview-side counterpart. */}
                   <MenuActionsBridge />
+                  {/* Read-only notice — only renders when served from a
+                  non-local host without the admin-token cookie, i.e. when
+                  proxy.ts will 401 every write. */}
+                  <NonLocalReadOnlyBanner />
                   {/* Focus preview banner — only renders when a preview is staged. */}
                   <FocusPreviewBanner />
                   {/* Update banner — polls /api/update-status; self-gated on
