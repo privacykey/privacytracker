@@ -95,6 +95,10 @@
      features lights up without looking like it's been clicked on. */
   --teal: #40c8c8;
   --teal-dim: rgba(64, 200, 200, 0.12);
+  /* iOS systemCyan — the "accessibility feature added" band on the change
+     timelines. Kept distinct from --teal (a11y matches / device accents)
+     and --blue (selected controls / policy band). */
+  --cyan: #64d2ff;
   /* Developer surfaces (DevMenu, dev-only chrome). Picked to sit
      distinctly outside the user-facing palette so dev surfaces don't
      get confused with primary CTAs (blue) or success states (green).
@@ -181,6 +185,10 @@
     --popover-border: rgba(0, 0, 0, 0.12);
     --popover-inner-highlight: rgba(255, 255, 255, 0.9);
     --popover-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+
+    /* Light cyan — same hue family as the dark #64d2ff but darkened to
+       clear WCAG 3:1 (graphics) and 4.5:1 (text) on white / --bg. */
+    --cyan: #00708f;
   }
 }
 
@@ -214,6 +222,8 @@ html[data-theme-override="light"] {
   --popover-border: rgba(0, 0, 0, 0.12);
   --popover-inner-highlight: rgba(255, 255, 255, 0.9);
   --popover-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  /* Light cyan — see the @media light block above. */
+  --cyan: #00708f;
 }
 
 html[data-theme-override="dark"] {
@@ -238,6 +248,9 @@ html[data-theme-override="dark"] {
   --popover-border: rgba(255, 255, 255, 0.16);
   --popover-inner-highlight: rgba(255, 255, 255, 0.08);
   --popover-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  /* Re-pin cyan to the dark default so a light-OS user pinning the app
+     to Dark doesn't inherit the light value from the @media block. */
+  --cyan: #64d2ff;
 }
 
 /* Fallback for browsers that don't support backdrop-filter (some Android
@@ -25888,6 +25901,9 @@ html[data-theme-override="high-contrast"] {
   --popover-border: #ffffff;
   --popover-inner-highlight: rgba(255, 255, 255, 0);
   --popover-shadow: 0 0 0 2px #ffffff;
+  /* Cyan boosted like the other HC accents so the a11y-added band stays
+     bright against the pure-black background. */
+  --cyan: #7adfff;
 }
 
 /* Thick focus rings in HC so keyboard / switch users never lose the focused
