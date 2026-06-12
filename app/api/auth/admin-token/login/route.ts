@@ -20,10 +20,13 @@ import {
   adminTokenConfigured,
   checkRateLimit,
   isSameOriginRequest,
+  loginBruteForceTripped,
   rateLimitKeyForRequest,
   readBoundedJson,
   recordAudit,
+  recordLoginFailure,
   requestActorIp,
+  requestHasValidAdminToken,
 } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +49,37 @@ export async function POST(request: NextRequest) {
       { error: "Same-origin required" },
       { status: 403 }
     );
+  }
+
+  // A caller already holding a valid token (cookie/header) bypasses the global
+  // brute-force backstop, so an attacker who trips the absolute counter can
+  // never lock the legitimate operator out of re-authenticating.
+  const alreadyAuthed = requestHasValidAdminToken(request);
+
+  // Global, IP-independent brute-force backstop. The per-IP limiter below
+  // collapses to a single shared bucket when no trusted proxy is configured,
+  // so this absolute counter is what actually bounds total guesses against a
+  // spoofed/rotated source IP. Only failed attempts count toward it.
+  if (!alreadyAuthed) {
+    const brute = loginBruteForceTripped();
+    if (brute.tripped) {
+      recordAudit({
+        action: "admin_token.login.global_throttled",
+        actorIp,
+        userAgent,
+        success: false,
+        detail: `retryAfterMs=${brute.retryAfterMs}`,
+      });
+      return NextResponse.json(
+        { error: "Too many failed attempts. Try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(brute.retryAfterMs / 1000)),
+          },
+        }
+      );
+    }
   }
 
   const rate = checkRateLimit({
@@ -93,6 +127,8 @@ export async function POST(request: NextRequest) {
   const b = Buffer.from(expected);
   const matches = a.length === b.length && timingSafeEqual(a, b);
   if (!matches) {
+    // Feed the absolute brute-force backstop (failures only).
+    recordLoginFailure();
     recordAudit({
       action: "admin_token.login.invalid",
       actorIp,

@@ -3,6 +3,11 @@ import os from "node:os";
 import pkg from "../package.json";
 import { getRecentActivity } from "./activity";
 import db, { dataDir, dbPath } from "./db";
+import {
+  describeDeploymentTrust,
+  isLoopbackHost,
+  isNetworkExposed,
+} from "./deployment-trust";
 import { getSetting } from "./scheduler";
 import { adminTokenConfigured } from "./security";
 
@@ -71,6 +76,10 @@ export interface DeploymentDiagnostics {
   security: {
     adminTokenConfigured: boolean;
     adminTokenRequired: boolean;
+    allowedHostsConfigured: boolean;
+    bindAmbiguous: boolean;
+    networkExposed: boolean;
+    trustProxy: boolean;
   };
 }
 
@@ -109,27 +118,11 @@ function firstHeaderValue(headers: Headers, name: string): string | null {
   return first || null;
 }
 
-function stripPort(host: string): string {
-  const trimmed = host.trim().toLowerCase();
-  if (trimmed.startsWith("[")) {
-    const end = trimmed.indexOf("]");
-    return end >= 0 ? trimmed.slice(1, end) : trimmed;
-  }
-  return trimmed.split(":")[0] ?? trimmed;
-}
-
 export function isLocalOnlyHost(host: string | null): boolean {
-  if (!host) {
-    return false;
-  }
-  const h = stripPort(host);
-  return (
-    h === "localhost" ||
-    h.endsWith(".localhost") ||
-    h === "127.0.0.1" ||
-    h === "::1" ||
-    h === "0.0.0.0"
-  );
+  // Delegates to the canonical loopback classifier so diagnostics, the proxy,
+  // and the security layer all agree (this now matches all of 127.0.0.0/8,
+  // not just the literal 127.0.0.1).
+  return isLoopbackHost(host);
 }
 
 export function inferDeploymentNetwork(
@@ -318,8 +311,10 @@ function buildChecks(
       detail: security.adminTokenConfigured
         ? "AUDITOR_ADMIN_TOKEN is configured for guarded API calls."
         : security.adminTokenRequired
-          ? "This request looks LAN/domain reachable, so set AUDITOR_ADMIN_TOKEN before using guarded API actions."
-          : "AUDITOR_ADMIN_TOKEN is optional for localhost-only access.",
+          ? "This deployment is declared network-exposed, so guarded API actions are refused until AUDITOR_ADMIN_TOKEN is set."
+          : security.bindAmbiguous
+            ? "AUDITOR_ADMIN_TOKEN is optional for localhost-only access. This instance may bind a non-loopback interface (e.g. inside Docker) — if it is reachable beyond localhost, set AUDITOR_ADMIN_TOKEN and PRIVACYTRACKER_ALLOWED_HOSTS."
+            : "AUDITOR_ADMIN_TOKEN is optional for localhost-only access.",
     },
   ];
 
@@ -334,9 +329,16 @@ export function buildDeploymentDiagnostics(
   const health = readHealth();
   const database = readDatabase();
   const network = inferDeploymentNetwork(headers);
+  const trust = describeDeploymentTrust();
   const security = {
     adminTokenConfigured: adminTokenConfigured(),
-    adminTokenRequired: network.lanOrDomainHost,
+    // Now config-driven (allowlist / bind / PRIVACYTRACKER_NETWORK_EXPOSED),
+    // not derived from the spoofable request Host.
+    adminTokenRequired: adminTokenConfigured() || isNetworkExposed(),
+    allowedHostsConfigured: trust.allowedHostsConfigured,
+    bindAmbiguous: trust.bindAmbiguous,
+    networkExposed: trust.networkExposed,
+    trustProxy: trust.trustProxy,
   };
 
   return {
