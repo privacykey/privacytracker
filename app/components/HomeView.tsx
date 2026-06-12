@@ -1618,6 +1618,7 @@ function ConsiderReplacingSection({
   const tTier = useTranslations("privacy_profile_tier_short");
   const tMismatch = useTranslations("privacy_profile_mismatch_sentence");
   const tBadge = useTranslations("profile_badge");
+  const tSections = useTranslations("dashboard.sections");
   // Cap the visible list to keep the section scannable. Users with many
   // mismatches get a "see all" footer that routes to the apps grid with
   // the "bad match" filter implicitly applied via the badge (which is now
@@ -1667,7 +1668,7 @@ function ConsiderReplacingSection({
               className="profile-replace-row"
               href={`/apps/${entry.appId}`}
               key={entry.appId}
-              title={`Open ${entry.appName}`}
+              title={tSections("open_app_title", { name: entry.appName })}
             >
               {entry.iconUrl ? (
                 <Image

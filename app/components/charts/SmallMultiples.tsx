@@ -91,6 +91,7 @@ interface HoverState {
 
 export default function SmallMultiples() {
   const tCharts = useTranslations("stats.charts");
+  const tTier = useTranslations("privacy_profile_tier_short");
   const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -224,7 +225,7 @@ export default function SmallMultiples() {
               className="sm-legend-count"
               title={
                 hiddenCount > 0
-                  ? `${hiddenCount} app${hiddenCount === 1 ? "" : "s"} hidden by filter`
+                  ? tCharts("matrix_hidden_by_filter", { count: hiddenCount })
                   : undefined
               }
             >
@@ -241,8 +242,8 @@ export default function SmallMultiples() {
               // needing a separate on-hover popover for the header.
               const prefTitle = prefOverlay
                 ? pref
-                  ? `\nYour preference: ${TIER_META[pref].shortLabel} at most`
-                  : "\nNo preference set for this category"
+                  ? `\n${tCharts("matrix_pref_line", { label: tTier(pref) })}`
+                  : `\n${tCharts("matrix_no_pref_line")}`
                 : "";
               return (
                 <div
@@ -256,7 +257,7 @@ export default function SmallMultiples() {
                       sev: null,
                     })
                   }
-                  title={`${cat.label}${meta?.description ? ` — ${meta.description}` : ""}\n${cat.appCount} app${cat.appCount === 1 ? "" : "s"} collect this${prefTitle}`}
+                  title={`${cat.label}${meta?.description ? ` — ${meta.description}` : ""}\n${tCharts("matrix_collect_count", { count: cat.appCount })}${prefTitle}`}
                 >
                   <div className="sm-category-icon">{meta?.icon ?? "•"}</div>
                   {/* Preference bar directly below the icon. Renders only
@@ -267,7 +268,9 @@ export default function SmallMultiples() {
                   {prefOverlay &&
                     (pref ? (
                       <div
-                        aria-label={`Your preference: ${TIER_META[pref].shortLabel} at most`}
+                        aria-label={tCharts("matrix_pref_line", {
+                          label: tTier(pref),
+                        })}
                         className="sm-category-pref"
                         // `data-tier` is what the shape-mode CSS hooks
                         // onto when `html[data-a11y-shapes="on"]` is set;
@@ -332,7 +335,9 @@ export default function SmallMultiples() {
                         sev: null,
                       })
                     }
-                    title={`Open ${app.name}`}
+                    title={tCharts("matrix_open_app_title", {
+                      name: app.name,
+                    })}
                   >
                     <span className="sm-app-link-name">{app.name}</span>
                     <span className="sm-app-link-count">
@@ -361,7 +366,7 @@ export default function SmallMultiples() {
                     );
                     return (
                       <div
-                        aria-label={`${app.name}, ${cat.label}${meta?.description ? `, ${meta.description}` : ""}${isMismatch ? ", exceeds your preference" : ""}`}
+                        aria-label={`${app.name}, ${cat.label}${meta?.description ? `, ${meta.description}` : ""}${isMismatch ? `, ${tCharts("matrix_exceeds_pref")}` : ""}`}
                         className="sm-cell"
                         // `data-sev` exposes the severity tier to the
                         // shape-mode CSS so colour-blind users get a
@@ -402,7 +407,7 @@ export default function SmallMultiples() {
                         title={
                           sev
                             ? `${app.name} — ${cat.label}: ${tCharts(SEV_LABEL_KEY[sev])}`
-                            : `${app.name} — ${cat.label}: not collected`
+                            : `${app.name} — ${cat.label}: ${tCharts("tooltip_not_collected")}`
                         }
                       />
                     );

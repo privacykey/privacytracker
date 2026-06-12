@@ -29,6 +29,7 @@
  * GOAL_RULES diff ready to paste into `lib/feature-flag-rules.ts`.
  */
 
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ACCESSIBILITY_RULES,
@@ -270,6 +271,7 @@ type PendingConfirm =
   | { kind: "apply"; combo: ComboDef; cellCount: number };
 
 export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
+  const tMatrix = useTranslations("dev_options.focus_matrix");
   // Hydrate-once snapshot of the local spec. We deliberately don't
   // sync across tabs — this is a single-author drafting tool.
   const [spec, setSpec] = useState<SpecBlob>(() => readSpec());
@@ -592,10 +594,10 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
     <div className="focus-matrix">
       <div className="focus-matrix-toolbar">
         <input
-          aria-label="Filter flags"
+          aria-label={tMatrix("filter_aria")}
           className="focus-matrix-filter"
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter flags by key or surface…"
+          placeholder={tMatrix("filter_placeholder")}
           type="search"
           value={filter}
         />
@@ -654,7 +656,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       </p>
 
       <section
-        aria-label="Focus × Flags matrix"
+        aria-label={tMatrix("matrix_aria")}
         className="focus-matrix-table-wrap"
       >
         <table className="focus-matrix-table">
@@ -671,7 +673,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                   <button
                     className="focus-matrix-th-apply"
                     onClick={() => applyComboAsOverrides(combo)}
-                    title={`Apply ${combo.longHeader} as overrides`}
+                    title={tMatrix("apply_combo_title", {
+                      combo: combo.longHeader,
+                    })}
                     type="button"
                   >
                     ↗
@@ -843,13 +847,14 @@ function FocusMatrixRow({
   spec: SpecBlob;
   onSetCell: (combo: ComboDef, key: FlagKey, value: FlagValue | null) => void;
 }) {
+  const tMatrix = useTranslations("dev_options.focus_matrix");
   return (
     <tr className="focus-matrix-row">
       <th className="focus-matrix-row-key" scope="row" title={row.key}>
         <code>{row.key}</code>
         <span
           className="focus-matrix-row-default"
-          title={`Hard default: ${row.hardDefault}`}
+          title={tMatrix("hard_default_title", { value: row.hardDefault })}
         >
           default: {row.hardDefault}
         </span>
@@ -869,7 +874,11 @@ function FocusMatrixRow({
             <button
               className="focus-matrix-cell-btn"
               onClick={() => onSetCell(combo, row.key, nextValue(desired))}
-              title={`${combo.longHeader}\nResolver: ${current}\nAuthored: ${desired ?? "(unset)"}`}
+              title={tMatrix("cell_title", {
+                combo: combo.longHeader,
+                current,
+                authored: desired ?? tMatrix("cell_unset"),
+              })}
               type="button"
             >
               <span className="focus-matrix-cell-current">{current}</span>
