@@ -383,6 +383,84 @@ if (process.platform === "darwin" && process.env.APPLE_SIGNING_IDENTITY) {
   }
 }
 
+// ── Strip any runtime SQLite database from the staged tree ─────────
+// lib/db.ts creates `<cwd>/data/privacy.db` (+ `-wal` / `-shm`) the
+// first time the server boots when PRIVACYTRACKER_DATA_DIR is unset.
+// If a maintainer or self-hoster ran the standalone `server.js` before
+// `pnpm tauri:build` (or against the staged tree itself), that
+// populated DB lands here and would be tarred straight into the
+// shipped .app/.dmg. The file carries the user's scraped apps AND the
+// `app_settings` table — which is where AI-provider API keys + custom
+// base URLs are persisted (lib/ai-config.ts, lib/scheduler.ts). Shipping
+// it leaks both private data and secrets to everyone who installs the
+// build. The CI release path happens to be clean (fresh checkout,
+// in-memory DB under BUILD_STANDALONE=1) but nothing GUARANTEED that —
+// this block does.
+//
+// Canonical location is `<staged>/data/`, but we also sweep the rest of
+// the staged tree for stray `*.db` / `-wal` / `-shm` in case
+// PRIVACYTRACKER_DATA_DIR pointed elsewhere. node_modules is skipped:
+// it can legitimately ship vendor `.db` fixtures, and it's the only
+// symlink-heavy part of the tree, so excluding it keeps the walk fast
+// and false-positive-free.
+const DB_FILE_RE = /\.db(-wal|-shm)?$/;
+
+const sweepDbFiles = (dir, found = []) => {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return found;
+  }
+  for (const entry of entries) {
+    if (entry.name === "node_modules") {
+      continue; // vendor trees may ship legitimate *.db fixtures
+    }
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      sweepDbFiles(full, found);
+    } else if (entry.isFile() && DB_FILE_RE.test(entry.name)) {
+      found.push(full);
+    }
+  }
+  return found;
+};
+
+const stagedDataDir = path.join(tauriTarget, "data");
+if (existsSync(stagedDataDir)) {
+  rmSync(stagedDataDir, { recursive: true, force: true });
+  console.log(
+    "stage-standalone: pruned data/ (runtime SQLite DB — never ship)"
+  );
+}
+for (const stray of sweepDbFiles(tauriTarget)) {
+  rmSync(stray, { force: true });
+  console.log(
+    `stage-standalone: pruned stray ${path.relative(tauriTarget, stray)} (runtime SQLite DB)`
+  );
+}
+
+// Fail closed: nothing DB-shaped may survive into the tarball. After the
+// prune above this should be empty; if it isn't, a future change has
+// bypassed the prune and we refuse to seal a leaking archive rather than
+// ship one silently.
+const survivingDbs = sweepDbFiles(tauriTarget);
+if (
+  existsSync(path.join(tauriTarget, "data", "privacy.db")) ||
+  survivingDbs.length
+) {
+  console.error(
+    "stage-standalone: FATAL — SQLite database survived pruning in the staged tree:\n" +
+      survivingDbs.map((f) => `  ${path.relative(tauriTarget, f)}`).join("\n") +
+      "\nThis would leak private data and persisted AI API keys into the" +
+      " shipped bundle. Refusing to build."
+  );
+  process.exit(1);
+}
+console.log(
+  "stage-standalone: verified staged tree carries no SQLite database"
+);
+
 // Tarball the staged tree into a single file Tauri can bundle as a plain
 // resource. Sidesteps Tauri's resource-glob matcher silently dropping files
 // inside dotfile-prefixed directories. Uncompressed because the contents
@@ -415,6 +493,38 @@ execFileSync("tar", ["-cf", tauriTarballTmp, "-C", tauriTarget, "."], {
 });
 renameSync(tauriTarballTmp, tauriTarball);
 console.log(`stage-standalone: tarball at ${tauriTarball} (atomic write)`);
+
+// ── Last line of defence: scan the sealed tarball's own table of
+// contents and abort if a runtime `data/` dir or `*.db` entry slipped
+// through the staged-tree prune above. Cheap (`tar -tf` over an
+// uncompressed archive) and it validates the actual artifact Tauri
+// bundles, not just the directory we tarred from. Matching is precise
+// to avoid false positives: only the TOP-LEVEL `./data/` (the app's DB
+// dir — not nested vendor `data/` like caniuse-lite/data or the
+// seed-sample-data route), plus any DB-shaped file outside node_modules.
+const isLeakyTarEntry = (entry) =>
+  /^\.\/data(\/|$)/.test(entry) ||
+  (DB_FILE_RE.test(entry) && !entry.includes("/node_modules/"));
+const tarToc = execFileSync("tar", ["-tf", tauriTarball], {
+  encoding: "utf8",
+  maxBuffer: 64 * 1024 * 1024,
+});
+const leakedEntries = tarToc.split("\n").filter(isLeakyTarEntry);
+if (leakedEntries.length) {
+  rmSync(tauriTarball, { force: true });
+  console.error(
+    "stage-standalone: FATAL — database/data entries found inside the produced tarball:\n" +
+      leakedEntries
+        .slice(0, 20)
+        .map((e) => `  ${e}`)
+        .join("\n") +
+      "\nDeleted the tarball to fail closed."
+  );
+  process.exit(1);
+}
+console.log(
+  "stage-standalone: verified tarball carries no data/ or *.db entries"
+);
 
 // Drop a freshness marker next to the tarball. The sidecar polls for
 // this file at boot (see src-tauri/src/sidecar.rs) to know the tarball

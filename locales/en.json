@@ -2605,6 +2605,8 @@
     "privacy_policy_title": "What we do (and do not) collect, plus every third-party endpoint we call",
     "legal": "Legal",
     "legal_title": "Open-source libraries bundled with this app and their licences",
+    "feedback": "Feedback",
+    "feedback_title": "Report a problem or suggest an improvement on GitHub",
     "kbd_hint": {
       "shortcut_button_title": "Show keyboard shortcuts",
       "shortcut_prefix": "Press",

@@ -35,13 +35,14 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// maximumScale = 1 stops iOS Safari from auto-zooming on focus, which on
-// dense tables pushed the page into horizontal-scroll mode. Users can
-// still pinch-zoom out and OS-level accessibility zoom is unaffected.
+// No maximumScale cap: Android Chrome honours it and disables pinch-zoom
+// entirely (WCAG 1.4.4 failure), while iOS ignores it anyway. The iOS
+// focus-auto-zoom problem it used to guard against is solved by keeping
+// every input's font-size >= 16px (see the comment in app/globals.css
+// around the form-control sizing rules).
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },

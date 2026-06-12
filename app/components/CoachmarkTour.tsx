@@ -82,9 +82,34 @@ const TOOLTIP_H_GUESS = 220;
 const GAP = 14;
 const VIEWPORT_PAD = 12;
 
-function placeTooltip(rect: DOMRect): ResolvedPlacement {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+/* The tour renders inside .app-main, which the in-app text scale zooms
+   (html[data-a11y-scale] → CSS zoom on .app-main, see globals.css). Zoom
+   multiplies the rendered position/size of the overlay's fixed elements,
+   but getBoundingClientRect() reports already-zoomed *visual* coordinates
+   — styling a zoomed element with visual numbers applies the factor twice
+   and paints the spotlight/tooltip in the wrong place. So all placement
+   maths runs in the overlay's local (pre-zoom) space: divide the measured
+   rect AND the viewport by the effective zoom. currentCSSZoom carries the
+   cumulative factor (Chrome 126+ / Safari 17.4+); the attribute map is
+   the fallback for engines without it and must stay in sync with the
+   html[data-a11y-scale] zoom values in globals.css. */
+const A11Y_SCALE_ZOOM: Record<string, number> = {
+  large: 1.15,
+  "x-large": 1.3,
+};
+
+function effectiveZoom(el: Element): number {
+  const current = (el as Element & { currentCSSZoom?: number }).currentCSSZoom;
+  if (typeof current === "number" && current > 0) {
+    return current;
+  }
+  const scale = document.documentElement.getAttribute("data-a11y-scale");
+  return (scale && A11Y_SCALE_ZOOM[scale]) || 1;
+}
+
+function placeTooltip(rect: DOMRect, zoom = 1): ResolvedPlacement {
+  const vw = window.innerWidth / zoom;
+  const vh = window.innerHeight / zoom;
 
   // Available space on each side.
   const spaceBelow = vh - rect.bottom;
@@ -386,9 +411,21 @@ export default function CoachmarkTour({
     });
 
     const measure = () => {
-      const rect = el.getBoundingClientRect();
+      // Convert the visual rect into the overlay's local space — see the
+      // effectiveZoom comment above placeTooltip.
+      const zoom = effectiveZoom(el);
+      const raw = el.getBoundingClientRect();
+      const rect =
+        zoom === 1
+          ? raw
+          : new DOMRect(
+              raw.x / zoom,
+              raw.y / zoom,
+              raw.width / zoom,
+              raw.height / zoom
+            );
       setTargetRect(rect);
-      setPlacement(placeTooltip(rect));
+      setPlacement(placeTooltip(rect, zoom));
     };
     measure();
 
@@ -405,10 +442,20 @@ export default function CoachmarkTour({
       ro.observe(document.documentElement);
     }
 
+    // ResizeObserver reports boxes in the target's *local* px, which don't
+    // change when the a11y text scale re-zooms .app-main — watch the
+    // attribute itself so a mid-tour scale change re-places the overlay.
+    const mo = new MutationObserver(measure);
+    mo.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-a11y-scale"],
+    });
+
     return () => {
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
       ro?.disconnect();
+      mo.disconnect();
     };
   }, [running, currentStep]);
 

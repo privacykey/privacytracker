@@ -116,6 +116,32 @@ export default function Nav({ appCount, flags }: NavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
+
+  // Width tier, measured from the nav's own layout width rather than a
+  // media query. offsetWidth is reported in the nav's local CSS pixels,
+  // so when the in-app text scale zooms .app-main (html[data-a11y-scale],
+  // see globals.css) the measured width shrinks to the effective space the
+  // nav actually has — media queries keep reading the unzoomed viewport
+  // and lie under zoom. Thresholds come from the rendered en-locale nav:
+  // the full chrome needs ~1070px, the compact tier (icon brand + "+"
+  // pill) ~840px; below that only the drawer fits. The ≤640px media block
+  // stays as the SSR/no-JS baseline so phones never flash the full nav.
+  const [tier, setTier] = useState<"full" | "compact" | "drawer">("full");
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const compute = () => {
+      const w = el.offsetWidth;
+      setTier(w <= 860 ? "drawer" : w <= 1100 ? "compact" : "full");
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const isActive = useCallback(
     (href: string, exact = false) => {
@@ -171,7 +197,11 @@ export default function Nav({ appCount, flags }: NavProps) {
   }, [menuOpen]);
 
   return (
-    <nav className={`nav ${menuOpen ? "nav-menu-open" : ""}`}>
+    <nav
+      className={`nav ${menuOpen ? "nav-menu-open" : ""}`}
+      data-tier={tier}
+      ref={navRef}
+    >
       <Link className="nav-brand" href="/dashboard">
         {/* Served from /public; regenerate via `python3 tools/build_icons.py`. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
