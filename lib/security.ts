@@ -325,6 +325,61 @@ export async function hostResolvesToPublic(hostname: string): Promise<boolean> {
   }
 }
 
+/**
+ * Resolve a hostname and report whether ANY of its A / AAAA records lands on a
+ * cloud-metadata endpoint (169.254.0.0/16, fd00:ec2::/…, fe80::/10, or the
+ * named metadata hosts). Used by `safeFetch` to keep the metadata gate closed
+ * even in `allowPrivateHosts` mode, where the public-resolve check is skipped:
+ * a hostname that DNS-rebinds to 169.254.169.254 is the one private target we
+ * refuse regardless of the allow-private opt-in.
+ */
+export async function hostResolvesToMetadata(
+  hostname: string
+): Promise<boolean> {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  // IP literals (and the named metadata hostnames) are decided synchronously.
+  if (isMetadataHost(host)) {
+    return true;
+  }
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(":")) {
+    return false;
+  }
+
+  try {
+    const records = await dns.lookup(hostname, { all: true, verbatim: true });
+    return records.some((record) => isMetadataHost(record.address));
+  } catch {
+    // DNS failure: not provably metadata. The subsequent fetch will surface
+    // the resolution error; we don't mislabel an outage as an attack.
+    return false;
+  }
+}
+
+/**
+ * Shared resolve-time gate for `safeFetch`. Public-only callers must resolve
+ * to a public address; private-allowed callers (Ollama/LAN) skip that but are
+ * still blocked from any hostname that resolves to a cloud-metadata IP.
+ * Throws with a descriptive message when the resolved target is disallowed.
+ */
+async function assertResolvedHostAllowed(
+  hostname: string,
+  allowPrivateHosts: boolean | undefined
+): Promise<void> {
+  if (allowPrivateHosts) {
+    if (await hostResolvesToMetadata(hostname)) {
+      throw new Error(
+        `Blocked URL: host ${hostname} resolves to a cloud-metadata endpoint`
+      );
+    }
+    return;
+  }
+  if (!(await hostResolvesToPublic(hostname))) {
+    throw new Error(
+      `Blocked URL: host ${hostname} did not resolve to a public address`
+    );
+  }
+}
+
 function defaultResolveAndCheck(): boolean {
   return !(
     process.env.NEXT_PHASE === "phase-test" &&
@@ -342,8 +397,19 @@ export interface SafeFetchOptions {
    * Permit loopback / RFC-1918 hosts. Metadata endpoints remain blocked.
    * Only set this for calls that legitimately target a user's self-hosted
    * service (e.g. local Ollama for AI).
+   *
+   * NOTE: even in this mode a hostname that *resolves* to a cloud-metadata
+   * IP (169.254.0.0/16 et al) is still rejected — see the metadata-resolve
+   * check below. allowPrivateHosts opens loopback/LAN, never IMDS.
    */
   allowPrivateHosts?: boolean;
+  /**
+   * Request body for non-GET methods. Only ever sent on the initial
+   * request: webhook callers pair this with `redirect: 'manual'`, so the
+   * body is never replayed to a redirect target. Don't combine a one-shot
+   * (stream) body with `redirect: 'follow'`.
+   */
+  body?: BodyInit;
   /** Headers to add. Note: fetch already supplies the defaults. */
   headers?: Record<string, string>;
   /** Max response body size in bytes. Default 5 MiB. */
@@ -357,6 +423,8 @@ export interface SafeFetchOptions {
    * a longer cap pass it through explicitly.
    */
   maxUrlLength?: number;
+  /** HTTP method. Default 'GET'. Webhook delivery passes 'POST'. */
+  method?: string;
   /** 'follow' (default) | 'error' | 'manual'. */
   redirect?: RequestRedirect;
   /**
@@ -397,18 +465,16 @@ export async function safeFetch(
 
   const url = validation.url;
 
-  // DNS-rebinding guard. Default-on. Skipped when the caller has opted
-  // into private hosts (Ollama et al), because the whole point of that
-  // mode is to allow private resolutions. Callers that want the lookup
-  // off for any other reason can pass `resolveAndCheck: false`.
+  // DNS-rebinding guard. Default-on. For public-only callers we require the
+  // host to resolve to a public address. Callers that opt into private hosts
+  // (Ollama et al) skip *that* check — the whole point of that mode is to
+  // allow private resolutions — but they still get the metadata-resolve
+  // check, because a hostname that rebinds to 169.254.169.254 (IMDS) is the
+  // one private target we never permit regardless of the opt-in. Callers that
+  // want the lookup off entirely pass `resolveAndCheck: false`.
   const resolveAndCheck = options.resolveAndCheck ?? defaultResolveAndCheck();
-  if (resolveAndCheck && !options.allowPrivateHosts) {
-    const ok = await hostResolvesToPublic(url.hostname);
-    if (!ok) {
-      throw new Error(
-        `Blocked URL: host ${url.hostname} did not resolve to a public address`
-      );
-    }
+  if (resolveAndCheck) {
+    await assertResolvedHostAllowed(url.hostname, options.allowPrivateHosts);
   }
 
   const maxBytes = options.maxBytes ?? 5 * 1024 * 1024; // 5 MiB
@@ -436,8 +502,9 @@ export async function safeFetch(
   // This defends against an initial allowlisted URL 302-ing to an internal IP.
   while (true) {
     const res = await fetch(currentUrl, {
-      method: "GET",
+      method: options.method ?? "GET",
       headers: options.headers,
+      body: options.body,
       redirect: "manual",
       signal,
     });
@@ -468,13 +535,11 @@ export async function safeFetch(
         );
       }
       const nextValidatedUrl = nextValidation.url;
-      if (resolveAndCheck && !options.allowPrivateHosts) {
-        const ok = await hostResolvesToPublic(nextValidatedUrl.hostname);
-        if (!ok) {
-          throw new Error(
-            `safeFetch: redirect host ${nextValidatedUrl.hostname} is private`
-          );
-        }
+      if (resolveAndCheck) {
+        await assertResolvedHostAllowed(
+          nextValidatedUrl.hostname,
+          options.allowPrivateHosts
+        );
       }
       currentUrl = nextValidatedUrl;
       continue;
@@ -482,6 +547,56 @@ export async function safeFetch(
 
     return readBounded(res, currentUrl.toString(), maxBytes);
   }
+}
+
+/**
+ * Pre-flight SSRF guard for callers that must issue their OWN fetch — e.g.
+ * streaming AI inference, where `safeFetch` can't be used because it buffers
+ * the whole body. Runs the same gates `safeFetch` does, minus the fetch:
+ * the syntactic `validateExternalUrl` check AND (in non-test environments)
+ * the resolve-time rebinding check via `assertResolvedHostAllowed`. Returns
+ * the validated URL; throws a descriptive Error when the target is disallowed.
+ *
+ * Await it immediately before the raw fetch so a hostname that resolves to a
+ * private/metadata IP is rejected *before* any request leaves the process
+ * (and, crucially, before any API key in the headers is transmitted).
+ *
+ * `allowPrivateHosts` mirrors `safeFetch`: when set, loopback / RFC-1918 are
+ * permitted (local Ollama / LAN inference) but a host that *resolves* to a
+ * cloud-metadata IP is still rejected.
+ *
+ * Note: like `safeFetch`, this does not pin the resolved IP, so a narrow
+ * TOCTOU window remains between this check and the caller's own DNS lookup.
+ * It defeats static-record and slow-rebind attacks; eliminating the window
+ * entirely would require connect-to-IP pinning across both code paths.
+ */
+export async function assertUrlSafeToFetch(
+  rawUrl: string,
+  options: {
+    allowedHosts?: string[];
+    allowPrivateHosts?: boolean;
+    maxLength?: number;
+    resolveAndCheck?: boolean;
+  } = {}
+): Promise<URL> {
+  const validation = validateExternalUrl(rawUrl, {
+    allowedHosts: options.allowedHosts,
+    allowPrivateHosts: options.allowPrivateHosts,
+    maxLength: options.maxLength,
+  });
+  if (!(validation.ok && validation.url)) {
+    throw new Error(
+      `Blocked URL: ${validation.error ?? "invalid_url"} — ${validation.detail ?? rawUrl}`
+    );
+  }
+  const resolveAndCheck = options.resolveAndCheck ?? defaultResolveAndCheck();
+  if (resolveAndCheck) {
+    await assertResolvedHostAllowed(
+      validation.url.hostname,
+      options.allowPrivateHosts
+    );
+  }
+  return validation.url;
 }
 
 function withTimeoutSignal(

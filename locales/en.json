@@ -2608,7 +2608,7 @@
     },
     "row": {
       "open_app_aria": "Open {name} in detail",
-      "view_app_link": "{kind, select, policy_change {View {name} policy change} privacy_policy {View {name} privacy policy} policy_error {View {name} policy status} privacy_added {View {name} added labels} privacy_removed {View {name} removed labels} privacy_modified {View {name} label changes} accessibility_added {View {name} accessibility additions} accessibility_removed {View {name} accessibility removals} accessibility_modified {View {name} accessibility changes} archive_import {View {name} archive import} other {View {name}}}",
+      "view_app_link": "{kind, select, policy_change {View {name} policy change} privacy_policy {View {name} privacy policy} policy_error {View {name} policy status} privacy_added {View {name} added labels} privacy_removed {View {name} removed labels} privacy_modified {View {name} label changes} accessibility_added {View {name} accessibility additions} accessibility_removed {View {name} accessibility removals} accessibility_modified {View {name} accessibility changes} archive_import {View {name} archive import} age_rating {View {name} age rating} other {View {name}}}",
       "wayback_link": "View on Wayback",
       "details_more": "{count, plural, one {+ # more category} other {+ # more categories}}"
     },
@@ -2966,6 +2966,11 @@
     "page_title": "Your Apps",
     "showing_of": "{shown} of {total, plural, one {# app} other {# apps}}",
     "n_tracked": "{count, plural, one {# app tracked} other {# apps tracked}}",
+    "loading_rest": "Loading apps… {loaded} of {total}",
+    "load_failed": "Some apps haven't loaded yet.",
+    "retry_load": "Retry loading",
+    "show_more": "Show {count, plural, one {# more app} other {# more apps}}",
+    "bulk_wait_loading_title": "Available once all apps have finished loading",
     "syncing": "Syncing…",
     "sync_n_apps": "{count, plural, one {Sync # app} other {Sync # apps}}",
     "sync_all": "Sync All",

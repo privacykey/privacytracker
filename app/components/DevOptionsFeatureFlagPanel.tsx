@@ -200,6 +200,23 @@ export default function DevOptionsFeatureFlagPanel() {
    */
   const [resetAllOpen, setResetAllOpen] = useState(false);
 
+  const resetAllModalRef = useModalFocus<HTMLDivElement>({
+    open: resetAllOpen,
+    onClose: () => {
+      if (busyKey === null) {
+        setResetAllOpen(false);
+      }
+    },
+  });
+  const importModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingImport !== null,
+    onClose: () => {
+      if (busyKey === null) {
+        setPendingImport(null);
+      }
+    },
+  });
+
   /**
    * Single-step undo stack — captures the most recent flag mutation so
    * Cmd/Ctrl+Z can restore the prior state. We keep one entry rather

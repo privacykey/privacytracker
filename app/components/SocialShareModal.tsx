@@ -641,6 +641,13 @@ export function SocialShareModal({
   );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // closeOnEscape: false — the existing keydown handler below also owns
+  // Cmd/Ctrl+C for image copy; keeping one listener avoids double-fire.
+  const dialogCardRef = useModalFocus<HTMLDivElement>({
+    open: true,
+    onClose,
+    closeOnEscape: false,
+  });
 
   // Load the alternative preview whenever the selected entry changes.
   // `loadPreview` is intentionally excluded from the dep list — its

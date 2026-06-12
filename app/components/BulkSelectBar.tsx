@@ -86,6 +86,11 @@ export default function BulkSelectBar({
     []
   );
 
+  const bulkConfirmRef = useModalFocus<HTMLDivElement>({
+    open: pendingConfirm !== null,
+    onClose: () => !applying && setPendingConfirm(null),
+  });
+
   const apply = useCallback(
     async (verdict: VerdictValue) => {
       setApplying(true);

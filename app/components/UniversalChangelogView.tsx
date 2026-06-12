@@ -231,6 +231,7 @@ type ViewLinkKind =
   | "accessibility_added"
   | "accessibility_modified"
   | "accessibility_removed"
+  | "age_rating"
   | "app"
   | "archive_import"
   | "policy_change"
@@ -262,6 +263,9 @@ function viewLinkKindForEntry(entry: ChangeEntry): ViewLinkKind {
       return "accessibility_removed";
     }
     return "accessibility_modified";
+  }
+  if (category === "age-rating") {
+    return "age_rating";
   }
   if (entry.type === "added") {
     return "privacy_added";

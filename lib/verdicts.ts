@@ -170,15 +170,25 @@ export function countUserVerdicts(): Record<VerdictValue, number> {
  * queries — one prepared SQL call per render. Returns a map of
  * `appId → user verdict`. Apps that haven't been decided yet are
  * absent from the map (callers should treat that as "undecided").
+ *
+ * Pass `appIds` to scope the lookup to one grid page of apps.
  */
-export function getUserVerdictsByAppId(): Map<string, AppVerdict> {
+export function getUserVerdictsByAppId(
+  appIds?: readonly string[]
+): Map<string, AppVerdict> {
+  if (appIds && appIds.length === 0) {
+    return new Map();
+  }
+  const idFilter = appIds
+    ? ` AND app_id IN (${appIds.map(() => "?").join(", ")})`
+    : "";
   const rows = db
     .prepare(
       `SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at
      FROM app_verdicts
-     WHERE source = 'user'`
+     WHERE source = 'user'${idFilter}`
     )
-    .all() as DbRow[];
+    .all(...(appIds ?? [])) as DbRow[];
   const out = new Map<string, AppVerdict>();
   for (const r of rows) {
     out.set(r.app_id, rowToVerdict(r));

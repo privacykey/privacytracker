@@ -127,6 +127,15 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
   // reopens the page without a fresh URL.
   const prefilledRef = useRef(false);
 
+  const manualDeleteRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete !== null,
+    onClose: () => !busy && setPendingDelete(null),
+  });
+
+  // APG keyboard contract for the source-card radiogroup: one tab
+  // stop, arrows move focus + selection (local form state only).
+  const sourceRadioKeyDown = useRovingRadioGroup();
+
   // Keyed for O(1) label lookup in the list.
   const sourceMeta = useMemo(() => {
     const map = new Map<ManualAppSource, ManualAppSourceMeta>();

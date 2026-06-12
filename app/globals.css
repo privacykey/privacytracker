@@ -1240,6 +1240,27 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 16px;
 }
 
+/* Background page-hydration status line (large fleets only). */
+.grid-hydrate-note {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.grid-hydrate-note-error {
+  color: var(--danger, #e5484d);
+}
+
+/* Render-window sentinel + "Show more" fallback under the grid. */
+.grid-render-more {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 6px;
+}
+
 .app-card {
   position: relative;
   display: flex;
@@ -26274,6 +26295,19 @@ html[data-a11y-scale="x-large"]
     .task-list-sheet-overlay
   ) {
   zoom: 1.3;
+}
+
+/* The coachmark tour tooltip lives INSIDE .app-main, so its
+   `max-width: calc(100vw - 24px)` cap is multiplied by the ancestor zoom
+   at render time (351px of CSS space paints 456px wide on a 375px
+   viewport at x-large — clipping the close button offscreen). vw units
+   don't shrink with zoom, so divide the cap by the active zoom factor to
+   keep the painted box inside the viewport (WCAG 1.4.10). */
+html[data-a11y-scale="large"] .coachmark-tooltip {
+  max-width: calc((100vw - 24px) / 1.15);
+}
+html[data-a11y-scale="x-large"] .coachmark-tooltip {
+  max-width: calc((100vw - 24px) / 1.3);
 }
 
 /* ─────────────────────────────────────────────────────

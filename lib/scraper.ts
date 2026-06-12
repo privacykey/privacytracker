@@ -2573,6 +2573,77 @@ export function getAllApps() {
     .all();
 }
 
+/** Total tracked-app count — cheap COUNT(*) for pagination totals and the Nav badge. */
+export function countApps(): number {
+  const row = db.prepare("SELECT COUNT(*) AS n FROM apps").get() as {
+    n: number;
+  };
+  return row.n;
+}
+
+/**
+ * Paged variant of `getAllApps` for the apps grid + `/api/apps?limit=…`.
+ * Same row shape and the same name-ascending order, with an `id` tiebreak so
+ * offset pagination is deterministic when names collide. The count CTEs are
+ * scoped to the page's apps so a 500-row page does 500 apps' worth of
+ * aggregation, not the whole fleet's — that's what keeps per-page latency
+ * flat as the fleet grows.
+ */
+export function getAppsPage({
+  limit,
+  offset = 0,
+}: {
+  limit: number;
+  offset?: number;
+}) {
+  return db
+    .prepare(`
+    WITH page_apps AS (
+      SELECT *
+      FROM apps
+      ORDER BY name ASC, id ASC
+      LIMIT ? OFFSET ?
+    ),
+    privacy_counts AS (
+      SELECT
+        t.app_id,
+        COUNT(c.id) AS categoryCount,
+        SUM(CASE WHEN c.id IS NOT NULL AND t.identifier = 'DATA_USED_TO_TRACK_YOU' THEN 1 ELSE 0 END) AS trackCount,
+        SUM(CASE WHEN c.id IS NOT NULL AND t.identifier = 'DATA_LINKED_TO_YOU' THEN 1 ELSE 0 END) AS linkedCount,
+        SUM(CASE WHEN c.id IS NOT NULL AND t.identifier = 'DATA_NOT_LINKED_TO_YOU' THEN 1 ELSE 0 END) AS unlinkedCount
+      FROM privacy_types t
+      LEFT JOIN privacy_categories c ON c.type_id = t.id
+      WHERE t.app_id IN (SELECT id FROM page_apps)
+      GROUP BY t.app_id
+    ),
+    sync_counts AS (
+      SELECT app_id, COUNT(*) AS syncCount
+      FROM privacy_snapshots
+      WHERE app_id IN (SELECT id FROM page_apps)
+      GROUP BY app_id
+    ),
+    accessibility_counts AS (
+      SELECT app_id, COUNT(*) AS accessibilityCount
+      FROM accessibility_features
+      WHERE app_id IN (SELECT id FROM page_apps)
+      GROUP BY app_id
+    )
+    SELECT a.*,
+      COALESCE(pc.categoryCount, 0) AS categoryCount,
+      COALESCE(pc.trackCount, 0) AS trackCount,
+      COALESCE(pc.linkedCount, 0) AS linkedCount,
+      COALESCE(pc.unlinkedCount, 0) AS unlinkedCount,
+      COALESCE(sc.syncCount, 0) AS syncCount,
+      COALESCE(ac.accessibilityCount, 0) AS accessibilityCount
+    FROM page_apps a
+    LEFT JOIN privacy_counts pc ON pc.app_id = a.id
+    LEFT JOIN sync_counts sc ON sc.app_id = a.id
+    LEFT JOIN accessibility_counts ac ON ac.app_id = a.id
+    ORDER BY a.name ASC, a.id ASC
+  `)
+    .all(limit, offset);
+}
+
 /**
  * Per-app breakdown of which change categories are currently pending
  * acknowledgement on the Apps grid. The pulsing dot on each card used to
@@ -2590,20 +2661,34 @@ export function getAllApps() {
  * Returns a bare object (not a Map) so it can be serialised and passed
  * through server → client boundaries unchanged. Apps with no pending
  * changes are simply omitted from the result.
+ *
+ * Pass `appIds` to scope the scan to one grid page — paginated callers
+ * shouldn't pay a full-fleet aggregation per page request.
  */
-export function getPendingChangeCategoriesByApp(): Record<
+export function getPendingChangeCategoriesByApp(
+  appIds?: readonly string[]
+): Record<
   string,
   { privacy: boolean; accessibility: boolean; policy: boolean }
 > {
+  if (appIds && appIds.length === 0) {
+    return {};
+  }
+  const idFilter = appIds
+    ? ` AND ps.app_id IN (${appIds.map(() => "?").join(", ")})`
+    : "";
   const rows = db
     .prepare(
       `SELECT ps.app_id, ps.changes_summary
          FROM privacy_snapshots ps
          JOIN apps a ON a.id = ps.app_id
         WHERE ps.changes_detected = 1
-          AND ps.scraped_at > COALESCE(a.changes_acknowledged_at, 0)`
+          AND ps.scraped_at > COALESCE(a.changes_acknowledged_at, 0)${idFilter}`
     )
-    .all() as Array<{ app_id: string; changes_summary: string | null }>;
+    .all(...(appIds ?? [])) as Array<{
+    app_id: string;
+    changes_summary: string | null;
+  }>;
 
   const out: Record<
     string,
