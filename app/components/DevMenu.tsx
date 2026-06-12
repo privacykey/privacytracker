@@ -51,6 +51,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FlagValue } from "../../lib/feature-flag-rules";
 import { getFlagUsage } from "../../lib/feature-flag-usage";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 
 // localStorage key — exported so the Settings panel can write to the
 // same key from its toggle. Renamed from FLOATING_FLAGS_STORAGE_KEY but
@@ -468,6 +472,10 @@ export default function DevMenu() {
   // to a half-empty state mid-write.
   const [focus, setFocus] = useState<FocusInfo | null>(null);
   const [focusBusy, setFocusBusy] = useState(false);
+  // APG keyboard contract for the audience radiogroup: one tab stop,
+  // arrows move focus only — switching audience POSTs to /api/focus
+  // and re-resolves every flag, so Enter/Space commits.
+  const audienceRadioKeyDown = useRovingRadioGroup({ followFocus: false });
 
   const fetchFocus = useCallback(async () => {
     try {
@@ -1411,9 +1419,10 @@ export default function DevMenu() {
                   <div
                     aria-label={tDev("audience_aria")}
                     className="dev-menu-pill-group"
+                    onKeyDown={audienceRadioKeyDown}
                     role="radiogroup"
                   >
-                    {AUDIENCE_OPTIONS.map((opt) => {
+                    {AUDIENCE_OPTIONS.map((opt, optIndex) => {
                       const active = focus?.audience === opt.value;
                       return (
                         <button
@@ -1423,6 +1432,7 @@ export default function DevMenu() {
                           key={opt.value}
                           onClick={() => setAudienceTo(opt.value)}
                           role="radio"
+                          tabIndex={rovingTabIndex(active, optIndex, !!focus)}
                           type="button"
                         >
                           {tDev(opt.labelKey)}

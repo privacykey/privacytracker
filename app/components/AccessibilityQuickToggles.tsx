@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isDesktop, openMacAccessibilitySettings } from "../../lib/desktop";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 
 /**
  * Footer-pill accessibility quick-toggles. Sits next to the keyboard-hint
@@ -242,6 +243,10 @@ export default function AccessibilityQuickToggles() {
   const [font, setFont] = useState<A11yFontMode>("default");
   const [scale, setScale] = useState<A11yScaleMode>("default");
   const [theme, setTheme] = useState<A11yThemeMode>("system");
+  // APG keyboard contract for the theme radiogroup: one tab stop,
+  // arrows move focus + selection (theme switches are instant and
+  // reversible, so selection-follows-focus is the right default).
+  const themeRadioKeyDown = useRovingRadioGroup();
   const [shapes, setShapes] = useState<A11yShapesMode>("off");
   const [solid, setSolid] = useState<A11ySolidMode>("off");
   const [desktop, setDesktop] = useState(false);
@@ -613,6 +618,7 @@ export default function AccessibilityQuickToggles() {
               <div
                 aria-label={t("theme_aria")}
                 className="a11y-quick-theme-grid"
+                onKeyDown={themeRadioKeyDown}
                 role="radiogroup"
               >
                 {THEME_ORDER.map((mode) => {
@@ -627,6 +633,7 @@ export default function AccessibilityQuickToggles() {
                       key={mode}
                       onClick={() => chooseTheme(mode)}
                       role="radio"
+                      tabIndex={theme === mode ? 0 : -1}
                       title={t(`theme_${tKey}_full`)}
                       type="button"
                     >

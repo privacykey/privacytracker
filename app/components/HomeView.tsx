@@ -56,6 +56,10 @@ import {
   type UseDashboardLayoutSaverResult,
   useDashboardLayoutSaver,
 } from "../../lib/use-dashboard-layout-saver";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import BackgroundModeCallout from "./BackgroundModeCallout";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
@@ -691,6 +695,11 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
     "dashboard.layout_editor.presets.descriptions"
   );
 
+  // APG keyboard contract for the preset radiogroup: one tab stop,
+  // arrows move focus only — applying a preset overwrites the whole
+  // layout (and may pop the inline confirm), so Enter/Space commits.
+  const presetRadioKeyDown = useRovingRadioGroup({ followFocus: false });
+
   const exitEditMode = useCallback(() => {
     // Drop ?edit=layout from the URL and trigger a server-side re-fetch
     // so the dashboard rerenders with the freshly-saved layout. Saves
@@ -721,9 +730,10 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
       <div
         aria-label={t("preset_aria_group")}
         className="home-edit-toolbar-presets"
+        onKeyDown={presetRadioKeyDown}
         role="radiogroup"
       >
-        {DASHBOARD_PRESET_KEYS.map((presetKey) => {
+        {DASHBOARD_PRESET_KEYS.map((presetKey, presetIndex) => {
           const meta = DASHBOARD_PRESET_META[presetKey];
           const isActive = saver.activePreset === presetKey;
           const isPending = saver.pendingPreset === presetKey;
@@ -743,6 +753,11 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
                 data-severity={meta.severityCls}
                 onClick={() => saver.applyPreset(presetKey)}
                 role="radio"
+                tabIndex={rovingTabIndex(
+                  isActive,
+                  presetIndex,
+                  saver.activePreset !== null
+                )}
                 title={tPresetDesc(presetKey)}
                 type="button"
               >
