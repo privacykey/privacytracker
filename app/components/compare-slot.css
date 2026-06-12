@@ -181,9 +181,9 @@
   border-color: var(--border-strong, #9ca3af);
 }
 .compare-slot-card-action.is-clear:hover {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: #ef4444;
+  color: var(--red, #b91c1c);
+  background: var(--red-dim, #fee2e2);
+  border-color: var(--red, #ef4444);
 }
 
 /* ── Modal-specific overrides ──────────────── */
@@ -223,9 +223,9 @@
   border-radius: 50%;
 }
 .compare-slot-modal-close:hover {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: #ef4444;
+  color: var(--red, #b91c1c);
+  background: var(--red-dim, #fee2e2);
+  border-color: var(--red, #ef4444);
 }
 
 /* Slot Clear button inside the modal — was previously inline-styled in
@@ -248,9 +248,9 @@
     color 120ms;
 }
 .compare-slot-clear-btn:hover {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: #ef4444;
+  color: var(--red, #b91c1c);
+  background: var(--red-dim, #fee2e2);
+  border-color: var(--red, #ef4444);
 }
 
 /* ── "Not scraped yet" empty state for the may-also-like panel ─ */
