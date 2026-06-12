@@ -163,9 +163,12 @@
     --border-strong: rgba(0, 0, 0, 0.13);
     --text: #1c1c1e;
     --text-2: #6c6c80;
-    /* Light-mode tertiary bumped from #aeaeb2 (~2.0:1) to #6e6e73 so it
-       meets WCAG 2.2 AA 4.5:1 on the --bg / --bg-2 surfaces. */
-    --text-3: #6e6e73;
+    /* Light-mode tertiary bumped from #aeaeb2 (~2.0:1) to #636368 so it
+       meets WCAG 2.2 AA 4.5:1 not just on --bg / --bg-2 but also on the
+       --bg-3 surfaces it sits on (icon placeholders, kbd chips, and the
+       a11y-solid hover states that collapse --surface-* onto --bg-3).
+       The previous #6e6e73 was 4.04:1 against --bg-3. */
+    --text-3: #636368;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
@@ -174,6 +177,26 @@
     --blue-soft: #dbeafe;
     --cream: #7a643b;
     --cream-dim: rgba(122, 100, 59, 0.12);
+    /* Severity / accent palette, light variants. The dark-theme brights
+       (#ff453a, #ff9f0a, #ffd60a, #30d158, #40c8c8, #f43f5e) sit at only
+       1.3–3.3:1 against white — unusable as text. These darker same-hue
+       equivalents clear WCAG 2.2 AA 4.5:1 as text on white, on --bg, and
+       on their own "-dim" badge tints (worst realistic case: a severity
+       badge tint composited over the #f2f2f7 page background). Each -dim
+       is re-derived from its light colour at the original alpha, the same
+       treatment --cream-dim already gets above. */
+    --red: #c20012;
+    --red-dim: rgba(194, 0, 18, 0.12);
+    --orange: #8a4d00;
+    --orange-dim: rgba(138, 77, 0, 0.12);
+    --yellow: #7d5a00;
+    --yellow-dim: rgba(125, 90, 0, 0.1);
+    --green: #0c6b30;
+    --green-dim: rgba(12, 107, 48, 0.12);
+    --teal: #0d6960;
+    --teal-dim: rgba(13, 105, 96, 0.12);
+    --rose: #b31345;
+    --rose-dim: rgba(179, 19, 69, 0.14);
 
     /* Light-mode popover glass — more opacity because light content
        behind is harder to read through a translucent pane. */
@@ -201,7 +224,7 @@ html[data-theme-override="light"] {
   --border-strong: rgba(0, 0, 0, 0.13);
   --text: #1c1c1e;
   --text-2: #6c6c80;
-  --text-3: #6e6e73;
+  --text-3: #636368;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
@@ -210,6 +233,19 @@ html[data-theme-override="light"] {
   --blue-soft: #dbeafe;
   --cream: #7a643b;
   --cream-dim: rgba(122, 100, 59, 0.12);
+  /* Light severity / accent palette — see the @media light block above. */
+  --red: #c20012;
+  --red-dim: rgba(194, 0, 18, 0.12);
+  --orange: #8a4d00;
+  --orange-dim: rgba(138, 77, 0, 0.12);
+  --yellow: #7d5a00;
+  --yellow-dim: rgba(125, 90, 0, 0.1);
+  --green: #0c6b30;
+  --green-dim: rgba(12, 107, 48, 0.12);
+  --teal: #0d6960;
+  --teal-dim: rgba(13, 105, 96, 0.12);
+  --rose: #b31345;
+  --rose-dim: rgba(179, 19, 69, 0.14);
   --popover-bg: rgba(255, 255, 255, 0.94);
   --popover-border: rgba(0, 0, 0, 0.12);
   --popover-inner-highlight: rgba(255, 255, 255, 0.9);
@@ -234,6 +270,26 @@ html[data-theme-override="dark"] {
   --blue: #0a84ff;
   --blue-hover: #409cff;
   --blue-soft: rgba(10, 132, 255, 0.22);
+  /* Re-pin the severity / accent palette to the dark defaults. Without
+     these, a light-OS user who pins the app to Dark inherits the light
+     palette from the @media block above — dark golds and greens painted
+     on near-black backgrounds. (--cream had this exact bug before the
+     light palette grew: light-OS + pinned-dark rendered the light-mode
+     #7a643b cream on dark surfaces at ~2:1.) */
+  --red: #ff453a;
+  --red-dim: rgba(255, 69, 58, 0.12);
+  --orange: #ff9f0a;
+  --orange-dim: rgba(255, 159, 10, 0.12);
+  --yellow: #ffd60a;
+  --yellow-dim: rgba(255, 214, 10, 0.1);
+  --cream: #d8c7a3;
+  --cream-dim: rgba(216, 199, 163, 0.13);
+  --green: #30d158;
+  --green-dim: rgba(48, 209, 88, 0.12);
+  --teal: #40c8c8;
+  --teal-dim: rgba(64, 200, 200, 0.12);
+  --rose: #f43f5e;
+  --rose-dim: rgba(244, 63, 94, 0.14);
   --popover-bg: rgba(18, 18, 26, 0.9);
   --popover-border: rgba(255, 255, 255, 0.16);
   --popover-inner-highlight: rgba(255, 255, 255, 0.08);
@@ -14850,6 +14906,19 @@ button.import-history-stat.is-active {
   background: var(--yellow);
 }
 
+/* Light mode flips --yellow to a dark gold (#7d5a00) for text contrast,
+   which leaves the near-black label above at ~2.4:1 on the filled tab.
+   White clears 6.3:1 there. Dark + HC keep bright yellow with dark text
+   (12.3:1 / 19.6:1), so scope the swap to the two light mechanisms. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override]) .risk-filter-tab-unknown.active {
+    color: #fff;
+  }
+}
+html[data-theme-override="light"] .risk-filter-tab-unknown.active {
+  color: #fff;
+}
+
 /* Inactive but hovered — preview the tint */
 .risk-filter-tab-high:not(.active):not(:disabled):hover {
   color: var(--red);
@@ -19606,6 +19675,21 @@ button.import-history-stat.is-active {
   background: var(--cream);
   border-color: var(--cream);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--cream) 52%, transparent);
+}
+
+/* "Filled cream is bright" only holds in dark mode (#d8c7a3). Light mode
+   flips --cream to #7a643b, where the near-black label above sits at
+   ~2.2:1 — white clears 5.9:1. Same two-mechanism scoping as the yellow
+   risk tab. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override])
+    .privacy-profile-pill[data-tier="not_linked"].is-selected {
+    color: #fff;
+  }
+}
+html[data-theme-override="light"]
+  .privacy-profile-pill[data-tier="not_linked"].is-selected {
+  color: #fff;
 }
 .privacy-profile-pill[data-tier="linked"].is-selected {
   color: #fff;
@@ -25868,12 +25952,17 @@ html[data-theme-override="high-contrast"] {
   --blue-hover: #ffff66;
   --blue-soft: rgba(255, 255, 0, 0.18);
   --red: #ff5a4d;
+  --red-dim: rgba(255, 90, 77, 0.12);
   --orange: #ffb84d;
+  --orange-dim: rgba(255, 184, 77, 0.12);
   --yellow: #ffff00;
+  --yellow-dim: rgba(255, 255, 0, 0.1);
   --cream: #ffffff;
   --cream-dim: rgba(255, 255, 255, 0.18);
   --green: #5aff7a;
+  --green-dim: rgba(90, 255, 122, 0.12);
   --teal: #5affff;
+  --teal-dim: rgba(90, 255, 255, 0.12);
   /* HC purple — boosted toward neon-violet so dev surfaces stay visible
      against the pure-black background. */
   --purple: #d490ff;
