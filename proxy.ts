@@ -83,9 +83,6 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "connect-src 'self'",
     "object-src 'none'",
-    // 'navigate-to' is a Chromium-only directive; harmless when ignored,
-    // closes a navigation-based exfil path where supported.
-    "navigate-to 'self'",
   ].join("; ");
 }
 

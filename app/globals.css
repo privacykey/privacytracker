@@ -9878,10 +9878,13 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .settings-sidebar-label {
+  /* Wrap instead of ellipsizing: labels like "Privacy Policy Change
+     Alerts" were clipped with no tooltip, and a title-attr tooltip
+     wouldn't help touch or keyboard users anyway. Two-line labels are
+     fine in the vertical sidebar; the narrow-viewport block below
+     re-applies nowrap because the horizontal pills size to their
+     content there and nothing clips. */
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Narrow viewports: sidebar collapses to a horizontal scrolling strip
@@ -9939,6 +9942,9 @@ body.review-rec-print-active .review-rec-print a {
     flex-shrink: 0;
     padding: 6px 12px;
     font-size: 12px;
+    /* Pills size to their content in the horizontal strip, so nothing
+       clips — re-apply nowrap here since the base label rule now wraps. */
+    white-space: nowrap;
     border-radius: var(--r-full);
   }
   .settings-sidebar-link.is-active {

@@ -2605,6 +2605,8 @@
     "privacy_policy_title": "我们收集（和不收集）什么，以及所有调用的第三方端点",
     "legal": "法律声明",
     "legal_title": "本应用捆绑的开源库及其许可证",
+    "feedback": "反馈",
+    "feedback_title": "在 GitHub 上报告问题或提出改进建议",
     "kbd_hint": {
       "shortcut_button_title": "显示键盘快捷方式",
       "shortcut_prefix": "按",

@@ -44,6 +44,23 @@ export default async function SiteInfoHint() {
       >
         {t("legal")}
       </Link>
+      <span aria-hidden="true" className="site-info-hint-divider" />
+      {/* Consistent help entry point (WCAG 3.2.6): the bug-report form
+          was previously reachable only from /privacy-policy and the 404
+          page. Plain template URL with no prefill — GithubIssueLink
+          builds a 404-specific title, so it isn't reusable here. Repo
+          path duplicated per the GITHUB_REPO convention (see
+          app/privacy-policy/page.tsx + GithubIssueLink.tsx); keep all
+          of them in sync if the repo is ever renamed. */}
+      <a
+        className="site-info-hint-link"
+        href="https://github.com/privacykey/privacytracker/issues/new?template=bug_report.yml"
+        rel="noopener noreferrer"
+        target="_blank"
+        title={t("feedback_title")}
+      >
+        {t("feedback")}
+      </a>
     </div>
   );
 }
