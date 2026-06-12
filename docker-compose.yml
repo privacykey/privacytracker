@@ -1,4 +1,4 @@
-version: '3.8'
+name: privacytracker
 
 services:
   web:
@@ -8,8 +8,16 @@ services:
     # (with TLS and auth) in front of 127.0.0.1:3000.
     ports:
       - "127.0.0.1:3000:3000"
+    # SQLite lives in a Docker-managed named volume by default. The container
+    # runs as the non-root `audit` user (uid 100 / gid 101); Docker initialises
+    # a named volume with the image path's ownership, so the DB is writable on
+    # every host with no manual setup. A host bind mount does NOT get this —
+    # the engine auto-creates the bind source as root:root, which uid 100 can't
+    # write to, so SQLite throws SQLITE_CANTOPEN on first start. If you'd rather
+    # keep the DB on your host filesystem at ./data/privacy.db, use the
+    # bind-mount override instead (see docker-compose.bind-mount.yml).
     volumes:
-      - ./data:/app/data
+      - privacytracker-data:/app/data
     environment:
       - NODE_ENV=production
       # Set AUDITOR_ADMIN_TOKEN in an .env file (or here) to require an
@@ -25,8 +33,8 @@ services:
     security_opt:
       - no-new-privileges:true
     # Read-only root filesystem with scoped tmpfs for the only writable
-    # paths Next needs at runtime. SQLite writes go through the bind-mounted
-    # volume above.
+    # paths Next needs at runtime. SQLite writes go through the named
+    # volume mounted above at /app/data.
     read_only: true
     tmpfs:
       - /tmp:size=128m,mode=1777
@@ -51,3 +59,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+# Named volume for the SQLite DB. Back it up with:
+#   docker compose cp web:/app/data ./data-backup
+# or inspect its host path with `docker volume inspect privacytracker_privacytracker-data`.
+volumes:
+  privacytracker-data:

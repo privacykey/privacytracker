@@ -1,0 +1,26 @@
+# Bind-mount override for docker-compose.yml.
+#
+# By default docker-compose.yml keeps the SQLite DB in a Docker-managed named
+# volume (privacytracker-data), which works out of the box on every host. Use
+# THIS override instead if you'd rather keep the DB on your host filesystem at
+# ./data/privacy.db — easier to back up, inspect, or move between machines.
+#
+# One-time setup on Linux. The container runs as the non-root `audit` user
+# (uid 100 / gid 101). Docker auto-creates a missing bind source as root:root,
+# which uid 100 can't write to — so without this step SQLite throws
+# SQLITE_CANTOPEN on first start and every route 500s:
+#
+#   mkdir -p data && sudo chown 100:101 data
+#   docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml up --build -d
+#
+# macOS Docker Desktop and Windows (WSL2) map bind-mount uids automatically, so
+# the chown is a harmless no-op there — but run it anyway so the same commands
+# work on a Linux server.
+#
+# The `- ./data:/app/data` entry below shares the `/app/data` target with the
+# named volume in the base file; Compose merges service volumes by target, so
+# this replaces the named volume rather than mounting both.
+services:
+  web:
+    volumes:
+      - ./data:/app/data
