@@ -414,7 +414,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       JSON.stringify(blob, null, 2),
       tMatrix("copy_label_spec_json")
     );
-  }, [spec, copyToClipboard, tMatrix]);
+  }, [spec, copyToClipboard]);
 
   const exportTsPatch = useCallback(() => {
     // Build a draft AUDIENCE_RULES + GOAL_RULES patch from the spec.
@@ -510,7 +510,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
     }
 
     void copyToClipboard(lines.join("\n"), tMatrix("copy_label_ts_patch"));
-  }, [spec, copyToClipboard, tMatrix]);
+  }, [spec, copyToClipboard]);
 
   const applyComboAsOverrides = useCallback(
     (combo: ComboDef) => {
@@ -522,7 +522,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       }
       setPendingConfirm({ kind: "apply", combo, cellCount });
     },
-    [spec, flashToast, tMatrix]
+    [spec, flashToast]
   );
 
   // Stage-2: dispatched by the modal's Confirm button.
@@ -590,7 +590,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
     } finally {
       setApplying(false);
     }
-  }, [pendingConfirm, spec, rows, flashToast, tMatrix]);
+  }, [pendingConfirm, spec, rows, flashToast]);
 
   // ── Render ────────────────────────────────────────────────────────
 
