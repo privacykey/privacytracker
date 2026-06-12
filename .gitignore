@@ -94,3 +94,5 @@ __smoketest.ts
 
 *storybook.log
 storybook-static
+/.next-stress
+/scripts/stress/results/
