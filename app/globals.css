@@ -8094,8 +8094,11 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 @media (max-width: 640px) {
+  /* Right inset clears the a11y quick-toggles trigger (right: 16px, 36px
+     wide) — the only pointer-reachable a11y entry point at this width —
+     so a tall multi-line toast can't paint over it. */
   .device-connect-toast {
-    right: 14px;
+    right: 64px;
     left: 14px;
     max-width: none;
   }
@@ -8415,6 +8418,10 @@ body.review-rec-print-active .review-rec-print a {
 
 .help-section-wide {
   grid-column: 1 / -1;
+  /* Grid items default to min-width:auto and refuse to shrink below their
+     content's min width, which scrolls the document sideways at narrow
+     viewports / large text scale (WCAG 1.4.10). */
+  min-width: 0;
 }
 
 .help-section-title {
@@ -9561,6 +9568,18 @@ body.review-rec-print-active .review-rec-print a {
 @media (max-width: 900px) {
   .sm-wrap {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* The matrix grid has a hard ~364px floor (140px app-name column + 14
+     icon columns at 14px min + gaps), so below that it must scroll inside
+     its own container rather than widening the document (WCAG 1.4.10).
+     position: sticky can't survive inside an overflow container, so the
+     header stack goes static here — it scrolls horizontally in lockstep
+     with the body rows, which keeps the columns aligned. */
+  .sm-matrix-col {
+    overflow-x: auto;
+  }
+  .sm-sticky-stack {
+    position: static;
   }
   .sm-sidebar {
     position: static;
@@ -16066,7 +16085,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .definitions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* min(240px, 100%) lets the single remaining column shrink with the
+     container at narrow viewports / large text scale (WCAG 1.4.10)
+     instead of holding a 240px floor that widens the document. */
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 14px;
   margin-top: 8px;
 }
@@ -16106,7 +16128,9 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .definitions-category-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  /* min(260px, 100%) keeps the single remaining column inside the
+     container at narrow viewports / large text scale (WCAG 1.4.10). */
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 12px;
   padding: 0;
   margin: 10px 0 0;
@@ -16275,6 +16299,17 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .site-info-hint-anchor:hover {
   opacity: 1;
+}
+
+/* 2.4.11 Focus Not Obscured: the pill floats over the bottom of the sticky
+   settings sidebar, so a tab-walk can land keyboard focus on a sidebar link
+   directly underneath it. Yield (fade + click-through) while any sidebar
+   link holds visible keyboard focus; the pill returns as soon as focus
+   moves on. Mouse users never trigger :focus-visible, so hover behaviour
+   is unchanged. */
+body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
+  pointer-events: none;
+  opacity: 0;
 }
 
 .site-info-hint-link {
@@ -16537,7 +16572,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .priv-out-of-scope-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  /* min(280px, 100%) so the single remaining column tracks the container
+     at narrow viewports / large text scale instead of forcing a 280px
+     floor that scrolls the document sideways (WCAG 1.4.10). */
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 12px;
   padding: 0;
   margin: 20px 0 0;
@@ -20885,9 +20923,12 @@ html[data-theme-override="light"]
 @media (max-width: 640px) {
   /* On phones, float above the kbd-hint pill slot (which is hidden at this
      breakpoint anyway) and shrink the side margins so long messages don't
-     get clipped on a narrow viewport. */
+     get clipped on a narrow viewport. The right inset stays clear of the
+     a11y quick-toggles trigger (right: 16px, 36px wide) — it's the only
+     pointer-reachable entry to the accessibility settings at this width,
+     so a wrapped two-line toast must not paint over it. */
   .shortlist-undo-toast {
-    right: 12px;
+    right: 64px;
     bottom: 16px;
     left: 12px;
     max-width: none;
@@ -31397,12 +31438,24 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   position: relative;
   padding: 8px;
   touch-action: none;
+  /* 2.4.11 Focus Not Obscured: focus- and keyboard-drag-driven scrolling
+     must land cards below the sticky toolbar, not under it. The variable
+     tracks the real toolbar height via a ResizeObserver in EditModeShell
+     (HomeView.tsx); the fallback covers the pre-hydration first paint. */
+  scroll-margin-top: var(--home-edit-toolbar-clearance, 148px);
   background: var(--bg-2);
   border: 1px dashed var(--border);
   border-radius: 12px;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease;
+}
+
+/* Focus scrolls target the focused control itself, not its card wrapper,
+   so the bar's handle + Hide/Show buttons need the same clearance. */
+.home-edit-card-bar button,
+.home-edit-card-bar a {
+  scroll-margin-top: var(--home-edit-toolbar-clearance, 148px);
 }
 .home-edit-card:hover {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
@@ -31424,6 +31477,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .home-edit-card-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   padding: 4px 6px 8px;
@@ -31461,15 +31515,22 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .home-edit-card-label {
   flex: 1;
+  /* Shrinkable below its longest word so the bar never widens the page at
+     narrow viewports / large text scale (WCAG 1.4.10). */
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-1);
+  overflow-wrap: anywhere;
 }
 
 .home-edit-card-bar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  /* Keep right alignment when the bar wraps the actions onto their own row. */
+  margin-left: auto;
 }
 
 /* Real card content rendered inside an inert wrapper so links + buttons
@@ -31485,6 +31546,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
    description + status pill. */
 .home-edit-card-ghost {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
@@ -31495,7 +31557,9 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .home-edit-card-ghost-desc {
   flex: 1;
+  min-width: 0;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .home-edit-card-ghost-status {
