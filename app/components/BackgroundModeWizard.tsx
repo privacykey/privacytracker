@@ -101,11 +101,6 @@ export default function BackgroundModeWizard({ onClose, initial }: Props) {
   >("idle");
   const [testDetail, setTestDetail] = useState<string>("");
 
-  const bgWizardRef = useModalFocus<HTMLDivElement>({
-    open: true,
-    onClose: () => onClose("dismissed"),
-  });
-
   const update = (patch: Partial<WizardState>) =>
     setState((prev) => ({ ...prev, ...patch }));
 

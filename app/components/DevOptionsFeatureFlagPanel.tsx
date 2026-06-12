@@ -207,6 +207,7 @@ export default function DevOptionsFeatureFlagPanel() {
         setResetAllOpen(false);
       }
     },
+    closeOnEscape: true,
   });
   const importModalRef = useModalFocus<HTMLDivElement>({
     open: pendingImport !== null,
@@ -215,6 +216,7 @@ export default function DevOptionsFeatureFlagPanel() {
         setPendingImport(null);
       }
     },
+    closeOnEscape: true,
   });
 
   /**
@@ -860,25 +862,6 @@ export default function DevOptionsFeatureFlagPanel() {
       setBusyKey(null);
     }
   }
-
-  const resetAllModalRef = useModalFocus<HTMLDivElement>({
-    open: resetAllOpen,
-    onClose: () => {
-      if (busyKey === null) {
-        setResetAllOpen(false);
-      }
-    },
-    closeOnEscape: true,
-  });
-  const importModalRef = useModalFocus<HTMLDivElement>({
-    open: pendingImport !== null,
-    onClose: () => {
-      if (busyKey === null) {
-        setPendingImport(null);
-      }
-    },
-    closeOnEscape: true,
-  });
 
   if (!panelOn) {
     return null;

@@ -673,15 +673,6 @@ export default function AppDetailView({
     closeOnEscape: true,
   });
 
-  const deleteModalRef = useModalFocus<HTMLDivElement>({
-    open: pendingDelete,
-    onClose: () => {
-      if (!deleting) {
-        setPendingDelete(false);
-      }
-    },
-  });
-
   // Kebab actions menu — re-sync + remove-from-tracker live behind a ⋯
   // trigger so the hero stays focused on content rather than maintenance.
   const [menuOpen, setMenuOpen] = useState(false);

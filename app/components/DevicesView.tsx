@@ -70,11 +70,6 @@ export default function DevicesView({
     merged: number;
   } | null>(null);
 
-  const deleteDeviceRef = useModalFocus<HTMLDivElement>({
-    open: pendingDelete !== null,
-    onClose: () => !deletingId && setPendingDelete(null),
-  });
-
   // One-shot resync-result toast from the URL params (?resync_added=…).
   useEffect(() => {
     const added = Number.parseInt(searchParams?.get("resync_added") ?? "", 10);
