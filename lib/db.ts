@@ -196,8 +196,19 @@ db.exec(`
     /* 1 when the app the notification points at is no longer the match for
        the import item that produced it (user clicked "Change match"). The
        bell UI renders stale rows with a faded strikethrough. */
-    stale          INTEGER NOT NULL DEFAULT 0
+    stale          INTEGER NOT NULL DEFAULT 0,
+    /* Quiet-hours deferral. NULL = show now; non-null = epoch ms before
+       which the bell must not surface the row. Old installs gain this via
+       the ALTER TABLE migration below. */
+    not_before     INTEGER
   );
+
+  /* Bell list query: ORDER BY created_at DESC LIMIT n (polled every 30s by
+     every open session). The companion unread-count index lives next to the
+     notifications column migrations below because it references not_before,
+     which old installs only gain via ALTER TABLE. */
+  CREATE INDEX IF NOT EXISTS idx_notifications_created
+    ON notifications(created_at DESC);
 
   CREATE TABLE IF NOT EXISTS privacy_policy_analyses (
     app_id              TEXT PRIMARY KEY,
@@ -942,6 +953,13 @@ const notifMigrations: [string, string][] = [
   ["not_before", "ALTER TABLE notifications ADD COLUMN not_before INTEGER"],
 ];
 applyColumnMigrations(notifCols, notifMigrations);
+// Bell unread-count hot path: COUNT WHERE read = 0 AND (not_before IS NULL
+// OR not_before <= now), polled every 30s. Created here rather than in the
+// schema block because it references not_before, which old installs only
+// gain via the ALTER TABLE above.
+db.exec(
+  "CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(read, not_before)"
+);
 
 // Migrations for privacy_policy_analyses
 const policyCols = (

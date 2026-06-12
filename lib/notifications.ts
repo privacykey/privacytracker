@@ -86,6 +86,41 @@ export function computeNotBefore(now: Date = new Date()): number | null {
   return endTs.getTime();
 }
 
+// Retention cap mirroring ACTIVITY_RETENTION in lib/activity.ts. The bell
+// only ever renders the most recent rows, so anything past a few thousand
+// is unreachable in the UI. Deliberately generous — and unread rows are
+// never pruned, so nothing disappears before the user has seen it.
+export const NOTIFICATION_RETENTION = 5000;
+
+/**
+ * Enforce the retention cap after an insert: when the table exceeds
+ * NOTIFICATION_RETENTION rows, delete the oldest *read* rows past the
+ * cap. Unread rows are exempt, so the table can sit over the cap until
+ * the user catches up on the bell. Fire-and-forget — a prune failure
+ * must never break the insert that triggered it.
+ */
+function pruneNotifications(): void {
+  try {
+    const count = db
+      .prepare("SELECT COUNT(*) AS n FROM notifications")
+      .get() as { n: number };
+    if (count.n > NOTIFICATION_RETENTION) {
+      const overflow = count.n - NOTIFICATION_RETENTION;
+      db.prepare(
+        `DELETE FROM notifications
+          WHERE id IN (
+            SELECT id FROM notifications
+            WHERE read = 1
+            ORDER BY created_at ASC
+            LIMIT ?
+          )`
+      ).run(overflow);
+    }
+  } catch (error) {
+    console.warn("[notifications] retention prune failed:", error);
+  }
+}
+
 export function createNotification(
   appId: string,
   appName: string,
@@ -107,6 +142,7 @@ export function createNotification(
     createdAt,
     notBefore
   );
+  pruneNotifications();
 
   // Webhook fan-out (Slack / Discord / Teams / generic). Fire-and-forget
   // so a slow / broken webhook can't block the in-app notification
@@ -221,6 +257,7 @@ export function createAiTimeoutNotification(
     ]),
     now
   );
+  pruneNotifications();
 
   setSetting(dedupeKey, String(now));
   return true;
@@ -278,6 +315,7 @@ export function createManualAppsPromptNotification(
     ]),
     now
   );
+  pruneNotifications();
 
   setSetting(dedupeKey, String(now));
   return true;
@@ -369,6 +407,7 @@ export function createImportCompletionNotification(
     ]),
     Date.now()
   );
+  pruneNotifications();
 }
 
 interface ProfileMismatchNotificationInput {
@@ -434,6 +473,7 @@ export function createProfileMismatchNotification(
     ]),
     now
   );
+  pruneNotifications();
 
   setSetting(dedupeKey, String(now));
   return true;
@@ -506,6 +546,7 @@ export function createVersionUpdateNotification(
     ]),
     now
   );
+  pruneNotifications();
 
   setSetting(dedupeKey, String(now));
   return true;
@@ -559,6 +600,7 @@ export function createWaybackResumeNotification(
     ]),
     Date.now()
   );
+  pruneNotifications();
 }
 
 interface SyncResumeNotificationInput {
@@ -618,6 +660,7 @@ export function createSyncResumeNotification(
     ]),
     Date.now()
   );
+  pruneNotifications();
 }
 
 interface PolicyResumeNotificationInput {
@@ -662,6 +705,7 @@ export function createPolicyResumeNotification(
     ]),
     Date.now()
   );
+  pruneNotifications();
 }
 
 /**
@@ -933,6 +977,7 @@ export function createParserFallthroughNotification(input: {
     ]),
     now
   );
+  pruneNotifications();
   setSetting(PARSER_FALLTHROUGH_LAST_NOTIFIED_KEY, String(now));
   return true;
 }
