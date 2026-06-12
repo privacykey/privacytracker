@@ -22,6 +22,7 @@
 import crypto from "node:crypto";
 import { promises as dns } from "node:dns";
 import db from "./db";
+import { clientIpFromHeaders, isNetworkExposed } from "./deployment-trust";
 
 // ─────────────────────────────────────────────
 // URL validation
@@ -634,10 +635,69 @@ export function rateLimitKeyForRequest(
   request: Request,
   prefix: string
 ): string {
-  const xff = request.headers.get("x-forwarded-for");
-  const direct = request.headers.get("x-real-ip");
-  const ip = (xff?.split(",")[0].trim() || direct || "unknown").toLowerCase();
+  // Only honour forwarded headers behind a configured trusted proxy; otherwise
+  // they're attacker-controlled. Without one, the suffix collapses to a shared
+  // "local" constant so X-Forwarded-For rotation cannot multiply buckets. The
+  // `prefix` still namespaces each route, so routes stay isolated from one
+  // another even when they share the "local" suffix.
+  const ip = clientIpFromHeaders(request.headers) ?? "local";
   return `${prefix}:${ip}`;
+}
+
+// ─────────────────────────────────────────────
+// Global login brute-force backstop
+// ─────────────────────────────────────────────
+
+/**
+ * The per-IP login limiter (5/min) collapses to a single shared bucket when no
+ * trusted proxy is configured (X-Forwarded-For is untrusted), so a spoofed-IP
+ * attacker cannot multiply buckets — but a shared bucket the attacker can also
+ * fill could starve the operator. This absolute, IP-independent counter is the
+ * backstop: a temporary cooldown trips after LOGIN_GLOBAL_FAILURE_LIMIT FAILED
+ * attempts inside the window, bounding total brute-force tries regardless of
+ * how the IP key is spoofed.
+ *
+ * Lockout-DoS safety: only FAILED attempts are counted, and the login route
+ * lets a request already carrying a valid cookie through before consulting
+ * this — so a successful operator login is never blocked and an attacker
+ * tripping the counter inflicts only a temporary, self-healing cooldown, never
+ * a permanent lockout.
+ */
+const LOGIN_GLOBAL_FAILURE_LIMIT = 100;
+const LOGIN_GLOBAL_WINDOW_MS = 15 * 60_000;
+const loginFailureTimestamps: number[] = [];
+
+function pruneLoginFailures(now: number): void {
+  const cutoff = now - LOGIN_GLOBAL_WINDOW_MS;
+  while (
+    loginFailureTimestamps.length > 0 &&
+    loginFailureTimestamps[0] < cutoff
+  ) {
+    loginFailureTimestamps.shift();
+  }
+}
+
+export function loginBruteForceTripped(): {
+  retryAfterMs: number;
+  tripped: boolean;
+} {
+  const now = Date.now();
+  pruneLoginFailures(now);
+  if (loginFailureTimestamps.length >= LOGIN_GLOBAL_FAILURE_LIMIT) {
+    const retryAfterMs =
+      loginFailureTimestamps[0] + LOGIN_GLOBAL_WINDOW_MS - now;
+    return { tripped: true, retryAfterMs: Math.max(0, retryAfterMs) };
+  }
+  return { tripped: false, retryAfterMs: 0 };
+}
+
+export function recordLoginFailure(): void {
+  loginFailureTimestamps.push(Date.now());
+}
+
+/** Test hook — clears the global login failure window. */
+export function _resetLoginBruteForce(): void {
+  loginFailureTimestamps.length = 0;
 }
 
 // ─────────────────────────────────────────────
@@ -679,36 +739,26 @@ export function adminTokenConfigured(): boolean {
   return !!process.env.AUDITOR_ADMIN_TOKEN;
 }
 
-function stripHostPort(host: string): string {
-  const trimmed = host.trim().toLowerCase();
-  if (trimmed.startsWith("[")) {
-    const end = trimmed.indexOf("]");
-    return end >= 0 ? trimmed.slice(1, end) : trimmed;
-  }
-  return trimmed.split(":")[0] ?? trimmed;
+/**
+ * Whether the deployment is reachable beyond loopback. This used to be derived
+ * from the (spoofable) Host / X-Forwarded-Host headers; it is now a property of
+ * the deployment CONFIG (see `lib/deployment-trust.ts`), so a `Host: localhost`
+ * from a LAN attacker can no longer downgrade the instance to "local". The
+ * optional request arg is kept for call-site compatibility but unused.
+ */
+export function requestLooksNonLocal(_request?: Request): boolean {
+  return isNetworkExposed();
 }
 
-export function requestLooksNonLocal(request: Request): boolean {
-  const forwardedHost = request.headers
-    .get("x-forwarded-host")
-    ?.split(",")[0]
-    ?.trim();
-  const host = forwardedHost || request.headers.get("host");
-  if (!host) {
-    return false;
-  }
-  const h = stripHostPort(host);
-  return !(
-    h === "localhost" ||
-    h.endsWith(".localhost") ||
-    h === "::1" ||
-    h === "0.0.0.0" ||
-    /^127(?:\.\d{1,3}){3}$/.test(h)
-  );
-}
-
-export function adminTokenRequiredForRequest(request: Request): boolean {
-  return adminTokenConfigured() || requestLooksNonLocal(request);
+/**
+ * The admin token is required for guarded routes when it is configured at all,
+ * OR whenever the deployment is declared network-exposed — in which case
+ * destructive mutations are refused until AUDITOR_ADMIN_TOKEN is set (this is
+ * the route-layer half of the "token mandatory when exposed" guarantee; the
+ * proxy enforces the same thing independently).
+ */
+export function adminTokenRequiredForRequest(_request?: Request): boolean {
+  return adminTokenConfigured() || isNetworkExposed();
 }
 
 /**
@@ -800,9 +850,11 @@ export function recordAudit(event: {
 }
 
 export function requestActorIp(request: Request): string {
-  const xff = request.headers.get("x-forwarded-for");
-  const direct = request.headers.get("x-real-ip");
-  return (xff?.split(",")[0].trim() || direct || "unknown").toLowerCase();
+  // Forwarded headers are attacker-controlled unless a trusted proxy is
+  // configured, so without one we record "local" rather than an IP the caller
+  // chose. `actor_ip` is a write-only audit field (nothing parses it), and an
+  // honest "local" beats a spoofed, misleading address in the forensic trail.
+  return clientIpFromHeaders(request.headers) ?? "local";
 }
 
 // ─────────────────────────────────────────────

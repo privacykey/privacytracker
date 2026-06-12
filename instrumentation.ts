@@ -36,6 +36,41 @@ export async function register() {
       console.error("[error-log-ring] install failed:", e);
     }
 
+    // Deployment-trust posture warning. Loud, once, production only (localhost
+    // dev doesn't need it). `lib/deployment-trust` is dependency-free, and we
+    // read the admin-token env directly rather than importing `lib/security`
+    // so this check never opens the DB at boot. Runs after the error-log-ring
+    // install so the warning lands in the diagnostics tail too.
+    if (process.env.NODE_ENV === "production") {
+      try {
+        const { describeDeploymentTrust } = await import(
+          "./lib/deployment-trust"
+        );
+        const adminTokenConfigured = Boolean(process.env.AUDITOR_ADMIN_TOKEN);
+        const trust = describeDeploymentTrust();
+        if (!adminTokenConfigured) {
+          if (trust.networkExposed) {
+            console.warn(
+              "[security] This instance is declared network-exposed but no " +
+                "AUDITOR_ADMIN_TOKEN is set — destructive API actions will be " +
+                "REFUSED until you set one. See docker-compose.yml for setup."
+            );
+          } else if (trust.bindAmbiguous) {
+            console.warn(
+              "[security] No AUDITOR_ADMIN_TOKEN is set and this process may " +
+                "bind a non-loopback interface (e.g. 0.0.0.0 inside Docker, " +
+                "where the host-side port map is invisible to us). If this app " +
+                "is reachable beyond localhost, set AUDITOR_ADMIN_TOKEN and " +
+                "PRIVACYTRACKER_ALLOWED_HOSTS. If it is only on 127.0.0.1 " +
+                "(the docker-compose default), you can ignore this."
+            );
+          }
+        }
+      } catch (e) {
+        console.error("[security] deployment-trust posture check failed:", e);
+      }
+    }
+
     // Runtime diagnostics: start the event-loop-delay histogram and patch
     // the singleton `better-sqlite3` `prepare()` so every prepared
     // statement is wrapped for slow-query timing. Runs FIRST (before
