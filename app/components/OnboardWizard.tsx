@@ -5716,6 +5716,7 @@ export default function OnboardWizard({
                 </div>
 
                 <div
+                  aria-label={tStep2("drop_screenshots_aria")}
                   className={`file-drop ${isDraggingImages ? "over" : ""}`}
                   onClick={() => imageFileRef.current?.click()}
                   onDragLeave={() => setIsDraggingImages(false)}
@@ -5724,6 +5725,14 @@ export default function OnboardWizard({
                     setIsDraggingImages(true);
                   }}
                   onDrop={handleImageDrop}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      imageFileRef.current?.click();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div style={{ fontSize: 28 }}>🖼</div>
                   <div className="file-drop-text">
@@ -5822,6 +5831,7 @@ export default function OnboardWizard({
                 </div>
 
                 <div
+                  aria-label={tStep2("file_drop_aria")}
                   className={`file-drop ${isDraggingText ? "over" : ""}`}
                   onClick={() => textFileRef.current?.click()}
                   onDragLeave={() => setIsDraggingText(false)}
@@ -5830,6 +5840,14 @@ export default function OnboardWizard({
                     setIsDraggingText(true);
                   }}
                   onDrop={handleTextDrop}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      textFileRef.current?.click();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div style={{ fontSize: 28 }}>📂</div>
                   <div className="file-drop-text">
