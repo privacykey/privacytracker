@@ -367,6 +367,7 @@
   color: var(--text-secondary, rgba(127, 127, 127, 0.85));
 }
 .tracked-on-chip {
+  position: relative;
   display: inline-flex;
   gap: 4px;
   align-items: center;
@@ -380,6 +381,14 @@
   transition:
     background 120ms ease,
     border-color 120ms ease;
+}
+/* WCAG 2.2 SC 2.5.8 — the painted pill is under 24px tall. Extend the
+   clickable box vertically to ≥24px; vertical-only so wrapped chip
+   rows (6px gap) don't overlap each other's targets. */
+.tracked-on-chip::after {
+  position: absolute;
+  inset: -3px 0;
+  content: "";
 }
 .tracked-on-chip:hover,
 .tracked-on-chip:focus-visible {

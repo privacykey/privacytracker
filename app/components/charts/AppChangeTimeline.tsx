@@ -628,6 +628,7 @@ export default function AppChangeTimeline({
                   key={p.key}
                   onClick={() => setPreset(p.key)}
                   style={{
+                    position: "relative",
                     padding: "3px 10px",
                     borderRadius: 6,
                     fontSize: 11,
@@ -647,6 +648,15 @@ export default function AppChangeTimeline({
                   type="button"
                 >
                   {p.label}
+                  {/* WCAG 2.2 SC 2.5.8 — the painted pill is ~22px tall.
+                      Invisible overlay grows the clickable box to ≥24px
+                      (vertical only — presets sit 4px apart). -3px because
+                      absolute positioning resolves against the padding box,
+                      1px inside the pill's border. */}
+                  <span
+                    aria-hidden="true"
+                    style={{ position: "absolute", inset: "-3px 0" }}
+                  />
                 </button>
               ))}
               <span
