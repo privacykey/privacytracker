@@ -306,3 +306,91 @@ jobs:
       - name: Stop Traefik reverse proxy
         if: always()
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
+
+  compose-smoke:
+    # Exercises the *documented* `docker compose up --build -d` path that
+    # container-smoke (plain `docker run`, no volume) never touches. This is the
+    # only leg that would have caught:
+    #   - public/ missing from the runtime image → 404 on /fonts/* + /brand-icon.png
+    #   - the bind-mount ownership trap → uid 100 can't create privacy.db on a
+    #     fresh Linux host (root-owned auto-created bind source) → /api/ready never
+    #     goes green. macOS Docker Desktop hides this by uid-mapping bind mounts.
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6
+
+      # --- Leg A: the documented default (named volume) ---
+      - name: Start root compose (named volume)
+        run: docker compose -f docker-compose.yml up --build -d
+
+      - name: Wait for compose healthcheck (named volume)
+        run: |
+          for attempt in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/api/ready; then
+              echo "Named-volume container is healthy"
+              exit 0
+            fi
+            echo "Waiting for container health (${attempt}/40)…"
+            docker compose -f docker-compose.yml logs --tail=50 || true
+            sleep 3
+          done
+          docker compose -f docker-compose.yml logs || true
+          exit 1
+
+      - name: Assert static assets are served (named volume)
+        # These three curls fail (404 → curl -f exits non-zero) if public/ is
+        # missing from the runtime image. /api/ready alone never exercises them.
+        run: |
+          set -euxo pipefail
+          curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
+          curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
+          curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+
+      - name: Stop root compose (named volume)
+        if: always()
+        run: docker compose -f docker-compose.yml down -v || true
+
+      # --- Leg B: the bind-mount opt-in, with an engine-created bind source ---
+      - name: Start root compose (bind mount + documented chown)
+        run: |
+          # Reproduce a fresh Linux host: no ./data dir yet. The documented
+          # one-time pre-step is `mkdir -p data && sudo chown 100:101 data`
+          # (the container's audit user is uid 100 / gid 101). Without the
+          # chown this start fails with SQLITE_CANTOPEN — that's the bug.
+          sudo rm -rf data
+          mkdir -p data && sudo chown 100:101 data
+          docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml up --build -d
+
+      - name: Wait for compose healthcheck (bind mount)
+        run: |
+          for attempt in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/api/ready; then
+              echo "Bind-mount container is healthy"
+              exit 0
+            fi
+            echo "Waiting for container health (${attempt}/40)…"
+            docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml logs --tail=50 || true
+            sleep 3
+          done
+          docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml logs || true
+          exit 1
+
+      - name: Assert static assets + DB written to host (bind mount)
+        run: |
+          set -euxo pipefail
+          curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
+          curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
+          curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+          # Proves uid 100 could actually write through the bind mount — the
+          # core of BUG 2. /api/ready only goes green once the data dir is
+          # writable, but assert the file exists too for an unambiguous signal.
+          test -f data/privacy.db
+
+      - name: Stop root compose (bind mount)
+        if: always()
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml down -v || true
+          sudo rm -rf data || true
