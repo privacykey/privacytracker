@@ -13,6 +13,7 @@
  */
 
 import { useTranslations } from "next-intl";
+import { useId } from "react";
 // Co-located CSS — Turbopack hot-reloads reliably this way; the giant
 // globals.css has burned us on incremental builds.
 import "./onboard-step2.css";
@@ -47,10 +48,14 @@ export default function SearchProgressCard({ progress, onCancel }: Props) {
   // the user isn't staring at a static "0 of 212".
   const isPreFirst = progress.currentBatch === 0 && progress.matched === 0;
 
+  const titleId = useId();
+
   return (
-    <div aria-live="polite" className="search-progress-card" role="status">
+    <div className="search-progress-card">
       <div className="search-progress-card-headline">
-        <span className="search-progress-card-title">{t("title")}</span>
+        <span className="search-progress-card-title" id={titleId}>
+          {t("title")}
+        </span>
         <span className="search-progress-card-count">
           {t("matched_of_total", {
             matched: progress.matched,
@@ -59,6 +64,7 @@ export default function SearchProgressCard({ progress, onCancel }: Props) {
         </span>
       </div>
       <div
+        aria-labelledby={titleId}
         aria-valuemax={progress.total}
         aria-valuemin={0}
         aria-valuenow={progress.matched}
@@ -71,7 +77,12 @@ export default function SearchProgressCard({ progress, onCancel }: Props) {
         />
       </div>
       <div className="search-progress-card-footer">
-        <span className="search-progress-card-batch">
+        {/* Live region scoped to the phase line only (role="status" is
+            implicitly aria-atomic, so putting it on the whole card re-read
+            the title + count + Cancel + hint on every batch). Announcing
+            "Preparing…" → "Batch K of N" keeps screen-reader churn at one
+            short phrase per phase change — same pattern as Toast.tsx. */}
+        <span className="search-progress-card-batch" role="status">
           {isPreFirst
             ? t("preparing")
             : t("batch_of", {

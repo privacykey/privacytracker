@@ -77,6 +77,9 @@ export default function FocusPreviewBanner() {
           minimal: preview.minimal,
           accessibility: preview.accessibility,
           workflow: preview.workflow,
+          ...(preview.childAgeBand === undefined
+            ? {}
+            : { childAgeBand: preview.childAgeBand }),
         }),
       });
       if (!res.ok) {

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 // AnnotationsSidebar is loaded lazily — it pulls in `marked` (~30kb), so
 // only ship that to App Detail clients when the flag is on. Audience-aware
@@ -22,6 +23,7 @@ import {
   CANONICAL_ACCESSIBILITY_FEATURES,
   type CanonicalAccessibilityFeature,
 } from "../../lib/accessibility-types";
+import { type AgeBandKey, compareRatingToBand } from "../../lib/age-rating";
 import type {
   ChangeEntry,
   ChangelogRow,
@@ -63,6 +65,7 @@ import {
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../lib/privacy-profile";
 import { isSafeExternalHref } from "../../lib/safe-href";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import type { AppVerdict } from "../../lib/verdict-types";
 import AppDevicesPanel from "./AppDevicesPanel";
 import ChangelogTimeline from "./ChangelogTimeline";
@@ -245,6 +248,8 @@ interface PrivacyType {
 interface App {
   /** Feature list Apple published on the accessibility shelf at last scrape. */
   accessibilityFeatures?: AccessibilityFeatureProp[];
+  /** App Store age rating ("4+", "13+"); null = never captured. */
+  ageRating?: string | null;
   changeCount: number;
   /** Latest App Store version string, e.g. "12.1.0". */
   currentVersion?: string | null;
@@ -365,6 +370,8 @@ export interface DetailFlagState {
   chartsTrendPresets: boolean;
   // Footer
   footerImportProvenance: boolean;
+  /** flag.guardian.age_rating — header age-rating verdict chip. */
+  guardianAgeRating: boolean;
   headerA11yCountChip: boolean;
   headerChangeCountBadge: boolean;
   // Header
@@ -426,6 +433,7 @@ export default function AppDetailView({
   waybackShowImportedDefault = true,
   importProvenance = null,
   trackAccessibility = true,
+  childAgeBand = null,
   detailFlags,
 }: {
   app: App;
@@ -471,6 +479,11 @@ export default function AppDetailView({
    */
   trackAccessibility?: boolean;
   /**
+   * Guardian child age band — drives the age-rating verdict chip in the
+   * header. Null hides the verdict (the neutral rating chip still shows).
+   */
+  childAgeBand?: AgeBandKey | null;
+  /**
    * Resolved feature flags relevant to this surface. Round 3 PR 4 wires
    * only the annotations-sidebar gate + audience; subsequent PRs add more.
    */
@@ -481,6 +494,8 @@ export default function AppDetailView({
   const f = {
     annotationsSidebar: detailFlags?.annotationsSidebar ?? "collapsed",
     audience: detailFlags?.audience ?? "self",
+    // FALSE default — new guarded surface, un-wired callers stay unchanged.
+    guardianAgeRating: detailFlags?.guardianAgeRating ?? false,
     headerFreshnessBadge: detailFlags?.headerFreshnessBadge ?? true,
     headerChangeCountBadge: detailFlags?.headerChangeCountBadge ?? true,
     headerA11yCountChip: detailFlags?.headerA11yCountChip ?? true,
@@ -542,6 +557,9 @@ export default function AppDetailView({
   const [toast, setToast] = useState("");
   const [reviewState, setReviewState] =
     useState<UnacknowledgedChanges>(unacknowledged);
+  const canShowAccessibilityTab =
+    f.a11yPanel && trackAccessibility && app.hasAccessibilityLabels != null;
+  const canShowPolicyTab = f.policyPanel;
 
   // One-shot blue pulse on the section the URL hash points at — same
   // pattern Settings uses for `#ai-summaries` / `#sync-status`.
@@ -560,12 +578,15 @@ export default function AppDetailView({
       if (!hash) {
         return;
       }
-      // Make sure we're on the privacy tab so the section the user
-      // came for is actually visible — the privacy-types block lives
-      // inside the privacy panel, so without this the pulse fires on
-      // a hidden subtree and the user sees nothing.
+      // Make sure the tab containing the hashed target is visible.
       if (hash === "profile-mismatch") {
         setTab("privacy");
+      } else if (hash === "policy") {
+        setTab(canShowPolicyTab ? "policy" : "privacy");
+      } else if (hash === "accessibility") {
+        setTab(canShowAccessibilityTab ? "accessibility" : "privacy");
+      } else if (hash === "changelog" || hash.startsWith("snapshot-")) {
+        setTab("changelog");
       }
       setHashPulseTarget(hash);
       // Clear after the pulse animation finishes so a same-hash
@@ -584,7 +605,7 @@ export default function AppDetailView({
         cleanup();
       }
     };
-  }, []);
+  }, [canShowAccessibilityTab, canShowPolicyTab]);
   // Initial verdicts payload for the picker. We fetch once here so the
   // server-rendered hero doesn't need to await the verdicts query; the
   // picker also re-fetches on mount to catch any imports that landed
@@ -627,6 +648,8 @@ export default function AppDetailView({
   const tAppGrid = useTranslations("app_grid");
   // Price + IAP chip copy — shared namespace with ShortlistView's chips.
   const tPriceChip = useTranslations("price_chip");
+  // Age-band labels — shared namespace with the focus form's band picker.
+  const tAgeBand = useTranslations("age_band");
   // Category-label translators originally lived here, but the
   // category-card render runs inside the PrivacyTypeSection sub-
   // component (see line ~3060), and React's hooks rules mean each
@@ -640,6 +663,15 @@ export default function AppDetailView({
   // DELETE they thought they cancelled.
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const deleteModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete,
+    onClose: () => {
+      if (!deleting) {
+        setPendingDelete(false);
+      }
+    },
+  });
 
   // Kebab actions menu — re-sync + remove-from-tracker live behind a ⋯
   // trigger so the hero stays focused on content rather than maintenance.
@@ -831,7 +863,7 @@ export default function AppDetailView({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   // Settings → Appearance → Date format. The local `formatDate` here
@@ -977,20 +1009,6 @@ export default function AppDetailView({
     }
   };
 
-  // Close the delete modal on Escape, provided we're not mid-request.
-  useEffect(() => {
-    if (!pendingDelete) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !deleting) {
-        setPendingDelete(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pendingDelete, deleting]);
-
   // Count total categories across all privacy types
   const totalCategories = app.privacyTypes.reduce(
     (sum, pt) => sum + pt.categories.length,
@@ -1114,6 +1132,60 @@ export default function AppDetailView({
                 </span>
               );
             })()}
+
+            {/*
+              Age-rating chip. The neutral rating ("Ages 13+") renders for
+              everyone once a sync has captured it. When the guardian flag
+              is on AND a child age band is set, the chip gains a verdict:
+              above-range turns it into a warning with a link to the
+              parental-controls guide; within-range stays quiet (a subtle
+              ✓ variant). 'unknown' never warns — no data, no alarm.
+            */}
+            {app.ageRating &&
+              (() => {
+                const verdict =
+                  f.guardianAgeRating && childAgeBand
+                    ? compareRatingToBand(childAgeBand, app.ageRating)
+                    : null;
+                if (verdict === "above" && childAgeBand) {
+                  return (
+                    <>
+                      <span
+                        className="detail-age-pill detail-age-pill-above"
+                        title={tDetail("age_pill_above_title", {
+                          rating: app.ageRating,
+                          band: tAgeBand(`labels.${childAgeBand}`),
+                        })}
+                      >
+                        <span aria-hidden="true">⚠</span>
+                        {tDetail("age_pill_above", { rating: app.ageRating })}
+                      </span>
+                      <Link
+                        className="btn btn-ghost btn-sm"
+                        href="/help/parental-controls"
+                      >
+                        {tDetail("age_resources_link")}
+                      </Link>
+                    </>
+                  );
+                }
+                return (
+                  <span
+                    className={`detail-age-pill ${verdict === "within" ? "detail-age-pill-within" : ""}`}
+                    title={
+                      verdict === "within" && childAgeBand
+                        ? tDetail("age_pill_within_title", {
+                            rating: app.ageRating,
+                            band: tAgeBand(`labels.${childAgeBand}`),
+                          })
+                        : tDetail("age_pill_title")
+                    }
+                  >
+                    {verdict === "within" && <span aria-hidden="true">✓</span>}
+                    {tDetail("age_pill", { rating: app.ageRating })}
+                  </span>
+                );
+              })()}
 
             {/*
               Accessibility chip. Gated on the user's "track accessibility
@@ -1862,7 +1934,9 @@ export default function AppDetailView({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
+            ref={deleteModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tDetail("remove_modal.badge")}</div>
             <h2 className="modal-title" id="delete-app-title">

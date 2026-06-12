@@ -214,6 +214,9 @@ function TriggerPill({
   // language-agnostic. The wayback `title` is interpolated with the
   // captured-at app version when present.
   const t = useTranslations("trigger_pill");
+  // `timeline.version_prefix` so the inline "v1.2.3" suffix below stays
+  // localisable alongside the standalone version-chip.
+  const tTimeline = useTranslations("timeline");
   interface Style {
     bg: string;
     border: string;
@@ -325,7 +328,9 @@ function TriggerPill({
         to them already does the job.
       */}
       {key === "wayback" && appVersion && (
-        <span style={{ opacity: 0.85 }}>· v{appVersion}</span>
+        <span style={{ opacity: 0.85 }}>
+          · {tTimeline("version_prefix", { version: appVersion })}
+        </span>
       )}
     </span>
   );
@@ -569,7 +574,9 @@ export default function ChangelogTimeline({
           const data = (await res.json().catch(() => null)) as {
             error?: string;
           } | null;
-          throw new Error(data?.error ?? `Request failed (${res.status})`);
+          throw new Error(
+            data?.error ?? tCt("request_failed", { status: res.status })
+          );
         }
         return (await res.json()) as PolicyVersionResponse;
       })
@@ -614,7 +621,9 @@ export default function ChangelogTimeline({
           if (res.status === 404) {
             throw new Error(tCt("earlier_not_captured"));
           }
-          throw new Error(data?.error ?? `Request failed (${res.status})`);
+          throw new Error(
+            data?.error ?? tCt("request_failed", { status: res.status })
+          );
         }
         return (await res.json()) as PolicyDiffResponse;
       })
@@ -695,8 +704,7 @@ export default function ChangelogTimeline({
             <span aria-hidden="true" style={{ marginRight: 6 }}>
               🕰
             </span>
-            {waybackCount} Wayback import{waybackCount === 1 ? "" : "s"} in this
-            timeline
+            {tTimeline("wayback_import_count", { count: waybackCount })}
           </div>
           <label
             style={{
@@ -954,9 +962,15 @@ function TimelineSnapshotItem({
               }}
               title={tCt("version_chip_title")}
             >
-              <span aria-hidden="true">📱</span>v{snapshot.app_version}
+              <span aria-hidden="true">📱</span>
+              {tTimeline("version_prefix", { version: snapshot.app_version })}
               {snapshot.app_version_updated_at
-                ? ` · released ${formatShortDate(snapshot.app_version_updated_at, dateMode)}`
+                ? ` · ${tCt("version_released", {
+                    date: formatShortDate(
+                      snapshot.app_version_updated_at,
+                      dateMode
+                    ),
+                  })}`
                 : ""}
             </span>
           )}
@@ -986,9 +1000,7 @@ function TimelineSnapshotItem({
         </div>
         {isFirst && changes.length === 0 ? (
           <div className="timeline-card-title">
-            {isWayback
-              ? "🕰 Wayback baseline imported"
-              : "🆕 First scan recorded"}
+            {isWayback ? tCt("card_wayback_baseline") : tCt("card_first_scan")}
           </div>
         ) : changes.length === 0 ? (
           <div
@@ -1000,19 +1012,23 @@ function TimelineSnapshotItem({
                   version: snapshot.app_version ?? "",
                 })
               : isWayback
-                ? "🕰 Wayback snapshot — no differences from previous"
-                : "✓ No changes detected"}
+                ? tCt("card_wayback_no_diff")
+                : tCt("card_no_changes")}
           </div>
         ) : (
           <>
             <div className="timeline-card-title">
               {isWayback
-                ? `🕰 Wayback reconstruction · ${changes.length} change${changes.length === 1 ? "" : "s"}`
+                ? tCt("card_wayback_reconstruction", {
+                    count: changes.length,
+                  })
                 : changes.every((c) => c.category === "privacy-policy")
                   ? policyCardTitle(tCt, changes)
                   : changes.every((c) => c.category === "wayback-attempt")
                     ? waybackAttemptCardTitle(tCt, changes)
-                    : `⚡ ${changes.length} change${changes.length === 1 ? "" : "s"} detected`}
+                    : tCt("card_changes_detected", {
+                        count: changes.length,
+                      })}
             </div>
             {changes.map((c, ci) => {
               const isPolicyEntry = c.category === "privacy-policy";
@@ -1277,12 +1293,14 @@ function ReviewTimelineItem({
   const coveredIds = row.covered_snapshot_ids ?? [];
   const coveredBlurb =
     row.covered_count > 0
-      ? ` · covered ${row.covered_count} pending change${row.covered_count === 1 ? "" : "s"}`
+      ? ` · ${tCt("ack_covered_count", { count: row.covered_count })}`
       : "";
 
   let extra: string | null = null;
   if (row.action === "snoozed" && row.snooze_until) {
-    extra = `Reminders resume on ${formatSnoozeUntil(row.snooze_until, dateMode)}`;
+    extra = tCt("ack_snooze_until", {
+      date: formatSnoozeUntil(row.snooze_until, dateMode),
+    });
   }
 
   return (
@@ -1312,7 +1330,7 @@ function ReviewTimelineItem({
             }}
           >
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>
-              Linked to:
+              {tCt("ack_linked_to")}
             </span>
             {coveredIds.map((id, idx) => (
               <button
@@ -1333,7 +1351,7 @@ function ReviewTimelineItem({
                 title={tCt("ack_jump_title")}
                 type="button"
               >
-                ↳ change #{idx + 1}
+                {tCt("ack_change_chip", { number: idx + 1 })}
               </button>
             ))}
           </div>
@@ -1376,7 +1394,7 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
           alignItems: "center",
         }}
       >
-        <span className="spinner-sm" /> Loading captured text…
+        <span className="spinner-sm" /> {tCt("preview_loading")}
       </div>
     );
   }
@@ -1407,8 +1425,10 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
         }}
       >
         <span>
-          {data.source_word_count.toLocaleString()} words
-          {data.source_origin ? ` · via ${data.source_origin}` : ""}
+          {tCt("preview_word_count", { count: data.source_word_count })}
+          {data.source_origin
+            ? ` · ${tCt("preview_via_origin", { origin: data.source_origin })}`
+            : ""}
         </span>
         {data.source_final_url && (
           <a
@@ -1417,7 +1437,7 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
             style={{ color: "var(--text-3)", textDecoration: "underline" }}
             target="_blank"
           >
-            source URL ↗
+            {tCt("preview_source_url")}
           </a>
         )}
         {data.archive_url && (
@@ -1428,10 +1448,14 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
             target="_blank"
             title={tCt("open_archive_title")}
           >
-            Wayback backup ↗
+            {tCt("preview_wayback_backup")}
           </a>
         )}
-        <span>First seen: {formatDate(data.first_fetched_at, dateMode)}</span>
+        <span>
+          {tCt("preview_first_seen", {
+            date: formatDate(data.first_fetched_at, dateMode),
+          })}
+        </span>
       </div>
       <pre
         style={{
@@ -1448,12 +1472,14 @@ function PolicyVersionPreview({ state }: { state: PreviewState | undefined }) {
           wordBreak: "break-word",
         }}
       >
-        {shown || "(empty)"}
+        {shown || tCt("preview_empty")}
       </pre>
       {truncated && (
         <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
-          Showing first {PREVIEW_MAX_CHARS.toLocaleString()} of{" "}
-          {text.length.toLocaleString()} characters.
+          {tCt("preview_truncated", {
+            shown: PREVIEW_MAX_CHARS,
+            total: text.length,
+          })}
         </div>
       )}
     </div>
@@ -1483,7 +1509,7 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
           alignItems: "center",
         }}
       >
-        <span className="spinner-sm" /> Computing diff…
+        <span className="spinner-sm" /> {tCt("diff_computing")}
       </div>
     );
   }
@@ -1505,7 +1531,7 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
   if (stats.added === 0 && stats.removed === 0) {
     return (
       <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
-        No differences detected between the two captures.
+        {tCt("diff_no_differences")}
       </div>
     );
   }
@@ -1525,15 +1551,17 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
         <span>
           <span className="policy-diff-added-chip">+{stats.added}</span>{" "}
           <span className="policy-diff-removed-chip">−{stats.removed}</span>{" "}
-          {stats.unchanged.toLocaleString()} unchanged
+          {tCt("diff_unchanged_count", { count: stats.unchanged })}
         </span>
         <span>
-          Comparing {formatDate(data.previous.first_fetched_at, dateMode)} →{" "}
-          {formatDate(data.current.first_fetched_at, dateMode)}
+          {tCt("diff_comparing", {
+            from: formatDate(data.previous.first_fetched_at, dateMode),
+            to: formatDate(data.current.first_fetched_at, dateMode),
+          })}
         </span>
         {stats.truncated && (
           <span style={{ color: "var(--orange, #c85c27)" }}>
-            Diff truncated — one side exceeded the line cap.
+            {tCt("diff_truncated_note")}
           </span>
         )}
       </div>
@@ -1567,8 +1595,10 @@ function PolicyDiffPanel({ state }: { state: DiffState | undefined }) {
       </section>
       {overflow && (
         <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
-          Showing first {DIFF_MAX_LINES.toLocaleString()} of{" "}
-          {lines.length.toLocaleString()} diff lines.
+          {tCt("diff_overflow", {
+            shown: DIFF_MAX_LINES,
+            total: lines.length,
+          })}
         </div>
       )}
     </div>
@@ -1683,7 +1713,7 @@ function HistoryStatsStrip({
             alignItems: "center",
           }}
         >
-          <span className="spinner-sm" /> Loading quarterly stats…
+          <span className="spinner-sm" /> {tCt("stats_quarterly_loading")}
         </div>
       </div>
     );
@@ -1696,7 +1726,7 @@ function HistoryStatsStrip({
         style={{ margin: "0 0 16px" }}
       >
         <div style={{ fontSize: 12, color: "var(--text-3)" }}>
-          Could not load quarterly stats: {state.message}
+          {tCt("stats_quarterly_failed", { message: state.message })}
         </div>
       </div>
     );

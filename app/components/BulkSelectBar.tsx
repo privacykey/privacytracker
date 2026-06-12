@@ -13,6 +13,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import type { VerdictValue } from "../../lib/verdict-types";
 // Co-located CSS — Turbopack hot-reloads small files reliably; appending
 // to the 26k-line globals.css was leaving the bulk-select rules unbundled
@@ -74,6 +75,11 @@ export default function BulkSelectBar({
     },
     []
   );
+
+  const bulkConfirmRef = useModalFocus<HTMLDivElement>({
+    open: pendingConfirm !== null,
+    onClose: () => !applying && setPendingConfirm(null),
+  });
 
   const apply = useCallback(
     async (verdict: VerdictValue) => {
@@ -276,7 +282,9 @@ export default function BulkSelectBar({
             aria-modal="true"
             className="modal-card"
             onClick={(e) => e.stopPropagation()}
+            ref={bulkConfirmRef}
             role="dialog"
+            tabIndex={-1}
           >
             <h2 className="modal-title">
               {t("confirm_title", { count: selectedIds.length })}

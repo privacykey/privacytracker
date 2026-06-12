@@ -23,6 +23,7 @@ import { useTranslations } from "next-intl";
  *      "how many apps are there" obvious at a glance.
  */
 import { useEffect, useMemo, useState } from "react";
+import { withAlpha } from "../../../lib/chart-colors";
 import {
   type AppProfileFootprint,
   computeProfileMismatch,
@@ -32,10 +33,16 @@ import {
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../../lib/privacy-profile";
 import type { MatrixData, SeverityId } from "../../../lib/stats-views-shared";
+import { useChartColors } from "../../../lib/use-chart-colors";
 import { useShapesMode } from "../../../lib/use-shapes-mode";
 import EChart from "./EChart";
 
-const SEV_COLOR: Record<string, string> = {
+// Tooltip-only severity colours, pinned to the dark palette. The shared
+// ECharts tooltip glass (EChart.tsx) keeps its dark background in every
+// theme, so the dot + label inside it must stay the bright dark-theme
+// values — the theme-resolved palette used for the cell fills would paint
+// dark-on-dark there in light mode.
+const TOOLTIP_SEV_COLOR: Record<string, string> = {
   DATA_NOT_LINKED_TO_YOU: "#d8c7a3",
   DATA_LINKED_TO_YOU: "#ff9f0a",
   DATA_USED_TO_TRACK_YOU: "#ff453a",
@@ -163,6 +170,9 @@ export default function PrivacyHeatmap() {
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<PrivacyProfile | null>(null);
   const shapesMode = useShapesMode();
+  // Theme-resolved CSS tokens — canvas fills can't use var(), so the cell
+  // colours below re-resolve whenever the light/dark/HC theme changes.
+  const colors = useChartColors();
 
   // Filter state — persisted only within the component; resetting the page
   // when they change is handled by the effect below.
@@ -256,6 +266,15 @@ export default function PrivacyHeatmap() {
     const appNames = pageApps.map((a) => a.name);
     const catLabels = data.categories.map((c) => c.label);
 
+    // Cell fills resolved from the CSS tokens (lib/use-chart-colors.ts) so
+    // the light and high-contrast palettes flow through; identical to the
+    // old hardcoded values in default dark mode.
+    const sevColor: Record<string, string> = {
+      DATA_NOT_LINKED_TO_YOU: colors.cream,
+      DATA_LINKED_TO_YOU: colors.orange,
+      DATA_USED_TO_TRACK_YOU: colors.red,
+    };
+
     // Build sparse heatmap data, colouring each cell directly. When the
     // profile overlay is on, mark cells that exceed the user's preference
     // with a white inset border — same visual language as the "exceeds
@@ -279,11 +298,11 @@ export default function PrivacyHeatmap() {
         );
         const baseItemStyle: HeatmapCell["itemStyle"] = mismatch
           ? {
-              color: SEV_COLOR[sev] ?? "#555",
+              color: sevColor[sev] ?? "#555",
               borderColor: "#ffffff",
               borderWidth: 2,
             }
-          : { color: SEV_COLOR[sev] ?? "#555" };
+          : { color: sevColor[sev] ?? "#555" };
         // In shape mode, layer a per-tier decal on top of the cell so
         // colour-blind users can distinguish the three severities by
         // texture as well as colour. `decal` is an additive property
@@ -315,7 +334,7 @@ export default function PrivacyHeatmap() {
             mm === "mm"
               ? `<br/><span style="color:#ff8a80">⚠ Exceeds your Privacy Profile</span>`
               : "";
-          return `<b>${escapeHtml(appName)}</b><br/>${escapeHtml(catName)}<br/><span style="color:${SEV_COLOR[sev]}">● ${escapeHtml(sevLabel)}</span>${mismatchLine}`;
+          return `<b>${escapeHtml(appName)}</b><br/>${escapeHtml(catName)}<br/><span style="color:${TOOLTIP_SEV_COLOR[sev]}">● ${escapeHtml(sevLabel)}</span>${mismatchLine}`;
         },
       },
       // outerBoundsMode: 'none' restores echarts v5's behaviour of letting
@@ -333,19 +352,22 @@ export default function PrivacyHeatmap() {
         bottom: 80,
         outerBoundsMode: "none",
       },
+      // Axis chrome reads the text/border tokens — the old hardcoded
+      // #a0a0b0 / rgba-white values were the dark --text-2 / ~--border,
+      // so dark mode is unchanged while light mode gets readable greys.
       xAxis: {
         type: "category",
         data: appNames,
-        axisLabel: { color: "#a0a0b0", rotate: 40, fontSize: 11 },
-        axisLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisLabel: { color: colors.text2, rotate: 40, fontSize: 11 },
+        axisLine: { lineStyle: { color: colors.border } },
         axisTick: { show: false },
         splitArea: { show: false },
       },
       yAxis: {
         type: "category",
         data: catLabels,
-        axisLabel: { color: "#a0a0b0", fontSize: 11 },
-        axisLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisLabel: { color: colors.text2, fontSize: 11 },
+        axisLine: { lineStyle: { color: colors.border } },
         axisTick: { show: false },
         splitArea: { show: false },
       },
@@ -363,15 +385,15 @@ export default function PrivacyHeatmap() {
         pieces: [
           {
             value: SEV_VALUE.DATA_NOT_LINKED_TO_YOU,
-            color: SEV_COLOR.DATA_NOT_LINKED_TO_YOU,
+            color: sevColor.DATA_NOT_LINKED_TO_YOU,
           },
           {
             value: SEV_VALUE.DATA_LINKED_TO_YOU,
-            color: SEV_COLOR.DATA_LINKED_TO_YOU,
+            color: sevColor.DATA_LINKED_TO_YOU,
           },
           {
             value: SEV_VALUE.DATA_USED_TO_TRACK_YOU,
-            color: SEV_COLOR.DATA_USED_TO_TRACK_YOU,
+            color: sevColor.DATA_USED_TO_TRACK_YOU,
           },
         ],
       },
@@ -381,16 +403,25 @@ export default function PrivacyHeatmap() {
           data: cells,
           itemStyle: {
             borderRadius: 3,
-            borderColor: "#08080f",
+            // Cell separator follows the page-background token so the
+            // gaps read as "background showing through" in every theme
+            // (was hardcoded to the dark --bg value).
+            borderColor: colors.bg,
             borderWidth: 1,
           },
           emphasis: {
-            itemStyle: { shadowBlur: 8, shadowColor: "rgba(255,255,255,0.3)" },
+            // Hover glow derived from the text token — white-ish in dark
+            // mode (as before), dark in light mode where a white glow
+            // would vanish into the page.
+            itemStyle: {
+              shadowBlur: 8,
+              shadowColor: withAlpha(colors.text, 0.3),
+            },
           },
         },
       ],
     };
-  }, [data, pageApps, showPref, profileActive, profile, shapesMode]);
+  }, [data, pageApps, showPref, profileActive, profile, shapesMode, colors]);
 
   if (error) {
     return (
@@ -535,10 +566,13 @@ export default function PrivacyHeatmap() {
           flexWrap: "wrap",
         }}
       >
+        {/* Swatches are CSS-painted DOM (unlike the canvas cells), so a
+            var() with the dark hex as fallback tracks the theme tokens
+            directly. */}
         <span>
           <span
             style={swatch(
-              "#d8c7a3",
+              "var(--cream, #d8c7a3)",
               shapesMode ? SEV_PATTERN.DATA_NOT_LINKED_TO_YOU : undefined
             )}
           />
@@ -547,7 +581,7 @@ export default function PrivacyHeatmap() {
         <span>
           <span
             style={swatch(
-              "#ff9f0a",
+              "var(--orange, #ff9f0a)",
               shapesMode ? SEV_PATTERN.DATA_LINKED_TO_YOU : undefined
             )}
           />
@@ -556,7 +590,7 @@ export default function PrivacyHeatmap() {
         <span>
           <span
             style={swatch(
-              "#ff453a",
+              "var(--red, #ff453a)",
               shapesMode ? SEV_PATTERN.DATA_USED_TO_TRACK_YOU : undefined
             )}
           />
@@ -566,7 +600,7 @@ export default function PrivacyHeatmap() {
             actual cells so users can tie the legend back to what they see. */}
         {showPref && profileActive && (
           <span>
-            <span style={swatchMismatch("#ff453a")} />
+            <span style={swatchMismatch("var(--red, #ff453a)")} />
             {tCharts("swatch_exceeds_profile")}
           </span>
         )}

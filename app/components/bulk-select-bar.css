@@ -53,8 +53,10 @@
   border-radius: 50%;
 }
 .bulk-select-bar.is-empty .bulk-select-bar-icon {
-  color: var(--surface, #fff);
-  background: var(--border-strong, #9ca3af);
+  /* Inverted muted circle — bg-on-text rather than text-on-bg so the
+     glyph keeps contrast in every theme (light, dark, high-contrast). */
+  color: var(--bg-2, #fff);
+  background: var(--text-3, #9ca3af);
 }
 .bulk-select-bar-title {
   flex: 1;
@@ -83,9 +85,9 @@
     border-color 120ms;
 }
 .bulk-select-bar-exit:hover:not(:disabled) {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: #ef4444;
+  color: var(--red, #b91c1c);
+  background: var(--red-dim, #fee2e2);
+  border-color: var(--red, #ef4444);
 }
 
 .bulk-select-bar-actions {
@@ -130,22 +132,22 @@
   font-size: 14px;
 }
 .bulk-select-action-safe {
-  color: #15803d;
+  color: var(--green, #15803d);
 }
 .bulk-select-action-safe:hover:not(:disabled) {
-  background: #f0fdf4;
+  background: var(--green-dim, #f0fdf4);
 }
 .bulk-select-action-replace {
-  color: #c2410c;
+  color: var(--orange, #c2410c);
 }
 .bulk-select-action-replace:hover:not(:disabled) {
-  background: #fff7ed;
+  background: var(--orange-dim, #fff7ed);
 }
 .bulk-select-action-uninstall {
-  color: #b91c1c;
+  color: var(--red, #b91c1c);
 }
 .bulk-select-action-uninstall:hover:not(:disabled) {
-  background: #fef2f2;
+  background: var(--red-dim, #fef2f2);
 }
 
 .bulk-select-bar-footer {
@@ -233,4 +235,12 @@
 .app-card-bulk-check.is-checked {
   color: #fff;
   background: var(--blue, #2563eb);
+}
+
+/* High-contrast flips --blue to yellow; white glyphs on yellow fall to
+   ~1.07:1 (same trap globals.css documents for .btn-primary). Black
+   keeps the Windows-HC black-on-yellow convention. */
+html[data-theme-override="high-contrast"] .bulk-select-bar-icon,
+html[data-theme-override="high-contrast"] .app-card-bulk-check.is-checked {
+  color: #000;
 }

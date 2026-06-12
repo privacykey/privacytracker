@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import type { AgeBandKey } from "@/lib/age-rating";
 import type { PurposeFocusInput } from "@/lib/onboarding-purpose";
 import { seedSampleApps } from "@/lib/sample-apps";
 import type { UserTaskId } from "@/lib/tasks";
@@ -11,6 +12,7 @@ import { useFlag } from "../../lib/feature-flags-hooks";
 import FocusPurposeForm from "./FocusPurposeForm";
 
 interface Props {
+  initialChildAgeBand: AgeBandKey | null;
   initialFocus: PurposeFocusInput | null;
 }
 
@@ -23,7 +25,10 @@ const DEFAULT_FOCUS: PurposeFocusInput = {
   workflow: "self_monitor",
 };
 
-export default function WelcomeSplash({ initialFocus }: Props) {
+export default function WelcomeSplash({
+  initialChildAgeBand,
+  initialFocus,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("onboarding.welcome");
@@ -51,7 +56,10 @@ export default function WelcomeSplash({ initialFocus }: Props) {
   }
 
   async function commitAndContinue(
-    focus: PurposeFocusInput & { taskOptIns?: UserTaskId[] }
+    focus: PurposeFocusInput & {
+      childAgeBand?: AgeBandKey | null;
+      taskOptIns?: UserTaskId[];
+    }
   ) {
     setSaving(true);
     setError("");
@@ -66,6 +74,10 @@ export default function WelcomeSplash({ initialFocus }: Props) {
           minimal: focus.minimal,
           accessibility: focus.accessibility,
           workflow: focus.workflow,
+          // Absent (skip / sample-data paths) = leave stored band unchanged.
+          ...(focus.childAgeBand === undefined
+            ? {}
+            : { childAgeBand: focus.childAgeBand }),
         }),
       });
       if (!res.ok) {
@@ -139,6 +151,7 @@ export default function WelcomeSplash({ initialFocus }: Props) {
       eyebrow={t("eyebrow")}
       footer={footer}
       initial={initialFocus ?? DEFAULT_FOCUS}
+      initialChildAgeBand={initialChildAgeBand}
       mode="onboarding"
       onSubmit={(resolved) => commitAndContinue(resolved)}
       saving={saving}

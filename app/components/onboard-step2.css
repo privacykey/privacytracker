@@ -103,14 +103,14 @@
   border-radius: 999px;
 }
 .imported-apps-row-chip-bundle {
-  color: #15803d;
-  background: #ecfdf5;
-  border: 1px solid #bbf7d0;
+  color: var(--green, #15803d);
+  background: var(--green-dim, #ecfdf5);
+  border: 1px solid color-mix(in srgb, var(--green, #15803d) 40%, transparent);
 }
 .imported-apps-row-chip-webclip {
-  color: #c2410c;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
+  color: var(--orange, #c2410c);
+  background: var(--orange-dim, #fff7ed);
+  border: 1px solid color-mix(in srgb, var(--orange, #c2410c) 40%, transparent);
 }
 .imported-apps-row-source {
   color: var(--text, #6b7280);
@@ -118,19 +118,19 @@
   border: 1px solid var(--border, #e5e7eb);
 }
 .imported-apps-row-source-cfgutil {
-  color: #4338ca;
-  background: #eef2ff;
-  border-color: #c7d2fe;
+  color: var(--purple, #4338ca);
+  background: var(--purple-dim, #eef2ff);
+  border-color: color-mix(in srgb, var(--purple, #4338ca) 40%, transparent);
 }
 .imported-apps-row-source-file {
-  color: #1d4ed8;
-  background: #eff6ff;
-  border-color: #bfdbfe;
+  color: var(--blue, #1d4ed8);
+  background: var(--blue-dim, #eff6ff);
+  border-color: color-mix(in srgb, var(--blue, #1d4ed8) 40%, transparent);
 }
 .imported-apps-row-source-ocr {
-  color: #6d28d9;
-  background: #f5f3ff;
-  border-color: #ddd6fe;
+  color: var(--teal, #6d28d9);
+  background: var(--teal-dim, #f5f3ff);
+  border-color: color-mix(in srgb, var(--teal, #6d28d9) 40%, transparent);
 }
 .imported-apps-row-source-manual {
   color: var(--text, #6b7280);
@@ -158,9 +158,9 @@
     color 120ms;
 }
 .imported-apps-row-remove:hover {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: #ef4444;
+  color: var(--red, #b91c1c);
+  background: var(--red-dim, #fee2e2);
+  border-color: var(--red, #ef4444);
 }
 
 /* Inline add input — the textarea replacement, but scoped to "add MORE
@@ -278,9 +278,9 @@
     color 120ms;
 }
 .search-progress-cancel-btn:hover {
-  color: #b91c1c;
-  background: #fee2e2;
-  border-color: #ef4444;
+  color: var(--red, #b91c1c);
+  background: var(--red-dim, #fee2e2);
+  border-color: var(--red, #ef4444);
 }
 .search-progress-card-hint {
   margin: 0;

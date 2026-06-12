@@ -27,6 +27,8 @@ import {
 import type { FlagValue } from "@/lib/feature-flag-rules";
 import { getFlagUsage } from "../../lib/feature-flag-usage";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { useModalFocus } from "../../lib/use-modal-focus";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { DEV_MENU_STORAGE_KEY } from "./DevMenu";
 
 interface FlagRow {
@@ -197,6 +199,23 @@ export default function DevOptionsFeatureFlagPanel() {
    * of the Settings page.
    */
   const [resetAllOpen, setResetAllOpen] = useState(false);
+
+  const resetAllModalRef = useModalFocus<HTMLDivElement>({
+    open: resetAllOpen,
+    onClose: () => {
+      if (busyKey === null) {
+        setResetAllOpen(false);
+      }
+    },
+  });
+  const importModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingImport !== null,
+    onClose: () => {
+      if (busyKey === null) {
+        setPendingImport(null);
+      }
+    },
+  });
 
   /**
    * Single-step undo stack — captures the most recent flag mutation so
@@ -1234,12 +1253,9 @@ export default function DevOptionsFeatureFlagPanel() {
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && busyKey === null) {
-                setResetAllOpen(false);
-              }
-            }}
+            ref={resetAllModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tDevReset("badge")}</div>
             <h2 className="modal-title" id="dev-flag-reset-title">
@@ -1300,12 +1316,9 @@ export default function DevOptionsFeatureFlagPanel() {
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && busyKey === null) {
-                setPendingImport(null);
-              }
-            }}
+            ref={importModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tDev("import_modal.badge")}</div>
             <h2 className="modal-title" id="dev-flag-import-title">
@@ -1400,6 +1413,10 @@ function FlagListItem({
   // registry — we still render the row, just without the preview.
   const usage = getFlagUsage(row.key);
   const [hoverPreviewOpen, setHoverPreviewOpen] = useState(false);
+  // APG keyboard contract for the override radiogroup: one tab stop,
+  // arrows move focus only — selecting writes the override straight
+  // to the server, so Enter/Space commits.
+  const overrideRadioKeyDown = useRovingRadioGroup({ followFocus: false });
 
   return (
     <li
@@ -1516,6 +1533,7 @@ function FlagListItem({
         <div
           aria-label={tDev("row_override_aria", { key: row.key })}
           className="segmented-toggle dev-options-flag-panel__flag-toggle"
+          onKeyDown={overrideRadioKeyDown}
           role="radiogroup"
         >
           {VALUE_OPTIONS.map((v) => {
@@ -1528,6 +1546,7 @@ function FlagListItem({
                 key={v}
                 onClick={() => onChange(v)}
                 role="radio"
+                tabIndex={checked ? 0 : -1}
                 type="button"
               >
                 {valueLabel(v)}

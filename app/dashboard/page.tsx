@@ -3,6 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import {
+  countAppsAboveAgeBand,
+  getChildAgeBand,
+} from "../../lib/age-rating-server";
+import {
   consumeMigrationFlowMarker,
   getMostRecentImport,
 } from "../../lib/audit-bundle-import";
@@ -186,6 +190,7 @@ export default async function DashboardPage({
         resolveFlagFromDb(k) === "on";
       return {
         callout: {
+          age_rating: resolve("flag.dashboard.callout.age_rating"),
           declutter: resolve("flag.dashboard.callout.declutter"),
           guardian: resolve("flag.dashboard.callout.guardian"),
           understand_declutter: resolve(
@@ -213,6 +218,25 @@ export default async function DashboardPage({
     } catch (error) {
       console.warn("[dashboard] flag resolution failed:", error);
       return;
+    }
+  })();
+
+  // Guardian age-rating summary for the callout. Only computed when the
+  // callout flag resolved on AND a band is stored — both cheap reads.
+  // Null (off / no band / error) drops the callout entirely.
+  const ageRatingFlagged = (() => {
+    if (!flags?.callout.age_rating) {
+      return null;
+    }
+    try {
+      const band = getChildAgeBand();
+      if (!band) {
+        return null;
+      }
+      return { band, count: countAppsAboveAgeBand(band) };
+    } catch (error) {
+      console.warn("[dashboard] age-rating count failed:", error);
+      return null;
     }
   })();
 
@@ -369,6 +393,7 @@ export default async function DashboardPage({
         />
       )}
       <HomeView
+        ageRatingFlagged={ageRatingFlagged}
         backgroundCalloutVisible={backgroundCalloutVisible}
         editMode={editLayoutRequested && (flags?.layoutEditorVisible ?? true)}
         flags={flags}

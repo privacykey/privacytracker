@@ -57,6 +57,7 @@ import {
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import { isSafeExternalHref } from "../../lib/safe-href";
 import type { ShortlistEntry } from "../../lib/shortlist-types";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import type { AppVerdict, VerdictValue } from "../../lib/verdict-types";
 import VerdictPicker from "./VerdictPicker";
 
@@ -723,14 +724,31 @@ export default function ReviewRecommendationsView({
     [selectedEcid, uninstallQueue, runUninstall]
   );
 
-  // Modal 2 (`bulkModal === 'final'`) autofocuses its type-DELETE
-  // input. The ref is captured here and attached on render.
+  // Modal 2 (`bulkModal === 'final'`) input ref — for the autoFocus
+  // attribute; focus-in is handled by the hook below.
   const confirmInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (bulkModal === "final") {
-      confirmInputRef.current?.focus();
-    }
-  }, [bulkModal]);
+
+  // ── Modal focus management (WCAG 2.4.3 / 2.1.2) ───────────────────
+  // Each hook call moves focus into the dialog card on open, traps Tab
+  // inside it, restores focus to the opener on close, and closes on
+  // Escape (unless the component already owns a window-level handler).
+  //
+  // The outer ReviewRecommendationsView has a page-level Escape handler
+  // that navigates to /dashboard/apps — it intentionally skips while
+  // focus is in an input/textarea, so it will NOT conflict with these
+  // modal Escape closes (which fire first via the hook's listener).
+  const shareFallbackCardRef = useModalFocus<HTMLDivElement>({
+    open: !!shareFallback,
+    onClose: () => setShareFallback(null),
+  });
+  const bulkListCardRef = useModalFocus<HTMLDivElement>({
+    open: bulkModal === "list",
+    onClose: () => setBulkModal(null),
+  });
+  const bulkFinalCardRef = useModalFocus<HTMLDivElement>({
+    open: bulkModal === "final",
+    onClose: () => setBulkModal(null),
+  });
 
   // ── Save / share / print plumbing ──────────────────────────────────
   // Print toggles a body class; the @media print stylesheet hides
@@ -890,14 +908,14 @@ export default function ReviewRecommendationsView({
     setShareFallback({ text: payload.text, url: payload.url });
   }, [buildSharePayload, tAction]);
 
-  // When the manual-copy modal opens, focus + select-all the
-  // textarea so the user can hit Cmd-C / Ctrl-C immediately.
+  // When the manual-copy modal opens, select-all the textarea so the
+  // user can hit Cmd-C / Ctrl-C immediately. Focus is handled by the
+  // shareFallbackCardRef hook above; only the select() is manual here.
   useEffect(() => {
     if (!shareFallback) {
       return;
     }
     const handle = window.requestAnimationFrame(() => {
-      shareFallbackRef.current?.focus();
       shareFallbackRef.current?.select();
     });
     return () => window.cancelAnimationFrame(handle);
@@ -1900,7 +1918,12 @@ export default function ReviewRecommendationsView({
           }}
           role="dialog"
         >
-          <div className="review-rec-modal review-rec-share-modal">
+          <div
+            className="review-rec-modal review-rec-share-modal"
+            onClick={(e) => e.stopPropagation()}
+            ref={shareFallbackCardRef}
+            tabIndex={-1}
+          >
             <h3>{tShareModal("heading")}</h3>
             <p>
               {tShareModal("body_lead")}{" "}
@@ -1946,7 +1969,12 @@ export default function ReviewRecommendationsView({
           }}
           role="dialog"
         >
-          <div className="review-rec-modal">
+          <div
+            className="review-rec-modal"
+            onClick={(e) => e.stopPropagation()}
+            ref={bulkListCardRef}
+            tabIndex={-1}
+          >
             <h3 id="bulk-confirm-title">
               {tConfirm("list_heading", {
                 count: uninstallQueue.filter(
@@ -2034,7 +2062,12 @@ export default function ReviewRecommendationsView({
           }}
           role="dialog"
         >
-          <div className="review-rec-modal">
+          <div
+            className="review-rec-modal"
+            onClick={(e) => e.stopPropagation()}
+            ref={bulkFinalCardRef}
+            tabIndex={-1}
+          >
             {backup.status === "done" && backup.finishedAt ? (
               <>
                 <h3 id="bulk-final-title">{tConfirm("final_heading")}</h3>
@@ -2440,6 +2473,12 @@ function MigrateModal({
   const DESKTOP_DOWNLOAD_URL =
     "https://github.com/privacykey/privacytracker/releases/latest";
 
+  // MigrateModal is only mounted when open; pass open: true.
+  const migrateCardRef = useModalFocus<HTMLDivElement>({
+    open: true,
+    onClose,
+  });
+
   return (
     <div
       aria-label={tMigrate("title_aria")}
@@ -2452,7 +2491,12 @@ function MigrateModal({
       }}
       role="dialog"
     >
-      <div className="review-rec-modal review-rec-modal-wide">
+      <div
+        className="review-rec-modal review-rec-modal-wide"
+        onClick={(e) => e.stopPropagation()}
+        ref={migrateCardRef}
+        tabIndex={-1}
+      >
         <header className="review-rec-migrate-modal-head">
           <h3>{tMigrate("heading")}</h3>
           <button

@@ -22,6 +22,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
+import {
   type AppVerdict,
   VERDICT_META,
   VERDICT_ORDER,
@@ -111,6 +115,14 @@ export default function VerdictPicker({
   type EditStep = "picker" | "reason";
   const [editing, setEditing] = useState(false);
   const [step, setStep] = useState<EditStep>("picker");
+
+  // Roving-tabindex keyboard support for both radiogroups (compact
+  // chips + full picker). `followFocus: false` — selecting a verdict
+  // writes to the server, pushes an undo entry, and (in full mode)
+  // swaps the picker for the rationale step, so arrows move focus
+  // only and Enter/Space commits (the APG variant for radios whose
+  // selection has significant side effects).
+  const verdictRadioKeyDown = useRovingRadioGroup({ followFocus: false });
 
   const showSummary = !!state.user && !editing;
   const showReason = !!state.user && editing && step === "reason";
@@ -417,9 +429,10 @@ export default function VerdictPicker({
       <div
         aria-label={tPicker("options_aria")}
         className="verdict-picker verdict-picker-compact"
+        onKeyDown={verdictRadioKeyDown}
         role="radiogroup"
       >
-        {VERDICT_ORDER.map((value) => {
+        {VERDICT_ORDER.map((value, index) => {
           const meta = VERDICT_META[value];
           const active = state.user?.verdict === value;
           const optionLabel = tVerdict(`${value}_short`);
@@ -432,6 +445,7 @@ export default function VerdictPicker({
               key={value}
               onClick={() => setVerdict(value, state.rationale.trim() || null)}
               role="radio"
+              tabIndex={rovingTabIndex(active, index, !!state.user)}
               title={optionDesc}
               type="button"
             >
@@ -720,9 +734,10 @@ export default function VerdictPicker({
       <div
         aria-label={tPicker("options_aria")}
         className="verdict-picker-options"
+        onKeyDown={verdictRadioKeyDown}
         role="radiogroup"
       >
-        {VERDICT_ORDER.map((value) => {
+        {VERDICT_ORDER.map((value, index) => {
           const meta = VERDICT_META[value];
           const active = state.user?.verdict === value;
           const optionLabel = tVerdict(`${value}_short`);
@@ -735,6 +750,7 @@ export default function VerdictPicker({
               key={value}
               onClick={() => setVerdict(value, state.rationale.trim() || null)}
               role="radio"
+              tabIndex={rovingTabIndex(active, index, !!state.user)}
               title={optionDesc}
               type="button"
             >

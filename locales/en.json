@@ -507,6 +507,11 @@
       "summary": "Advanced options",
       "audience": "Audience",
       "goals": "Goals"
+    },
+    "guardian_age": {
+      "heading": "Child's age range",
+      "hint": "Optional — apps whose App Store age rating sits above this range get flagged across the dashboard. You can change it any time in Settings → Focus.",
+      "resources_link": "How to set up parental controls on their device"
     }
   },
   "focus_strip": {
@@ -589,12 +594,14 @@
       "screenshot_tip_li3": "Home Screen pages with icons visible (but not the folders themselves)",
       "drop_screenshots": "Drop screenshots here, or tap to choose images",
       "drop_screenshots_sub": "PNG, JPG, or HEIC screenshots are all fine.",
+      "drop_screenshots_aria": "Choose screenshot images to import, or drop them here",
       "selected_count": "{count, plural, one {# screenshot selected} other {# screenshots selected}}",
       "scanning": "Scanning screenshots…",
       "show_technical": "Show technical details",
       "file_export_link": "How to export an app list as CSV from your computer ↗",
       "file_drop_text": "Drop a <b>.txt</b> or <b>.csv</b> file, or click to browse",
       "file_drop_sub": "We read the first column so exports from the desktop helper work as-is.",
+      "file_drop_aria": "Choose a .txt or .csv file to import, or drop one here",
       "imported_from": "Imported from {filename}",
       "imported_from_review": "Review the names below before searching the App Store.",
       "configurator_export_lead_desktop": "Or export manually from Apple Configurator 2:",
@@ -959,7 +966,9 @@
       "diagnostic_hint_post": " prompt is sitting on the phone, or restrictions are filtering installed apps. Copy and share this block if you need help diagnosing.",
       "progress_title": "Reading apps from your iPhone…",
       "progress_body": "cfgutil is enumerating every installed app over USB. On a phone with 300 + apps this can take up to a minute. The cursor may show a beach ball briefly — that’s expected, the system call is synchronous.",
-      "progress_tip": "Tip: keep the device unlocked while this runs."
+      "progress_tip": "Tip: keep the device unlocked while this runs.",
+      "step2_properties_probe": "{count, plural, one {This cfgutil build can read # device property.} other {This cfgutil build can read # device properties.}}",
+      "step2_properties_child_hit": "Child-safety related properties detected:"
     },
     "modals": {
       "restore_backup": {
@@ -1475,6 +1484,45 @@
     "audit_bundle_note": "When you export an audit bundle, it includes the apps you're tracking, their privacy labels, your AI-generated summaries, and any annotations you've written. It also includes your privacy profile so the recipient can see why you flagged certain apps. Nothing leaves your device until you explicitly share the file."
   },
   "dev_options": {
+    "focus_matrix": {
+      "filter_aria": "Filter flags",
+      "filter_placeholder": "Filter flags by key or surface…",
+      "matrix_aria": "Focus × Flags matrix",
+      "apply_combo_title": "Apply {combo} as overrides",
+      "hard_default_title": "Hard default: {value}",
+      "hard_default_label": "default: {value}",
+      "cell_title": "{combo}\nResolver: {current}\nAuthored: {authored}",
+      "cell_unset": "(unset)",
+      "only_authored_rows": "Only authored rows",
+      "apply_accessibility_modifier": "Apply accessibility modifier",
+      "seed_button": "Seed from current rules",
+      "copy_spec_button": "Copy spec JSON",
+      "copy_ts_patch_button": "Copy TS patch",
+      "clear_draft_button": "Clear draft",
+      "hint": "Click a cell to cycle <code>on → off → collapsed → unset</code>. Faint value on top is what the resolver returns now; bold value below is what you’re authoring. Use the per-column ↗ button to push that combo’s authored cells in as live overrides for testing.",
+      "flag_column_header": "Flag",
+      "no_flags_match": "No flags match the current filter.",
+      "copy_label_spec_json": "full spec JSON",
+      "copy_label_ts_patch": "TS patch draft",
+      "toast_copied": "Copied · {label}",
+      "toast_copy_failed": "Copy failed — clipboard unavailable",
+      "toast_no_cells": "No cells authored for this combo",
+      "toast_cleared": "Cleared",
+      "toast_seeded": "Seeded with resolver values",
+      "toast_applied": "Applied {applied, plural, one {# override} other {# overrides}} ({skipped} skipped)",
+      "toast_failed": "Failed: {message}",
+      "unknown_error": "unknown error",
+      "confirm_clear_title": "Clear every authored cell?",
+      "confirm_clear_body": "This wipes your draft spec. The action only touches local storage — live overrides aren’t affected.",
+      "confirm_seed_title": "Seed from current resolver values?",
+      "confirm_seed_body": "Every cell will be overwritten with the value the resolver currently produces for that combo. Any work in your draft is lost.",
+      "confirm_seed_confirm": "Seed",
+      "confirm_apply_title": "Apply {count, plural, one {# cell} other {# cells}} as live overrides?",
+      "confirm_apply_body": "Wipes current overrides and replaces them with the {count, plural, one {# authored cell} other {# authored cells}} from {combo}.",
+      "confirm_apply_confirm": "Apply overrides",
+      "cancel": "Cancel",
+      "applying": "Applying…"
+    },
     "feature_flags": {
       "title": "Feature flags",
       "search_placeholder": "Search flags…",
@@ -1781,6 +1829,21 @@
       "tooltip_your_preference": "Your preference",
       "tooltip_no_preference": "No preference",
       "tooltip_hover_inspect": "Hover to inspect",
+      "matrix_hidden_by_filter": "{count, plural, one {# app} other {# apps}} hidden by filter",
+      "matrix_collect_count": "{count, plural, one {# app collects this} other {# apps collect this}}",
+      "matrix_pref_line": "Your preference: {label} at most",
+      "matrix_no_pref_line": "No preference set for this category",
+      "matrix_open_app_title": "Open {name}",
+      "matrix_exceeds_pref": "exceeds your preference",
+      "matrix_load_failed": "Couldn’t load matrix: {error}",
+      "matrix_size": "{shown, number} of {total, plural, one {# app} other {# apps}} × {cols, plural, one {# category} other {# categories}}",
+      "matrix_empty_hint": "Toggle “{label}” off to bring them back.",
+      "sidebar_hidden_count": "{count, plural, one {# app hidden} other {# apps hidden}}",
+      "legend_exceeds_profile": "Exceeds profile",
+      "tooltip_pref_at_most": "{label} at most",
+      "tooltip_exceeds_pref": "⚠ Exceeds your preference",
+      "tooltip_hover_hint": "Hover a row, cell, or category icon to see the details here.",
+      "tooltip_hover_hint_pref": "The coloured bar under each icon shows your preference for that category.",
       "timeline_band_added": "Added privacy categories",
       "timeline_band_removed": "Removed privacy categories",
       "timeline_band_modified": "Modified privacy labels",
@@ -1842,7 +1905,35 @@
     "ack_unsnoozed": "Reminders resumed",
     "ack_jump_title": "Jump to the snapshot this acknowledgement covered",
     "open_archive_title": "Open the Internet Archive snapshot of this policy",
-    "diff_view_aria": "Privacy policy diff"
+    "diff_view_aria": "Privacy policy diff",
+    "request_failed": "Request failed ({status})",
+    "card_first_scan": "🆕 First scan recorded",
+    "card_wayback_baseline": "🕰 Wayback baseline imported",
+    "card_no_changes": "✓ No changes detected",
+    "card_wayback_no_diff": "🕰 Wayback snapshot — no differences from previous",
+    "card_wayback_reconstruction": "🕰 Wayback reconstruction · {count, plural, one {# change} other {# changes}}",
+    "card_changes_detected": "⚡ {count, plural, one {# change detected} other {# changes detected}}",
+    "version_released": "released {date}",
+    "ack_covered_count": "covered {count, plural, one {# pending change} other {# pending changes}}",
+    "ack_snooze_until": "Reminders resume on {date}",
+    "ack_linked_to": "Linked to:",
+    "ack_change_chip": "↳ change #{number}",
+    "preview_loading": "Loading captured text…",
+    "preview_word_count": "{count, plural, one {# word} other {# words}}",
+    "preview_via_origin": "via {origin}",
+    "preview_source_url": "source URL ↗",
+    "preview_wayback_backup": "Wayback backup ↗",
+    "preview_first_seen": "First seen: {date}",
+    "preview_empty": "(empty)",
+    "preview_truncated": "Showing first {shown, number} of {total, number} characters.",
+    "diff_computing": "Computing diff…",
+    "diff_no_differences": "No differences detected between the two captures.",
+    "diff_unchanged_count": "{count, number} unchanged",
+    "diff_comparing": "Comparing {from} → {to}",
+    "diff_truncated_note": "Diff truncated — one side exceeded the line cap.",
+    "diff_overflow": "Showing first {shown, number} of {total, number} diff lines.",
+    "stats_quarterly_failed": "Could not load quarterly stats: {message}",
+    "stats_quarterly_loading": "Loading quarterly stats…"
   },
   "sample_mode": {
     "loading": "Loading sample data…",
@@ -2389,6 +2480,9 @@
     "general_undo_shortlist": "Undo the last shortlist delete (also ⌘Z on macOS)",
     "general_toggle_cheatsheet": "Toggle this shortcut cheat sheet",
     "general_close_dialogs": "Close dialogs and clear a pending g-sequence",
+    "general_zoom_in_desktop": "Zoom the whole app in (desktop View menu, up to 300%)",
+    "general_zoom_out_desktop": "Zoom the whole app out (desktop View menu)",
+    "general_zoom_reset_desktop": "Reset app zoom to 100% (desktop View menu)",
     "verb_navigating": "Navigating to",
     "verb_opening": "Opening"
   },
@@ -2514,7 +2608,7 @@
     },
     "row": {
       "open_app_aria": "Open {name} in detail",
-      "view_app_link": "Open app",
+      "view_app_link": "{kind, select, policy_change {View {name} policy change} privacy_policy {View {name} privacy policy} policy_error {View {name} policy status} privacy_added {View {name} added labels} privacy_removed {View {name} removed labels} privacy_modified {View {name} label changes} accessibility_added {View {name} accessibility additions} accessibility_removed {View {name} accessibility removals} accessibility_modified {View {name} accessibility changes} archive_import {View {name} archive import} age_rating {View {name} age rating} other {View {name}}}",
       "wayback_link": "View on Wayback",
       "details_more": "{count, plural, one {+ # more category} other {+ # more categories}}"
     },
@@ -2564,6 +2658,7 @@
     "scale_larger_title": "Larger",
     "scale_reset_aria": "Reset text size to default",
     "scale_reset": "Reset to default",
+    "scale_desktop_zoom_hint": "Need larger? The View menu zooms the whole app up to 300% — press ⌘/Ctrl = to zoom in, ⌘/Ctrl - to zoom out, ⌘/Ctrl 0 to reset.",
     "theme_title": "Theme",
     "theme_hint": "Pick how the app colours itself. High contrast is tuned for switch / low-vision users (pure black, thick white borders, yellow focus).",
     "theme_aria": "Theme",
@@ -2643,7 +2738,11 @@
       "security_hygiene_jump": "Jump to stale apps →",
       "new_to_privacy_labels_title": "New to privacy labels?",
       "new_to_privacy_labels_body": "Apple sorts the data an app can collect into categories like Contact Info, Location, Health & Fitness, and more. Each category is tagged with how it's used — linked to you, used to track you across apps, or neither.",
-      "definitions_link": "Read the privacy-label definitions →"
+      "definitions_link": "Read the privacy-label definitions →",
+      "age_rating_title": "{count, plural, one {# app is rated above your child's age range} other {# apps are rated above your child's age range}}",
+      "age_rating_body": "Based on the {band} age range you set, {count, plural, one {one tracked app carries} other {# tracked apps carry}} a higher App Store age rating. Review them, or tighten the device's own restrictions.",
+      "age_rating_review_link": "Review flagged apps →",
+      "age_rating_resources_link": "Parental controls guide →"
     },
     "headsup": {
       "review_label": "{count, plural, one {# app has unreviewed changes} other {# apps have unreviewed changes}}",
@@ -2672,6 +2771,7 @@
     "sections": {
       "needs_attention": "Needs attention",
       "recent_changes": "Recent changes",
+      "open_app_title": "Open {name}",
       "all_apps": "All apps",
       "high_severity": "High severity",
       "by_category": "By category",
@@ -2823,7 +2923,8 @@
           "profile_mismatch_section": "Consider replacing",
           "stale_section": "Stale apps",
           "activity_section": "This week's activity",
-          "risk_tier_legend": "Risk-tier legend"
+          "risk_tier_legend": "Risk-tier legend",
+          "age_rating_callout": "Age-range callout"
         },
         "descriptions": {
           "task_list": "The audience-aware tasks panel at the very top.",
@@ -2842,7 +2943,8 @@
           "profile_mismatch_section": "Apps that exceed the thresholds in your privacy profile.",
           "stale_section": "Apps not refreshed in 30+ days.",
           "activity_section": "Recent scrapes, imports, and edits across your library.",
-          "risk_tier_legend": "Collapsible reference for how each risk tier is defined."
+          "risk_tier_legend": "Collapsible reference for how each risk tier is defined.",
+          "age_rating_callout": "\"Apps rated above your child's age range\" notice for the guardian focus."
         }
       },
       "edit_cards_aria": "Editable dashboard cards"
@@ -2937,8 +3039,11 @@
     "remove_app_aria": "Remove {name} from tracking",
     "open_custom_aria": "Open {name} in custom apps",
     "remove_custom_title": "Remove {name} from custom apps",
+    "removing_custom_aria": "Removing {name}",
     "deselect_app_aria": "Deselect {name}",
     "deselect_app_title": "Deselect {name}",
+    "select_compare_title": "Select {name} for comparison",
+    "open_app_shift_hint_title": "Open {name} — Shift-click to add to compare",
     "search_placeholder": "Search apps…",
     "filters": {
       "all": "All",
@@ -3027,7 +3132,30 @@
     "modal_remove_app": "Remove app",
     "modal_removing": "Removing…",
     "modal_remove_custom_title": "Remove {name}?",
-    "modal_remove_custom_body": "This deletes the custom app entry, its source URL, and any notes you've attached. You can add it back later by creating a new custom app."
+    "modal_remove_custom_body": "This deletes the custom app entry, its source URL, and any notes you've attached. You can add it back later by creating a new custom app.",
+    "age_filter_label": "Age range",
+    "age_all_label": "All",
+    "age_within_label": "Within range",
+    "age_within_title": "Apps rated at or below the child's age range",
+    "age_above_label": "Above range",
+    "age_above_title": "Apps rated above the child's age range",
+    "age_filter_above_chip": "rated above the child's age range",
+    "age_filter_within_chip": "rated within the child's age range",
+    "clear_age_aria": "Clear the age-range filter",
+    "clear_age_title": "Show all ratings",
+    "age_pill_label": "{rating} · above range",
+    "age_pill_title": "Rated {rating} on the App Store — above the child's age range you set",
+    "a11y_filter_label": "Accessibility",
+    "a11y_all_label": "All",
+    "policy_linked_label": "Policy linked",
+    "custom_pill_label": "Custom",
+    "mismatch_filter_chip": "profile mismatches",
+    "a11y_filter_has_chip": "has accessibility features",
+    "a11y_filter_missing_chip": "no accessibility features",
+    "change_dot_privacy_title": "{count, plural, one {# privacy label change detected} other {# privacy label changes detected}}",
+    "change_dot_accessibility_title": "{count, plural, one {# accessibility label change detected} other {# accessibility label changes detected}}",
+    "change_dot_both_title": "{count, plural, one {# privacy and accessibility label change detected} other {# privacy and accessibility label changes detected}}",
+    "change_dot_generic_title": "{count, plural, one {# permission change detected} other {# permission changes detected}}"
   },
   "review_queue": {
     "mode_toggle": {
@@ -3214,7 +3342,8 @@
     "preview_text_button": "Preview captured text",
     "hide_preview_button": "Hide preview",
     "version_updated_no_label_changes": "📱 New version released: v{version}; no label changes",
-    "show_wayback_imports": "Show Wayback imports"
+    "show_wayback_imports": "Show Wayback imports",
+    "wayback_import_count": "{count, plural, one {# Wayback import} other {# Wayback imports}} in this timeline"
   },
   "onboard_status": {
     "fetch_ready": "Already up to date",
@@ -3722,7 +3851,13 @@
       "required_desc": "I won't use an app that doesn't declare this feature.",
       "nice": "Nice",
       "nice_desc": "I'd prefer apps that declare this, but it's not a deal-breaker."
-    }
+    },
+    "age_pill": "Ages {rating}",
+    "age_pill_title": "App Store age rating",
+    "age_pill_within_title": "Rated {rating} — within the {band} age range you set",
+    "age_pill_above": "Ages {rating} · above range",
+    "age_pill_above_title": "Rated {rating} — above the {band} age range you set",
+    "age_resources_link": "Parental controls guide"
   },
   "privacy_policy_page": {
     "back_to_app": "← Back to app",
@@ -5360,6 +5495,9 @@
       "previous_page": "previous page"
     }
   },
+  "layout_regions": {
+    "global_overlays": "Global overlays"
+  },
   "nojs": {
     "eyebrow": "JavaScript required",
     "title": "This app needs JavaScript to run",
@@ -5406,5 +5544,42 @@
     "tooltip_free": "Free to download from the App Store.",
     "tooltip_iap_yes": "Offers in-app purchases — features or content can be unlocked for additional payment.",
     "tooltip_iap_no": "No in-app purchases reported on the listing."
+  },
+  "age_band": {
+    "labels": {
+      "under_9": "Under 9",
+      "9_12": "9–12",
+      "13_15": "13–15",
+      "16_17": "16–17",
+      "18_plus": "18+"
+    }
+  },
+  "help_parental": {
+    "metadata_title": "Parental Controls Guide — privacytracker",
+    "metadata_description": "How to set up Screen Time, app and content restrictions, child accounts, and Ask to Buy on a child's iPhone or iPad.",
+    "kicker": "Guardian Guide",
+    "title": "Set up parental controls on their device",
+    "subtitle": "privacytracker can flag apps rated above your child's age range, but the device itself enforces the rules. These official resources cover time limits, app restrictions, and purchase approvals.",
+    "back_to_dashboard": "Back to dashboard",
+    "family_hub_title": "Apple Families hub",
+    "family_hub_copy": "Apple's overview of every family feature in one place — a good starting point if you haven't set anything up yet.",
+    "family_hub_link": "Open apple.com/families",
+    "parental_controls_title": "App & content restrictions",
+    "parental_controls_copy": "Content & Privacy Restrictions can block apps above a chosen age rating, filter web content, and stop explicit media — enforced on the device itself.",
+    "parental_controls_link": "Apple support: parental controls",
+    "screen_time_title": "Screen Time & time limits",
+    "screen_time_copy": "Set downtime (a schedule when the device locks down), daily per-app time limits, and communication limits.",
+    "screen_time_link": "Apple support: Screen Time",
+    "child_account_title": "A child account in Family Sharing",
+    "child_account_copy": "A proper child Apple Account gets age-appropriate defaults automatically and is what makes age-range sharing, Ask to Buy, and Screen Time-from-your-phone possible.",
+    "child_account_link": "Apple support: child accounts",
+    "ask_to_buy_title": "Ask to Buy",
+    "ask_to_buy_copy": "Every download or purchase on the child's device sends an approval request to your phone first — including free apps.",
+    "ask_to_buy_link": "Apple support: Ask to Buy",
+    "esafety_title": "eSafety Commissioner (Australia)",
+    "esafety_copy": "Independent, vendor-neutral guidance for parents: talking to kids about being online, screen-time strategies, and what to do when something goes wrong.",
+    "esafety_link": "Open esafety.gov.au/parents",
+    "how_we_flag_title": "How privacytracker flags apps",
+    "how_we_flag_copy": "When a guardian focus has a child age range set, every tracked app's App Store age rating (4+, 9+, 13+, 16+, 18+) is compared against it. Apps rated above the range get a warning pill on the app grid and the app's detail page, plus a dashboard notice. Apps with no captured rating are never flagged — no data, no alarm."
   }
 }

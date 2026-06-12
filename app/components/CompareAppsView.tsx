@@ -22,13 +22,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 // Co-located CSS for the slot card + modal — keeps Turbopack hot-reload
 // reliable, unlike appending to the 26k-line globals.css.
 import "./compare-slot.css";
@@ -52,6 +46,7 @@ import {
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../lib/privacy-profile";
 import type { ShortlistEntry } from "../../lib/shortlist-types";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
 // ── Types (match the API shape in /api/compare/route.ts) ───────────────
@@ -1037,24 +1032,10 @@ function SlotCard(props: {
   const tCompare = useTranslations("compare");
   const tRisk = useTranslations("risk");
   const [modalOpen, setModalOpen] = useState(false);
-  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
-
-  // Esc + autofocus the modal's close button so keyboard users can
-  // tab through the picker without losing focus context.
-  useEffect(() => {
-    if (!modalOpen) {
-      return;
-    }
-    closeBtnRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setModalOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [modalOpen]);
+  const modalCardRef = useModalFocus<HTMLDivElement>({
+    open: modalOpen,
+    onClose: () => setModalOpen(false),
+  });
 
   // Resolve a best-guess preview of the picked app for the card body.
   // Prefer the live SlotData (which has the freshest icon URL + name);
@@ -1190,6 +1171,8 @@ function SlotCard(props: {
           <div
             className="modal-card compare-slot-modal-card"
             onClick={(e) => e.stopPropagation()}
+            ref={modalCardRef}
+            tabIndex={-1}
           >
             <header className="compare-slot-modal-header">
               <h2 className="compare-slot-modal-title">
@@ -1199,7 +1182,6 @@ function SlotCard(props: {
                 aria-label={tCompare("slot_card_modal_close_aria")}
                 className="compare-slot-modal-close"
                 onClick={() => setModalOpen(false)}
-                ref={closeBtnRef}
                 title={tCompare("slot_card_modal_close_title")}
                 type="button"
               >

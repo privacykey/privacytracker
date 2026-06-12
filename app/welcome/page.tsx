@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { isValidAgeBand } from "@/lib/age-rating";
 import {
   getActiveFocus,
   getActiveFocusWorkflow,
@@ -47,5 +48,12 @@ export default function WelcomePage() {
         }
       : null;
 
-  return <WelcomeSplash initialFocus={initialFocus} />;
+  const storedBand = getSetting("guardian_child_age_band", "");
+
+  return (
+    <WelcomeSplash
+      initialChildAgeBand={isValidAgeBand(storedBand) ? storedBand : null}
+      initialFocus={initialFocus}
+    />
+  );
 }

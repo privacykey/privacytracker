@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import FocusEditForm from "@/app/components/FocusEditForm";
 import Nav from "@/app/components/Nav";
+import { isValidAgeBand } from "@/lib/age-rating";
 import {
   getActiveFocus,
   getActiveFocusWorkflow,
 } from "@/lib/feature-flag-storage";
+import { getSetting } from "@/lib/scheduler";
 
 /**
  * /dashboard/settings/focus — single-screen audience + goals editor
@@ -31,6 +33,7 @@ export default function FocusEditPage() {
   // needs an initial value. Shouldn't be reachable in practice.
   const initialAudience = focus.audience ?? "self";
   const initialWorkflow = getActiveFocusWorkflow(focus);
+  const storedBand = getSetting("guardian_child_age_band", "");
 
   return (
     <>
@@ -38,6 +41,7 @@ export default function FocusEditPage() {
       <FocusEditForm
         initialAccessibility={focus.goals.has("accessibility")}
         initialAudience={initialAudience}
+        initialChildAgeBand={isValidAgeBand(storedBand) ? storedBand : null}
         initialDeclutter={focus.goals.has("declutter")}
         initialMinimal={focus.goals.has("minimal")}
         initialUnderstand={focus.goals.has("understand")}

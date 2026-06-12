@@ -28,6 +28,8 @@ import {
   localiseBadgeLabel,
 } from "../../lib/i18n-meta";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
+import { useModalFocus } from "../../lib/use-modal-focus";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import type { VerdictValue } from "../../lib/verdict-types";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import VerdictPill from "./VerdictPill";
@@ -509,6 +511,23 @@ export default function ReviewQueue({
     return () => window.removeEventListener("keydown", onKey);
   }, [phase.kind, finish, onClose]);
 
+  // ── Modal focus management (WCAG 2.4.3 / 2.1.2) ───────────────────
+  // Running and summary phases have the window-level Escape handler
+  // above, so closeOnEscape: false prevents a double-close. The
+  // review-queue-fullscreen div IS the dialog card (no inner wrapper),
+  // so the ref and tabIndex go directly on it.
+  // PreflightModal is a sub-component that owns its own hook.
+  const runningCardRef = useModalFocus<HTMLDivElement>({
+    open: phase.kind === "running",
+    onClose,
+    closeOnEscape: false,
+  });
+  const summaryCardRef = useModalFocus<HTMLDivElement>({
+    open: phase.kind === "summary",
+    onClose: finish,
+    closeOnEscape: false,
+  });
+
   // ─────────────────────────────────────────────
   // Phase rendering
   // ─────────────────────────────────────────────
@@ -533,7 +552,13 @@ export default function ReviewQueue({
     const batch = phase.batches[phase.batchIndex];
     const app = batch[phase.cardIndex];
     return (
-      <div aria-modal="true" className="review-queue-fullscreen" role="dialog">
+      <div
+        aria-modal="true"
+        className="review-queue-fullscreen"
+        ref={runningCardRef}
+        role="dialog"
+        tabIndex={-1}
+      >
         <RunningHeader
           batchIndex={phase.batchIndex}
           batchSize={batch.length}
@@ -574,7 +599,9 @@ export default function ReviewQueue({
     <div
       aria-modal="true"
       className="review-queue-fullscreen review-queue-summary-wrap"
+      ref={summaryCardRef}
       role="dialog"
+      tabIndex={-1}
     >
       <SummaryScreen
         batchIndex={phase.batchIndex}
@@ -618,11 +645,16 @@ function PreflightModal({
   onCancel,
   t,
 }: PreflightProps) {
-  // Focus the start button on open so Enter starts immediately.
+  // PreflightModal is only mounted while open; pass open: true.
+  // closeOnEscape: false — the Esc useEffect below already handles it.
+  const preflightCardRef = useModalFocus<HTMLDivElement>({
+    open: true,
+    onClose: onCancel,
+    closeOnEscape: false,
+  });
+
+  // Kept for start-button ref (used to disable/enable Start button).
   const startBtnRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    startBtnRef.current?.focus();
-  }, []);
 
   // Esc dismisses; Enter triggers start when enabled.
   useEffect(() => {
@@ -635,6 +667,11 @@ function PreflightModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
+
+  // APG keyboard contract for the three option radiogroups (scope /
+  // sort / split): one tab stop each, arrows move focus + selection
+  // (all local preflight state — nothing fires until the run starts).
+  const preflightRadioKeyDown = useRovingRadioGroup();
 
   const splitSize = preflight.split;
 
@@ -652,7 +689,12 @@ function PreflightModal({
       className="modal-overlay review-queue-preflight-overlay"
       role="dialog"
     >
-      <div className="modal-card review-queue-preflight-card">
+      <div
+        className="modal-card review-queue-preflight-card"
+        onClick={(e) => e.stopPropagation()}
+        ref={preflightCardRef}
+        tabIndex={-1}
+      >
         <header className="review-queue-preflight-header">
           <h2 className="review-queue-preflight-title">
             {t("preflight.title")}
@@ -670,6 +712,7 @@ function PreflightModal({
           <div
             aria-label={t("preflight.scope_label")}
             className="review-queue-scope-grid"
+            onKeyDown={preflightRadioKeyDown}
             role="radiogroup"
           >
             {QUEUE_SCOPE_VALUES.map((scope) => {
@@ -683,6 +726,7 @@ function PreflightModal({
                   key={scope}
                   onClick={() => onChange({ ...preflight, scope })}
                   role="radio"
+                  tabIndex={active ? 0 : -1}
                   title={t(`preflight.scope_desc.${scope}`)}
                   type="button"
                 >
@@ -709,6 +753,7 @@ function PreflightModal({
               </span>
               <div
                 className="review-queue-preflight-pill-row"
+                onKeyDown={preflightRadioKeyDown}
                 role="radiogroup"
               >
                 {QUEUE_SORT_VALUES.map((sort) => {
@@ -722,6 +767,7 @@ function PreflightModal({
                       key={sort}
                       onClick={() => onChange({ ...preflight, sort })}
                       role="radio"
+                      tabIndex={active ? 0 : -1}
                       type="button"
                     >
                       {t(`preflight.sort_short.${sort}`)}
@@ -736,6 +782,7 @@ function PreflightModal({
               </span>
               <div
                 className="review-queue-preflight-pill-row"
+                onKeyDown={preflightRadioKeyDown}
                 role="radiogroup"
               >
                 {QUEUE_SPLIT_VALUES.map((s) => {
@@ -748,6 +795,7 @@ function PreflightModal({
                       key={value}
                       onClick={() => onChange({ ...preflight, split: s })}
                       role="radio"
+                      tabIndex={active ? 0 : -1}
                       type="button"
                     >
                       {splitPillLabel(s)}

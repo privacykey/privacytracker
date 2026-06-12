@@ -59,7 +59,16 @@ interface DesktopSettings {
    *  (main.rs::setup) and live when the user toggles the switch in
    *  the desktop-app settings card. */
   tray_visible: boolean;
+  /** Webview page-zoom level (1.0 = 100%). Stepped by the desktop
+   *  shell's View-menu zoom items (src-tauri/src/zoom.rs POSTs the new
+   *  value here, debounced) and re-applied at boot via settings::fetch
+   *  so the user's zoom survives quit/relaunch. Clamped to the same
+   *  0.5–3.0 range as the Rust-side ladder. */
+  zoom_level: number;
 }
+
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 3.0;
 
 // Keep this in sync with src-tauri/src/settings.rs::DesktopSettings defaults.
 const DEFAULTS: DesktopSettings = {
@@ -73,6 +82,7 @@ const DEFAULTS: DesktopSettings = {
   theme_override: "system",
   devtools_open: false,
   tray_visible: true,
+  zoom_level: 1,
 };
 
 // Map between UI-facing short names and the persisted app_settings keys.
@@ -89,6 +99,7 @@ const KEYS: Record<keyof DesktopSettings, string> = {
   theme_override: "desktop_theme_override",
   devtools_open: "desktop_devtools_open",
   tray_visible: "desktop_tray_visible",
+  zoom_level: "desktop_zoom_level",
 };
 
 function readSetting<K extends keyof DesktopSettings>(
@@ -114,6 +125,14 @@ function readSetting<K extends keyof DesktopSettings>(
       return (
         ["system", "light", "dark"].includes(raw) ? raw : def
       ) as DesktopSettings[K];
+    case "zoom_level": {
+      const z = Number.parseFloat(raw);
+      return (
+        Number.isFinite(z) && z >= ZOOM_MIN && z <= ZOOM_MAX
+          ? z
+          : (def as number)
+      ) as DesktopSettings[K];
+    }
     default:
       // Boolean keys.
       return (raw === "true") as DesktopSettings[K];
@@ -157,6 +176,15 @@ function writeSetting<K extends keyof DesktopSettings>(
     setSetting(KEYS[key], String(value));
     return;
   }
+  if (key === "zoom_level") {
+    const z =
+      typeof value === "number" ? value : Number.parseFloat(String(value));
+    if (!Number.isFinite(z) || z < ZOOM_MIN || z > ZOOM_MAX) {
+      return;
+    }
+    setSetting(KEYS[key], String(z));
+    return;
+  }
   // Boolean-typed keys.
   if (defType === "boolean") {
     setSetting(KEYS[key], value ? "true" : "false");
@@ -175,6 +203,7 @@ function readAll(): DesktopSettings {
     theme_override: readSetting("theme_override"),
     devtools_open: readSetting("devtools_open"),
     tray_visible: readSetting("tray_visible"),
+    zoom_level: readSetting("zoom_level"),
   };
 }
 
@@ -193,6 +222,7 @@ function serialise(s: DesktopSettings): Record<string, unknown> {
     desktop_theme_override: s.theme_override,
     desktop_devtools_open: s.devtools_open,
     desktop_tray_visible: s.tray_visible,
+    desktop_zoom_level: s.zoom_level,
   };
 }
 

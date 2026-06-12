@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 /**
  * Double-confirm modal for the step-2 upfront diff. Shows the user the
@@ -36,24 +37,16 @@ export default function Step2DiffConfirmModal({
   onBack,
 }: Step2DiffConfirmModalProps) {
   const t = useTranslations("onboard.step2_diff.confirm");
-  const primaryRef = useRef<HTMLButtonElement | null>(null);
-  const restoreRef = useRef<HTMLElement | null>(null);
+  // closeOnEscape: false — the existing handler below guards on !busy so
+  // Escape is blocked while the commit is in flight; the hook's generic
+  // handler doesn't know about that guard, so we keep ownership here.
+  const modalCardRef = useModalFocus<HTMLDivElement>({
+    open,
+    onClose: onBack,
+    closeOnEscape: false,
+  });
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    restoreRef.current =
-      typeof document === "undefined"
-        ? null
-        : (document.activeElement as HTMLElement | null);
-    const id = window.setTimeout(() => primaryRef.current?.focus(), 0);
-    return () => {
-      window.clearTimeout(id);
-      restoreRef.current?.focus?.();
-    };
-  }, [open]);
-
+  // Escape closes only when not busy (commit in flight must not be cancelled).
   useEffect(() => {
     if (!open) {
       return;
@@ -86,7 +79,9 @@ export default function Step2DiffConfirmModal({
         aria-labelledby="step2-diff-confirm-title"
         aria-modal="true"
         className="modal-card"
+        ref={modalCardRef}
         role="dialog"
+        tabIndex={-1}
       >
         <header className="modal-card-header">
           <h2 id="step2-diff-confirm-title">{t("title")}</h2>
@@ -126,7 +121,6 @@ export default function Step2DiffConfirmModal({
             className="btn btn-primary"
             disabled={busy}
             onClick={onConfirm}
-            ref={primaryRef}
             type="button"
           >
             {busy ? t("committing") : t("continue")}

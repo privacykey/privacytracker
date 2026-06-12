@@ -6,6 +6,7 @@ const meta: Meta<typeof WelcomeSplash> = {
   component: WelcomeSplash,
   parameters: { layout: "fullscreen" },
   args: {
+    initialChildAgeBand: null,
     initialFocus: {
       audience: "self",
       understand: true,

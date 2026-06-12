@@ -35,6 +35,7 @@ import { useFlag } from "../../lib/feature-flags-hooks";
 import { CATEGORY_META } from "../../lib/privacy-meta";
 import { TYPE_IDENTIFIER_TO_TIER } from "../../lib/privacy-profile";
 import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 interface PreviewLike {
   developer: string;
@@ -65,7 +66,13 @@ export interface SocialShareModalProps {
 
 /* ─── Canvas palette ─────────────────────────────────────────────────────
  * Matches the app's dark-mode tokens (see app/globals.css :root). Hard-
- * coded here because canvas.ctx can't resolve CSS custom properties. */
+ * coded here because canvas.ctx can't resolve CSS custom properties — and
+ * deliberately NOT theme-resolved (unlike the stats charts, which read the
+ * tokens via lib/use-chart-colors.ts): the share card is exported as a PNG
+ * over the fixed dark `bg` below, independent of the viewer's page theme,
+ * so the bright dark-palette severity colours are the correct ones in
+ * every theme. Swapping them for the light tokens would paint dark-on-dark
+ * in the exported image. */
 const PALETTE = {
   bg: "#0b0f14",
   bgAccent: "#141a22",
@@ -625,6 +632,13 @@ export function SocialShareModal({
   );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // closeOnEscape: false — the existing keydown handler below also owns
+  // Cmd/Ctrl+C for image copy; keeping one listener avoids double-fire.
+  const dialogCardRef = useModalFocus<HTMLDivElement>({
+    open: true,
+    onClose,
+    closeOnEscape: false,
+  });
 
   // Load the alternative preview whenever the selected entry changes.
   // `loadPreview` is intentionally excluded from the dep list — its
@@ -882,7 +896,7 @@ export function SocialShareModal({
       }}
       role="dialog"
     >
-      <div className="social-share-dialog">
+      <div className="social-share-dialog" ref={dialogCardRef} tabIndex={-1}>
         <div className="social-share-header">
           <div>
             <h2 className="social-share-title" id="social-share-title">

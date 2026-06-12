@@ -5,6 +5,11 @@
 # ── Next.js build output ─────────────────────────────────────────────
 /.next
 /.next-build-check
+# Secondary dist dirs (NEXT_DIST_DIR) used by preview/audit/E2E servers
+# so they can run alongside a long-lived `next dev` holding the .next lock.
+/.next-preview
+/.next-preview-theme-audit
+/.next-audit
 /out
 
 # Next.js writes this with a different routes-types import path

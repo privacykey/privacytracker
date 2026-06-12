@@ -1,8 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 interface Props {
   onClose: () => void;
@@ -34,20 +35,16 @@ export default function LiveTextModal({ open, onClose }: Props) {
   // focus, which is a safe no-op (the textarea below is the real input).
   const liveTextOn = useFlag("flag.global.live_text_modal") === "on";
 
-  const confirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  const liveTextModalRef = useModalFocus<HTMLDivElement>({ open, onClose });
 
-  // Autofocus the primary action on open, and keep the page behind the modal
-  // from scrolling. A tiny timeout gives React a tick to mount the node
-  // before we poke at its ref.
+  // Keep the page behind the modal from scrolling while it is open.
   useEffect(() => {
     if (!open) {
       return;
     }
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const handle = setTimeout(() => confirmButtonRef.current?.focus(), 30);
     return () => {
-      clearTimeout(handle);
       document.body.style.overflow = original;
     };
   }, [open]);
@@ -66,12 +63,9 @@ export default function LiveTextModal({ open, onClose }: Props) {
         aria-modal="true"
         className="modal-card live-text-modal"
         onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            onClose();
-          }
-        }}
+        ref={liveTextModalRef}
         role="dialog"
+        tabIndex={-1}
       >
         {/* Dedicated close button — the only obvious dismiss affordance on
             touch devices where Escape isn't available and backdrop taps can
@@ -147,12 +141,7 @@ export default function LiveTextModal({ open, onClose }: Props) {
         </div>
 
         <div className="modal-actions">
-          <button
-            className="btn btn-primary"
-            onClick={onClose}
-            ref={confirmButtonRef}
-            type="button"
-          >
+          <button className="btn btn-primary" onClick={onClose} type="button">
             {t("got_it")}
           </button>
         </div>

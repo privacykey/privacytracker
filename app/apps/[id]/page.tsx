@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import type { AccessibilityProfile } from "../../../lib/accessibility-profile";
 import { getAccessibilityProfile } from "../../../lib/accessibility-profile-server";
+import { type AgeBandKey, isValidAgeBand } from "../../../lib/age-rating";
 import { normalizeAiProvider } from "../../../lib/ai-config";
 import {
   getChangelog,
@@ -88,6 +89,8 @@ export default async function AppDetailPage({
   // Stored as 'true'/'false'; anything non-'false' is treated as on so
   // pre-feature installs default to showing the new surface.
   let trackAccessibility = true;
+  // Guardian child age band — drives the header age-rating verdict chip.
+  let childAgeBand: AgeBandKey | null = null;
 
   try {
     const { id } = await params;
@@ -144,6 +147,9 @@ export default async function AppDetailPage({
 
     trackAccessibility =
       getSetting("track_accessibility_labels", "true") !== "false";
+
+    const rawBand = getSetting("guardian_child_age_band", "");
+    childAgeBand = isValidAgeBand(rawBand) ? rawBand : null;
   } catch (error) {
     // DB not ready
     console.warn("[app-detail] Could not load app/changelog/settings:", error);
@@ -176,6 +182,7 @@ export default async function AppDetailPage({
           "flag.detail.annotations_sidebar"
         ),
         audience: focus.audience,
+        guardianAgeRating: r("flag.guardian.age_rating"),
         headerFreshnessBadge: r("flag.detail.header.freshness_badge"),
         headerChangeCountBadge: r("flag.detail.header.change_count_badge"),
         headerA11yCountChip: r("flag.detail.header.a11y_count_chip"),
@@ -245,6 +252,8 @@ export default async function AppDetailPage({
       return {
         annotationsSidebar: "collapsed",
         audience: "self",
+        // Guarded surface — stays off when the resolver is down.
+        guardianAgeRating: false,
         headerFreshnessBadge: true,
         headerChangeCountBadge: true,
         headerA11yCountChip: true,
@@ -306,6 +315,7 @@ export default async function AppDetailPage({
         aiProvider={aiProvider}
         app={app}
         changelog={changelog}
+        childAgeBand={childAgeBand}
         detailFlags={detailFlags}
         importProvenance={importProvenance}
         policyDiffAlertDays={policyDiffAlertDays}

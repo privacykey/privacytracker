@@ -42,16 +42,20 @@ import { CATEGORY_META } from "../../../lib/privacy-meta";
 import {
   type PrivacyProfile,
   type ProfileTier,
-  TIER_META,
   TIER_RANK,
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../../lib/privacy-profile";
 import type { MatrixData } from "../../../lib/stats-views-shared";
 
+// Severity colours read the CSS design tokens (dark hexes as fallbacks) so
+// the cells, legend swatches, and hover panel follow the light /
+// high-contrast palettes in globals.css. This view is pure DOM — var()
+// resolves per theme for free; the canvas charts use useChartColors()
+// from lib/use-chart-colors.ts instead.
 const SEV_COLOR: Record<string, string> = {
-  DATA_NOT_LINKED_TO_YOU: "#d8c7a3",
-  DATA_LINKED_TO_YOU: "#ff9f0a",
-  DATA_USED_TO_TRACK_YOU: "#ff453a",
+  DATA_NOT_LINKED_TO_YOU: "var(--cream, #d8c7a3)",
+  DATA_LINKED_TO_YOU: "var(--orange, #ff9f0a)",
+  DATA_USED_TO_TRACK_YOU: "var(--red, #ff453a)",
 };
 /** Severity → translation-key map. The actual labels come from
  *  `stats.charts.swatch_*` so they stay in sync with the heatmap legend. */
@@ -60,7 +64,11 @@ const SEV_LABEL_KEY: Record<string, string> = {
   DATA_LINKED_TO_YOU: "swatch_linked",
   DATA_USED_TO_TRACK_YOU: "swatch_track",
 };
-const EMPTY = "#1d1d25";
+// "No data" cell fill. Follows the tertiary-background token so empty
+// cells read as quiet background in every theme (light grey on a light
+// page) instead of near-black squares that look like strong data. The
+// fallback keeps the original dark value for any context without tokens.
+const EMPTY = "var(--bg-3, #1d1d25)";
 
 // Preference-tier colour. Reuses the severity palette so "your tolerance"
 // speaks the same colour language as the cells below it — if the bar under
@@ -68,9 +76,9 @@ const EMPTY = "#1d1d25";
 // (orange/red) is a mismatch.
 const PREF_COLOR: Record<ProfileTier, string> = {
   not_collected: "var(--text-3)",
-  not_linked: "#d8c7a3",
-  linked: "#ff9f0a",
-  tracking: "#ff453a",
+  not_linked: "var(--cream, #d8c7a3)",
+  linked: "var(--orange, #ff9f0a)",
+  tracking: "var(--red, #ff453a)",
 };
 
 interface HoverState {
@@ -82,6 +90,7 @@ interface HoverState {
 
 export default function SmallMultiples() {
   const tCharts = useTranslations("stats.charts");
+  const tTier = useTranslations("privacy_profile_tier_short");
   const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -163,7 +172,7 @@ export default function SmallMultiples() {
   if (error) {
     return (
       <div className="empty-state" style={{ padding: 24 }}>
-        Couldn&apos;t load matrix: {error}
+        {tCharts("matrix_load_failed", { error })}
       </div>
     );
   }
@@ -215,13 +224,15 @@ export default function SmallMultiples() {
               className="sm-legend-count"
               title={
                 hiddenCount > 0
-                  ? `${hiddenCount} app${hiddenCount === 1 ? "" : "s"} hidden by filter`
+                  ? tCharts("matrix_hidden_by_filter", { count: hiddenCount })
                   : undefined
               }
             >
-              {sorted.length} of {data.apps.length} app
-              {data.apps.length === 1 ? "" : "s"} × {cols} categor
-              {cols === 1 ? "y" : "ies"}
+              {tCharts("matrix_size", {
+                shown: sorted.length,
+                total: data.apps.length,
+                cols,
+              })}
             </div>
             {data.categories.map((cat) => {
               const meta = CATEGORY_META[cat.identifier];
@@ -232,8 +243,8 @@ export default function SmallMultiples() {
               // needing a separate on-hover popover for the header.
               const prefTitle = prefOverlay
                 ? pref
-                  ? `\nYour preference: ${TIER_META[pref].shortLabel} at most`
-                  : "\nNo preference set for this category"
+                  ? `\n${tCharts("matrix_pref_line", { label: tTier(pref) })}`
+                  : `\n${tCharts("matrix_no_pref_line")}`
                 : "";
               return (
                 <div
@@ -247,7 +258,7 @@ export default function SmallMultiples() {
                       sev: null,
                     })
                   }
-                  title={`${cat.label}${meta?.description ? ` — ${meta.description}` : ""}\n${cat.appCount} app${cat.appCount === 1 ? "" : "s"} collect this${prefTitle}`}
+                  title={`${cat.label}${meta?.description ? ` — ${meta.description}` : ""}\n${tCharts("matrix_collect_count", { count: cat.appCount })}${prefTitle}`}
                 >
                   <div className="sm-category-icon">{meta?.icon ?? "•"}</div>
                   {/* Preference bar directly below the icon. Renders only
@@ -258,7 +269,9 @@ export default function SmallMultiples() {
                   {prefOverlay &&
                     (pref ? (
                       <div
-                        aria-label={`Your preference: ${TIER_META[pref].shortLabel} at most`}
+                        aria-label={tCharts("matrix_pref_line", {
+                          label: tTier(pref),
+                        })}
                         className="sm-category-pref"
                         // `data-tier` is what the shape-mode CSS hooks
                         // onto when `html[data-a11y-shapes="on"]` is set;
@@ -288,8 +301,9 @@ export default function SmallMultiples() {
             <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
             <div>{tCharts("no_apps_match")}</div>
             <div style={{ fontSize: 13, marginTop: 4, color: "var(--text-3)" }}>
-              Toggle &ldquo;Hide apps with no categories&rdquo; off to bring
-              them back.
+              {tCharts("matrix_empty_hint", {
+                label: tCharts("filter_hide_no_categories"),
+              })}
             </div>
           </div>
         ) : (
@@ -323,7 +337,9 @@ export default function SmallMultiples() {
                         sev: null,
                       })
                     }
-                    title={`Open ${app.name}`}
+                    title={tCharts("matrix_open_app_title", {
+                      name: app.name,
+                    })}
                   >
                     <span className="sm-app-link-name">{app.name}</span>
                     <span className="sm-app-link-count">
@@ -352,7 +368,7 @@ export default function SmallMultiples() {
                     );
                     return (
                       <div
-                        aria-label={`${app.name}, ${cat.label}${meta?.description ? `, ${meta.description}` : ""}${isMismatch ? ", exceeds your preference" : ""}`}
+                        aria-label={`${app.name}, ${cat.label}${meta?.description ? `, ${meta.description}` : ""}${isMismatch ? `, ${tCharts("matrix_exceeds_pref")}` : ""}`}
                         className="sm-cell"
                         // `data-sev` exposes the severity tier to the
                         // shape-mode CSS so colour-blind users get a
@@ -378,9 +394,13 @@ export default function SmallMultiples() {
                           // layer `background-image: <gradient>` on top
                           // without the inline declaration nuking it.
                           backgroundColor: bg,
+                          // Hairline on empty cells derived from the text
+                          // token (3% tint) so it stays a faint outline in
+                          // light mode too — matches the old white 3% in
+                          // dark mode exactly.
                           border: sev
                             ? "none"
-                            : "1px solid rgba(255,255,255,0.03)",
+                            : "1px solid color-mix(in srgb, var(--text, #f0f0f5) 3%, transparent)",
                           boxShadow: isMismatch
                             ? "inset 0 0 0 2px #fff"
                             : "none",
@@ -389,7 +409,7 @@ export default function SmallMultiples() {
                         title={
                           sev
                             ? `${app.name} — ${cat.label}: ${tCharts(SEV_LABEL_KEY[sev])}`
-                            : `${app.name} — ${cat.label}: not collected`
+                            : `${app.name} — ${cat.label}: ${tCharts("tooltip_not_collected")}`
                         }
                       />
                     );
@@ -434,7 +454,7 @@ export default function SmallMultiples() {
           </label>
           {hiddenCount > 0 && (
             <div className="sm-sidebar-hidden-count">
-              {hiddenCount} app{hiddenCount === 1 ? "" : "s"} hidden
+              {tCharts("sidebar_hidden_count", { count: hiddenCount })}
             </div>
           )}
         </div>
@@ -448,7 +468,7 @@ export default function SmallMultiples() {
               data-sev="DATA_NOT_LINKED_TO_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
             />
-            Not linked
+            {tTier("not_linked")}
           </span>
           <span className="sm-legend-item">
             <span
@@ -456,7 +476,7 @@ export default function SmallMultiples() {
               data-sev="DATA_LINKED_TO_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_LINKED_TO_YOU }}
             />
-            Linked
+            {tTier("linked")}
           </span>
           <span className="sm-legend-item">
             <span
@@ -464,12 +484,12 @@ export default function SmallMultiples() {
               data-sev="DATA_USED_TO_TRACK_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
             />
-            Tracking
+            {tTier("tracking")}
           </span>
           {prefOverlay && (
             <span className="sm-legend-item sm-legend-item--mismatch">
               <span className="sm-legend-swatch sm-legend-swatch--mismatch" />
-              Exceeds profile
+              {tCharts("legend_exceeds_profile")}
             </span>
           )}
         </div>
@@ -535,7 +555,9 @@ export default function SmallMultiples() {
                               className="sm-tooltip-dot"
                               style={{ background: PREF_COLOR[pref] }}
                             />
-                            {TIER_META[pref].shortLabel} at most
+                            {tCharts("tooltip_pref_at_most", {
+                              label: tTier(pref),
+                            })}
                           </>
                         ) : (
                           <span className="sm-tooltip-pref-none">
@@ -547,7 +569,7 @@ export default function SmallMultiples() {
                   )}
                   {isMismatch && (
                     <div className="sm-tooltip-mismatch">
-                      ⚠ Exceeds your preference
+                      {tCharts("tooltip_exceeds_pref")}
                     </div>
                   )}
                 </>
@@ -559,9 +581,8 @@ export default function SmallMultiples() {
                 {tCharts("tooltip_hover_inspect")}
               </div>
               <div className="sm-tooltip-empty-hint">
-                Hover a row, cell, or category icon to see the details here.
-                {prefOverlay &&
-                  " The coloured bar under each icon shows your preference for that category."}
+                {tCharts("tooltip_hover_hint")}
+                {prefOverlay && ` ${tCharts("tooltip_hover_hint_pref")}`}
               </div>
             </div>
           )}

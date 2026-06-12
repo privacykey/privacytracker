@@ -8,7 +8,10 @@
 #      runners per architecture in CI. Keeping the runtime pinned still avoids
 #      surprise native ABI churn between the amd64 and arm64 image legs.
 ARG NODE_IMAGE=node:24.15.0-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f
-ARG PNPM_VERSION=11.0.6
+# Keep this in lockstep with `packageManager` in package.json and the
+# `pnpm/action-setup` version in every .github/workflows/*. A drift here
+# means Docker builds resolve deps with a different pnpm than CI does.
+ARG PNPM_VERSION=11.1.2
 
 FROM ${NODE_IMAGE} AS builder
 
@@ -37,6 +40,14 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
+# Drop devDependencies now that the build is done. The runner stage copies
+# this node_modules verbatim, so pruning here is what keeps build-only
+# tooling (Storybook, Playwright, Biome, TypeScript, the Tauri CLI, …) out
+# of the runtime image — measured ~850MB unpruned down to ~550MB. better-
+# sqlite3's already-compiled native binding is a production dependency and is
+# retained, so no recompile happens at runtime.
+RUN pnpm prune --prod
+
 # Stage 2 — Runtime (no build tools needed). Stays on the same major
 # as the builder so the better-sqlite3 binding compiled above keeps
 # its NODE_MODULE_VERSION compatible at runtime.
@@ -60,6 +71,12 @@ COPY --from=builder --chown=audit:audit /app/node_modules     ./node_modules
 COPY --from=builder --chown=audit:audit /app/package.json     ./package.json
 COPY --from=builder --chown=audit:audit /app/next.config.js   ./next.config.js
 COPY --from=builder --chown=audit:audit /app/lib/db-worker.cjs ./lib/db-worker.cjs
+# Static assets served straight from disk by a non-standalone `next start`:
+# self-hosted Inter + OpenDyslexic fonts and brand-icon.png. These live under
+# <cwd>/public at runtime and are NOT baked into .next, so without this copy
+# every container 404s on /fonts/* and /brand-icon.png (breaking the
+# "fonts are self-hosted" contract and the dyslexia-font a11y toggle).
+COPY --from=builder --chown=audit:audit /app/public            ./public
 
 # Persistent data volume for SQLite. Pre-create so the non-root user owns it
 # even on first start (otherwise better-sqlite3 would try to mkdir inside a
