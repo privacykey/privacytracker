@@ -2389,6 +2389,9 @@
     "general_undo_shortlist": "Undo the last shortlist delete (also ⌘Z on macOS)",
     "general_toggle_cheatsheet": "Toggle this shortcut cheat sheet",
     "general_close_dialogs": "Close dialogs and clear a pending g-sequence",
+    "general_zoom_in_desktop": "Zoom the whole app in (desktop View menu, up to 300%)",
+    "general_zoom_out_desktop": "Zoom the whole app out (desktop View menu)",
+    "general_zoom_reset_desktop": "Reset app zoom to 100% (desktop View menu)",
     "verb_navigating": "Navigating to",
     "verb_opening": "Opening"
   },
@@ -2564,6 +2567,7 @@
     "scale_larger_title": "Larger",
     "scale_reset_aria": "Reset text size to default",
     "scale_reset": "Reset to default",
+    "scale_desktop_zoom_hint": "Need larger? The View menu zooms the whole app up to 300% — press ⌘/Ctrl = to zoom in, ⌘/Ctrl - to zoom out, ⌘/Ctrl 0 to reset.",
     "theme_title": "Theme",
     "theme_hint": "Pick how the app colours itself. High contrast is tuned for switch / low-vision users (pure black, thick white borders, yellow focus).",
     "theme_aria": "Theme",

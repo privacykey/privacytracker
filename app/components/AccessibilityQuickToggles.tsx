@@ -554,6 +554,18 @@ export default function AccessibilityQuickToggles() {
                     ),
                   })}
                 </div>
+                {/* The in-app ladder tops out at 1.3× (CSS zoom doesn't
+                    reflow breakpoints, so larger steps would trap content
+                    horizontally). The desktop shell offers real page zoom
+                    up to 3× via the View menu (WCAG 1.4.4) — point Tauri
+                    users at it from the surface where they'd go looking
+                    for bigger text. Hidden on the web build, where the
+                    browser's own Cmd/Ctrl+± plays that role. */}
+                {desktop && (
+                  <div className="a11y-quick-row-hint">
+                    {t("scale_desktop_zoom_hint")}
+                  </div>
+                )}
               </div>
               <div
                 aria-label={t("scale_aria")}

@@ -55,6 +55,12 @@ pub struct DesktopSettings {
     /// install gets the tray icon by default.
     #[serde(default = "default_true")]
     pub tray_visible: bool,
+    /// Persisted webview page-zoom level (1.0 = 100%). The View-menu
+    /// zoom items step it (see zoom.rs) and main.rs re-applies it on
+    /// boot so a user's chosen zoom survives quit/relaunch. zoom.rs
+    /// clamps whatever arrives here into its 0.5–3.0 ladder range.
+    #[serde(default = "default_zoom")]
+    pub zoom_level: f64,
 }
 
 impl Default for DesktopSettings {
@@ -70,6 +76,7 @@ impl Default for DesktopSettings {
             theme_override: default_theme(),
             devtools_open: false,
             tray_visible: true,
+            zoom_level: default_zoom(),
         }
     }
 }
@@ -78,6 +85,7 @@ fn default_true() -> bool { true }
 fn default_shortcut() -> String { "CmdOrCtrl+Shift+P".to_string() }
 fn default_auto_lock() -> u32 { 15 }
 fn default_theme() -> String { "system".to_string() }
+fn default_zoom() -> f64 { 1.0 }
 
 pub fn fetch(base_url: &str) -> Result<DesktopSettings, Box<dyn std::error::Error>> {
     // The /api/settings/desktop route maps the persisted key-value shape
@@ -111,6 +119,7 @@ mod tests {
         assert_eq!(parsed.auto_lock_idle_minutes, 15);
         assert_eq!(parsed.theme_override, "system");
         assert!(parsed.tray_visible);
+        assert_eq!(parsed.zoom_level, 1.0);
     }
 
     #[test]
@@ -125,7 +134,8 @@ mod tests {
               "auto_lock_idle_minutes": 30,
               "theme_override": "dark",
               "devtools_open": true,
-              "tray_visible": false
+              "tray_visible": false,
+              "zoom_level": 1.5
             }"#,
         )
         .expect("settings JSON");
@@ -139,5 +149,6 @@ mod tests {
         assert_eq!(parsed.theme_override, "dark");
         assert!(parsed.devtools_open);
         assert!(!parsed.tray_visible);
+        assert_eq!(parsed.zoom_level, 1.5);
     }
 }

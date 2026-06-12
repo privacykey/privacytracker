@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isDesktop } from "../../lib/desktop";
 import { useFlag } from "../../lib/feature-flags-hooks";
 
 // ── Shortcut catalogue (mirrored in the help overlay) ────────────────────
@@ -114,6 +115,18 @@ const GENERAL_SHORTCUTS: Array<{ keys: string; labelKey: string }> = [
   { keys: "Esc", labelKey: "general_close_dialogs" },
 ];
 
+// Desktop-only (Tauri) entries, merged when isDesktop(). These aren't
+// handled by this component at all — they're native View-menu
+// accelerators (src-tauri/src/app_menu.rs) driving real webview page
+// zoom, the desktop stand-in for browser Cmd/Ctrl+± zoom (WCAG 1.4.4).
+// Listed purely for discoverability; the web build's overlay doesn't
+// advertise them because there the browser already owns those keys.
+const DESKTOP_GENERAL_SHORTCUTS: Array<{ keys: string; labelKey: string }> = [
+  { keys: "Cmd/Ctrl + =", labelKey: "general_zoom_in_desktop" },
+  { keys: "Cmd/Ctrl + -", labelKey: "general_zoom_out_desktop" },
+  { keys: "Cmd/Ctrl + 0", labelKey: "general_zoom_reset_desktop" },
+];
+
 // How long we wait for the second key in a "g x" sequence before dropping it.
 const SEQUENCE_WINDOW_MS = 1500;
 
@@ -212,6 +225,20 @@ export default function KeyboardShortcuts() {
         ? [...ACTION_SHORTCUTS, ...DEV_ACTION_SHORTCUTS]
         : ACTION_SHORTCUTS,
     [devOptsVisible]
+  );
+  // Tauri detection is client-only, so resolve it post-mount (the same
+  // pattern AccessibilityQuickToggles uses) — the overlay itself only
+  // ever renders after user interaction, so there's no flash.
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => {
+    setDesktop(isDesktop());
+  }, []);
+  const generalShortcuts = useMemo(
+    () =>
+      desktop
+        ? [...GENERAL_SHORTCUTS, ...DESKTOP_GENERAL_SHORTCUTS]
+        : GENERAL_SHORTCUTS,
+    [desktop]
   );
   // Mirrors pendingSequence.current for the on-screen indicator; we keep
   // both because the ref stays pointer-stable for the keydown handler while
@@ -605,7 +632,7 @@ export default function KeyboardShortcuts() {
                 {t("section_general")}
               </div>
               <ul className="kbd-help-list">
-                {GENERAL_SHORTCUTS.map((entry) => (
+                {generalShortcuts.map((entry) => (
                   <li className="kbd-help-row" key={entry.keys}>
                     <KbdKeys combo={entry.keys} />
                     <span className="kbd-help-label">{t(entry.labelKey)}</span>

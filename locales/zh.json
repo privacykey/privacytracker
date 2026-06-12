@@ -2389,6 +2389,9 @@
     "general_undo_shortlist": "撤销上次候选清单删除（macOS 上 ⌘Z 也可）",
     "general_toggle_cheatsheet": "切换显示此快捷键备忘卡",
     "general_close_dialogs": "关闭对话框并清除待续的 g 序列",
+    "general_zoom_in_desktop": "放大整个应用（桌面版“视图”菜单，最高 300%）",
+    "general_zoom_out_desktop": "缩小整个应用（桌面版“视图”菜单）",
+    "general_zoom_reset_desktop": "将应用缩放重置为 100%（桌面版“视图”菜单）",
     "verb_navigating": "正在前往",
     "verb_opening": "正在打开"
   },
@@ -2564,6 +2567,7 @@
     "scale_larger_title": "放大",
     "scale_reset_aria": "将文本大小重置为默认",
     "scale_reset": "重置为默认",
+    "scale_desktop_zoom_hint": "需要更大？“视图”菜单可将整个应用放大至 300% —— 按 ⌘/Ctrl = 放大，⌘/Ctrl - 缩小，⌘/Ctrl 0 重置。",
     "theme_title": "主题",
     "theme_hint": "选择应用的配色方式。高对比度专为切换控制 / 低视力用户调整（纯黑、粗白边框、黄色聚焦）。",
     "theme_aria": "主题",

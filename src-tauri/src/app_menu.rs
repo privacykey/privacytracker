@@ -37,6 +37,8 @@ use tauri::menu::{
 };
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::zoom;
+
 const GITHUB_REPO_URL: &str = "https://github.com/privacykey/privacytracker";
 const DOCS_URL: &str = "https://privacytracker-docs.privacykey.org/quickstart";
 const ISSUE_URL: &str =
@@ -204,6 +206,37 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, dev_menu_enabled: bool) -> tauri::R
         cfg!(feature = "devtools"),
         Some("CmdOrCtrl+Alt+I"),
     )?;
+    // Page-zoom trio — Safari's ordering and accelerators (Actual Size
+    // ⌘0, Zoom In ⌘=, Zoom Out ⌘−). This is the desktop stand-in for
+    // browser Cmd/Ctrl+± zoom and the only way the Tauri build reaches
+    // WCAG 1.4.4's 200% text size: the in-app text-size stepper
+    // (AccessibilityQuickToggles) caps at 1.3× because CSS zoom doesn't
+    // reflow responsive breakpoints, while real page zoom does. The
+    // ladder, persistence and boot-restore all live in zoom.rs.
+    // "CmdOrCtrl+=" rather than "+" because = is the unshifted key —
+    // the same binding browsers use for Zoom In; macOS renders the
+    // accelerator as ⌘= in the menu.
+    let zoom_actual_size = MenuItem::with_id(
+        app,
+        "menu.view.zoom_reset",
+        "Actual Size",
+        true,
+        Some("CmdOrCtrl+0"),
+    )?;
+    let zoom_in = MenuItem::with_id(
+        app,
+        "menu.view.zoom_in",
+        "Zoom In",
+        true,
+        Some("CmdOrCtrl+="),
+    )?;
+    let zoom_out = MenuItem::with_id(
+        app,
+        "menu.view.zoom_out",
+        "Zoom Out",
+        true,
+        Some("CmdOrCtrl+-"),
+    )?;
     // "Hide to Menu Bar" — discoverable surface for the same hide-to-
     // tray behaviour the close button (see main.rs's
     // WindowEvent::CloseRequested handler) already does silently.
@@ -227,6 +260,10 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, dev_menu_enabled: bool) -> tauri::R
             &reload,
             &force_reload,
             &toggle_devtools,
+            &PredefinedMenuItem::separator(app)?,
+            &zoom_actual_size,
+            &zoom_in,
+            &zoom_out,
             &PredefinedMenuItem::separator(app)?,
             &hide_to_tray,
         ],
@@ -543,6 +580,12 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
                 );
             }
         }
+        // Page zoom. zoom.rs owns the ladder + clamped stepping, applies
+        // the level via WebviewWindow::set_zoom, and debounce-persists it
+        // to /api/settings/desktop so the next launch restores it.
+        "menu.view.zoom_in" => zoom::zoom_in(app),
+        "menu.view.zoom_out" => zoom::zoom_out(app),
+        "menu.view.zoom_reset" => zoom::reset(app),
         "menu.view.hide_to_tray" => {
             // Hide the main window without quitting the app. The tray
             // icon (see src/tray.rs) stays visible in the menu bar so
