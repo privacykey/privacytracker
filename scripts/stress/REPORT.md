@@ -184,3 +184,45 @@ Synthetic data is uniform (3 types × 5–9 categories; real fleets have more va
 measurements are server-side only (browser hydration of the big grid adds seconds beyond
 the server numbers); the M4 is fast — derate ~2–3× for budget cloud vCPUs; no multi-day
 soak was run (memory was stable across each ~5-min loaded session, settling after load).
+
+---
+
+## Addendum — 2026-06-12: grid/API pagination shipped (backlog item 1)
+
+Backlog item 1 ("paginate/virtualize `/dashboard/apps` and paginate `/api/apps`")
+is done. Design: the server page renders the first 250 apps (+ `COUNT(*)` total);
+AppGrid background-hydrates the rest in 500-row chunks from the new opt-in
+`/api/apps?limit=…&offset=…&meta=grid` envelope and windows card rendering at
+120 cards per chunk. The bare `/api/apps` form — the documented public
+contract — is unchanged; nothing in the app's own UI calls it any more. Full
+design notes: AGENTS.md → "Apps grid pagination (large fleets)".
+
+Re-measured at 5,000 apps × 22 snapshots, same harness, same host. Baseline
+(`matrix-1781246172755.json`) was re-run on the exact pre-change tree minutes
+before the change (`matrix-1781247069695.json`) so the comparison is clean:
+
+| metric (5,000 apps) | before | after |
+|---|---|---|
+| `page:apps-grid` p95 (sweep, 4 concurrent) | 4,152 ms | **175 ms** |
+| `page:apps-grid` mean payload | 21.8 MB | **1.0 MB** |
+| `api:apps-page` p95 (new hot path: 500-row chunk + grid meta) | — | **121 ms** (400 KB) |
+| `api:apps` p95 (legacy bare form, preserved deliberately) | 245 ms | 275 ms |
+| 10-session probe `api:tasks-active` p95 | 395 ms | **21 ms** |
+| 10-session probe `api:notifications` p95 | 197 ms | **22 ms** |
+| 10-session probe `page:dashboard` p95 | 697 ms | **149 ms** |
+| viewer-traffic `page:apps-grid` p95 @ 10 sessions | 837 ms | **109 ms** |
+
+Zero HTTP errors in both runs. The event-loop starvation that made the >5k
+tier "not recommendable" is gone: no request serialises the whole fleet, so
+O(1) endpoints stay O(1) under concurrent sessions. A real browser session
+(Playwright, production build, the seeded 5,000-app DB) confirms the UX:
+120 cards in the DOM initially, background hydration to 5,000 (tab counts
+climb, the "Loading apps…" note clears), scrolling extends the render window,
+search matches apps from the last page once hydration completes, and
+bulk actions (Sync all / queue / select) stay disabled until the fleet is
+fully loaded. Browser-side hydration cost now scales with the render window,
+not the fleet.
+
+The fleet-size tiers above should now read: **the grid is no longer the
+ceiling at any tested scale** — past ~5,000 apps the limits are Apple's 429
+sync cadence (§6) and disk growth (§4), not page performance.

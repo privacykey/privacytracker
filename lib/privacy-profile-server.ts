@@ -104,15 +104,27 @@ export function buildAppFootprint(appId: string): AppProfileFootprint {
   return rowsToFootprint(rows);
 }
 
-/** Build footprints for every tracked app in a single SQL query. */
-export function buildAllFootprints(): Map<string, AppProfileFootprint> {
+/**
+ * Build footprints for every tracked app in a single SQL query.
+ * Pass `appIds` to scope the scan to one grid page of apps — paginated
+ * callers shouldn't re-read the whole fleet's privacy rows per page.
+ */
+export function buildAllFootprints(
+  appIds?: readonly string[]
+): Map<string, AppProfileFootprint> {
+  if (appIds && appIds.length === 0) {
+    return new Map();
+  }
+  const idFilter = appIds
+    ? ` WHERE t.app_id IN (${appIds.map(() => "?").join(", ")})`
+    : "";
   const rows = db
     .prepare(
       `SELECT t.app_id AS app_id, c.identifier AS identifier, t.identifier AS type_identifier
        FROM privacy_categories c
-       JOIN privacy_types t ON c.type_id = t.id`
+       JOIN privacy_types t ON c.type_id = t.id${idFilter}`
     )
-    .all() as Array<FootprintRow & { app_id: string }>;
+    .all(...(appIds ?? [])) as Array<FootprintRow & { app_id: string }>;
 
   const byApp = new Map<string, FootprintRow[]>();
   for (const row of rows) {
@@ -211,15 +223,24 @@ export function getMismatchCountsByApp(): Map<string, number> {
  * matches, so the grid can render a green "Matches profile" pill as well as
  * the orange / red mismatch pills. Returns an empty object when no profile
  * is set (callers should hide the badge entirely in that case).
+ *
+ * Pass `appIds` to compute badges for one grid page only.
  */
-export function getProfileBadgesByApp(): Record<string, AppProfileBadge> {
+export function getProfileBadgesByApp(
+  appIds?: readonly string[]
+): Record<string, AppProfileBadge> {
   const profile = getPrivacyProfile();
   if (!profile) {
     return {};
   }
+  if (appIds && appIds.length === 0) {
+    return {};
+  }
 
-  const apps = db.prepare("SELECT id FROM apps").all() as Array<{ id: string }>;
-  const footprints = buildAllFootprints();
+  const apps = appIds
+    ? (appIds.map((id) => ({ id })) as Array<{ id: string }>)
+    : (db.prepare("SELECT id FROM apps").all() as Array<{ id: string }>);
+  const footprints = buildAllFootprints(appIds);
 
   const out: Record<string, AppProfileBadge> = {};
   for (const { id } of apps) {

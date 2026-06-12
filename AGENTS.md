@@ -126,6 +126,18 @@ All DB calls are **synchronous**. Multi-step writes use `db.transaction(() => { 
 
 Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://privacytracker-docs.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing.
 
+### Apps grid pagination (large fleets)
+
+`/dashboard/apps` + `/api/apps` were the app's only real scaling bottleneck (see `scripts/stress/REPORT.md`): both serialised the whole fleet per request — 21.8 MB RSC at 5,000 apps — and that repeated multi-MB serialisation starved the event loop for every other endpoint at 10k apps under concurrent sessions. The fix is layered, and the bare public API is unchanged:
+
+- **`GET /api/apps` (bare) still returns the full array** — that's the documented public contract. Pagination is opt-in: the presence of `?limit=1..500` (+ optional `&offset=`) switches the response to a `{ apps, total, limit, offset }` envelope; invalid params → 400. `&meta=grid` additionally bundles `{ profileBadges, pendingChangeCategoriesByApp, userVerdicts, appDeviceMap }` scoped to that page's ids — built by `buildAppGridMeta` in `lib/app-grid-meta.ts`, which fans out to the `appIds?`-scoped variants of the four map helpers (`getProfileBadgesByApp` / `getPendingChangeCategoriesByApp` / `getUserVerdictsByAppId` / `getAppDeviceMap`; omitting `appIds` keeps their legacy full-fleet behaviour).
+- **The grid page server-renders only the first `GRID_INITIAL_PAGE_SIZE` (250) apps** via `getAppsPage` (same row shape as `getAllApps`, count CTEs scoped to the page, `ORDER BY name, id` so offset paging is deterministic across requests) plus `countApps()` for the Nav badge and the onboarding redirect. Fleets that fit one page behave exactly as before pagination existed.
+- **AppGrid background-hydrates the rest** in 500-row chunks from `/api/apps?limit=…&meta=grid`, appending apps (deduped by id) and merging the side-band maps into state. Every lookup goes through the merged views (`badges`/`verdicts`/`pendingByApp`/`deviceLinks`), never the raw props. All filters/sort/counts run over the full in-memory array once hydration completes — the UX is unchanged, only the transport is chunked. Bulk-scope actions (Sync all, review queue, select mode) are disabled while `apps.length < total` so they never silently operate on a partial fleet; a failed chunk surfaces a retry button.
+- **Card rendering is windowed** (120 cards per chunk, IntersectionObserver sentinel + "Show more" button fallback) so DOM size stays bounded regardless of fleet size.
+- `refreshApps` (post-sync) re-pages the loaded range instead of hitting the bare endpoint — don't reintroduce a full-fleet fetch on the grid's hot path.
+
+Contract pinned by `tests/app/apps-pagination.test.ts`.
+
 ### AI configuration
 
 `lib/ai-config.ts` is the single source of truth for providers (`disabled` | `openai` | `anthropic` | `custom`), default base URLs, default models, and per-provider behavior flags (`providerUsesChatCompletions`, `providerLikelyNeedsChunking`, `providerRequiresApiKey`). `custom` targets Ollama or any OpenAI-compatible endpoint. The legacy `ollama` value is normalized to `custom` in `normalizeAiProvider`. All persisted settings live in the `app_settings` key/value table via `lib/scheduler.ts` (`getSetting`/`setSetting`).

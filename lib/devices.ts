@@ -188,11 +188,21 @@ export function getDeviceAppCounts(): Map<string, number> {
  * appear when the app has at least one device link. Apps with zero
  * links (e.g. manual-only entries that never went through cfgutil)
  * simply aren't in the map.
+ *
+ * Pass `appIds` to scope the lookup to one grid page of apps.
  */
-export function getAppDeviceMap(): Map<string, string[]> {
+export function getAppDeviceMap(
+  appIds?: readonly string[]
+): Map<string, string[]> {
+  if (appIds && appIds.length === 0) {
+    return new Map();
+  }
+  const idFilter = appIds
+    ? ` WHERE app_id IN (${appIds.map(() => "?").join(", ")})`
+    : "";
   const rows = db
-    .prepare("SELECT app_id, device_id FROM app_devices")
-    .all() as { app_id: string; device_id: string }[];
+    .prepare(`SELECT app_id, device_id FROM app_devices${idFilter}`)
+    .all(...(appIds ?? [])) as { app_id: string; device_id: string }[];
   const map = new Map<string, string[]>();
   for (const row of rows) {
     const existing = map.get(row.app_id);

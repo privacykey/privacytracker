@@ -1,31 +1,35 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { type AgeBandKey, isValidAgeBand } from "@/lib/age-rating";
 import {
   getResolverContextFromDb,
   resolveFlagFromDb,
 } from "@/lib/feature-flags-server";
-import { getAllDevices, getAppDeviceMap } from "../../../lib/devices";
+import { buildAppGridMeta } from "../../../lib/app-grid-meta";
+import { getAllDevices } from "../../../lib/devices";
 import {
   MANUAL_APP_SOURCE_META,
   MANUAL_APP_SOURCES,
 } from "../../../lib/manual-apps";
 import { listManualApps } from "../../../lib/manual-apps-server";
-import {
-  getPrivacyProfile,
-  getProfileBadgesByApp,
-} from "../../../lib/privacy-profile-server";
+import { getPrivacyProfile } from "../../../lib/privacy-profile-server";
 import { getSetting } from "../../../lib/scheduler";
-import {
-  getAllApps,
-  getPendingChangeCategoriesByApp,
-} from "../../../lib/scraper";
-import type { VerdictValue } from "../../../lib/verdict-types";
-import { getUserVerdictsByAppId } from "../../../lib/verdicts";
+import { countApps, getAppsPage } from "../../../lib/scraper";
 import AppGrid, { type AppGridFlagState } from "../../components/AppGrid";
 import Nav from "../../components/Nav";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * How many apps the server renders into the initial RSC payload. The rest
+ * stream in client-side via `/api/apps?limit=…&offset=…&meta=grid` (see
+ * AppGrid's background hydration). 250 keeps typical fleets (1–4 devices'
+ * worth) on the exact pre-pagination behaviour — one page, no follow-up
+ * fetches — while capping the payload that made /dashboard/apps the app's
+ * only real scaling bottleneck (21.8 MB RSC at 5,000 apps).
+ */
+const GRID_INITIAL_PAGE_SIZE = 250;
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
@@ -36,11 +40,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function AppsPage() {
   let apps: any[] = [];
+  let totalApps = 0;
   try {
-    apps = getAllApps() as any[];
+    totalApps = countApps();
+    apps = getAppsPage({ limit: GRID_INITIAL_PAGE_SIZE, offset: 0 }) as any[];
   } catch (error) {
     // DB not ready
-    console.warn("[apps] getAllApps failed:", error);
+    console.warn("[apps] getAppsPage failed:", error);
   }
 
   // Surface user-authored "custom" apps (web clips, TestFlight, sideloaded,
@@ -57,8 +63,8 @@ export default function AppsPage() {
 
   // Only redirect to onboarding when we truly have nothing to show. A user
   // with only custom apps should still land on the grid so they can manage
-  // them.
-  if (apps.length === 0 && manualApps.length === 0) {
+  // them. `totalApps` (not the first page's length) is the real signal.
+  if (totalApps === 0 && manualApps.length === 0) {
     redirect("/onboard");
   }
 
@@ -66,16 +72,14 @@ export default function AppsPage() {
     ...MANUAL_APP_SOURCE_META[value],
   }));
 
-  // Compute per-app profile-match badges on the server so the grid renders
-  // them in the initial HTML without a client-side fetch. An empty object
-  // here is a safe fallback: AppGrid treats "missing key" as "hide badge",
-  // which is what we want whenever no profile is set / DB is unavailable.
-  let profileBadges: ReturnType<typeof getProfileBadgesByApp> = {};
-  try {
-    profileBadges = getProfileBadgesByApp();
-  } catch (error) {
-    console.warn("[apps] getProfileBadgesByApp failed:", error);
-  }
+  // Per-app side-band maps (profile badges, verdicts, pending-change
+  // breakdown, device links), scoped to the first page's ids so the RSC
+  // payload stays proportional to the page, not the fleet. AppGrid merges
+  // the equivalent maps for later pages from the `meta=grid` API responses.
+  // Empty maps are safe fallbacks: AppGrid treats "missing key" as "hide
+  // badge" / "undecided" / "no pending dot" / "unattached".
+  const gridMeta = buildAppGridMeta(apps.map((a) => String(a.id)));
+  const profileBadges = gridMeta.profileBadges;
 
   // Server-hydrated accessibility toggle. Passed down so AppGrid suppresses
   // the filter row (and ignores `?access=`) when the user has disabled the
@@ -88,38 +92,11 @@ export default function AppsPage() {
     console.warn("[apps] reading track_accessibility_labels failed:", error);
   }
 
-  // Per-app user verdicts — passed to AppGrid as a plain `appId → value`
-  // map so cards can render the verdict pill without a per-card fetch.
-  // Only the local user's own verdict is included; imported
-  // recommendations live on the App Detail page where the picker can
-  // surface them inline. Empty object on read failure is safe — the
-  // grid treats missing keys as "undecided" / no pill.
-  const userVerdicts: Record<string, VerdictValue> = {};
-  try {
-    const map = getUserVerdictsByAppId();
-    for (const [id, v] of map) {
-      userVerdicts[id] = v.verdict;
-    }
-  } catch (error) {
-    console.warn("[apps] getUserVerdictsByAppId failed:", error);
-  }
-
-  // The "N apps need a decision" CTA lives on the dashboard home
-  // (/dashboard); the verdict helpers are kept imported in case other
-  // surfaces below want them.
-
-  // Per-app pending-change breakdown. Lets the card renderer pick between
-  // an orange dot (privacy), a blue dot (accessibility), or both
-  // side-by-side. Empty object is a safe default — the card just falls
-  // back to the legacy single-orange dot driven by `app.changeCount`.
-  let pendingChangeCategoriesByApp: ReturnType<
-    typeof getPendingChangeCategoriesByApp
-  > = {};
-  try {
-    pendingChangeCategoriesByApp = getPendingChangeCategoriesByApp();
-  } catch (error) {
-    console.warn("[apps] getPendingChangeCategoriesByApp failed:", error);
-  }
+  // Per-app user verdicts (`appId → value`) and the pending-change
+  // breakdown both come from the scoped gridMeta above. The "N apps need
+  // a decision" CTA lives on the dashboard home (/dashboard).
+  const userVerdicts = gridMeta.userVerdicts;
+  const pendingChangeCategoriesByApp = gridMeta.pendingChangeCategoriesByApp;
 
   // Round 3 wave E: resolve all flag.appgrid.* flags server-side. Wrapped
   // in a try/catch so a resolver failure doesn't blow up the grid — falls
@@ -151,6 +128,7 @@ export default function AppsPage() {
         cardAnnotationHighlight: r("flag.appgrid.card.annotation_highlight"),
         cardVerdictPill: r("flag.appgrid.card.verdict_pill"),
         emptyState: r("flag.appgrid.empty_state"),
+        guardianAgeRating: r("flag.guardian.age_rating"),
         reviewQueueEnabled: r("flag.appgrid.review_queue.enabled"),
         reviewQueueBulkSelect: r("flag.appgrid.review_queue.bulk_select"),
         reviewQueueCfgutilUninstall: r(
@@ -195,24 +173,31 @@ export default function AppsPage() {
     console.warn("[apps-page] reading queue_show_progress_bar failed:", e);
   }
 
+  // Guardian child age band — drives the age-rating pill + filter. Null
+  // (unset / invalid / read failure) hides the surface entirely.
+  let childAgeBand: AgeBandKey | null = null;
+  try {
+    const rawBand = getSetting("guardian_child_age_band", "");
+    childAgeBand = isValidAgeBand(rawBand) ? rawBand : null;
+  } catch (e) {
+    console.warn("[apps-page] reading guardian_child_age_band failed:", e);
+  }
+
   // Device filter data — passed to AppGrid so the client can render a
   // dropdown and filter rows by `?device=<id>` URL param without an
-  // extra fetch. Empty arrays on failure keep the grid working.
+  // extra fetch. The app→device links ride in via gridMeta (scoped to
+  // the first page). Empty arrays on failure keep the grid working.
   let devices: ReturnType<typeof getAllDevices> = [];
-  const appDeviceMap: Record<string, string[]> = {};
+  const appDeviceMap = gridMeta.appDeviceMap;
   try {
     devices = getAllDevices();
-    const map = getAppDeviceMap();
-    for (const [appId, ids] of map) {
-      appDeviceMap[appId] = ids;
-    }
   } catch (e) {
     console.warn("[apps-page] reading devices failed:", e);
   }
 
   return (
     <>
-      <Nav appCount={apps.length + manualApps.length} />
+      <Nav appCount={totalApps + manualApps.length} />
       {/* Device-connect toast intentionally NOT mounted here. Polling
           cfgutil from the apps grid was misleading (this view is the
           user's tracked-apps list, not a 1:1 of what's on a device)
@@ -222,11 +207,13 @@ export default function AppsPage() {
       <AppGrid
         appDeviceMap={appDeviceMap}
         audience={audience}
+        childAgeBand={childAgeBand}
         devices={devices}
         flags={appgridFlags}
         hasProfile={hasProfile}
         initialApps={apps}
         initialManualApps={manualApps}
+        initialTotal={totalApps}
         manualSources={manualSources}
         pendingChangeCategoriesByApp={pendingChangeCategoriesByApp}
         profileBadges={profileBadges}

@@ -1184,6 +1184,27 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 16px;
 }
 
+/* Background page-hydration status line (large fleets only). */
+.grid-hydrate-note {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.grid-hydrate-note-error {
+  color: var(--danger, #e5484d);
+}
+
+/* Render-window sentinel + "Show more" fallback under the grid. */
+.grid-render-more {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 6px;
+}
+
 .app-card {
   position: relative;
   display: flex;

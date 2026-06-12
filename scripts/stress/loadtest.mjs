@@ -44,6 +44,16 @@ const ENDPOINTS = [
   { key: "page:changelog", path: () => "/changelog" },
   { key: "page:stats", path: () => "/dashboard/stats" },
   { key: "api:apps", path: () => "/api/apps" },
+  {
+    // The paginated form the grid actually requests since the
+    // pagination work — one 500-row chunk + grid side-band maps,
+    // rotating through the fleet's offsets.
+    key: "api:apps-page",
+    path: (i) => {
+      const pages = Math.max(1, Math.ceil(APPS / 500));
+      return `/api/apps?limit=500&offset=${(i % pages) * 500}&meta=grid`;
+    },
+  },
   { key: "api:changelog", path: () => "/api/changelog?limit=50" },
   { key: "api:notifications", path: () => "/api/notifications" },
   { key: "api:tasks-active", path: () => "/api/tasks/active" },
