@@ -1768,9 +1768,9 @@ export default function AppGrid({
                   title={
                     compareMode
                       ? isSelected
-                        ? `Deselect ${app.name}`
-                        : `Select ${app.name} for comparison`
-                      : `Open ${app.name} — Shift-click to add to compare`
+                        ? tGrid("deselect_app_title", { name: app.name })
+                        : tGrid("select_compare_title", { name: app.name })
+                      : tGrid("open_app_shift_hint_title", { name: app.name })
                   }
                 >
                   <div className="app-card-icon-wrap">
@@ -2156,8 +2156,8 @@ export default function AppGrid({
                     <button
                       aria-label={
                         busy
-                          ? `Removing ${m.name}`
-                          : `Remove ${m.name} from custom apps`
+                          ? tGrid("removing_custom_aria", { name: m.name })
+                          : tGrid("remove_custom_title", { name: m.name })
                       }
                       className="icon-btn danger"
                       disabled={busy}

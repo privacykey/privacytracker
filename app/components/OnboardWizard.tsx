@@ -5185,6 +5185,7 @@ export default function OnboardWizard({
                           autoComplete="off"
                           className="settings-input"
                           onChange={(event) => setAiApiKey(event.target.value)}
+                          // i18n-exempt — literal API-key prefix formats ("sk-ant-...", "sk-..."), locale-neutral
                           placeholder={
                             aiProvider === "anthropic"
                               ? "sk-ant-..."
