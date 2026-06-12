@@ -65,6 +65,7 @@ import {
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../lib/privacy-profile";
 import { isSafeExternalHref } from "../../lib/safe-href";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import type { AppVerdict } from "../../lib/verdict-types";
 import AppDevicesPanel from "./AppDevicesPanel";
 import ChangelogTimeline from "./ChangelogTimeline";
@@ -862,7 +863,7 @@ export default function AppDetailView({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   // Settings → Appearance → Date format. The local `formatDate` here

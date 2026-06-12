@@ -20,9 +20,7 @@ import {
   useRef,
   useState,
 } from "react";
-
-/* Matches the `toastOut` animation duration in globals.css. */
-const TOAST_OUT_MS = 200;
+import { TOAST_OUT_MS } from "../../lib/toast-timing";
 
 export default function Toast({
   children,

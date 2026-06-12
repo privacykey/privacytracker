@@ -17,6 +17,7 @@ import type {
 } from "../../lib/manual-apps";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { QueueAppInput } from "../../lib/review-queue";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import BulkSelectBar from "./BulkSelectBar";
@@ -733,7 +734,7 @@ export default function AppGrid({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   const refreshApps = useCallback(async () => {

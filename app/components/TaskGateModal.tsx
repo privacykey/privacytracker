@@ -86,20 +86,26 @@ export default function TaskGateModal({
         <div className="modal-card-body">
           <p>{tGate("body", { prerequisite: prereqTitle, task: taskTitle })}</p>
         </div>
-        <footer className="modal-card-footer">
-          <button
-            className="btn btn-primary"
-            onClick={onGotoPrerequisite}
-            type="button"
-          >
-            {tGate("primary", { prerequisite: prereqTitle })}
-          </button>
+        <footer
+          className="modal-card-footer"
+          style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}
+        >
           <button
             className="btn btn-secondary"
             onClick={onContinueAnyway}
             type="button"
           >
             {tGate("secondary")}
+          </button>
+          {/* Primary stays on the right (app-wide convention) but keeps
+              the open-focus ref, so the recommended action is both the
+              visually-emphasised and the keyboard-default choice. */}
+          <button
+            className="btn btn-primary"
+            onClick={onGotoPrerequisite}
+            type="button"
+          >
+            {tGate("primary", { prerequisite: prereqTitle })}
           </button>
         </footer>
       </div>

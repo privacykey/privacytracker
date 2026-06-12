@@ -19,6 +19,9 @@ import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
  */
 
 interface SectionLink {
+  /** Destructive entry — renders a divider above the link and a red
+   *  accent so it reads as a danger zone rather than a routine action. */
+  dangerZone?: boolean;
   /** Optional override key into `settings.sections.*`. When present, the
    *  rendered label reads from i18n at runtime instead of the static
    *  `label` field above. The static label is still kept as a fallback /
@@ -155,12 +158,22 @@ const SECTION_GROUPS: SectionGroup[] = [
         icon: "⬇",
         i18nKey: "export_data",
       },
-      { id: "reset", label: "Reset App", icon: "⚠", i18nKey: "reset_app" },
       {
         id: "developer",
         label: "Developer Options",
         icon: "⚙",
         i18nKey: "developer_options",
+      },
+      // Destructive entry — kept last in the group (and the whole sidebar),
+      // visually separated via `dangerZone` so it never sits mid-list
+      // between routine admin actions. Mirrors the section order in
+      // SettingsView, where the Reset section also renders last.
+      {
+        id: "reset",
+        label: "Reset App",
+        icon: "⚠",
+        i18nKey: "reset_app",
+        dangerZone: true,
       },
     ],
   },
@@ -356,7 +369,7 @@ export default function SettingsSidebar() {
               {group.links.map((link) => (
                 <a
                   aria-current={activeId === link.id ? "true" : undefined}
-                  className={`settings-sidebar-link${activeId === link.id ? " is-active" : ""}`}
+                  className={`settings-sidebar-link${link.dangerZone ? " settings-sidebar-link-danger" : ""}${activeId === link.id ? " is-active" : ""}`}
                   href={`#${link.id}`}
                   key={link.id}
                   onClick={(event) => handleClick(event, link.id)}

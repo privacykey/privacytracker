@@ -48,6 +48,7 @@ import {
   TIER_META,
 } from "../../lib/privacy-profile";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import type {
   RecentActivityEntry,
   ReviewableApp,
@@ -330,7 +331,7 @@ export default function HomeView({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   // Translation handles for heads-up labels and the sync-all toast
