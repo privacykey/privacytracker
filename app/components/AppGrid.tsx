@@ -1561,7 +1561,7 @@ export default function AppGrid({
                   <span className="filter-status-label">
                     {tGrid("filtering_by")}
                   </span>
-                  <strong>profile mismatches</strong>
+                  <strong>{tGrid("mismatch_filter_chip")}</strong>
                 </span>
                 <button
                   aria-label={tGrid("clear_mismatch_aria")}
@@ -1584,8 +1584,8 @@ export default function AppGrid({
                   </span>
                   <strong>
                     {accessibilityFilter === "has"
-                      ? "has accessibility features"
-                      : "no accessibility features"}
+                      ? tGrid("a11y_filter_has_chip")
+                      : tGrid("a11y_filter_missing_chip")}
                   </strong>
                 </span>
                 <button
@@ -1726,7 +1726,7 @@ export default function AppGrid({
           return (
             <div className="access-filter-row" data-tour="accessibility-filter">
               <span className="access-filter-label" id="access-filter-label">
-                Accessibility
+                {tGrid("a11y_filter_label")}
               </span>
               <div
                 aria-labelledby="access-filter-label"
@@ -1739,7 +1739,7 @@ export default function AppGrid({
                   onClick={() => setAccessibilityFilter(null)}
                   type="button"
                 >
-                  <span>All</span>
+                  <span>{tGrid("a11y_all_label")}</span>
                   <span className="segmented-toggle-btn-count">
                     {evaluatedCount}
                   </span>
@@ -2022,20 +2022,25 @@ export default function AppGrid({
                           ? breakdown.privacy || breakdown.policy
                           : true;
                         const hasAccessibility = !!breakdown?.accessibility;
-                        // Figure out a human-readable tooltip that matches
-                        // what the dot(s) actually represent. Falls back to
-                        // the old "permission change" wording only when we
-                        // have no breakdown at all.
-                        const labelParts: string[] = [];
-                        if (hasPrivacy) {
-                          labelParts.push("privacy");
-                        }
-                        if (hasAccessibility) {
-                          labelParts.push("accessibility");
-                        }
                         const title = breakdown
-                          ? `${app.changeCount} ${labelParts.join(" and ")} label change${app.changeCount === 1 ? "" : "s"} detected`
-                          : `${app.changeCount} permission change${app.changeCount === 1 ? "" : "s"} detected`;
+                          ? hasPrivacy && hasAccessibility
+                            ? tGrid("change_dot_both_title", {
+                                count: app.changeCount,
+                              })
+                            : hasPrivacy
+                              ? tGrid("change_dot_privacy_title", {
+                                  count: app.changeCount,
+                                })
+                              : hasAccessibility
+                                ? tGrid("change_dot_accessibility_title", {
+                                    count: app.changeCount,
+                                  })
+                                : tGrid("change_dot_generic_title", {
+                                    count: app.changeCount,
+                                  })
+                          : tGrid("change_dot_generic_title", {
+                              count: app.changeCount,
+                            });
                         if (!f.cardChangeDot) {
                           return null;
                         }
@@ -2365,7 +2370,7 @@ export default function AppGrid({
                       <span className="permission-count">{sourceLabel}</span>
                       {m.privacyPolicyUrl && (
                         <span className="permission-count">
-                          · Policy linked
+                          · {tGrid("policy_linked_label")}
                         </span>
                       )}
                     </div>
@@ -2381,7 +2386,7 @@ export default function AppGrid({
                       <span aria-hidden="true" className="risk-pill-dot">
                         ◆
                       </span>
-                      Custom
+                      {tGrid("custom_pill_label")}
                     </span>
                   </div>
 
