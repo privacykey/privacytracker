@@ -12,18 +12,12 @@ import { useTranslations } from "next-intl";
  *   - User can toggle any tracked app with a policy summary via chips
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { withAlpha } from "../../../lib/chart-colors";
 import type { RadarApp, RadarData } from "../../../lib/stats-views-shared";
 import { RADAR_MAX } from "../../../lib/stats-views-shared";
+import { useChartColors } from "../../../lib/use-chart-colors";
 import EChart from "./EChart";
 
-const SERIES_COLORS = [
-  "#ff453a",
-  "#ff9f0a",
-  "#0a84ff",
-  "#30d158",
-  "#bf5af2",
-  "#ffd60a",
-];
 const MAX_SERIES = 6;
 
 interface AppOption {
@@ -57,6 +51,9 @@ export default function PrivacyRadar({
   const [available, setAvailable] = useState<AppOption[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Theme-resolved CSS tokens — the per-app series colours track the
+  // light / high-contrast palettes instead of pinning the dark brights.
+  const colors = useChartColors();
 
   // Stash the callback in a ref so the initial-load effect doesn't have to
   // include it in its deps (parents might pass a fresh callback each render).
@@ -160,12 +157,28 @@ export default function PrivacyRadar({
       return { __empty: true };
     }
 
+    // Per-app series palette, resolved from the CSS tokens so the lines
+    // stay ≥3:1 against the light surface and pick up the HC boosts. Same
+    // order as the old hardcoded list; the purple slot moves from the
+    // unthemed #bf5af2 to the --purple token (#af52de in dark) so it can
+    // follow the HC neon-violet override.
+    const seriesColors = [
+      colors.red,
+      colors.orange,
+      colors.blue,
+      colors.green,
+      colors.purple,
+      colors.yellow,
+    ];
+
     return {
       tooltip: {},
+      // Legend/axis chrome reads the text/border tokens — identical to the
+      // old hardcoded values in dark mode, readable greys in light mode.
       legend: {
         data: appsToPlot.map((a) => a.name),
         bottom: 0,
-        textStyle: { color: "#a0a0b0" },
+        textStyle: { color: colors.text2 },
         icon: "circle",
       },
       radar: {
@@ -174,12 +187,15 @@ export default function PrivacyRadar({
           name: axis.label,
           max: RADAR_MAX,
         })),
-        axisName: { color: "#a0a0b0", fontSize: 11 },
-        splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisName: { color: colors.text2, fontSize: 11 },
+        splitLine: { lineStyle: { color: colors.border } },
         splitArea: {
-          areaStyle: { color: ["transparent", "rgba(255,255,255,0.02)"] },
+          // Alternating ring tint derived from the text token — a barely-
+          // there white wash in dark mode (as before), a dark wash in
+          // light mode where white would be invisible.
+          areaStyle: { color: ["transparent", withAlpha(colors.text, 0.02)] },
         },
-        axisLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisLine: { lineStyle: { color: colors.border } },
       },
       series: [
         {
@@ -191,18 +207,19 @@ export default function PrivacyRadar({
             // doesn't visually dominate either direction.
             value: app.lenses.map((l) => l.score ?? RADAR_MAX / 2),
             lineStyle: {
-              color: SERIES_COLORS[i % SERIES_COLORS.length],
+              color: seriesColors[i % seriesColors.length],
               width: 2,
             },
-            itemStyle: { color: SERIES_COLORS[i % SERIES_COLORS.length] },
+            itemStyle: { color: seriesColors[i % seriesColors.length] },
             areaStyle: {
-              color: `${SERIES_COLORS[i % SERIES_COLORS.length]}33`,
+              // 0.2 matches the old `${hex}33` suffix (0x33 / 255).
+              color: withAlpha(seriesColors[i % seriesColors.length], 0.2),
             },
           })),
         },
       ],
     };
-  }, [data]);
+  }, [data, colors]);
 
   if (error) {
     return (

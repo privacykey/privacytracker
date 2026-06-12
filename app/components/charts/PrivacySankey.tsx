@@ -22,37 +22,10 @@ import { useTranslations } from "next-intl";
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MatrixData } from "../../../lib/stats-views-shared";
+import { useChartColors, useChartTheme } from "../../../lib/use-chart-colors";
 import EChart from "./EChart";
 
 const MAX_APPS = 20;
-
-/**
- * Read the effective theme from the DOM so ECharts label colours can match
- * the rest of the page. Priority:
- *   1. html[data-theme-override="light"|"dark"] — the app's explicit override
- *   2. window.matchMedia('(prefers-color-scheme: light)') — OS preference
- * Safe to call during SSR — returns 'dark' (the original default) when
- * `document`/`window` aren't available.
- */
-function readTheme(): "light" | "dark" {
-  if (typeof document === "undefined") {
-    return "dark";
-  }
-  const override = document.documentElement.getAttribute("data-theme-override");
-  if (override === "light") {
-    return "light";
-  }
-  if (override === "dark") {
-    return "dark";
-  }
-  if (
-    typeof window !== "undefined" &&
-    window.matchMedia?.("(prefers-color-scheme: light)").matches
-  ) {
-    return "light";
-  }
-  return "dark";
-}
 
 /**
  * Theme-aware colours for Sankey labels and the locked-node accent. The raw
@@ -94,11 +67,9 @@ const CHART_THEME: Record<"light" | "dark", ChartTheme> = {
     tooltipMeta: "#a0a0b0",
   },
 };
-const SEV_COLOR: Record<string, string> = {
-  DATA_NOT_LINKED_TO_YOU: "#d8c7a3",
-  DATA_LINKED_TO_YOU: "#ff9f0a",
-  DATA_USED_TO_TRACK_YOU: "#ff453a",
-};
+// Severity-node colours are resolved from the CSS tokens inside the option
+// memo (see `sevColor` below) so light / high-contrast palettes flow
+// through — canvas fills can't use var().
 
 // Prefixes used inside ECharts to keep node names unique across columns.
 // See the file-level comment for why they exist.
@@ -136,11 +107,13 @@ export default function PrivacySankey() {
   // option-level styling is the only reliable way to single out a node.
   // Clicking the same node again, or any empty area, clears the lock.
   const [lockedNode, setLockedNode] = useState<string | null>(null);
-  // Theme tracking. Initialised synchronously from the DOM so the first
-  // paint already uses the right colours on the server → client handoff;
-  // the effect below keeps it in sync when the user toggles the
+  // Theme tracking via the shared hook (lib/use-chart-colors.ts) — keeps
+  // the CHART_THEME label colours in sync when the user toggles the
   // data-theme-override attribute or the OS switches light ↔ dark.
-  const [theme, setTheme] = useState<"light" | "dark">(() => readTheme());
+  const theme = useChartTheme();
+  // Theme-resolved CSS tokens for the severity-node fills. Re-resolves on
+  // the same theme flips useChartTheme() watches.
+  const colors = useChartColors();
 
   useEffect(() => {
     let live = true;
@@ -160,28 +133,6 @@ export default function PrivacySankey() {
       });
     return () => {
       live = false;
-    };
-  }, []);
-
-  /**
-   * Re-read the theme on either (a) OS prefers-color-scheme changes or
-   * (b) the app's data-theme-override attribute flipping. Both paths land
-   * in the same state setter so the option memo re-runs with the right
-   * label colours.
-   */
-  useEffect(() => {
-    const update = () => setTheme(readTheme());
-    update(); // sync once on mount in case SSR/client diverge
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
-    mq.addEventListener?.("change", update);
-    const mo = new MutationObserver(update);
-    mo.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme-override"],
-    });
-    return () => {
-      mq.removeEventListener?.("change", update);
-      mo.disconnect();
     };
   }, []);
 
@@ -217,6 +168,11 @@ export default function PrivacySankey() {
       return { option: {}, hiddenCount: 0 };
     }
     const t = CHART_THEME[theme];
+    const sevColor: Record<string, string> = {
+      DATA_NOT_LINKED_TO_YOU: colors.cream,
+      DATA_LINKED_TO_YOU: colors.orange,
+      DATA_USED_TO_TRACK_YOU: colors.red,
+    };
 
     // Rank apps by total cells collected, keep top MAX_APPS.
     const ranked = [...data.apps].sort(
@@ -237,7 +193,7 @@ export default function PrivacySankey() {
     const sevNode = (s: string, label: string) => ({
       name: `${PREFIX_SEV}${s}`,
       displayName: label,
-      itemStyle: { color: SEV_COLOR[s] },
+      itemStyle: { color: sevColor[s] },
       label: { formatter: label },
     });
     const catNode = (c: string, label: string) => ({
@@ -480,7 +436,7 @@ export default function PrivacySankey() {
       },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
-  }, [data, prettyLabel, lockedNode, theme]);
+  }, [data, prettyLabel, lockedNode, theme, colors]);
 
   // Click handler: lock/unlock the pivot node on node click.
   // The visual dimming is all driven off `lockedNode` in the option memo

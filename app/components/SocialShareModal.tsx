@@ -66,7 +66,13 @@ export interface SocialShareModalProps {
 
 /* ─── Canvas palette ─────────────────────────────────────────────────────
  * Matches the app's dark-mode tokens (see app/globals.css :root). Hard-
- * coded here because canvas.ctx can't resolve CSS custom properties. */
+ * coded here because canvas.ctx can't resolve CSS custom properties — and
+ * deliberately NOT theme-resolved (unlike the stats charts, which read the
+ * tokens via lib/use-chart-colors.ts): the share card is exported as a PNG
+ * over the fixed dark `bg` below, independent of the viewer's page theme,
+ * so the bright dark-palette severity colours are the correct ones in
+ * every theme. Swapping them for the light tokens would paint dark-on-dark
+ * in the exported image. */
 const PALETTE = {
   bg: "#0b0f14",
   bgAccent: "#141a22",

@@ -48,10 +48,15 @@ import {
 } from "../../../lib/privacy-profile";
 import type { MatrixData } from "../../../lib/stats-views-shared";
 
+// Severity colours read the CSS design tokens (dark hexes as fallbacks) so
+// the cells, legend swatches, and hover panel follow the light /
+// high-contrast palettes in globals.css. This view is pure DOM — var()
+// resolves per theme for free; the canvas charts use useChartColors()
+// from lib/use-chart-colors.ts instead.
 const SEV_COLOR: Record<string, string> = {
-  DATA_NOT_LINKED_TO_YOU: "#d8c7a3",
-  DATA_LINKED_TO_YOU: "#ff9f0a",
-  DATA_USED_TO_TRACK_YOU: "#ff453a",
+  DATA_NOT_LINKED_TO_YOU: "var(--cream, #d8c7a3)",
+  DATA_LINKED_TO_YOU: "var(--orange, #ff9f0a)",
+  DATA_USED_TO_TRACK_YOU: "var(--red, #ff453a)",
 };
 /** Severity → translation-key map. The actual labels come from
  *  `stats.charts.swatch_*` so they stay in sync with the heatmap legend. */
@@ -60,7 +65,11 @@ const SEV_LABEL_KEY: Record<string, string> = {
   DATA_LINKED_TO_YOU: "swatch_linked",
   DATA_USED_TO_TRACK_YOU: "swatch_track",
 };
-const EMPTY = "#1d1d25";
+// "No data" cell fill. Follows the tertiary-background token so empty
+// cells read as quiet background in every theme (light grey on a light
+// page) instead of near-black squares that look like strong data. The
+// fallback keeps the original dark value for any context without tokens.
+const EMPTY = "var(--bg-3, #1d1d25)";
 
 // Preference-tier colour. Reuses the severity palette so "your tolerance"
 // speaks the same colour language as the cells below it — if the bar under
@@ -68,9 +77,9 @@ const EMPTY = "#1d1d25";
 // (orange/red) is a mismatch.
 const PREF_COLOR: Record<ProfileTier, string> = {
   not_collected: "var(--text-3)",
-  not_linked: "#d8c7a3",
-  linked: "#ff9f0a",
-  tracking: "#ff453a",
+  not_linked: "var(--cream, #d8c7a3)",
+  linked: "var(--orange, #ff9f0a)",
+  tracking: "var(--red, #ff453a)",
 };
 
 interface HoverState {
@@ -378,9 +387,13 @@ export default function SmallMultiples() {
                           // layer `background-image: <gradient>` on top
                           // without the inline declaration nuking it.
                           backgroundColor: bg,
+                          // Hairline on empty cells derived from the text
+                          // token (3% tint) so it stays a faint outline in
+                          // light mode too — matches the old white 3% in
+                          // dark mode exactly.
                           border: sev
                             ? "none"
-                            : "1px solid rgba(255,255,255,0.03)",
+                            : "1px solid color-mix(in srgb, var(--text, #f0f0f5) 3%, transparent)",
                           boxShadow: isMismatch
                             ? "inset 0 0 0 2px #fff"
                             : "none",

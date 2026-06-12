@@ -35,7 +35,9 @@ import { useTranslations } from "next-intl";
  * changelog rows own more of the viewport.
  */
 import { useEffect, useMemo, useState } from "react";
+import { withAlpha } from "../../../lib/chart-colors";
 import type { TimelineData } from "../../../lib/stats-views-shared";
+import { useChartColors } from "../../../lib/use-chart-colors";
 import { useShapesMode } from "../../../lib/use-shapes-mode";
 import EChart from "./EChart";
 
@@ -110,8 +112,9 @@ const COLORS = {
   // Accessibility bands sit in the same blue family the rest of the UI
   // uses for a11y (grid filter pill, change-dot, detail-page chip). Two
   // distinct shades so added vs removed read apart on the stack without
-  // clashing with the policy band above them.
-  accessibilityAdded: "#64d2ff",
+  // clashing with the policy band above them. The "added" cyan resolves
+  // the --cyan token at the band() call site (theme-aware, dark value
+  // #64d2ff); only the indigo lives here because no token exists for it.
   accessibilityRemoved: "#5e5ce6",
   syncs: "#94a3b8", // slate-400 — quiet grey for the ambient activity line
   reviews: "#a855f7", // purple-500 — distinct from any change-type band
@@ -232,6 +235,10 @@ export default function AppChangeTimeline({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const shapesMode = useShapesMode();
+  // Theme-resolved CSS tokens for the chart chrome + the a11y-added cyan
+  // band. The change-type band palette above stays literal (deliberately
+  // inverted semantics, documented at COLORS).
+  const colors = useChartColors();
   // Collapsed by default would hide information the user just clicked
   // into, but the feature request was "can be hidden", not "hidden by
   // default" — so we open on mount and let them collapse if they want.
@@ -351,9 +358,11 @@ export default function AppChangeTimeline({
       // When shape mode is on, layer the per-band decal texture on top
       // of the translucent fill so the six stacked bands stay
       // distinguishable in monochrome / colour-blind simulation.
+      // withAlpha replaces the old `${color}55` suffix (85/255) so the
+      // fill keeps working when the colour is a resolved token.
       areaStyle: shapesMode
-        ? { color: `${color}55`, decal: BAND_DECALS[key] }
-        : { color: `${color}55` },
+        ? { color: withAlpha(color, 85 / 255), decal: BAND_DECALS[key] }
+        : { color: withAlpha(color, 85 / 255) },
     });
     // Overlay line — deliberately NOT in the `changes` stack, so the
     // contextual counter rides alongside without inflating the area.
@@ -381,9 +390,9 @@ export default function AppChangeTimeline({
       emphasis: { focus: "series" },
     });
     // NB: ECharts' canvas renderer doesn't resolve CSS `var()` strings,
-    // so axis colours are hex literals matching the 'privacy' theme
-    // registered in EChart.tsx / used by PrivacyTimeline. Stays in sync
-    // with the stats-page chart intentionally.
+    // so chrome colours come pre-resolved from useChartColors() — same
+    // text/border tokens the stats-page PrivacyTimeline uses, so the two
+    // charts stay in sync across themes.
     const lastIndex = labels.length - 1;
     return {
       // ECharts treats per-series `areaStyle.decal` as part of its `aria`
@@ -424,7 +433,7 @@ export default function AppChangeTimeline({
       legend: showLegend
         ? {
             bottom: 0,
-            textStyle: { color: "#a0a0b0", fontSize: 10 },
+            textStyle: { color: colors.text2, fontSize: 10 },
             icon: "circle",
             itemHeight: 8,
             itemGap: 10,
@@ -436,7 +445,7 @@ export default function AppChangeTimeline({
         data: labels,
         boundaryGap: false,
         axisLabel: {
-          color: "#a0a0b0",
+          color: colors.text2,
           fontSize: 10,
           // Override only the last tick so the right edge always reads
           // "Today" regardless of preset window. ECharts strips each
@@ -445,24 +454,20 @@ export default function AppChangeTimeline({
           formatter: (value: string, index: number) =>
             index === lastIndex ? tChart("chart_today") : value,
         },
-        axisLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisLine: { lineStyle: { color: colors.border } },
       },
       yAxis: {
         type: "value",
         minInterval: 1,
-        axisLabel: { color: "#a0a0b0", fontSize: 10 },
-        splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
+        axisLabel: { color: colors.text2, fontSize: 10 },
+        splitLine: { lineStyle: { color: colors.border } },
       },
       series: [
         band("added", COLORS.added, tChart("band_added")),
         band("removed", COLORS.removed, tChart("band_removed")),
         band("modified", COLORS.modified, tChart("band_modified")),
         band("policy", COLORS.policy, tChart("band_policy")),
-        band(
-          "accessibilityAdded",
-          COLORS.accessibilityAdded,
-          tChart("band_a11y_added")
-        ),
+        band("accessibilityAdded", colors.cyan, tChart("band_a11y_added")),
         band(
           "accessibilityRemoved",
           COLORS.accessibilityRemoved,
@@ -472,7 +477,7 @@ export default function AppChangeTimeline({
         overlay("reviews", COLORS.reviews, tChart("overlay_reviews")),
       ],
     };
-  }, [data, showLegend, shapesMode, tChart]);
+  }, [data, showLegend, shapesMode, tChart, colors]);
 
   return (
     <div
@@ -573,9 +578,9 @@ export default function AppChangeTimeline({
           )}
           {totals.accessibilityAdded > 0 && (
             <span>
-              <span
-                style={{ color: COLORS.accessibilityAdded, fontWeight: 600 }}
-              >
+              {/* DOM-painted (unlike the canvas band) so var() tracks the
+                  --cyan token directly. */}
+              <span style={{ color: "var(--cyan, #64d2ff)", fontWeight: 600 }}>
                 +{totals.accessibilityAdded}
               </span>
               <span style={{ marginLeft: 4 }}>{tChart("summary_a11y")}</span>
