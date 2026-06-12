@@ -6612,6 +6612,11 @@ html[data-theme-override="high-contrast"] .nav {
   color: color-mix(in srgb, var(--blue, #3b82f6) 90%, var(--text));
 }
 .review-rec-shortlist-chip-remove {
+  /* WCAG 2.2 SC 2.5.8 — the ✕ strip stretches to the chip's full height
+     but its width is glyph + padding; keep the hit box ≥24px wide. The
+     parent li clips with overflow: hidden, so widen the real box rather
+     than a pseudo-element. */
+  min-width: 24px;
   padding: 0 8px;
   font-family: inherit;
   font-size: 12px;
@@ -6757,6 +6762,9 @@ html[data-theme-override="high-contrast"] .nav {
   color: color-mix(in srgb, var(--blue, #3b82f6) 90%, var(--text));
 }
 .compare-source-shortlist-chip-remove {
+  /* WCAG 2.2 SC 2.5.8 — same hit-box guarantee as
+     .review-rec-shortlist-chip-remove above. */
+  min-width: 24px;
   padding: 0 8px;
   font-family: inherit;
   font-size: 12px;
@@ -8234,6 +8242,7 @@ body.review-rec-print-active .review-rec-print a {
   white-space: nowrap;
 }
 .compare-dock-chip-remove {
+  position: relative;
   padding: 2px 4px;
   font-size: 14px;
   line-height: 1;
@@ -8242,6 +8251,14 @@ body.review-rec-print-active .review-rec-print a {
   background: transparent;
   border: none;
   border-radius: var(--r-full);
+}
+
+/* WCAG 2.2 SC 2.5.8 — the painted ✕ is ~22×18; the pseudo-element
+   grows the clickable box to ≥24×24 without moving the dock layout. */
+.compare-dock-chip-remove::after {
+  position: absolute;
+  inset: -3px;
+  content: "";
 }
 .compare-dock-chip-remove:hover {
   color: var(--text);
@@ -10969,6 +10986,7 @@ body.review-rec-print-active .review-rec-print a {
    and can't overlap sibling cards in unpredictable ways. */
 
 .info-tooltip-trigger {
+  position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -10989,6 +11007,16 @@ body.review-rec-print-active .review-rec-print a {
     background 0.15s,
     border-color 0.15s,
     color 0.15s;
+}
+
+/* WCAG 2.2 SC 2.5.8 — invisible hit-area extension. The painted disc
+   stays 20px; the pseudo-element grows the clickable box to 24×24.
+   -3px, not -2px: absolute positioning resolves against the padding
+   box, which sits 1px (the border) inside the visible 20px disc. */
+.info-tooltip-trigger::after {
+  position: absolute;
+  inset: -3px;
+  content: "";
 }
 
 .info-tooltip-trigger:hover,
@@ -15603,6 +15631,32 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 .kbd-hint-dismiss:hover {
   color: var(--text);
   background: var(--surface-active);
+}
+
+/* WCAG 2.2 SC 2.5.8 — the pill's controls paint at ~20–22px tall.
+   Invisible pseudo-elements grow each clickable box to ≥24px. The
+   wide controls extend vertically only, so the side-by-side targets
+   (4px gaps) never overlap each other; the 22×22 dismiss takes 1px
+   on every side. */
+.kbd-hint-button,
+.kbd-hint-dismiss,
+.kbd-hint-link,
+.kbd-hint-about {
+  position: relative;
+}
+
+.kbd-hint-button::after,
+.kbd-hint-link::after,
+.kbd-hint-about::after {
+  position: absolute;
+  inset: -2px 0;
+  content: "";
+}
+
+.kbd-hint-dismiss::after {
+  position: absolute;
+  inset: -1px;
+  content: "";
 }
 
 @media (max-width: 640px) {
@@ -31263,6 +31317,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  /* WCAG 2.2 SC 2.5.8 — the native checkbox paints at ~13×13, but the
+     whole label is the activation target. Guarantee the label's hit box
+     is ≥24px tall; it has no painted background, so nothing visibly
+     grows. */
+  min-height: 24px;
   font-size: 12px;
   color: var(--text-2);
   cursor: pointer;
