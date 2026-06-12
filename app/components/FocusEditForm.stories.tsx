@@ -7,6 +7,7 @@ const meta = {
   parameters: { layout: "padded" },
   args: {
     initialAudience: "self",
+    initialChildAgeBand: null,
     initialUnderstand: true,
     initialDeclutter: false,
     initialMinimal: false,

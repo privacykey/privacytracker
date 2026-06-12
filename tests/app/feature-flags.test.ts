@@ -41,3 +41,48 @@ test("Apple Configurator onboarding method still honours explicit user override"
     "off"
   );
 });
+
+// ── guardian age-rating feature ───────────────────────────────────────
+
+function guardianCtx(
+  overrides: ResolverContext["overrides"] = new Map()
+): ResolverContext {
+  return {
+    focus: {
+      audience: "guardian",
+      goals: new Set(["understand"]),
+      aiConfigured: false,
+    },
+    overrides,
+    killSwitchOff: false,
+  };
+}
+
+test("guardian age-rating flags are off for the self audience", () => {
+  assert.equal(resolveFlag("flag.guardian.age_rating", ctx()), "off");
+  assert.equal(resolveFlag("flag.dashboard.callout.age_rating", ctx()), "off");
+});
+
+test("guardian audience turns the age-rating master + callout on", () => {
+  assert.equal(resolveFlag("flag.guardian.age_rating", guardianCtx()), "on");
+  assert.equal(
+    resolveFlag("flag.dashboard.callout.age_rating", guardianCtx()),
+    "on"
+  );
+});
+
+test("age-rating callout chains off the master via FLAG_DEPENDENCIES", () => {
+  // Master overridden off → the callout collapses too, even though the
+  // guardian audience rule would otherwise turn it on.
+  const overrides = new Map([["flag.guardian.age_rating", "off"] as const]);
+  assert.equal(
+    resolveFlag("flag.dashboard.callout.age_rating", guardianCtx(overrides)),
+    "off"
+  );
+});
+
+test("kill-switch collapses the age-rating flags to their hard defaults", () => {
+  const killed: ResolverContext = { ...guardianCtx(), killSwitchOff: true };
+  assert.equal(resolveFlag("flag.guardian.age_rating", killed), "off");
+  assert.equal(resolveFlag("flag.dashboard.callout.age_rating", killed), "off");
+});

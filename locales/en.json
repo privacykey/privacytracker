@@ -507,6 +507,11 @@
       "summary": "Advanced options",
       "audience": "Audience",
       "goals": "Goals"
+    },
+    "guardian_age": {
+      "heading": "Child's age range",
+      "hint": "Optional — apps whose App Store age rating sits above this range get flagged across the dashboard. You can change it any time in Settings → Focus.",
+      "resources_link": "How to set up parental controls on their device"
     }
   },
   "focus_strip": {
@@ -959,7 +964,9 @@
       "diagnostic_hint_post": " prompt is sitting on the phone, or restrictions are filtering installed apps. Copy and share this block if you need help diagnosing.",
       "progress_title": "Reading apps from your iPhone…",
       "progress_body": "cfgutil is enumerating every installed app over USB. On a phone with 300 + apps this can take up to a minute. The cursor may show a beach ball briefly — that’s expected, the system call is synchronous.",
-      "progress_tip": "Tip: keep the device unlocked while this runs."
+      "progress_tip": "Tip: keep the device unlocked while this runs.",
+      "step2_properties_probe": "{count, plural, one {This cfgutil build can read # device property.} other {This cfgutil build can read # device properties.}}",
+      "step2_properties_child_hit": "Child-safety related properties detected:"
     },
     "modals": {
       "restore_backup": {
@@ -2641,7 +2648,11 @@
       "security_hygiene_jump": "Jump to stale apps →",
       "new_to_privacy_labels_title": "New to privacy labels?",
       "new_to_privacy_labels_body": "Apple sorts the data an app can collect into categories like Contact Info, Location, Health & Fitness, and more. Each category is tagged with how it's used — linked to you, used to track you across apps, or neither.",
-      "definitions_link": "Read the privacy-label definitions →"
+      "definitions_link": "Read the privacy-label definitions →",
+      "age_rating_title": "{count, plural, one {# app is rated above your child's age range} other {# apps are rated above your child's age range}}",
+      "age_rating_body": "Based on the {band} age range you set, {count, plural, one {one tracked app carries} other {# tracked apps carry}} a higher App Store age rating. Review them, or tighten the device's own restrictions.",
+      "age_rating_review_link": "Review flagged apps →",
+      "age_rating_resources_link": "Parental controls guide →"
     },
     "headsup": {
       "review_label": "{count, plural, one {# app has unreviewed changes} other {# apps have unreviewed changes}}",
@@ -2821,7 +2832,8 @@
           "profile_mismatch_section": "Consider replacing",
           "stale_section": "Stale apps",
           "activity_section": "This week's activity",
-          "risk_tier_legend": "Risk-tier legend"
+          "risk_tier_legend": "Risk-tier legend",
+          "age_rating_callout": "Age-range callout"
         },
         "descriptions": {
           "task_list": "The audience-aware tasks panel at the very top.",
@@ -2840,7 +2852,8 @@
           "profile_mismatch_section": "Apps that exceed the thresholds in your privacy profile.",
           "stale_section": "Apps not refreshed in 30+ days.",
           "activity_section": "Recent scrapes, imports, and edits across your library.",
-          "risk_tier_legend": "Collapsible reference for how each risk tier is defined."
+          "risk_tier_legend": "Collapsible reference for how each risk tier is defined.",
+          "age_rating_callout": "\"Apps rated above your child's age range\" notice for the guardian focus."
         }
       },
       "edit_cards_aria": "Editable dashboard cards"
@@ -3025,7 +3038,19 @@
     "modal_remove_app": "Remove app",
     "modal_removing": "Removing…",
     "modal_remove_custom_title": "Remove {name}?",
-    "modal_remove_custom_body": "This deletes the custom app entry, its source URL, and any notes you've attached. You can add it back later by creating a new custom app."
+    "modal_remove_custom_body": "This deletes the custom app entry, its source URL, and any notes you've attached. You can add it back later by creating a new custom app.",
+    "age_filter_label": "Age range",
+    "age_all_label": "All",
+    "age_within_label": "Within range",
+    "age_within_title": "Apps rated at or below the child's age range",
+    "age_above_label": "Above range",
+    "age_above_title": "Apps rated above the child's age range",
+    "age_filter_above_chip": "rated above the child's age range",
+    "age_filter_within_chip": "rated within the child's age range",
+    "clear_age_aria": "Clear the age-range filter",
+    "clear_age_title": "Show all ratings",
+    "age_pill_label": "{rating} · above range",
+    "age_pill_title": "Rated {rating} on the App Store — above the child's age range you set"
   },
   "review_queue": {
     "mode_toggle": {
@@ -3720,7 +3745,13 @@
       "required_desc": "I won't use an app that doesn't declare this feature.",
       "nice": "Nice",
       "nice_desc": "I'd prefer apps that declare this, but it's not a deal-breaker."
-    }
+    },
+    "age_pill": "Ages {rating}",
+    "age_pill_title": "App Store age rating",
+    "age_pill_within_title": "Rated {rating} — within the {band} age range you set",
+    "age_pill_above": "Ages {rating} · above range",
+    "age_pill_above_title": "Rated {rating} — above the {band} age range you set",
+    "age_resources_link": "Parental controls guide"
   },
   "privacy_policy_page": {
     "back_to_app": "← Back to app",
@@ -5404,5 +5435,42 @@
     "tooltip_free": "Free to download from the App Store.",
     "tooltip_iap_yes": "Offers in-app purchases — features or content can be unlocked for additional payment.",
     "tooltip_iap_no": "No in-app purchases reported on the listing."
+  },
+  "age_band": {
+    "labels": {
+      "under_9": "Under 9",
+      "9_12": "9–12",
+      "13_15": "13–15",
+      "16_17": "16–17",
+      "18_plus": "18+"
+    }
+  },
+  "help_parental": {
+    "metadata_title": "Parental Controls Guide — privacytracker",
+    "metadata_description": "How to set up Screen Time, app and content restrictions, child accounts, and Ask to Buy on a child's iPhone or iPad.",
+    "kicker": "Guardian Guide",
+    "title": "Set up parental controls on their device",
+    "subtitle": "privacytracker can flag apps rated above your child's age range, but the device itself enforces the rules. These official resources cover time limits, app restrictions, and purchase approvals.",
+    "back_to_dashboard": "Back to dashboard",
+    "family_hub_title": "Apple Families hub",
+    "family_hub_copy": "Apple's overview of every family feature in one place — a good starting point if you haven't set anything up yet.",
+    "family_hub_link": "Open apple.com/families",
+    "parental_controls_title": "App & content restrictions",
+    "parental_controls_copy": "Content & Privacy Restrictions can block apps above a chosen age rating, filter web content, and stop explicit media — enforced on the device itself.",
+    "parental_controls_link": "Apple support: parental controls",
+    "screen_time_title": "Screen Time & time limits",
+    "screen_time_copy": "Set downtime (a schedule when the device locks down), daily per-app time limits, and communication limits.",
+    "screen_time_link": "Apple support: Screen Time",
+    "child_account_title": "A child account in Family Sharing",
+    "child_account_copy": "A proper child Apple Account gets age-appropriate defaults automatically and is what makes age-range sharing, Ask to Buy, and Screen Time-from-your-phone possible.",
+    "child_account_link": "Apple support: child accounts",
+    "ask_to_buy_title": "Ask to Buy",
+    "ask_to_buy_copy": "Every download or purchase on the child's device sends an approval request to your phone first — including free apps.",
+    "ask_to_buy_link": "Apple support: Ask to Buy",
+    "esafety_title": "eSafety Commissioner (Australia)",
+    "esafety_copy": "Independent, vendor-neutral guidance for parents: talking to kids about being online, screen-time strategies, and what to do when something goes wrong.",
+    "esafety_link": "Open esafety.gov.au/parents",
+    "how_we_flag_title": "How privacytracker flags apps",
+    "how_we_flag_copy": "When a guardian focus has a child age range set, every tracked app's App Store age rating (4+, 9+, 13+, 16+, 18+) is compared against it. Apps rated above the range get a warning pill on the app grid and the app's detail page, plus a dashboard notice. Apps with no captured rating are never flagged — no data, no alarm."
   }
 }

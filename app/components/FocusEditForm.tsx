@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import type { AgeBandKey } from "@/lib/age-rating";
 import type { Audience } from "@/lib/feature-flag-rules";
 import { setPreviewFocus } from "@/lib/focus-preview";
 import type { FocusWorkflow } from "@/lib/focus-workflow";
@@ -12,6 +13,7 @@ import FocusPurposeForm from "./FocusPurposeForm";
 interface Props {
   initialAccessibility: boolean;
   initialAudience: Audience;
+  initialChildAgeBand: AgeBandKey | null;
   initialDeclutter: boolean;
   initialMinimal: boolean;
   initialUnderstand: boolean;
@@ -20,6 +22,7 @@ interface Props {
 
 export default function FocusEditForm({
   initialAudience,
+  initialChildAgeBand,
   initialUnderstand,
   initialDeclutter,
   initialMinimal,
@@ -67,6 +70,7 @@ export default function FocusEditForm({
         accessibility: initialAccessibility,
         workflow: initialWorkflow,
       }}
+      initialChildAgeBand={initialChildAgeBand}
       mode="settings"
       onCancel={handleCancel}
       onSubmit={handleSavePreview}

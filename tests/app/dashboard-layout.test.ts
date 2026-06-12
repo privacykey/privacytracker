@@ -276,3 +276,20 @@ test("isCardVisible: callout ignores hidden[] but respects the flag gate", () =>
 test("DEFAULT_LAYOUT round-trips to the default preset", () => {
   assert.equal(matchDashboardPreset(DEFAULT_LAYOUT), "default");
 });
+
+test("reconcileLayout slots age_rating_callout into pre-feature layouts", () => {
+  // A layout saved before the guardian age-rating callout shipped.
+  const trimmed: readonly DashboardCardId[] = CANONICAL_ORDER.filter(
+    (id) => id !== "age_rating_callout"
+  );
+  const stored: DashboardLayout = { v: 1, order: [...trimmed], hidden: [] };
+  const out = reconcileLayout(stored);
+  const familyIdx = out.order.indexOf("family_callout");
+  const ageIdx = out.order.indexOf("age_rating_callout");
+  assert.ok(ageIdx >= 0, "age_rating_callout missing from reconciled output");
+  assert.equal(
+    ageIdx,
+    familyIdx + 1,
+    "age_rating_callout should slot right after family_callout"
+  );
+});

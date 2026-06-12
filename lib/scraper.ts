@@ -120,6 +120,8 @@ function parseRetryAfterMs(header: string | null): number | null {
 export interface AppCandidate {
   appleId: string;
   bundleId: string;
+  /** App Store age rating ("4+", "13+") from the search payload; "" when absent. */
+  contentAdvisoryRating: string;
   developer: string;
   iconUrl: string;
   name: string;
@@ -316,6 +318,8 @@ async function runItunesSearch(
     iconUrl: r.artworkUrl100?.replace("100x100bb", "200x200bb") ?? "",
     url: r.trackViewUrl?.split("?")[0] ?? "",
     bundleId: r.bundleId,
+    contentAdvisoryRating:
+      r.contentAdvisoryRating ?? r.trackContentRating ?? "",
     searchQuery: name,
   })) as AppCandidate[];
 }
@@ -716,6 +720,8 @@ export async function lookupAppsByBundleId(
           // downstream comparisons (audit-bundle import, manual-apps
           // import) always agree with what the App Store has stored.
           bundleId: bundle,
+          contentAdvisoryRating:
+            r.contentAdvisoryRating ?? r.trackContentRating ?? "",
           // We use the bundle ID as the search-query identifier so the
           // wizard can key its results map by either name OR bundle ID
           // when stitching this back into the existing AppCandidate
@@ -1074,13 +1080,14 @@ export async function fetchAndParseApp(
     // diff that came with the release.
     const existingApp = db
       .prepare(
-        "SELECT id, currentVersion, versionUpdatedAt FROM apps WHERE id = ?"
+        "SELECT id, currentVersion, versionUpdatedAt, ageRating FROM apps WHERE id = ?"
       )
       .get(appleId) as
       | {
           id: string;
           currentVersion: string | null;
           versionUpdatedAt: number | null;
+          ageRating: string | null;
         }
       | undefined;
     let previousSnapshot: PrivacyTypeSnapshot[] | null = null;
@@ -1167,7 +1174,28 @@ export async function fetchAndParseApp(
     const accessibilityChanges = existingApp
       ? diffAccessibility(previousAccessibility, newAccessibility)
       : [];
-    const changes = [...privacyChanges, ...accessibilityChanges];
+    // Age-rating diff. COALESCE in the UPDATE means a lookup miss (null)
+    // preserves the old value, so only compare when both sides are known —
+    // a transient lookup failure must never read as "rating changed".
+    const previousAgeRating = existingApp?.ageRating ?? null;
+    const ageRatingChanges: ChangeEntry[] =
+      existingApp &&
+      previousAgeRating &&
+      versionInfo.ageRating &&
+      previousAgeRating !== versionInfo.ageRating
+        ? [
+            {
+              category: "age-rating",
+              type: "modified",
+              description: `Age rating changed from ${previousAgeRating} to ${versionInfo.ageRating}`,
+            },
+          ]
+        : [];
+    const changes = [
+      ...privacyChanges,
+      ...accessibilityChanges,
+      ...ageRatingChanges,
+    ];
 
     await commitScrapedAppToDb({
       appleId,
@@ -1354,6 +1382,12 @@ export async function fetchAndParseApp(
 }
 
 interface VersionInfo {
+  /**
+   * App Store age rating from the Lookup payload's `contentAdvisoryRating`
+   * (fallback `trackContentRating`) — raw string like "4+" / "13+", null
+   * on lookup failure or absent field. Compared via lib/age-rating.ts.
+   */
+  ageRating: string | null;
   currentVersion: string | null;
   /**
    * Apple App Store genre / category. `genreId` is the numeric id Apple
@@ -1397,6 +1431,7 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
     priceFormatted: null,
     genreId: null,
     genreName: null,
+    ageRating: null,
   };
   if (!/^\d+$/.test(appleId)) {
     return empty;
@@ -1481,6 +1516,15 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
         ? entry.primaryGenreName.trim()
         : null;
 
+    // Age rating — `contentAdvisoryRating` is the storefront display
+    // string ("4+", "13+"); `trackContentRating` mirrors it on most
+    // payloads and survives on some where the former is absent.
+    const ratingRaw = entry.contentAdvisoryRating ?? entry.trackContentRating;
+    const ageRating =
+      typeof ratingRaw === "string" && ratingRaw.trim()
+        ? ratingRaw.trim()
+        : null;
+
     return {
       currentVersion,
       versionUpdatedAt,
@@ -1490,6 +1534,7 @@ async function fetchVersionInfo(appleId: string): Promise<VersionInfo> {
       priceFormatted,
       genreId,
       genreName,
+      ageRating,
     };
   } catch (error) {
     console.error("iTunes lookup failed for", appleId, error);
@@ -1693,7 +1738,7 @@ interface CommitScrapedAppInput {
  * data — historically true for every capture between Jan 2021 and the
  * Nov 2025 web App Store redesign.
  *
- * Wayback investigation (see SECURITY.md / wiki Wayback notes) confirmed
+ * Wayback investigation (see .github/SECURITY.md / wiki Wayback notes) confirmed
  * the historical schema:
  *
  *   <script type="fastboot/shoebox" id="shoebox-media-api-cache-apps">
@@ -2226,9 +2271,9 @@ function pushScrapedAppStatements(
           currentVersion, versionUpdatedAt, whatsNew, hasPrivacyDetails,
           hasAccessibilityLabels,
           priceAmount, priceCurrency, priceFormatted, hasIap,
-          genreId, genreName
+          genreId, genreName, ageRating
         )
-        VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       params: [
         appId,
@@ -2250,6 +2295,7 @@ function pushScrapedAppStatements(
         hasIap,
         versionInfo.genreId,
         versionInfo.genreName,
+        versionInfo.ageRating,
       ],
     });
   } else {
@@ -2269,7 +2315,8 @@ function pushScrapedAppStatements(
                priceFormatted = COALESCE(?, priceFormatted),
                hasIap = COALESCE(?, hasIap),
                genreId = COALESCE(?, genreId),
-               genreName = COALESCE(?, genreName)
+               genreName = COALESCE(?, genreName),
+               ageRating = COALESCE(?, ageRating)
          WHERE id = ?
       `,
       params: [
@@ -2290,6 +2337,7 @@ function pushScrapedAppStatements(
         hasIap,
         versionInfo.genreId,
         versionInfo.genreName,
+        versionInfo.ageRating,
         appId,
       ],
     });

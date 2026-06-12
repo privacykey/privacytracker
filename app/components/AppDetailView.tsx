@@ -22,6 +22,7 @@ import {
   CANONICAL_ACCESSIBILITY_FEATURES,
   type CanonicalAccessibilityFeature,
 } from "../../lib/accessibility-types";
+import { type AgeBandKey, compareRatingToBand } from "../../lib/age-rating";
 import type {
   ChangeEntry,
   ChangelogRow,
@@ -245,6 +246,8 @@ interface PrivacyType {
 interface App {
   /** Feature list Apple published on the accessibility shelf at last scrape. */
   accessibilityFeatures?: AccessibilityFeatureProp[];
+  /** App Store age rating ("4+", "13+"); null = never captured. */
+  ageRating?: string | null;
   changeCount: number;
   /** Latest App Store version string, e.g. "12.1.0". */
   currentVersion?: string | null;
@@ -365,6 +368,8 @@ export interface DetailFlagState {
   chartsTrendPresets: boolean;
   // Footer
   footerImportProvenance: boolean;
+  /** flag.guardian.age_rating — header age-rating verdict chip. */
+  guardianAgeRating: boolean;
   headerA11yCountChip: boolean;
   headerChangeCountBadge: boolean;
   // Header
@@ -426,6 +431,7 @@ export default function AppDetailView({
   waybackShowImportedDefault = true,
   importProvenance = null,
   trackAccessibility = true,
+  childAgeBand = null,
   detailFlags,
 }: {
   app: App;
@@ -471,6 +477,11 @@ export default function AppDetailView({
    */
   trackAccessibility?: boolean;
   /**
+   * Guardian child age band — drives the age-rating verdict chip in the
+   * header. Null hides the verdict (the neutral rating chip still shows).
+   */
+  childAgeBand?: AgeBandKey | null;
+  /**
    * Resolved feature flags relevant to this surface. Round 3 PR 4 wires
    * only the annotations-sidebar gate + audience; subsequent PRs add more.
    */
@@ -481,6 +492,8 @@ export default function AppDetailView({
   const f = {
     annotationsSidebar: detailFlags?.annotationsSidebar ?? "collapsed",
     audience: detailFlags?.audience ?? "self",
+    // FALSE default — new guarded surface, un-wired callers stay unchanged.
+    guardianAgeRating: detailFlags?.guardianAgeRating ?? false,
     headerFreshnessBadge: detailFlags?.headerFreshnessBadge ?? true,
     headerChangeCountBadge: detailFlags?.headerChangeCountBadge ?? true,
     headerA11yCountChip: detailFlags?.headerA11yCountChip ?? true,
@@ -627,6 +640,8 @@ export default function AppDetailView({
   const tAppGrid = useTranslations("app_grid");
   // Price + IAP chip copy — shared namespace with ShortlistView's chips.
   const tPriceChip = useTranslations("price_chip");
+  // Age-band labels — shared namespace with the focus form's band picker.
+  const tAgeBand = useTranslations("age_band");
   // Category-label translators originally lived here, but the
   // category-card render runs inside the PrivacyTypeSection sub-
   // component (see line ~3060), and React's hooks rules mean each
@@ -1114,6 +1129,60 @@ export default function AppDetailView({
                 </span>
               );
             })()}
+
+            {/*
+              Age-rating chip. The neutral rating ("Ages 13+") renders for
+              everyone once a sync has captured it. When the guardian flag
+              is on AND a child age band is set, the chip gains a verdict:
+              above-range turns it into a warning with a link to the
+              parental-controls guide; within-range stays quiet (a subtle
+              ✓ variant). 'unknown' never warns — no data, no alarm.
+            */}
+            {app.ageRating &&
+              (() => {
+                const verdict =
+                  f.guardianAgeRating && childAgeBand
+                    ? compareRatingToBand(childAgeBand, app.ageRating)
+                    : null;
+                if (verdict === "above" && childAgeBand) {
+                  return (
+                    <>
+                      <span
+                        className="detail-age-pill detail-age-pill-above"
+                        title={tDetail("age_pill_above_title", {
+                          rating: app.ageRating,
+                          band: tAgeBand(`labels.${childAgeBand}`),
+                        })}
+                      >
+                        <span aria-hidden="true">⚠</span>
+                        {tDetail("age_pill_above", { rating: app.ageRating })}
+                      </span>
+                      <Link
+                        className="btn btn-ghost btn-sm"
+                        href="/help/parental-controls"
+                      >
+                        {tDetail("age_resources_link")}
+                      </Link>
+                    </>
+                  );
+                }
+                return (
+                  <span
+                    className={`detail-age-pill ${verdict === "within" ? "detail-age-pill-within" : ""}`}
+                    title={
+                      verdict === "within" && childAgeBand
+                        ? tDetail("age_pill_within_title", {
+                            rating: app.ageRating,
+                            band: tAgeBand(`labels.${childAgeBand}`),
+                          })
+                        : tDetail("age_pill_title")
+                    }
+                  >
+                    {verdict === "within" && <span aria-hidden="true">✓</span>}
+                    {tDetail("age_pill", { rating: app.ageRating })}
+                  </span>
+                );
+              })()}
 
             {/*
               Accessibility chip. Gated on the user's "track accessibility

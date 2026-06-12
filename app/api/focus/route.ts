@@ -8,6 +8,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { isValidAgeBand } from "@/lib/age-rating";
 import type { Audience } from "@/lib/feature-flag-rules";
 import {
   getActiveFocus,
@@ -19,6 +20,7 @@ import {
   inferFocusWorkflow,
   isFocusWorkflow,
 } from "@/lib/focus-workflow";
+import { getSetting, setSetting } from "@/lib/scheduler";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -39,12 +41,15 @@ export async function GET() {
     accessibility: focus.goals.has("accessibility"),
     aiConfigured: focus.aiConfigured,
     workflow,
+    childAgeBand: getSetting("guardian_child_age_band", "") || null,
   });
 }
 
 interface FocusBody {
   accessibility?: boolean;
   audience: Audience;
+  /** Guardian child age band (AgeBandKey); "" or null clears it. */
+  childAgeBand?: string | null;
   declutter?: boolean;
   minimal?: boolean;
   understand?: boolean;
@@ -99,6 +104,22 @@ export async function POST(request: NextRequest) {
     workflow ??
     inferFocusWorkflow({ audience, understand, declutter, minimal });
 
+  // Guardian child age band. `undefined` = field absent = leave unchanged
+  // (older callers don't send it); "" / null = explicit clear. The band is
+  // kept when the audience switches away — flags make every surface inert.
+  const childAgeBand = body.childAgeBand;
+  if (
+    childAgeBand !== undefined &&
+    childAgeBand !== null &&
+    childAgeBand !== "" &&
+    !isValidAgeBand(childAgeBand)
+  ) {
+    return NextResponse.json(
+      { error: "childAgeBand must be a known age band key" },
+      { status: 400 }
+    );
+  }
+
   try {
     setActiveFocus({
       audience,
@@ -108,6 +129,9 @@ export async function POST(request: NextRequest) {
       accessibility,
       workflow: finalWorkflow,
     });
+    if (childAgeBand !== undefined) {
+      setSetting("guardian_child_age_band", childAgeBand ?? "");
+    }
   } catch (e) {
     console.error("[/api/focus] write failed:", e);
     return NextResponse.json(
@@ -123,5 +147,6 @@ export async function POST(request: NextRequest) {
     minimal,
     accessibility,
     workflow: finalWorkflow,
+    childAgeBand: getSetting("guardian_child_age_band", "") || null,
   });
 }

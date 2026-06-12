@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { type AgeBandKey, compareRatingToBand } from "../../lib/age-rating";
 import {
   localiseBadgeDescription,
   localiseBadgeLabel,
@@ -26,6 +27,8 @@ import VerdictPill from "./VerdictPill";
 interface App {
   /** Count of declared accessibility features. Server-side derived. */
   accessibilityCount?: number;
+  /** App Store age rating ("4+", "13+"); null/absent = never captured. */
+  ageRating?: string | null;
   categoryCount: number;
   changeCount: number;
   developer?: string;
@@ -138,6 +141,23 @@ function parseAccessibilityParam(
 }
 
 /**
+ * Two-way age-rating filter against the guardian's child age band.
+ *   'within' — apps rated at or below the band's cap
+ *   'above'  — apps rated above the band (the warning bucket)
+ *   null     — no filter
+ * Apps without a captured rating are excluded from both buckets,
+ * mirroring how `null` accessibility rows are handled.
+ */
+type AgeRatingFilter = "within" | "above";
+
+function parseAgeParam(raw: string | null): AgeRatingFilter | null {
+  if (raw === "within" || raw === "above") {
+    return raw;
+  }
+  return null;
+}
+
+/**
  * Minimal device shape used by the AppGrid dropdown. Matches the
  * subset of `Device` (lib/devices.ts) the client actually reads —
  * avoids dragging better-sqlite3 type imports into a client bundle.
@@ -169,6 +189,12 @@ interface AppGridProps {
   appDeviceMap?: Record<string, string[]>;
   /** Active audience — drives review-queue guardian variant + copy. */
   audience?: "self" | "loved_one" | "guardian";
+  /**
+   * Guardian child age band from `guardian_child_age_band`. Null/absent
+   * hides the age-rating pill + filter regardless of the flag — there's
+   * nothing to compare against.
+   */
+  childAgeBand?: AgeBandKey | null;
   /**
    * Devices the user has connected — drives the device-scope dropdown.
    * Sorted by recency in the server query so the most-recently-synced
@@ -253,6 +279,8 @@ export interface AppGridFlagState {
   filterRiskButtons: boolean;
   filterSearch: boolean;
   filterSortTabs: boolean;
+  /** flag.guardian.age_rating — child-age pill + filter. */
+  guardianAgeRating: boolean;
   reviewQueueBulkSelect: boolean;
   reviewQueueCfgutilUninstall: boolean;
   reviewQueueEnabled: boolean;
@@ -268,6 +296,7 @@ export default function AppGrid({
   pendingChangeCategoriesByApp = {},
   flags,
   audience = "self",
+  childAgeBand = null,
   hasProfile = false,
   showQueueProgressBar = true,
   devices = [],
@@ -314,10 +343,17 @@ export default function AppGrid({
     cardAnnotationHighlight: flags?.cardAnnotationHighlight ?? true,
     cardVerdictPill: flags?.cardVerdictPill ?? true,
     emptyState: flags?.emptyState ?? true,
+    // Defaults FALSE (unlike the legacy all-on defaults above) — this is a
+    // new guarded surface; un-wired callers shouldn't grow guardian UI.
+    guardianAgeRating: flags?.guardianAgeRating ?? false,
     reviewQueueEnabled: flags?.reviewQueueEnabled ?? true,
     reviewQueueBulkSelect: flags?.reviewQueueBulkSelect ?? true,
     reviewQueueCfgutilUninstall: flags?.reviewQueueCfgutilUninstall ?? false,
   };
+
+  // Age-rating comparisons only exist when the flag is on AND a band is
+  // set — both gates collapse the pill, the filter row, and `?age=`.
+  const ageFeatureOn = f.guardianAgeRating && childAgeBand !== null;
 
   const [apps, setApps] = useState<App[]>(initialApps);
   const [manualApps, setManualApps] = useState<ManualApp[]>(initialManualApps);
@@ -363,6 +399,15 @@ export default function AppGrid({
     }
     return parseAccessibilityParam(searchParams?.get("access") ?? null);
   }, [searchParams, showAccessibilityFilter]);
+  // URL-backed age-rating filter. `?age=above` is the guardian callout's
+  // deep-link target. Ignored when the feature is off / no band is set,
+  // matching how `?access=` defers to the accessibility toggle.
+  const ageFilter = useMemo<AgeRatingFilter | null>(() => {
+    if (!ageFeatureOn) {
+      return null;
+    }
+    return parseAgeParam(searchParams?.get("age") ?? null);
+  }, [searchParams, ageFeatureOn]);
   // URL-backed device-scope filter. Validates against the supplied device
   // list so a stale bookmark to a deleted device falls back to "all".
   // Also accepts the sentinel `'unattached'` for apps with no device
@@ -505,6 +550,22 @@ export default function AppGrid({
         params.set("access", next);
       } else {
         params.delete("access");
+      }
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
+
+  // URL writer for the age-rating filter pills. Same clean-URL contract
+  // as setAccessibilityFilter.
+  const setAgeFilter = useCallback(
+    (next: AgeRatingFilter | null) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      if (next) {
+        params.set("age", next);
+      } else {
+        params.delete("age");
       }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
@@ -861,6 +922,16 @@ export default function AppGrid({
         ? a.hasAccessibilityLabels === 1
         : a.hasAccessibilityLabels === 0;
     })
+    .filter((a) => {
+      // Age filter — apps with no captured rating ('unknown') are excluded
+      // from both buckets, same contract as the accessibility filter.
+      if (!(ageFilter && childAgeBand)) {
+        return true;
+      }
+      return (
+        compareRatingToBand(childAgeBand, a.ageRating ?? null) === ageFilter
+      );
+    })
     .sort((a, b) => {
       if (sort === "name") {
         return a.name.localeCompare(b.name);
@@ -899,6 +970,11 @@ export default function AppGrid({
     if (accessibilityFilter) {
       return [];
     }
+    // Same reasoning for the age filter — no App Store listing means no
+    // age rating to compare.
+    if (ageFilter) {
+      return [];
+    }
     const q = filter.trim().toLowerCase();
     return [...manualApps]
       .filter((m) => {
@@ -919,7 +995,15 @@ export default function AppGrid({
         }
         return a.name.localeCompare(b.name);
       });
-  }, [manualApps, filter, riskFilter, mismatchOnly, accessibilityFilter, sort]);
+  }, [
+    manualApps,
+    filter,
+    riskFilter,
+    mismatchOnly,
+    accessibilityFilter,
+    ageFilter,
+    sort,
+  ]);
 
   const totalShown = sorted.length + filteredManualApps.length;
   const totalTracked = apps.length + manualApps.length;
@@ -927,6 +1011,7 @@ export default function AppGrid({
     Boolean(riskFilter) ||
     mismatchOnly ||
     Boolean(accessibilityFilter) ||
+    Boolean(ageFilter) ||
     filter.trim().length > 0 ||
     totalShown !== totalTracked;
 
@@ -1433,7 +1518,11 @@ export default function AppGrid({
           to the next line or far edges. Rendered only when at least one
           filter is active so we don't leave an empty row. */}
       {f.filterActiveBanners &&
-        (riskFilter || mismatchOnly || accessibilityFilter || deviceFilter) && (
+        (riskFilter ||
+          mismatchOnly ||
+          accessibilityFilter ||
+          ageFilter ||
+          deviceFilter) && (
           <div className="active-filters-row" role="region">
             {riskFilter && (
               <div className={`filter-status filter-status-${riskFilter}`}>
@@ -1492,6 +1581,29 @@ export default function AppGrid({
                   className="filter-status-clear"
                   onClick={() => setAccessibilityFilter(null)}
                   title={tGrid("clear_a11y_title")}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {ageFilter && (
+              <div className={`filter-status filter-status-age-${ageFilter}`}>
+                <span className="filter-status-text">
+                  <span className="filter-status-label">
+                    {tGrid("filtering_by")}
+                  </span>
+                  <strong>
+                    {ageFilter === "above"
+                      ? tGrid("age_filter_above_chip")
+                      : tGrid("age_filter_within_chip")}
+                  </strong>
+                </span>
+                <button
+                  aria-label={tGrid("clear_age_aria")}
+                  className="filter-status-clear"
+                  onClick={() => setAgeFilter(null)}
+                  title={tGrid("clear_age_title")}
                   type="button"
                 >
                   ✕
@@ -1662,6 +1774,98 @@ export default function AppGrid({
                   <span>{tGrid("no_features_label")}</span>
                   <span className="segmented-toggle-btn-count">
                     {missingCount}
+                  </span>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/*
+        Age-rating filter row — guardian-only (flag + child band both set).
+        Mirrors the accessibility row: apps without a captured rating are
+        excluded from both buckets, and the row hides entirely when nothing
+        has been evaluated yet (fresh installs, pre-feature rows).
+      */}
+      {ageFeatureOn &&
+        childAgeBand &&
+        (() => {
+          let withinCount = 0;
+          let aboveCount = 0;
+          for (const app of prefilteredApps) {
+            const verdict = compareRatingToBand(
+              childAgeBand,
+              app.ageRating ?? null
+            );
+            if (verdict === "within") {
+              withinCount++;
+            } else if (verdict === "above") {
+              aboveCount++;
+            }
+          }
+          const evaluatedCount = withinCount + aboveCount;
+          if (evaluatedCount === 0) {
+            return null;
+          }
+          return (
+            <div className="access-filter-row age-filter-row">
+              <span className="access-filter-label" id="age-filter-label">
+                {tGrid("age_filter_label")}
+              </span>
+              <div
+                aria-labelledby="age-filter-label"
+                className="segmented-toggle"
+                role="group"
+              >
+                <button
+                  aria-pressed={ageFilter === null}
+                  className={`segmented-toggle-btn ${ageFilter === null ? "is-active" : ""}`}
+                  onClick={() => setAgeFilter(null)}
+                  type="button"
+                >
+                  <span>{tGrid("age_all_label")}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {evaluatedCount}
+                  </span>
+                </button>
+                <button
+                  aria-pressed={ageFilter === "within"}
+                  className={`segmented-toggle-btn ${ageFilter === "within" ? "is-active" : ""}`}
+                  data-age="within"
+                  disabled={withinCount === 0 && ageFilter !== "within"}
+                  onClick={() =>
+                    setAgeFilter(ageFilter === "within" ? null : "within")
+                  }
+                  title={tGrid("age_within_title")}
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="segmented-toggle-btn-dot"
+                  />
+                  <span>{tGrid("age_within_label")}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {withinCount}
+                  </span>
+                </button>
+                <button
+                  aria-pressed={ageFilter === "above"}
+                  className={`segmented-toggle-btn ${ageFilter === "above" ? "is-active" : ""}`}
+                  data-age="above"
+                  disabled={aboveCount === 0 && ageFilter !== "above"}
+                  onClick={() =>
+                    setAgeFilter(ageFilter === "above" ? null : "above")
+                  }
+                  title={tGrid("age_above_title")}
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="segmented-toggle-btn-dot"
+                  />
+                  <span>{tGrid("age_above_label")}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {aboveCount}
                   </span>
                 </button>
               </div>
@@ -1977,6 +2181,23 @@ export default function AppGrid({
                         )}
                       </span>
                     )}
+                    {ageFeatureOn &&
+                      childAgeBand &&
+                      app.ageRating &&
+                      compareRatingToBand(childAgeBand, app.ageRating) ===
+                        "above" && (
+                        <span
+                          className="age-pill age-pill-above"
+                          title={tGrid("age_pill_title", {
+                            rating: app.ageRating,
+                          })}
+                        >
+                          <span aria-hidden="true" className="age-pill-icon">
+                            ⚠
+                          </span>
+                          {tGrid("age_pill_label", { rating: app.ageRating })}
+                        </span>
+                      )}
                     {f.cardRiskChips && (t > 0 || l > 0 || u > 0) && (
                       <div
                         aria-label={tGrid("label_breakdown_aria")}

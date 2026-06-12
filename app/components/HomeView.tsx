@@ -27,6 +27,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { AgeBandKey } from "../../lib/age-rating";
 import {
   CALLOUT_CARDS,
   DASHBOARD_PRESET_KEYS,
@@ -153,6 +154,8 @@ export interface DashboardFlagState {
    *  renders it even when the flag is on. */
   backgroundModeWizard: boolean;
   callout: {
+    /** "N apps rated above your child's age range" (guardian feature). */
+    age_rating: boolean;
     declutter: boolean;
     guardian: boolean;
     understand_declutter: boolean;
@@ -199,6 +202,7 @@ export default function HomeView({
   reviewCtaSlot = null,
   layout = DEFAULT_LAYOUT,
   editMode = false,
+  ageRatingFlagged = null,
 }: {
   triage: TriageData;
   /**
@@ -273,6 +277,13 @@ export default function HomeView({
    * settings page. Triggered by `?edit=layout` server-side.
    */
   editMode?: boolean;
+  /**
+   * Guardian age-rating summary computed server-side: how many tracked
+   * apps are rated above the child's age band, plus the band itself for
+   * the callout copy. Null when the feature is off / no band is set /
+   * nothing is flagged — the callout drops out entirely.
+   */
+  ageRatingFlagged?: { band: AgeBandKey; count: number } | null;
 }) {
   const taskCenter = useTaskCenter();
   const [syncingAll, setSyncingAll] = useState(false);
@@ -423,6 +434,10 @@ export default function HomeView({
   const showCleanupCallout =
     flags?.callout.declutter ?? userIntent === "cleanup";
   const showFamilyCallout = flags?.callout.guardian ?? userIntent === "family";
+  // No legacy-intent fallback — the age-rating callout is new and only
+  // exists behind its flag (which already chains off flag.guardian.age_rating
+  // via FLAG_DEPENDENCIES).
+  const showAgeRatingCallout = flags?.callout.age_rating ?? false;
   const showDefinitionsCallout =
     flags?.callout.understand_only ?? userIntent === "curious";
   const elevateStale = userIntent === "hygiene";
@@ -525,6 +540,13 @@ export default function HomeView({
       ) : null,
     family_callout: () =>
       showFamilyCallout ? <FamilyCallout count={triage.highRiskCount} /> : null,
+    age_rating_callout: () =>
+      showAgeRatingCallout && ageRatingFlagged && ageRatingFlagged.count > 0 ? (
+        <AgeRatingCallout
+          band={ageRatingFlagged.band}
+          count={ageRatingFlagged.count}
+        />
+      ) : null,
     third_party_callout: () =>
       showThirdPartyCallout ? <ThirdPartyCallout triage={triage} /> : null,
     glance_section: () =>
@@ -1042,6 +1064,36 @@ function FamilyCallout({ count }: { count: number }) {
         {count > 0 &&
           ` ${tCallouts("looking_out_for_family_count", { count })}`}
       </p>
+    </div>
+  );
+}
+
+function AgeRatingCallout({
+  band,
+  count,
+}: {
+  band: AgeBandKey;
+  count: number;
+}) {
+  const tCallouts = useTranslations("dashboard.callouts");
+  const tAgeBand = useTranslations("age_band");
+  return (
+    <div className="intent-callout intent-callout-warn">
+      <div className="intent-callout-title">
+        {tCallouts("age_rating_title", { count })}
+      </div>
+      <p className="intent-callout-copy">
+        {tCallouts("age_rating_body", {
+          count,
+          band: tAgeBand(`labels.${band}`),
+        })}
+      </p>
+      <Link className="intent-callout-link" href="/dashboard/apps?age=above">
+        {tCallouts("age_rating_review_link")}
+      </Link>{" "}
+      <Link className="intent-callout-link" href="/help/parental-controls">
+        {tCallouts("age_rating_resources_link")}
+      </Link>
     </div>
   );
 }

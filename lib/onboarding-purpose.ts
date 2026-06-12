@@ -1,3 +1,4 @@
+import type { AgeBandKey } from "./age-rating";
 import type { Audience } from "./feature-flag-rules";
 import type { FocusWorkflow } from "./focus-workflow";
 import { inferFocusWorkflow } from "./focus-workflow";
@@ -27,6 +28,11 @@ export interface PurposeSelection {
 export interface ResolvedPurposeFocus {
   accessibility: boolean;
   audience: Audience;
+  /**
+   * Guardian child age band, attached by the form (not derived here).
+   * `undefined` = leave the stored value unchanged; `null` = explicit clear.
+   */
+  childAgeBand?: AgeBandKey | null;
   declutter: boolean;
   minimal: boolean;
   taskOptIns: UserTaskId[];
