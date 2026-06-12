@@ -16,6 +16,10 @@ import {
   type ProfileTier,
   TIER_META,
 } from "../../lib/privacy-profile";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import DataLabelHint from "./DataLabelHint";
 
 /**
@@ -111,6 +115,14 @@ export default function PrivacyProfileEditor({
     null
   );
 
+  // APG keyboard contract: each radiogroup is one tab stop, arrows
+  // move within it. Tier strips select as focus moves (cheap, local,
+  // instantly reversible); the preset row moves focus only — applying
+  // a preset overwrites all 14 categories (and may pop the inline
+  // confirm), so Enter/Space commits instead.
+  const tierRadioKeyDown = useRovingRadioGroup();
+  const presetRadioKeyDown = useRovingRadioGroup({ followFocus: false });
+
   const setTier = (category: string, tier: ProfileTier | null) => {
     const next: PrivacyProfile = { ...value };
     if (tier === null) {
@@ -180,9 +192,10 @@ export default function PrivacyProfileEditor({
         <div
           aria-label={tPre("aria_group")}
           className="privacy-profile-presets-row"
+          onKeyDown={presetRadioKeyDown}
           role="radiogroup"
         >
-          {PROFILE_PRESET_KEYS.map((presetKey) => {
+          {PROFILE_PRESET_KEYS.map((presetKey, presetIndex) => {
             const meta = PROFILE_PRESET_META[presetKey];
             const isActive = activePreset === presetKey;
             const isPending = pendingPreset === presetKey;
@@ -199,6 +212,11 @@ export default function PrivacyProfileEditor({
                   disabled={disabled}
                   onClick={() => applyPreset(presetKey)}
                   role="radio"
+                  tabIndex={rovingTabIndex(
+                    isActive,
+                    presetIndex,
+                    activePreset !== null
+                  )}
                   title={tPreDesc(presetKey)}
                   type="button"
                 >
@@ -344,6 +362,7 @@ export default function PrivacyProfileEditor({
                   category: categoryLabel(tCat, key) ?? meta.label,
                 })}
                 className="privacy-profile-strip-cells"
+                onKeyDown={tierRadioKeyDown}
                 role="radiogroup"
               >
                 {PROFILE_TIERS.map((tier) => {
@@ -358,6 +377,7 @@ export default function PrivacyProfileEditor({
                       key={tier}
                       onClick={() => setTier(key, tier)}
                       role="radio"
+                      tabIndex={selected ? 0 : -1}
                       title={tierMeta.description}
                       type="button"
                     >
@@ -371,6 +391,7 @@ export default function PrivacyProfileEditor({
                   disabled={disabled}
                   onClick={() => setTier(key, null)}
                   role="radio"
+                  tabIndex={current === null ? 0 : -1}
                   title={tEd("no_pref_title")}
                   type="button"
                 >

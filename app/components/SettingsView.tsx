@@ -11,6 +11,7 @@ import {
 import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
 import AuditBundleExport from "./AuditBundleExport";
 import AuditBundleImport from "./AuditBundleImport";
@@ -1022,6 +1023,10 @@ export default function SettingsView({
    */
   const [adminTokenConfigured, setAdminTokenConfigured] = useState(true);
   const [schedule, setSchedule] = useState<Schedule>("manual");
+  // APG keyboard contract for the sync-schedule radiogroup: one tab
+  // stop, arrows move focus only — the cards auto-save a POST on
+  // selection, so Enter/Space commits instead of every arrow press.
+  const scheduleRadioKeyDown = useRovingRadioGroup({ followFocus: false });
   const [country, setCountry] = useState<string>(DEFAULT_COUNTRY);
   const [savedCountry, setSavedCountry] = useState<string>(DEFAULT_COUNTRY);
   /**
@@ -5900,6 +5905,7 @@ export default function SettingsView({
                   <div
                     aria-label={tAria("sync_interval")}
                     className="schedule-options"
+                    onKeyDown={scheduleRadioKeyDown}
                     role="radiogroup"
                   >
                     {SCHEDULE_OPTIONS.map((opt) => {
@@ -5936,6 +5942,7 @@ export default function SettingsView({
                             void scheduleAutoSave.save(opt.value);
                           }}
                           role="radio"
+                          tabIndex={selected ? 0 : -1}
                           type="button"
                         >
                           <div className="schedule-option-label">

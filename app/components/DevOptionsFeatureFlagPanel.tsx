@@ -27,6 +27,7 @@ import {
 import type { FlagValue } from "@/lib/feature-flag-rules";
 import { getFlagUsage } from "../../lib/feature-flag-usage";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { DEV_MENU_STORAGE_KEY } from "./DevMenu";
 
 interface FlagRow {
@@ -1400,6 +1401,10 @@ function FlagListItem({
   // registry — we still render the row, just without the preview.
   const usage = getFlagUsage(row.key);
   const [hoverPreviewOpen, setHoverPreviewOpen] = useState(false);
+  // APG keyboard contract for the override radiogroup: one tab stop,
+  // arrows move focus only — selecting writes the override straight
+  // to the server, so Enter/Space commits.
+  const overrideRadioKeyDown = useRovingRadioGroup({ followFocus: false });
 
   return (
     <li
@@ -1516,6 +1521,7 @@ function FlagListItem({
         <div
           aria-label={tDev("row_override_aria", { key: row.key })}
           className="segmented-toggle dev-options-flag-panel__flag-toggle"
+          onKeyDown={overrideRadioKeyDown}
           role="radiogroup"
         >
           {VALUE_OPTIONS.map((v) => {
@@ -1528,6 +1534,7 @@ function FlagListItem({
                 key={v}
                 onClick={() => onChange(v)}
                 role="radio"
+                tabIndex={checked ? 0 : -1}
                 type="button"
               >
                 {valueLabel(v)}

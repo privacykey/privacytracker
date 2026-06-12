@@ -28,6 +28,7 @@ import {
   localiseBadgeLabel,
 } from "../../lib/i18n-meta";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import type { VerdictValue } from "../../lib/verdict-types";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import VerdictPill from "./VerdictPill";
@@ -636,6 +637,11 @@ function PreflightModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
+  // APG keyboard contract for the three option radiogroups (scope /
+  // sort / split): one tab stop each, arrows move focus + selection
+  // (all local preflight state — nothing fires until the run starts).
+  const preflightRadioKeyDown = useRovingRadioGroup();
+
   const splitSize = preflight.split;
 
   // Compact split labels for the pill row — just the number, or "All".
@@ -670,6 +676,7 @@ function PreflightModal({
           <div
             aria-label={t("preflight.scope_label")}
             className="review-queue-scope-grid"
+            onKeyDown={preflightRadioKeyDown}
             role="radiogroup"
           >
             {QUEUE_SCOPE_VALUES.map((scope) => {
@@ -683,6 +690,7 @@ function PreflightModal({
                   key={scope}
                   onClick={() => onChange({ ...preflight, scope })}
                   role="radio"
+                  tabIndex={active ? 0 : -1}
                   title={t(`preflight.scope_desc.${scope}`)}
                   type="button"
                 >
@@ -709,6 +717,7 @@ function PreflightModal({
               </span>
               <div
                 className="review-queue-preflight-pill-row"
+                onKeyDown={preflightRadioKeyDown}
                 role="radiogroup"
               >
                 {QUEUE_SORT_VALUES.map((sort) => {
@@ -722,6 +731,7 @@ function PreflightModal({
                       key={sort}
                       onClick={() => onChange({ ...preflight, sort })}
                       role="radio"
+                      tabIndex={active ? 0 : -1}
                       type="button"
                     >
                       {t(`preflight.sort_short.${sort}`)}
@@ -736,6 +746,7 @@ function PreflightModal({
               </span>
               <div
                 className="review-queue-preflight-pill-row"
+                onKeyDown={preflightRadioKeyDown}
                 role="radiogroup"
               >
                 {QUEUE_SPLIT_VALUES.map((s) => {
@@ -748,6 +759,7 @@ function PreflightModal({
                       key={value}
                       onClick={() => onChange({ ...preflight, split: s })}
                       role="radio"
+                      tabIndex={active ? 0 : -1}
                       type="button"
                     >
                       {splitPillLabel(s)}

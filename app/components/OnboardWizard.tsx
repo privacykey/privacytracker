@@ -42,6 +42,10 @@ import {
   inferCountryFromLocale,
   normalizeCountry,
 } from "../../lib/region";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import AlreadyTrackedAccordion from "./AlreadyTrackedAccordion";
 import DeviceSyncDiffOverlay from "./DeviceSyncDiffOverlay";
 import ImportedAppsTable from "./ImportedAppsTable";
@@ -552,6 +556,13 @@ export default function OnboardWizard({
    *  not bounce them to a different recommendation unless their selected
    *  method becomes hidden by a feature flag. */
   const userSelectedMethodRef = useRef(false);
+  // APG keyboard contract for the wizard radiogroups. AI-provider
+  // cards + cfgutil device rows select as focus moves (local state,
+  // instantly reversible). The import-method cards move focus only —
+  // selecting a method wipes any in-progress import state, so
+  // Enter/Space commits instead of every arrow press.
+  const wizardRadioKeyDown = useRovingRadioGroup();
+  const methodRadioKeyDown = useRovingRadioGroup({ followFocus: false });
   useEffect(() => {
     const visibleForDevice = orderedMethodsForDevice(deviceClass).filter(
       (m) => methodAvailability[m]
@@ -5075,6 +5086,7 @@ export default function OnboardWizard({
               <div
                 aria-label={tAiStep("provider_aria")}
                 className="method-grid"
+                onKeyDown={wizardRadioKeyDown}
                 role="radiogroup"
               >
                 {ONBOARD_AI_OPTIONS.map((option) => {
@@ -5086,6 +5098,7 @@ export default function OnboardWizard({
                       key={option.value}
                       onClick={() => onProviderChange(option.value)}
                       role="radio"
+                      tabIndex={selected ? 0 : -1}
                       type="button"
                     >
                       <div className="method-card-top">
@@ -5363,6 +5376,12 @@ export default function OnboardWizard({
                 extraClass = ""
               ) => {
                 const selected = method === value;
+                // The primary and advanced grids are separate radiogroups
+                // sharing one `method` state — rove within whichever grid
+                // this card belongs to.
+                const grid = primaryMethods.includes(value)
+                  ? primaryMethods
+                  : advancedMethods;
                 return (
                   <button
                     aria-checked={selected}
@@ -5386,6 +5405,11 @@ export default function OnboardWizard({
                       setImportInfo("");
                     }}
                     role="radio"
+                    tabIndex={rovingTabIndex(
+                      selected,
+                      grid.indexOf(value),
+                      grid.includes(method)
+                    )}
                     type="button"
                   >
                     <div className="method-card-top">
@@ -5443,6 +5467,7 @@ export default function OnboardWizard({
                   <div
                     aria-label={tStep1("method_grid_aria")}
                     className="method-grid method-grid-primary"
+                    onKeyDown={methodRadioKeyDown}
                     role="radiogroup"
                   >
                     {primaryMethods.map((value) =>
@@ -5461,6 +5486,7 @@ export default function OnboardWizard({
                       <div
                         aria-label={tStep1("advanced_grid_aria")}
                         className="method-grid method-grid-advanced"
+                        onKeyDown={methodRadioKeyDown}
                         role="radiogroup"
                       >
                         {advancedMethods.map((value) =>
@@ -6258,47 +6284,61 @@ export default function OnboardWizard({
                                     <div
                                       aria-label={tCfg("device_picker_aria")}
                                       className="cfgutil-device-list"
+                                      onKeyDown={wizardRadioKeyDown}
                                       role="radiogroup"
                                     >
-                                      {cfgutilDevices.map((device) => {
-                                        const selectedDevice =
-                                          selectedCfgutilEcid === device.ecid;
-                                        return (
-                                          <button
-                                            aria-checked={selectedDevice}
-                                            className={`cfgutil-device-row${selectedDevice ? " is-selected" : ""}`}
-                                            key={device.ecid}
-                                            onClick={() => {
-                                              setSelectedCfgutilEcid(
-                                                device.ecid
-                                              );
-                                              if (
-                                                cfgutilError ===
-                                                tCfg("step3_select_required")
-                                              ) {
-                                                setCfgutilError("");
-                                              }
-                                            }}
-                                            role="radio"
-                                            type="button"
-                                          >
-                                            <span
-                                              aria-hidden
-                                              className="cfgutil-device-dot"
-                                            />
-                                            <span className="cfgutil-device-text">
-                                              <span className="cfgutil-device-name">
-                                                {describeCfgutilDevice(device)}
+                                      {cfgutilDevices.map(
+                                        (device, deviceIndex) => {
+                                          const selectedDevice =
+                                            selectedCfgutilEcid === device.ecid;
+                                          return (
+                                            <button
+                                              aria-checked={selectedDevice}
+                                              className={`cfgutil-device-row${selectedDevice ? " is-selected" : ""}`}
+                                              key={device.ecid}
+                                              onClick={() => {
+                                                setSelectedCfgutilEcid(
+                                                  device.ecid
+                                                );
+                                                if (
+                                                  cfgutilError ===
+                                                  tCfg("step3_select_required")
+                                                ) {
+                                                  setCfgutilError("");
+                                                }
+                                              }}
+                                              role="radio"
+                                              tabIndex={rovingTabIndex(
+                                                selectedDevice,
+                                                deviceIndex,
+                                                cfgutilDevices.some(
+                                                  (d) =>
+                                                    d.ecid ===
+                                                    selectedCfgutilEcid
+                                                )
+                                              )}
+                                              type="button"
+                                            >
+                                              <span
+                                                aria-hidden
+                                                className="cfgutil-device-dot"
+                                              />
+                                              <span className="cfgutil-device-text">
+                                                <span className="cfgutil-device-name">
+                                                  {describeCfgutilDevice(
+                                                    device
+                                                  )}
+                                                </span>
+                                                <span className="cfgutil-device-meta">
+                                                  {describeCfgutilDeviceMeta(
+                                                    device
+                                                  )}
+                                                </span>
                                               </span>
-                                              <span className="cfgutil-device-meta">
-                                                {describeCfgutilDeviceMeta(
-                                                  device
-                                                )}
-                                              </span>
-                                            </span>
-                                          </button>
-                                        );
-                                      })}
+                                            </button>
+                                          );
+                                        }
+                                      )}
                                     </div>
                                   )}
                                 </div>

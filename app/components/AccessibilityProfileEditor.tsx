@@ -14,6 +14,7 @@ import {
   type CanonicalAccessibilityFeature,
   resolveAppleArtworkUrl,
 } from "../../lib/accessibility-types";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 
 interface Props {
   /** Disables every input while a save/fetch is in flight. */
@@ -61,6 +62,10 @@ export default function AccessibilityProfileEditor({
   disabled,
 }: Props) {
   const tEd = useTranslations("settings.a11y_profile_editor");
+  // APG keyboard contract for the per-row pill strips: one tab stop
+  // per row (the selected pill — the opt-out dash counts), arrows
+  // move focus + selection. Mirrors PrivacyProfileEditor.
+  const prefRadioKeyDown = useRovingRadioGroup();
   // Stable list of rows so the DOM doesn't flicker when the user toggles a
   // single feature. Order matches Apple's canonical listing.
   const rows = useMemo(
@@ -190,6 +195,7 @@ export default function AccessibilityProfileEditor({
               <div
                 aria-label={tEd("row_aria", { category: feature.title })}
                 className="privacy-profile-strip-cells"
+                onKeyDown={prefRadioKeyDown}
                 role="radiogroup"
               >
                 {A11Y_PREFERENCES.map((pref) => {
@@ -204,6 +210,7 @@ export default function AccessibilityProfileEditor({
                       key={pref}
                       onClick={() => setPreference(key, pref)}
                       role="radio"
+                      tabIndex={selected ? 0 : -1}
                       title={prefMeta.description}
                       type="button"
                     >
@@ -217,6 +224,7 @@ export default function AccessibilityProfileEditor({
                   disabled={disabled}
                   onClick={() => setPreference(key, null)}
                   role="radio"
+                  tabIndex={current === null ? 0 : -1}
                   title={tEd("no_pref_title")}
                   type="button"
                 >

@@ -13,6 +13,7 @@ import {
   selectionFromFocus,
 } from "@/lib/onboarding-purpose";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 
 interface FocusPurposeFormProps {
@@ -141,6 +142,11 @@ export default function FocusPurposeForm({
     MONITOR_CHANGE_OPTIONS[0]
   );
 
+  // APG keyboard contract for the segmented/pill radiogroups
+  // (relationship, outcome, advanced audience): one tab stop each,
+  // arrows move focus + selection — all local state.
+  const radioKeyDown = useRovingRadioGroup();
+
   useEffect(() => {
     setMonitorChange(
       MONITOR_CHANGE_OPTIONS[
@@ -260,7 +266,11 @@ export default function FocusPurposeForm({
               <h2 className="focus-purpose-branch-heading">
                 {t("help.relationship_heading")}
               </h2>
-              <div className="focus-purpose-segmented" role="radiogroup">
+              <div
+                className="focus-purpose-segmented"
+                onKeyDown={radioKeyDown}
+                role="radiogroup"
+              >
                 {(["adult", "child"] as const).map((value) => (
                   <button
                     aria-checked={helpRelationship === value}
@@ -269,6 +279,7 @@ export default function FocusPurposeForm({
                     key={value}
                     onClick={() => setHelpRelationship(value)}
                     role="radio"
+                    tabIndex={helpRelationship === value ? 0 : -1}
                     type="button"
                   >
                     <strong>{t(`help.relationship.${value}.title`)}</strong>
@@ -282,7 +293,11 @@ export default function FocusPurposeForm({
               <h2 className="focus-purpose-branch-heading">
                 {t("help.outcome_heading")}
               </h2>
-              <div className="focus-purpose-segmented" role="radiogroup">
+              <div
+                className="focus-purpose-segmented"
+                onKeyDown={radioKeyDown}
+                role="radiogroup"
+              >
                 {(["handoff", "monitor"] as const).map((value) => (
                   <button
                     aria-checked={helpOutcome === value}
@@ -291,6 +306,7 @@ export default function FocusPurposeForm({
                     key={value}
                     onClick={() => setHelpOutcome(value)}
                     role="radio"
+                    tabIndex={helpOutcome === value ? 0 : -1}
                     type="button"
                   >
                     <strong>{t(`help.outcome.${value}.title`)}</strong>
@@ -369,7 +385,11 @@ export default function FocusPurposeForm({
             {audiencePickerOn && (
               <div className="focus-advanced-group">
                 <h3>{t("advanced.audience")}</h3>
-                <div className="focus-purpose-pills" role="radiogroup">
+                <div
+                  className="focus-purpose-pills"
+                  onKeyDown={radioKeyDown}
+                  role="radiogroup"
+                >
                   {(["self", "loved_one", "guardian"] as const).map((value) => (
                     <button
                       aria-checked={customFocus.audience === value}
@@ -378,6 +398,7 @@ export default function FocusPurposeForm({
                       key={value}
                       onClick={() => updateCustom({ audience: value })}
                       role="radio"
+                      tabIndex={customFocus.audience === value ? 0 : -1}
                       type="button"
                     >
                       {tAudience(`${AUDIENCE_LABEL_KEYS[value]}.label`)}

@@ -16,6 +16,7 @@ import type {
 } from "../../lib/manual-apps";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { QueueAppInput } from "../../lib/review-queue";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import BulkSelectBar from "./BulkSelectBar";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
@@ -463,6 +464,10 @@ export default function AppGrid({
   );
 
   const clearRiskFilter = useCallback(() => setRiskLevel(null), [setRiskLevel]);
+
+  // APG keyboard contract for the sort-tab radiogroup: one tab stop,
+  // arrows move focus + selection (re-sorting is instant and local).
+  const sortRadioKeyDown = useRovingRadioGroup();
 
   // URL writer for the sort selector. Mirrors `setRiskLevel` so the sort
   // tabs write `?sort=...` (or remove it for the default 'risk' to keep
@@ -1326,6 +1331,7 @@ export default function AppGrid({
           <div
             aria-label={tGrid("sort_aria")}
             className="sort-tabs"
+            onKeyDown={sortRadioKeyDown}
             role="radiogroup"
           >
             {(["risk", "name", "synced", "permissions"] as const).map((s) => {
@@ -1337,6 +1343,7 @@ export default function AppGrid({
                   key={s}
                   onClick={() => setSort(s)}
                   role="radio"
+                  tabIndex={selected ? 0 : -1}
                   type="button"
                 >
                   {s === "risk"
