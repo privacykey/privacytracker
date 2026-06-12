@@ -1475,6 +1475,15 @@
     "audit_bundle_note": "导出审查捆绑包时，包括你正在跟踪的应用、它们的隐私标签、你的 AI 生成摘要以及你撰写的任何注释。还包括你的隐私档案，让接收者了解你为何标记某些应用。除非你主动分享文件，否则不会有任何数据离开你的设备。"
   },
   "dev_options": {
+    "focus_matrix": {
+      "filter_aria": "筛选标志",
+      "filter_placeholder": "按键名或页面筛选标志…",
+      "matrix_aria": "焦点 × 标志矩阵",
+      "apply_combo_title": "将 {combo} 应用为覆盖项",
+      "hard_default_title": "硬默认值：{value}",
+      "cell_title": "{combo}\n解析结果：{current}\n已编写：{authored}",
+      "cell_unset": "（未设置）"
+    },
     "feature_flags": {
       "title": "功能标志",
       "search_placeholder": "搜索标志…",
@@ -1781,6 +1790,12 @@
       "tooltip_your_preference": "你的偏好",
       "tooltip_no_preference": "无偏好",
       "tooltip_hover_inspect": "悬停以查看",
+      "matrix_hidden_by_filter": "{count, plural, one {# 个应用} other {# 个应用}}已被筛选条件隐藏",
+      "matrix_collect_count": "{count, plural, one {# 个应用} other {# 个应用}}收集此数据",
+      "matrix_pref_line": "你的偏好：最多{label}",
+      "matrix_no_pref_line": "此类别未设置偏好",
+      "matrix_open_app_title": "打开 {name}",
+      "matrix_exceeds_pref": "超出你的偏好",
       "timeline_band_added": "新增隐私类别",
       "timeline_band_removed": "移除隐私类别",
       "timeline_band_modified": "修改隐私标签",
@@ -2670,6 +2685,7 @@
     "sections": {
       "needs_attention": "需要关注",
       "recent_changes": "最近变化",
+      "open_app_title": "打开 {name}",
       "all_apps": "所有应用",
       "high_severity": "高风险",
       "by_category": "按类别",
@@ -2935,8 +2951,11 @@
     "remove_app_aria": "停止跟踪 {name}",
     "open_custom_aria": "在自定义应用中打开 {name}",
     "remove_custom_title": "从自定义应用中移除 {name}",
+    "removing_custom_aria": "正在移除 {name}",
     "deselect_app_aria": "取消选择 {name}",
     "deselect_app_title": "取消选择 {name}",
+    "select_compare_title": "选择 {name} 进行对比",
+    "open_app_shift_hint_title": "打开 {name} — 按住 Shift 点击可加入对比",
     "search_placeholder": "搜索应用…",
     "filters": {
       "all": "全部",
@@ -5357,6 +5376,9 @@
       "legal": "法律声明",
       "previous_page": "上一页"
     }
+  },
+  "layout_regions": {
+    "global_overlays": "全局浮层"
   },
   "nojs": {
     "eyebrow": "需要 JavaScript",

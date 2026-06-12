@@ -61,6 +61,7 @@ export default async function RootLayout({
   const messages = await getMessages();
   const tFooter = await getTranslations("footer");
   const tNojs = await getTranslations("nojs");
+  const tRegions = await getTranslations("layout_regions");
 
   // Per-request CSP nonce, minted by proxy.ts and forwarded via the
   // `x-nonce` request header. Read here and threaded into every inline
@@ -428,7 +429,7 @@ export default async function RootLayout({
           {/* Global overlay portals — dialogs that render outside the main
             landmark when open. The region wrapper keeps axe happy even
             when both overlays are flag-off. */}
-          <section aria-label="Global overlays">
+          <section aria-label={tRegions("global_overlays")}>
             {flags.keyboardShortcuts && <KeyboardShortcuts />}
             {flags.aboutModal && <AboutModal />}
           </section>

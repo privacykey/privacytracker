@@ -1475,6 +1475,15 @@
     "audit_bundle_note": "When you export an audit bundle, it includes the apps you're tracking, their privacy labels, your AI-generated summaries, and any annotations you've written. It also includes your privacy profile so the recipient can see why you flagged certain apps. Nothing leaves your device until you explicitly share the file."
   },
   "dev_options": {
+    "focus_matrix": {
+      "filter_aria": "Filter flags",
+      "filter_placeholder": "Filter flags by key or surface…",
+      "matrix_aria": "Focus × Flags matrix",
+      "apply_combo_title": "Apply {combo} as overrides",
+      "hard_default_title": "Hard default: {value}",
+      "cell_title": "{combo}\nResolver: {current}\nAuthored: {authored}",
+      "cell_unset": "(unset)"
+    },
     "feature_flags": {
       "title": "Feature flags",
       "search_placeholder": "Search flags…",
@@ -1781,6 +1790,12 @@
       "tooltip_your_preference": "Your preference",
       "tooltip_no_preference": "No preference",
       "tooltip_hover_inspect": "Hover to inspect",
+      "matrix_hidden_by_filter": "{count, plural, one {# app} other {# apps}} hidden by filter",
+      "matrix_collect_count": "{count, plural, one {# app collects this} other {# apps collect this}}",
+      "matrix_pref_line": "Your preference: {label} at most",
+      "matrix_no_pref_line": "No preference set for this category",
+      "matrix_open_app_title": "Open {name}",
+      "matrix_exceeds_pref": "exceeds your preference",
       "timeline_band_added": "Added privacy categories",
       "timeline_band_removed": "Removed privacy categories",
       "timeline_band_modified": "Modified privacy labels",
@@ -2670,6 +2685,7 @@
     "sections": {
       "needs_attention": "Needs attention",
       "recent_changes": "Recent changes",
+      "open_app_title": "Open {name}",
       "all_apps": "All apps",
       "high_severity": "High severity",
       "by_category": "By category",
@@ -2935,8 +2951,11 @@
     "remove_app_aria": "Remove {name} from tracking",
     "open_custom_aria": "Open {name} in custom apps",
     "remove_custom_title": "Remove {name} from custom apps",
+    "removing_custom_aria": "Removing {name}",
     "deselect_app_aria": "Deselect {name}",
     "deselect_app_title": "Deselect {name}",
+    "select_compare_title": "Select {name} for comparison",
+    "open_app_shift_hint_title": "Open {name} — Shift-click to add to compare",
     "search_placeholder": "Search apps…",
     "filters": {
       "all": "All",
@@ -5357,6 +5376,9 @@
       "legal": "Legal",
       "previous_page": "previous page"
     }
+  },
+  "layout_regions": {
+    "global_overlays": "Global overlays"
   },
   "nojs": {
     "eyebrow": "JavaScript required",
