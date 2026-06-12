@@ -2514,7 +2514,7 @@
     },
     "row": {
       "open_app_aria": "打开「{name}」详情",
-      "view_app_link": "打开应用",
+      "view_app_link": "{kind, select, policy_change {查看「{name}」政策变更} privacy_policy {查看「{name}」隐私政策} policy_error {查看「{name}」政策状态} privacy_added {查看「{name}」新增标签} privacy_removed {查看「{name}」移除标签} privacy_modified {查看「{name}」标签变更} accessibility_added {查看「{name}」新增无障碍功能} accessibility_removed {查看「{name}」移除无障碍功能} accessibility_modified {查看「{name}」无障碍变更} archive_import {查看「{name}」档案导入} other {查看「{name}」}}",
       "wayback_link": "在 Wayback 查看",
       "details_more": "{count, plural, one {+ 还有 # 项} other {+ 还有 # 项}}"
     },
