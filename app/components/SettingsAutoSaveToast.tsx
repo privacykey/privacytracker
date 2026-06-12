@@ -4,8 +4,8 @@
  * Bottom-center toast that confirms or surfaces failure for inline
  * settings auto-saves. Singleton pill — one toast, one position;
  * new pushes replace the message and reset the timer. Click-to-dismiss
- * via the pill body or the × button. Fades in, holds DEFAULT_HOLD_MS
- * (5 s), fades out.
+ * via the pill body or the × button. Fades in, holds TOAST_HOLD_MS
+ * (lib/toast-timing.ts — shared with every other toast), fades out.
  *
  * Driven imperatively via a window-event pub/sub so any callsite can
  * call `pushSettingsToast(...)` without context wiring. Mount once at
@@ -15,17 +15,15 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TOAST_HOLD_MS, TOAST_OUT_MS } from "../../lib/toast-timing";
 import { useTaskCenter } from "./TaskCenter";
 
 const TOAST_EVENT = "privacytracker:settings-toast";
-/** How long the pill stays fully visible before auto-fading. */
-const DEFAULT_HOLD_MS = 5000;
-const FADE_MS = 200;
 
 export type SettingsToastKind = "success" | "error" | "info";
 
 export interface SettingsToastDetail {
-  /** Optional override for hold duration in ms. Defaults to 2500. */
+  /** Optional override for hold duration in ms. Defaults to TOAST_HOLD_MS. */
   holdMs?: number;
   kind: SettingsToastKind;
   /** Short user-facing message — keep under ~60 chars; the pill clamps wider strings. */
@@ -91,7 +89,7 @@ export default function SettingsAutoSaveToast({
 
   /**
    * Manually dismiss the toast. Cancels the hold timer, plays the fade,
-   * and unmounts after FADE_MS. Idempotent.
+   * and unmounts after TOAST_OUT_MS. Idempotent.
    */
   const dismiss = useCallback(() => {
     clearTimers();
@@ -99,7 +97,7 @@ export default function SettingsAutoSaveToast({
     removeTimerRef.current = setTimeout(() => {
       setState(null);
       setFading(false);
-    }, FADE_MS);
+    }, TOAST_OUT_MS);
   }, [clearTimers]);
 
   useEffect(() => {
@@ -136,13 +134,13 @@ export default function SettingsAutoSaveToast({
       const hold =
         typeof detail.holdMs === "number" && detail.holdMs > 0
           ? detail.holdMs
-          : DEFAULT_HOLD_MS;
+          : TOAST_HOLD_MS;
       fadeTimerRef.current = setTimeout(() => {
         setFading(true);
         removeTimerRef.current = setTimeout(() => {
           setState(null);
           setFading(false);
-        }, FADE_MS);
+        }, TOAST_OUT_MS);
       }, hold);
     }
 

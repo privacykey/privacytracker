@@ -11,6 +11,7 @@ import {
 import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
 import AuditBundleExport from "./AuditBundleExport";
 import AuditBundleImport from "./AuditBundleImport";
@@ -1438,7 +1439,7 @@ export default function SettingsView({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   const loadStatus = async () => {
@@ -9850,63 +9851,6 @@ ollama serve`}
                 </div>
               )}
 
-              {(settingsAdminResetOn || settingsAdminStartOverOn) && (
-                <div
-                  className="settings-section settings-section-danger"
-                  id="reset"
-                >
-                  <h2 className="settings-section-title">
-                    {tSections("reset_app")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("reset_app")}
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                    }}
-                  >
-                    {settingsAdminResetOn && (
-                      <button
-                        className="btn btn-danger"
-                        disabled={Boolean(status?.isRunning)}
-                        onClick={() => setResetStep(1)}
-                        type="button"
-                      >
-                        {tResetCard("reset_button")}
-                      </button>
-                    )}
-
-                    {/* Round 3 PR 5: Start Over — same scope as Reset, but preserves
-                the DB schema + migration version. Routes to /welcome on
-                completion via the §4.10 hybrid-redirect. */}
-                    {settingsAdminStartOverOn && (
-                      <StartOverButton
-                        backupBusy={exportingBackup}
-                        backupBusyLabel={tBackupCard("download_busy")}
-                        backupLabel={tBackupCard("download_before_destructive")}
-                        disabled={Boolean(status?.isRunning)}
-                        onDownloadBackup={handleExportBackup}
-                      />
-                    )}
-                  </div>
-                  {status?.isRunning && (
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: "var(--text-3)",
-                        marginTop: 12,
-                      }}
-                    >
-                      {tResetCard("wait_for_sync")}
-                    </p>
-                  )}
-                </div>
-              )}
-
               {/* Developer Options — only useful when debugging why an AI call is
           stuck or returning garbage. The toggle is saved alongside the rest
           of the AI settings; the log panel queries the server-side rolling
@@ -10825,6 +10769,68 @@ ollama serve`}
                     </div>
                     <DevOptionsFeatureFlagPanel />
                   </div>
+                </div>
+              )}
+
+              {/* Reset App — destructive danger zone, deliberately the last
+          section on the page (and in the sidebar) so it never sits between
+          routine admin actions like Export Data. Keep this position in sync
+          with the link order in SettingsSidebar.tsx — the scroll-spy walks
+          sections in sidebar order and assumes it matches document order. */}
+              {(settingsAdminResetOn || settingsAdminStartOverOn) && (
+                <div
+                  className="settings-section settings-section-danger"
+                  id="reset"
+                >
+                  <h2 className="settings-section-title">
+                    {tSections("reset_app")}
+                  </h2>
+                  <p className="settings-section-subtitle">
+                    {tSub("reset_app")}
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    {settingsAdminResetOn && (
+                      <button
+                        className="btn btn-danger"
+                        disabled={Boolean(status?.isRunning)}
+                        onClick={() => setResetStep(1)}
+                        type="button"
+                      >
+                        {tResetCard("reset_button")}
+                      </button>
+                    )}
+
+                    {/* Round 3 PR 5: Start Over — same scope as Reset, but preserves
+                the DB schema + migration version. Routes to /welcome on
+                completion via the §4.10 hybrid-redirect. */}
+                    {settingsAdminStartOverOn && (
+                      <StartOverButton
+                        backupBusy={exportingBackup}
+                        backupBusyLabel={tBackupCard("download_busy")}
+                        backupLabel={tBackupCard("download_before_destructive")}
+                        disabled={Boolean(status?.isRunning)}
+                        onDownloadBackup={handleExportBackup}
+                      />
+                    )}
+                  </div>
+                  {status?.isRunning && (
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-3)",
+                        marginTop: 12,
+                      }}
+                    >
+                      {tResetCard("wait_for_sync")}
+                    </p>
+                  )}
                 </div>
               )}
             </>

@@ -5862,7 +5862,7 @@ html[data-theme-override="high-contrast"] .nav {
 
 .toast {
   position: fixed;
-  bottom: 28px;
+  bottom: var(--toast-bottom);
   left: 50%;
   z-index: 9999;
   padding: 10px 20px;
@@ -5872,8 +5872,8 @@ html[data-theme-override="high-contrast"] .nav {
   border: 1px solid var(--border-strong);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-lg);
-  transform: translateX(-50%) translateY(10px);
-  animation: toastIn 0.25s ease both;
+  transform: translateX(-50%);
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 
 /* CTA banner that links into the review-and-act wizard. Mounted at
@@ -7850,14 +7850,14 @@ body.review-rec-print-active .review-rec-print a {
 
 /* ── Device-connect toast (Phase 4) ──────────────────────────────────
    Pinned to the bottom-right of the viewport so it doesn't collide
-   with the centred .toast. Wider than a regular toast because it
-   carries a multi-line body + two action targets (Import / dismiss).
-   The fly-in animation uses the same easing curve as the regular
-   toast for visual consistency. */
+   with the centred .toast — it's the one interactive toast (Import
+   CTA + dismiss) so it can coexist with a passive confirmation.
+   Shares the toastIn/toastOut chrome + --toast-* vars with the other
+   toast surfaces. */
 .device-connect-toast {
   position: fixed;
   right: 28px;
-  bottom: 28px;
+  bottom: var(--toast-bottom);
   z-index: 9990;
   display: flex;
   gap: 12px;
@@ -7873,7 +7873,7 @@ body.review-rec-print-active .review-rec-print a {
   border-left: 3px solid var(--blue);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
-  animation: toastIn 0.25s ease both;
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 
 .device-connect-toast-icon {
@@ -7992,7 +7992,7 @@ body.review-rec-print-active .review-rec-print a {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
   transform: translateX(-50%);
-  animation: toastIn 0.2s ease both; /* just below the toast so error toasts still win */
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 .compare-dock-info {
   display: flex;
@@ -8304,34 +8304,50 @@ body.review-rec-print-active .review-rec-print a {
   border-radius: var(--r-md);
 }
 
+/* ── Shared toast chrome ─────────────────────────────────────────────
+   Every toast surface (.toast, .settings-autosave-toast,
+   .device-connect-toast) shares the same bottom offset, entrance and
+   exit animation so the three don't drift apart. Durations must stay
+   in sync with TOAST_IN_MS / TOAST_OUT_MS in lib/toast-timing.ts —
+   that module is the TS side of the same contract (hold timers live
+   there too). The keyframes animate the standalone `translate`
+   property (not `transform`) so they compose with each surface's own
+   static transform — the centred toasts keep translateX(-50%), the
+   right-pinned device toast keeps none. */
+:root {
+  --toast-bottom: 28px;
+  --toast-in-duration: 200ms;
+  --toast-out-duration: 200ms;
+}
+
 @keyframes toastIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    translate: 0 12px;
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    translate: 0 0;
   }
 }
 
-/* Exit mirror of toastIn — applied by the shared <Toast> wrapper (and
-   DeviceConnectedToast's dismiss) for the final 200ms before unmount,
-   so dismissal is symmetric with the entrance instead of a hard blink.
-   Keep the duration in sync with TOAST_OUT_MS in Toast.tsx. */
+/* Exit mirror of toastIn — applied for the final --toast-out-duration
+   before unmount, so dismissal is symmetric with the entrance instead
+   of a hard blink. */
 @keyframes toastOut {
   from {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    translate: 0 0;
   }
   to {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    translate: 0 12px;
   }
 }
 .toast.toast-leaving,
-.device-connect-toast.device-connect-toast-leaving {
-  animation: toastOut 0.2s ease both;
+.device-connect-toast.device-connect-toast-leaving,
+.settings-autosave-toast.is-fading {
+  animation: toastOut var(--toast-out-duration) ease both;
 }
 
 /* ─────────────────────────────────────────────────────
@@ -9813,6 +9829,32 @@ body.review-rec-print-active .review-rec-print a {
 
 .settings-sidebar-link.is-active .settings-sidebar-icon {
   color: var(--blue);
+}
+
+/* Danger-zone entry (Reset App) — last link in the Admin group. A
+   hairline divider plus a red accent set it apart from the routine
+   admin links above, matching the .settings-section-danger tint on
+   the section it scrolls to. */
+.settings-sidebar-link-danger {
+  position: relative;
+  margin-top: 12px;
+}
+
+.settings-sidebar-link-danger::before {
+  position: absolute;
+  top: -7px;
+  right: 10px;
+  left: 10px;
+  content: "";
+  border-top: 1px solid var(--border);
+}
+
+.settings-sidebar-link-danger .settings-sidebar-icon {
+  color: var(--red);
+}
+
+.settings-sidebar-link-danger.is-active {
+  box-shadow: inset 2px 0 0 var(--red);
 }
 
 .settings-sidebar-label {
@@ -27359,6 +27401,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   .keyboard-hint,
   .keyboard-hint-toggle,
   .toast,
+  .settings-autosave-toast,
+  .device-connect-toast,
   .modal,
   .modal-overlay,
   .annotations-sidebar__undo-toast,
@@ -30402,9 +30446,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 */
 .settings-autosave-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: var(--toast-bottom);
   left: 50%;
-  z-index: 1000;
+  /* One below .toast (9999) so an error toast routed through the shared
+     <Toast> still paints on top when both fire at once. */
+  z-index: 9998;
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -30430,9 +30476,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   transition:
     box-shadow 120ms ease-out,
     transform 120ms ease-out;
-  /* Animate in. New toasts get this class fresh because the React
-     `key={id}` forces a remount, so the animation re-fires every push. */
-  animation: settings-autosave-toast-in 200ms ease-out;
+  /* Animate in via the shared toast keyframes. New toasts get this
+     class fresh because the React `key={id}` forces a remount, so the
+     animation re-fires every push. The exit (.is-fading) is handled by
+     the shared toastOut rule next to the keyframes. */
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 .settings-autosave-toast:hover:not(.is-fading) {
   /* Subtle lift on hover so the click-to-dismiss intent is obvious. */
@@ -30440,10 +30488,6 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     0 12px 32px rgba(0, 0, 0, 0.22),
     0 2px 4px rgba(0, 0, 0, 0.14);
   transform: translateX(-50%) translateY(-1px);
-}
-
-.settings-autosave-toast.is-fading {
-  animation: settings-autosave-toast-out 200ms ease-in forwards;
 }
 
 .settings-autosave-toast--success {
@@ -30499,27 +30543,6 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   outline: none;
   background: color-mix(in srgb, currentColor 12%, transparent);
   opacity: 1;
-}
-
-@keyframes settings-autosave-toast-in {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-@keyframes settings-autosave-toast-out {
-  from {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px);
-  }
 }
 
 /* Inline error message rendered under a settings field when a

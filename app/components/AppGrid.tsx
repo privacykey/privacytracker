@@ -16,6 +16,7 @@ import type {
 } from "../../lib/manual-apps";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { QueueAppInput } from "../../lib/review-queue";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import BulkSelectBar from "./BulkSelectBar";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
@@ -647,7 +648,7 @@ export default function AppGrid({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   const refreshApps = useCallback(async () => {
