@@ -315,7 +315,7 @@ export default function PrivacyHeatmap() {
             mm === "mm"
               ? `<br/><span style="color:#ff8a80">⚠ Exceeds your Privacy Profile</span>`
               : "";
-          return `<b>${appName}</b><br/>${catName}<br/><span style="color:${SEV_COLOR[sev]}">● ${sevLabel}</span>${mismatchLine}`;
+          return `<b>${escapeHtml(appName)}</b><br/>${escapeHtml(catName)}<br/><span style="color:${SEV_COLOR[sev]}">● ${escapeHtml(sevLabel)}</span>${mismatchLine}`;
         },
       },
       // outerBoundsMode: 'none' restores echarts v5's behaviour of letting
@@ -601,3 +601,17 @@ const swatchMismatch = (c: string): React.CSSProperties => ({
   marginRight: 6,
   verticalAlign: "middle",
 });
+
+// App and category names come from scraped App Store listings, so escape them
+// before interpolating into the ECharts tooltip HTML (renderMode 'html'). The
+// production CSP blocks inline script, but unescaped markup still allows layout
+// spoofing / clickable overlays, and dev-mode CSP drops to 'unsafe-inline'.
+// Mirrors the identical guard in PrivacySankey.tsx.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

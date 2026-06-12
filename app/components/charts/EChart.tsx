@@ -3,9 +3,8 @@
 import type * as ECharts from "echarts";
 /**
  * Thin ECharts wrapper that:
- *   - Imports echarts + echarts-for-react only on the client (Next App Router
- *     server-renders components by default, and ECharts touches `window`
- *     during init).
+ *   - Imports echarts only on the client (Next App Router server-renders
+ *     components by default, and ECharts touches `window` during init).
  *   - Registers a single shared 'privacy' theme matching globals.css tokens
  *     so every chart has the same dark surface, typography, and tooltip chrome.
  *   - Handles resize via ResizeObserver so charts re-flow inside flex/grid
