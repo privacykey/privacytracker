@@ -5853,10 +5853,12 @@ html[data-theme-override="high-contrast"] .nav {
   border: 0;
   border-radius: 6px;
 }
+/* No `outline: none` — the hover tint alone is not a visible focus
+   indicator; keyboard focus falls through to the universal
+   `:focus-visible` ring at the top of this file. */
 .snooze-menu-item:hover,
 .snooze-menu-item:focus-visible {
   color: var(--text);
-  outline: none;
   background: var(--surface-hover);
 }
 
@@ -12182,10 +12184,11 @@ button.import-history-stat.is-active {
     border-color 0.15s ease;
 }
 
+/* No `outline: none` — keyboard focus falls through to the universal
+   `:focus-visible` ring at the top of this file. */
 .task-center-trigger:hover,
 .task-center-trigger:focus-visible {
   color: var(--text);
-  outline: none;
   background: var(--surface-hover);
 }
 
@@ -18531,9 +18534,10 @@ button.import-history-stat.is-active {
   transition: background 0.12s ease;
 }
 
+/* No `outline: none` — keyboard focus falls through to the universal
+   `:focus-visible` ring at the top of this file. */
 .task-center-upcoming:hover,
 .task-center-upcoming:focus-visible {
-  outline: none;
   background: var(--surface-hover);
 }
 

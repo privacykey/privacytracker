@@ -50,6 +50,29 @@ export default function InfoTooltip({
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  // Hover bridge (WCAG 1.4.13): the bubble is portaled with a gap below/
+  // above the trigger, so closing the instant the pointer leaves the
+  // trigger makes the bubble content unreachable. Instead the close is
+  // scheduled with a short grace window and cancelled when the pointer
+  // arrives on the bubble (or back on the trigger).
+  const closeTimerRef = useRef<number | null>(null);
+
+  const cancelScheduledClose = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    cancelScheduledClose();
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      setOpen(false);
+    }, 150);
+  }, [cancelScheduledClose]);
+
+  useEffect(() => cancelScheduledClose, [cancelScheduledClose]);
 
   // Avoid SSR mismatch: portal only renders after mount.
   useEffect(() => {
@@ -190,25 +213,34 @@ export default function InfoTooltip({
   const toggle = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    cancelScheduledClose();
     setOpen((current) => !current);
   };
 
   const showOnHover = (event: React.PointerEvent<HTMLButtonElement>) => {
     // Only treat fine pointers (mouse) as hover-openers; coarse pointers use tap.
     if (event.pointerType === "mouse") {
+      cancelScheduledClose();
       setOpen(true);
     }
   };
 
-  const hideOnLeave = (event: React.PointerEvent<HTMLButtonElement>) => {
+  const hideOnLeave = (event: React.PointerEvent<HTMLElement>) => {
     if (event.pointerType !== "mouse") {
       return;
     }
-    // Keep open briefly if focus is on the trigger (keyboard users).
+    // Keep open if focus is on the trigger (keyboard users).
     if (document.activeElement === triggerRef.current) {
       return;
     }
-    setOpen(false);
+    // Grace window so the pointer can travel onto the bubble.
+    scheduleClose();
+  };
+
+  const keepOpenOnBubbleHover = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse") {
+      cancelScheduledClose();
+    }
   };
 
   const bubble =
@@ -216,6 +248,8 @@ export default function InfoTooltip({
       <div
         className={`info-tooltip-bubble info-tooltip-bubble--${placement?.flow ?? "top"} info-tooltip-bubble--visible`}
         id={id}
+        onPointerEnter={keepOpenOnBubbleHover}
+        onPointerLeave={hideOnLeave}
         ref={bubbleRef}
         role="tooltip"
         style={{
@@ -261,6 +295,7 @@ export default function InfoTooltip({
         onClick={toggle}
         onFocus={(event) => {
           stopPropagation(event);
+          cancelScheduledClose();
           setOpen(true);
         }}
         onPointerDown={stopPropagation}
