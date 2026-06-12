@@ -15,7 +15,11 @@ import {
 import db from "./db";
 import { createAiTimeoutNotification } from "./notifications";
 import { getSetting } from "./scheduler";
-import { safeFetch, validateExternalUrl } from "./security";
+import {
+  assertUrlSafeToFetch,
+  safeFetch,
+  validateExternalUrl,
+} from "./security";
 
 // Hard caps for anything we pull over the network. Privacy policies are
 // HTML/text; 6 MiB is already generous. LLM chat-completion responses are
@@ -3694,19 +3698,21 @@ async function callChatCompletionsJson<T>({
       : prompt;
 
   // SSRF defence-in-depth — the persisted baseUrl was already validated in
-  // the settings write path, but we revalidate at call time so a poisoned
-  // settings row can't exfiltrate. Loopback / RFC-1918 is permitted here
-  // because legitimate `custom` providers (Ollama on localhost, LAN boxes)
-  // live on private addresses; cloud metadata endpoints stay blocked.
-  const endpointVerdict = validateExternalUrl(
-    `${aiConfig.baseUrl}/chat/completions`,
-    {
-      maxLength: 1024,
+  // the settings write path, but we revalidate AND resolve at call time so a
+  // poisoned settings row (or a hostname that DNS-rebinds to an internal IP)
+  // can't bounce this request — with the user's API key in the headers — to a
+  // cloud-metadata endpoint. Loopback / RFC-1918 is permitted because
+  // legitimate `custom` providers (Ollama on localhost, LAN boxes) live on
+  // private addresses; metadata endpoints stay blocked even after the hostname
+  // resolves. `safeFetch` can't be used here because the inference response
+  // streams; this is the pre-flight equivalent of its resolve-time gate.
+  try {
+    await assertUrlSafeToFetch(`${aiConfig.baseUrl}/chat/completions`, {
       allowPrivateHosts: true,
-    }
-  );
-  if (!endpointVerdict.ok) {
-    throw new Error(`Invalid AI endpoint: ${endpointVerdict.error}`);
+      maxLength: 1024,
+    });
+  } catch (error) {
+    throw new Error(`Invalid AI endpoint: ${getErrorMessage(error)}`);
   }
 
   const debugPayloadText = [
@@ -3891,18 +3897,17 @@ async function callAnthropicJson<T>({
   prompt: string;
 } & AiCallCommonOptions): Promise<T> {
   // Mirrors the OpenAI-compatible path above: private hosts permitted so
-  // users can point at a local Anthropic-compatible proxy, metadata hosts
-  // still rejected.
+  // users can point at a local Anthropic-compatible proxy, but the hostname is
+  // resolved and metadata IPs are rejected before the API key is sent — closing
+  // the DNS-rebinding gap a syntactic check can't see.
   const endpointBaseUrl = anthropicApiRoot(aiConfig.baseUrl);
-  const endpointVerdict = validateExternalUrl(
-    `${endpointBaseUrl}/v1/messages`,
-    {
-      maxLength: 1024,
+  try {
+    await assertUrlSafeToFetch(`${endpointBaseUrl}/v1/messages`, {
       allowPrivateHosts: true,
-    }
-  );
-  if (!endpointVerdict.ok) {
-    throw new Error(`Invalid AI endpoint: ${endpointVerdict.error}`);
+      maxLength: 1024,
+    });
+  } catch (error) {
+    throw new Error(`Invalid AI endpoint: ${getErrorMessage(error)}`);
   }
 
   const debugPayloadText = [

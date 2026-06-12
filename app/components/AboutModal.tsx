@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 // Pull the version from package.json at build time so the About
 // modal always reflects the actual shipped version. Webpack inlines
 // the value at compile time — no runtime fetch.
@@ -24,20 +25,6 @@ export function openAboutModal() {
   window.dispatchEvent(new CustomEvent(EVENT_OPEN));
 }
 
-// Focusable-element selector mirrors KeyboardShortcuts so Tab cycles
-// through the three links and the close button only.
-const FOCUSABLE_SELECTOR = [
-  "a[href]",
-  "button:not([disabled])",
-  '[tabindex]:not([tabindex="-1"])',
-].join(",");
-
-function collectFocusable(root: HTMLElement): HTMLElement[] {
-  return Array.from(
-    root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-  ).filter((el) => el.offsetParent !== null || el.getClientRects().length > 0);
-}
-
 /**
  * macOS-style "About" dialog. A compact centered card with the app name,
  * version, and three links: GitHub source, creator, AI disclosure.
@@ -52,8 +39,6 @@ export default function AboutModal() {
   // copyright) translates with the active locale.
   const t = useTranslations("about");
   const [open, setOpen] = useState(false);
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const lastFocused = useRef<HTMLElement | null>(null);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -64,78 +49,10 @@ export default function AboutModal() {
     return () => window.removeEventListener(EVENT_OPEN, onOpen);
   }, []);
 
-  // Escape to close.
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
-  // Focus management: remember the previously focused element, move focus
-  // into the card on open, restore it on close, and trap Tab inside.
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    lastFocused.current = (document.activeElement as HTMLElement) ?? null;
-
-    const id = requestAnimationFrame(() => {
-      const card = cardRef.current;
-      if (!card) {
-        return;
-      }
-      const focusables = collectFocusable(card);
-      (focusables[0] ?? card).focus();
-    });
-
-    const trap = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") {
-        return;
-      }
-      const card = cardRef.current;
-      if (!card) {
-        return;
-      }
-      const focusables = collectFocusable(card);
-      if (focusables.length === 0) {
-        event.preventDefault();
-        card.focus();
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (event.shiftKey) {
-        if (!active || active === first || !card.contains(active)) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    window.addEventListener("keydown", trap);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener("keydown", trap);
-      const prev = lastFocused.current;
-      lastFocused.current = null;
-      if (prev && typeof prev.focus === "function" && document.contains(prev)) {
-        prev.focus();
-      }
-    };
-  }, [open]);
+  // Focus management + Escape-to-close: remember the previously focused
+  // element, move focus into the card on open, trap Tab inside, and restore
+  // focus on close. Shared with every other modal via this hook.
+  const cardRef = useModalFocus<HTMLDivElement>({ open, onClose: close });
 
   if (!open) {
     return null;

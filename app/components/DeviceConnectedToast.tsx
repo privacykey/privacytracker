@@ -11,6 +11,11 @@
  * never pays the cost — users who never use cfgutil don't see the
  * toast and the watcher stays idle.
  *
+ * Unlike the passive toasts, this one carries an action (the Import
+ * CTA), so it deliberately stays until dismissed instead of auto-hiding
+ * after TOAST_HOLD_MS. Position/animation chrome is shared via the
+ * toastIn/toastOut keyframes + --toast-* vars in globals.css.
+ *
  * No-ops outside the Tauri shell.
  */
 
@@ -18,9 +23,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type ConnectedDevice, isDesktop } from "../../lib/desktop";
-
-/* Matches the `toastOut` animation duration in globals.css. */
-const TOAST_OUT_MS = 200;
+import { TOAST_OUT_MS } from "../../lib/toast-timing";
 
 type ToastT = (
   key: string,

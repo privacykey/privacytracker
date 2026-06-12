@@ -140,24 +140,63 @@ jobs:
       # the step above — pinning NODE_VERSION at the top of this file
       # guarantees the match.
       #
-      # Hash-verified against nodejs.org's SHASUMS256.txt before extraction.
-      # The bundled binary lands inside the signed + notarised app, so a
-      # compromise of the nodejs.org distribution host (or any TLS-MITM
-      # the GitHub runner happens to walk into) would otherwise propagate
-      # a tampered Node into every privacytracker auto-update. Gatekeeper
-      # only verifies the cert chain — it doesn't know what bytes Node
-      # was supposed to be.
+      # GPG-verified against the Node.js release-team signing keys, THEN
+      # hash-verified against the now-trusted SHASUMS256.txt before
+      # extraction. The bundled binary lands inside the signed + notarised
+      # app, so a compromise of the nodejs.org distribution host (or any
+      # TLS-MITM the GitHub runner walks into) would otherwise propagate a
+      # tampered Node into every privacytracker auto-update. Notarisation /
+      # Gatekeeper only verify the cert chain — they don't know what bytes
+      # Node was supposed to be. The detached SHASUMS256.txt.sig closes the
+      # gap a bare hash check left open: an attacker who can swap the
+      # tarball can equally swap SHASUMS256.txt, but cannot forge a Node
+      # release-team signature over it.
+      #
+      # NODE_RELEASE_KEYS must be kept in sync with the "Release keys"
+      # section of https://github.com/nodejs/node#release-keys — SHASUMS256
+      # is signed by exactly one release member, so a stale list fails
+      # closed (gpg verification error), it never silently passes.
       - name: Download + verify bundled Node ${{ env.NODE_VERSION }} (${{ matrix.node_arch }})
+        env:
+          NODE_RELEASE_KEYS: >-
+            5BE8A3F6C8A5C01D106C0AD820B1A390B168D356
+            DD792F5973C6DE52C432CBDAC77ABFA00DDBF2B7
+            CC68F5A3106FF448322E48ED27F5E38D5B0A215F
+            8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600
+            890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4
+            C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C
+            108F52B48DB57BB0CC439B2997B01419BD92F80A
+            A363A499291CBBC940DD62E41F10027AF002F8B0
         run: |
           set -euo pipefail
           TARBALL="node-v${NODE_VERSION}-darwin-${{ matrix.node_arch }}.tar.gz"
           curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${TARBALL}"
           curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt"
-          # Pull just the tarball's row from SHASUMS256.txt and verify.
-          # `shasum -c -` exits non-zero on mismatch; `set -e` fails the step.
+          curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt.sig"
+
+          # Import the Node release-team public keys into a throwaway
+          # keyring, trying multiple keyservers per key for resilience.
+          export GNUPGHOME="$(mktemp -d)"
+          for key in $NODE_RELEASE_KEYS; do
+            for server in hkps://keys.openpgp.org hkps://keyserver.ubuntu.com hkps://pgp.mit.edu; do
+              if gpg --batch --keyserver "$server" --recv-keys "$key"; then
+                break
+              fi
+            done
+          done
+
+          # Verify the detached signature over SHASUMS256.txt. `set -e`
+          # fails the step if no trusted release key signed it.
+          gpg --batch --verify SHASUMS256.txt.sig SHASUMS256.txt
+
+          # Only now that SHASUMS256.txt is trusted, verify the tarball's
+          # row. `shasum -c -` exits non-zero on mismatch.
           grep " ${TARBALL}\$" SHASUMS256.txt | shasum -a 256 -c -
+
+          gpgconf --kill gpg-agent || true
+          rm -rf "$GNUPGHOME"
           tar xzf "${TARBALL}" -C /tmp
-          rm -f "${TARBALL}" SHASUMS256.txt
+          rm -f "${TARBALL}" SHASUMS256.txt SHASUMS256.txt.sig
           mkdir -p src-tauri/binaries
           cp "/tmp/node-v${NODE_VERSION}-darwin-${{ matrix.node_arch }}/bin/node" \
             "src-tauri/binaries/node-${{ matrix.target }}"

@@ -29,6 +29,7 @@ import {
   type CfgutilCheckResult,
   type ConnectedDevice,
   checkCfgutil,
+  findChildSafetyPropertyNames,
   isDesktop,
   listConnectedDevices,
   runCfgutilExport,
@@ -42,6 +43,11 @@ import {
   inferCountryFromLocale,
   normalizeCountry,
 } from "../../lib/region";
+import { useModalFocus } from "../../lib/use-modal-focus";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import AlreadyTrackedAccordion from "./AlreadyTrackedAccordion";
 import DeviceSyncDiffOverlay from "./DeviceSyncDiffOverlay";
 import ImportedAppsTable from "./ImportedAppsTable";
@@ -552,6 +558,13 @@ export default function OnboardWizard({
    *  not bounce them to a different recommendation unless their selected
    *  method becomes hidden by a feature flag. */
   const userSelectedMethodRef = useRef(false);
+  // APG keyboard contract for the wizard radiogroups. AI-provider
+  // cards + cfgutil device rows select as focus moves (local state,
+  // instantly reversible). The import-method cards move focus only —
+  // selecting a method wipes any in-progress import state, so
+  // Enter/Space commits instead of every arrow press.
+  const wizardRadioKeyDown = useRovingRadioGroup();
+  const methodRadioKeyDown = useRovingRadioGroup({ followFocus: false });
   useEffect(() => {
     const visibleForDevice = orderedMethodsForDevice(deviceClass).filter(
       (m) => methodAvailability[m]
@@ -1104,6 +1117,29 @@ export default function OnboardWizard({
     setRestoreError("");
     setRestoreConfirmText("");
   };
+
+  // ── Modal focus management (WCAG 2.4.3 / 2.1.2) ────────────────────────
+  const restoreModalCardRef = useModalFocus<HTMLDivElement>({
+    open:
+      (restoreStage === "confirm" || restoreStage === "applying") &&
+      restorePreview !== null,
+    onClose: () => {
+      if (restoreStage !== "applying") {
+        resetRestoreFlow();
+      }
+    },
+    closeOnEscape: true,
+  });
+  const cancelModalCardRef = useModalFocus<HTMLDivElement>({
+    open: cancelModalOpen,
+    onClose: () => setCancelModalOpen(false),
+    closeOnEscape: true,
+  });
+  const rateLimitModalCardRef = useModalFocus<HTMLDivElement>({
+    open: rateLimitPauseModal !== null,
+    onClose: () => setRateLimitPauseModal(null),
+    closeOnEscape: true,
+  });
 
   const handleRestoreFileChosen = async (file: File) => {
     setRestoreError("");
@@ -5075,6 +5111,7 @@ export default function OnboardWizard({
               <div
                 aria-label={tAiStep("provider_aria")}
                 className="method-grid"
+                onKeyDown={wizardRadioKeyDown}
                 role="radiogroup"
               >
                 {ONBOARD_AI_OPTIONS.map((option) => {
@@ -5086,6 +5123,7 @@ export default function OnboardWizard({
                       key={option.value}
                       onClick={() => onProviderChange(option.value)}
                       role="radio"
+                      tabIndex={selected ? 0 : -1}
                       type="button"
                     >
                       <div className="method-card-top">
@@ -5185,6 +5223,7 @@ export default function OnboardWizard({
                           autoComplete="off"
                           className="settings-input"
                           onChange={(event) => setAiApiKey(event.target.value)}
+                          // i18n-exempt — literal API-key prefix formats ("sk-ant-...", "sk-..."), locale-neutral
                           placeholder={
                             aiProvider === "anthropic"
                               ? "sk-ant-..."
@@ -5363,6 +5402,12 @@ export default function OnboardWizard({
                 extraClass = ""
               ) => {
                 const selected = method === value;
+                // The primary and advanced grids are separate radiogroups
+                // sharing one `method` state — rove within whichever grid
+                // this card belongs to.
+                const grid = primaryMethods.includes(value)
+                  ? primaryMethods
+                  : advancedMethods;
                 return (
                   <button
                     aria-checked={selected}
@@ -5386,6 +5431,11 @@ export default function OnboardWizard({
                       setImportInfo("");
                     }}
                     role="radio"
+                    tabIndex={rovingTabIndex(
+                      selected,
+                      grid.indexOf(value),
+                      grid.includes(method)
+                    )}
                     type="button"
                   >
                     <div className="method-card-top">
@@ -5443,6 +5493,7 @@ export default function OnboardWizard({
                   <div
                     aria-label={tStep1("method_grid_aria")}
                     className="method-grid method-grid-primary"
+                    onKeyDown={methodRadioKeyDown}
                     role="radiogroup"
                   >
                     {primaryMethods.map((value) =>
@@ -5461,6 +5512,7 @@ export default function OnboardWizard({
                       <div
                         aria-label={tStep1("advanced_grid_aria")}
                         className="method-grid method-grid-advanced"
+                        onKeyDown={methodRadioKeyDown}
                         role="radiogroup"
                       >
                         {advancedMethods.map((value) =>
@@ -5716,6 +5768,7 @@ export default function OnboardWizard({
                 </div>
 
                 <div
+                  aria-label={tStep2("drop_screenshots_aria")}
                   className={`file-drop ${isDraggingImages ? "over" : ""}`}
                   onClick={() => imageFileRef.current?.click()}
                   onDragLeave={() => setIsDraggingImages(false)}
@@ -5724,6 +5777,14 @@ export default function OnboardWizard({
                     setIsDraggingImages(true);
                   }}
                   onDrop={handleImageDrop}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      imageFileRef.current?.click();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div style={{ fontSize: 28 }}>🖼</div>
                   <div className="file-drop-text">
@@ -5822,6 +5883,7 @@ export default function OnboardWizard({
                 </div>
 
                 <div
+                  aria-label={tStep2("file_drop_aria")}
                   className={`file-drop ${isDraggingText ? "over" : ""}`}
                   onClick={() => textFileRef.current?.click()}
                   onDragLeave={() => setIsDraggingText(false)}
@@ -5830,6 +5892,14 @@ export default function OnboardWizard({
                     setIsDraggingText(true);
                   }}
                   onDrop={handleTextDrop}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      textFileRef.current?.click();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div style={{ fontSize: 28 }}>📂</div>
                   <div className="file-drop-text">
@@ -6084,6 +6154,34 @@ export default function OnboardWizard({
                                   </span>
                                 )}
                               </div>
+                              {/* Diagnostics-only probe: what properties this
+                              cfgutil build can read off a device. The guardian
+                              age-rating feature watches for the day Apple
+                              exposes a child age-range / restrictions property
+                              over USB (today DeclaredAgeRange is in-app only,
+                              so the hit list is expected to be empty). */}
+                              {cfgutilCheck?.supportedPropertyNames &&
+                                (() => {
+                                  const hits = findChildSafetyPropertyNames(
+                                    cfgutilCheck.supportedPropertyNames
+                                  );
+                                  return (
+                                    <p className="cfgutil-step-sub">
+                                      {tCfg("step2_properties_probe", {
+                                        count:
+                                          cfgutilCheck.supportedPropertyNames
+                                            .length,
+                                      })}
+                                      {hits.length > 0 && (
+                                        <>
+                                          {" "}
+                                          {tCfg("step2_properties_child_hit")}{" "}
+                                          <code>{hits.join(", ")}</code>
+                                        </>
+                                      )}
+                                    </p>
+                                  );
+                                })()}
                               {/* Larger, more visible "we're working on it"
                               panel — the cfgutil probe shells out + checks
                               the Automation Tools install, which can take
@@ -6258,47 +6356,61 @@ export default function OnboardWizard({
                                     <div
                                       aria-label={tCfg("device_picker_aria")}
                                       className="cfgutil-device-list"
+                                      onKeyDown={wizardRadioKeyDown}
                                       role="radiogroup"
                                     >
-                                      {cfgutilDevices.map((device) => {
-                                        const selectedDevice =
-                                          selectedCfgutilEcid === device.ecid;
-                                        return (
-                                          <button
-                                            aria-checked={selectedDevice}
-                                            className={`cfgutil-device-row${selectedDevice ? " is-selected" : ""}`}
-                                            key={device.ecid}
-                                            onClick={() => {
-                                              setSelectedCfgutilEcid(
-                                                device.ecid
-                                              );
-                                              if (
-                                                cfgutilError ===
-                                                tCfg("step3_select_required")
-                                              ) {
-                                                setCfgutilError("");
-                                              }
-                                            }}
-                                            role="radio"
-                                            type="button"
-                                          >
-                                            <span
-                                              aria-hidden
-                                              className="cfgutil-device-dot"
-                                            />
-                                            <span className="cfgutil-device-text">
-                                              <span className="cfgutil-device-name">
-                                                {describeCfgutilDevice(device)}
+                                      {cfgutilDevices.map(
+                                        (device, deviceIndex) => {
+                                          const selectedDevice =
+                                            selectedCfgutilEcid === device.ecid;
+                                          return (
+                                            <button
+                                              aria-checked={selectedDevice}
+                                              className={`cfgutil-device-row${selectedDevice ? " is-selected" : ""}`}
+                                              key={device.ecid}
+                                              onClick={() => {
+                                                setSelectedCfgutilEcid(
+                                                  device.ecid
+                                                );
+                                                if (
+                                                  cfgutilError ===
+                                                  tCfg("step3_select_required")
+                                                ) {
+                                                  setCfgutilError("");
+                                                }
+                                              }}
+                                              role="radio"
+                                              tabIndex={rovingTabIndex(
+                                                selectedDevice,
+                                                deviceIndex,
+                                                cfgutilDevices.some(
+                                                  (d) =>
+                                                    d.ecid ===
+                                                    selectedCfgutilEcid
+                                                )
+                                              )}
+                                              type="button"
+                                            >
+                                              <span
+                                                aria-hidden
+                                                className="cfgutil-device-dot"
+                                              />
+                                              <span className="cfgutil-device-text">
+                                                <span className="cfgutil-device-name">
+                                                  {describeCfgutilDevice(
+                                                    device
+                                                  )}
+                                                </span>
+                                                <span className="cfgutil-device-meta">
+                                                  {describeCfgutilDeviceMeta(
+                                                    device
+                                                  )}
+                                                </span>
                                               </span>
-                                              <span className="cfgutil-device-meta">
-                                                {describeCfgutilDeviceMeta(
-                                                  device
-                                                )}
-                                              </span>
-                                            </span>
-                                          </button>
-                                        );
-                                      })}
+                                            </button>
+                                          );
+                                        }
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -8249,7 +8361,9 @@ export default function OnboardWizard({
               aria-modal="true"
               className="modal-card"
               onClick={(event) => event.stopPropagation()}
+              ref={restoreModalCardRef}
               role="dialog"
+              tabIndex={-1}
             >
               <div className="modal-badge">{tModalRestore("badge")}</div>
               <h2 className="modal-title" id="onboard-restore-title">
@@ -8379,12 +8493,9 @@ export default function OnboardWizard({
             aria-modal="true"
             className="modal-card cancel-confirm-modal"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setCancelModalOpen(false);
-              }
-            }}
+            ref={cancelModalCardRef}
             role="dialog"
+            tabIndex={-1}
           >
             <h2 className="modal-title" id="cancel-modal-title">
               {tModalCancel("title")}
@@ -8439,12 +8550,9 @@ export default function OnboardWizard({
             aria-modal="true"
             className="modal-card rate-limit-pause-modal"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setRateLimitPauseModal(null);
-              }
-            }}
+            ref={rateLimitModalCardRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tModalRate("badge")}</div>
             <h2 className="modal-title" id="rate-limit-modal-title">

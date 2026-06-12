@@ -37,6 +37,7 @@ mod diagnostics;
 mod cfgutil;
 mod usb_watcher;
 mod app_menu;
+mod zoom;
 #[cfg(target_os = "macos")]
 mod touch_id;
 
@@ -256,6 +257,14 @@ fn main() {
             if desktop_settings.devtools_open {
                 window.open_devtools();
             }
+
+            // 5a-bis. Restore the persisted webview zoom level (WCAG
+            //     1.4.4 — the View-menu ⌘±/⌘0 items step it, zoom.rs
+            //     persists it through the same /api/settings/desktop
+            //     bundle as devtools_open). Page zoom is a webview
+            //     property, so applying it once here survives every
+            //     subsequent in-app navigation.
+            zoom::init(&app.handle(), desktop_settings.zoom_level);
 
             // 5b. Install the native menu bar (App / File / Edit /
             //     View / Go / [Dev] / Window / Help). Must run after

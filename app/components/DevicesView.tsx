@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import Toast from "./Toast";
 import "./device-sync.css";
 
@@ -14,7 +16,7 @@ import "./device-sync.css";
  * after mutations.
  *
  * When the URL has `?resync_added=N&resync_removed=M&resync_orphaned=K`,
- * a small toast renders for the first ~4s — the re-sync wizard routes
+ * a small toast renders for TOAST_HOLD_MS — the re-sync wizard routes
  * back here on commit and uses these params to signal the outcome.
  */
 
@@ -50,6 +52,17 @@ export default function DevicesView({
     null
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteDeviceRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete !== null,
+    onClose: () => {
+      if (!deletingId) {
+        setPendingDelete(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+
   const [resyncToast, setResyncToast] = useState<{
     added: number;
     removed: number;
@@ -81,7 +94,7 @@ export default function DevicesView({
       orphaned: Number.isFinite(orphaned) ? orphaned : 0,
       merged: Number.isFinite(merged) ? merged : 0,
     });
-    const timer = window.setTimeout(() => setResyncToast(null), 6000);
+    const timer = window.setTimeout(() => setResyncToast(null), TOAST_HOLD_MS);
     return () => window.clearTimeout(timer);
   }, [searchParams]);
 
@@ -198,12 +211,9 @@ export default function DevicesView({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !deletingId) {
-                setPendingDelete(null);
-              }
-            }}
+            ref={deleteDeviceRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{t("delete_modal_badge")}</div>
             <h2 className="modal-title" id="delete-device-title">

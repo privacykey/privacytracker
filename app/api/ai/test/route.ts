@@ -9,11 +9,21 @@ import {
 } from "../../../../lib/ai-config";
 import { getSetting } from "../../../../lib/scheduler";
 import {
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   readBoundedJson,
+  recordAudit,
+  requestActorIp,
+  requestHasValidAdminToken,
+  safeFetch,
   validateExternalUrl,
 } from "../../../../lib/security";
+
+// Hard cap on how much of the remote endpoint's response we read. Legit
+// /models and /v1/models payloads are a few KB; the cap stops a hostile or
+// misconfigured internal target from streaming an unbounded body into memory.
+const AI_RESPONSE_MAX_BYTES = 1024 * 1024; // 1 MiB
 
 interface TestBody {
   apiKey?: unknown;
@@ -35,6 +45,26 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, message: "Rate limit exceeded. Try again shortly." },
       { status: 429 }
+    );
+  }
+
+  // This endpoint makes an outbound fetch to a caller-supplied URL, so on a
+  // non-local (LAN/public) host it's an SSRF probe primitive. Require the admin
+  // token there — localhost installs without a token configured pass straight
+  // through, matching the diagnostics routes.
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
+    recordAudit({
+      action: "ai.test.unauthorised",
+      actorIp: requestActorIp(request),
+      userAgent: request.headers.get("user-agent"),
+      success: false,
+    });
+    return NextResponse.json(
+      { ok: false, message: "Admin token required." },
+      { status: 401 }
     );
   }
 
@@ -145,30 +175,32 @@ async function pingOpenAiCompatible({
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
-  // `redirect: 'error'` so an attacker-controlled custom baseUrl can't
-  // 302 us to http://169.254.169.254/ (IMDS) on a cloud-hosted deploy.
-  // Legitimate AI providers don't redirect their /models endpoint.
-  const res = await fetch(`${baseUrl}/models`, {
-    method: "GET",
+  // safeFetch bounds the response body, re-validates any redirect hop, and —
+  // even with allowPrivateHosts on for Ollama/LAN — blocks a hostname that
+  // resolves to a cloud-metadata IP. We never echo the remote body back to the
+  // caller (that would make this an internal fingerprinting oracle); the
+  // outcome is a generic, status-derived message.
+  const { response, body } = await safeFetch(`${baseUrl}/models`, {
+    allowPrivateHosts: true,
     headers,
-    redirect: "error",
-    signal: AbortSignal.timeout(10_000),
+    maxBytes: AI_RESPONSE_MAX_BYTES,
+    timeoutMs: 10_000,
   });
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
+  if (!response.ok) {
     return {
       ok: false,
-      status: res.status,
-      message:
-        shortBodyMessage(res.status, body) ||
-        `Endpoint returned HTTP ${res.status}.`,
+      status: response.status,
+      message: statusMessage(response.status),
     };
   }
 
   let modelsCount: number | undefined;
   try {
-    const payload = (await res.json()) as { data?: unknown; models?: unknown };
+    const payload = JSON.parse(body.toString("utf8")) as {
+      data?: unknown;
+      models?: unknown;
+    };
     if (Array.isArray(payload?.data)) {
       modelsCount = payload.data.length;
     } else if (Array.isArray(payload?.models)) {
@@ -180,7 +212,7 @@ async function pingOpenAiCompatible({
 
   return {
     ok: true,
-    status: res.status,
+    status: response.status,
     modelsCount,
     message:
       modelsCount === undefined
@@ -201,31 +233,31 @@ async function pingAnthropic({
   status?: number;
   modelsCount?: number;
 }> {
-  const res = await fetch(`${anthropicApiRoot(baseUrl)}/v1/models?limit=1`, {
-    method: "GET",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      Accept: "application/json",
-    },
-    redirect: "error",
-    signal: AbortSignal.timeout(10_000),
-  });
+  const { response, body } = await safeFetch(
+    `${anthropicApiRoot(baseUrl)}/v1/models?limit=1`,
+    {
+      allowPrivateHosts: true,
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        Accept: "application/json",
+      },
+      maxBytes: AI_RESPONSE_MAX_BYTES,
+      timeoutMs: 10_000,
+    }
+  );
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
+  if (!response.ok) {
     return {
       ok: false,
-      status: res.status,
-      message:
-        shortBodyMessage(res.status, body) ||
-        `Anthropic returned HTTP ${res.status}.`,
+      status: response.status,
+      message: statusMessage(response.status),
     };
   }
 
   let modelsCount: number | undefined;
   try {
-    const payload = (await res.json()) as { data?: unknown };
+    const payload = JSON.parse(body.toString("utf8")) as { data?: unknown };
     if (Array.isArray(payload?.data)) {
       modelsCount = payload.data.length;
     }
@@ -235,7 +267,7 @@ async function pingAnthropic({
 
   return {
     ok: true,
-    status: res.status,
+    status: response.status,
     modelsCount,
     message:
       modelsCount === undefined
@@ -244,31 +276,25 @@ async function pingAnthropic({
   };
 }
 
-function shortBodyMessage(status: number, body: string): string {
-  const cleaned = body.replace(/\s+/g, " ").trim();
-  if (!cleaned) {
-    if (status === 401) {
-      return "Unauthorized — check your API key.";
-    }
-    if (status === 403) {
-      return "Forbidden — API key does not have access to this endpoint.";
-    }
-    if (status === 404) {
-      return "Not found — double-check the base URL.";
-    }
-    if (status === 429) {
-      return "Rate limited — try again shortly.";
-    }
-    return "";
-  }
-  const snippet = cleaned.slice(0, 180);
+// Status-only failure text. We deliberately do NOT include any of the remote
+// endpoint's response body: reflecting it would turn this endpoint into an
+// internal-service fingerprinting / port-scanning oracle (the remote could be
+// a loopback/LAN target the user pointed us at). The HTTP status alone is
+// enough to tell the user what to fix.
+function statusMessage(status: number): string {
   if (status === 401) {
-    return `Unauthorized (${snippet})`;
+    return "Unauthorized — check your API key.";
   }
   if (status === 403) {
-    return `Forbidden (${snippet})`;
+    return "Forbidden — API key does not have access to this endpoint.";
   }
-  return `HTTP ${status}: ${snippet}`;
+  if (status === 404) {
+    return "Not found — double-check the base URL.";
+  }
+  if (status === 429) {
+    return "Rate limited — try again shortly.";
+  }
+  return `Endpoint returned HTTP ${status}.`;
 }
 
 function friendlyNetworkMessage(message: string): string {

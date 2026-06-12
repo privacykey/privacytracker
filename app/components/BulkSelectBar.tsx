@@ -13,6 +13,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import type { VerdictValue } from "../../lib/verdict-types";
 // Co-located CSS — Turbopack hot-reloads small files reliably; appending
 // to the 26k-line globals.css was leaving the bulk-select rules unbundled
@@ -64,6 +65,16 @@ export default function BulkSelectBar({
     previous: Array<{ appId: string; verdict: VerdictValue | null }>;
   } | null>(null);
   const undoTimerRef = useRef<number | null>(null);
+
+  const bulkConfirmRef = useModalFocus<HTMLDivElement>({
+    open: pendingConfirm !== null,
+    onClose: () => {
+      if (!applying) {
+        setPendingConfirm(null);
+      }
+    },
+    closeOnEscape: true,
+  });
 
   // Clean up the undo timer when the bar unmounts (mode exit, etc.).
   useEffect(
@@ -276,7 +287,9 @@ export default function BulkSelectBar({
             aria-modal="true"
             className="modal-card"
             onClick={(e) => e.stopPropagation()}
+            ref={bulkConfirmRef}
             role="dialog"
+            tabIndex={-1}
           >
             <h2 className="modal-title">
               {t("confirm_title", { count: selectedIds.length })}
@@ -296,7 +309,6 @@ export default function BulkSelectBar({
                 {t("confirm_cancel")}
               </button>
               <button
-                autoFocus
                 className="btn btn-primary"
                 disabled={applying}
                 onClick={() => void apply(pendingConfirm)}

@@ -11,6 +11,9 @@ import {
 import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
+import { useModalFocus } from "../../lib/use-modal-focus";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
 import AuditBundleExport from "./AuditBundleExport";
 import AuditBundleImport from "./AuditBundleImport";
@@ -1022,6 +1025,10 @@ export default function SettingsView({
    */
   const [adminTokenConfigured, setAdminTokenConfigured] = useState(true);
   const [schedule, setSchedule] = useState<Schedule>("manual");
+  // APG keyboard contract for the sync-schedule radiogroup: one tab
+  // stop, arrows move focus only — the cards auto-save a POST on
+  // selection, so Enter/Space commits instead of every arrow press.
+  const scheduleRadioKeyDown = useRovingRadioGroup({ followFocus: false });
   const [country, setCountry] = useState<string>(DEFAULT_COUNTRY);
   const [savedCountry, setSavedCountry] = useState<string>(DEFAULT_COUNTRY);
   /**
@@ -1438,7 +1445,7 @@ export default function SettingsView({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   const loadStatus = async () => {
@@ -5394,6 +5401,45 @@ export default function SettingsView({
   // anymore. The same gating now lives inline in `saveAiSettings`,
   // which silently skips POSTs when required fields are missing.
 
+  // Focus management for every modal dialog rendered below: trap Tab, move
+  // focus into the card on open, restore it on close, and close on Escape.
+  // One hook per dialog (see useModalFocus). Each `onClose` mirrors the
+  // dialog's own dismiss guard (e.g. don't close mid-apply / mid-delete).
+  const restoreModalRef = useModalFocus<HTMLDivElement>({
+    open:
+      (restoreStage === "confirm" || restoreStage === "applying") &&
+      restorePreview !== null,
+    onClose: () => {
+      if (restoreStage !== "applying") {
+        resetRestoreFlow();
+      }
+    },
+  });
+  const deleteImportModalRef = useModalFocus<HTMLDivElement>({
+    open: deleteTarget !== null,
+    onClose: () => {
+      if (!deleting) {
+        setDeleteTarget(null);
+      }
+    },
+  });
+  const waybackRemoveModalRef = useModalFocus<HTMLDivElement>({
+    open: waybackRemoveOpen,
+    onClose: closeWaybackRemoveModal,
+  });
+  const removeItemModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingItemRemoval !== null,
+    onClose: () => {
+      if (removingItemId === null) {
+        setPendingItemRemoval(null);
+      }
+    },
+  });
+  const resetModalRef = useModalFocus<HTMLDivElement>({
+    open: resetStep > 0,
+    onClose: closeResetModal,
+  });
+
   return (
     <div className="page-container">
       {/* Bottom-center toast that confirms inline auto-saves. The
@@ -5900,6 +5946,7 @@ export default function SettingsView({
                   <div
                     aria-label={tAria("sync_interval")}
                     className="schedule-options"
+                    onKeyDown={scheduleRadioKeyDown}
                     role="radiogroup"
                   >
                     {SCHEDULE_OPTIONS.map((opt) => {
@@ -5936,6 +5983,7 @@ export default function SettingsView({
                             void scheduleAutoSave.save(opt.value);
                           }}
                           role="radio"
+                          tabIndex={selected ? 0 : -1}
                           type="button"
                         >
                           <div className="schedule-option-label">
@@ -6436,6 +6484,7 @@ ollama serve`}
                               onChange={(event) =>
                                 setAiApiKey(event.target.value)
                               }
+                              // i18n-exempt — literal API-key prefix formats ("sk-ant-...", "sk-..."), locale-neutral
                               placeholder={
                                 aiProvider === "anthropic"
                                   ? "sk-ant-..."
@@ -9850,63 +9899,6 @@ ollama serve`}
                 </div>
               )}
 
-              {(settingsAdminResetOn || settingsAdminStartOverOn) && (
-                <div
-                  className="settings-section settings-section-danger"
-                  id="reset"
-                >
-                  <h2 className="settings-section-title">
-                    {tSections("reset_app")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("reset_app")}
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                    }}
-                  >
-                    {settingsAdminResetOn && (
-                      <button
-                        className="btn btn-danger"
-                        disabled={Boolean(status?.isRunning)}
-                        onClick={() => setResetStep(1)}
-                        type="button"
-                      >
-                        {tResetCard("reset_button")}
-                      </button>
-                    )}
-
-                    {/* Round 3 PR 5: Start Over — same scope as Reset, but preserves
-                the DB schema + migration version. Routes to /welcome on
-                completion via the §4.10 hybrid-redirect. */}
-                    {settingsAdminStartOverOn && (
-                      <StartOverButton
-                        backupBusy={exportingBackup}
-                        backupBusyLabel={tBackupCard("download_busy")}
-                        backupLabel={tBackupCard("download_before_destructive")}
-                        disabled={Boolean(status?.isRunning)}
-                        onDownloadBackup={handleExportBackup}
-                      />
-                    )}
-                  </div>
-                  {status?.isRunning && (
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: "var(--text-3)",
-                        marginTop: 12,
-                      }}
-                    >
-                      {tResetCard("wait_for_sync")}
-                    </p>
-                  )}
-                </div>
-              )}
-
               {/* Developer Options — only useful when debugging why an AI call is
           stuck or returning garbage. The toggle is saved alongside the rest
           of the AI settings; the log panel queries the server-side rolling
@@ -10827,6 +10819,68 @@ ollama serve`}
                   </div>
                 </div>
               )}
+
+              {/* Reset App — destructive danger zone, deliberately the last
+          section on the page (and in the sidebar) so it never sits between
+          routine admin actions like Export Data. Keep this position in sync
+          with the link order in SettingsSidebar.tsx — the scroll-spy walks
+          sections in sidebar order and assumes it matches document order. */}
+              {(settingsAdminResetOn || settingsAdminStartOverOn) && (
+                <div
+                  className="settings-section settings-section-danger"
+                  id="reset"
+                >
+                  <h2 className="settings-section-title">
+                    {tSections("reset_app")}
+                  </h2>
+                  <p className="settings-section-subtitle">
+                    {tSub("reset_app")}
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    {settingsAdminResetOn && (
+                      <button
+                        className="btn btn-danger"
+                        disabled={Boolean(status?.isRunning)}
+                        onClick={() => setResetStep(1)}
+                        type="button"
+                      >
+                        {tResetCard("reset_button")}
+                      </button>
+                    )}
+
+                    {/* Round 3 PR 5: Start Over — same scope as Reset, but preserves
+                the DB schema + migration version. Routes to /welcome on
+                completion via the §4.10 hybrid-redirect. */}
+                    {settingsAdminStartOverOn && (
+                      <StartOverButton
+                        backupBusy={exportingBackup}
+                        backupBusyLabel={tBackupCard("download_busy")}
+                        backupLabel={tBackupCard("download_before_destructive")}
+                        disabled={Boolean(status?.isRunning)}
+                        onDownloadBackup={handleExportBackup}
+                      />
+                    )}
+                  </div>
+                  {status?.isRunning && (
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "var(--text-3)",
+                        marginTop: 12,
+                      }}
+                    >
+                      {tResetCard("wait_for_sync")}
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -10849,7 +10903,9 @@ ollama serve`}
               aria-modal="true"
               className="modal-card"
               onClick={(event) => event.stopPropagation()}
+              ref={restoreModalRef}
               role="dialog"
+              tabIndex={-1}
             >
               <div className="modal-badge">{tModalRestore("badge")}</div>
               <h2 className="modal-title" id="restore-backup-title">
@@ -11000,7 +11056,9 @@ ollama serve`}
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
+            ref={deleteImportModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tModalDelete("badge")}</div>
             <h2 className="modal-title" id="delete-import-title">
@@ -11102,12 +11160,9 @@ ollama serve`}
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                closeWaybackRemoveModal();
-              }
-            }}
+            ref={waybackRemoveModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tWaybackRemove("badge")}</div>
             <h2 className="modal-title" id="wayback-remove-title">
@@ -11170,12 +11225,9 @@ ollama serve`}
                 aria-modal="true"
                 className="modal-card"
                 onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape" && !closing) {
-                    setPendingItemRemoval(null);
-                  }
-                }}
+                ref={removeItemModalRef}
                 role="dialog"
+                tabIndex={-1}
               >
                 <div className="modal-badge">{tModalRemoveApp("badge")}</div>
                 <h2 className="modal-title" id="remove-item-title">
@@ -11223,12 +11275,9 @@ ollama serve`}
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                closeResetModal();
-              }
-            }}
+            ref={resetModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tResetCard("modal_badge")}</div>
             <h2 className="modal-title" id="reset-app-title">

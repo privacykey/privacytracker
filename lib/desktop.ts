@@ -271,7 +271,27 @@ export interface CfgutilCheckResult {
   error: string | null;
   path: string | null;
   platform: "macos" | "windows" | "linux" | "unknown";
+  /**
+   * `cfgutil get supportedPropertyNames` output, when the build exposes
+   * it. Diagnostics for the guardian age-rating feature: lets us spot the
+   * day Apple surfaces a child age-range / restrictions property over USB
+   * (iOS 26's DeclaredAgeRange is in-app only today). Null on older
+   * builds / probe failure.
+   */
+  supportedPropertyNames: string[] | null;
   version: string | null;
+}
+
+/**
+ * Properties that would indicate Apple started exposing child-safety /
+ * age data over USB. Checked against `supportedPropertyNames` by the
+ * diagnostics surfaces; today this is expected to match nothing.
+ */
+export function findChildSafetyPropertyNames(names: string[] | null): string[] {
+  if (!names) {
+    return [];
+  }
+  return names.filter((n) => /age|child|family|restrict|screen/i.test(n));
 }
 
 /**
@@ -324,6 +344,7 @@ export async function checkCfgutil(): Promise<CfgutilCheckResult | null> {
       appInstalled: false,
       error: err instanceof Error ? err.message : String(err),
       platform: "unknown",
+      supportedPropertyNames: null,
     };
   }
 }
@@ -596,6 +617,11 @@ function normalizeCfgutilCheck(
     appInstalled: Boolean(raw.app_installed),
     error: typeof raw.error === "string" ? raw.error : null,
     platform,
+    supportedPropertyNames: Array.isArray(raw.supported_property_names)
+      ? raw.supported_property_names.filter(
+          (n): n is string => typeof n === "string"
+        )
+      : null,
   };
 }
 

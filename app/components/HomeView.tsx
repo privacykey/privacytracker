@@ -24,9 +24,12 @@ import {
   Fragment,
   type ReactNode,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import type { AgeBandKey } from "../../lib/age-rating";
 import {
   CALLOUT_CARDS,
   DASHBOARD_PRESET_KEYS,
@@ -45,6 +48,7 @@ import {
   TIER_META,
 } from "../../lib/privacy-profile";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import type {
   RecentActivityEntry,
   ReviewableApp,
@@ -56,6 +60,10 @@ import {
   type UseDashboardLayoutSaverResult,
   useDashboardLayoutSaver,
 } from "../../lib/use-dashboard-layout-saver";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import BackgroundModeCallout from "./BackgroundModeCallout";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
@@ -153,6 +161,8 @@ export interface DashboardFlagState {
    *  renders it even when the flag is on. */
   backgroundModeWizard: boolean;
   callout: {
+    /** "N apps rated above your child's age range" (guardian feature). */
+    age_rating: boolean;
     declutter: boolean;
     guardian: boolean;
     understand_declutter: boolean;
@@ -199,6 +209,7 @@ export default function HomeView({
   reviewCtaSlot = null,
   layout = DEFAULT_LAYOUT,
   editMode = false,
+  ageRatingFlagged = null,
 }: {
   triage: TriageData;
   /**
@@ -273,6 +284,13 @@ export default function HomeView({
    * settings page. Triggered by `?edit=layout` server-side.
    */
   editMode?: boolean;
+  /**
+   * Guardian age-rating summary computed server-side: how many tracked
+   * apps are rated above the child's age band, plus the band itself for
+   * the callout copy. Null when the feature is off / no band is set /
+   * nothing is flagged — the callout drops out entirely.
+   */
+  ageRatingFlagged?: { band: AgeBandKey; count: number } | null;
 }) {
   const taskCenter = useTaskCenter();
   const [syncingAll, setSyncingAll] = useState(false);
@@ -313,7 +331,7 @@ export default function HomeView({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   // Translation handles for heads-up labels and the sync-all toast
@@ -423,6 +441,10 @@ export default function HomeView({
   const showCleanupCallout =
     flags?.callout.declutter ?? userIntent === "cleanup";
   const showFamilyCallout = flags?.callout.guardian ?? userIntent === "family";
+  // No legacy-intent fallback — the age-rating callout is new and only
+  // exists behind its flag (which already chains off flag.guardian.age_rating
+  // via FLAG_DEPENDENCIES).
+  const showAgeRatingCallout = flags?.callout.age_rating ?? false;
   const showDefinitionsCallout =
     flags?.callout.understand_only ?? userIntent === "curious";
   const elevateStale = userIntent === "hygiene";
@@ -525,6 +547,13 @@ export default function HomeView({
       ) : null,
     family_callout: () =>
       showFamilyCallout ? <FamilyCallout count={triage.highRiskCount} /> : null,
+    age_rating_callout: () =>
+      showAgeRatingCallout && ageRatingFlagged && ageRatingFlagged.count > 0 ? (
+        <AgeRatingCallout
+          band={ageRatingFlagged.band}
+          count={ageRatingFlagged.count}
+        />
+      ) : null,
     third_party_callout: () =>
       showThirdPartyCallout ? <ThirdPartyCallout triage={triage} /> : null,
     glance_section: () =>
@@ -618,6 +647,34 @@ function EditModeShell({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // 2.4.11 Focus Not Obscured: the sticky toolbar floats over the card
+  // list, so focus- or keyboard-drag-driven scrolling must clear it. The
+  // toolbar height varies (preset pills wrap at narrow widths / large text
+  // scale), so measure it and expose the clearance as a CSS variable that
+  // .home-edit-card's scroll-margin-top consumes.
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const toolbarRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const shell = shellRef.current;
+    const toolbar = toolbarRef.current;
+    if (!(shell && toolbar) || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    // offsetHeight (not getBoundingClientRect) so the value stays in the
+    // same zoomed coordinate space as the scroll-margin that consumes it
+    // when the in-app text scale is active. +8 sticky top, +16 breathing.
+    const apply = () => {
+      shell.style.setProperty(
+        "--home-edit-toolbar-clearance",
+        `${toolbar.offsetHeight + 24}px`
+      );
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(toolbar);
+    return () => ro.disconnect();
+  }, []);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -630,8 +687,8 @@ function EditModeShell({
   );
 
   return (
-    <div className="page-container home-page home-page-edit">
-      <EditModeToolbar saver={saver} />
+    <div className="page-container home-page home-page-edit" ref={shellRef}>
+      <EditModeToolbar saver={saver} toolbarRef={toolbarRef} />
       <DndContext
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
@@ -681,7 +738,13 @@ function EditModeShell({
 // Sticky toolbar — preset pills + reset + open simple editor + done
 // ─────────────────────────────────────────────
 
-function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
+function EditModeToolbar({
+  saver,
+  toolbarRef,
+}: {
+  saver: UseDashboardLayoutSaverResult;
+  toolbarRef?: React.Ref<HTMLElement>;
+}) {
   const router = useRouter();
   const t = useTranslations("dashboard.layout_editor");
   const tPresetLabel = useTranslations(
@@ -690,6 +753,11 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
   const tPresetDesc = useTranslations(
     "dashboard.layout_editor.presets.descriptions"
   );
+
+  // APG keyboard contract for the preset radiogroup: one tab stop,
+  // arrows move focus only — applying a preset overwrites the whole
+  // layout (and may pop the inline confirm), so Enter/Space commits.
+  const presetRadioKeyDown = useRovingRadioGroup({ followFocus: false });
 
   const exitEditMode = useCallback(() => {
     // Drop ?edit=layout from the URL and trigger a server-side re-fetch
@@ -702,7 +770,11 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
   }, [router]);
 
   return (
-    <section aria-label={t("toolbar_aria")} className="home-edit-toolbar">
+    <section
+      aria-label={t("toolbar_aria")}
+      className="home-edit-toolbar"
+      ref={toolbarRef}
+    >
       <div className="home-edit-toolbar-status">
         <span className="home-edit-toolbar-title">{t("toolbar_title")}</span>
         {saver.savingState === "saving" && (
@@ -721,9 +793,10 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
       <div
         aria-label={t("preset_aria_group")}
         className="home-edit-toolbar-presets"
+        onKeyDown={presetRadioKeyDown}
         role="radiogroup"
       >
-        {DASHBOARD_PRESET_KEYS.map((presetKey) => {
+        {DASHBOARD_PRESET_KEYS.map((presetKey, presetIndex) => {
           const meta = DASHBOARD_PRESET_META[presetKey];
           const isActive = saver.activePreset === presetKey;
           const isPending = saver.pendingPreset === presetKey;
@@ -743,6 +816,11 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
                 data-severity={meta.severityCls}
                 onClick={() => saver.applyPreset(presetKey)}
                 role="radio"
+                tabIndex={rovingTabIndex(
+                  isActive,
+                  presetIndex,
+                  saver.activePreset !== null
+                )}
                 title={tPresetDesc(presetKey)}
                 type="button"
               >
@@ -1042,6 +1120,36 @@ function FamilyCallout({ count }: { count: number }) {
         {count > 0 &&
           ` ${tCallouts("looking_out_for_family_count", { count })}`}
       </p>
+    </div>
+  );
+}
+
+function AgeRatingCallout({
+  band,
+  count,
+}: {
+  band: AgeBandKey;
+  count: number;
+}) {
+  const tCallouts = useTranslations("dashboard.callouts");
+  const tAgeBand = useTranslations("age_band");
+  return (
+    <div className="intent-callout intent-callout-warn">
+      <div className="intent-callout-title">
+        {tCallouts("age_rating_title", { count })}
+      </div>
+      <p className="intent-callout-copy">
+        {tCallouts("age_rating_body", {
+          count,
+          band: tAgeBand(`labels.${band}`),
+        })}
+      </p>
+      <Link className="intent-callout-link" href="/dashboard/apps?age=above">
+        {tCallouts("age_rating_review_link")}
+      </Link>{" "}
+      <Link className="intent-callout-link" href="/help/parental-controls">
+        {tCallouts("age_rating_resources_link")}
+      </Link>
     </div>
   );
 }
@@ -1511,6 +1619,7 @@ function ConsiderReplacingSection({
   const tTier = useTranslations("privacy_profile_tier_short");
   const tMismatch = useTranslations("privacy_profile_mismatch_sentence");
   const tBadge = useTranslations("profile_badge");
+  const tSections = useTranslations("dashboard.sections");
   // Cap the visible list to keep the section scannable. Users with many
   // mismatches get a "see all" footer that routes to the apps grid with
   // the "bad match" filter implicitly applied via the badge (which is now
@@ -1560,7 +1669,7 @@ function ConsiderReplacingSection({
               className="profile-replace-row"
               href={`/apps/${entry.appId}`}
               key={entry.appId}
-              title={`Open ${entry.appName}`}
+              title={tSections("open_app_title", { name: entry.appName })}
             >
               {entry.iconUrl ? (
                 <Image

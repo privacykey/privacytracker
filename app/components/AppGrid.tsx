@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type AgeBandKey, compareRatingToBand } from "../../lib/age-rating";
 import {
   localiseBadgeDescription,
   localiseBadgeLabel,
@@ -16,6 +17,10 @@ import type {
 } from "../../lib/manual-apps";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { QueueAppInput } from "../../lib/review-queue";
+import { TOAST_HOLD_MS } from "../../lib/toast-timing";
+import { useModalFocus } from "../../lib/use-modal-focus";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
+import type { VerdictValue } from "../../lib/verdict-types";
 import BulkSelectBar from "./BulkSelectBar";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
@@ -26,6 +31,8 @@ import VerdictPill from "./VerdictPill";
 interface App {
   /** Count of declared accessibility features. Server-side derived. */
   accessibilityCount?: number;
+  /** App Store age rating ("4+", "13+"); null/absent = never captured. */
+  ageRating?: string | null;
   categoryCount: number;
   changeCount: number;
   developer?: string;
@@ -56,6 +63,58 @@ interface App {
 }
 
 type SortKey = "name" | "synced" | "permissions" | "risk";
+
+/**
+ * Chunk size for the background page hydration off
+ * `/api/apps?limit=…&offset=…&meta=grid`. The server page renders only the
+ * first ~250 apps; the rest stream in here so no single response (RSC or
+ * JSON) grows with fleet size.
+ */
+const FETCH_PAGE_SIZE = 500;
+
+/**
+ * How many cards are in the DOM at once before the user asks for more
+ * (scroll sentinel or "Show more" button). Filtering/sorting/counts always
+ * run over the full array — this only bounds rendering cost.
+ */
+const RENDER_CHUNK = 120;
+
+/** Pending-change dot breakdown, as shipped by the server per app id. */
+interface PendingChangeBreakdown {
+  accessibility: boolean;
+  policy: boolean;
+  privacy: boolean;
+}
+
+/** Envelope returned by `/api/apps?limit=…[&meta=grid]`. */
+interface AppsPageEnvelope {
+  apps: App[];
+  limit: number;
+  meta?: {
+    appDeviceMap: Record<string, string[]>;
+    pendingChangeCategoriesByApp: Record<string, PendingChangeBreakdown>;
+    profileBadges: Record<string, AppProfileBadge>;
+    userVerdicts: Record<string, VerdictValue>;
+  };
+  offset: number;
+  total: number;
+}
+
+/** Side-band maps accumulated from hydrated pages, merged over the
+ *  server-rendered first-page props. */
+interface FetchedGridMeta {
+  badges: Record<string, AppProfileBadge>;
+  deviceLinks: Record<string, string[]>;
+  pending: Record<string, PendingChangeBreakdown>;
+  verdicts: Record<string, VerdictValue>;
+}
+
+const EMPTY_FETCHED_META: FetchedGridMeta = {
+  badges: {},
+  deviceLinks: {},
+  pending: {},
+  verdicts: {},
+};
 
 // 'unknown' is a pseudo-level for apps where the developer hasn't filled in
 // any privacy labels yet. It's not a real severity — we just can't tell — so
@@ -138,6 +197,23 @@ function parseAccessibilityParam(
 }
 
 /**
+ * Two-way age-rating filter against the guardian's child age band.
+ *   'within' — apps rated at or below the band's cap
+ *   'above'  — apps rated above the band (the warning bucket)
+ *   null     — no filter
+ * Apps without a captured rating are excluded from both buckets,
+ * mirroring how `null` accessibility rows are handled.
+ */
+type AgeRatingFilter = "within" | "above";
+
+function parseAgeParam(raw: string | null): AgeRatingFilter | null {
+  if (raw === "within" || raw === "above") {
+    return raw;
+  }
+  return null;
+}
+
+/**
  * Minimal device shape used by the AppGrid dropdown. Matches the
  * subset of `Device` (lib/devices.ts) the client actually reads —
  * avoids dragging better-sqlite3 type imports into a client bundle.
@@ -170,6 +246,12 @@ interface AppGridProps {
   /** Active audience — drives review-queue guardian variant + copy. */
   audience?: "self" | "loved_one" | "guardian";
   /**
+   * Guardian child age band from `guardian_child_age_band`. Null/absent
+   * hides the age-rating pill + filter regardless of the flag — there's
+   * nothing to compare against.
+   */
+  childAgeBand?: AgeBandKey | null;
+  /**
    * Devices the user has connected — drives the device-scope dropdown.
    * Sorted by recency in the server query so the most-recently-synced
    * device sits at the top of the menu. Empty array hides the filter.
@@ -189,6 +271,13 @@ interface AppGridProps {
    * type-check — when omitted, the grid renders exactly as before.
    */
   initialManualApps?: ManualApp[];
+  /**
+   * Total tracked apps on the server. When it exceeds `initialApps.length`
+   * the server sent only the first page and the grid background-hydrates
+   * the rest from `/api/apps?limit=…&meta=grid`. Omitted/equal → the grid
+   * behaves exactly as before pagination existed.
+   */
+  initialTotal?: number;
   manualSources?: ManualAppSourceMeta[];
   /**
    * Per-app breakdown of which change categories (privacy-label,
@@ -253,6 +342,8 @@ export interface AppGridFlagState {
   filterRiskButtons: boolean;
   filterSearch: boolean;
   filterSortTabs: boolean;
+  /** flag.guardian.age_rating — child-age pill + filter. */
+  guardianAgeRating: boolean;
   reviewQueueBulkSelect: boolean;
   reviewQueueCfgutilUninstall: boolean;
   reviewQueueEnabled: boolean;
@@ -261,6 +352,7 @@ export interface AppGridFlagState {
 export default function AppGrid({
   initialApps,
   initialManualApps = [],
+  initialTotal,
   manualSources = [],
   profileBadges = {},
   userVerdicts = {},
@@ -268,6 +360,7 @@ export default function AppGrid({
   pendingChangeCategoriesByApp = {},
   flags,
   audience = "self",
+  childAgeBand = null,
   hasProfile = false,
   showQueueProgressBar = true,
   devices = [],
@@ -314,10 +407,17 @@ export default function AppGrid({
     cardAnnotationHighlight: flags?.cardAnnotationHighlight ?? true,
     cardVerdictPill: flags?.cardVerdictPill ?? true,
     emptyState: flags?.emptyState ?? true,
+    // Defaults FALSE (unlike the legacy all-on defaults above) — this is a
+    // new guarded surface; un-wired callers shouldn't grow guardian UI.
+    guardianAgeRating: flags?.guardianAgeRating ?? false,
     reviewQueueEnabled: flags?.reviewQueueEnabled ?? true,
     reviewQueueBulkSelect: flags?.reviewQueueBulkSelect ?? true,
     reviewQueueCfgutilUninstall: flags?.reviewQueueCfgutilUninstall ?? false,
   };
+
+  // Age-rating comparisons only exist when the flag is on AND a band is
+  // set — both gates collapse the pill, the filter row, and `?age=`.
+  const ageFeatureOn = f.guardianAgeRating && childAgeBand !== null;
 
   const [apps, setApps] = useState<App[]>(initialApps);
   const [manualApps, setManualApps] = useState<ManualApp[]>(initialManualApps);
@@ -325,6 +425,110 @@ export default function AppGrid({
   const [syncingAll, setSyncingAll] = useState(false);
   const [deletingManualId, setDeletingManualId] = useState<string | null>(null);
   const taskCenter = useTaskCenter();
+
+  // ── Progressive page hydration ───────────────────────────────────────
+  //
+  // The server renders only the first page of apps (see
+  // app/dashboard/apps/page.tsx); the remainder streams in here in
+  // FETCH_PAGE_SIZE chunks so no single payload grows with fleet size.
+  // Filtering / sorting / counts keep operating on the full in-memory
+  // array once hydration completes — only the transport is chunked.
+  const [total, setTotal] = useState(
+    Math.max(initialTotal ?? 0, initialApps.length)
+  );
+  const [hydrating, setHydrating] = useState(
+    (initialTotal ?? initialApps.length) > initialApps.length
+  );
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [fetchedMeta, setFetchedMeta] =
+    useState<FetchedGridMeta>(EMPTY_FETCHED_META);
+
+  // Bulk-scope actions (Sync all / queue / select-all) silently operating
+  // on a partial fleet would be a correctness bug — hold them until every
+  // page has landed. True only mid-hydration or after a failed hydration.
+  const fleetIncomplete = hydrating || apps.length < total;
+
+  const appsLenRef = useRef(apps.length);
+  appsLenRef.current = apps.length;
+
+  const mergeMeta = useCallback((meta?: AppsPageEnvelope["meta"]) => {
+    if (!meta) {
+      return;
+    }
+    setFetchedMeta((prev) => ({
+      badges: { ...prev.badges, ...meta.profileBadges },
+      deviceLinks: { ...prev.deviceLinks, ...meta.appDeviceMap },
+      pending: { ...prev.pending, ...meta.pendingChangeCategoriesByApp },
+      verdicts: { ...prev.verdicts, ...meta.userVerdicts },
+    }));
+  }, []);
+
+  const loadRemaining = useCallback(
+    async (startOffset: number) => {
+      setHydrating(true);
+      setLoadFailed(false);
+      let offset = startOffset;
+      try {
+        for (;;) {
+          const res = await fetch(
+            `/api/apps?limit=${FETCH_PAGE_SIZE}&offset=${offset}&meta=grid`
+          );
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const page = (await res.json()) as AppsPageEnvelope;
+          setApps((prev) => {
+            const seen = new Set(prev.map((a) => a.id));
+            return [...prev, ...page.apps.filter((a) => !seen.has(a.id))];
+          });
+          mergeMeta(page.meta);
+          setTotal(page.total);
+          offset += page.apps.length;
+          if (page.apps.length === 0 || offset >= page.total) {
+            break;
+          }
+        }
+      } catch (err) {
+        console.error("[apps] background page load failed:", err);
+        setLoadFailed(true);
+      } finally {
+        setHydrating(false);
+      }
+    },
+    [mergeMeta]
+  );
+
+  const hydrateStartedRef = useRef(false);
+  useEffect(() => {
+    // Mount-only by design; the ref guards StrictMode's double-invoke.
+    if (hydrateStartedRef.current) {
+      return;
+    }
+    hydrateStartedRef.current = true;
+    if ((initialTotal ?? initialApps.length) > initialApps.length) {
+      void loadRemaining(initialApps.length);
+    }
+  }, []);
+
+  // Side-band maps: server-rendered first-page props overlaid with
+  // whatever the hydrated pages brought in. All lookups below go through
+  // these merged views, never the raw props.
+  const badges = useMemo(
+    () => ({ ...profileBadges, ...fetchedMeta.badges }),
+    [profileBadges, fetchedMeta.badges]
+  );
+  const verdicts = useMemo(
+    () => ({ ...userVerdicts, ...fetchedMeta.verdicts }),
+    [userVerdicts, fetchedMeta.verdicts]
+  );
+  const pendingByApp = useMemo(
+    () => ({ ...pendingChangeCategoriesByApp, ...fetchedMeta.pending }),
+    [pendingChangeCategoriesByApp, fetchedMeta.pending]
+  );
+  const deviceLinks = useMemo(
+    () => ({ ...appDeviceMap, ...fetchedMeta.deviceLinks }),
+    [appDeviceMap, fetchedMeta.deviceLinks]
+  );
 
   // O(1) lookup for a source's metadata (icon, short label, etc.) when
   // rendering each custom card. Falls back to the built-in 'sideloaded'
@@ -363,6 +567,15 @@ export default function AppGrid({
     }
     return parseAccessibilityParam(searchParams?.get("access") ?? null);
   }, [searchParams, showAccessibilityFilter]);
+  // URL-backed age-rating filter. `?age=above` is the guardian callout's
+  // deep-link target. Ignored when the feature is off / no band is set,
+  // matching how `?access=` defers to the accessibility toggle.
+  const ageFilter = useMemo<AgeRatingFilter | null>(() => {
+    if (!ageFeatureOn) {
+      return null;
+    }
+    return parseAgeParam(searchParams?.get("age") ?? null);
+  }, [searchParams, ageFeatureOn]);
   // URL-backed device-scope filter. Validates against the supplied device
   // list so a stale bookmark to a deleted device falls back to "all".
   // Also accepts the sentinel `'unattached'` for apps with no device
@@ -432,8 +645,8 @@ export default function AppGrid({
     setCompareMode(false);
     setSelectedIds([]);
     setBulkSelectedIds([]);
-    setBulkPrevVerdicts({ ...userVerdicts });
-  }, [userVerdicts]);
+    setBulkPrevVerdicts({ ...verdicts });
+  }, [verdicts]);
 
   const exitSelectMode = useCallback(() => {
     setPageMode("grid");
@@ -463,6 +676,10 @@ export default function AppGrid({
   );
 
   const clearRiskFilter = useCallback(() => setRiskLevel(null), [setRiskLevel]);
+
+  // APG keyboard contract for the sort-tab radiogroup: one tab stop,
+  // arrows move focus + selection (re-sorting is instant and local).
+  const sortRadioKeyDown = useRovingRadioGroup();
 
   // URL writer for the sort selector. Mirrors `setRiskLevel` so the sort
   // tabs write `?sort=...` (or remove it for the default 'risk' to keep
@@ -512,6 +729,22 @@ export default function AppGrid({
     [router, pathname, searchParams]
   );
 
+  // URL writer for the age-rating filter pills. Same clean-URL contract
+  // as setAccessibilityFilter.
+  const setAgeFilter = useCallback(
+    (next: AgeRatingFilter | null) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "");
+      if (next) {
+        params.set("age", next);
+      } else {
+        params.delete("age");
+      }
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
+
   /** URL writer for the device-scope dropdown. Accepts a device id, the
    *  string `'unattached'` (apps with no junction rows), or null to clear. */
   const setDeviceFilter = useCallback(
@@ -532,8 +765,8 @@ export default function AppGrid({
   // badge data from the server). Drives visibility of the mismatch filter —
   // there's nothing to filter by until a profile exists.
   const hasProfileBadges = useMemo(
-    () => Object.keys(profileBadges).length > 0,
-    [profileBadges]
+    () => Object.keys(badges).length > 0,
+    [badges]
   );
   // Tally of apps with at least one category above the user's tolerance.
   // When this is 0 the toggle is hidden entirely — filtering to an empty
@@ -541,11 +774,8 @@ export default function AppGrid({
   // empty state.
   const mismatchCount = useMemo(
     () =>
-      apps.reduce(
-        (n, a) => ((profileBadges[a.id]?.count ?? 0) > 0 ? n + 1 : n),
-        0
-      ),
-    [apps, profileBadges]
+      apps.reduce((n, a) => ((badges[a.id]?.count ?? 0) > 0 ? n + 1 : n), 0),
+    [apps, badges]
   );
 
   // Subset the risk-filter tabs count against. The tabs ARE the risk filter,
@@ -566,11 +796,11 @@ export default function AppGrid({
           return false;
         }
       }
-      if (mismatchOnly && (profileBadges[a.id]?.count ?? 0) === 0) {
+      if (mismatchOnly && (badges[a.id]?.count ?? 0) === 0) {
         return false;
       }
       if (deviceFilter) {
-        const linkedDevices = appDeviceMap[a.id] ?? [];
+        const linkedDevices = deviceLinks[a.id] ?? [];
         if (deviceFilter === "unattached") {
           if (linkedDevices.length > 0) {
             return false;
@@ -581,7 +811,7 @@ export default function AppGrid({
       }
       return true;
     });
-  }, [apps, filter, mismatchOnly, profileBadges, deviceFilter, appDeviceMap]);
+  }, [apps, filter, mismatchOnly, badges, deviceFilter, deviceLinks]);
 
   // Per-device counts for the dropdown labels. Counting against the full
   // `apps` list (not `prefilteredApps`) so the menu reflects the underlying
@@ -591,7 +821,7 @@ export default function AppGrid({
     const counts = new Map<string, number>();
     let unattached = 0;
     for (const a of apps) {
-      const links = appDeviceMap[a.id] ?? [];
+      const links = deviceLinks[a.id] ?? [];
       if (links.length === 0) {
         unattached += 1;
       } else {
@@ -601,7 +831,7 @@ export default function AppGrid({
       }
     }
     return { perDevice: counts, unattached };
-  }, [apps, appDeviceMap]);
+  }, [apps, deviceLinks]);
 
   // Show the dropdown whenever there's at least one device row. We
   // previously hid it for single-device users on the theory "a one-item
@@ -645,15 +875,60 @@ export default function AppGrid({
   const [pendingDeleteManual, setPendingDeleteManual] =
     useState<ManualApp | null>(null);
 
+  const deleteModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete !== null,
+    onClose: () => {
+      if (!deletingId) {
+        setPendingDelete(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+  const deleteManualModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingDeleteManual !== null,
+    onClose: () => {
+      if (!deletingManualId) {
+        setPendingDeleteManual(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+    setTimeout(() => setToast(""), TOAST_HOLD_MS);
   };
 
   const refreshApps = useCallback(async () => {
-    const res = await fetch("/api/apps");
-    setApps(await res.json());
-  }, []);
+    // Chunked refetch of everything currently loaded. The bare /api/apps
+    // form serialises the whole fleet in one response — the exact hot
+    // spot pagination removed — so re-page instead, rebuilding off-screen
+    // and swapping once at the end.
+    const target = Math.max(appsLenRef.current, 1);
+    const fresh: App[] = [];
+    let offset = 0;
+    let serverTotal: number | null = null;
+    for (;;) {
+      const res = await fetch(
+        `/api/apps?limit=${FETCH_PAGE_SIZE}&offset=${offset}&meta=grid`
+      );
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const page = (await res.json()) as AppsPageEnvelope;
+      fresh.push(...page.apps);
+      mergeMeta(page.meta);
+      serverTotal = page.total;
+      offset += page.apps.length;
+      if (page.apps.length === 0 || offset >= page.total || offset >= target) {
+        break;
+      }
+    }
+    setApps(fresh);
+    if (serverTotal !== null) {
+      setTotal(serverTotal);
+    }
+  }, [mergeMeta]);
 
   const syncApp = async (appId: string, appUrl: string) => {
     setSyncingIds((prev) => new Set([...prev, appId]));
@@ -797,6 +1072,7 @@ export default function AppGrid({
         throw new Error(`HTTP ${res.status}`);
       }
       setApps((prev) => prev.filter((app) => app.id !== pendingDelete.id));
+      setTotal((t) => Math.max(0, t - 1));
       setPendingDelete(null);
       showToast(tGrid("toast_app_removed"));
     } catch (error) {
@@ -844,9 +1120,7 @@ export default function AppGrid({
       return false;
     })
     .filter((a) => (riskFilter ? computeRiskLevel(a) === riskFilter : true))
-    .filter((a) =>
-      mismatchOnly ? (profileBadges[a.id]?.count ?? 0) > 0 : true
-    )
+    .filter((a) => (mismatchOnly ? (badges[a.id]?.count ?? 0) > 0 : true))
     .filter((a) => {
       // Accessibility filter is only meaningful for apps we've actually
       // evaluated — `null` rows predate the scraper and shouldn't silently
@@ -860,6 +1134,16 @@ export default function AppGrid({
       return accessibilityFilter === "has"
         ? a.hasAccessibilityLabels === 1
         : a.hasAccessibilityLabels === 0;
+    })
+    .filter((a) => {
+      // Age filter — apps with no captured rating ('unknown') are excluded
+      // from both buckets, same contract as the accessibility filter.
+      if (!(ageFilter && childAgeBand)) {
+        return true;
+      }
+      return (
+        compareRatingToBand(childAgeBand, a.ageRating ?? null) === ageFilter
+      );
     })
     .sort((a, b) => {
       if (sort === "name") {
@@ -899,6 +1183,11 @@ export default function AppGrid({
     if (accessibilityFilter) {
       return [];
     }
+    // Same reasoning for the age filter — no App Store listing means no
+    // age rating to compare.
+    if (ageFilter) {
+      return [];
+    }
     const q = filter.trim().toLowerCase();
     return [...manualApps]
       .filter((m) => {
@@ -919,16 +1208,62 @@ export default function AppGrid({
         }
         return a.name.localeCompare(b.name);
       });
-  }, [manualApps, filter, riskFilter, mismatchOnly, accessibilityFilter, sort]);
+  }, [
+    manualApps,
+    filter,
+    riskFilter,
+    mismatchOnly,
+    accessibilityFilter,
+    ageFilter,
+    sort,
+  ]);
 
   const totalShown = sorted.length + filteredManualApps.length;
-  const totalTracked = apps.length + manualApps.length;
+  const totalTracked = total + manualApps.length;
   const filterActive =
     Boolean(riskFilter) ||
     mismatchOnly ||
     Boolean(accessibilityFilter) ||
+    Boolean(ageFilter) ||
     filter.trim().length > 0 ||
     totalShown !== totalTracked;
+
+  // ── Windowed rendering ───────────────────────────────────────────────
+  //
+  // Cap how many cards hit the DOM; a sentinel near the bottom (plus a
+  // visible "Show more" button as the no-IntersectionObserver fallback)
+  // extends the window. Tracked apps fill the window first, then custom
+  // apps — same order the grid always rendered them in.
+  const [renderCap, setRenderCap] = useState(RENDER_CHUNK);
+  const visibleTracked = sorted.slice(0, renderCap);
+  const visibleManual = filteredManualApps.slice(
+    0,
+    Math.max(0, renderCap - sorted.length)
+  );
+  const hiddenCardCount =
+    totalShown - visibleTracked.length - visibleManual.length;
+  const hasHiddenCards = hiddenCardCount > 0;
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) {
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setRenderCap((cap) => cap + RENDER_CHUNK);
+        }
+      },
+      // Start rendering the next chunk well before the user reaches it.
+      { rootMargin: "600px" }
+    );
+    io.observe(node);
+    return () => io.disconnect();
+    // Re-observe after each cap bump: the sentinel may still sit inside
+    // the rootMargin after layout, and a fresh observation fires
+    // immediately where a non-crossing wouldn't.
+  }, [renderCap, hasHiddenCards]);
 
   /**
    * Stage-2 of the manual-app delete flow. The Confirm button in the
@@ -958,21 +1293,6 @@ export default function AppGrid({
       setDeletingManualId(null);
     }
   };
-
-  useEffect(() => {
-    if (!pendingDelete) {
-      return;
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !deletingId) {
-        setPendingDelete(null);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pendingDelete, deletingId]);
 
   const stopCardNavigation = (
     event:
@@ -1051,7 +1371,7 @@ export default function AppGrid({
           const promoted = [...selectedIds, appId];
           setSelectedIds([]);
           setCompareMode(false);
-          setBulkPrevVerdicts({ ...userVerdicts });
+          setBulkPrevVerdicts({ ...verdicts });
           setBulkSelectedIds(promoted);
           setPageMode("select");
           return;
@@ -1076,16 +1396,15 @@ export default function AppGrid({
       selectedIds,
       toggleBulkSelection,
       toggleSelection,
-      userVerdicts,
+      verdicts,
     ]
   );
 
   // ── Keyboard shortcuts for the compare flow ──────────────────────────
   //
-  // Escape clears the selection and exits compareMode (layered *before* the
-  // delete-modal Escape handler — that one no-ops when pendingDelete is null,
-  // so we don't have to coordinate). Enter triggers a comparison once two
-  // apps are selected, which mirrors the visible "Compare" primary button.
+  // Escape clears the selection and exits compareMode. Enter triggers a
+  // comparison once two apps are selected, which mirrors the visible
+  // "Compare" primary button.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       // Never intercept typing.
@@ -1143,6 +1462,7 @@ export default function AppGrid({
         </div>
         <div className="header-actions">
           {f.actionsSyncFiltered &&
+            !fleetIncomplete &&
             (riskFilter || mismatchOnly || filter.trim().length > 0) &&
             sorted.length > 0 &&
             sorted.length < apps.length && (
@@ -1162,8 +1482,13 @@ export default function AppGrid({
           {f.actionsSyncAll && (
             <button
               className="btn btn-secondary"
-              disabled={syncingAll || apps.length === 0}
+              disabled={syncingAll || apps.length === 0 || fleetIncomplete}
               onClick={syncAll}
+              title={
+                fleetIncomplete && apps.length > 0
+                  ? tGrid("bulk_wait_loading_title")
+                  : undefined
+              }
               type="button"
             >
               {syncingAll ? <span className="spinner" /> : "↻"}
@@ -1217,14 +1542,18 @@ export default function AppGrid({
           {f.reviewQueueEnabled && (
             <button
               className={`btn btn-secondary review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
-              disabled={apps.length === 0}
+              disabled={apps.length === 0 || fleetIncomplete}
               onClick={() => {
                 if (pageMode === "select") {
                   exitSelectMode();
                 }
                 setQueueOpen(true);
               }}
-              title={tGrid("mode_toggle_queue_title")}
+              title={
+                fleetIncomplete && apps.length > 0
+                  ? tGrid("bulk_wait_loading_title")
+                  : tGrid("mode_toggle_queue_title")
+              }
               type="button"
             >
               {tGrid("mode_toggle_queue")}
@@ -1234,7 +1563,7 @@ export default function AppGrid({
             <button
               aria-pressed={pageMode === "select"}
               className={`btn ${pageMode === "select" ? "btn-primary" : "btn-secondary"}`}
-              disabled={apps.length === 0}
+              disabled={apps.length === 0 || fleetIncomplete}
               onClick={() => {
                 if (pageMode === "select") {
                   exitSelectMode();
@@ -1242,7 +1571,11 @@ export default function AppGrid({
                   enterSelectMode();
                 }
               }}
-              title={tGrid("mode_toggle_select_title")}
+              title={
+                fleetIncomplete && apps.length > 0
+                  ? tGrid("bulk_wait_loading_title")
+                  : tGrid("mode_toggle_select_title")
+              }
               type="button"
             >
               {pageMode === "select"
@@ -1326,6 +1659,7 @@ export default function AppGrid({
           <div
             aria-label={tGrid("sort_aria")}
             className="sort-tabs"
+            onKeyDown={sortRadioKeyDown}
             role="radiogroup"
           >
             {(["risk", "name", "synced", "permissions"] as const).map((s) => {
@@ -1337,6 +1671,7 @@ export default function AppGrid({
                   key={s}
                   onClick={() => setSort(s)}
                   role="radio"
+                  tabIndex={selected ? 0 : -1}
                   type="button"
                 >
                   {s === "risk"
@@ -1433,7 +1768,11 @@ export default function AppGrid({
           to the next line or far edges. Rendered only when at least one
           filter is active so we don't leave an empty row. */}
       {f.filterActiveBanners &&
-        (riskFilter || mismatchOnly || accessibilityFilter || deviceFilter) && (
+        (riskFilter ||
+          mismatchOnly ||
+          accessibilityFilter ||
+          ageFilter ||
+          deviceFilter) && (
           <div className="active-filters-row" role="region">
             {riskFilter && (
               <div className={`filter-status filter-status-${riskFilter}`}>
@@ -1460,7 +1799,7 @@ export default function AppGrid({
                   <span className="filter-status-label">
                     {tGrid("filtering_by")}
                   </span>
-                  <strong>profile mismatches</strong>
+                  <strong>{tGrid("mismatch_filter_chip")}</strong>
                 </span>
                 <button
                   aria-label={tGrid("clear_mismatch_aria")}
@@ -1483,8 +1822,8 @@ export default function AppGrid({
                   </span>
                   <strong>
                     {accessibilityFilter === "has"
-                      ? "has accessibility features"
-                      : "no accessibility features"}
+                      ? tGrid("a11y_filter_has_chip")
+                      : tGrid("a11y_filter_missing_chip")}
                   </strong>
                 </span>
                 <button
@@ -1492,6 +1831,29 @@ export default function AppGrid({
                   className="filter-status-clear"
                   onClick={() => setAccessibilityFilter(null)}
                   title={tGrid("clear_a11y_title")}
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {ageFilter && (
+              <div className={`filter-status filter-status-age-${ageFilter}`}>
+                <span className="filter-status-text">
+                  <span className="filter-status-label">
+                    {tGrid("filtering_by")}
+                  </span>
+                  <strong>
+                    {ageFilter === "above"
+                      ? tGrid("age_filter_above_chip")
+                      : tGrid("age_filter_within_chip")}
+                  </strong>
+                </span>
+                <button
+                  aria-label={tGrid("clear_age_aria")}
+                  className="filter-status-clear"
+                  onClick={() => setAgeFilter(null)}
+                  title={tGrid("clear_age_title")}
                   type="button"
                 >
                   ✕
@@ -1602,7 +1964,7 @@ export default function AppGrid({
           return (
             <div className="access-filter-row" data-tour="accessibility-filter">
               <span className="access-filter-label" id="access-filter-label">
-                Accessibility
+                {tGrid("a11y_filter_label")}
               </span>
               <div
                 aria-labelledby="access-filter-label"
@@ -1615,7 +1977,7 @@ export default function AppGrid({
                   onClick={() => setAccessibilityFilter(null)}
                   type="button"
                 >
-                  <span>All</span>
+                  <span>{tGrid("a11y_all_label")}</span>
                   <span className="segmented-toggle-btn-count">
                     {evaluatedCount}
                   </span>
@@ -1668,6 +2030,126 @@ export default function AppGrid({
             </div>
           );
         })()}
+
+      {/*
+        Age-rating filter row — guardian-only (flag + child band both set).
+        Mirrors the accessibility row: apps without a captured rating are
+        excluded from both buckets, and the row hides entirely when nothing
+        has been evaluated yet (fresh installs, pre-feature rows).
+      */}
+      {ageFeatureOn &&
+        childAgeBand &&
+        (() => {
+          let withinCount = 0;
+          let aboveCount = 0;
+          for (const app of prefilteredApps) {
+            const verdict = compareRatingToBand(
+              childAgeBand,
+              app.ageRating ?? null
+            );
+            if (verdict === "within") {
+              withinCount++;
+            } else if (verdict === "above") {
+              aboveCount++;
+            }
+          }
+          const evaluatedCount = withinCount + aboveCount;
+          if (evaluatedCount === 0) {
+            return null;
+          }
+          return (
+            <div className="access-filter-row age-filter-row">
+              <span className="access-filter-label" id="age-filter-label">
+                {tGrid("age_filter_label")}
+              </span>
+              <div
+                aria-labelledby="age-filter-label"
+                className="segmented-toggle"
+                role="group"
+              >
+                <button
+                  aria-pressed={ageFilter === null}
+                  className={`segmented-toggle-btn ${ageFilter === null ? "is-active" : ""}`}
+                  onClick={() => setAgeFilter(null)}
+                  type="button"
+                >
+                  <span>{tGrid("age_all_label")}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {evaluatedCount}
+                  </span>
+                </button>
+                <button
+                  aria-pressed={ageFilter === "within"}
+                  className={`segmented-toggle-btn ${ageFilter === "within" ? "is-active" : ""}`}
+                  data-age="within"
+                  disabled={withinCount === 0 && ageFilter !== "within"}
+                  onClick={() =>
+                    setAgeFilter(ageFilter === "within" ? null : "within")
+                  }
+                  title={tGrid("age_within_title")}
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="segmented-toggle-btn-dot"
+                  />
+                  <span>{tGrid("age_within_label")}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {withinCount}
+                  </span>
+                </button>
+                <button
+                  aria-pressed={ageFilter === "above"}
+                  className={`segmented-toggle-btn ${ageFilter === "above" ? "is-active" : ""}`}
+                  data-age="above"
+                  disabled={aboveCount === 0 && ageFilter !== "above"}
+                  onClick={() =>
+                    setAgeFilter(ageFilter === "above" ? null : "above")
+                  }
+                  title={tGrid("age_above_title")}
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="segmented-toggle-btn-dot"
+                  />
+                  <span>{tGrid("age_above_label")}</span>
+                  <span className="segmented-toggle-btn-count">
+                    {aboveCount}
+                  </span>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* Background-hydration status. Polite live region so screen-reader
+          users hear that more apps are on the way; the retry button is the
+          recovery path when a chunk fails mid-stream. */}
+      {(hydrating || loadFailed) && (
+        <div
+          aria-live="polite"
+          className={`grid-hydrate-note${loadFailed ? " grid-hydrate-note-error" : ""}`}
+        >
+          {hydrating ? (
+            <>
+              <span aria-hidden="true" className="spinner-sm" />
+              {tGrid("loading_rest", { loaded: apps.length, total })}
+            </>
+          ) : (
+            <>
+              {tGrid("load_failed")}
+              <button
+                className="btn btn-secondary"
+                onClick={() => void loadRemaining(appsLenRef.current)}
+                type="button"
+              >
+                {tGrid("retry_load")}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {totalShown === 0 ? (
         f.emptyState ? (
@@ -1729,234 +2211,239 @@ export default function AppGrid({
           </div>
         ) : null
       ) : (
-        <div className="app-grid">
-          {sorted.map((app, idx) => {
-            const risk = computeRiskLevel(app);
-            const riskMeta = RISK_META[risk];
-            const t = app.trackCount ?? 0;
-            const l = app.linkedCount ?? 0;
-            const u = app.unlinkedCount ?? 0;
-            const selectionIndex = selectedIds.indexOf(app.id);
-            const isSelected = selectionIndex >= 0;
-            const isBulkSelected = bulkSelectedIds.includes(app.id);
-            // Coachmark tour spotlights live on the first card so the
-            // tour selectors `[data-tour="app-card-first"]`, `…severity-
-            // pill-first`, `…resync-button` resolve to a single
-            // unambiguous element. Subsequent cards are unmarked.
-            const isTourCard = idx === 0;
-            return (
-              <div
-                className={`app-card app-card-risk-${risk}${isSelected ? " app-card-selected" : ""}${compareMode ? " app-card-selectable" : ""}${pageMode === "select" ? " app-card-bulk-selectable" : ""}${isBulkSelected ? " app-card-bulk-selected" : ""}${
-                  // Wave I — gold-border treatment for apps with at least
-                  // one non-deleted annotation. Annotation count isn't
-                  // threaded into the grid yet, so the class is reserved on
-                  // the element with the flag check; CSS provides the
-                  // styling hook for when the data lands.
-                  f.cardAnnotationHighlight &&
-                  (app as { annotationCount?: number }).annotationCount
-                    ? " app-card-annotated"
-                    : ""
-                }`}
-                data-tour={isTourCard ? "app-card-first" : undefined}
-                key={app.id}
-              >
-                <Link
-                  aria-pressed={compareMode ? isSelected : undefined}
-                  className="app-card-link"
-                  href={`/apps/${app.id}`}
-                  onClick={(event) => handleCardClick(event, app.id)}
-                  title={
-                    compareMode
-                      ? isSelected
-                        ? `Deselect ${app.name}`
-                        : `Select ${app.name} for comparison`
-                      : `Open ${app.name} — Shift-click to add to compare`
-                  }
+        <>
+          <div className="app-grid">
+            {visibleTracked.map((app, idx) => {
+              const risk = computeRiskLevel(app);
+              const riskMeta = RISK_META[risk];
+              const t = app.trackCount ?? 0;
+              const l = app.linkedCount ?? 0;
+              const u = app.unlinkedCount ?? 0;
+              const selectionIndex = selectedIds.indexOf(app.id);
+              const isSelected = selectionIndex >= 0;
+              const isBulkSelected = bulkSelectedIds.includes(app.id);
+              // Coachmark tour spotlights live on the first card so the
+              // tour selectors `[data-tour="app-card-first"]`, `…severity-
+              // pill-first`, `…resync-button` resolve to a single
+              // unambiguous element. Subsequent cards are unmarked.
+              const isTourCard = idx === 0;
+              return (
+                <div
+                  className={`app-card app-card-risk-${risk}${isSelected ? " app-card-selected" : ""}${compareMode ? " app-card-selectable" : ""}${pageMode === "select" ? " app-card-bulk-selectable" : ""}${isBulkSelected ? " app-card-bulk-selected" : ""}${
+                    // Wave I — gold-border treatment for apps with at least
+                    // one non-deleted annotation. Annotation count isn't
+                    // threaded into the grid yet, so the class is reserved on
+                    // the element with the flag check; CSS provides the
+                    // styling hook for when the data lands.
+                    f.cardAnnotationHighlight &&
+                    (app as { annotationCount?: number }).annotationCount
+                      ? " app-card-annotated"
+                      : ""
+                  }`}
+                  data-tour={isTourCard ? "app-card-first" : undefined}
+                  key={app.id}
                 >
-                  <div className="app-card-icon-wrap">
-                    {app.iconUrl ? (
-                      <Image
-                        alt={app.name}
-                        className="app-icon"
-                        height={56}
-                        src={app.iconUrl}
-                        style={{ objectFit: "cover" }}
-                        unoptimized
-                        width={56}
-                      />
-                    ) : (
-                      <div className="app-icon-placeholder">{app.name[0]}</div>
-                    )}
-                    {app.changeCount > 0 &&
-                      (() => {
-                        // Split the pending bundle by category so the user can
-                        // see at a glance whether a red-flag change was a
-                        // privacy-label regression (orange) or an
-                        // accessibility-label update (blue, less alarming).
-                        // When both are present we render two stacked dots so
-                        // neither gets lost. Policy-only changes ride on the
-                        // orange dot since they live inside the same
-                        // "privacy" mental model.
-                        const breakdown = pendingChangeCategoriesByApp[app.id];
-                        // Treat the breakdown as privacy-only when it's
-                        // missing entirely — that covers the pre-migration
-                        // case where changeCount was bumped by an older
-                        // snapshot we can't re-parse.
-                        const hasPrivacy = breakdown
-                          ? breakdown.privacy || breakdown.policy
-                          : true;
-                        const hasAccessibility = !!breakdown?.accessibility;
-                        // Figure out a human-readable tooltip that matches
-                        // what the dot(s) actually represent. Falls back to
-                        // the old "permission change" wording only when we
-                        // have no breakdown at all.
-                        const labelParts: string[] = [];
-                        if (hasPrivacy) {
-                          labelParts.push("privacy");
-                        }
-                        if (hasAccessibility) {
-                          labelParts.push("accessibility");
-                        }
-                        const title = breakdown
-                          ? `${app.changeCount} ${labelParts.join(" and ")} label change${app.changeCount === 1 ? "" : "s"} detected`
-                          : `${app.changeCount} permission change${app.changeCount === 1 ? "" : "s"} detected`;
-                        if (!f.cardChangeDot) {
+                  <Link
+                    aria-pressed={compareMode ? isSelected : undefined}
+                    className="app-card-link"
+                    href={`/apps/${app.id}`}
+                    onClick={(event) => handleCardClick(event, app.id)}
+                    title={
+                      compareMode
+                        ? isSelected
+                          ? tGrid("deselect_app_title", { name: app.name })
+                          : tGrid("select_compare_title", { name: app.name })
+                        : tGrid("open_app_shift_hint_title", { name: app.name })
+                    }
+                  >
+                    <div className="app-card-icon-wrap">
+                      {app.iconUrl ? (
+                        <Image
+                          alt={app.name}
+                          className="app-icon"
+                          height={56}
+                          src={app.iconUrl}
+                          style={{ objectFit: "cover" }}
+                          unoptimized
+                          width={56}
+                        />
+                      ) : (
+                        <div className="app-icon-placeholder">
+                          {app.name[0]}
+                        </div>
+                      )}
+                      {app.changeCount > 0 &&
+                        (() => {
+                          // Split the pending bundle by category so the user can
+                          // see at a glance whether a red-flag change was a
+                          // privacy-label regression (orange) or an
+                          // accessibility-label update (blue, less alarming).
+                          // When both are present we render two stacked dots so
+                          // neither gets lost. Policy-only changes ride on the
+                          // orange dot since they live inside the same
+                          // "privacy" mental model.
+                          const breakdown = pendingByApp[app.id];
+                          // Treat the breakdown as privacy-only when it's
+                          // missing entirely — that covers the pre-migration
+                          // case where changeCount was bumped by an older
+                          // snapshot we can't re-parse.
+                          const hasPrivacy = breakdown
+                            ? breakdown.privacy || breakdown.policy
+                            : true;
+                          const hasAccessibility = !!breakdown?.accessibility;
+                          // Figure out a human-readable tooltip that matches
+                          // what the dot(s) actually represent. Falls back to
+                          // the old "permission change" wording only when we
+                          // have no breakdown at all.
+                          const title = breakdown
+                            ? tGrid(
+                                hasPrivacy && hasAccessibility
+                                  ? "change_dot_both_title"
+                                  : hasAccessibility
+                                    ? "change_dot_accessibility_title"
+                                    : "change_dot_privacy_title",
+                                { count: app.changeCount }
+                              )
+                            : tGrid("change_dot_generic_title", {
+                                count: app.changeCount,
+                              });
+                          if (!f.cardChangeDot) {
+                            return null;
+                          }
+                          return (
+                            <div
+                              aria-label={title}
+                              className="change-dot-group"
+                              role="status"
+                              title={title}
+                            >
+                              {hasPrivacy && (
+                                <span
+                                  aria-hidden="true"
+                                  className="change-dot change-dot-privacy"
+                                />
+                              )}
+                              {hasAccessibility && (
+                                <span
+                                  aria-hidden="true"
+                                  className="change-dot change-dot-accessibility"
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
+                      {isSelected && (
+                        <div
+                          aria-label={tGrid("selected_for_compare_aria", {
+                            slot: selectionIndex === 0 ? "A" : "B",
+                          })}
+                          className="app-card-select-badge"
+                        >
+                          {selectionIndex === 0 ? "A" : "B"}
+                        </div>
+                      )}
+                      {pageMode === "select" && (
+                        <div
+                          aria-hidden="true"
+                          className={`app-card-bulk-check ${isBulkSelected ? "is-checked" : ""}`}
+                        >
+                          {isBulkSelected ? "✓" : ""}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="app-card-body">
+                      <div className="app-name">{app.name}</div>
+                      {app.developer && (
+                        <div className="app-developer">{app.developer}</div>
+                      )}
+                      {(() => {
+                        // Profile badge AND verdict pill share this row so both
+                        // signals are visible at a glance without duplicating
+                        // the row chrome. The verdict pill always wins the
+                        // leading slot when both are present — it's the user's
+                        // own decision, which trumps the derived profile-match.
+                        const showProfile = f.cardProfileBadge;
+                        const badge = showProfile ? badges[app.id] : null;
+                        const verdict = f.cardVerdictPill
+                          ? verdicts[app.id]
+                          : undefined;
+                        if (!(badge || verdict)) {
                           return null;
                         }
                         return (
-                          <div
-                            aria-label={title}
-                            className="change-dot-group"
-                            role="status"
-                            title={title}
-                          >
-                            {hasPrivacy && (
-                              <span
-                                aria-hidden="true"
-                                className="change-dot change-dot-privacy"
-                              />
+                          <div className="app-card-profile-row">
+                            {verdict && (
+                              <VerdictPill size="sm" verdict={verdict} />
                             )}
-                            {hasAccessibility && (
-                              <span
-                                aria-hidden="true"
-                                className="change-dot change-dot-accessibility"
-                              />
-                            )}
+                            {badge &&
+                              (() => {
+                                // Localise via the kind discriminator the
+                                // server-side `summariseBadge` now ships. The
+                                // `worstMismatchSentence` slot lets the
+                                // describeWorstMismatch English fallback ride
+                                // through unchanged for the detailed mismatch
+                                // case until that helper is migrated; zh users
+                                // see the generic "{n} 个类别超出了你的档案"
+                                // until then.
+                                const localisedLabel = localiseBadgeLabel(
+                                  tBadge,
+                                  badge
+                                );
+                                const localisedDescription =
+                                  localiseBadgeDescription(tBadge, badge);
+                                return (
+                                  <span
+                                    aria-label={tGrid("privacy_profile_aria", {
+                                      description: localisedDescription,
+                                    })}
+                                    className={`app-card-profile-badge match-${badge.tone}`}
+                                    title={localisedDescription}
+                                  >
+                                    <span aria-hidden>
+                                      {badge.tone === "ok" ? "✓" : "⚠"}
+                                    </span>
+                                    {localisedLabel}
+                                  </span>
+                                );
+                              })()}
                           </div>
                         );
                       })()}
-                    {isSelected && (
-                      <div
-                        aria-label={tGrid("selected_for_compare_aria", {
-                          slot: selectionIndex === 0 ? "A" : "B",
-                        })}
-                        className="app-card-select-badge"
-                      >
-                        {selectionIndex === 0 ? "A" : "B"}
-                      </div>
-                    )}
-                    {pageMode === "select" && (
-                      <div
-                        aria-hidden="true"
-                        className={`app-card-bulk-check ${isBulkSelected ? "is-checked" : ""}`}
-                      >
-                        {isBulkSelected ? "✓" : ""}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="app-card-body">
-                    <div className="app-name">{app.name}</div>
-                    {app.developer && (
-                      <div className="app-developer">{app.developer}</div>
-                    )}
-                    {(() => {
-                      // Profile badge AND verdict pill share this row so both
-                      // signals are visible at a glance without duplicating
-                      // the row chrome. The verdict pill always wins the
-                      // leading slot when both are present — it's the user's
-                      // own decision, which trumps the derived profile-match.
-                      const showProfile = f.cardProfileBadge;
-                      const badge = showProfile ? profileBadges[app.id] : null;
-                      const verdict = f.cardVerdictPill
-                        ? userVerdicts[app.id]
-                        : undefined;
-                      if (!(badge || verdict)) {
-                        return null;
-                      }
-                      return (
-                        <div className="app-card-profile-row">
-                          {verdict && (
-                            <VerdictPill size="sm" verdict={verdict} />
-                          )}
-                          {badge &&
-                            (() => {
-                              // Localise via the kind discriminator the
-                              // server-side `summariseBadge` now ships. The
-                              // `worstMismatchSentence` slot lets the
-                              // describeWorstMismatch English fallback ride
-                              // through unchanged for the detailed mismatch
-                              // case until that helper is migrated; zh users
-                              // see the generic "{n} 个类别超出了你的档案"
-                              // until then.
-                              const localisedLabel = localiseBadgeLabel(
-                                tBadge,
-                                badge
-                              );
-                              const localisedDescription =
-                                localiseBadgeDescription(tBadge, badge);
-                              return (
-                                <span
-                                  aria-label={tGrid("privacy_profile_aria", {
-                                    description: localisedDescription,
-                                  })}
-                                  className={`app-card-profile-badge match-${badge.tone}`}
-                                  title={localisedDescription}
-                                >
-                                  <span aria-hidden>
-                                    {badge.tone === "ok" ? "✓" : "⚠"}
-                                  </span>
-                                  {localisedLabel}
-                                </span>
-                              );
-                            })()}
-                        </div>
-                      );
-                    })()}
-                    <div className="app-meta">
-                      {f.cardFreshnessChip && (
-                        <span
-                          className={`freshness-badge ${freshnessClass(app.lastSynced)}`}
-                        >
-                          {daysSince(app.lastSynced)}
-                        </span>
-                      )}
-                      {/*
+                      <div className="app-meta">
+                        {f.cardFreshnessChip && (
+                          <span
+                            className={`freshness-badge ${freshnessClass(app.lastSynced)}`}
+                          >
+                            {daysSince(app.lastSynced)}
+                          </span>
+                        )}
+                        {/*
                       Categories count and sync count used to render here but
                       got crowded out on cards with a long mismatch banner.
                       They now live on the risk pill (hover-revealed) and on
                       the resync button (notification-style badge) respectively
                       so the meta row stays a single freshness chip.
                     */}
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
 
-                <div className="app-card-rail">
-                  <div className="app-card-rail-risk">
-                    {f.cardRiskPill && (
-                      <span
-                        className={`risk-pill ${riskMeta.cls}`}
-                        data-tour={
-                          isTourCard ? "severity-pill-first" : undefined
-                        }
-                        title={tRisk(`${risk}_desc`)}
-                      >
-                        <span aria-hidden="true" className="risk-pill-dot">
-                          {riskMeta.dot}
-                        </span>
-                        {tRisk(`${risk}_label`)}
-                        {/*
+                  <div className="app-card-rail">
+                    <div className="app-card-rail-risk">
+                      {f.cardRiskPill && (
+                        <span
+                          className={`risk-pill ${riskMeta.cls}`}
+                          data-tour={
+                            isTourCard ? "severity-pill-first" : undefined
+                          }
+                          title={tRisk(`${risk}_desc`)}
+                        >
+                          <span aria-hidden="true" className="risk-pill-dot">
+                            {riskMeta.dot}
+                          </span>
+                          {tRisk(`${risk}_label`)}
+                          {/*
                       Total categories count — hidden by default, revealed on
                       hover of the pill so the number is reachable without
                       permanently crowding the card header. We only show the
@@ -1965,134 +2452,162 @@ export default function AppGrid({
                       the context; a bare number keeps the hover reveal
                       compact so the pill doesn't double in width.
                     */}
-                        {app.categoryCount > 0 && (
+                          {app.categoryCount > 0 && (
+                            <span
+                              aria-label={tGrid("n_categories_aria", {
+                                count: app.categoryCount,
+                              })}
+                              className="risk-pill-count"
+                            >
+                              · {app.categoryCount}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      {ageFeatureOn &&
+                        childAgeBand &&
+                        app.ageRating &&
+                        compareRatingToBand(childAgeBand, app.ageRating) ===
+                          "above" && (
                           <span
-                            aria-label={tGrid("n_categories_aria", {
-                              count: app.categoryCount,
+                            className="age-pill age-pill-above"
+                            title={tGrid("age_pill_title", {
+                              rating: app.ageRating,
                             })}
-                            className="risk-pill-count"
                           >
-                            · {app.categoryCount}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                    {f.cardRiskChips && (t > 0 || l > 0 || u > 0) && (
-                      <div
-                        aria-label={tGrid("label_breakdown_aria")}
-                        className="risk-chip-row"
-                      >
-                        {u > 0 && (
-                          <span
-                            className="risk-chip risk-chip-unlinked"
-                            title={tGrid("unlinked_chip_title", { count: u })}
-                          >
-                            <span aria-hidden="true" className="risk-chip-icon">
-                              <PrivacyTypeIcon tier="not_linked" />
+                            <span aria-hidden="true" className="age-pill-icon">
+                              ⚠
                             </span>
-                            <span className="risk-chip-count">{u}</span>
+                            {tGrid("age_pill_label", { rating: app.ageRating })}
                           </span>
                         )}
-                        {l > 0 && (
-                          <span
-                            className="risk-chip risk-chip-linked"
-                            title={tGrid("linked_chip_title", { count: l })}
-                          >
-                            <span aria-hidden="true" className="risk-chip-icon">
-                              <PrivacyTypeIcon tier="linked" />
+                      {f.cardRiskChips && (t > 0 || l > 0 || u > 0) && (
+                        <div
+                          aria-label={tGrid("label_breakdown_aria")}
+                          className="risk-chip-row"
+                        >
+                          {u > 0 && (
+                            <span
+                              className="risk-chip risk-chip-unlinked"
+                              title={tGrid("unlinked_chip_title", { count: u })}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="risk-chip-icon"
+                              >
+                                <PrivacyTypeIcon tier="not_linked" />
+                              </span>
+                              <span className="risk-chip-count">{u}</span>
                             </span>
-                            <span className="risk-chip-count">{l}</span>
-                          </span>
-                        )}
-                        {t > 0 && (
-                          <span
-                            className="risk-chip risk-chip-track"
-                            title={tGrid("track_chip_title", { count: t })}
-                          >
-                            <span aria-hidden="true" className="risk-chip-icon">
-                              <PrivacyTypeIcon tier="tracking" />
+                          )}
+                          {l > 0 && (
+                            <span
+                              className="risk-chip risk-chip-linked"
+                              title={tGrid("linked_chip_title", { count: l })}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="risk-chip-icon"
+                              >
+                                <PrivacyTypeIcon tier="linked" />
+                              </span>
+                              <span className="risk-chip-count">{l}</span>
                             </span>
-                            <span className="risk-chip-count">{t}</span>
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                          )}
+                          {t > 0 && (
+                            <span
+                              className="risk-chip risk-chip-track"
+                              title={tGrid("track_chip_title", { count: t })}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="risk-chip-icon"
+                              >
+                                <PrivacyTypeIcon tier="tracking" />
+                              </span>
+                              <span className="risk-chip-count">{t}</span>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="app-card-actions">
-                    {f.cardResyncButton && (
-                      <button
-                        aria-label={
-                          syncingIds.has(app.id)
-                            ? `${tGrid("syncing")} ${app.name}`
-                            : app.syncCount > 1
-                              ? tGrid("resync_app_aria_with_count", {
+                    <div className="app-card-actions">
+                      {f.cardResyncButton && (
+                        <button
+                          aria-label={
+                            syncingIds.has(app.id)
+                              ? `${tGrid("syncing")} ${app.name}`
+                              : app.syncCount > 1
+                                ? tGrid("resync_app_aria_with_count", {
+                                    name: app.name,
+                                    count: app.syncCount,
+                                  })
+                                : tGrid("resync_app_aria", { name: app.name })
+                          }
+                          className="icon-btn"
+                          data-tour={isTourCard ? "resync-button" : undefined}
+                          disabled={syncingIds.has(app.id)}
+                          onClick={(event) =>
+                            handleActionClick(event, () =>
+                              syncApp(app.id, app.url)
+                            )
+                          }
+                          onPointerDown={stopCardNavigation}
+                          title={
+                            app.syncCount > 1
+                              ? tGrid("resync_app_title_with_count", {
                                   name: app.name,
                                   count: app.syncCount,
                                 })
-                              : tGrid("resync_app_aria", { name: app.name })
-                        }
-                        className="icon-btn"
-                        data-tour={isTourCard ? "resync-button" : undefined}
-                        disabled={syncingIds.has(app.id)}
-                        onClick={(event) =>
-                          handleActionClick(event, () =>
-                            syncApp(app.id, app.url)
-                          )
-                        }
-                        onPointerDown={stopCardNavigation}
-                        title={
-                          app.syncCount > 1
-                            ? tGrid("resync_app_title_with_count", {
-                                name: app.name,
-                                count: app.syncCount,
-                              })
-                            : tGrid("resync_app_title", { name: app.name })
-                        }
-                        type="button"
-                      >
-                        {syncingIds.has(app.id) ? (
-                          <span aria-hidden="true" className="spinner-sm" />
-                        ) : (
-                          <span aria-hidden="true">↻</span>
-                        )}
-                        {/*
+                              : tGrid("resync_app_title", { name: app.name })
+                          }
+                          type="button"
+                        >
+                          {syncingIds.has(app.id) ? (
+                            <span aria-hidden="true" className="spinner-sm" />
+                          ) : (
+                            <span aria-hidden="true">↻</span>
+                          )}
+                          {/*
                       Notification-style badge showing the cumulative sync
                       count. Sits absolutely over the top-right corner of the
                       refresh icon. Only rendered when > 1 so brand-new apps
                       (which have exactly one sync from onboarding) don't
                       display a noisy "1" badge.
                     */}
-                        {app.syncCount > 1 && !syncingIds.has(app.id) && (
-                          <span aria-hidden="true" className="icon-btn-badge">
-                            {app.syncCount}
-                          </span>
-                        )}
-                      </button>
-                    )}
-                    {f.cardDeleteButton && (
-                      <button
-                        aria-label={tGrid("remove_app_aria", {
-                          name: app.name,
-                        })}
-                        className="icon-btn danger"
-                        onClick={(event) =>
-                          handleActionClick(event, () => setPendingDelete(app))
-                        }
-                        onPointerDown={stopCardNavigation}
-                        title={tGrid("remove_app_title", { name: app.name })}
-                        type="button"
-                      >
-                        <span aria-hidden="true">✕</span>
-                      </button>
-                    )}
+                          {app.syncCount > 1 && !syncingIds.has(app.id) && (
+                            <span aria-hidden="true" className="icon-btn-badge">
+                              {app.syncCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      {f.cardDeleteButton && (
+                        <button
+                          aria-label={tGrid("remove_app_aria", {
+                            name: app.name,
+                          })}
+                          className="icon-btn danger"
+                          onClick={(event) =>
+                            handleActionClick(event, () =>
+                              setPendingDelete(app)
+                            )
+                          }
+                          onPointerDown={stopCardNavigation}
+                          title={tGrid("remove_app_title", { name: app.name })}
+                          type="button"
+                        >
+                          <span aria-hidden="true">✕</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {/* Custom apps — user-authored entries with no App Store listing.
+            {/* Custom apps — user-authored entries with no App Store listing.
               They share the grid so users discover them alongside the rest,
               but opt out of risk chips and sync. The card link points at
               the manual-app detail page (`/manual-apps/[id]`) which mirrors
@@ -2100,88 +2615,107 @@ export default function AppGrid({
               model is "click an app card, see that app", whether it came
               from cfgutil or was hand-added. Deletion is inline via the
               /api/manual-apps DELETE endpoint. */}
-          {filteredManualApps.map((m) => {
-            const meta = manualSourceMeta.get(m.source);
-            const icon = meta?.icon ?? "📦";
-            // Localised short label for the manual-source badge. Falls
-            // back to the raw `m.source` enum value when meta is
-            // missing — defensive guard for legacy rows.
-            const sourceLabel = meta
-              ? tSource(`${meta.value}_short`)
-              : m.source;
-            const busy = deletingManualId === m.id;
-            return (
-              <div className="app-card app-card-custom" key={`manual-${m.id}`}>
-                <Link
-                  aria-label={tGrid("open_custom_aria", { name: m.name })}
-                  className="app-card-link"
-                  href={`/manual-apps/${encodeURIComponent(m.id)}`}
+            {visibleManual.map((m) => {
+              const meta = manualSourceMeta.get(m.source);
+              const icon = meta?.icon ?? "📦";
+              // Localised short label for the manual-source badge. Falls
+              // back to the raw `m.source` enum value when meta is
+              // missing — defensive guard for legacy rows.
+              const sourceLabel = meta
+                ? tSource(`${meta.value}_short`)
+                : m.source;
+              const busy = deletingManualId === m.id;
+              return (
+                <div
+                  className="app-card app-card-custom"
+                  key={`manual-${m.id}`}
                 >
-                  <div className="app-card-icon-wrap">
-                    <div aria-hidden="true" className="app-icon-placeholder">
-                      <span style={{ fontSize: 28 }}>{icon}</span>
+                  <Link
+                    aria-label={tGrid("open_custom_aria", { name: m.name })}
+                    className="app-card-link"
+                    href={`/manual-apps/${encodeURIComponent(m.id)}`}
+                  >
+                    <div className="app-card-icon-wrap">
+                      <div aria-hidden="true" className="app-icon-placeholder">
+                        <span style={{ fontSize: 28 }}>{icon}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="app-card-body">
-                    <div className="app-name">{m.name}</div>
-                    {m.developer && (
-                      <div className="app-developer">{m.developer}</div>
-                    )}
-                    <div className="app-meta">
-                      <span className="permission-count">{sourceLabel}</span>
-                      {m.privacyPolicyUrl && (
-                        <span className="permission-count">
-                          · Policy linked
+                    <div className="app-card-body">
+                      <div className="app-name">{m.name}</div>
+                      {m.developer && (
+                        <div className="app-developer">{m.developer}</div>
+                      )}
+                      <div className="app-meta">
+                        <span className="permission-count">{sourceLabel}</span>
+                        {m.privacyPolicyUrl && (
+                          <span className="permission-count">
+                            · {tGrid("policy_linked_label")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+
+                  <div className="app-card-rail">
+                    <div className="app-card-rail-risk">
+                      <span
+                        className="risk-pill risk-pill-custom"
+                        title={tGrid("untracked_no_listing_title")}
+                      >
+                        <span aria-hidden="true" className="risk-pill-dot">
+                          ◆
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-
-                <div className="app-card-rail">
-                  <div className="app-card-rail-risk">
-                    <span
-                      className="risk-pill risk-pill-custom"
-                      title={tGrid("untracked_no_listing_title")}
-                    >
-                      <span aria-hidden="true" className="risk-pill-dot">
-                        ◆
+                        {tGrid("custom_pill_label")}
                       </span>
-                      Custom
-                    </span>
-                  </div>
+                    </div>
 
-                  <div className="app-card-actions">
-                    <button
-                      aria-label={
-                        busy
-                          ? `Removing ${m.name}`
-                          : `Remove ${m.name} from custom apps`
-                      }
-                      className="icon-btn danger"
-                      disabled={busy}
-                      onClick={(event) =>
-                        handleActionClick(event, () =>
-                          setPendingDeleteManual(m)
-                        )
-                      }
-                      onPointerDown={stopCardNavigation}
-                      title={tGrid("remove_custom_title", { name: m.name })}
-                      type="button"
-                    >
-                      {busy ? (
-                        <span aria-hidden="true" className="spinner-sm" />
-                      ) : (
-                        <span aria-hidden="true">✕</span>
-                      )}
-                    </button>
+                    <div className="app-card-actions">
+                      <button
+                        aria-label={
+                          busy
+                            ? tGrid("removing_custom_aria", { name: m.name })
+                            : tGrid("remove_custom_title", { name: m.name })
+                        }
+                        className="icon-btn danger"
+                        disabled={busy}
+                        onClick={(event) =>
+                          handleActionClick(event, () =>
+                            setPendingDeleteManual(m)
+                          )
+                        }
+                        onPointerDown={stopCardNavigation}
+                        title={tGrid("remove_custom_title", { name: m.name })}
+                        type="button"
+                      >
+                        {busy ? (
+                          <span aria-hidden="true" className="spinner-sm" />
+                        ) : (
+                          <span aria-hidden="true">✕</span>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Render-window sentinel: extends the card window as the user
+              approaches the bottom; the button doubles as a manual
+              fallback (and the keyboard / no-IO path). */}
+          {hasHiddenCards && (
+            <div className="grid-render-more" ref={sentinelRef}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setRenderCap((cap) => cap + RENDER_CHUNK)}
+                type="button"
+              >
+                {tGrid("show_more", { count: hiddenCardCount })}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <Toast>{toast}</Toast>
@@ -2300,12 +2834,9 @@ export default function AppGrid({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !deletingId) {
-                setPendingDelete(null);
-              }
-            }}
+            ref={deleteModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tGrid("modal_badge_remove")}</div>
             <h2 className="modal-title" id="delete-app-title">
@@ -2351,10 +2882,10 @@ export default function AppGrid({
           }
           hasProfile={hasProfile}
           onClose={() => setQueueOpen(false)}
-          profileBadges={profileBadges}
+          profileBadges={badges}
           showCfgutilOffer={f.reviewQueueCfgutilUninstall}
           showProgressBar={showQueueProgressBar}
-          userVerdicts={userVerdicts}
+          userVerdicts={verdicts}
         />
       )}
 
@@ -2379,12 +2910,9 @@ export default function AppGrid({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !deletingManualId) {
-                setPendingDeleteManual(null);
-              }
-            }}
+            ref={deleteManualModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tGrid("modal_badge_remove")}</div>
             <h2 className="modal-title" id="delete-manual-title">

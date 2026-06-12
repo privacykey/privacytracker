@@ -101,6 +101,13 @@ pub struct CfgutilCheck {
     /// on non-macOS hosts.
     pub path: Option<String>,
 
+    /// Output of `cfgutil get supportedPropertyNames`, when the build
+    /// exposes it. Diagnostics-only: the guardian age-rating feature wants
+    /// to know if Apple ever surfaces a child age-range / restrictions
+    /// property over USB (iOS 26's DeclaredAgeRange is in-app only today).
+    /// The webview highlights any age/child/restriction-flavoured names.
+    pub supported_property_names: Option<Vec<String>>,
+
     /// True when `/usr/local/bin/cfgutil` exists — the symlink Apple
     /// Configurator drops when "Install Automation Tools" has been run.
     /// When Configurator is installed but this is false, we surface the
@@ -296,6 +303,7 @@ fn detect_cfgutil_impl() -> CfgutilCheck {
             Ok(list_output) if list_output.status.success() => {
                 out.available = true;
                 out.version = detect_cfgutil_version(&candidate);
+                out.supported_property_names = fetch_supported_property_names(&candidate);
                 out.path = Some(candidate);
                 return out;
             }
@@ -309,6 +317,7 @@ fn detect_cfgutil_impl() -> CfgutilCheck {
                 {
                     out.available = true;
                     out.version = detect_cfgutil_version(&candidate);
+                    out.supported_property_names = fetch_supported_property_names(&candidate);
                     out.path = Some(candidate);
                     return out;
                 }
@@ -345,6 +354,33 @@ fn detect_cfgutil_impl() -> CfgutilCheck {
     }
 
     out
+}
+
+/// Probe `cfgutil get supportedPropertyNames` — the documented discovery
+/// path for what a given cfgutil build can read off a device. Output is a
+/// loose text list; tokenise on whitespace/commas and keep identifier-ish
+/// tokens. Best-effort: any failure (old build, no devices required-error)
+/// returns None and the check result simply omits the field.
+#[cfg(target_os = "macos")]
+fn fetch_supported_property_names(candidate: &str) -> Option<Vec<String>> {
+    let output = run_with_timeout(
+        Command::new(candidate).args(["get", "supportedPropertyNames"]),
+        Duration::from_secs(6),
+    )
+    .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let names: Vec<String> = stdout
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .map(str::trim)
+        .filter(|tok| {
+            !tok.is_empty() && tok.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        })
+        .map(str::to_string)
+        .collect();
+    if names.is_empty() { None } else { Some(names) }
 }
 
 #[cfg(target_os = "macos")]

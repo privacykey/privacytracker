@@ -10,6 +10,11 @@
       "!!**/.claude",
       "!!**/.next-test",
       "!!**/.next-build-check",
+      // Secondary NEXT_DIST_DIR outputs written by preview / audit / E2E
+      // servers that run alongside a long-lived `next dev` (see .gitignore).
+      "!!**/.next-audit",
+      "!!**/.next-preview",
+      "!!**/.next-preview-theme-audit",
       "!!**/sessions",
       "!!**/src-tauri/target",
       "!!**/src-tauri/binaries",

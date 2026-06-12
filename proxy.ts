@@ -1,17 +1,34 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import {
+  effectiveHostFromHeaders,
+  isHostAllowed,
+  isNetworkExposed,
+} from "@/lib/deployment-trust";
 
 /**
  * Global proxy — runs before every matched route. Runs on the Node runtime.
  *
  * Responsibilities:
- *   1. Attach conservative security headers (including a nonce-based CSP)
+ *   1. Reject any request whose Host isn't on the allowlist (default: loopback
+ *      only). This is the canonical DNS-rebinding defence — browsers cannot
+ *      spoof the Host header, so a malicious page that rebinds DNS to the
+ *      loopback instance still arrives with its own hostname and is bounced.
+ *   2. Attach conservative security headers (including a nonce-based CSP)
  *      to every response.
- *   2. Enforce same-origin CSRF protection on mutating API calls so a
+ *   3. Require the AUDITOR_ADMIN_TOKEN on guarded API calls whenever the
+ *      deployment is declared network-exposed (config-driven, NOT derived from
+ *      the spoofable Host header).
+ *   4. Enforce same-origin CSRF protection on mutating API calls so a
  *      malicious cross-origin page can't drive the local app. Bypass
  *      is granted when the configured AUDITOR_ADMIN_TOKEN header is
  *      supplied (for scripted callers).
+ *
+ * Trust note: host classification + network-exposure live in the dependency-
+ * free `@/lib/deployment-trust` module so this file (which runs in the proxy
+ * sandbox and must not import the native better-sqlite3 binding) can share
+ * exactly the same logic as `lib/security.ts`.
  */
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -83,9 +100,6 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "connect-src 'self'",
     "object-src 'none'",
-    // 'navigate-to' is a Chromium-only directive; harmless when ignored,
-    // closes a navigation-based exfil path where supported.
-    "navigate-to 'self'",
   ].join("; ");
 }
 
@@ -115,34 +129,6 @@ function isSameOrigin(request: NextRequest): boolean {
   } catch {
     return false;
   }
-}
-
-function hostWithoutPort(host: string): string {
-  const trimmed = host.trim().toLowerCase();
-  if (trimmed.startsWith("[")) {
-    const end = trimmed.indexOf("]");
-    return end >= 0 ? trimmed.slice(1, end) : trimmed;
-  }
-  return trimmed.split(":")[0] ?? trimmed;
-}
-
-function isLocalRequestHost(request: NextRequest): boolean {
-  const forwardedHost = request.headers
-    .get("x-forwarded-host")
-    ?.split(",")[0]
-    ?.trim();
-  const host = forwardedHost || request.headers.get("host");
-  if (!host) {
-    return false;
-  }
-  const h = hostWithoutPort(host);
-  return (
-    h === "localhost" ||
-    h.endsWith(".localhost") ||
-    h === "::1" ||
-    h === "0.0.0.0" ||
-    /^127(?:\.\d{1,3}){3}$/.test(h)
-  );
 }
 
 function constantTimeMatch(provided: string, expected: string): boolean {
@@ -194,12 +180,28 @@ export function proxy(request: NextRequest) {
   const method = request.method.toUpperCase();
   const nonce = makeNonce();
 
-  // Non-local installs must opt into the shared-secret gate for API writes
-  // and high-sensitivity reads. Without an authentication layer, a reverse
-  // proxy / LAN hostname should not be able to mutate or export user data
-  // just because it is same-origin to the browser.
+  // Step 0 — Host allowlist (DNS-rebinding defence). Reject ANY request whose
+  // effective Host isn't allowlisted, for every method including GET, before
+  // any other gate. The default allowlist is loopback only; operators add LAN
+  // hosts via PRIVACYTRACKER_ALLOWED_HOSTS. Loopback always passes, so the
+  // in-container healthcheck on 127.0.0.1 keeps working. A malicious page that
+  // DNS-rebinds to the loopback instance still sends its own hostname in Host
+  // and is bounced here — closing the read-disclosure path on un-gated GETs.
+  if (!isHostAllowed(effectiveHostFromHeaders(request.headers))) {
+    const res = NextResponse.json(
+      { error: "Host not allowed" },
+      { status: 400 }
+    );
+    return attachSecurityHeaders(res, nonce);
+  }
+
+  // Network-exposed installs must opt into the shared-secret gate for API
+  // writes and high-sensitivity reads. "Exposed" is a property of the
+  // DEPLOYMENT CONFIG (allowlist / bind / PRIVACYTRACKER_NETWORK_EXPOSED), not
+  // of the request Host — so a spoofed `Host: localhost` can no longer downgrade
+  // the instance to "local" and skip this gate.
   if (
-    !isLocalRequestHost(request) &&
+    isNetworkExposed() &&
     nonLocalAdminApplies(method, pathname) &&
     !requestHasValidAdminToken(request)
   ) {

@@ -8,7 +8,9 @@ import { useTranslations } from "next-intl";
  * back to <input type="date"> so we don't pull in a date-picker dependency.
  */
 import { useEffect, useMemo, useState } from "react";
+import { withAlpha } from "../../../lib/chart-colors";
 import type { TimelineData } from "../../../lib/stats-views-shared";
+import { useChartColors } from "../../../lib/use-chart-colors";
 import EChart from "./EChart";
 
 type PresetKey = "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
@@ -88,6 +90,9 @@ export default function PrivacyTimeline() {
   const [data, setData] = useState<TimelineData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Theme-resolved CSS tokens — band colours track the light / HC
+  // palettes instead of pinning the dark brights onto a light canvas.
+  const colors = useChartColors();
 
   const range = useMemo(() => resolveRange(preset, custom), [preset, custom]);
 
@@ -156,25 +161,29 @@ export default function PrivacyTimeline() {
       data: data.points.map((p) => p[key] ?? 0),
       itemStyle: { color },
       lineStyle: { color },
-      areaStyle: { color: `${color}55` },
+      // 85/255 matches the old `${hex}55` suffix; withAlpha keeps working
+      // if a resolved token ever isn't a 6-digit hex.
+      areaStyle: { color: withAlpha(color, 85 / 255) },
     });
     return {
       tooltip: { trigger: "axis" },
-      legend: { bottom: 0, textStyle: { color: "#a0a0b0" }, icon: "circle" },
+      // Legend/axis chrome reads the text/border tokens — identical to the
+      // old hardcoded values in dark mode, readable greys in light mode.
+      legend: { bottom: 0, textStyle: { color: colors.text2 }, icon: "circle" },
       grid: { left: 40, right: 16, top: 16, bottom: 60 },
       xAxis: {
         type: "category",
         data: labels,
         boundaryGap: false,
-        axisLabel: { color: "#a0a0b0", fontSize: 10 },
-        axisLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisLabel: { color: colors.text2, fontSize: 10 },
+        axisLine: { lineStyle: { color: colors.border } },
       },
       yAxis: {
         type: "value",
         name: "changes",
-        nameTextStyle: { color: "#8e8e93" },
-        axisLabel: { color: "#a0a0b0" },
-        splitLine: { lineStyle: { color: "rgba(255,255,255,0.06)" } },
+        nameTextStyle: { color: colors.text3 },
+        axisLabel: { color: colors.text2 },
+        splitLine: { lineStyle: { color: colors.border } },
       },
       // Legend labels spell out "privacy" vs "accessibility" so the two
       // green bands (added privacy categories vs added accessibility
@@ -185,13 +194,17 @@ export default function PrivacyTimeline() {
       // "added a11y" and "removed a11y" can be distinguished on the
       // stacked area without colliding with the blue privacy-policy band.
       series: [
-        band("added", "#30d158", tCharts("timeline_band_added")),
-        band("removed", "#ff453a", tCharts("timeline_band_removed")),
-        band("modified", "#ff9f0a", tCharts("timeline_band_modified")),
-        band("policy", "#0a84ff", tCharts("timeline_band_policy")),
+        // Privacy + policy + a11y-added bands resolve the CSS tokens
+        // (light / HC palettes flow through). The a11y-removed band keeps
+        // its literal iOS systemIndigo — no CSS token exists for that hue,
+        // and it already clears 3:1 (~5:1) on the light surface.
+        band("added", colors.green, tCharts("timeline_band_added")),
+        band("removed", colors.red, tCharts("timeline_band_removed")),
+        band("modified", colors.orange, tCharts("timeline_band_modified")),
+        band("policy", colors.blue, tCharts("timeline_band_policy")),
         band(
           "accessibilityAdded",
-          "#64d2ff",
+          colors.cyan,
           tCharts("timeline_band_a11y_added")
         ),
         band(
@@ -202,7 +215,7 @@ export default function PrivacyTimeline() {
       ],
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
-  }, [data]);
+  }, [data, colors]);
 
   return (
     <div>

@@ -1,0 +1,119 @@
+{
+  "app/components/charts/PrivacyHeatmap.tsx": [
+    "Couldn&apos;t load matrix:",
+    "hidden by filters",
+    "Toggle a filter off above to bring apps back."
+  ],
+  "app/components/charts/PrivacySankey.tsx": [
+    "Couldn&apos;t load flow:",
+    "No apps tracked yet.",
+    "Click any node to lock its highlight. Hover still works as normal.",
+    "Showing top",
+    "apps by category count ·",
+    "more not shown"
+  ],
+  "app/components/charts/PrivacyTimeline.tsx": ["Couldn&apos;t load timeline:"],
+  "app/components/CompareAppsView.tsx": [
+    "Save candidates with the",
+    "button on the right to review them later.",
+    "Looks like an App Store link — use it directly?",
+    "No App Store matches for &ldquo;",
+    "· pinned to this app",
+    "&rsquo;s privacy policy ↗",
+    "Privacy policies carry the authoritative disclosures until Apple captures labels — read the policy t",
+    "Your accessibility preferences",
+    "preferred feature",
+    "covered by at least one app",
+    "missing from both apps",
+    "missing both sides",
+    "missing both sides",
+    "Rows you marked are outlined in teal —",
+    "edit your profile in Settings",
+    "No accessibility features declared",
+    "No accessibility data on file"
+  ],
+  "app/components/HomeView.tsx": [
+    "Consider replacing",
+    "These apps go further than your privacy profile allows. Open one to see which categories mismatch, a",
+    "more on the",
+    "apps page",
+    "(look for the warning badge).",
+    "See all apps sorted by risk →"
+  ],
+  "app/components/KeyboardShortcuts.tsx": [
+    "anywhere outside a text field to reopen this sheet."
+  ],
+  "app/components/NotificationBell.tsx": [
+    "unread hidden by your preferences &middot;"
+  ],
+  "app/components/OnboardWizard.tsx": ["↺ Re-run import", "Bundle differs"],
+  "app/components/SettingsView.tsx": [
+    "Focus × Flags matrix",
+    "Author the desired flag value for every (audience × goals) combo. Saves a draft locally; export as J",
+    "Open matrix →"
+  ],
+  "app/components/ShortlistView.tsx": [
+    "+ Add more",
+    "Fetching privacy labels…",
+    "Doesn’t match your profile",
+    "Open in App Store ↗",
+    "you allow",
+    "Developer has not linked a privacy policy on the App Store page."
+  ],
+  "app/components/StatsView.tsx": [
+    "total sync",
+    "⬇ Export CSV",
+    "⬇ Export JSON",
+    "Switch back to All to see privacy labels and other events.",
+    "Switch back to All to see accessibility, wayback imports and other events.",
+    "How many of your tracked apps claim each accessibility feature, out of",
+    "evaluated app",
+    ". Apple lets developers self-declare — test before you rely on it.",
+    "Re-sync your apps to pull Apple&apos;s accessibility labels.",
+    "Last synced"
+  ],
+  "app/components/TaskCenter.tsx": ["Next run …"],
+  "app/dashboard/settings/focus-matrix/page.tsx": [
+    "← Back to Developer Options",
+    "Focus × Flags matrix",
+    "Write down what each flag should resolve to for every audience and goal combination. The current res",
+    "Apply combo as overrides",
+    "or paste the exported patch into"
+  ],
+  "app/help/focus/page.tsx": [
+    "A small bundle of preferences — an audience plus a set of goals — that the app uses to decide what t",
+    "You pick it during onboarding (or skip and accept the defaults), and you can change it any time from",
+    "Settings → Your focus",
+    "Every individual feature is also user-overridable. If your focus hides something you actually want, ",
+    "Developer Options → Feature flags",
+    "Who the apps you&rsquo;re auditing belong to. Picks the default surface area — power-user controls v",
+    "For me",
+    "— you&rsquo;re auditing your own apps and you&rsquo;ll act on what you find. Default: full surface, ",
+    "For someone I care about",
+    "— you&rsquo;re checking apps for another adult who&rsquo;ll make their own call. Default: share/expo",
+    "For a child or dependant",
+    "— you&rsquo;re responsible for someone else&rsquo;s device. Default: simpler surface — keyboard shor",
+    "What you want out of the app. Pick more than one if you like — except &ldquo;just the basics&rdquo;,",
+    "Understand my apps and track over time",
+    "— turns on the timeline, AI policy summaries, history charts, and notifications.",
+    "Find and remove the worst offenders",
+    "— surfaces risk classification, profile-mismatch badges, and delete shortcuts. Low-severity apps col",
+    "Just the basics",
+    "— a deliberately stripped-down audit surface. Hides Compare, Privacy Map, Manual Apps, the Task Cent",
+    "Sits on top of any goal combination above and elevates accessibility-related surfaces independently.",
+    "I also need accessibility info for my apps",
+    ". This elevates the accessibility panel on app detail pages, turns on the accessibility filter row i",
+    "Want a refresher on what you&rsquo;re looking at?",
+    "Replay the dashboard tour →"
+  ],
+  "app/legal/page.tsx": [
+    "How we use it:",
+    "Privacy policy ↗",
+    "Full licence text ↗"
+  ],
+  "app/privacy-policy/page.tsx": [
+    "Open an issue on GitHub ↗",
+    "The full list of bundled libraries and their licences is on the",
+    "Legal page"
+  ]
+}

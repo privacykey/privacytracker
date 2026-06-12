@@ -507,6 +507,11 @@
       "summary": "高级选项",
       "audience": "审查对象",
       "goals": "目标"
+    },
+    "guardian_age": {
+      "heading": "孩子的年龄段",
+      "hint": "可选 — App Store 年龄分级高于该年龄段的应用会在仪表盘中被标记。可随时在设置 → 关注 中修改。",
+      "resources_link": "如何在孩子的设备上设置家长控制"
     }
   },
   "focus_strip": {
@@ -589,12 +594,14 @@
       "screenshot_tip_li3": "主屏幕页面（图标可见，但不要展开文件夹）",
       "drop_screenshots": "把截图拖到这里，或点击选择图片",
       "drop_screenshots_sub": "PNG、JPG、HEIC 截图都可以。",
+      "drop_screenshots_aria": "选择要导入的截图图片，或将其拖到这里",
       "selected_count": "{count, plural, one {已选择 # 张截图} other {已选择 # 张截图}}",
       "scanning": "正在扫描截图…",
       "show_technical": "显示技术细节",
       "file_export_link": "如何从电脑导出应用列表 CSV ↗",
       "file_drop_text": "拖入 <b>.txt</b> 或 <b>.csv</b> 文件，或点击浏览",
       "file_drop_sub": "我们读取第一列，所以桌面助手的导出可直接使用。",
+      "file_drop_aria": "选择要导入的 .txt 或 .csv 文件，或将其拖到这里",
       "imported_from": "已从 {filename} 导入",
       "imported_from_review": "请在搜索 App Store 之前先核对下方名称。",
       "configurator_export_lead_desktop": "或从 Apple Configurator 2 手动导出：",
@@ -959,7 +966,9 @@
       "diagnostic_hint_post": "」提示，或限制设置过滤了已安装的应用。如需协助诊断，可复制并分享此区块。",
       "progress_title": "正在从你的 iPhone 读取应用…",
       "progress_body": "cfgutil 正在通过 USB 枚举每一个已安装的应用。如果手机上装有 300 多个应用，这一步可能需要长达一分钟。期间光标可能会短暂显示成彩球 — 这是正常现象，因为该系统调用是同步执行的。",
-      "progress_tip": "提示：运行期间请保持设备解锁。"
+      "progress_tip": "提示：运行期间请保持设备解锁。",
+      "step2_properties_probe": "{count, plural, other {此 cfgutil 版本可读取 # 个设备属性。}}",
+      "step2_properties_child_hit": "检测到与儿童安全相关的属性："
     },
     "modals": {
       "restore_backup": {
@@ -1475,6 +1484,45 @@
     "audit_bundle_note": "导出审查捆绑包时，包括你正在跟踪的应用、它们的隐私标签、你的 AI 生成摘要以及你撰写的任何注释。还包括你的隐私档案，让接收者了解你为何标记某些应用。除非你主动分享文件，否则不会有任何数据离开你的设备。"
   },
   "dev_options": {
+    "focus_matrix": {
+      "filter_aria": "筛选标志",
+      "filter_placeholder": "按键名或页面筛选标志…",
+      "matrix_aria": "焦点 × 标志矩阵",
+      "apply_combo_title": "将 {combo} 应用为覆盖项",
+      "hard_default_title": "硬默认值：{value}",
+      "hard_default_label": "默认值：{value}",
+      "cell_title": "{combo}\n解析结果：{current}\n已编写：{authored}",
+      "cell_unset": "（未设置）",
+      "only_authored_rows": "仅显示已编写的行",
+      "apply_accessibility_modifier": "应用无障碍修饰符",
+      "seed_button": "从当前规则填充",
+      "copy_spec_button": "复制规格 JSON",
+      "copy_ts_patch_button": "复制 TS 补丁",
+      "clear_draft_button": "清除草稿",
+      "hint": "点击单元格可循环切换 <code>on → off → collapsed → unset</code>。上方淡色的值是解析器当前返回的结果；下方加粗的值是你正在编写的内容。使用每列的 ↗ 按钮可将该组合已编写的单元格作为实时覆盖项推送以便测试。",
+      "flag_column_header": "标志",
+      "no_flags_match": "没有符合当前筛选条件的标志。",
+      "copy_label_spec_json": "完整规格 JSON",
+      "copy_label_ts_patch": "TS 补丁草稿",
+      "toast_copied": "已复制 · {label}",
+      "toast_copy_failed": "复制失败 — 剪贴板不可用",
+      "toast_no_cells": "此组合尚未编写任何单元格",
+      "toast_cleared": "已清除",
+      "toast_seeded": "已使用解析器的值填充",
+      "toast_applied": "已应用 {applied, plural, one {# 个覆盖项} other {# 个覆盖项}}（跳过 {skipped} 个）",
+      "toast_failed": "失败：{message}",
+      "unknown_error": "未知错误",
+      "confirm_clear_title": "清除所有已编写的单元格？",
+      "confirm_clear_body": "这会清空你的草稿规格。该操作只影响本地存储 — 实时覆盖项不受影响。",
+      "confirm_seed_title": "用当前解析器的值填充？",
+      "confirm_seed_body": "每个单元格都会被解析器当前为该组合生成的值覆盖。草稿中的所有工作都会丢失。",
+      "confirm_seed_confirm": "填充",
+      "confirm_apply_title": "将 {count, plural, one {# 个单元格} other {# 个单元格}}应用为实时覆盖项？",
+      "confirm_apply_body": "清空当前覆盖项，并用来自 {combo} 的 {count, plural, one {# 个已编写单元格} other {# 个已编写单元格}}替换。",
+      "confirm_apply_confirm": "应用覆盖项",
+      "cancel": "取消",
+      "applying": "正在应用…"
+    },
     "feature_flags": {
       "title": "功能标志",
       "search_placeholder": "搜索标志…",
@@ -1781,6 +1829,21 @@
       "tooltip_your_preference": "你的偏好",
       "tooltip_no_preference": "无偏好",
       "tooltip_hover_inspect": "悬停以查看",
+      "matrix_hidden_by_filter": "{count, plural, one {# 个应用} other {# 个应用}}已被筛选条件隐藏",
+      "matrix_collect_count": "{count, plural, one {# 个应用} other {# 个应用}}收集此数据",
+      "matrix_pref_line": "你的偏好：最多{label}",
+      "matrix_no_pref_line": "此类别未设置偏好",
+      "matrix_open_app_title": "打开 {name}",
+      "matrix_exceeds_pref": "超出你的偏好",
+      "matrix_load_failed": "无法加载矩阵：{error}",
+      "matrix_size": "{total, plural, one {# 个应用} other {# 个应用}}中的 {shown, number} 个 × {cols, plural, one {# 个类别} other {# 个类别}}",
+      "matrix_empty_hint": "关闭“{label}”即可恢复显示。",
+      "sidebar_hidden_count": "{count, plural, one {已隐藏 # 个应用} other {已隐藏 # 个应用}}",
+      "legend_exceeds_profile": "超出隐私档案",
+      "tooltip_pref_at_most": "最多{label}",
+      "tooltip_exceeds_pref": "⚠ 超出你的偏好",
+      "tooltip_hover_hint": "悬停在行、单元格或类别图标上即可在此查看详情。",
+      "tooltip_hover_hint_pref": "每个图标下方的彩色条表示你对该类别的偏好。",
       "timeline_band_added": "新增隐私类别",
       "timeline_band_removed": "移除隐私类别",
       "timeline_band_modified": "修改隐私标签",
@@ -1842,7 +1905,35 @@
     "ack_unsnoozed": "提醒已恢复",
     "ack_jump_title": "跳转到此条确认所覆盖的快照",
     "open_archive_title": "打开此政策的 Internet Archive 快照",
-    "diff_view_aria": "隐私政策差异"
+    "diff_view_aria": "隐私政策差异",
+    "request_failed": "请求失败（{status}）",
+    "card_first_scan": "🆕 已记录首次扫描",
+    "card_wayback_baseline": "🕰 已导入 Wayback 基线",
+    "card_no_changes": "✓ 未检测到变化",
+    "card_wayback_no_diff": "🕰 Wayback 快照 — 与上一条无差异",
+    "card_wayback_reconstruction": "🕰 Wayback 重建 · {count, plural, one {# 处变化} other {# 处变化}}",
+    "card_changes_detected": "⚡ 检测到 {count, plural, one {# 处变化} other {# 处变化}}",
+    "version_released": "发布于 {date}",
+    "ack_covered_count": "覆盖 {count, plural, one {# 处待处理变化} other {# 处待处理变化}}",
+    "ack_snooze_until": "提醒将于 {date} 恢复",
+    "ack_linked_to": "关联到：",
+    "ack_change_chip": "↳ 变化 #{number}",
+    "preview_loading": "正在加载抓取到的文本…",
+    "preview_word_count": "{count, plural, one {# 个词} other {# 个词}}",
+    "preview_via_origin": "来自 {origin}",
+    "preview_source_url": "源 URL ↗",
+    "preview_wayback_backup": "Wayback 备份 ↗",
+    "preview_first_seen": "首次发现：{date}",
+    "preview_empty": "（空）",
+    "preview_truncated": "仅显示前 {shown, number} 个字符（共 {total, number} 个）。",
+    "diff_computing": "正在计算差异…",
+    "diff_no_differences": "两次抓取之间未检测到差异。",
+    "diff_unchanged_count": "{count, number} 行未变化",
+    "diff_comparing": "对比 {from} → {to}",
+    "diff_truncated_note": "差异已截断 — 一侧超出行数上限。",
+    "diff_overflow": "仅显示前 {shown, number} 行差异（共 {total, number} 行）。",
+    "stats_quarterly_failed": "无法加载季度统计：{message}",
+    "stats_quarterly_loading": "正在加载季度统计…"
   },
   "sample_mode": {
     "loading": "正在加载示例数据…",
@@ -2389,6 +2480,9 @@
     "general_undo_shortlist": "撤销上次候选清单删除（macOS 上 ⌘Z 也可）",
     "general_toggle_cheatsheet": "切换显示此快捷键备忘卡",
     "general_close_dialogs": "关闭对话框并清除待续的 g 序列",
+    "general_zoom_in_desktop": "放大整个应用（桌面版“视图”菜单，最高 300%）",
+    "general_zoom_out_desktop": "缩小整个应用（桌面版“视图”菜单）",
+    "general_zoom_reset_desktop": "将应用缩放重置为 100%（桌面版“视图”菜单）",
     "verb_navigating": "正在前往",
     "verb_opening": "正在打开"
   },
@@ -2514,7 +2608,7 @@
     },
     "row": {
       "open_app_aria": "打开「{name}」详情",
-      "view_app_link": "打开应用",
+      "view_app_link": "{kind, select, policy_change {查看「{name}」政策变更} privacy_policy {查看「{name}」隐私政策} policy_error {查看「{name}」政策状态} privacy_added {查看「{name}」新增标签} privacy_removed {查看「{name}」移除标签} privacy_modified {查看「{name}」标签变更} accessibility_added {查看「{name}」新增无障碍功能} accessibility_removed {查看「{name}」移除无障碍功能} accessibility_modified {查看「{name}」无障碍变更} archive_import {查看「{name}」档案导入} age_rating {查看「{name}」年龄分级} other {查看「{name}」}}",
       "wayback_link": "在 Wayback 查看",
       "details_more": "{count, plural, one {+ 还有 # 项} other {+ 还有 # 项}}"
     },
@@ -2564,6 +2658,7 @@
     "scale_larger_title": "放大",
     "scale_reset_aria": "将文本大小重置为默认",
     "scale_reset": "重置为默认",
+    "scale_desktop_zoom_hint": "需要更大？“视图”菜单可将整个应用放大至 300% —— 按 ⌘/Ctrl = 放大，⌘/Ctrl - 缩小，⌘/Ctrl 0 重置。",
     "theme_title": "主题",
     "theme_hint": "选择应用的配色方式。高对比度专为切换控制 / 低视力用户调整（纯黑、粗白边框、黄色聚焦）。",
     "theme_aria": "主题",
@@ -2605,6 +2700,8 @@
     "privacy_policy_title": "我们收集（和不收集）什么，以及所有调用的第三方端点",
     "legal": "法律声明",
     "legal_title": "本应用捆绑的开源库及其许可证",
+    "feedback": "反馈",
+    "feedback_title": "在 GitHub 上报告问题或提出改进建议",
     "kbd_hint": {
       "shortcut_button_title": "显示键盘快捷方式",
       "shortcut_prefix": "按",
@@ -2641,7 +2738,11 @@
       "security_hygiene_jump": "跳转到过期应用 →",
       "new_to_privacy_labels_title": "对隐私标签不熟悉？",
       "new_to_privacy_labels_body": "Apple 将应用可收集的数据分为联系信息、位置、健康与健身等类别。每个类别都标记了它的用途 — 与你关联、跨应用追踪你，或都不是。",
-      "definitions_link": "查看隐私标签定义 →"
+      "definitions_link": "查看隐私标签定义 →",
+      "age_rating_title": "{count, plural, other {# 个应用的分级高于孩子的年龄段}}",
+      "age_rating_body": "根据你设置的 {band} 年龄段，{count, plural, other {# 个被跟踪的应用}}有更高的 App Store 年龄分级。建议逐个查看，或收紧设备本身的限制。",
+      "age_rating_review_link": "查看被标记的应用 →",
+      "age_rating_resources_link": "家长控制指南 →"
     },
     "headsup": {
       "review_label": "{count} 个应用有未查看的变化",
@@ -2670,6 +2771,7 @@
     "sections": {
       "needs_attention": "需要关注",
       "recent_changes": "最近变化",
+      "open_app_title": "打开 {name}",
       "all_apps": "所有应用",
       "high_severity": "高风险",
       "by_category": "按类别",
@@ -2821,7 +2923,8 @@
           "profile_mismatch_section": "建议替换",
           "stale_section": "陈旧应用",
           "activity_section": "本周活动",
-          "risk_tier_legend": "风险等级图例"
+          "risk_tier_legend": "风险等级图例",
+          "age_rating_callout": "年龄段提示卡"
         },
         "descriptions": {
           "task_list": "顶部根据受众显示的任务面板。",
@@ -2840,7 +2943,8 @@
           "profile_mismatch_section": "超出你隐私档案阈值的应用。",
           "stale_section": "超过 30 天未刷新的应用。",
           "activity_section": "你的应用库最近的抓取、导入和编辑活动。",
-          "risk_tier_legend": "可折叠的风险等级定义参考。"
+          "risk_tier_legend": "可折叠的风险等级定义参考。",
+          "age_rating_callout": "面向监护人关注的「应用分级高于孩子年龄段」提示。"
         }
       },
       "edit_cards_aria": "可编辑的仪表板卡片"
@@ -2862,6 +2966,11 @@
     "page_title": "你的应用",
     "showing_of": "{total} 个应用中显示 {shown} 个",
     "n_tracked": "已跟踪 {count} 个应用",
+    "loading_rest": "正在加载应用… {loaded} / {total}",
+    "load_failed": "部分应用尚未加载。",
+    "retry_load": "重试加载",
+    "show_more": "{count, plural, other {再显示 # 个应用}}",
+    "bulk_wait_loading_title": "待全部应用加载完成后可用",
     "syncing": "同步中…",
     "sync_n_apps": "同步 {count} 个应用",
     "sync_all": "全部同步",
@@ -2935,8 +3044,11 @@
     "remove_app_aria": "停止跟踪 {name}",
     "open_custom_aria": "在自定义应用中打开 {name}",
     "remove_custom_title": "从自定义应用中移除 {name}",
+    "removing_custom_aria": "正在移除 {name}",
     "deselect_app_aria": "取消选择 {name}",
     "deselect_app_title": "取消选择 {name}",
+    "select_compare_title": "选择 {name} 进行对比",
+    "open_app_shift_hint_title": "打开 {name} — 按住 Shift 点击可加入对比",
     "search_placeholder": "搜索应用…",
     "filters": {
       "all": "全部",
@@ -3025,7 +3137,30 @@
     "modal_remove_app": "移除应用",
     "modal_removing": "正在移除…",
     "modal_remove_custom_title": "移除 {name}？",
-    "modal_remove_custom_body": "这将删除自定义应用条目、其源链接以及你附加的所有备注。你之后可以通过创建新的自定义应用将其加回。"
+    "modal_remove_custom_body": "这将删除自定义应用条目、其源链接以及你附加的所有备注。你之后可以通过创建新的自定义应用将其加回。",
+    "age_filter_label": "年龄段",
+    "age_all_label": "全部",
+    "age_within_label": "范围内",
+    "age_within_title": "分级不高于孩子年龄段的应用",
+    "age_above_label": "超出范围",
+    "age_above_title": "分级高于孩子年龄段的应用",
+    "age_filter_above_chip": "分级高于孩子的年龄段",
+    "age_filter_within_chip": "分级在孩子的年龄段内",
+    "clear_age_aria": "清除年龄段筛选",
+    "clear_age_title": "显示所有分级",
+    "age_pill_label": "{rating} · 超出范围",
+    "age_pill_title": "App Store 分级为 {rating} — 高于你设置的孩子年龄段",
+    "a11y_filter_label": "无障碍",
+    "a11y_all_label": "全部",
+    "policy_linked_label": "已关联政策",
+    "custom_pill_label": "自定义",
+    "mismatch_filter_chip": "隐私档案不匹配",
+    "a11y_filter_has_chip": "有无障碍功能",
+    "a11y_filter_missing_chip": "无无障碍功能",
+    "change_dot_privacy_title": "检测到 {count, plural, one {# 处隐私标签变化} other {# 处隐私标签变化}}",
+    "change_dot_accessibility_title": "检测到 {count, plural, one {# 处无障碍标签变化} other {# 处无障碍标签变化}}",
+    "change_dot_both_title": "检测到 {count, plural, one {# 处隐私与无障碍标签变化} other {# 处隐私与无障碍标签变化}}",
+    "change_dot_generic_title": "检测到 {count, plural, one {# 处权限变化} other {# 处权限变化}}"
   },
   "review_queue": {
     "mode_toggle": {
@@ -3212,7 +3347,8 @@
     "preview_text_button": "预览已捕获的文本",
     "hide_preview_button": "隐藏预览",
     "version_updated_no_label_changes": "📱 新版本已发布：v{version}；标签未变化",
-    "show_wayback_imports": "显示 Wayback 导入"
+    "show_wayback_imports": "显示 Wayback 导入",
+    "wayback_import_count": "此时间线中有 {count, plural, one {# 条 Wayback 导入} other {# 条 Wayback 导入}}"
   },
   "onboard_status": {
     "fetch_ready": "已是最新",
@@ -3720,7 +3856,13 @@
       "required_desc": "我不会使用未声明此功能的应用。",
       "nice": "最好有",
       "nice_desc": "我更偏好声明此功能的应用，但这不是硬性要求。"
-    }
+    },
+    "age_pill": "{rating} 岁以上",
+    "age_pill_title": "App Store 年龄分级",
+    "age_pill_within_title": "分级为 {rating} — 在你设置的 {band} 年龄段内",
+    "age_pill_above": "{rating} 岁以上 · 超出范围",
+    "age_pill_above_title": "分级为 {rating} — 高于你设置的 {band} 年龄段",
+    "age_resources_link": "家长控制指南"
   },
   "privacy_policy_page": {
     "back_to_app": "← 返回应用",
@@ -5358,6 +5500,9 @@
       "previous_page": "上一页"
     }
   },
+  "layout_regions": {
+    "global_overlays": "全局浮层"
+  },
   "nojs": {
     "eyebrow": "需要 JavaScript",
     "title": "此应用需要 JavaScript 才能运行",
@@ -5404,5 +5549,42 @@
     "tooltip_free": "可在 App Store 免费下载。",
     "tooltip_iap_yes": "提供 App 内购买 — 部分功能或内容需要额外付费解锁。",
     "tooltip_iap_no": "应用页面未标示 App 内购买。"
+  },
+  "age_band": {
+    "labels": {
+      "under_9": "9 岁以下",
+      "9_12": "9–12 岁",
+      "13_15": "13–15 岁",
+      "16_17": "16–17 岁",
+      "18_plus": "18 岁以上"
+    }
+  },
+  "help_parental": {
+    "metadata_title": "家长控制指南 — privacytracker",
+    "metadata_description": "如何在孩子的 iPhone 或 iPad 上设置「屏幕使用时间」、应用与内容限制、儿童账户和「购买前询问」。",
+    "kicker": "监护人指南",
+    "title": "在孩子的设备上设置家长控制",
+    "subtitle": "privacytracker 可以标记分级高于孩子年龄段的应用，但真正执行规则的是设备本身。以下官方资源涵盖时间限制、应用限制和购买审批。",
+    "back_to_dashboard": "返回仪表盘",
+    "family_hub_title": "Apple 家庭中心",
+    "family_hub_copy": "Apple 对所有家庭功能的总览 — 如果你还没有进行任何设置，从这里开始最合适。",
+    "family_hub_link": "打开 apple.com/families",
+    "parental_controls_title": "应用与内容限制",
+    "parental_controls_copy": "「内容和隐私访问限制」可以屏蔽高于所选年龄分级的应用、过滤网页内容并阻止露骨媒体 — 由设备本身强制执行。",
+    "parental_controls_link": "Apple 支持：家长控制",
+    "screen_time_title": "屏幕使用时间与时间限制",
+    "screen_time_copy": "设置停用时间（设备锁定的时间表）、每日单个应用的时间限制以及通信限制。",
+    "screen_time_link": "Apple 支持：屏幕使用时间",
+    "child_account_title": "家人共享中的儿童账户",
+    "child_account_copy": "正式的儿童 Apple 账户会自动获得与年龄相符的默认设置，也是年龄段共享、「购买前询问」和远程屏幕使用时间管理的前提。",
+    "child_account_link": "Apple 支持：儿童账户",
+    "ask_to_buy_title": "购买前询问",
+    "ask_to_buy_copy": "孩子设备上的每次下载或购买都会先向你的手机发送审批请求 — 包括免费应用。",
+    "ask_to_buy_link": "Apple 支持：购买前询问",
+    "esafety_title": "eSafety 专员（澳大利亚）",
+    "esafety_copy": "独立、不依附厂商的家长指引：如何与孩子谈论上网、屏幕时间策略，以及出问题时该怎么办。",
+    "esafety_link": "打开 esafety.gov.au/parents",
+    "how_we_flag_title": "privacytracker 如何标记应用",
+    "how_we_flag_copy": "当监护人关注设置了孩子的年龄段后，每个被跟踪应用的 App Store 年龄分级（4+、9+、13+、16+、18+）都会与之比较。分级高于该年龄段的应用会在应用网格和详情页显示警示标签，并在仪表盘上显示提示。没有分级数据的应用绝不会被标记 — 没有数据就不报警。"
   }
 }

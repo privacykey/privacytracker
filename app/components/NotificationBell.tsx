@@ -122,6 +122,7 @@ export default function NotificationBell({
     Record<NotificationTypeKey, boolean>
   >({ ...DEFAULT_NOTIFICATION_PREFS });
   const dropRef = useRef<HTMLDivElement>(null);
+  const bellBtnRef = useRef<HTMLButtonElement>(null);
 
   const fetchNotifs = useCallback(async () => {
     const res = await fetch("/api/notifications");
@@ -185,7 +186,7 @@ export default function NotificationBell({
     return () => window.removeEventListener("notifications:refresh", onRefresh);
   }, [fetchNotifs]);
 
-  // Close on outside click
+  // Close on outside click or Escape
   useEffect(() => {
     if (!open) {
       return;
@@ -199,8 +200,20 @@ export default function NotificationBell({
         setOpen(false);
       }
     };
+    // Escape returns focus to the bell so keyboard users aren't dropped
+    // at the document body after the dropdown unmounts.
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        bellBtnRef.current?.focus();
+      }
+    };
     document.addEventListener("pointerdown", handler);
-    return () => document.removeEventListener("pointerdown", handler);
+    document.addEventListener("keydown", keyHandler);
+    return () => {
+      document.removeEventListener("pointerdown", handler);
+      document.removeEventListener("keydown", keyHandler);
+    };
   }, [open]);
 
   // Apply the user's per-type filter. The server still stores every type
@@ -336,10 +349,10 @@ export default function NotificationBell({
       <button
         aria-controls="notif-dropdown"
         aria-expanded={open}
-        aria-haspopup="dialog"
         aria-label={ariaLabel}
         className="notif-bell-btn"
         onClick={toggleOpen}
+        ref={bellBtnRef}
         type="button"
       >
         <span aria-hidden="true">🔔</span>
@@ -351,11 +364,15 @@ export default function NotificationBell({
       </button>
 
       {open && (
+        // role="region" (not menu/dialog): the dropdown is a plain disclosure
+        // of links — no menuitem children, no arrow-key navigation, no focus
+        // trap — so stronger popup semantics would promise AT behaviour we
+        // don't implement. Trigger keeps aria-expanded + aria-controls.
         <div
           aria-label={t("title_aria")}
           className="notif-dropdown"
           id="notif-dropdown"
-          role="dialog"
+          role="region"
         >
           <div className="notif-dropdown-header">
             <span className="notif-dropdown-title">{t("title")}</span>

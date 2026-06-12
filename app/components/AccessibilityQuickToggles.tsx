@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isDesktop, openMacAccessibilitySettings } from "../../lib/desktop";
+import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 
 /**
  * Footer-pill accessibility quick-toggles. Sits next to the keyboard-hint
@@ -242,6 +243,10 @@ export default function AccessibilityQuickToggles() {
   const [font, setFont] = useState<A11yFontMode>("default");
   const [scale, setScale] = useState<A11yScaleMode>("default");
   const [theme, setTheme] = useState<A11yThemeMode>("system");
+  // APG keyboard contract for the theme radiogroup: one tab stop,
+  // arrows move focus + selection (theme switches are instant and
+  // reversible, so selection-follows-focus is the right default).
+  const themeRadioKeyDown = useRovingRadioGroup();
   const [shapes, setShapes] = useState<A11yShapesMode>("off");
   const [solid, setSolid] = useState<A11ySolidMode>("off");
   const [desktop, setDesktop] = useState(false);
@@ -493,6 +498,17 @@ export default function AccessibilityQuickToggles() {
         )}
       </button>
 
+      {/* Deliberately a NON-modal dialog — no `aria-modal`, no focus trap.
+          The toggles apply to the page live, so users need to see (and reach)
+          the background while flipping them; pruning it from the accessibility
+          tree or fencing Tab inside would defeat the point. The popover sits
+          in DOM order directly after its trigger, so Tab/Shift+Tab walk in and
+          out naturally without a trap. The keyboard contract is still
+          complete: Escape and the ✕ button close and restore focus to the
+          trigger; outside-click closes and leaves focus where the user
+          clicked; the `g u` shortcut path moves focus onto the ✕ button on
+          open (trigger-click opens keep focus on the trigger,
+          disclosure-style). */}
       {open && (
         <div
           aria-label={t("popover_aria")}
@@ -507,7 +523,13 @@ export default function AccessibilityQuickToggles() {
             <button
               aria-label={t("close_aria")}
               className="a11y-quick-popover-close"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                // Keyboard-close path: put focus back on the trigger, same as
+                // Escape — otherwise focus falls to <body> when this button
+                // unmounts.
+                triggerRef.current?.focus();
+              }}
               type="button"
             >
               ✕
@@ -554,6 +576,18 @@ export default function AccessibilityQuickToggles() {
                     ),
                   })}
                 </div>
+                {/* The in-app ladder tops out at 1.3× (CSS zoom doesn't
+                    reflow breakpoints, so larger steps would trap content
+                    horizontally). The desktop shell offers real page zoom
+                    up to 3× via the View menu (WCAG 1.4.4) — point Tauri
+                    users at it from the surface where they'd go looking
+                    for bigger text. Hidden on the web build, where the
+                    browser's own Cmd/Ctrl+± plays that role. */}
+                {desktop && (
+                  <div className="a11y-quick-row-hint">
+                    {t("scale_desktop_zoom_hint")}
+                  </div>
+                )}
               </div>
               <div
                 aria-label={t("scale_aria")}
@@ -613,6 +647,7 @@ export default function AccessibilityQuickToggles() {
               <div
                 aria-label={t("theme_aria")}
                 className="a11y-quick-theme-grid"
+                onKeyDown={themeRadioKeyDown}
                 role="radiogroup"
               >
                 {THEME_ORDER.map((mode) => {
@@ -627,6 +662,7 @@ export default function AccessibilityQuickToggles() {
                       key={mode}
                       onClick={() => chooseTheme(mode)}
                       role="radio"
+                      tabIndex={theme === mode ? 0 : -1}
                       title={t(`theme_${tKey}_full`)}
                       type="button"
                     >

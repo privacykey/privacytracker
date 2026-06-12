@@ -95,6 +95,10 @@
      features lights up without looking like it's been clicked on. */
   --teal: #40c8c8;
   --teal-dim: rgba(64, 200, 200, 0.12);
+  /* iOS systemCyan — the "accessibility feature added" band on the change
+     timelines. Kept distinct from --teal (a11y matches / device accents)
+     and --blue (selected controls / policy band). */
+  --cyan: #64d2ff;
   /* Developer surfaces (DevMenu, dev-only chrome). Picked to sit
      distinctly outside the user-facing palette so dev surfaces don't
      get confused with primary CTAs (blue) or success states (green).
@@ -163,9 +167,12 @@
     --border-strong: rgba(0, 0, 0, 0.13);
     --text: #1c1c1e;
     --text-2: #6c6c80;
-    /* Light-mode tertiary bumped from #aeaeb2 (~2.0:1) to #6e6e73 so it
-       meets WCAG 2.2 AA 4.5:1 on the --bg / --bg-2 surfaces. */
-    --text-3: #6e6e73;
+    /* Light-mode tertiary bumped from #aeaeb2 (~2.0:1) to #636368 so it
+       meets WCAG 2.2 AA 4.5:1 not just on --bg / --bg-2 but also on the
+       --bg-3 surfaces it sits on (icon placeholders, kbd chips, and the
+       a11y-solid hover states that collapse --surface-* onto --bg-3).
+       The previous #6e6e73 was 4.04:1 against --bg-3. */
+    --text-3: #636368;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
@@ -174,6 +181,26 @@
     --blue-soft: #dbeafe;
     --cream: #7a643b;
     --cream-dim: rgba(122, 100, 59, 0.12);
+    /* Severity / accent palette, light variants. The dark-theme brights
+       (#ff453a, #ff9f0a, #ffd60a, #30d158, #40c8c8, #f43f5e) sit at only
+       1.3–3.3:1 against white — unusable as text. These darker same-hue
+       equivalents clear WCAG 2.2 AA 4.5:1 as text on white, on --bg, and
+       on their own "-dim" badge tints (worst realistic case: a severity
+       badge tint composited over the #f2f2f7 page background). Each -dim
+       is re-derived from its light colour at the original alpha, the same
+       treatment --cream-dim already gets above. */
+    --red: #c20012;
+    --red-dim: rgba(194, 0, 18, 0.12);
+    --orange: #8a4d00;
+    --orange-dim: rgba(138, 77, 0, 0.12);
+    --yellow: #7d5a00;
+    --yellow-dim: rgba(125, 90, 0, 0.1);
+    --green: #0c6b30;
+    --green-dim: rgba(12, 107, 48, 0.12);
+    --teal: #0d6960;
+    --teal-dim: rgba(13, 105, 96, 0.12);
+    --rose: #b31345;
+    --rose-dim: rgba(179, 19, 69, 0.14);
 
     /* Light-mode popover glass — more opacity because light content
        behind is harder to read through a translucent pane. */
@@ -181,6 +208,10 @@
     --popover-border: rgba(0, 0, 0, 0.12);
     --popover-inner-highlight: rgba(255, 255, 255, 0.9);
     --popover-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+
+    /* Light cyan — same hue family as the dark #64d2ff but darkened to
+       clear WCAG 3:1 (graphics) and 4.5:1 (text) on white / --bg. */
+    --cyan: #00708f;
   }
 }
 
@@ -201,7 +232,7 @@ html[data-theme-override="light"] {
   --border-strong: rgba(0, 0, 0, 0.13);
   --text: #1c1c1e;
   --text-2: #6c6c80;
-  --text-3: #6e6e73;
+  --text-3: #636368;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
@@ -210,10 +241,25 @@ html[data-theme-override="light"] {
   --blue-soft: #dbeafe;
   --cream: #7a643b;
   --cream-dim: rgba(122, 100, 59, 0.12);
+  /* Light severity / accent palette — see the @media light block above. */
+  --red: #c20012;
+  --red-dim: rgba(194, 0, 18, 0.12);
+  --orange: #8a4d00;
+  --orange-dim: rgba(138, 77, 0, 0.12);
+  --yellow: #7d5a00;
+  --yellow-dim: rgba(125, 90, 0, 0.1);
+  --green: #0c6b30;
+  --green-dim: rgba(12, 107, 48, 0.12);
+  --teal: #0d6960;
+  --teal-dim: rgba(13, 105, 96, 0.12);
+  --rose: #b31345;
+  --rose-dim: rgba(179, 19, 69, 0.14);
   --popover-bg: rgba(255, 255, 255, 0.94);
   --popover-border: rgba(0, 0, 0, 0.12);
   --popover-inner-highlight: rgba(255, 255, 255, 0.9);
   --popover-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+  /* Light cyan — see the @media light block above. */
+  --cyan: #00708f;
 }
 
 html[data-theme-override="dark"] {
@@ -234,10 +280,33 @@ html[data-theme-override="dark"] {
   --blue: #0a84ff;
   --blue-hover: #409cff;
   --blue-soft: rgba(10, 132, 255, 0.22);
+  /* Re-pin the severity / accent palette to the dark defaults. Without
+     these, a light-OS user who pins the app to Dark inherits the light
+     palette from the @media block above — dark golds and greens painted
+     on near-black backgrounds. (--cream had this exact bug before the
+     light palette grew: light-OS + pinned-dark rendered the light-mode
+     #7a643b cream on dark surfaces at ~2:1.) */
+  --red: #ff453a;
+  --red-dim: rgba(255, 69, 58, 0.12);
+  --orange: #ff9f0a;
+  --orange-dim: rgba(255, 159, 10, 0.12);
+  --yellow: #ffd60a;
+  --yellow-dim: rgba(255, 214, 10, 0.1);
+  --cream: #d8c7a3;
+  --cream-dim: rgba(216, 199, 163, 0.13);
+  --green: #30d158;
+  --green-dim: rgba(48, 209, 88, 0.12);
+  --teal: #40c8c8;
+  --teal-dim: rgba(64, 200, 200, 0.12);
+  --rose: #f43f5e;
+  --rose-dim: rgba(244, 63, 94, 0.14);
   --popover-bg: rgba(18, 18, 26, 0.9);
   --popover-border: rgba(255, 255, 255, 0.16);
   --popover-inner-highlight: rgba(255, 255, 255, 0.08);
   --popover-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  /* Re-pin cyan to the dark default so a light-OS user pinning the app
+     to Dark doesn't inherit the light value from the @media block. */
+  --cyan: #64d2ff;
 }
 
 /* Fallback for browsers that don't support backdrop-filter (some Android
@@ -781,6 +850,68 @@ html[data-theme-override="high-contrast"] .nav {
   }
 }
 
+/* ── Nav width tiers (data-tier, set by Nav.tsx) ──────────────────────
+   The full chrome (wordmark + 7 links + labelled Add Apps) needs ~1070px;
+   between ~641px and that, the desktop nav used to overflow the viewport
+   because the only compaction was the ≤640px media block above. Worse,
+   media queries read the *unzoomed* viewport, so the in-app text scale
+   (html[data-a11y-scale] zooms .app-main, which the nav lives inside)
+   overflowed the chrome even on wide screens. Nav.tsx measures its own
+   offsetWidth — always in effective (post-zoom) pixels — and stamps
+   data-tier="full | compact | drawer". The media block above remains the
+   SSR/no-JS baseline so phones never flash the full nav; these attribute
+   rules carry every other case (intermediate widths, zoomed wide screens).
+
+   compact (≤1100 effective): icon-only brand + "+" pill, tighter gaps.
+   drawer  (≤860 effective):  mirror of the ≤640px block — hamburger. */
+
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-brand {
+  gap: 0;
+  font-size: 0;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-brand-wordmark {
+  display: none;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-add-apps-label {
+  display: none;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-add-apps-compact {
+  display: inline-block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-add-apps {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-right {
+  gap: 6px;
+}
+
+.nav[data-tier="compact"] {
+  gap: 12px;
+}
+
+.nav[data-tier="drawer"] {
+  gap: 10px;
+  padding: 0 14px;
+}
+.nav[data-tier="drawer"] .nav-links-desktop {
+  display: none;
+}
+.nav[data-tier="drawer"] .nav-menu-trigger {
+  display: inline-flex;
+}
+.nav[data-tier="drawer"] .nav-drawer {
+  display: flex;
+}
+
 /* ─────────────────────────────────────────────────────
    Page Layout
 ───────────────────────────────────────────────────── */
@@ -1107,6 +1238,27 @@ html[data-theme-override="high-contrast"] .nav {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+}
+
+/* Background page-hydration status line (large fleets only). */
+.grid-hydrate-note {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.grid-hydrate-note-error {
+  color: var(--danger, #e5484d);
+}
+
+/* Render-window sentinel + "Show more" fallback under the grid. */
+.grid-render-more {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 6px;
 }
 
 .app-card {
@@ -1950,6 +2102,38 @@ html[data-theme-override="high-contrast"] .nav {
   cursor: default;
   background: var(--surface-2);
   border-color: var(--border);
+}
+
+/* ── Age-rating chip in the detail-hero meta row ────────────────────────
+   Neutral by default ("Ages 13+"); gains a ✓/⚠ verdict variant when the
+   guardian feature is on and a child age band is set. Glyphs ship inside
+   the chip so colour is never the only signal. */
+.detail-age-pill {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-feature-settings: "tnum" 1;
+  line-height: 1.2;
+  color: var(--text-2);
+  white-space: nowrap;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.detail-age-pill-within {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--green) 30%, var(--border));
+}
+
+.detail-age-pill-above {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--red) 32%, var(--border));
 }
 
 /* ── Accessibility tab panel ────────────────────────────────────────── */
@@ -5853,16 +6037,18 @@ html[data-theme-override="high-contrast"] .nav {
   border: 0;
   border-radius: 6px;
 }
+/* No `outline: none` — the hover tint alone is not a visible focus
+   indicator; keyboard focus falls through to the universal
+   `:focus-visible` ring at the top of this file. */
 .snooze-menu-item:hover,
 .snooze-menu-item:focus-visible {
   color: var(--text);
-  outline: none;
   background: var(--surface-hover);
 }
 
 .toast {
   position: fixed;
-  bottom: 28px;
+  bottom: var(--toast-bottom);
   left: 50%;
   z-index: 9999;
   padding: 10px 20px;
@@ -5872,8 +6058,8 @@ html[data-theme-override="high-contrast"] .nav {
   border: 1px solid var(--border-strong);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-lg);
-  transform: translateX(-50%) translateY(10px);
-  animation: toastIn 0.25s ease both;
+  transform: translateX(-50%);
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 
 /* CTA banner that links into the review-and-act wizard. Mounted at
@@ -6447,6 +6633,11 @@ html[data-theme-override="high-contrast"] .nav {
   color: color-mix(in srgb, var(--blue, #3b82f6) 90%, var(--text));
 }
 .review-rec-shortlist-chip-remove {
+  /* WCAG 2.2 SC 2.5.8 — the ✕ strip stretches to the chip's full height
+     but its width is glyph + padding; keep the hit box ≥24px wide. The
+     parent li clips with overflow: hidden, so widen the real box rather
+     than a pseudo-element. */
+  min-width: 24px;
   padding: 0 8px;
   font-family: inherit;
   font-size: 12px;
@@ -6592,6 +6783,9 @@ html[data-theme-override="high-contrast"] .nav {
   color: color-mix(in srgb, var(--blue, #3b82f6) 90%, var(--text));
 }
 .compare-source-shortlist-chip-remove {
+  /* WCAG 2.2 SC 2.5.8 — same hit-box guarantee as
+     .review-rec-shortlist-chip-remove above. */
+  min-width: 24px;
   padding: 0 8px;
   font-family: inherit;
   font-size: 12px;
@@ -7850,14 +8044,14 @@ body.review-rec-print-active .review-rec-print a {
 
 /* ── Device-connect toast (Phase 4) ──────────────────────────────────
    Pinned to the bottom-right of the viewport so it doesn't collide
-   with the centred .toast. Wider than a regular toast because it
-   carries a multi-line body + two action targets (Import / dismiss).
-   The fly-in animation uses the same easing curve as the regular
-   toast for visual consistency. */
+   with the centred .toast — it's the one interactive toast (Import
+   CTA + dismiss) so it can coexist with a passive confirmation.
+   Shares the toastIn/toastOut chrome + --toast-* vars with the other
+   toast surfaces. */
 .device-connect-toast {
   position: fixed;
   right: 28px;
-  bottom: 28px;
+  bottom: var(--toast-bottom);
   z-index: 9990;
   display: flex;
   gap: 12px;
@@ -7873,7 +8067,7 @@ body.review-rec-print-active .review-rec-print a {
   border-left: 3px solid var(--blue);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
-  animation: toastIn 0.25s ease both;
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 
 .device-connect-toast-icon {
@@ -7929,8 +8123,11 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 @media (max-width: 640px) {
+  /* Right inset clears the a11y quick-toggles trigger (right: 16px, 36px
+     wide) — the only pointer-reachable a11y entry point at this width —
+     so a tall multi-line toast can't paint over it. */
   .device-connect-toast {
-    right: 14px;
+    right: 64px;
     left: 14px;
     max-width: none;
   }
@@ -7992,7 +8189,7 @@ body.review-rec-print-active .review-rec-print a {
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
   transform: translateX(-50%);
-  animation: toastIn 0.2s ease both; /* just below the toast so error toasts still win */
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 .compare-dock-info {
   display: flex;
@@ -8066,6 +8263,7 @@ body.review-rec-print-active .review-rec-print a {
   white-space: nowrap;
 }
 .compare-dock-chip-remove {
+  position: relative;
   padding: 2px 4px;
   font-size: 14px;
   line-height: 1;
@@ -8074,6 +8272,14 @@ body.review-rec-print-active .review-rec-print a {
   background: transparent;
   border: none;
   border-radius: var(--r-full);
+}
+
+/* WCAG 2.2 SC 2.5.8 — the painted ✕ is ~22×18; the pseudo-element
+   grows the clickable box to ≥24×24 without moving the dock layout. */
+.compare-dock-chip-remove::after {
+  position: absolute;
+  inset: -3px;
+  content: "";
 }
 .compare-dock-chip-remove:hover {
   color: var(--text);
@@ -8250,6 +8456,10 @@ body.review-rec-print-active .review-rec-print a {
 
 .help-section-wide {
   grid-column: 1 / -1;
+  /* Grid items default to min-width:auto and refuse to shrink below their
+     content's min width, which scrolls the document sideways at narrow
+     viewports / large text scale (WCAG 1.4.10). */
+  min-width: 0;
 }
 
 .help-section-title {
@@ -8304,34 +8514,50 @@ body.review-rec-print-active .review-rec-print a {
   border-radius: var(--r-md);
 }
 
+/* ── Shared toast chrome ─────────────────────────────────────────────
+   Every toast surface (.toast, .settings-autosave-toast,
+   .device-connect-toast) shares the same bottom offset, entrance and
+   exit animation so the three don't drift apart. Durations must stay
+   in sync with TOAST_IN_MS / TOAST_OUT_MS in lib/toast-timing.ts —
+   that module is the TS side of the same contract (hold timers live
+   there too). The keyframes animate the standalone `translate`
+   property (not `transform`) so they compose with each surface's own
+   static transform — the centred toasts keep translateX(-50%), the
+   right-pinned device toast keeps none. */
+:root {
+  --toast-bottom: 28px;
+  --toast-in-duration: 200ms;
+  --toast-out-duration: 200ms;
+}
+
 @keyframes toastIn {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    translate: 0 12px;
   }
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    translate: 0 0;
   }
 }
 
-/* Exit mirror of toastIn — applied by the shared <Toast> wrapper (and
-   DeviceConnectedToast's dismiss) for the final 200ms before unmount,
-   so dismissal is symmetric with the entrance instead of a hard blink.
-   Keep the duration in sync with TOAST_OUT_MS in Toast.tsx. */
+/* Exit mirror of toastIn — applied for the final --toast-out-duration
+   before unmount, so dismissal is symmetric with the entrance instead
+   of a hard blink. */
 @keyframes toastOut {
   from {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    translate: 0 0;
   }
   to {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    translate: 0 12px;
   }
 }
 .toast.toast-leaving,
-.device-connect-toast.device-connect-toast-leaving {
-  animation: toastOut 0.2s ease both;
+.device-connect-toast.device-connect-toast-leaving,
+.settings-autosave-toast.is-fading {
+  animation: toastOut var(--toast-out-duration) ease both;
 }
 
 /* ─────────────────────────────────────────────────────
@@ -9397,6 +9623,18 @@ body.review-rec-print-active .review-rec-print a {
   .sm-wrap {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* The matrix grid has a hard ~364px floor (140px app-name column + 14
+     icon columns at 14px min + gaps), so below that it must scroll inside
+     its own container rather than widening the document (WCAG 1.4.10).
+     position: sticky can't survive inside an overflow container, so the
+     header stack goes static here — it scrolls horizontally in lockstep
+     with the body rows, which keeps the columns aligned. */
+  .sm-matrix-col {
+    overflow-x: auto;
+  }
+  .sm-sticky-stack {
+    position: static;
+  }
   .sm-sidebar {
     position: static;
     flex-direction: row;
@@ -9815,11 +10053,40 @@ body.review-rec-print-active .review-rec-print a {
   color: var(--blue);
 }
 
+/* Danger-zone entry (Reset App) — last link in the Admin group. A
+   hairline divider plus a red accent set it apart from the routine
+   admin links above, matching the .settings-section-danger tint on
+   the section it scrolls to. */
+.settings-sidebar-link-danger {
+  position: relative;
+  margin-top: 12px;
+}
+
+.settings-sidebar-link-danger::before {
+  position: absolute;
+  top: -7px;
+  right: 10px;
+  left: 10px;
+  content: "";
+  border-top: 1px solid var(--border);
+}
+
+.settings-sidebar-link-danger .settings-sidebar-icon {
+  color: var(--red);
+}
+
+.settings-sidebar-link-danger.is-active {
+  box-shadow: inset 2px 0 0 var(--red);
+}
+
 .settings-sidebar-label {
+  /* Wrap instead of ellipsizing: labels like "Privacy Policy Change
+     Alerts" were clipped with no tooltip, and a title-attr tooltip
+     wouldn't help touch or keyboard users anyway. Two-line labels are
+     fine in the vertical sidebar; the narrow-viewport block below
+     re-applies nowrap because the horizontal pills size to their
+     content there and nothing clips. */
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Narrow viewports: sidebar collapses to a horizontal scrolling strip
@@ -9834,6 +10101,13 @@ body.review-rec-print-active .review-rec-print a {
     position: sticky;
     top: var(--nav-h);
     z-index: 10;
+    /* Grid items default to min-width:auto, which refuses to shrink below
+       the content width of the pill strip (~3000px with every section
+       inline) — that blew the 1fr column out and scrolled the whole
+       document sideways instead of letting .settings-sidebar-nav's
+       overflow-x:auto engage. Same gotcha .settings-section already
+       guards against with its own min-width: 0. */
+    min-width: 0;
     padding-top: 8px;
     padding-bottom: 12px;
     margin: -8px 0 0;
@@ -9870,6 +10144,9 @@ body.review-rec-print-active .review-rec-print a {
     flex-shrink: 0;
     padding: 6px 12px;
     font-size: 12px;
+    /* Pills size to their content in the horizontal strip, so nothing
+       clips — re-apply nowrap here since the base label rule now wraps. */
+    white-space: nowrap;
     border-radius: var(--r-full);
   }
   .settings-sidebar-link.is-active {
@@ -10772,6 +11049,7 @@ body.review-rec-print-active .review-rec-print a {
    and can't overlap sibling cards in unpredictable ways. */
 
 .info-tooltip-trigger {
+  position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -10792,6 +11070,16 @@ body.review-rec-print-active .review-rec-print a {
     background 0.15s,
     border-color 0.15s,
     color 0.15s;
+}
+
+/* WCAG 2.2 SC 2.5.8 — invisible hit-area extension. The painted disc
+   stays 20px; the pseudo-element grows the clickable box to 24×24.
+   -3px, not -2px: absolute positioning resolves against the padding
+   box, which sits 1px (the border) inside the visible 20px disc. */
+.info-tooltip-trigger::after {
+  position: absolute;
+  inset: -3px;
+  content: "";
 }
 
 .info-tooltip-trigger:hover,
@@ -12182,10 +12470,11 @@ button.import-history-stat.is-active {
     border-color 0.15s ease;
 }
 
+/* No `outline: none` — keyboard focus falls through to the universal
+   `:focus-visible` ring at the top of this file. */
 .task-center-trigger:hover,
 .task-center-trigger:focus-visible {
   color: var(--text);
-  outline: none;
   background: var(--surface-hover);
 }
 
@@ -12931,6 +13220,35 @@ button.import-history-stat.is-active {
   color: color-mix(in srgb, var(--yellow) 75%, var(--text));
   background: color-mix(in srgb, var(--yellow) 16%, transparent);
   border-color: color-mix(in srgb, var(--yellow) 40%, transparent);
+}
+
+/* ── Guardian age-rating pill (grid cards) ──────────────────────────────
+   Only the "above the child's age band" state gets a card pill — within-
+   range apps stay quiet to keep cards clean. The ⚠ glyph rides inside the
+   pill so the state never reads through colour alone (WCAG 1.4.1). */
+.age-pill {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.age-pill-above {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+.age-pill-icon {
+  font-size: 10px;
+  line-height: 1;
 }
 
 /* User-authored "Custom" apps — web clips, TestFlight, sideloaded, etc.
@@ -14850,6 +15168,19 @@ button.import-history-stat.is-active {
   background: var(--yellow);
 }
 
+/* Light mode flips --yellow to a dark gold (#7d5a00) for text contrast,
+   which leaves the near-black label above at ~2.4:1 on the filled tab.
+   White clears 6.3:1 there. Dark + HC keep bright yellow with dark text
+   (12.3:1 / 19.6:1), so scope the swap to the two light mechanisms. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override]) .risk-filter-tab-unknown.active {
+    color: #fff;
+  }
+}
+html[data-theme-override="light"] .risk-filter-tab-unknown.active {
+  color: #fff;
+}
+
 /* Inactive but hovered — preview the tint */
 .risk-filter-tab-high:not(.active):not(:disabled):hover {
   color: var(--red);
@@ -14985,6 +15316,20 @@ button.import-history-stat.is-active {
 }
 
 .filter-status-access-missing {
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--text-3) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--text-3) 35%, var(--border));
+}
+
+/* Age-rating active-filter chips — red for the warning bucket, neutral
+   for within-range, matching the segmented-toggle accents. */
+.filter-status-age-above {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--red) 35%, var(--border));
+}
+
+.filter-status-age-within {
   color: var(--text-2);
   background: color-mix(in srgb, var(--text-3) 10%, var(--surface));
   border-color: color-mix(in srgb, var(--text-3) 35%, var(--border));
@@ -15349,6 +15694,32 @@ button.import-history-stat.is-active {
 .kbd-hint-dismiss:hover {
   color: var(--text);
   background: var(--surface-active);
+}
+
+/* WCAG 2.2 SC 2.5.8 — the pill's controls paint at ~20–22px tall.
+   Invisible pseudo-elements grow each clickable box to ≥24px. The
+   wide controls extend vertically only, so the side-by-side targets
+   (4px gaps) never overlap each other; the 22×22 dismiss takes 1px
+   on every side. */
+.kbd-hint-button,
+.kbd-hint-dismiss,
+.kbd-hint-link,
+.kbd-hint-about {
+  position: relative;
+}
+
+.kbd-hint-button::after,
+.kbd-hint-link::after,
+.kbd-hint-about::after {
+  position: absolute;
+  inset: -2px 0;
+  content: "";
+}
+
+.kbd-hint-dismiss::after {
+  position: absolute;
+  inset: -1px;
+  content: "";
 }
 
 @media (max-width: 640px) {
@@ -15831,7 +16202,10 @@ button.import-history-stat.is-active {
 
 .definitions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* min(240px, 100%) lets the single remaining column shrink with the
+     container at narrow viewports / large text scale (WCAG 1.4.10)
+     instead of holding a 240px floor that widens the document. */
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
   gap: 14px;
   margin-top: 8px;
 }
@@ -15871,7 +16245,9 @@ button.import-history-stat.is-active {
 
 .definitions-category-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  /* min(260px, 100%) keeps the single remaining column inside the
+     container at narrow viewports / large text scale (WCAG 1.4.10). */
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 12px;
   padding: 0;
   margin: 10px 0 0;
@@ -16040,6 +16416,17 @@ button.import-history-stat.is-active {
 
 .site-info-hint-anchor:hover {
   opacity: 1;
+}
+
+/* 2.4.11 Focus Not Obscured: the pill floats over the bottom of the sticky
+   settings sidebar, so a tab-walk can land keyboard focus on a sidebar link
+   directly underneath it. Yield (fade + click-through) while any sidebar
+   link holds visible keyboard focus; the pill returns as soon as focus
+   moves on. Mouse users never trigger :focus-visible, so hover behaviour
+   is unchanged. */
+body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
+  pointer-events: none;
+  opacity: 0;
 }
 
 .site-info-hint-link {
@@ -16302,7 +16689,10 @@ button.import-history-stat.is-active {
 
 .priv-out-of-scope-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  /* min(280px, 100%) so the single remaining column tracks the container
+     at narrow viewports / large text scale instead of forcing a 280px
+     floor that scrolls the document sideways (WCAG 1.4.10). */
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 12px;
   padding: 0;
   margin: 20px 0 0;
@@ -17124,6 +17514,17 @@ button.import-history-stat.is-active {
 .intent-callout-info {
   background: rgba(10, 132, 255, 0.06);
   border-color: var(--blue);
+}
+
+/* Amber "needs a look" tier — sits between info (blue) and alert (red).
+   Used by the guardian age-rating callout. */
+.intent-callout-warn {
+  background: color-mix(in srgb, var(--yellow) 7%, transparent);
+  border-color: var(--yellow);
+}
+
+.intent-callout-warn .intent-callout-title {
+  color: color-mix(in srgb, var(--yellow) 75%, var(--text));
 }
 
 .intent-callout-quiet {
@@ -18531,9 +18932,10 @@ button.import-history-stat.is-active {
   transition: background 0.12s ease;
 }
 
+/* No `outline: none` — keyboard focus falls through to the universal
+   `:focus-visible` ring at the top of this file. */
 .task-center-upcoming:hover,
 .task-center-upcoming:focus-visible {
-  outline: none;
   background: var(--surface-hover);
 }
 
@@ -19607,6 +20009,21 @@ button.import-history-stat.is-active {
   border-color: var(--cream);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--cream) 52%, transparent);
 }
+
+/* "Filled cream is bright" only holds in dark mode (#d8c7a3). Light mode
+   flips --cream to #7a643b, where the near-black label above sits at
+   ~2.2:1 — white clears 5.9:1. Same two-mechanism scoping as the yellow
+   risk tab. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override])
+    .privacy-profile-pill[data-tier="not_linked"].is-selected {
+    color: #fff;
+  }
+}
+html[data-theme-override="light"]
+  .privacy-profile-pill[data-tier="not_linked"].is-selected {
+  color: #fff;
+}
 .privacy-profile-pill[data-tier="linked"].is-selected {
   color: #fff;
   background: var(--orange);
@@ -20623,9 +21040,12 @@ button.import-history-stat.is-active {
 @media (max-width: 640px) {
   /* On phones, float above the kbd-hint pill slot (which is hidden at this
      breakpoint anyway) and shrink the side margins so long messages don't
-     get clipped on a narrow viewport. */
+     get clipped on a narrow viewport. The right inset stays clear of the
+     a11y quick-toggles trigger (right: 16px, 36px wide) — it's the only
+     pointer-reachable entry to the accessibility settings at this width,
+     so a wrapped two-line toast must not paint over it. */
   .shortlist-undo-toast {
-    right: 12px;
+    right: 64px;
     bottom: 16px;
     left: 12px;
     max-width: none;
@@ -25843,6 +26263,53 @@ html[data-a11y-scale="x-large"] .app-main {
   zoom: 1.3;
 }
 
+/* Scale parity for reading surfaces mounted OUTSIDE .app-main (they're
+   siblings of it in app/layout.tsx, so the rules above never reach them):
+   the About + keyboard-shortcuts overlays, the "g then …" sequence
+   indicator, the non-local read-only banner, and the task-list mobile
+   sheet (portalled to <body> to escape the nav's backdrop-filter
+   containing block). All of these are plain centered/inset overlays with
+   no getBoundingClientRect positioning, so zooming them is safe — do NOT
+   add rect-positioned surfaces (InfoTooltip, DataLabelHint) here without
+   converting their placement maths to local space first, the way
+   CoachmarkTour.tsx does. The footer quick-toggle pills + popover stay at
+   1x by design: the controls that change the scale must never grow with
+   it. Keep the zoom values in sync with the .app-main rules above and
+   with A11Y_SCALE_ZOOM in CoachmarkTour.tsx. */
+html[data-a11y-scale="large"]
+:is(
+  .about-scrim,
+  .kbd-help-scrim,
+  .kbd-sequence-indicator,
+  .nonlocal-banner,
+  .task-list-sheet-overlay
+) {
+  zoom: 1.15;
+}
+html[data-a11y-scale="x-large"]
+  :is(
+    .about-scrim,
+    .kbd-help-scrim,
+    .kbd-sequence-indicator,
+    .nonlocal-banner,
+    .task-list-sheet-overlay
+  ) {
+  zoom: 1.3;
+}
+
+/* The coachmark tour tooltip lives INSIDE .app-main, so its
+   `max-width: calc(100vw - 24px)` cap is multiplied by the ancestor zoom
+   at render time (351px of CSS space paints 456px wide on a 375px
+   viewport at x-large — clipping the close button offscreen). vw units
+   don't shrink with zoom, so divide the cap by the active zoom factor to
+   keep the painted box inside the viewport (WCAG 1.4.10). */
+html[data-a11y-scale="large"] .coachmark-tooltip {
+  max-width: calc((100vw - 24px) / 1.15);
+}
+html[data-a11y-scale="x-large"] .coachmark-tooltip {
+  max-width: calc((100vw - 24px) / 1.3);
+}
+
 /* ─────────────────────────────────────────────────────
    High-contrast theme
    ─────────────────────────────────────────────────────
@@ -25868,12 +26335,17 @@ html[data-theme-override="high-contrast"] {
   --blue-hover: #ffff66;
   --blue-soft: rgba(255, 255, 0, 0.18);
   --red: #ff5a4d;
+  --red-dim: rgba(255, 90, 77, 0.12);
   --orange: #ffb84d;
+  --orange-dim: rgba(255, 184, 77, 0.12);
   --yellow: #ffff00;
+  --yellow-dim: rgba(255, 255, 0, 0.1);
   --cream: #ffffff;
   --cream-dim: rgba(255, 255, 255, 0.18);
   --green: #5aff7a;
+  --green-dim: rgba(90, 255, 122, 0.12);
   --teal: #5affff;
+  --teal-dim: rgba(90, 255, 255, 0.12);
   /* HC purple — boosted toward neon-violet so dev surfaces stay visible
      against the pure-black background. */
   --purple: #d490ff;
@@ -25888,6 +26360,9 @@ html[data-theme-override="high-contrast"] {
   --popover-border: #ffffff;
   --popover-inner-highlight: rgba(255, 255, 255, 0);
   --popover-shadow: 0 0 0 2px #ffffff;
+  /* Cyan boosted like the other HC accents so the a11y-added band stays
+     bright against the pure-black background. */
+  --cyan: #7adfff;
 }
 
 /* Thick focus rings in HC so keyboard / switch users never lose the focused
@@ -26280,13 +26755,15 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   box-shadow: 0 0 0 1.5px #000000;
 }
 
-@media (max-width: 640px) {
-  /* Mobile parallels the .kbd-hint-anchor hiding — hardware keyboards are
-     unusual and the bottom-right corner is already crowded on phones. */
-  .a11y-quick-trigger {
-    display: none;
-  }
-}
+/* The trigger stays visible at EVERY width. It used to be display:none at
+   <=640px (parallel to the .kbd-hint-anchor hiding), but that removed the
+   only pointer-reachable entry to the accessibility settings exactly where
+   they matter most: phones, and desktop browsers at 200% zoom (a 1280px
+   screen at 200% lays out at 640px). The other entry point — the "g then u"
+   shortcut — needs a hardware keyboard, which small-viewport users
+   typically don't have. The kbd-hint pill keeps its mobile hiding; its
+   rationale (hardware keyboards are unusual on phones) is sound for a
+   shortcut hint but not for the a11y controls themselves. */
 
 /* ─────────────────────────────────────────────────────
    Quick-toggles popover
@@ -26756,11 +27233,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   color: var(--text-3);
 }
 
-@media (max-width: 640px) {
-  .a11y-quick-popover {
-    display: none;
-  }
-}
+/* No mobile hiding for the popover: it used to be display:none at <=640px
+   alongside the (also removed) trigger hiding — see the comment where the
+   trigger's mobile block used to live. The popover is narrow-viewport-safe
+   on its own: width min(380px, 100vw - 32px), max-height tracks 100dvh,
+   and .a11y-quick-popover-body scrolls. */
 
 /* ──────────────────────────────────────────────────────────────────────────
    Your Focus card (Settings → top of stack)
@@ -27359,6 +27836,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   .keyboard-hint,
   .keyboard-hint-toggle,
   .toast,
+  .settings-autosave-toast,
+  .device-connect-toast,
   .modal,
   .modal-overlay,
   .annotations-sidebar__undo-toast,
@@ -29171,6 +29650,27 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   letter-spacing: 0.04em;
 }
 
+/* Guardian child-age band picker — appears when the form's selected
+   audience resolves to guardian. Shares the branch-card chrome. */
+.focus-guardian-age {
+  padding: 14px;
+  margin-top: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.focus-guardian-age-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.focus-guardian-age-resources {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
 .focus-purpose-segmented {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -30402,9 +30902,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 */
 .settings-autosave-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: var(--toast-bottom);
   left: 50%;
-  z-index: 1000;
+  /* One below .toast (9999) so an error toast routed through the shared
+     <Toast> still paints on top when both fire at once. */
+  z-index: 9998;
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -30430,9 +30932,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   transition:
     box-shadow 120ms ease-out,
     transform 120ms ease-out;
-  /* Animate in. New toasts get this class fresh because the React
-     `key={id}` forces a remount, so the animation re-fires every push. */
-  animation: settings-autosave-toast-in 200ms ease-out;
+  /* Animate in via the shared toast keyframes. New toasts get this
+     class fresh because the React `key={id}` forces a remount, so the
+     animation re-fires every push. The exit (.is-fading) is handled by
+     the shared toastOut rule next to the keyframes. */
+  animation: toastIn var(--toast-in-duration) ease both;
 }
 .settings-autosave-toast:hover:not(.is-fading) {
   /* Subtle lift on hover so the click-to-dismiss intent is obvious. */
@@ -30440,10 +30944,6 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     0 12px 32px rgba(0, 0, 0, 0.22),
     0 2px 4px rgba(0, 0, 0, 0.14);
   transform: translateX(-50%) translateY(-1px);
-}
-
-.settings-autosave-toast.is-fading {
-  animation: settings-autosave-toast-out 200ms ease-in forwards;
 }
 
 .settings-autosave-toast--success {
@@ -30499,27 +30999,6 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   outline: none;
   background: color-mix(in srgb, currentColor 12%, transparent);
   opacity: 1;
-}
-
-@keyframes settings-autosave-toast-in {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-@keyframes settings-autosave-toast-out {
-  from {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px);
-  }
 }
 
 /* Inline error message rendered under a settings field when a
@@ -30895,6 +31374,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  /* WCAG 2.2 SC 2.5.8 — the native checkbox paints at ~13×13, but the
+     whole label is the activation target. Guarantee the label's hit box
+     is ≥24px tall; it has no painted background, so nothing visibly
+     grows. */
+  min-height: 24px;
   font-size: 12px;
   color: var(--text-2);
   cursor: pointer;
@@ -31070,12 +31554,24 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   position: relative;
   padding: 8px;
   touch-action: none;
+  /* 2.4.11 Focus Not Obscured: focus- and keyboard-drag-driven scrolling
+     must land cards below the sticky toolbar, not under it. The variable
+     tracks the real toolbar height via a ResizeObserver in EditModeShell
+     (HomeView.tsx); the fallback covers the pre-hydration first paint. */
+  scroll-margin-top: var(--home-edit-toolbar-clearance, 148px);
   background: var(--bg-2);
   border: 1px dashed var(--border);
   border-radius: 12px;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease;
+}
+
+/* Focus scrolls target the focused control itself, not its card wrapper,
+   so the bar's handle + Hide/Show buttons need the same clearance. */
+.home-edit-card-bar button,
+.home-edit-card-bar a {
+  scroll-margin-top: var(--home-edit-toolbar-clearance, 148px);
 }
 .home-edit-card:hover {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
@@ -31097,6 +31593,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .home-edit-card-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   padding: 4px 6px 8px;
@@ -31134,15 +31631,22 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .home-edit-card-label {
   flex: 1;
+  /* Shrinkable below its longest word so the bar never widens the page at
+     narrow viewports / large text scale (WCAG 1.4.10). */
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-1);
+  overflow-wrap: anywhere;
 }
 
 .home-edit-card-bar-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  /* Keep right alignment when the bar wraps the actions onto their own row. */
+  margin-left: auto;
 }
 
 /* Real card content rendered inside an inert wrapper so links + buttons
@@ -31158,6 +31662,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
    description + status pill. */
 .home-edit-card-ghost {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
@@ -31168,7 +31673,9 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .home-edit-card-ghost-desc {
   flex: 1;
+  min-width: 0;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .home-edit-card-ghost-status {

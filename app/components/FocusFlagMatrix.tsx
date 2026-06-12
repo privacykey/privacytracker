@@ -29,7 +29,8 @@
  * GOAL_RULES diff ready to paste into `lib/feature-flag-rules.ts`.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ACCESSIBILITY_RULES,
   AUDIENCE_RULES,
@@ -42,6 +43,7 @@ import {
   type Modifier,
   type PrimaryGoal,
 } from "@/lib/feature-flag-rules";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 // ── Combo definition ────────────────────────────────────────────────
 //
@@ -269,6 +271,7 @@ type PendingConfirm =
   | { kind: "apply"; combo: ComboDef; cellCount: number };
 
 export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
+  const tMatrix = useTranslations("dev_options.focus_matrix");
   // Hydrate-once snapshot of the local spec. We deliberately don't
   // sync across tabs — this is a single-author drafting tool.
   const [spec, setSpec] = useState<SpecBlob>(() => readSpec());
@@ -374,7 +377,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
     async (text: string, label: string) => {
       try {
         await navigator.clipboard.writeText(text);
-        flashToast(`Copied · ${label}`);
+        flashToast(tMatrix("toast_copied", { label }));
       } catch {
         // Older browsers / iframes without clipboard permission. Fall
         // back to a textarea-select trick so the user can still copy.
@@ -386,9 +389,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
         ta.select();
         try {
           document.execCommand("copy");
-          flashToast(`Copied · ${label}`);
+          flashToast(tMatrix("toast_copied", { label }));
         } catch {
-          flashToast("Copy failed — clipboard unavailable");
+          flashToast(tMatrix("toast_copy_failed"));
         } finally {
           document.body.removeChild(ta);
         }
@@ -407,7 +410,10 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
         cells: spec.desired[comboId(c)] ?? {},
       })),
     };
-    void copyToClipboard(JSON.stringify(blob, null, 2), "full spec JSON");
+    void copyToClipboard(
+      JSON.stringify(blob, null, 2),
+      tMatrix("copy_label_spec_json")
+    );
   }, [spec, copyToClipboard]);
 
   const exportTsPatch = useCallback(() => {
@@ -503,7 +509,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       lines.push("");
     }
 
-    void copyToClipboard(lines.join("\n"), "TS patch draft");
+    void copyToClipboard(lines.join("\n"), tMatrix("copy_label_ts_patch"));
   }, [spec, copyToClipboard]);
 
   const applyComboAsOverrides = useCallback(
@@ -511,7 +517,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       const cells = spec.desired[comboId(combo)] ?? {};
       const cellCount = Object.keys(cells).length;
       if (cellCount === 0) {
-        flashToast("No cells authored for this combo");
+        flashToast(tMatrix("toast_no_cells"));
         return;
       }
       setPendingConfirm({ kind: "apply", combo, cellCount });
@@ -528,7 +534,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       const fresh: SpecBlob = { accessibility: false, desired: {} };
       setSpec(fresh);
       writeSpec(fresh);
-      flashToast("Cleared");
+      flashToast(tMatrix("toast_cleared"));
       setPendingConfirm(null);
       return;
     }
@@ -546,7 +552,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       const next: SpecBlob = { ...spec, desired };
       setSpec(next);
       writeSpec(next);
-      flashToast("Seeded with resolver values");
+      flashToast(tMatrix("toast_seeded"));
       setPendingConfirm(null);
       return;
     }
@@ -569,11 +575,18 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       }
       const body = (await res.json()) as { applied?: number; skipped?: number };
       flashToast(
-        `Applied ${body.applied ?? 0} overrides (${body.skipped ?? 0} skipped)`
+        tMatrix("toast_applied", {
+          applied: body.applied ?? 0,
+          skipped: body.skipped ?? 0,
+        })
       );
       setPendingConfirm(null);
     } catch (e) {
-      flashToast(`Failed: ${e instanceof Error ? e.message : "unknown error"}`);
+      flashToast(
+        tMatrix("toast_failed", {
+          message: e instanceof Error ? e.message : tMatrix("unknown_error"),
+        })
+      );
     } finally {
       setApplying(false);
     }
@@ -581,14 +594,20 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
 
   // ── Render ────────────────────────────────────────────────────────
 
+  const cancelRef = useRef<(() => void) | null>(null);
+  const confirmCardRef = useModalFocus<HTMLDivElement>({
+    open: pendingConfirm !== null,
+    onClose: () => cancelRef.current?.(),
+  });
+
   return (
     <div className="focus-matrix">
       <div className="focus-matrix-toolbar">
         <input
-          aria-label="Filter flags"
+          aria-label={tMatrix("filter_aria")}
           className="focus-matrix-filter"
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter flags by key or surface…"
+          placeholder={tMatrix("filter_placeholder")}
           type="search"
           value={filter}
         />
@@ -598,7 +617,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
             onChange={(e) => setShowOnlyDeltas(e.target.checked)}
             type="checkbox"
           />
-          Only authored rows
+          {tMatrix("only_authored_rows")}
         </label>
         <label className="focus-matrix-toolbar-check">
           <input
@@ -606,7 +625,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
             onChange={(e) => setAccessibility(e.target.checked)}
             type="checkbox"
           />
-          Apply accessibility modifier
+          {tMatrix("apply_accessibility_modifier")}
         </label>
         <span className="focus-matrix-toolbar-spacer" />
         <button
@@ -614,46 +633,47 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
           onClick={seedFromCurrentRules}
           type="button"
         >
-          Seed from current rules
+          {tMatrix("seed_button")}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={exportFullSpec}
           type="button"
         >
-          Copy spec JSON
+          {tMatrix("copy_spec_button")}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={exportTsPatch}
           type="button"
         >
-          Copy TS patch
+          {tMatrix("copy_ts_patch_button")}
         </button>
         <button
           className="btn btn-danger btn-sm"
           onClick={clearAll}
           type="button"
         >
-          Clear draft
+          {tMatrix("clear_draft_button")}
         </button>
       </div>
 
       <p className="focus-matrix-hint">
-        Click a cell to cycle <code>on → off → collapsed → unset</code>. Faint
-        value on top is what the resolver returns now; bold value below is what
-        you&rsquo;re authoring. Use the per-column ↗ button to push that
-        combo&rsquo;s authored cells in as live overrides for testing.
+        {tMatrix.rich("hint", {
+          code: (chunks) => <code>{chunks}</code>,
+        })}
       </p>
 
       <section
-        aria-label="Focus × Flags matrix"
+        aria-label={tMatrix("matrix_aria")}
         className="focus-matrix-table-wrap"
       >
         <table className="focus-matrix-table">
           <thead>
             <tr>
-              <th className="focus-matrix-th-key">Flag</th>
+              <th className="focus-matrix-th-key">
+                {tMatrix("flag_column_header")}
+              </th>
               {COMBOS.map((combo) => (
                 <th
                   className="focus-matrix-th-combo"
@@ -664,7 +684,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                   <button
                     className="focus-matrix-th-apply"
                     onClick={() => applyComboAsOverrides(combo)}
-                    title={`Apply ${combo.longHeader} as overrides`}
+                    title={tMatrix("apply_combo_title", {
+                      combo: combo.longHeader,
+                    })}
                     type="button"
                   >
                     ↗
@@ -686,7 +708,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
             {grouped.length === 0 && (
               <tr>
                 <td className="focus-matrix-empty" colSpan={1 + COMBOS.length}>
-                  No flags match the current filter.
+                  {tMatrix("no_flags_match")}
                 </td>
               </tr>
             )}
@@ -708,27 +730,33 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
               setPendingConfirm(null);
             }
           };
+          cancelRef.current = cancel;
           const titleId = "focus-matrix-confirm-title";
           const copyId = "focus-matrix-confirm-copy";
           const { title, body, confirmLabel } = (() => {
             if (pendingConfirm.kind === "clear") {
               return {
-                title: "Clear every authored cell?",
-                body: "This wipes your draft spec. The action only touches local storage — live overrides aren’t affected.",
-                confirmLabel: "Clear draft",
+                title: tMatrix("confirm_clear_title"),
+                body: tMatrix("confirm_clear_body"),
+                confirmLabel: tMatrix("clear_draft_button"),
               };
             }
             if (pendingConfirm.kind === "seed") {
               return {
-                title: "Seed from current resolver values?",
-                body: "Every cell will be overwritten with the value the resolver currently produces for that combo. Any work in your draft is lost.",
-                confirmLabel: "Seed",
+                title: tMatrix("confirm_seed_title"),
+                body: tMatrix("confirm_seed_body"),
+                confirmLabel: tMatrix("confirm_seed_confirm"),
               };
             }
             return {
-              title: `Apply ${pendingConfirm.cellCount} cells as live overrides?`,
-              body: `Wipes current overrides and replaces them with the ${pendingConfirm.cellCount} authored cells from ${pendingConfirm.combo.longHeader}.`,
-              confirmLabel: "Apply overrides",
+              title: tMatrix("confirm_apply_title", {
+                count: pendingConfirm.cellCount,
+              }),
+              body: tMatrix("confirm_apply_body", {
+                count: pendingConfirm.cellCount,
+                combo: pendingConfirm.combo.longHeader,
+              }),
+              confirmLabel: tMatrix("confirm_apply_confirm"),
             };
           })();
           return (
@@ -739,12 +767,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                 aria-modal="true"
                 className="modal-card"
                 onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    cancel();
-                  }
-                }}
+                ref={confirmCardRef}
                 role="dialog"
+                tabIndex={-1}
               >
                 <h2 className="modal-title" id={titleId}>
                   {title}
@@ -759,10 +784,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                     onClick={cancel}
                     type="button"
                   >
-                    Cancel
+                    {tMatrix("cancel")}
                   </button>
                   <button
-                    autoFocus
                     className="btn btn-danger"
                     disabled={closing}
                     onClick={() => void runPendingConfirm()}
@@ -771,7 +795,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                     {closing ? (
                       <>
                         <span aria-hidden="true" className="spinner-sm" />{" "}
-                        Applying…
+                        {tMatrix("applying")}
                       </>
                     ) : (
                       confirmLabel
@@ -798,7 +822,8 @@ function FocusMatrixSurface({
   onSetCell: (combo: ComboDef, key: FlagKey, value: FlagValue | null) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const label = SURFACE_LABELS[surface] ?? surface;
+  const tSurfaces = useTranslations("dev_options.feature_flags.surfaces");
+  const label = SURFACE_LABELS[surface] ? tSurfaces(surface) : surface;
   return (
     <>
       <tr className="focus-matrix-surface-row">
@@ -839,15 +864,16 @@ function FocusMatrixRow({
   spec: SpecBlob;
   onSetCell: (combo: ComboDef, key: FlagKey, value: FlagValue | null) => void;
 }) {
+  const tMatrix = useTranslations("dev_options.focus_matrix");
   return (
     <tr className="focus-matrix-row">
       <th className="focus-matrix-row-key" scope="row" title={row.key}>
         <code>{row.key}</code>
         <span
           className="focus-matrix-row-default"
-          title={`Hard default: ${row.hardDefault}`}
+          title={tMatrix("hard_default_title", { value: row.hardDefault })}
         >
-          default: {row.hardDefault}
+          {tMatrix("hard_default_label", { value: row.hardDefault })}
         </span>
       </th>
       {COMBOS.map((combo) => {
@@ -865,7 +891,11 @@ function FocusMatrixRow({
             <button
               className="focus-matrix-cell-btn"
               onClick={() => onSetCell(combo, row.key, nextValue(desired))}
-              title={`${combo.longHeader}\nResolver: ${current}\nAuthored: ${desired ?? "(unset)"}`}
+              title={tMatrix("cell_title", {
+                combo: combo.longHeader,
+                current,
+                authored: desired ?? tMatrix("cell_unset"),
+              })}
               type="button"
             >
               <span className="focus-matrix-cell-current">{current}</span>

@@ -9,11 +9,21 @@ import {
 } from "../../../../lib/ai-config";
 import { getSetting } from "../../../../lib/scheduler";
 import {
+  adminTokenRequiredForRequest,
   checkRateLimit,
   rateLimitKeyForRequest,
   readBoundedJson,
+  recordAudit,
+  requestActorIp,
+  requestHasValidAdminToken,
+  safeFetch,
   validateExternalUrl,
 } from "../../../../lib/security";
+
+// Hard cap on how much of the remote endpoint's response we read — a model
+// list is a few KB even for providers exposing hundreds of models. Bounds the
+// read so a hostile/misconfigured internal target can't stream into memory.
+const AI_RESPONSE_MAX_BYTES = 1024 * 1024; // 1 MiB
 
 interface ModelsBody {
   apiKey?: unknown;
@@ -37,6 +47,25 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, message: "Rate limit exceeded." },
       { status: 429 }
+    );
+  }
+
+  // Outbound fetch to a caller-supplied URL → require the admin token on
+  // non-local hosts (localhost installs without a token pass through). Mirrors
+  // the AI test route and the diagnostics endpoints.
+  if (
+    adminTokenRequiredForRequest(request) &&
+    !requestHasValidAdminToken(request)
+  ) {
+    recordAudit({
+      action: "ai.models.unauthorised",
+      actorIp: requestActorIp(request),
+      userAgent: request.headers.get("user-agent"),
+      success: false,
+    });
+    return NextResponse.json(
+      { ok: false, message: "Admin token required." },
+      { status: 401 }
     );
   }
 
@@ -156,18 +185,20 @@ async function fetchOpenAiCompatibleModels({
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
-  const res = await fetch(`${baseUrl}/models`, {
-    method: "GET",
+  const { response, body } = await safeFetch(`${baseUrl}/models`, {
+    allowPrivateHosts: true,
     headers,
-    redirect: "error",
-    signal: AbortSignal.timeout(10_000),
+    maxBytes: AI_RESPONSE_MAX_BYTES,
+    timeoutMs: 10_000,
   });
 
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
   }
 
-  const payload = (await res.json()) as { data?: Array<{ id?: string }> };
+  const payload = JSON.parse(body.toString("utf8")) as {
+    data?: Array<{ id?: string }>;
+  };
   if (!Array.isArray(payload?.data)) {
     return [];
   }
@@ -199,18 +230,20 @@ async function fetchOllamaTags({
 }): Promise<DiscoveredModel[]> {
   // Ollama's /api/tags is on the server root, not under /v1.
   const root = baseUrl.replace(/\/v1\/?$/i, "");
-  const res = await fetch(`${root}/api/tags`, {
-    method: "GET",
+  const { response, body } = await safeFetch(`${root}/api/tags`, {
+    allowPrivateHosts: true,
     headers: { Accept: "application/json" },
-    redirect: "error",
-    signal: AbortSignal.timeout(10_000),
+    maxBytes: AI_RESPONSE_MAX_BYTES,
+    timeoutMs: 10_000,
   });
 
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
   }
 
-  const payload = (await res.json()) as { models?: Array<{ name?: string }> };
+  const payload = JSON.parse(body.toString("utf8")) as {
+    models?: Array<{ name?: string }>;
+  };
   if (!Array.isArray(payload?.models)) {
     return [];
   }
@@ -246,22 +279,22 @@ async function fetchAnthropicModels({
       url.searchParams.set("after_id", afterId);
     }
 
-    const res = await fetch(url.toString(), {
-      method: "GET",
+    const { response, body } = await safeFetch(url.toString(), {
+      allowPrivateHosts: true,
       headers: {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
         Accept: "application/json",
       },
-      redirect: "error",
-      signal: AbortSignal.timeout(10_000),
+      maxBytes: AI_RESPONSE_MAX_BYTES,
+      timeoutMs: 10_000,
     });
 
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
 
-    const payload = (await res.json()) as {
+    const payload = JSON.parse(body.toString("utf8")) as {
       data?: Array<{ id?: string; display_name?: string }>;
       has_more?: boolean;
       last_id?: string | null;

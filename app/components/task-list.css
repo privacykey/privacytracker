@@ -30,9 +30,12 @@
     background 120ms ease,
     border-color 120ms ease;
 }
+/* No `outline: none` here (or on the other hover/focus-visible pairs
+ * below) — the hover tint alone is not a visible focus indicator, so
+ * keyboard focus falls through to the universal `:focus-visible` ring
+ * in globals.css. */
 .task-list-icon-btn:hover,
 .task-list-icon-btn:focus-visible {
-  outline: none;
   background: var(--surface-hover, rgba(127, 127, 127, 0.08));
   border-color: var(--border-subtle, rgba(127, 127, 127, 0.15));
 }
@@ -162,7 +165,6 @@
 }
 .task-list-row-btn:hover,
 .task-list-row-btn:focus-visible {
-  outline: none;
   background: var(--surface-hover, rgba(127, 127, 127, 0.08));
   border-color: var(--border-subtle, rgba(127, 127, 127, 0.15));
 }
@@ -290,7 +292,6 @@
 .task-list-row-dismiss:hover,
 .task-list-row-dismiss:focus-visible {
   color: var(--text-primary, currentColor);
-  outline: none;
   background: var(--surface-hover, rgba(127, 127, 127, 0.08));
 }
 
@@ -327,7 +328,6 @@
 .task-list-chip:hover,
 .task-list-chip:focus-visible {
   color: var(--text-primary, currentColor);
-  outline: none;
   background: var(--surface-hover, rgba(127, 127, 127, 0.08));
   border-color: var(--border-strong, rgba(127, 127, 127, 0.35));
 }
@@ -381,7 +381,6 @@
 }
 .task-list-add-tray-chip:hover,
 .task-list-add-tray-chip:focus-visible {
-  outline: none;
   background: var(--surface-hover, rgba(10, 132, 255, 0.08));
   border-color: var(--accent, #0a84ff);
   transform: translateY(-1px);

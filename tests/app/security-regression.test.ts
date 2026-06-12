@@ -66,9 +66,14 @@ test("proxy allows same-origin mutations and admin-token scripted callers", () =
   }
 });
 
-test("proxy requires admin token for non-local API access", () => {
+test("proxy requires admin token for an allowlisted, network-exposed host", () => {
+  // Allowlisting privacytracker.example lets the request past the Host gate
+  // (step 0) AND marks the deployment network-exposed (a non-loopback
+  // allowlist entry) — so the admin-token gate is what's exercised here.
   const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
+  const previousHosts = process.env.PRIVACYTRACKER_ALLOWED_HOSTS;
   delete process.env.AUDITOR_ADMIN_TOKEN;
+  process.env.PRIVACYTRACKER_ALLOWED_HOSTS = "privacytracker.example";
   try {
     const blockedWrite = proxy(
       new NextRequest("https://privacytracker.example/api/reset", {
@@ -107,6 +112,71 @@ test("proxy requires admin token for non-local API access", () => {
       delete process.env.AUDITOR_ADMIN_TOKEN;
     } else {
       process.env.AUDITOR_ADMIN_TOKEN = previousToken;
+    }
+    if (previousHosts === undefined) {
+      delete process.env.PRIVACYTRACKER_ALLOWED_HOSTS;
+    } else {
+      process.env.PRIVACYTRACKER_ALLOWED_HOSTS = previousHosts;
+    }
+  }
+});
+
+test("proxy rejects a non-allowlisted Host with 400 for every method, even with a valid token", () => {
+  const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
+  const previousHosts = process.env.PRIVACYTRACKER_ALLOWED_HOSTS;
+  process.env.AUDITOR_ADMIN_TOKEN = "ci-secret";
+  delete process.env.PRIVACYTRACKER_ALLOWED_HOSTS;
+  try {
+    // Rebind-style read against an un-gated GET. The Host gate fires before any
+    // admin/CSRF logic, so even a valid token can't reach a disallowed host.
+    const rebindRead = proxy(
+      new NextRequest("http://attacker.example/api/apps", {
+        method: "GET",
+        headers: {
+          host: "attacker.example",
+          "x-auditor-admin-token": "ci-secret",
+        },
+      })
+    );
+    assert.equal(rebindRead.status, 400);
+    // The reject still carries the security headers.
+    assert.equal(rebindRead.headers.get("X-Frame-Options"), "DENY");
+    assert.match(
+      rebindRead.headers.get("Content-Security-Policy") ?? "",
+      /frame-ancestors 'none'/
+    );
+  } finally {
+    if (previousToken === undefined) {
+      delete process.env.AUDITOR_ADMIN_TOKEN;
+    } else {
+      process.env.AUDITOR_ADMIN_TOKEN = previousToken;
+    }
+    if (previousHosts === undefined) {
+      delete process.env.PRIVACYTRACKER_ALLOWED_HOSTS;
+    } else {
+      process.env.PRIVACYTRACKER_ALLOWED_HOSTS = previousHosts;
+    }
+  }
+});
+
+test("loopback Host always passes the allowlist even when a LAN host is configured", () => {
+  // Healthcheck invariant: the in-container probe always uses 127.0.0.1, which
+  // must keep working regardless of PRIVACYTRACKER_ALLOWED_HOSTS.
+  const previousHosts = process.env.PRIVACYTRACKER_ALLOWED_HOSTS;
+  process.env.PRIVACYTRACKER_ALLOWED_HOSTS = "nas.lan";
+  try {
+    const probe = proxy(
+      new NextRequest("http://127.0.0.1:3000/api/ready", {
+        method: "GET",
+        headers: { host: "127.0.0.1:3000" },
+      })
+    );
+    assert.notEqual(probe.status, 400);
+  } finally {
+    if (previousHosts === undefined) {
+      delete process.env.PRIVACYTRACKER_ALLOWED_HOSTS;
+    } else {
+      process.env.PRIVACYTRACKER_ALLOWED_HOSTS = previousHosts;
     }
   }
 });
@@ -169,9 +239,15 @@ test("dev routes are disabled unless an admin token is configured", async () => 
   }
 });
 
-test("destructive routes require admin token on non-local hosts", async () => {
+test("destructive routes require admin token when the deployment is network-exposed", async () => {
+  // The route-layer gate is now config-driven (NOT derived from the spoofable
+  // Host header): a network-exposed deployment with no token refuses the
+  // mutation. This pins the route layer so removing Host-trust can't silently
+  // drop the protection.
   const previousToken = process.env.AUDITOR_ADMIN_TOKEN;
+  const previousExposed = process.env.PRIVACYTRACKER_NETWORK_EXPOSED;
   delete process.env.AUDITOR_ADMIN_TOKEN;
+  process.env.PRIVACYTRACKER_NETWORK_EXPOSED = "1";
   try {
     const route = await import("../../app/api/reset/route");
     const response = await route.POST(
@@ -190,6 +266,11 @@ test("destructive routes require admin token on non-local hosts", async () => {
       delete process.env.AUDITOR_ADMIN_TOKEN;
     } else {
       process.env.AUDITOR_ADMIN_TOKEN = previousToken;
+    }
+    if (previousExposed === undefined) {
+      delete process.env.PRIVACYTRACKER_NETWORK_EXPOSED;
+    } else {
+      process.env.PRIVACYTRACKER_NETWORK_EXPOSED = previousExposed;
     }
   }
 });

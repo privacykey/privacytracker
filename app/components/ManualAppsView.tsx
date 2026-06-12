@@ -11,6 +11,11 @@ import {
   type ManualAppSource,
   type ManualAppSourceMeta,
 } from "../../lib/manual-apps";
+import { useModalFocus } from "../../lib/use-modal-focus";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import Favicon from "./Favicon";
 
 interface Props {
@@ -102,6 +107,21 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
    * is consistent across the app.
    */
   const [pendingDelete, setPendingDelete] = useState<ManualApp | null>(null);
+
+  // APG keyboard contract for the source-card radiogroup: one tab
+  // stop, arrows move focus + selection (local form state only).
+  const sourceRadioKeyDown = useRovingRadioGroup();
+
+  const manualDeleteRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete !== null,
+    onClose: () => {
+      if (!busy) {
+        setPendingDelete(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+
   // "Did we already open the create form from a ?prefillName deep link?" —
   // a ref rather than state so we don't re-trigger if the user closes and
   // reopens the page without a fresh URL.
@@ -474,8 +494,12 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
               <legend className="manual-apps-label">
                 {tManual("source_legend")}
               </legend>
-              <div className="manual-apps-source-grid">
-                {sources.map((src) => {
+              <div
+                className="manual-apps-source-grid"
+                onKeyDown={sourceRadioKeyDown}
+                role="radiogroup"
+              >
+                {sources.map((src, srcIndex) => {
                   const active = form.source === src.value;
                   return (
                     <button
@@ -485,6 +509,11 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                       key={src.value}
                       onClick={() => update({ source: src.value })}
                       role="radio"
+                      tabIndex={rovingTabIndex(
+                        active,
+                        srcIndex,
+                        sources.some((s) => s.value === form.source)
+                      )}
                       type="button"
                     >
                       <span
@@ -754,12 +783,9 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !busy) {
-                setPendingDelete(null);
-              }
-            }}
+            ref={manualDeleteRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tManual("remove_modal_badge")}</div>
             <h2 className="modal-title" id="manual-delete-title">
@@ -778,7 +804,6 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
                 {tManual("cancel")}
               </button>
               <button
-                autoFocus
                 className="btn btn-danger"
                 disabled={busy}
                 onClick={() => void confirmDelete()}

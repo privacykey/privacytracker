@@ -225,19 +225,6 @@ const DEPENDENCIES: DependencyEntry[] = [
     },
   },
   {
-    name: "echarts-for-react",
-    version: pkgVersion("echarts-for-react"),
-    license: "MIT",
-    about:
-      "Thin React wrapper around ECharts — handles mount/unmount and option diffing.",
-    usage:
-      "Used by every chart component under app/components/charts/ to declaratively bind ECharts options to React state.",
-    links: {
-      repo: "https://github.com/hustcc/echarts-for-react",
-      npm: "https://www.npmjs.com/package/echarts-for-react",
-    },
-  },
-  {
     name: "tesseract.js",
     version: pkgVersion("tesseract.js"),
     license: "Apache-2.0",

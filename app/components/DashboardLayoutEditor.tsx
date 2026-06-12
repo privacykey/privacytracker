@@ -37,6 +37,10 @@ import {
   type DashboardLayout,
 } from "../../lib/dashboard-layout";
 import { useDashboardLayoutSaver } from "../../lib/use-dashboard-layout-saver";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import { CardThumbnail } from "./DashboardCardThumbnail";
 
 interface Props {
@@ -81,6 +85,11 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // APG keyboard contract for the preset radiogroup: one tab stop,
+  // arrows move focus only — applying a preset overwrites the whole
+  // layout (and may pop the inline confirm), so Enter/Space commits.
+  const presetRadioKeyDown = useRovingRadioGroup({ followFocus: false });
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -107,9 +116,10 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
         <div
           aria-label={t("preset_aria_group")}
           className="layout-editor-presets-row"
+          onKeyDown={presetRadioKeyDown}
           role="radiogroup"
         >
-          {DASHBOARD_PRESET_KEYS.map((presetKey) => {
+          {DASHBOARD_PRESET_KEYS.map((presetKey, presetIndex) => {
             const meta = DASHBOARD_PRESET_META[presetKey];
             const isActive = activePreset === presetKey;
             const isPending = pendingPreset === presetKey;
@@ -129,6 +139,11 @@ export default function DashboardLayoutEditor({ initialLayout }: Props) {
                   data-severity={meta.severityCls}
                   onClick={() => applyPreset(presetKey)}
                   role="radio"
+                  tabIndex={rovingTabIndex(
+                    isActive,
+                    presetIndex,
+                    activePreset !== null
+                  )}
                   title={tPresetDesc(presetKey)}
                   type="button"
                 >

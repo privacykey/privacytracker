@@ -1,58 +1,38 @@
+# pnpm-workspace.yaml — pnpm settings. This is a single-package repo; the
+# file exists for configuration, not workspace packages.
+
+# Install-script allow-list (`allowBuilds`, the pnpm 11 replacement for the
+# removed `onlyBuiltDependencies`). pnpm refuses to run post-install scripts
+# for packages not approved here — they land in node_modules but skip their
+# build step, which silently breaks runtime:
+#   • better-sqlite3 — no compiled native binding
+#   • esbuild        — no platform binary in @esbuild/<os>-<arch>
+#   • sharp          — no libvips bundle
+#   • tesseract.js   — no language data
+#   • @swc/core      — no platform binary
+#   • @parcel/watcher — no native fsevents
+#   • unrs-resolver  — no native binding
+#   • @tauri-apps/cli — no platform binary
+# When pnpm prompts to approve a NEW dep, run `pnpm approve-builds`
+# interactively (it writes back here) or add `'<name>': true` below.
+# Values must be real booleans — quoted strings are parsed as "not
+# approved" and the build is silently skipped.
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
+  '@tauri-apps/cli': true
   better-sqlite3: true
   core-js-pure: false
   esbuild: true
   sharp: true
   tesseract.js: true
   unrs-resolver: true
-# pnpm-workspace.yaml — install-script whitelist for pnpm.
-#
-# Without this file, `pnpm install` refuses to run post-install scripts
-# (the security gate added in pnpm 9.0). Native deps land in
-# node_modules but skip their build step, which silently breaks runtime:
-#   • better-sqlite3 — no compiled native binding
-#   • esbuild       — no platform binary in @esbuild/<os>-<arch>
-#   • sharp         — no libvips bundle
-#   • tesseract.js  — no language data
-#   • @swc/core     — no platform binary
-#   • @parcel/watcher — no native fsevents
-#   • unrs-resolver — no native binding
-#   • @tauri-apps/cli — no platform binary
-#
-# Important: do NOT add an `allowBuilds:` map back to this file with
-# placeholder string values like "set this to true or false". pnpm
-# parses those as non-boolean and falls back to "not approved",
-# overriding the `onlyBuiltDependencies` block below — exactly what
-# happens when you run `pnpm approve-builds` and don't fill in the
-# stub. If pnpm prompts you to approve a NEW dep that's been added,
-# either run `pnpm approve-builds` interactively (it writes back here)
-# or add the dep name to BOTH this list AND `pnpm.onlyBuiltDependencies`
-# in package.json. Keeping both in sync covers pnpm 9 (reads from
-# package.json) and pnpm 10+ (reads from this file).
-onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - '@swc/core'
-  - '@tauri-apps/cli'
-  - better-sqlite3
-  - esbuild
-  - sharp
-  - tesseract.js
-  - unrs-resolver
 
-# Force-resolve `postcss` to a patched release. pnpm 10+ reads the
-# `overrides` block from this file in preference to package.json's
-# `pnpm.overrides` — keeping it in package.json AND here would cause
+# Force-resolve `postcss` to a patched release. pnpm reads the `overrides`
+# block from this file in preference to package.json's `pnpm.overrides` —
+# keeping it in package.json AND here would cause
 # `[ERR_PNPM_LOCKFILE_CONFIG_MISMATCH]` in CI when the two sources
 # disagree on field-set. Patches GHSA-qx2v-qp2m-jg93 (XSS via
 # unescaped end-style tag in CSS stringify, fixed in 8.5.10).
 overrides:
   postcss: ^8.5.12
-
-# ESLint 10 compatibility is provided through @eslint/compat in
-# eslint.config.mjs until the React/import plugins bundled by
-# eslint-config-next widen their peer ranges.
-peerDependencyRules:
-  allowedVersions:
-    eslint: ^10.0.0

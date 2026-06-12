@@ -30,7 +30,7 @@
 
 import db from "./db";
 import { getSetting, setSetting } from "./scheduler";
-import { validateExternalUrl } from "./security";
+import { safeFetch } from "./security";
 
 export type WebhookFormat = "slack" | "discord" | "teams" | "generic";
 export type WebhookFrequency =
@@ -267,15 +267,18 @@ export async function postWebhookTestPayload(
 }
 
 /**
- * Core POST. `safeFetch` is GET-only by design, so we run the same SSRF
- * validator manually and then issue a plain `fetch` with the
- * webhook body. Validation rejects file://, private/loopback IPs
- * (unless we extended the allowPrivateHosts switch), and anything
- * pointing at cloud metadata services.
+ * Core POST. Routed through `safeFetch` so the destination URL gets the same
+ * SSRF protection as every other outbound fetch: syntactic validation (no
+ * file://, no private/loopback IPs, no cloud-metadata hosts) PLUS a
+ * resolve-time check that the hostname doesn't *resolve* to a private/metadata
+ * IP — closing the DNS-rebinding gap a purely syntactic check can't see. The
+ * response read is bounded too. We don't pass `allowPrivateHosts`: a webhook
+ * has no business reaching an internal service.
  *
- * 10s timeout via AbortSignal — webhooks should respond near-instantly;
- * if Slack/Discord etc. take longer the user has bigger problems than
- * waiting for our POST to time out.
+ * `POST` + `redirect: 'manual'` means the body is delivered exactly once and
+ * never replayed to a redirect target. 10s timeout — webhooks should respond
+ * near-instantly; if Slack/Discord etc. take longer the user has bigger
+ * problems than waiting for our POST to time out.
  */
 async function postWebhook(
   cfg: WebhookConfig,
@@ -283,31 +286,21 @@ async function postWebhook(
   lines: readonly string[],
   notifications: readonly WebhookNotification[]
 ): Promise<{ ok: boolean; status: number; detail?: string }> {
-  const verdict = validateExternalUrl(cfg.url, { maxLength: 512 });
-  if (!(verdict.ok && verdict.url)) {
-    throw new Error(
-      `Blocked webhook URL: ${verdict.error ?? "invalid_url"} — ${verdict.detail ?? cfg.url}`
-    );
-  }
   const body = JSON.stringify(
     buildPayload(cfg.format, title, lines, notifications)
   );
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
-  try {
-    const response = await fetch(verdict.url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      signal: controller.signal,
-      redirect: "manual",
-    });
-    return {
-      ok: response.ok,
-      status: response.status,
-      detail: response.ok ? undefined : `HTTP ${response.status}`,
-    };
-  } finally {
-    clearTimeout(timer);
-  }
+  const { response } = await safeFetch(cfg.url, {
+    method: "POST",
+    body,
+    headers: { "Content-Type": "application/json" },
+    redirect: "manual",
+    maxBytes: 64 * 1024,
+    maxUrlLength: 512,
+    timeoutMs: 10_000,
+  });
+  return {
+    ok: response.ok,
+    status: response.status,
+    detail: response.ok ? undefined : `HTTP ${response.status}`,
+  };
 }

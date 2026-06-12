@@ -42,6 +42,7 @@ export type DashboardCardId =
   | "hero"
   | "cleanup_callout"
   | "family_callout"
+  | "age_rating_callout"
   | "third_party_callout"
   | "glance_section"
   | "definitions_callout"
@@ -83,6 +84,7 @@ export const CALLOUT_CARDS = new Set<DashboardCardId>([
   "manual_apps_banner",
   "cleanup_callout",
   "family_callout",
+  "age_rating_callout",
   "third_party_callout",
 ]);
 
@@ -106,6 +108,7 @@ export const CANONICAL_ORDER: readonly DashboardCardId[] = [
   "hero",
   "cleanup_callout",
   "family_callout",
+  "age_rating_callout",
   "third_party_callout",
   "glance_section",
   "definitions_callout",

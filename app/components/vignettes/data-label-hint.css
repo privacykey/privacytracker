@@ -18,6 +18,7 @@
 /* ── Trigger button ─────────────────────────────────── */
 
 .data-label-hint-trigger {
+  position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -40,6 +41,14 @@
     background 0.15s ease,
     color 0.15s ease,
     transform 0.15s ease;
+}
+
+/* WCAG 2.2 SC 2.5.8 — invisible hit-area extension. The painted glyph
+   stays 18px; the pseudo-element grows the clickable box to 24×24. */
+.data-label-hint-trigger::after {
+  position: absolute;
+  inset: -3px;
+  content: "";
 }
 
 .data-label-hint-trigger:hover,
