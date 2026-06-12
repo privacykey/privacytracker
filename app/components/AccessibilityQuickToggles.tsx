@@ -493,6 +493,17 @@ export default function AccessibilityQuickToggles() {
         )}
       </button>
 
+      {/* Deliberately a NON-modal dialog — no `aria-modal`, no focus trap.
+          The toggles apply to the page live, so users need to see (and reach)
+          the background while flipping them; pruning it from the accessibility
+          tree or fencing Tab inside would defeat the point. The popover sits
+          in DOM order directly after its trigger, so Tab/Shift+Tab walk in and
+          out naturally without a trap. The keyboard contract is still
+          complete: Escape and the ✕ button close and restore focus to the
+          trigger; outside-click closes and leaves focus where the user
+          clicked; the `g u` shortcut path moves focus onto the ✕ button on
+          open (trigger-click opens keep focus on the trigger,
+          disclosure-style). */}
       {open && (
         <div
           aria-label={t("popover_aria")}
@@ -507,7 +518,13 @@ export default function AccessibilityQuickToggles() {
             <button
               aria-label={t("close_aria")}
               className="a11y-quick-popover-close"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                // Keyboard-close path: put focus back on the trigger, same as
+                // Escape — otherwise focus falls to <body> when this button
+                // unmounts.
+                triggerRef.current?.focus();
+              }}
               type="button"
             >
               ✕
