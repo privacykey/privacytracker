@@ -184,6 +184,27 @@ export function CardThumbnail({ id }: ThumbProps) {
           <line x1="44" x2="58" y1="38" y2="38" />
         </Frame>
       );
+    case "age_rating_callout":
+      // Rating badge ("9+") next to a warning triangle.
+      return (
+        <Frame>
+          <rect height="14" rx="3" width="18" x="10" y="18" />
+          <text
+            fill="currentColor"
+            fontSize="9"
+            fontWeight="700"
+            stroke="none"
+            x="13"
+            y="29"
+          >
+            9+
+          </text>
+          <path d="M44 33 L51 20 L58 33 Z" />
+          <line x1="51" x2="51" y1="25" y2="29" />
+          <circle cx="51" cy="31" fill="currentColor" r="0.8" stroke="none" />
+          <line x1="10" x2="68" y1="40" y2="40" />
+        </Frame>
+      );
     case "third_party_callout":
       // Connected nodes hinting at "third-party data flow".
       return (

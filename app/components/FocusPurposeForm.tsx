@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { AGE_BAND_KEYS, type AgeBandKey } from "@/lib/age-rating";
 import type { Audience } from "@/lib/feature-flag-rules";
 import type { FocusWorkflow } from "@/lib/focus-workflow";
 import {
@@ -24,6 +26,8 @@ interface FocusPurposeFormProps {
   eyebrow?: string;
   footer?: ReactNode;
   initial: PurposeFocusInput;
+  /** Stored guardian child age band, when one is set. */
+  initialChildAgeBand?: AgeBandKey | null;
   mode: "onboarding" | "settings";
   onCancel?: () => void;
   onSubmit: (resolved: ResolvedPurposeFocus) => void | Promise<void>;
@@ -89,6 +93,7 @@ export default function FocusPurposeForm({
   extraActions,
   footer,
   initial,
+  initialChildAgeBand = null,
   mode,
   onCancel,
   onSubmit,
@@ -100,11 +105,13 @@ export default function FocusPurposeForm({
   eyebrow,
 }: FocusPurposeFormProps) {
   const t = useTranslations("focus_purpose");
+  const tAgeBand = useTranslations("age_band");
   const tAnimation = useTranslations("focus_purpose.animation");
   const tAudience = useTranslations("audience");
   const tGoal = useTranslations("goal");
 
   const audiencePickerOn = useFlag("flag.onboarding.audience_picker") === "on";
+  const ageRatingFlag = useFlag("flag.guardian.age_rating");
   const goalsPickerOn = useFlag("flag.onboarding.goals_picker") === "on";
   const minimalOptionOn =
     useFlag("flag.onboarding.goals_picker.minimal_option") === "on";
@@ -138,6 +145,9 @@ export default function FocusPurposeForm({
     accessibility: initial.accessibility,
     workflow: initial.workflow,
   });
+  const [childAgeBand, setChildAgeBand] = useState<AgeBandKey | null>(
+    initialChildAgeBand
+  );
   const [monitorChange, setMonitorChange] = useState<MonitorChangeOption>(
     MONITOR_CHANGE_OPTIONS[0]
   );
@@ -189,6 +199,23 @@ export default function FocusPurposeForm({
     });
   }
 
+  // Audience the CURRENT form state resolves to — drives the child-age
+  // section's visibility live, before anything is saved.
+  const effectiveAudience: Audience =
+    primary === "help"
+      ? helpRelationship === "child"
+        ? "guardian"
+        : "loved_one"
+      : primary === "custom"
+        ? customFocus.audience
+        : "self";
+  // When the saved audience is already guardian the resolved flag is
+  // authoritative (kill-switch / user override). Mid-form switches TO
+  // guardian can't resolve the flag yet, so they show the picker.
+  const showChildAgeSection =
+    effectiveAudience === "guardian" &&
+    !(initial.audience === "guardian" && ageRatingFlag !== "on");
+
   async function handleSubmit() {
     const resolved = resolvePurposeSelection({
       primary,
@@ -200,7 +227,7 @@ export default function FocusPurposeForm({
       },
       advanced: customFocus,
     });
-    await onSubmit(resolved);
+    await onSubmit({ ...resolved, childAgeBand });
   }
 
   return (
@@ -315,6 +342,41 @@ export default function FocusPurposeForm({
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {showChildAgeSection && (
+          <div className="focus-purpose-branch-group focus-guardian-age">
+            <h2 className="focus-purpose-branch-heading">
+              {t("guardian_age.heading")}
+            </h2>
+            <p className="focus-guardian-age-hint">{t("guardian_age.hint")}</p>
+            <div
+              aria-label={t("guardian_age.heading")}
+              className="focus-purpose-pills"
+              role="radiogroup"
+            >
+              {AGE_BAND_KEYS.map((band) => (
+                <button
+                  aria-checked={childAgeBand === band}
+                  className={`pill-button ${childAgeBand === band ? "active" : ""}`}
+                  disabled={saving}
+                  key={band}
+                  onClick={() =>
+                    setChildAgeBand((prev) => (prev === band ? null : band))
+                  }
+                  role="radio"
+                  type="button"
+                >
+                  {tAgeBand(`labels.${band}`)}
+                </button>
+              ))}
+            </div>
+            <p className="focus-guardian-age-resources">
+              <Link className="welcome-link" href="/help/parental-controls">
+                {t("guardian_age.resources_link")}
+              </Link>
+            </p>
           </div>
         )}
 

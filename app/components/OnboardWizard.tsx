@@ -29,6 +29,7 @@ import {
   type CfgutilCheckResult,
   type ConnectedDevice,
   checkCfgutil,
+  findChildSafetyPropertyNames,
   isDesktop,
   listConnectedDevices,
   runCfgutilExport,
@@ -6134,6 +6135,34 @@ export default function OnboardWizard({
                                   </span>
                                 )}
                               </div>
+                              {/* Diagnostics-only probe: what properties this
+                              cfgutil build can read off a device. The guardian
+                              age-rating feature watches for the day Apple
+                              exposes a child age-range / restrictions property
+                              over USB (today DeclaredAgeRange is in-app only,
+                              so the hit list is expected to be empty). */}
+                              {cfgutilCheck?.supportedPropertyNames &&
+                                (() => {
+                                  const hits = findChildSafetyPropertyNames(
+                                    cfgutilCheck.supportedPropertyNames
+                                  );
+                                  return (
+                                    <p className="cfgutil-step-sub">
+                                      {tCfg("step2_properties_probe", {
+                                        count:
+                                          cfgutilCheck.supportedPropertyNames
+                                            .length,
+                                      })}
+                                      {hits.length > 0 && (
+                                        <>
+                                          {" "}
+                                          {tCfg("step2_properties_child_hit")}{" "}
+                                          <code>{hits.join(", ")}</code>
+                                        </>
+                                      )}
+                                    </p>
+                                  );
+                                })()}
                               {/* Larger, more visible "we're working on it"
                               panel — the cfgutil probe shells out + checks
                               the Automation Tools install, which can take

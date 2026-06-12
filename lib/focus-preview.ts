@@ -11,6 +11,7 @@
  * Docs: https://privacytracker-docs.privacykey.org/develop/feature-flags
  */
 
+import { type AgeBandKey, isValidAgeBand } from "./age-rating";
 import type { Audience } from "./feature-flag-rules";
 import {
   type FocusWorkflow,
@@ -35,6 +36,8 @@ const CHANGE_EVENT = "focus-preview-changed";
 export interface FocusPreview {
   accessibility: boolean;
   audience: Audience;
+  /** Guardian child age band. `undefined` = leave unchanged; `null` = clear. */
+  childAgeBand?: AgeBandKey | null;
   declutter: boolean;
   minimal: boolean;
   /** Epoch ms when the user staged this preview. Used by the banner. */
@@ -91,6 +94,11 @@ export function getPreviewFocus(): FocusPreview | null {
       declutter,
       minimal,
       accessibility: Boolean(parsed.accessibility),
+      childAgeBand: isValidAgeBand(parsed.childAgeBand)
+        ? parsed.childAgeBand
+        : parsed.childAgeBand === null
+          ? null
+          : undefined,
       workflow: isFocusWorkflow(parsed.workflow)
         ? parsed.workflow
         : inferFocusWorkflow({ audience, understand, declutter, minimal }),

@@ -2014,6 +2014,38 @@ html[data-theme-override="high-contrast"] .nav {
   border-color: var(--border);
 }
 
+/* ── Age-rating chip in the detail-hero meta row ────────────────────────
+   Neutral by default ("Ages 13+"); gains a ✓/⚠ verdict variant when the
+   guardian feature is on and a child age band is set. Glyphs ship inside
+   the chip so colour is never the only signal. */
+.detail-age-pill {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-feature-settings: "tnum" 1;
+  line-height: 1.2;
+  color: var(--text-2);
+  white-space: nowrap;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.detail-age-pill-within {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--green) 30%, var(--border));
+}
+
+.detail-age-pill-above {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, var(--surface-2));
+  border-color: color-mix(in srgb, var(--red) 32%, var(--border));
+}
+
 /* ── Accessibility tab panel ────────────────────────────────────────── */
 
 .a11y-panel {
@@ -13011,6 +13043,35 @@ button.import-history-stat.is-active {
   border-color: color-mix(in srgb, var(--yellow) 40%, transparent);
 }
 
+/* ── Guardian age-rating pill (grid cards) ──────────────────────────────
+   Only the "above the child's age band" state gets a card pill — within-
+   range apps stay quiet to keep cards clean. The ⚠ glyph rides inside the
+   pill so the state never reads through colour alone (WCAG 1.4.1). */
+.age-pill {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.age-pill-above {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+.age-pill-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
 /* User-authored "Custom" apps — web clips, TestFlight, sideloaded, etc.
    Distinct from the severity palette so the grid doesn't imply they've
    been risk-assessed; a dashed border reads as "outside the App Store
@@ -15063,6 +15124,20 @@ button.import-history-stat.is-active {
 }
 
 .filter-status-access-missing {
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--text-3) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--text-3) 35%, var(--border));
+}
+
+/* Age-rating active-filter chips — red for the warning bucket, neutral
+   for within-range, matching the segmented-toggle accents. */
+.filter-status-age-above {
+  color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--red) 35%, var(--border));
+}
+
+.filter-status-age-within {
   color: var(--text-2);
   background: color-mix(in srgb, var(--text-3) 10%, var(--surface));
   border-color: color-mix(in srgb, var(--text-3) 35%, var(--border));
@@ -17202,6 +17277,17 @@ button.import-history-stat.is-active {
 .intent-callout-info {
   background: rgba(10, 132, 255, 0.06);
   border-color: var(--blue);
+}
+
+/* Amber "needs a look" tier — sits between info (blue) and alert (red).
+   Used by the guardian age-rating callout. */
+.intent-callout-warn {
+  background: color-mix(in srgb, var(--yellow) 7%, transparent);
+  border-color: var(--yellow);
+}
+
+.intent-callout-warn .intent-callout-title {
+  color: color-mix(in srgb, var(--yellow) 75%, var(--text));
 }
 
 .intent-callout-quiet {
@@ -29284,6 +29370,27 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   color: var(--text-2);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Guardian child-age band picker — appears when the form's selected
+   audience resolves to guardian. Shares the branch-card chrome. */
+.focus-guardian-age {
+  padding: 14px;
+  margin-top: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.focus-guardian-age-hint {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.focus-guardian-age-resources {
+  margin: 10px 0 0;
+  font-size: 13px;
 }
 
 .focus-purpose-segmented {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { type AgeBandKey, isValidAgeBand } from "@/lib/age-rating";
 import {
   getResolverContextFromDb,
   resolveFlagFromDb,
@@ -151,6 +152,7 @@ export default function AppsPage() {
         cardAnnotationHighlight: r("flag.appgrid.card.annotation_highlight"),
         cardVerdictPill: r("flag.appgrid.card.verdict_pill"),
         emptyState: r("flag.appgrid.empty_state"),
+        guardianAgeRating: r("flag.guardian.age_rating"),
         reviewQueueEnabled: r("flag.appgrid.review_queue.enabled"),
         reviewQueueBulkSelect: r("flag.appgrid.review_queue.bulk_select"),
         reviewQueueCfgutilUninstall: r(
@@ -195,6 +197,16 @@ export default function AppsPage() {
     console.warn("[apps-page] reading queue_show_progress_bar failed:", e);
   }
 
+  // Guardian child age band — drives the age-rating pill + filter. Null
+  // (unset / invalid / read failure) hides the surface entirely.
+  let childAgeBand: AgeBandKey | null = null;
+  try {
+    const rawBand = getSetting("guardian_child_age_band", "");
+    childAgeBand = isValidAgeBand(rawBand) ? rawBand : null;
+  } catch (e) {
+    console.warn("[apps-page] reading guardian_child_age_band failed:", e);
+  }
+
   // Device filter data — passed to AppGrid so the client can render a
   // dropdown and filter rows by `?device=<id>` URL param without an
   // extra fetch. Empty arrays on failure keep the grid working.
@@ -222,6 +234,7 @@ export default function AppsPage() {
       <AppGrid
         appDeviceMap={appDeviceMap}
         audience={audience}
+        childAgeBand={childAgeBand}
         devices={devices}
         flags={appgridFlags}
         hasProfile={hasProfile}

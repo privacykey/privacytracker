@@ -19,13 +19,15 @@ export interface ChangeEntry {
   /**
    * Drives the icon. `privacy-policy` for privacy-policy text changes,
    * `wayback-attempt` for historical-import Save Page Now outcomes,
-   * `accessibility` for Apple's accessibility-labels shelf changes.
+   * `accessibility` for Apple's accessibility-labels shelf changes,
+   * `age-rating` for App Store age-rating tier changes.
    */
   category?:
     | "privacy-label"
     | "privacy-policy"
     | "wayback-attempt"
-    | "accessibility";
+    | "accessibility"
+    | "age-rating";
   description: string;
   details?: string[];
   /**

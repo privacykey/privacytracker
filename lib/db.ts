@@ -78,7 +78,11 @@ db.exec(`
        Compare page's "Top in same category" quick-pick. NULL on existing
        rows until the next sync fills them in. */
     genreId INTEGER,
-    genreName TEXT
+    genreName TEXT,
+    /* App Store age rating from iTunes Lookup, raw string ("4+", "13+").
+       Legacy 12+/17+ strings may persist on old rows; comparisons parse
+       the number rather than matching the enum. NULL = unknown. */
+    ageRating TEXT
   );
 
   CREATE TABLE IF NOT EXISTS privacy_types (
@@ -750,6 +754,8 @@ const migrations: [string, string][] = [
   // Apple genre/category. NULL until next sync.
   ["genreId", "ALTER TABLE apps ADD COLUMN genreId INTEGER"],
   ["genreName", "ALTER TABLE apps ADD COLUMN genreName TEXT"],
+  // App Store age rating ("4+", "13+"). NULL until next sync.
+  ["ageRating", "ALTER TABLE apps ADD COLUMN ageRating TEXT"],
 ];
 applyColumnMigrations(appCols, migrations);
 

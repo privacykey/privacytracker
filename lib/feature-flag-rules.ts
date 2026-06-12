@@ -74,6 +74,13 @@ export type FlagKey =
   | "flag.dashboard.risk_section"
   | "flag.dashboard.callout.declutter"
   | "flag.dashboard.callout.guardian"
+  // "N apps rated above your child's age range" callout. Depends on the
+  // flag.guardian.age_rating master (FLAG_DEPENDENCIES below).
+  | "flag.dashboard.callout.age_rating"
+  // Master switch for the guardian child-age-band feature: the band picker
+  // in the focus form, the grid badge + filter, and the detail verdict row
+  // all check this key. Off by default; the guardian audience turns it on.
+  | "flag.guardian.age_rating"
   | "flag.dashboard.callout.understand_declutter"
   | "flag.dashboard.callout.understand_only"
   | "flag.dashboard.glance_section"
@@ -383,6 +390,8 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.dashboard.manual_apps_banner": "on", // "not everything is on App Store" CTA
   "flag.dashboard.risk_section": "on", // higher-risk apps watchlist
   "flag.dashboard.callout.declutter": "off", // declutter goal turns this on
+  "flag.dashboard.callout.age_rating": "off", // guardian audience turns this on
+  "flag.guardian.age_rating": "off", // guardian audience turns this on
   "flag.dashboard.callout.guardian": "off", // guardian audience turns this on
   "flag.dashboard.callout.understand_declutter": "off", // (understand AND declutter) turns this on
   "flag.dashboard.callout.understand_only": "off", // (understand AND NOT declutter) turns this on
@@ -672,6 +681,8 @@ export const AUDIENCE_RULES: Record<
     "flag.taskcenter.widget": "off", // background-job widget too technical
     "flag.notifications.resume.enabled": "off", // 'resumed after restart' is debug-y for carers
     "flag.detail.policy.safety_summary": "on", // NEW: 'is this safe for them?' summary pinned at top
+    "flag.guardian.age_rating": "on", // child age band vs app age ratings
+    "flag.dashboard.callout.age_rating": "on", // 'apps above the child's range' callout
     "flag.detail.policy.run_log_strip": "off", // diagnostic
     "flag.detail.policy.run_log_details": "off", // diagnostic
     "flag.detail.policy.chunk_notes": "off", // per-chunk debug
@@ -854,6 +865,9 @@ export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
   "flag.detail.policy.safety_summary": "flag.detail.policy.ai_summary",
   "flag.detail.policy.change_strip": "flag.detail.policy.ai_summary",
   "flag.detail.policy.chunk_notes": "flag.detail.policy.ai_summary",
+
+  // Guardian age-rating: the dashboard callout chains off the master
+  "flag.dashboard.callout.age_rating": "flag.guardian.age_rating",
 
   // A11y panel sub-flags
   "flag.detail.a11y.preference_highlights": "flag.detail.a11y.panel",
