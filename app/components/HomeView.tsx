@@ -24,7 +24,9 @@ import {
   Fragment,
   type ReactNode,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -618,6 +620,34 @@ function EditModeShell({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // 2.4.11 Focus Not Obscured: the sticky toolbar floats over the card
+  // list, so focus- or keyboard-drag-driven scrolling must clear it. The
+  // toolbar height varies (preset pills wrap at narrow widths / large text
+  // scale), so measure it and expose the clearance as a CSS variable that
+  // .home-edit-card's scroll-margin-top consumes.
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const toolbarRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const shell = shellRef.current;
+    const toolbar = toolbarRef.current;
+    if (!(shell && toolbar) || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    // offsetHeight (not getBoundingClientRect) so the value stays in the
+    // same zoomed coordinate space as the scroll-margin that consumes it
+    // when the in-app text scale is active. +8 sticky top, +16 breathing.
+    const apply = () => {
+      shell.style.setProperty(
+        "--home-edit-toolbar-clearance",
+        `${toolbar.offsetHeight + 24}px`
+      );
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(toolbar);
+    return () => ro.disconnect();
+  }, []);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
@@ -630,8 +660,8 @@ function EditModeShell({
   );
 
   return (
-    <div className="page-container home-page home-page-edit">
-      <EditModeToolbar saver={saver} />
+    <div className="page-container home-page home-page-edit" ref={shellRef}>
+      <EditModeToolbar saver={saver} toolbarRef={toolbarRef} />
       <DndContext
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
@@ -681,7 +711,13 @@ function EditModeShell({
 // Sticky toolbar — preset pills + reset + open simple editor + done
 // ─────────────────────────────────────────────
 
-function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
+function EditModeToolbar({
+  saver,
+  toolbarRef,
+}: {
+  saver: UseDashboardLayoutSaverResult;
+  toolbarRef?: React.Ref<HTMLElement>;
+}) {
   const router = useRouter();
   const t = useTranslations("dashboard.layout_editor");
   const tPresetLabel = useTranslations(
@@ -702,7 +738,11 @@ function EditModeToolbar({ saver }: { saver: UseDashboardLayoutSaverResult }) {
   }, [router]);
 
   return (
-    <section aria-label={t("toolbar_aria")} className="home-edit-toolbar">
+    <section
+      aria-label={t("toolbar_aria")}
+      className="home-edit-toolbar"
+      ref={toolbarRef}
+    >
       <div className="home-edit-toolbar-status">
         <span className="home-edit-toolbar-title">{t("toolbar_title")}</span>
         {saver.savingState === "saving" && (

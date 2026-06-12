@@ -419,8 +419,16 @@ export default function StatsView({
           </p>
         </div>
 
-        {/* Export dropdown */}
-        <div style={{ position: "relative", display: "flex", gap: 10 }}>
+        {/* Export dropdown — wraps so the nowrap buttons stack instead of
+            widening the page at narrow viewports / large text scale. */}
+        <div
+          style={{
+            position: "relative",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
           <a
             className="btn btn-secondary"
             download
