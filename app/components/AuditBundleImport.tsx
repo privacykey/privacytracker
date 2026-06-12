@@ -27,6 +27,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useRef, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 // Mirrors the four named profile presets exposed by
 // `lib/privacy-profile.ts`. Kept as a string-literal union here (rather
@@ -89,6 +90,16 @@ export default function AuditBundleImport() {
   const [busy, setBusy] = useState<"preview" | "commit" | null>(null);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  const bundleConfirmRef = useModalFocus<HTMLDivElement>({
+    open: !!(preview && previewing),
+    onClose: () => {
+      if (busy === null) {
+        reset();
+      }
+    },
+    closeOnEscape: true,
+  });
 
   const reset = () => {
     setPreviewing(null);
@@ -321,12 +332,9 @@ export default function AuditBundleImport() {
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && busy === null) {
-                reset();
-              }
-            }}
+            ref={bundleConfirmRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">
               {preview.existingImport
@@ -426,7 +434,6 @@ export default function AuditBundleImport() {
                 {t("modal_cancel")}
               </button>
               <button
-                autoFocus
                 className={`btn ${preview.existingImport ? "btn-secondary" : "btn-primary"}`}
                 disabled={busy !== null}
                 onClick={() => void runCommit()}

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 // AnnotationsSidebar is loaded lazily — it pulls in `marked` (~30kb), so
 // only ship that to App Detail clients when the flag is on. Audience-aware
@@ -640,6 +641,15 @@ export default function AppDetailView({
   // DELETE they thought they cancelled.
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const deleteModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete,
+    onClose: () => {
+      if (!deleting) {
+        setPendingDelete(false);
+      }
+    },
+    closeOnEscape: true,
+  });
 
   // Kebab actions menu — re-sync + remove-from-tracker live behind a ⋯
   // trigger so the hero stays focused on content rather than maintenance.
@@ -976,20 +986,6 @@ export default function AppDetailView({
       setDeleting(false);
     }
   };
-
-  // Close the delete modal on Escape, provided we're not mid-request.
-  useEffect(() => {
-    if (!pendingDelete) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !deleting) {
-        setPendingDelete(false);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pendingDelete, deleting]);
 
   // Count total categories across all privacy types
   const totalCategories = app.privacyTypes.reduce(
@@ -1862,7 +1858,9 @@ export default function AppDetailView({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
+            ref={deleteModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tDetail("remove_modal.badge")}</div>
             <h2 className="modal-title" id="delete-app-title">

@@ -42,6 +42,7 @@ import {
   inferCountryFromLocale,
   normalizeCountry,
 } from "../../lib/region";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import AlreadyTrackedAccordion from "./AlreadyTrackedAccordion";
 import DeviceSyncDiffOverlay from "./DeviceSyncDiffOverlay";
 import ImportedAppsTable from "./ImportedAppsTable";
@@ -1104,6 +1105,29 @@ export default function OnboardWizard({
     setRestoreError("");
     setRestoreConfirmText("");
   };
+
+  // ── Modal focus management (WCAG 2.4.3 / 2.1.2) ────────────────────────
+  const restoreModalCardRef = useModalFocus<HTMLDivElement>({
+    open:
+      (restoreStage === "confirm" || restoreStage === "applying") &&
+      restorePreview !== null,
+    onClose: () => {
+      if (restoreStage !== "applying") {
+        resetRestoreFlow();
+      }
+    },
+    closeOnEscape: true,
+  });
+  const cancelModalCardRef = useModalFocus<HTMLDivElement>({
+    open: cancelModalOpen,
+    onClose: () => setCancelModalOpen(false),
+    closeOnEscape: true,
+  });
+  const rateLimitModalCardRef = useModalFocus<HTMLDivElement>({
+    open: rateLimitPauseModal !== null,
+    onClose: () => setRateLimitPauseModal(null),
+    closeOnEscape: true,
+  });
 
   const handleRestoreFileChosen = async (file: File) => {
     setRestoreError("");
@@ -8249,7 +8273,9 @@ export default function OnboardWizard({
               aria-modal="true"
               className="modal-card"
               onClick={(event) => event.stopPropagation()}
+              ref={restoreModalCardRef}
               role="dialog"
+              tabIndex={-1}
             >
               <div className="modal-badge">{tModalRestore("badge")}</div>
               <h2 className="modal-title" id="onboard-restore-title">
@@ -8379,12 +8405,9 @@ export default function OnboardWizard({
             aria-modal="true"
             className="modal-card cancel-confirm-modal"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setCancelModalOpen(false);
-              }
-            }}
+            ref={cancelModalCardRef}
             role="dialog"
+            tabIndex={-1}
           >
             <h2 className="modal-title" id="cancel-modal-title">
               {tModalCancel("title")}
@@ -8439,12 +8462,9 @@ export default function OnboardWizard({
             aria-modal="true"
             className="modal-card rate-limit-pause-modal"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setRateLimitPauseModal(null);
-              }
-            }}
+            ref={rateLimitModalCardRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tModalRate("badge")}</div>
             <h2 className="modal-title" id="rate-limit-modal-title">

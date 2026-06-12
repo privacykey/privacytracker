@@ -29,7 +29,7 @@
  * GOAL_RULES diff ready to paste into `lib/feature-flag-rules.ts`.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ACCESSIBILITY_RULES,
   AUDIENCE_RULES,
@@ -42,6 +42,7 @@ import {
   type Modifier,
   type PrimaryGoal,
 } from "@/lib/feature-flag-rules";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 // ── Combo definition ────────────────────────────────────────────────
 //
@@ -581,6 +582,12 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
 
   // ── Render ────────────────────────────────────────────────────────
 
+  const cancelRef = useRef<(() => void) | null>(null);
+  const confirmCardRef = useModalFocus<HTMLDivElement>({
+    open: pendingConfirm !== null,
+    onClose: () => cancelRef.current?.(),
+  });
+
   return (
     <div className="focus-matrix">
       <div className="focus-matrix-toolbar">
@@ -708,6 +715,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
               setPendingConfirm(null);
             }
           };
+          cancelRef.current = cancel;
           const titleId = "focus-matrix-confirm-title";
           const copyId = "focus-matrix-confirm-copy";
           const { title, body, confirmLabel } = (() => {
@@ -739,12 +747,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                 aria-modal="true"
                 className="modal-card"
                 onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    cancel();
-                  }
-                }}
+                ref={confirmCardRef}
                 role="dialog"
+                tabIndex={-1}
               >
                 <h2 className="modal-title" id={titleId}>
                   {title}
@@ -762,7 +767,6 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                     Cancel
                   </button>
                   <button
-                    autoFocus
                     className="btn btn-danger"
                     disabled={closing}
                     onClick={() => void runPendingConfirm()}

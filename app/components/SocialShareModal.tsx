@@ -35,6 +35,7 @@ import { useFlag } from "../../lib/feature-flags-hooks";
 import { CATEGORY_META } from "../../lib/privacy-meta";
 import { TYPE_IDENTIFIER_TO_TIER } from "../../lib/privacy-profile";
 import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 interface PreviewLike {
   developer: string;
@@ -610,6 +611,15 @@ export function SocialShareModal({
   const tShare = useTranslations("social_share");
   const tCanvas = useTranslations("social_share.canvas");
 
+  // This component is only mounted while open, so open=true. closeOnEscape
+  // is false because the existing keydown handler owns both Escape and
+  // Cmd/Ctrl+C to avoid double-firing.
+  const dialogCardRef = useModalFocus<HTMLDivElement>({
+    open: true,
+    onClose,
+    closeOnEscape: false,
+  });
+
   const [altState, setAltState] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
@@ -882,7 +892,7 @@ export function SocialShareModal({
       }}
       role="dialog"
     >
-      <div className="social-share-dialog">
+      <div className="social-share-dialog" ref={dialogCardRef} tabIndex={-1}>
         <div className="social-share-header">
           <div>
             <h2 className="social-share-title" id="social-share-title">

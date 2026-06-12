@@ -11,6 +11,7 @@ import {
 import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
 import AuditBundleExport from "./AuditBundleExport";
 import AuditBundleImport from "./AuditBundleImport";
@@ -5393,6 +5394,45 @@ export default function SettingsView({
   // The legacy `aiSaveDisabled` flag is gone — there's no Save button
   // anymore. The same gating now lives inline in `saveAiSettings`,
   // which silently skips POSTs when required fields are missing.
+
+  // Focus management for every modal dialog rendered below: trap Tab, move
+  // focus into the card on open, restore it on close, and close on Escape.
+  // One hook per dialog (see useModalFocus). Each `onClose` mirrors the
+  // dialog's own dismiss guard (e.g. don't close mid-apply / mid-delete).
+  const restoreModalRef = useModalFocus<HTMLDivElement>({
+    open:
+      (restoreStage === "confirm" || restoreStage === "applying") &&
+      restorePreview !== null,
+    onClose: () => {
+      if (restoreStage !== "applying") {
+        resetRestoreFlow();
+      }
+    },
+  });
+  const deleteImportModalRef = useModalFocus<HTMLDivElement>({
+    open: deleteTarget !== null,
+    onClose: () => {
+      if (!deleting) {
+        setDeleteTarget(null);
+      }
+    },
+  });
+  const waybackRemoveModalRef = useModalFocus<HTMLDivElement>({
+    open: waybackRemoveOpen,
+    onClose: closeWaybackRemoveModal,
+  });
+  const removeItemModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingItemRemoval !== null,
+    onClose: () => {
+      if (removingItemId === null) {
+        setPendingItemRemoval(null);
+      }
+    },
+  });
+  const resetModalRef = useModalFocus<HTMLDivElement>({
+    open: resetStep > 0,
+    onClose: closeResetModal,
+  });
 
   return (
     <div className="page-container">
@@ -10849,7 +10889,9 @@ ollama serve`}
               aria-modal="true"
               className="modal-card"
               onClick={(event) => event.stopPropagation()}
+              ref={restoreModalRef}
               role="dialog"
+              tabIndex={-1}
             >
               <div className="modal-badge">{tModalRestore("badge")}</div>
               <h2 className="modal-title" id="restore-backup-title">
@@ -11000,7 +11042,9 @@ ollama serve`}
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
+            ref={deleteImportModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tModalDelete("badge")}</div>
             <h2 className="modal-title" id="delete-import-title">
@@ -11102,12 +11146,9 @@ ollama serve`}
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                closeWaybackRemoveModal();
-              }
-            }}
+            ref={waybackRemoveModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tWaybackRemove("badge")}</div>
             <h2 className="modal-title" id="wayback-remove-title">
@@ -11170,12 +11211,9 @@ ollama serve`}
                 aria-modal="true"
                 className="modal-card"
                 onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape" && !closing) {
-                    setPendingItemRemoval(null);
-                  }
-                }}
+                ref={removeItemModalRef}
                 role="dialog"
+                tabIndex={-1}
               >
                 <div className="modal-badge">{tModalRemoveApp("badge")}</div>
                 <h2 className="modal-title" id="remove-item-title">
@@ -11223,12 +11261,9 @@ ollama serve`}
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                closeResetModal();
-              }
-            }}
+            ref={resetModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tResetCard("modal_badge")}</div>
             <h2 className="modal-title" id="reset-app-title">

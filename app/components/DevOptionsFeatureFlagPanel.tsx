@@ -27,6 +27,7 @@ import {
 import type { FlagValue } from "@/lib/feature-flag-rules";
 import { getFlagUsage } from "../../lib/feature-flag-usage";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import { DEV_MENU_STORAGE_KEY } from "./DevMenu";
 
 interface FlagRow {
@@ -842,6 +843,25 @@ export default function DevOptionsFeatureFlagPanel() {
     }
   }
 
+  const resetAllModalRef = useModalFocus<HTMLDivElement>({
+    open: resetAllOpen,
+    onClose: () => {
+      if (busyKey === null) {
+        setResetAllOpen(false);
+      }
+    },
+    closeOnEscape: true,
+  });
+  const importModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingImport !== null,
+    onClose: () => {
+      if (busyKey === null) {
+        setPendingImport(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+
   if (!panelOn) {
     return null;
   }
@@ -1234,12 +1254,9 @@ export default function DevOptionsFeatureFlagPanel() {
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && busyKey === null) {
-                setResetAllOpen(false);
-              }
-            }}
+            ref={resetAllModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tDevReset("badge")}</div>
             <h2 className="modal-title" id="dev-flag-reset-title">
@@ -1300,12 +1317,9 @@ export default function DevOptionsFeatureFlagPanel() {
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && busyKey === null) {
-                setPendingImport(null);
-              }
-            }}
+            ref={importModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tDev("import_modal.badge")}</div>
             <h2 className="modal-title" id="dev-flag-import-title">
