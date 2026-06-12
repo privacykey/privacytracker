@@ -556,6 +556,9 @@ export default function AppDetailView({
   const [toast, setToast] = useState("");
   const [reviewState, setReviewState] =
     useState<UnacknowledgedChanges>(unacknowledged);
+  const canShowAccessibilityTab =
+    f.a11yPanel && trackAccessibility && app.hasAccessibilityLabels != null;
+  const canShowPolicyTab = f.policyPanel;
 
   // One-shot blue pulse on the section the URL hash points at — same
   // pattern Settings uses for `#ai-summaries` / `#sync-status`.
@@ -574,12 +577,15 @@ export default function AppDetailView({
       if (!hash) {
         return;
       }
-      // Make sure we're on the privacy tab so the section the user
-      // came for is actually visible — the privacy-types block lives
-      // inside the privacy panel, so without this the pulse fires on
-      // a hidden subtree and the user sees nothing.
+      // Make sure the tab containing the hashed target is visible.
       if (hash === "profile-mismatch") {
         setTab("privacy");
+      } else if (hash === "policy") {
+        setTab(canShowPolicyTab ? "policy" : "privacy");
+      } else if (hash === "accessibility") {
+        setTab(canShowAccessibilityTab ? "accessibility" : "privacy");
+      } else if (hash === "changelog" || hash.startsWith("snapshot-")) {
+        setTab("changelog");
       }
       setHashPulseTarget(hash);
       // Clear after the pulse animation finishes so a same-hash
@@ -598,7 +604,7 @@ export default function AppDetailView({
         cleanup();
       }
     };
-  }, []);
+  }, [canShowAccessibilityTab, canShowPolicyTab]);
   // Initial verdicts payload for the picker. We fetch once here so the
   // server-rendered hero doesn't need to await the verdicts query; the
   // picker also re-fetches on mount to catch any imports that landed

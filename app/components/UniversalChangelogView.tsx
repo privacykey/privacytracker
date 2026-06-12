@@ -227,6 +227,71 @@ function iconForEntry(entry: ChangeEntry): { glyph: string; cls: string } {
   }
 }
 
+type ViewLinkKind =
+  | "accessibility_added"
+  | "accessibility_modified"
+  | "accessibility_removed"
+  | "app"
+  | "archive_import"
+  | "policy_change"
+  | "policy_error"
+  | "privacy_added"
+  | "privacy_modified"
+  | "privacy_policy"
+  | "privacy_removed";
+
+function viewLinkKindForEntry(entry: ChangeEntry): ViewLinkKind {
+  const category = entry.category ?? "privacy-label";
+  if (category === "privacy-policy") {
+    if (entry.policy_event === "changed") {
+      return "policy_change";
+    }
+    if (entry.policy_event === "error") {
+      return "policy_error";
+    }
+    return "privacy_policy";
+  }
+  if (category === "wayback-attempt") {
+    return "archive_import";
+  }
+  if (category === "accessibility") {
+    if (entry.type === "added") {
+      return "accessibility_added";
+    }
+    if (entry.type === "removed") {
+      return "accessibility_removed";
+    }
+    return "accessibility_modified";
+  }
+  if (entry.type === "added") {
+    return "privacy_added";
+  }
+  if (entry.type === "removed") {
+    return "privacy_removed";
+  }
+  if (entry.type === "modified") {
+    return "privacy_modified";
+  }
+  return "app";
+}
+
+function detailHrefForEntry(row: UniversalChangeRow): string {
+  const base = `/apps/${row.appId}`;
+  const category = row.entry.category ?? "privacy-label";
+  if (category === "privacy-policy") {
+    return row.entry.policy_event === "changed"
+      ? `${base}#changelog`
+      : `${base}#policy`;
+  }
+  if (category === "accessibility") {
+    return `${base}#accessibility`;
+  }
+  if (category === "privacy-label" || category === "wayback-attempt") {
+    return `${base}#changelog`;
+  }
+  return base;
+}
+
 export default function UniversalChangelogView({
   apps,
 }: {
@@ -466,10 +531,14 @@ export default function UniversalChangelogView({
               <UniversalChangelogRow
                 dateMode={dateMode}
                 detailsMore={(count) => tRow("details_more", { count })}
+                entryHref={detailHrefForEntry(r)}
                 key={r.id}
                 openAppAria={(name) => tRow("open_app_aria", { name })}
                 row={r}
-                viewAppLabel={tRow("view_app_link")}
+                viewEntryLabel={tRow("view_app_link", {
+                  kind: viewLinkKindForEntry(r.entry),
+                  name: r.appName,
+                })}
                 waybackLinkLabel={tRow("wayback_link")}
               />
             ))}
@@ -506,14 +575,16 @@ export default function UniversalChangelogView({
 function UniversalChangelogRow({
   row,
   dateMode,
-  viewAppLabel,
+  entryHref,
+  viewEntryLabel,
   openAppAria,
   waybackLinkLabel,
   detailsMore,
 }: {
   row: UniversalChangeRow;
   dateMode: Parameters<typeof formatDate>[1];
-  viewAppLabel: string;
+  entryHref: string;
+  viewEntryLabel: string;
   openAppAria: (name: string) => string;
   waybackLinkLabel: string;
   detailsMore: (count: number) => string;
@@ -581,8 +652,8 @@ function UniversalChangelogRow({
           </ul>
         )}
         <div className="changelog-row-links">
-          <Link className="changelog-row-link" href={`/apps/${row.appId}`}>
-            {viewAppLabel}
+          <Link className="changelog-row-link" href={entryHref}>
+            {viewEntryLabel}
           </Link>
           {waybackUrl && (
             <a
