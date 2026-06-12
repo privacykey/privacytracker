@@ -376,7 +376,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
     async (text: string, label: string) => {
       try {
         await navigator.clipboard.writeText(text);
-        flashToast(`Copied · ${label}`);
+        flashToast(tMatrix("toast_copied", { label }));
       } catch {
         // Older browsers / iframes without clipboard permission. Fall
         // back to a textarea-select trick so the user can still copy.
@@ -388,9 +388,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
         ta.select();
         try {
           document.execCommand("copy");
-          flashToast(`Copied · ${label}`);
+          flashToast(tMatrix("toast_copied", { label }));
         } catch {
-          flashToast("Copy failed — clipboard unavailable");
+          flashToast(tMatrix("toast_copy_failed"));
         } finally {
           document.body.removeChild(ta);
         }
@@ -409,8 +409,11 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
         cells: spec.desired[comboId(c)] ?? {},
       })),
     };
-    void copyToClipboard(JSON.stringify(blob, null, 2), "full spec JSON");
-  }, [spec, copyToClipboard]);
+    void copyToClipboard(
+      JSON.stringify(blob, null, 2),
+      tMatrix("copy_label_spec_json")
+    );
+  }, [spec, copyToClipboard, tMatrix]);
 
   const exportTsPatch = useCallback(() => {
     // Build a draft AUDIENCE_RULES + GOAL_RULES patch from the spec.
@@ -505,20 +508,20 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       lines.push("");
     }
 
-    void copyToClipboard(lines.join("\n"), "TS patch draft");
-  }, [spec, copyToClipboard]);
+    void copyToClipboard(lines.join("\n"), tMatrix("copy_label_ts_patch"));
+  }, [spec, copyToClipboard, tMatrix]);
 
   const applyComboAsOverrides = useCallback(
     (combo: ComboDef) => {
       const cells = spec.desired[comboId(combo)] ?? {};
       const cellCount = Object.keys(cells).length;
       if (cellCount === 0) {
-        flashToast("No cells authored for this combo");
+        flashToast(tMatrix("toast_no_cells"));
         return;
       }
       setPendingConfirm({ kind: "apply", combo, cellCount });
     },
-    [spec, flashToast]
+    [spec, flashToast, tMatrix]
   );
 
   // Stage-2: dispatched by the modal's Confirm button.
@@ -530,7 +533,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       const fresh: SpecBlob = { accessibility: false, desired: {} };
       setSpec(fresh);
       writeSpec(fresh);
-      flashToast("Cleared");
+      flashToast(tMatrix("toast_cleared"));
       setPendingConfirm(null);
       return;
     }
@@ -548,7 +551,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       const next: SpecBlob = { ...spec, desired };
       setSpec(next);
       writeSpec(next);
-      flashToast("Seeded with resolver values");
+      flashToast(tMatrix("toast_seeded"));
       setPendingConfirm(null);
       return;
     }
@@ -571,15 +574,22 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
       }
       const body = (await res.json()) as { applied?: number; skipped?: number };
       flashToast(
-        `Applied ${body.applied ?? 0} overrides (${body.skipped ?? 0} skipped)`
+        tMatrix("toast_applied", {
+          applied: body.applied ?? 0,
+          skipped: body.skipped ?? 0,
+        })
       );
       setPendingConfirm(null);
     } catch (e) {
-      flashToast(`Failed: ${e instanceof Error ? e.message : "unknown error"}`);
+      flashToast(
+        tMatrix("toast_failed", {
+          message: e instanceof Error ? e.message : tMatrix("unknown_error"),
+        })
+      );
     } finally {
       setApplying(false);
     }
-  }, [pendingConfirm, spec, rows, flashToast]);
+  }, [pendingConfirm, spec, rows, flashToast, tMatrix]);
 
   // ── Render ────────────────────────────────────────────────────────
 
@@ -600,7 +610,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
             onChange={(e) => setShowOnlyDeltas(e.target.checked)}
             type="checkbox"
           />
-          Only authored rows
+          {tMatrix("only_authored_rows")}
         </label>
         <label className="focus-matrix-toolbar-check">
           <input
@@ -608,7 +618,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
             onChange={(e) => setAccessibility(e.target.checked)}
             type="checkbox"
           />
-          Apply accessibility modifier
+          {tMatrix("apply_accessibility_modifier")}
         </label>
         <span className="focus-matrix-toolbar-spacer" />
         <button
@@ -616,36 +626,35 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
           onClick={seedFromCurrentRules}
           type="button"
         >
-          Seed from current rules
+          {tMatrix("seed_button")}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={exportFullSpec}
           type="button"
         >
-          Copy spec JSON
+          {tMatrix("copy_spec_button")}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={exportTsPatch}
           type="button"
         >
-          Copy TS patch
+          {tMatrix("copy_ts_patch_button")}
         </button>
         <button
           className="btn btn-danger btn-sm"
           onClick={clearAll}
           type="button"
         >
-          Clear draft
+          {tMatrix("clear_draft_button")}
         </button>
       </div>
 
       <p className="focus-matrix-hint">
-        Click a cell to cycle <code>on → off → collapsed → unset</code>. Faint
-        value on top is what the resolver returns now; bold value below is what
-        you&rsquo;re authoring. Use the per-column ↗ button to push that
-        combo&rsquo;s authored cells in as live overrides for testing.
+        {tMatrix.rich("hint", {
+          code: (chunks) => <code>{chunks}</code>,
+        })}
       </p>
 
       <section
@@ -655,7 +664,9 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
         <table className="focus-matrix-table">
           <thead>
             <tr>
-              <th className="focus-matrix-th-key">Flag</th>
+              <th className="focus-matrix-th-key">
+                {tMatrix("flag_column_header")}
+              </th>
               {COMBOS.map((combo) => (
                 <th
                   className="focus-matrix-th-combo"
@@ -690,7 +701,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
             {grouped.length === 0 && (
               <tr>
                 <td className="focus-matrix-empty" colSpan={1 + COMBOS.length}>
-                  No flags match the current filter.
+                  {tMatrix("no_flags_match")}
                 </td>
               </tr>
             )}
@@ -717,22 +728,27 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
           const { title, body, confirmLabel } = (() => {
             if (pendingConfirm.kind === "clear") {
               return {
-                title: "Clear every authored cell?",
-                body: "This wipes your draft spec. The action only touches local storage — live overrides aren’t affected.",
-                confirmLabel: "Clear draft",
+                title: tMatrix("confirm_clear_title"),
+                body: tMatrix("confirm_clear_body"),
+                confirmLabel: tMatrix("clear_draft_button"),
               };
             }
             if (pendingConfirm.kind === "seed") {
               return {
-                title: "Seed from current resolver values?",
-                body: "Every cell will be overwritten with the value the resolver currently produces for that combo. Any work in your draft is lost.",
-                confirmLabel: "Seed",
+                title: tMatrix("confirm_seed_title"),
+                body: tMatrix("confirm_seed_body"),
+                confirmLabel: tMatrix("confirm_seed_confirm"),
               };
             }
             return {
-              title: `Apply ${pendingConfirm.cellCount} cells as live overrides?`,
-              body: `Wipes current overrides and replaces them with the ${pendingConfirm.cellCount} authored cells from ${pendingConfirm.combo.longHeader}.`,
-              confirmLabel: "Apply overrides",
+              title: tMatrix("confirm_apply_title", {
+                count: pendingConfirm.cellCount,
+              }),
+              body: tMatrix("confirm_apply_body", {
+                count: pendingConfirm.cellCount,
+                combo: pendingConfirm.combo.longHeader,
+              }),
+              confirmLabel: tMatrix("confirm_apply_confirm"),
             };
           })();
           return (
@@ -763,7 +779,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                     onClick={cancel}
                     type="button"
                   >
-                    Cancel
+                    {tMatrix("cancel")}
                   </button>
                   <button
                     autoFocus
@@ -775,7 +791,7 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
                     {closing ? (
                       <>
                         <span aria-hidden="true" className="spinner-sm" />{" "}
-                        Applying…
+                        {tMatrix("applying")}
                       </>
                     ) : (
                       confirmLabel
@@ -802,7 +818,8 @@ function FocusMatrixSurface({
   onSetCell: (combo: ComboDef, key: FlagKey, value: FlagValue | null) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const label = SURFACE_LABELS[surface] ?? surface;
+  const tSurfaces = useTranslations("dev_options.feature_flags.surfaces");
+  const label = SURFACE_LABELS[surface] ? tSurfaces(surface) : surface;
   return (
     <>
       <tr className="focus-matrix-surface-row">
@@ -852,7 +869,7 @@ function FocusMatrixRow({
           className="focus-matrix-row-default"
           title={tMatrix("hard_default_title", { value: row.hardDefault })}
         >
-          default: {row.hardDefault}
+          {tMatrix("hard_default_label", { value: row.hardDefault })}
         </span>
       </th>
       {COMBOS.map((combo) => {

@@ -42,7 +42,6 @@ import { CATEGORY_META } from "../../../lib/privacy-meta";
 import {
   type PrivacyProfile,
   type ProfileTier,
-  TIER_META,
   TIER_RANK,
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../../lib/privacy-profile";
@@ -164,7 +163,7 @@ export default function SmallMultiples() {
   if (error) {
     return (
       <div className="empty-state" style={{ padding: 24 }}>
-        Couldn&apos;t load matrix: {error}
+        {tCharts("matrix_load_failed", { error })}
       </div>
     );
   }
@@ -220,9 +219,11 @@ export default function SmallMultiples() {
                   : undefined
               }
             >
-              {sorted.length} of {data.apps.length} app
-              {data.apps.length === 1 ? "" : "s"} × {cols} categor
-              {cols === 1 ? "y" : "ies"}
+              {tCharts("matrix_size", {
+                shown: sorted.length,
+                total: data.apps.length,
+                cols,
+              })}
             </div>
             {data.categories.map((cat) => {
               const meta = CATEGORY_META[cat.identifier];
@@ -291,8 +292,9 @@ export default function SmallMultiples() {
             <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
             <div>{tCharts("no_apps_match")}</div>
             <div style={{ fontSize: 13, marginTop: 4, color: "var(--text-3)" }}>
-              Toggle &ldquo;Hide apps with no categories&rdquo; off to bring
-              them back.
+              {tCharts("matrix_empty_hint", {
+                label: tCharts("filter_hide_no_categories"),
+              })}
             </div>
           </div>
         ) : (
@@ -439,7 +441,7 @@ export default function SmallMultiples() {
           </label>
           {hiddenCount > 0 && (
             <div className="sm-sidebar-hidden-count">
-              {hiddenCount} app{hiddenCount === 1 ? "" : "s"} hidden
+              {tCharts("sidebar_hidden_count", { count: hiddenCount })}
             </div>
           )}
         </div>
@@ -453,7 +455,7 @@ export default function SmallMultiples() {
               data-sev="DATA_NOT_LINKED_TO_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
             />
-            Not linked
+            {tTier("not_linked")}
           </span>
           <span className="sm-legend-item">
             <span
@@ -461,7 +463,7 @@ export default function SmallMultiples() {
               data-sev="DATA_LINKED_TO_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_LINKED_TO_YOU }}
             />
-            Linked
+            {tTier("linked")}
           </span>
           <span className="sm-legend-item">
             <span
@@ -469,12 +471,12 @@ export default function SmallMultiples() {
               data-sev="DATA_USED_TO_TRACK_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
             />
-            Tracking
+            {tTier("tracking")}
           </span>
           {prefOverlay && (
             <span className="sm-legend-item sm-legend-item--mismatch">
               <span className="sm-legend-swatch sm-legend-swatch--mismatch" />
-              Exceeds profile
+              {tCharts("legend_exceeds_profile")}
             </span>
           )}
         </div>
@@ -540,7 +542,9 @@ export default function SmallMultiples() {
                               className="sm-tooltip-dot"
                               style={{ background: PREF_COLOR[pref] }}
                             />
-                            {TIER_META[pref].shortLabel} at most
+                            {tCharts("tooltip_pref_at_most", {
+                              label: tTier(pref),
+                            })}
                           </>
                         ) : (
                           <span className="sm-tooltip-pref-none">
@@ -552,7 +556,7 @@ export default function SmallMultiples() {
                   )}
                   {isMismatch && (
                     <div className="sm-tooltip-mismatch">
-                      ⚠ Exceeds your preference
+                      ⚠ {tCharts("tooltip_exceeds_pref")}
                     </div>
                   )}
                 </>
@@ -564,9 +568,8 @@ export default function SmallMultiples() {
                 {tCharts("tooltip_hover_inspect")}
               </div>
               <div className="sm-tooltip-empty-hint">
-                Hover a row, cell, or category icon to see the details here.
-                {prefOverlay &&
-                  " The coloured bar under each icon shows your preference for that category."}
+                {tCharts("tooltip_hover_hint")}
+                {prefOverlay && ` ${tCharts("tooltip_hover_hint_pref")}`}
               </div>
             </div>
           )}
