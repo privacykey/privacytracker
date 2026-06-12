@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import "./device-sync.css";
 
 /**
@@ -84,7 +85,11 @@ export default function DeviceSyncDiffOverlay({
   const [committing, setCommitting] = useState(false);
   const [pickedAdds, setPickedAdds] = useState<Set<string>>(new Set());
   const [pickedRemoves, setPickedRemoves] = useState<Set<string>>(new Set());
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const dialogCardRef = useModalFocus<HTMLDivElement>({
+    open,
+    onClose,
+    closeOnEscape: false,
+  });
 
   // Fetch the diff on open.
   useEffect(() => {
@@ -119,20 +124,6 @@ export default function DeviceSyncDiffOverlay({
       })
       .finally(() => setLoading(false));
   }, [open, deviceId, currentImport]);
-
-  // Focus management: stash the previously-focused element, restore on close.
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    previouslyFocusedRef.current =
-      typeof document === "undefined"
-        ? null
-        : (document.activeElement as HTMLElement | null);
-    return () => {
-      previouslyFocusedRef.current?.focus?.();
-    };
-  }, [open]);
 
   // Escape closes the overlay (unless committing).
   useEffect(() => {
@@ -237,7 +228,9 @@ export default function DeviceSyncDiffOverlay({
         aria-labelledby="device-sync-title"
         aria-modal="true"
         className="device-sync-card"
+        ref={dialogCardRef}
         role="dialog"
+        tabIndex={-1}
       >
         <header className="device-sync-card-header">
           <div className="device-sync-card-titles">

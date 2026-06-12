@@ -54,6 +54,7 @@ import {
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../lib/privacy-profile";
 import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { SocialShareModal } from "./SocialShareModal";
@@ -1841,17 +1842,12 @@ function PreviewDrawer({
   profile: PrivacyProfile | null;
 }) {
   const tShortlist = useTranslations("shortlist");
-  // Close on Escape — the drawer is modal-ish (overlays everything, is the
-  // primary focus target), so Escape is the expected keyboard exit.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  // This component is only mounted while open, so open=true.
+  const drawerRef = useModalFocus<HTMLElement>({
+    open: true,
+    onClose,
+    closeOnEscape: true,
+  });
 
   const entry = state.kind === "idle" ? null : state.entry;
   if (!entry) {
@@ -1872,7 +1868,9 @@ function PreviewDrawer({
         className="shortlist-drawer"
         // Stop clicks bubbling to the backdrop (which would close).
         onClick={(e) => e.stopPropagation()}
+        ref={drawerRef}
         role="dialog"
+        tabIndex={-1}
       >
         <header className="shortlist-drawer-header">
           <div

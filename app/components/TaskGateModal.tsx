@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
 import type { ResolvedTask, UserTaskId } from "../../lib/tasks";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 /**
  * Soft-gate modal. Shown when the user clicks a task whose prerequisite
@@ -39,38 +39,11 @@ export default function TaskGateModal({
 }: TaskGateModalProps) {
   const t = useTranslations("tasks");
   const tGate = useTranslations("tasks.gate");
-  const primaryRef = useRef<HTMLButtonElement | null>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    previouslyFocusedRef.current =
-      typeof document === "undefined"
-        ? null
-        : (document.activeElement as HTMLElement | null);
-    // Defer focus to next tick so the modal is mounted.
-    const id = window.setTimeout(() => primaryRef.current?.focus(), 0);
-    return () => {
-      window.clearTimeout(id);
-      previouslyFocusedRef.current?.focus?.();
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
+  const modalCardRef = useModalFocus<HTMLDivElement>({
+    open,
+    onClose: onCancel,
+    closeOnEscape: true,
+  });
 
   if (!(open && task && prerequisiteId)) {
     return null;
@@ -95,7 +68,9 @@ export default function TaskGateModal({
         aria-labelledby="task-gate-title"
         aria-modal="true"
         className="modal-card task-gate-modal"
+        ref={modalCardRef}
         role="dialog"
+        tabIndex={-1}
       >
         <header className="modal-card-header">
           <h2 id="task-gate-title">{tGate("title")}</h2>
@@ -115,7 +90,6 @@ export default function TaskGateModal({
           <button
             className="btn btn-primary"
             onClick={onGotoPrerequisite}
-            ref={primaryRef}
             type="button"
           >
             {tGate("primary", { prerequisite: prereqTitle })}

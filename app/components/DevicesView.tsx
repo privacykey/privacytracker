@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import Toast from "./Toast";
 import "./device-sync.css";
 
@@ -50,6 +51,17 @@ export default function DevicesView({
     null
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteDeviceRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete !== null,
+    onClose: () => {
+      if (!deletingId) {
+        setPendingDelete(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+
   const [resyncToast, setResyncToast] = useState<{
     added: number;
     removed: number;
@@ -198,12 +210,9 @@ export default function DevicesView({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !deletingId) {
-                setPendingDelete(null);
-              }
-            }}
+            ref={deleteDeviceRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{t("delete_modal_badge")}</div>
             <h2 className="modal-title" id="delete-device-title">

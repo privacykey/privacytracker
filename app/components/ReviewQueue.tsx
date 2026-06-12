@@ -28,6 +28,7 @@ import {
   localiseBadgeLabel,
 } from "../../lib/i18n-meta";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import type { VerdictValue } from "../../lib/verdict-types";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
@@ -510,6 +511,20 @@ export default function ReviewQueue({
     return () => window.removeEventListener("keydown", onKey);
   }, [phase.kind, finish, onClose]);
 
+  // ── Modal focus management (WCAG 2.4.3 / 2.1.2) ───────────────────
+  // closeOnEscape=false: the top-level Escape useEffect above owns
+  // Escape for both running and summary, discriminating by phase.kind.
+  const runningCardRef = useModalFocus<HTMLDivElement>({
+    open: phase.kind === "running",
+    onClose,
+    closeOnEscape: false,
+  });
+  const summaryCardRef = useModalFocus<HTMLDivElement>({
+    open: phase.kind === "summary",
+    onClose: finish,
+    closeOnEscape: false,
+  });
+
   // ─────────────────────────────────────────────
   // Phase rendering
   // ─────────────────────────────────────────────
@@ -534,7 +549,13 @@ export default function ReviewQueue({
     const batch = phase.batches[phase.batchIndex];
     const app = batch[phase.cardIndex];
     return (
-      <div aria-modal="true" className="review-queue-fullscreen" role="dialog">
+      <div
+        aria-modal="true"
+        className="review-queue-fullscreen"
+        ref={runningCardRef}
+        role="dialog"
+        tabIndex={-1}
+      >
         <RunningHeader
           batchIndex={phase.batchIndex}
           batchSize={batch.length}
@@ -575,7 +596,9 @@ export default function ReviewQueue({
     <div
       aria-modal="true"
       className="review-queue-fullscreen review-queue-summary-wrap"
+      ref={summaryCardRef}
       role="dialog"
+      tabIndex={-1}
     >
       <SummaryScreen
         batchIndex={phase.batchIndex}
@@ -619,11 +642,16 @@ function PreflightModal({
   onCancel,
   t,
 }: PreflightProps) {
-  // Focus the start button on open so Enter starts immediately.
+  // closeOnEscape=false: the Escape useEffect below owns Escape so it
+  // can call onCancel — keep that handler intact and don't duplicate it.
+  const preflightCardRef = useModalFocus<HTMLDivElement>({
+    open: true,
+    onClose: onCancel,
+    closeOnEscape: false,
+  });
+
+  // start button ref — kept for ref={startBtnRef} on the button below.
   const startBtnRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    startBtnRef.current?.focus();
-  }, []);
 
   // Esc dismisses; Enter triggers start when enabled.
   useEffect(() => {
@@ -658,7 +686,11 @@ function PreflightModal({
       className="modal-overlay review-queue-preflight-overlay"
       role="dialog"
     >
-      <div className="modal-card review-queue-preflight-card">
+      <div
+        className="modal-card review-queue-preflight-card"
+        ref={preflightCardRef}
+        tabIndex={-1}
+      >
         <header className="review-queue-preflight-header">
           <h2 className="review-queue-preflight-title">
             {t("preflight.title")}

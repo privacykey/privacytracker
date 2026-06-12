@@ -34,6 +34,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import "./background-mode-wizard.css";
 
 type Step = 0 | 1 | 2 | 3;
@@ -82,6 +83,11 @@ const DEFAULT_STATE: WizardState = {
 
 export default function BackgroundModeWizard({ onClose, initial }: Props) {
   const t = useTranslations("background_mode_wizard");
+  const bgWizardRef = useModalFocus<HTMLDivElement>({
+    open: true,
+    onClose: () => onClose("dismissed"),
+    closeOnEscape: true,
+  });
   const [step, setStep] = useState<Step>(0);
   const [state, setState] = useState<WizardState>({
     ...DEFAULT_STATE,
@@ -216,6 +222,8 @@ export default function BackgroundModeWizard({ onClose, initial }: Props) {
       <div
         className="modal-card bg-wizard-card"
         onClick={(e) => e.stopPropagation()}
+        ref={bgWizardRef}
+        tabIndex={-1}
       >
         <header className="bg-wizard-header">
           <h2 className="bg-wizard-title" id="bg-wizard-title">

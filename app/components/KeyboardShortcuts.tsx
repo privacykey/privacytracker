@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFlag } from "../../lib/feature-flags-hooks";
+import { useModalFocus } from "../../lib/use-modal-focus";
 
 // ── Shortcut catalogue (mirrored in the help overlay) ────────────────────
 interface NavShortcut {
@@ -157,23 +158,6 @@ function focusFirstSearchInput(): boolean {
   return false;
 }
 
-// Focusable-element selector for the modal focus trap. Covers the common
-// interactive elements; we filter out hidden ones at runtime.
-const FOCUSABLE_SELECTOR = [
-  "a[href]",
-  "button:not([disabled])",
-  "input:not([disabled])",
-  "textarea:not([disabled])",
-  "select:not([disabled])",
-  '[tabindex]:not([tabindex="-1"])',
-].join(",");
-
-function collectFocusable(root: HTMLElement): HTMLElement[] {
-  return Array.from(
-    root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-  ).filter((el) => el.offsetParent !== null || el.getClientRects().length > 0);
-}
-
 // How long the "Navigating to X" confirmation toast lingers after a
 // shortcut fires. Short enough that it doesn't linger over the new page,
 // long enough that a user glancing at the indicator can read it.
@@ -237,8 +221,6 @@ export default function KeyboardShortcuts() {
   );
   const sequenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const lastFocused = useRef<HTMLElement | null>(null);
 
   const clearPending = useCallback(() => {
     pendingSequence.current = null;
@@ -464,69 +446,14 @@ export default function KeyboardShortcuts() {
     []
   );
 
-  // Focus management for the modal: capture the previously-focused element
-  // on open, restore it on close, and trap Tab while the sheet is up.
-  useEffect(() => {
-    if (!helpOpen) {
-      return;
-    }
-
-    lastFocused.current = (document.activeElement as HTMLElement) ?? null;
-
-    // Defer focus to the next tick so the card has mounted.
-    const id = requestAnimationFrame(() => {
-      const card = cardRef.current;
-      if (!card) {
-        return;
-      }
-      const focusables = collectFocusable(card);
-      (focusables[0] ?? card).focus();
-    });
-
-    const trap = (event: KeyboardEvent) => {
-      if (event.key !== "Tab") {
-        return;
-      }
-      const card = cardRef.current;
-      if (!card) {
-        return;
-      }
-      const focusables = collectFocusable(card);
-      if (focusables.length === 0) {
-        event.preventDefault();
-        card.focus();
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (event.shiftKey) {
-        if (!active || active === first || !card.contains(active)) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    window.addEventListener("keydown", trap);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener("keydown", trap);
-      const prev = lastFocused.current;
-      lastFocused.current = null;
-      if (
-        prev &&
-        typeof prev.focus === "function" &&
-        // Only restore focus if the element is still in the DOM.
-        document.contains(prev)
-      ) {
-        prev.focus();
-      }
-    };
-  }, [helpOpen]);
+  // Focus management for the modal: capture the previously-focused element on
+  // open, restore it on close, and trap Tab while the sheet is up. Escape is
+  // owned by the global keydown handler above (it also clears any pending
+  // g-sequence), so we opt out of the hook's Escape handling.
+  const cardRef = useModalFocus<HTMLDivElement>({
+    open: helpOpen,
+    closeOnEscape: false,
+  });
 
   return (
     <>

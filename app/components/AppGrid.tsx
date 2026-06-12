@@ -16,6 +16,7 @@ import type {
 } from "../../lib/manual-apps";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { QueueAppInput } from "../../lib/review-queue";
+import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import BulkSelectBar from "./BulkSelectBar";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
@@ -650,6 +651,25 @@ export default function AppGrid({
   const [pendingDeleteManual, setPendingDeleteManual] =
     useState<ManualApp | null>(null);
 
+  const deleteModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingDelete !== null,
+    onClose: () => {
+      if (!deletingId) {
+        setPendingDelete(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+  const deleteManualModalRef = useModalFocus<HTMLDivElement>({
+    open: pendingDeleteManual !== null,
+    onClose: () => {
+      if (!deletingManualId) {
+        setPendingDeleteManual(null);
+      }
+    },
+    closeOnEscape: true,
+  });
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
@@ -963,21 +983,6 @@ export default function AppGrid({
       setDeletingManualId(null);
     }
   };
-
-  useEffect(() => {
-    if (!pendingDelete) {
-      return;
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !deletingId) {
-        setPendingDelete(null);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [pendingDelete, deletingId]);
 
   const stopCardNavigation = (
     event:
@@ -2307,12 +2312,9 @@ export default function AppGrid({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !deletingId) {
-                setPendingDelete(null);
-              }
-            }}
+            ref={deleteModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tGrid("modal_badge_remove")}</div>
             <h2 className="modal-title" id="delete-app-title">
@@ -2386,12 +2388,9 @@ export default function AppGrid({
             aria-modal="true"
             className="modal-card"
             onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !deletingManualId) {
-                setPendingDeleteManual(null);
-              }
-            }}
+            ref={deleteManualModalRef}
             role="dialog"
+            tabIndex={-1}
           >
             <div className="modal-badge">{tGrid("modal_badge_remove")}</div>
             <h2 className="modal-title" id="delete-manual-title">
