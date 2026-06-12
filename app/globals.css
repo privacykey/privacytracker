@@ -781,6 +781,68 @@ html[data-theme-override="high-contrast"] .nav {
   }
 }
 
+/* ── Nav width tiers (data-tier, set by Nav.tsx) ──────────────────────
+   The full chrome (wordmark + 7 links + labelled Add Apps) needs ~1070px;
+   between ~641px and that, the desktop nav used to overflow the viewport
+   because the only compaction was the ≤640px media block above. Worse,
+   media queries read the *unzoomed* viewport, so the in-app text scale
+   (html[data-a11y-scale] zooms .app-main, which the nav lives inside)
+   overflowed the chrome even on wide screens. Nav.tsx measures its own
+   offsetWidth — always in effective (post-zoom) pixels — and stamps
+   data-tier="full | compact | drawer". The media block above remains the
+   SSR/no-JS baseline so phones never flash the full nav; these attribute
+   rules carry every other case (intermediate widths, zoomed wide screens).
+
+   compact (≤1100 effective): icon-only brand + "+" pill, tighter gaps.
+   drawer  (≤860 effective):  mirror of the ≤640px block — hamburger. */
+
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-brand {
+  gap: 0;
+  font-size: 0;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-brand-wordmark {
+  display: none;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-add-apps-label {
+  display: none;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-add-apps-compact {
+  display: inline-block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-add-apps {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+}
+.nav:is([data-tier="compact"], [data-tier="drawer"]) .nav-right {
+  gap: 6px;
+}
+
+.nav[data-tier="compact"] {
+  gap: 12px;
+}
+
+.nav[data-tier="drawer"] {
+  gap: 10px;
+  padding: 0 14px;
+}
+.nav[data-tier="drawer"] .nav-links-desktop {
+  display: none;
+}
+.nav[data-tier="drawer"] .nav-menu-trigger {
+  display: inline-flex;
+}
+.nav[data-tier="drawer"] .nav-drawer {
+  display: flex;
+}
+
 /* ─────────────────────────────────────────────────────
    Page Layout
 ───────────────────────────────────────────────────── */
@@ -9834,6 +9896,13 @@ body.review-rec-print-active .review-rec-print a {
     position: sticky;
     top: var(--nav-h);
     z-index: 10;
+    /* Grid items default to min-width:auto, which refuses to shrink below
+       the content width of the pill strip (~3000px with every section
+       inline) — that blew the 1fr column out and scrolled the whole
+       document sideways instead of letting .settings-sidebar-nav's
+       overflow-x:auto engage. Same gotcha .settings-section already
+       guards against with its own min-width: 0. */
+    min-width: 0;
     padding-top: 8px;
     padding-bottom: 12px;
     margin: -8px 0 0;
@@ -25843,6 +25912,40 @@ html[data-a11y-scale="x-large"] .app-main {
   zoom: 1.3;
 }
 
+/* Scale parity for reading surfaces mounted OUTSIDE .app-main (they're
+   siblings of it in app/layout.tsx, so the rules above never reach them):
+   the About + keyboard-shortcuts overlays, the "g then …" sequence
+   indicator, the non-local read-only banner, and the task-list mobile
+   sheet (portalled to <body> to escape the nav's backdrop-filter
+   containing block). All of these are plain centered/inset overlays with
+   no getBoundingClientRect positioning, so zooming them is safe — do NOT
+   add rect-positioned surfaces (InfoTooltip, DataLabelHint) here without
+   converting their placement maths to local space first, the way
+   CoachmarkTour.tsx does. The footer quick-toggle pills + popover stay at
+   1x by design: the controls that change the scale must never grow with
+   it. Keep the zoom values in sync with the .app-main rules above and
+   with A11Y_SCALE_ZOOM in CoachmarkTour.tsx. */
+html[data-a11y-scale="large"]
+:is(
+  .about-scrim,
+  .kbd-help-scrim,
+  .kbd-sequence-indicator,
+  .nonlocal-banner,
+  .task-list-sheet-overlay
+) {
+  zoom: 1.15;
+}
+html[data-a11y-scale="x-large"]
+  :is(
+    .about-scrim,
+    .kbd-help-scrim,
+    .kbd-sequence-indicator,
+    .nonlocal-banner,
+    .task-list-sheet-overlay
+  ) {
+  zoom: 1.3;
+}
+
 /* ─────────────────────────────────────────────────────
    High-contrast theme
    ─────────────────────────────────────────────────────
@@ -26280,13 +26383,15 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   box-shadow: 0 0 0 1.5px #000000;
 }
 
-@media (max-width: 640px) {
-  /* Mobile parallels the .kbd-hint-anchor hiding — hardware keyboards are
-     unusual and the bottom-right corner is already crowded on phones. */
-  .a11y-quick-trigger {
-    display: none;
-  }
-}
+/* The trigger stays visible at EVERY width. It used to be display:none at
+   <=640px (parallel to the .kbd-hint-anchor hiding), but that removed the
+   only pointer-reachable entry to the accessibility settings exactly where
+   they matter most: phones, and desktop browsers at 200% zoom (a 1280px
+   screen at 200% lays out at 640px). The other entry point — the "g then u"
+   shortcut — needs a hardware keyboard, which small-viewport users
+   typically don't have. The kbd-hint pill keeps its mobile hiding; its
+   rationale (hardware keyboards are unusual on phones) is sound for a
+   shortcut hint but not for the a11y controls themselves. */
 
 /* ─────────────────────────────────────────────────────
    Quick-toggles popover
@@ -26756,11 +26861,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   color: var(--text-3);
 }
 
-@media (max-width: 640px) {
-  .a11y-quick-popover {
-    display: none;
-  }
-}
+/* No mobile hiding for the popover: it used to be display:none at <=640px
+   alongside the (also removed) trigger hiding — see the comment where the
+   trigger's mobile block used to live. The popover is narrow-viewport-safe
+   on its own: width min(380px, 100vw - 32px), max-height tracks 100dvh,
+   and .a11y-quick-popover-body scrolls. */
 
 /* ──────────────────────────────────────────────────────────────────────────
    Your Focus card (Settings → top of stack)
