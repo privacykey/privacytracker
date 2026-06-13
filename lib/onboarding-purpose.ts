@@ -134,6 +134,15 @@ export function selectionFromFocus(input: PurposeFocusInput): PurposeSelection {
   }
   if (workflow === "self_monitor" || workflow === "other_monitor") {
     secondary.policy = true;
+  } else if (workflow === "self_cleanup" && input.understand) {
+    // Cleanup's base goal is declutter only — the Policy secondary is the
+    // one control that layers `understand` onto a cleanup primary (see the
+    // `secondary.policy` branch in resolvePurposeSelection). So a persisted
+    // cleanup focus that ALSO carries `understand` means Policy was on;
+    // reconstruct it here. Without this, re-opening the editor shows the
+    // Policy card unchecked and a no-op re-save resolves cleanup back to
+    // understand=false, silently dropping the goal.
+    secondary.policy = true;
   }
 
   if (workflow === "self_monitor") {

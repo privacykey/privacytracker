@@ -115,6 +115,49 @@ test("focus can be mapped back into a purpose selection", () => {
   );
 });
 
+test("cleanup + policy focus round-trips without dropping understand", () => {
+  // Persisted focus a user gets from picking "Clean up my phone" AND
+  // toggling the Policy secondary: cleanup's base is declutter-only, and
+  // Policy layers understand on top. Re-opening the settings editor maps
+  // this back through selectionFromFocus, and a no-op re-save runs it back
+  // through resolvePurposeSelection — understand must survive that loop.
+  const persisted = {
+    audience: "self" as const,
+    understand: true,
+    declutter: true,
+    minimal: false,
+    accessibility: false,
+    workflow: "self_cleanup" as const,
+  };
+
+  const selection = selectionFromFocus(persisted);
+  assert.deepEqual(selection, {
+    primary: "cleanup",
+    secondary: { policy: true },
+  });
+
+  const resolved = resolvePurposeSelection(selection);
+  assert.equal(resolved.understand, true);
+  assert.equal(resolved.declutter, true);
+  assert.equal(resolved.minimal, false);
+  assert.equal(resolved.workflow, "self_cleanup");
+  assert.equal(resolved.audience, "self");
+});
+
+test("plain cleanup focus does not light the Policy secondary", () => {
+  // Guard the other direction: a cleanup focus WITHOUT understand (Policy
+  // never toggled) must not spuriously reconstruct the Policy card.
+  const selection = selectionFromFocus({
+    audience: "self",
+    understand: false,
+    declutter: true,
+    minimal: false,
+    accessibility: false,
+    workflow: "self_cleanup",
+  });
+  assert.deepEqual(selection, { primary: "cleanup", secondary: {} });
+});
+
 test("recommended privacy preset follows audience and workflow", () => {
   const selfUnderstand = {
     audience: "self" as const,
