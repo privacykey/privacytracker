@@ -229,7 +229,6 @@ export type FlagKey =
   | "flag.onboarding.audience_picker"
   | "flag.onboarding.audience_picker.skip"
   | "flag.onboarding.goals_picker"
-  | "flag.onboarding.goals_picker.skip"
   | "flag.onboarding.goals_picker.minimal_option"
   | "flag.onboarding.goals_picker.accessibility_modifier"
   | "flag.onboarding.privacy_profile_setup"
@@ -511,8 +510,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   // Onboarding — pre-wizard
   "flag.onboarding.audience_picker": "on", // screen 1 — WHO
   "flag.onboarding.audience_picker.skip": "on", // screen 1 'skip' link
-  "flag.onboarding.goals_picker": "on", // screen 2 — WHY
-  "flag.onboarding.goals_picker.skip": "on", // screen 2 'skip' link
+  "flag.onboarding.goals_picker": "on", // goals/purpose section — WHY
   "flag.onboarding.goals_picker.minimal_option": "on", // 'just the basics' alternative
   "flag.onboarding.goals_picker.accessibility_modifier": "on", // a11y modifier checkbox
   "flag.onboarding.privacy_profile_setup": "off", // declutter goal turns this on
@@ -926,7 +924,6 @@ export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
     "flag.onboarding.step.choose_method",
 
   // Goals picker sub-options depend on the picker
-  "flag.onboarding.goals_picker.skip": "flag.onboarding.goals_picker",
   "flag.onboarding.goals_picker.minimal_option": "flag.onboarding.goals_picker",
   "flag.onboarding.goals_picker.accessibility_modifier":
     "flag.onboarding.goals_picker",
