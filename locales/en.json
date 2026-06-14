@@ -242,12 +242,6 @@
       "safe_section": "Safe ({count}):"
     }
   },
-  "intent": {
-    "curious": "I'm just curious",
-    "cleanup": "Delete invasive apps",
-    "hygiene": "Improve my security hygiene",
-    "family": "Keep my family safe"
-  },
   "risk": {
     "high_label": "High risk",
     "moderate_label": "Moderate risk",

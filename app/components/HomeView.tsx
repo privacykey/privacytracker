@@ -40,7 +40,7 @@ import {
   FIRST_CLASS_CARDS,
 } from "../../lib/dashboard-layout";
 import { categoryLabel as i18nCategoryLabel } from "../../lib/i18n-meta";
-import { INTENT_META, type UserIntent } from "../../lib/preferences";
+import type { PrimaryPurpose } from "../../lib/onboarding-purpose";
 import { CATEGORY_META } from "../../lib/privacy-meta";
 import {
   type AppMismatchSummary,
@@ -197,9 +197,21 @@ export interface DashboardFlagState {
   taskList: boolean;
 }
 
+/**
+ * Compact summary of the user's focus the dashboard uses for its own
+ * tailoring — the /welcome purpose (drives the focus strip) plus whether
+ * both primary goals are set (drives the stale-section elevation that used
+ * to key off the legacy "hygiene" archetype). Replaces the old `userIntent`
+ * archetype prop.
+ */
+export interface FocusSummary {
+  purpose: PrimaryPurpose;
+  understandDeclutter: boolean;
+}
+
 export default function HomeView({
   triage,
-  userIntent,
+  focusSummary,
   manualAppsCount,
   manualAppsBannerDismissed,
   mismatchedApps = [],
@@ -213,17 +225,11 @@ export default function HomeView({
 }: {
   triage: TriageData;
   /**
-   * Archetype the user picked on the welcome splash. `null` while the
-   * feature is being rolled out or if the user skipped — in that case the
-   * dashboard falls back to the original neutral ordering.
-   *
-   * Round 3 PR 3: kept as a prop because several intent-driven branches
-   * inside HomeView (stale-section elevation, glance-section ordering,
-   * focus-strip rendering) still consume it via the back-compat shim in
-   * lib/preferences-server.ts. Round 4+ swaps these branches to flags
-   * and removes the prop.
+   * The user's focus summarised for dashboard tailoring (focus strip +
+   * stale-section elevation). `null` when the user hasn't set a focus yet —
+   * the dashboard falls back to neutral ordering and hides the strip.
    */
-  userIntent: UserIntent | null;
+  focusSummary: FocusSummary | null;
   /**
    * How many manual apps (web clips, TestFlight, sideloaded, own-build)
    * the user has tracked. Used to decide whether the "consider adding
@@ -425,29 +431,25 @@ export default function HomeView({
     }
   };
 
-  // Intent-driven tailoring. The user's saved layout drives order +
-  // visibility now (see `layout` prop + CARD_RENDERERS below). Intent still
-  // feeds the few cases where it affects an individual section's variant
-  // rather than its position: hero/risk variant choice + StaleSection's
-  // "elevated" treatment for the hygiene archetype. The old `statsFirst`
-  // top/bottom flip is gone — users who want stats first pick the
-  // `at_a_glance` preset.
+  // Dashboard tailoring is layout-driven now — the user's saved layout
+  // drives card order + visibility (see `layout` prop + CARD_RENDERERS
+  // below). The only focus-derived variant left is StaleSection's
+  // "elevated" treatment, which keys off whether both primary goals are set
+  // (see `elevateStale` below). The old `statsFirst` top/bottom flip is
+  // gone — users who want stats first pick the `at_a_glance` preset.
   //
-  // Callout visibility stays driven by flags (the server pre-resolves the
-  // four callout flags from the rule engine), falling back to the legacy
-  // intent check when `flags` is missing.
-  const showThirdPartyCallout =
-    flags?.callout.understand_declutter ?? userIntent === "hygiene";
-  const showCleanupCallout =
-    flags?.callout.declutter ?? userIntent === "cleanup";
-  const showFamilyCallout = flags?.callout.guardian ?? userIntent === "family";
-  // No legacy-intent fallback — the age-rating callout is new and only
-  // exists behind its flag (which already chains off flag.guardian.age_rating
-  // via FLAG_DEPENDENCIES).
+  // Callout visibility is driven by flags — the server pre-resolves the
+  // four callout flags from the rule engine. The `?? false` is just a
+  // defensive default for the rare case where flag resolution failed and
+  // `flags` is undefined (the legacy intent-archetype fallback is gone).
+  const showThirdPartyCallout = flags?.callout.understand_declutter ?? false;
+  const showCleanupCallout = flags?.callout.declutter ?? false;
+  const showFamilyCallout = flags?.callout.guardian ?? false;
   const showAgeRatingCallout = flags?.callout.age_rating ?? false;
-  const showDefinitionsCallout =
-    flags?.callout.understand_only ?? userIntent === "curious";
-  const elevateStale = userIntent === "hygiene";
+  const showDefinitionsCallout = flags?.callout.understand_only ?? false;
+  // Stale-section elevation: previously keyed off the "hygiene" archetype;
+  // now the equivalent focus state (both primary goals set).
+  const elevateStale = focusSummary?.understandDeclutter ?? false;
 
   // Round 3 wave D: each section's flag-driven visibility. Falls back to
   // the legacy intent-driven render when `flags` isn't passed (mostly for
@@ -499,7 +501,9 @@ export default function HomeView({
     // can still see + reorder it.
     review_cta: () => reviewCtaSlot ?? null,
     focus_strip: () =>
-      showFocusStrip && userIntent ? <FocusStrip intent={userIntent} /> : null,
+      showFocusStrip && focusSummary ? (
+        <FocusStrip purpose={focusSummary.purpose} />
+      ) : null,
     // Tauri-only — the component itself runtime-gates on `isDesktop()`,
     // and the parent only passes `backgroundCalloutVisible=true` when
     // the user hasn't already completed/dismissed the wizard.
@@ -1052,21 +1056,31 @@ function LayoutEditorFooterLink() {
 // Focus strip — compact "you chose X" header with link to Settings
 // ─────────────────────────────────────────────
 
-function FocusStrip({ intent }: { intent: UserIntent }) {
-  const meta = INTENT_META[intent];
-  // i18n: chrome copy from `dashboard.focus_strip.*`, intent label from
-  // the shared `intent.<key>` namespace (one of the four legacy archetypes).
-  // Icon stays sourced from INTENT_META — emoji is language-agnostic.
+// /welcome purpose icons for the strip. Includes `custom` (a strip can
+// surface an advanced focus that maps to no single purpose card).
+const FOCUS_STRIP_ICONS: Record<PrimaryPurpose, string> = {
+  monitor: "🔍",
+  cleanup: "🧹",
+  help: "🧭",
+  custom: "⚙️",
+};
+
+function FocusStrip({ purpose }: { purpose: PrimaryPurpose }) {
+  // Chrome copy from `dashboard.focus_strip.*`; the value is the /welcome
+  // purpose title from `focus_purpose.primary.<purpose>.title`, so the strip
+  // speaks the same vocabulary as the onboarding + settings editor.
   const t = useTranslations("dashboard.focus_strip");
-  const tIntent = useTranslations("intent");
+  const tPurpose = useTranslations("focus_purpose");
   return (
     <div className="focus-strip" data-tour="focus-card" role="note">
       <span aria-hidden="true" className="focus-strip-icon">
-        {meta.icon}
+        {FOCUS_STRIP_ICONS[purpose]}
       </span>
       <div className="focus-strip-body">
         <div className="focus-strip-label">{t("label")}</div>
-        <div className="focus-strip-value">{tIntent(intent)}</div>
+        <div className="focus-strip-value">
+          {tPurpose(`primary.${purpose}.title`)}
+        </div>
       </div>
       <Link className="focus-strip-change" href="/dashboard/settings#focus">
         {t("change")}
@@ -1076,7 +1090,7 @@ function FocusStrip({ intent }: { intent: UserIntent }) {
 }
 
 // ─────────────────────────────────────────────
-// Intent-specific callouts
+// Dashboard focus callouts
 // ─────────────────────────────────────────────
 
 function CleanupCallout({ count }: { count: number }) {

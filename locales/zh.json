@@ -242,12 +242,6 @@
       "safe_section": "安全（{count}）："
     }
   },
-  "intent": {
-    "curious": "我只是好奇",
-    "cleanup": "删除侵入性应用",
-    "hygiene": "提升我的安全卫生",
-    "family": "守护我的家人"
-  },
   "risk": {
     "high_label": "高风险",
     "moderate_label": "中等风险",
