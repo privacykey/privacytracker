@@ -432,3 +432,91 @@ test("export_audit_bundle appears only for handoff workflow and completes after 
     "completed"
   );
 });
+
+test("forceIncomplete (dev preview) renders the checklist in its fresh/default state", () => {
+  // declutter focus so review_mismatches (declutter/minimal-only) is in play.
+  const f = focus({ declutter: true });
+  // A context where some core tasks are genuinely done. `compareVisitedAt`
+  // is left null so compare_two_apps is NOT derived-complete and can be
+  // genuinely dismissed (completion would otherwise win over a dismiss).
+  const doneCtx = emptyCtx({
+    focus: f,
+    hasPrivacyProfile: true,
+    privacyMapVisitedAt: NOW,
+    anyAppDetailVisitedAt: NOW,
+  });
+  const blob = {
+    tasks: {
+      compare_two_apps: { dismissed_at: NOW },
+    },
+  };
+
+  // Real resolve: completed tasks show completed, dismissed are dismissed.
+  const real = resolveTasks(f, doneCtx, blob, { isDesktop: false }, NOW);
+  assert.equal(
+    real.find((x) => x.id === "create_privacy_profile")?.state,
+    "completed"
+  );
+  assert.equal(
+    real.find((x) => x.id === "compare_two_apps")?.state,
+    "dismissed"
+  );
+
+  // Preview resolve: caller pairs forceIncomplete with an empty blob, so
+  // nothing reads as completed/dismissed/started — the brand-new checklist.
+  const preview = resolveTasks(
+    f,
+    doneCtx,
+    { tasks: {} },
+    { isDesktop: false },
+    NOW,
+    { forceIncomplete: true }
+  );
+  assert.ok(
+    preview.every((x) => x.state !== "completed" && x.state !== "dismissed"),
+    "no task should be completed or dismissed in preview mode"
+  );
+  assert.equal(
+    preview.find((x) => x.id === "create_privacy_profile")?.state,
+    "ready"
+  );
+  // review_mismatches still gates on its prerequisite (create_privacy_profile
+  // is now incomplete) — a fresh user genuinely can't review mismatches yet.
+  assert.equal(
+    preview.find((x) => x.id === "review_mismatches")?.state,
+    "blocked"
+  );
+
+  // Opt-in candidates ignore derived completion under preview, so a
+  // completed-but-opt-in task is still offered in the tray.
+  const handoff = focus({ understand: true });
+  const candidatesReal = getOptInCandidates(
+    handoff,
+    emptyCtx({
+      focus: handoff,
+      workflow: "other_handoff",
+      auditBundleLastExportedAt: NOW,
+    }),
+    { tasks: {} },
+    { isDesktop: false }
+  );
+  assert.ok(
+    !candidatesReal.some((c) => c.id === "export_audit_bundle"),
+    "completed opt-in task is not offered in real mode"
+  );
+  const candidatesPreview = getOptInCandidates(
+    handoff,
+    emptyCtx({
+      focus: handoff,
+      workflow: "other_handoff",
+      auditBundleLastExportedAt: NOW,
+    }),
+    { tasks: {} },
+    { isDesktop: false },
+    { forceIncomplete: true }
+  );
+  assert.ok(
+    candidatesPreview.some((c) => c.id === "export_audit_bundle"),
+    "preview mode offers the opt-in task even though it is derived-complete"
+  );
+});

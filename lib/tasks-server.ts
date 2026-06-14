@@ -10,6 +10,7 @@
 
 import db from "./db";
 import { getActiveFocus, getActiveFocusWorkflow } from "./feature-flag-storage";
+import { resolveFlagFromDb } from "./feature-flags-server";
 import { getPrivacyProfile } from "./privacy-profile-server";
 import { getSetting, setSetting } from "./scheduler";
 import {
@@ -196,28 +197,60 @@ function numericSetting(key: string): number | null {
 }
 
 /**
+ * Dev preview gate. `flag.devopts.tasks_preview_default === 'on'` renders
+ * the checklist as a brand-new user would see it — handy for previewing the
+ * panel + its row dioramas without clearing real profile/task state. Resolved
+ * fresh per call (cheap; the flag system caches its context). Never throws —
+ * any resolver hiccup falls back to the real state.
+ */
+function isTaskPreviewDefault(): boolean {
+  try {
+    return resolveFlagFromDb("flag.devopts.tasks_preview_default") === "on";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Full resolve: figure out which tasks apply to this focus + their state.
  * Server callers should pass `isDesktop: false` so the Tauri-only task is
  * filtered out — the client provider re-resolves with the real flag.
+ *
+ * When the dev preview flag is on we resolve against an empty blob (drops
+ * dismissed/started/opted-in) and force every task incomplete, so the panel
+ * reads as a fresh checklist regardless of the user's real progress.
  */
 export function resolveAllTasks(
   focus = getActiveFocus(),
   isDesktop = false
 ): ResolvedTask[] {
   const ctx = buildTaskCompletionContext(focus);
-  const blob = getUserTasksState();
-  return resolveTasks(focus, ctx, blob, { isDesktop });
+  const preview = isTaskPreviewDefault();
+  const blob = preview ? EMPTY_BLOB : getUserTasksState();
+  return resolveTasks(focus, ctx, blob, { isDesktop }, undefined, {
+    forceIncomplete: preview,
+  });
 }
 
 /** Companion to `resolveAllTasks` — what opt-in chips should the panel
- *  surface? Computed against the same focus + blob to stay consistent. */
+ *  surface? Computed against the same focus + blob to stay consistent.
+ *  Honours the same dev preview flag so the tray shows the full default set. */
 export function resolveOptInCandidates(
   focus = getActiveFocus(),
   isDesktop = false
 ): OptInCandidate[] {
   const ctx = buildTaskCompletionContext(focus);
-  const blob = getUserTasksState();
-  return getOptInCandidates(focus, ctx, blob, { isDesktop });
+  const preview = isTaskPreviewDefault();
+  const blob = preview ? EMPTY_BLOB : getUserTasksState();
+  return getOptInCandidates(
+    focus,
+    ctx,
+    blob,
+    { isDesktop },
+    {
+      forceIncomplete: preview,
+    }
+  );
 }
 
 function mutateBlob(
