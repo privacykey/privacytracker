@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 export const metadata: Metadata = {
   title: "Your Focus — privacytracker",
   description:
-    "How the audience and goal model tailors the dashboard, what each option means, and how to change it.",
+    "How the purpose you pick on the welcome screen — an audience plus goals — tailors the dashboard, what each option means, and how to change it.",
 };
 
 /**
@@ -90,9 +90,10 @@ export default async function HelpFocusPage() {
                 {tSec("what_is")}
               </h2>
               <p className="legal-license-blurb">
-                A small bundle of preferences — an audience plus a set of goals
-                — that the app uses to decide what to show, what to hide, and
-                what to highlight.
+                A small bundle of preferences — an audience plus a set of goals,
+                which you pick as a purpose on the welcome screen — that the app
+                uses to decide what to show, what to hide, and what to
+                highlight.
               </p>
             </header>
             <p>
@@ -168,6 +169,14 @@ export default async function HelpFocusPage() {
                 exclusive with the others.
               </p>
             </header>
+            <p>
+              On the welcome screen you pick a <strong>purpose</strong> —{" "}
+              <em>Monitor my apps for changes</em>, <em>Clean up my phone</em>,
+              or <em>Help someone else decide</em>. Each purpose is a shortcut
+              that sets the audience and goals below for you; choose{" "}
+              <strong>Custom</strong> (or open Advanced) to set them directly.
+              The goals are what actually drive the dashboard:
+            </p>
             <ul className="legal-bullets">
               <li>
                 <strong>Understand my apps and track over time</strong> — turns

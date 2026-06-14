@@ -25,13 +25,16 @@ import {
   markHintShown,
   subscribePreview,
 } from "@/lib/focus-preview";
+import { describePurpose } from "@/lib/onboarding-purpose";
 
 export default function FocusPreviewBanner() {
-  // Audience/goal labels come from shared `audience.<key>.label` and
-  // `goal.<key>.label` namespaces so copy edits ripple everywhere.
+  // Labels come from shared `audience.*`, `focus_purpose.*` (the /welcome
+  // purpose vocabulary) and `goal.*` (custom-focus fallback) namespaces so
+  // copy edits ripple everywhere.
   const t = useTranslations("preview_banner");
   const tAudience = useTranslations("audience");
   const tGoal = useTranslations("goal");
+  const tPurpose = useTranslations("focus_purpose");
 
   // null = no preview; undefined = pre-mount (avoid SSR/hydrate mismatch).
   const [preview, setPreview] = useState<FocusPreview | null | undefined>(
@@ -123,11 +126,20 @@ export default function FocusPreviewBanner() {
     return null;
   }
 
-  // Human-readable summary, e.g. "For someone I care about · Understand
-  // · Declutter · Accessibility".
+  // Human-readable summary, e.g. "For me · Clean up my phone · Accessibility
+  // labels". Leads with the /welcome purpose; advanced combinations with no
+  // single purpose card fall back to the goal vocabulary.
   const audienceLabel = tAudience(`${preview.audience}.label`);
-  const goalLabels = goalLabelsFor(preview, tGoal);
-  const summary = [audienceLabel, ...goalLabels].join(" · ");
+  const purpose = describePurpose(preview);
+  const focusParts = purpose.isCustom
+    ? goalLabelsFor(preview, tGoal)
+    : [
+        tPurpose(`primary.${purpose.primary}.title`),
+        ...(preview.accessibility
+          ? [tPurpose("secondary.accessibility.title")]
+          : []),
+      ];
+  const summary = [audienceLabel, ...focusParts].join(" · ");
 
   return (
     <section aria-label={t("controls_aria")} className="focus-preview-banner">

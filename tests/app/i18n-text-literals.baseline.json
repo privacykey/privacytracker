@@ -81,7 +81,7 @@
     "or paste the exported patch into"
   ],
   "app/help/focus/page.tsx": [
-    "A small bundle of preferences — an audience plus a set of goals — that the app uses to decide what t",
+    "A small bundle of preferences — an audience plus a set of goals, which you pick as a purpose on the ",
     "You pick it during onboarding (or skip and accept the defaults), and you can change it any time from",
     "Settings → Your focus",
     "Every individual feature is also user-overridable. If your focus hides something you actually want, ",
@@ -94,6 +94,12 @@
     "For a child or dependant",
     "— you&rsquo;re responsible for someone else&rsquo;s device. Default: simpler surface — keyboard shor",
     "What you want out of the app. Pick more than one if you like — except &ldquo;just the basics&rdquo;,",
+    "On the welcome screen you pick a",
+    "Monitor my apps for changes",
+    "Clean up my phone",
+    "Help someone else decide",
+    ". Each purpose is a shortcut that sets the audience and goals below for you; choose",
+    "(or open Advanced) to set them directly. The goals are what actually drive the dashboard:",
     "Understand my apps and track over time",
     "— turns on the timeline, AI policy summaries, history charts, and notifications.",
     "Find and remove the worst offenders",

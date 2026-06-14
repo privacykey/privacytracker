@@ -165,6 +165,31 @@ export function selectionFromFocus(input: PurposeFocusInput): PurposeSelection {
   };
 }
 
+export interface DescribedPurpose {
+  /**
+   * True when the focus doesn't map to a single named purpose (advanced
+   * combinations, minimal, or both goals at once). Display surfaces should
+   * fall back to the goal vocabulary in that case rather than show an
+   * ill-fitting "Custom" label.
+   */
+  isCustom: boolean;
+  /** The /welcome primary purpose this focus maps to. */
+  primary: PrimaryPurpose;
+}
+
+/**
+ * Map a stored focus to the primary "purpose" the /welcome form would show
+ * for it (Monitor / Clean up / Help), so read-only display surfaces can
+ * speak the same purpose vocabulary as the onboarding + settings editor
+ * instead of the underlying goal vocabulary. Thin wrapper over
+ * `selectionFromFocus` — the single source of truth for the
+ * purpose↔focus mapping.
+ */
+export function describePurpose(input: PurposeFocusInput): DescribedPurpose {
+  const { primary } = selectionFromFocus(input);
+  return { primary, isCustom: primary === "custom" };
+}
+
 export function recommendedPrivacyPresetForFocus(
   focus: {
     audience: Audience;

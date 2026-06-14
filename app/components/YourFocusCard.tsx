@@ -20,6 +20,7 @@ import {
   getFocusUpdatedAt,
 } from "@/lib/feature-flag-storage";
 import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { describePurpose } from "@/lib/onboarding-purpose";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 
 interface AnnotationCountRow {
@@ -42,6 +43,13 @@ const GOAL_ICONS: Record<string, string> = {
   declutter: "🧹",
   minimal: "📋",
 };
+// /welcome primary-purpose icons — shown in place of the goal chips when
+// the focus maps to a single purpose card.
+const PURPOSE_ICONS: Record<string, string> = {
+  monitor: "🔍",
+  cleanup: "🧹",
+  help: "🧭",
+};
 
 function getActiveAnnotationCount(): number {
   // Apps with at least one non-deleted annotation — drives the loved_one
@@ -57,11 +65,13 @@ function getActiveAnnotationCount(): number {
 }
 
 export default async function YourFocusCard() {
-  // Three translation namespaces: `your_focus_card` (card chrome),
-  // `audience` (audience chip label), `goal` (goal chip labels).
+  // Four translation namespaces: `your_focus_card` (card chrome),
+  // `audience` (audience chip label), `focus_purpose` (the /welcome purpose
+  // chip + accessibility label), `goal` (custom-focus fallback chips).
   const t = await getTranslations("your_focus_card");
   const tAudience = await getTranslations("audience");
   const tGoal = await getTranslations("goal");
+  const tPurpose = await getTranslations("focus_purpose");
 
   const focus = getActiveFocus();
   const audienceSet = focus.audience !== undefined && Boolean(focus.audience);
@@ -92,6 +102,16 @@ export default async function YourFocusCard() {
   const goalChips = describeGoals(focus.goals, tGoal);
   const workflow = getActiveFocusWorkflow(focus);
   const accessibilityActive = focus.goals.has("accessibility");
+  // Lead with the /welcome purpose (Monitor / Clean up / Help); fall back
+  // to the goal chips for advanced combinations with no single purpose card.
+  const purpose = describePurpose({
+    audience: focus.audience,
+    understand: focus.goals.has("understand"),
+    declutter: focus.goals.has("declutter"),
+    minimal: focus.goals.has("minimal"),
+    accessibility: accessibilityActive,
+    workflow,
+  });
   const isLovedOne = focus.audience === "loved_one";
   // Gate the annotation count behind `flag.dashboard.annotation_banner`
   // so non-loved_one audiences skip the DB hit.
@@ -187,8 +207,9 @@ export default async function YourFocusCard() {
         </Link>
       </header>
 
-      {/* Chip strip — same audience + goal vocabulary as the onboarding
-          screens; accessibility renders an SVG figure-in-circle. */}
+      {/* Chip strip — audience + the /welcome purpose (Monitor / Clean up /
+          Help), falling back to goal chips for custom focuses; accessibility
+          renders an SVG figure-in-circle. */}
       <div className="your-focus-card__chips" role="list">
         <span className="chip chip--audience" role="listitem">
           <span aria-hidden="true" className="chip-icon">
@@ -196,20 +217,33 @@ export default async function YourFocusCard() {
           </span>
           <span className="chip-label">{audienceChip}</span>
         </span>
-        {goalChips.map(({ key, label }) => (
-          <span className="chip chip--goal" key={key} role="listitem">
-            <span aria-hidden="true" className="chip-icon">
-              {GOAL_ICONS[key] ?? ""}
+        {purpose.isCustom ? (
+          goalChips.map(({ key, label }) => (
+            <span className="chip chip--goal" key={key} role="listitem">
+              <span aria-hidden="true" className="chip-icon">
+                {GOAL_ICONS[key] ?? ""}
+              </span>
+              <span className="chip-label">{label}</span>
             </span>
-            <span className="chip-label">{label}</span>
+          ))
+        ) : (
+          <span className="chip chip--purpose" role="listitem">
+            <span aria-hidden="true" className="chip-icon">
+              {PURPOSE_ICONS[purpose.primary] ?? ""}
+            </span>
+            <span className="chip-label">
+              {tPurpose(`primary.${purpose.primary}.title`)}
+            </span>
           </span>
-        ))}
+        )}
         {accessibilityActive && (
           <span className="chip chip--modifier" role="listitem">
             <span aria-hidden="true" className="chip-icon">
               <AccessibilityFigureGlyph size={16} />
             </span>
-            <span className="chip-label">{tGoal("accessibility.label")}</span>
+            <span className="chip-label">
+              {tPurpose("secondary.accessibility.title")}
+            </span>
           </span>
         )}
       </div>
