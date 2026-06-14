@@ -55,6 +55,7 @@ import {
   rovingTabIndex,
   useRovingRadioGroup,
 } from "../../lib/use-roving-radiogroup";
+import { emitUserTasksRefresh } from "./UserTasksProvider";
 
 // localStorage key — exported so the Settings panel can write to the
 // same key from its toggle. Renamed from FLOATING_FLAGS_STORAGE_KEY but
@@ -142,6 +143,17 @@ const GOAL_OPTIONS: Array<{
  */
 const KILL_SWITCH_KEY = "flag.devopts.feature_flag_system.enabled";
 
+/**
+ * Flags whose value feeds the dashboard task checklist. That surface renders
+ * behind `UserTasksProvider`'s own `/api/user-tasks` client cache, which
+ * `router.refresh()` re-renders around but does NOT re-fetch — so toggling one
+ * of these needs an explicit provider nudge (`emitUserTasksRefresh`) to apply
+ * in place, like every other (server-rendered) flag already does.
+ */
+const TASK_RESOLUTION_FLAGS = new Set<string>([
+  "flag.devopts.tasks_preview_default",
+]);
+
 const ALWAYS_VISIBLE_SURFACES = new Set([
   "global",
   "nav",
@@ -215,17 +227,33 @@ function primarySurfacesForPath(pathname: string): string[] {
  */
 const PAGE_PRIMARY_FLAG_KEYS: Array<{
   prefix: string;
+  /** Match the path exactly (plus a trailing slash) instead of by prefix.
+   *  Use when the flag's effect lives on a single page whose route is also
+   *  the parent of unrelated sub-pages — e.g. the home dashboard. */
+  exact?: boolean;
   keys: readonly string[];
 }> = [
   {
     prefix: "/dashboard/review-recommendations",
     keys: ["flag.devopts.cfgutil_uninstall"],
   },
+  {
+    // The task checklist only renders on the home dashboard itself, so scope
+    // the promotion to an exact match — a bare `/dashboard` prefix would also
+    // surface it on /dashboard/apps, /dashboard/settings, etc. where the
+    // checklist (and this flag's effect) isn't shown.
+    prefix: "/dashboard",
+    exact: true,
+    keys: ["flag.devopts.tasks_preview_default"],
+  },
 ];
 
 function pagePrimaryFlagKeysFor(pathname: string): readonly string[] {
   for (const o of PAGE_PRIMARY_FLAG_KEYS) {
-    if (pathname.startsWith(o.prefix)) {
+    const matched = o.exact
+      ? pathname === o.prefix || pathname === `${o.prefix}/`
+      : pathname.startsWith(o.prefix);
+    if (matched) {
       return o.keys;
     }
   }
@@ -1144,6 +1172,12 @@ export default function DevMenu() {
         }
         fetchFlags("silent");
         router.refresh();
+        // The checklist's data lives in UserTasksProvider's own cache, which
+        // router.refresh() doesn't re-fetch — nudge it so a task-resolution
+        // flag applies in place instead of waiting for a manual reload.
+        if (TASK_RESOLUTION_FLAGS.has(key)) {
+          emitUserTasksRefresh();
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : tDev("set_override_failed"));
         fetchFlags("silent");
