@@ -28183,10 +28183,16 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   align-items: center;
 }
 
+/* Reflow (WCAG 1.4.10): the cmd-row and its nowrap <code> are flex children
+   whose default min-width:auto floors them at the upgrade command's full
+   content width — that defeats the max-width/ellipsis below and pushes the
+   banner past a 320px viewport. min-width:0 on both lets max-width + ellipsis
+   actually constrain the command; the <640px actions override does the rest. */
 .update-banner__cmd-row {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-width: 0;
   padding: 4px 4px 4px 10px;
   background: color-mix(in srgb, var(--text) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
@@ -28194,6 +28200,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .update-banner__cmd {
+  min-width: 0;
   max-width: min(420px, 60vw);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -28245,6 +28252,13 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 @media (max-width: 640px) {
   .update-banner__inner {
     padding: 10px 14px;
+  }
+  /* Size the actions block to the full inner row instead of its (non-shrinking,
+     flex-shrink:0) content width, so it can't push past the viewport; min-width:0
+     then lets its contents shrink to fit within that row. */
+  .update-banner__actions {
+    flex-basis: 100%;
+    min-width: 0;
   }
   .update-banner__cmd {
     max-width: 100%;
