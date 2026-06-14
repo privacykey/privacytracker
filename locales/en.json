@@ -498,7 +498,7 @@
       }
     },
     "advanced": {
-      "summary": "Advanced options",
+      "summary": "Set audience and goals manually",
       "audience": "Audience",
       "goals": "Goals"
     },

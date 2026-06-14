@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import PurposeCardScene from "../../components/PurposeCardScene";
 
 export const metadata: Metadata = {
   title: "Your Focus — privacytracker",
@@ -50,6 +51,21 @@ export default async function HelpFocusPage() {
   // pass, tracked separately under deferred long-form translations.
   const t = await getTranslations("help_focus_page");
   const tSec = await getTranslations("help_focus_page.sections");
+  // Reuse the /welcome purpose animations to illustrate the goals section.
+  const tPurpose = await getTranslations("focus_purpose");
+  const tAnim = await getTranslations("focus_purpose.animation");
+  // The live form randomises the monitor scene's "what changed" line; here
+  // one representative example is enough.
+  const sceneProps = {
+    deleteLabel: tAnim("cleanup.delete"),
+    helpDetail: tAnim("help.detail"),
+    helpTitle: tAnim("help.title"),
+    monitorChangeText: tAnim("monitor.change", {
+      app: "ShoeDrop",
+      label: tAnim("labels.location"),
+    }),
+    monitorTitle: tAnim("monitor.title"),
+  };
   return (
     <div className="legal-page">
       <header className="legal-page-hero">
@@ -169,6 +185,14 @@ export default async function HelpFocusPage() {
                 exclusive with the others.
               </p>
             </header>
+            <div className="help-focus-scenes">
+              {(["monitor", "cleanup", "help"] as const).map((p) => (
+                <figure className="help-focus-scene" key={p}>
+                  <PurposeCardScene {...sceneProps} purpose={p} />
+                  <figcaption>{tPurpose(`primary.${p}.title`)}</figcaption>
+                </figure>
+              ))}
+            </div>
             <p>
               On the welcome screen you pick a <strong>purpose</strong> —{" "}
               <em>Monitor my apps for changes</em>, <em>Clean up my phone</em>,

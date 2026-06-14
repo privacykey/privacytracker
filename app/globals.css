@@ -28523,6 +28523,29 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   isolation: isolate;
 }
 
+/* /help/focus reuse of the /welcome purpose scenes. The scene itself is
+   flex: 1 1 auto + 152px tall, so each sits in a column-flex figure that
+   gives it full width. */
+.help-focus-scenes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 20px;
+}
+
+.help-focus-scene {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.help-focus-scene figcaption {
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .fps-phone,
 .fps-desktop,
 .fps-help-desktop,
@@ -29502,7 +29525,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .focus-purpose-card--onboarding .focus-purpose-scene * {
+  .focus-purpose-scene * {
     animation: none !important;
   }
 
