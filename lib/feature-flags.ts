@@ -52,7 +52,7 @@ export const FLAG_REGISTRY: Record<FlagKey, FlagRegistration> =
 // Sample descriptions — concrete examples of the registry entry shape.
 export const SAMPLE_DESCRIPTIONS: Partial<Record<FlagKey, string>> = {
   "flag.detail.policy.ai_summary":
-    "AI-generated summary of the privacy policy. Off by default; turned on by goal.understand or goal.declutter.",
+    "AI-generated summary of the privacy policy. Off by default; turned on by goal.monitor or goal.cleanup.",
   "flag.detail.policy.safety_summary":
     'Guardian-only "is this safe for them?" summary above the lens grid. Requires a guardian-tuned AI prompt variant.',
   "flag.detail.annotations_sidebar":

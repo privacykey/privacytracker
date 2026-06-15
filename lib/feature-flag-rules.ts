@@ -636,7 +636,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
 // ============================================================================
 //
 // `self` is the baseline (no rules). `loved_one` elevates share/export. `guardian`
-// trims power-user surfaces (carers rarely need them). `goal.declutter` will
+// trims power-user surfaces (carers rarely need them). `goal.cleanup` will
 // re-enable some `guardian` hides — see GOAL_RULES.cleanup below.
 
 export const AUDIENCE_RULES: Record<

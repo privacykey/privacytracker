@@ -189,12 +189,12 @@ export default function FocusPreviewBanner() {
 /**
  * Compose the goal portion of the preview summary in display order:
  *   - minimal selected → render the minimal label alone
- *   - otherwise → understand / declutter (in that order) if checked,
- *     fallback to understand when neither is checked (matches the silent
- *     default applied at commit time)
+ *   - otherwise → monitor / cleanup (in that order) if checked
  *   - accessibility appended last when active.
  *
- * Takes a `t` function so React hook ordering rules aren't violated.
+ * No goals + not minimal is a valid empty baseline — the summary just leads
+ * with the audience. Takes a `t` function so React hook ordering rules aren't
+ * violated.
  */
 function goalLabelsFor(
   preview: FocusPreview,
@@ -203,15 +203,13 @@ function goalLabelsFor(
   const out: string[] = [];
   if (preview.minimal) {
     out.push(tGoal("minimal.label"));
-  } else if (preview.monitor || preview.cleanup) {
+  } else {
     if (preview.monitor) {
-      out.push(tGoal("understand.label"));
+      out.push(tGoal("monitor.label"));
     }
     if (preview.cleanup) {
-      out.push(tGoal("declutter.label"));
+      out.push(tGoal("cleanup.label"));
     }
-  } else {
-    out.push(tGoal("understand.label"));
   }
   if (preview.accessibility) {
     out.push(tGoal("accessibility.label"));

@@ -39,8 +39,8 @@ const AUDIENCE_ICONS: Record<"self" | "loved_one" | "guardian", string> = {
 // Accessibility isn't here — the modifier chip renders an
 // `<AccessibilityFigureGlyph />` SVG instead of a single emoji.
 const GOAL_ICONS: Record<string, string> = {
-  understand: "🔍",
-  declutter: "🧹",
+  monitor: "🔍",
+  cleanup: "🧹",
   minimal: "📋",
 };
 // /welcome primary-purpose icons — shown in place of the goal chips when
@@ -131,11 +131,11 @@ export default async function YourFocusCard() {
   if (focus.goals.has("minimal")) {
     summarySentences.push(t("summary.with_minimal"));
   } else if (focus.goals.has("monitor") && focus.goals.has("cleanup")) {
-    summarySentences.push(t("summary.with_understand_declutter"));
+    summarySentences.push(t("summary.with_monitor_cleanup"));
   } else if (focus.goals.has("monitor")) {
-    summarySentences.push(t("summary.with_understand"));
+    summarySentences.push(t("summary.with_monitor"));
   } else if (focus.goals.has("cleanup")) {
-    summarySentences.push(t("summary.with_declutter"));
+    summarySentences.push(t("summary.with_cleanup"));
   }
   if (accessibilityActive) {
     summarySentences.push(t("summary.with_accessibility"));
@@ -316,7 +316,7 @@ export default async function YourFocusCard() {
 
 /**
  * Render active goals as `{ key, label }` entries in display order:
- * understand → declutter (if both checked) → minimal. Accessibility is
+ * monitor → cleanup (if both checked) → minimal. Accessibility is
  * rendered separately. Takes the goal-namespace `t` so this helper stays
  * sync (the caller already awaits translations once).
  */
@@ -329,10 +329,10 @@ function describeGoals(
     out.push({ key: "minimal", label: tGoal("minimal.label") });
   } else {
     if (goals.has("monitor")) {
-      out.push({ key: "understand", label: tGoal("understand.label") });
+      out.push({ key: "monitor", label: tGoal("monitor.label") });
     }
     if (goals.has("cleanup")) {
-      out.push({ key: "declutter", label: tGoal("declutter.label") });
+      out.push({ key: "cleanup", label: tGoal("cleanup.label") });
     }
   }
   return out;

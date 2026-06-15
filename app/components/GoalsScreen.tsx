@@ -273,11 +273,9 @@ export default function GoalsScreen({
                   {understand ? "✓" : ""}
                 </span>
               </div>
-              <div className="method-card-title">
-                {tGoal("understand.label")}
-              </div>
+              <div className="method-card-title">{tGoal("monitor.label")}</div>
               <p className="method-card-copy" id="goal-understand-subtext">
-                {tGoal("understand.subtext")}
+                {tGoal("monitor.subtext")}
               </p>
             </button>
 
@@ -303,11 +301,9 @@ export default function GoalsScreen({
                   {declutter ? "✓" : ""}
                 </span>
               </div>
-              <div className="method-card-title">
-                {tGoal("declutter.label")}
-              </div>
+              <div className="method-card-title">{tGoal("cleanup.label")}</div>
               <p className="method-card-copy" id="goal-declutter-subtext">
-                {tGoal("declutter.subtext")}
+                {tGoal("cleanup.subtext")}
               </p>
             </button>
           </div>
