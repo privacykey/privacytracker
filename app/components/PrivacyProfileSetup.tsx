@@ -151,7 +151,7 @@ export default function PrivacyProfileSetup({
         <Link
           aria-label={t("back_aria")}
           className="wizard-back-link"
-          href="/welcome?customize=1"
+          href="/welcome"
         >
           <span aria-hidden="true">←</span> {t("back_to_goals")}
         </Link>

@@ -5370,7 +5370,7 @@ export default function OnboardWizard({
             <Link
               aria-label={tStep1("back_aria")}
               className="wizard-back-link"
-              href="/welcome?customize=1"
+              href="/welcome"
             >
               <span aria-hidden="true">←</span> {tStep1("back_to_goals")}
             </Link>
