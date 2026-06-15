@@ -619,3 +619,575 @@
     opacity: 1;
   }
 }
+
+/* ─────────────────────────────────────────────
+ * Inline task dioramas (see TaskDiorama.tsx)
+ *
+ * Skeuomorphic micro-animations that replace the flat `○` glyph on rows
+ * that opt in (DIORAMA_TASK_IDS). The dashboard cousin of the privacy-label
+ * vignettes — same vocabulary (spring overshoot, stamp-thump) and the same
+ * a11y contract: the SVG is decorative, only transform/opacity animate
+ * (compositor-only, like .task-journey-node.is-current::after), and each
+ * scene's BASE frame is its finished "punchline" so the global
+ * prefers-reduced-motion collapse snaps straight to the meaningful state.
+ *
+ * Motion budget: still at rest; the entrance replays on row hover/focus;
+ * the first actionable diorama row breathes via the shared `halo-breathe`
+ * keyframes as the single "start here" cue. Colours are token-driven so the
+ * scene tracks the active light/dark theme.
+ * ───────────────────────────────────────────── */
+.task-diorama {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+.task-diorama .td-svg {
+  display: block;
+  width: 28px;
+  height: 28px;
+  /* Clip to the box (UA default) so the scene — and any future diorama's
+     spring overshoot — can never bleed into the adjacent title column. All
+     current art sits inside the 56-unit viewBox, so this is a no-op render
+     today; it just keeps the component self-bounding to its grid cell. */
+  overflow: hidden;
+}
+
+/* Shared element styling (token-driven, theme-aware). */
+.td-track {
+  fill: var(--border-strong, rgba(127, 127, 127, 0.32));
+}
+.td-tick {
+  stroke: var(--border-strong, rgba(127, 127, 127, 0.28));
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.td-thumb {
+  fill: var(--blue, #0a84ff);
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.td-stamp {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.td-stamp-ring {
+  fill: none;
+  stroke: var(--success, #34c759);
+  stroke-width: 2;
+}
+.td-stamp-check {
+  fill: none;
+  stroke: var(--success, #34c759);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Entrance replays on row hover / keyboard focus. At rest the elements sit
+   at their base (settled) frame — which is also the reduced-motion result. */
+.task-list-row-btn:hover .td-thumb,
+.task-list-row-btn:focus-visible .td-thumb {
+  animation: td-thumb-set 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.task-list-row-btn:hover .td-stamp,
+.task-list-row-btn:focus-visible .td-stamp {
+  animation: td-stamp-in 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes td-thumb-set {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.6);
+  }
+  35% {
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(2px) scale(1.12);
+  }
+  72% {
+    transform: translateX(0) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes td-stamp-in {
+  0%,
+  38% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-12deg);
+  }
+  52% {
+    opacity: 1;
+    transform: scale(1.14) rotate(-3deg);
+  }
+  62% {
+    transform: scale(1) rotate(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+/* Recommended-next diorama: a slow breathing ring behind the scene — the
+   single "alive" cue at rest. ::before paints under the SVG child, so the
+   halo glows through the scene's gaps. Reuses the shared `halo-breathe`
+   keyframes (globals.css). */
+.task-diorama.is-recommended::before {
+  --halo-scale: 1.4;
+  position: absolute;
+  inset: 2px;
+  z-index: 0;
+  content: "";
+  background: color-mix(in srgb, var(--blue, #0a84ff) 26%, transparent);
+  border-radius: 50%;
+  animation: halo-breathe 2.6s ease-in-out infinite;
+}
+
+/* Journey variant: the current step's diorama leads the detail pane (the
+   "inline thumbnail" of the default journey layout, since core tasks render
+   as numbered strip nodes rather than rows). `-main` keeps the diorama +
+   text grouped left while the CTA stays right via the existing
+   space-between. The detail pane remounts on step change (key={current.id}),
+   so the entrance plays once per step — no hover needed here. */
+.task-journey-detail-main {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 12px;
+  align-items: center;
+}
+.task-journey-detail .task-diorama {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+.task-journey-detail .task-diorama .td-svg {
+  width: 40px;
+  height: 40px;
+}
+.task-journey-detail .td-thumb {
+  animation: td-thumb-set 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.task-journey-detail .td-stamp {
+  animation: td-stamp-in 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── view_privacy_map diorama ────────────────────────────
+   "See what your apps collect": privacy data types (a person, a heart, an
+   envelope) pulse their data into the central app, which then transmits a
+   packet on to a server that lights up. Two-stage flow — collect, then send.
+   All motion is transform/opacity (compositor-only); the base frame is the
+   fully-wired scene with the server light on (the reduced-motion punchline). */
+.td-thread {
+  fill: none;
+  stroke: var(--border-strong, rgba(127, 127, 127, 0.3));
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.td-src,
+.td-hub,
+.td-server-light,
+.td-packet {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.td-pin {
+  /* Location pin — a teardrop with a punched-out hole (fill-rule evenodd).
+     The silhouette stays unmistakable down to the 28px row size, where the
+     old person/avatar blurred into a blob. */
+  fill: var(--cyan, #64d2ff);
+}
+.td-src-heart {
+  fill: var(--red, #ff453a);
+}
+.td-src-mail {
+  fill: var(--orange, #ff9f0a);
+}
+.td-mail-flap {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.td-hub-body {
+  fill: var(--blue, #0a84ff);
+}
+.td-hub-inner {
+  fill: rgba(255, 255, 255, 0.85);
+}
+.td-server-body {
+  fill: var(--text-3, #8e8e93);
+}
+.td-server-slot {
+  stroke: rgba(0, 0, 0, 0.3);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+.td-server-dot {
+  /* Static, dim rack-unit indicators on the bigger server. */
+  fill: rgba(255, 255, 255, 0.45);
+}
+.td-server-light {
+  fill: var(--green, #30d158);
+}
+.td-packet {
+  /* Base = hidden; the travelling packets are transient, so at rest (and
+     under reduced motion) only the wired scene + lit server remain. */
+  opacity: 0;
+}
+.td-c1 {
+  --td-dx: 9px;
+  --td-dy: 13px;
+  fill: var(--cyan, #64d2ff);
+}
+.td-c2 {
+  --td-dx: 8px;
+  --td-dy: -1px;
+  fill: var(--red, #ff453a);
+}
+.td-c3 {
+  --td-dx: 8px;
+  --td-dy: -14px;
+  fill: var(--orange, #ff9f0a);
+}
+.td-out {
+  --td-dx: 6px;
+  --td-dy: 0px;
+  fill: var(--blue, #0a84ff);
+}
+
+/* Hover (list) / mount (journey) triggers. One shared 2s timeline; the
+   collect → pulse → transmit → light sequence is encoded in the keyframe
+   percentages, so no per-element delays are needed. */
+.task-list-row-btn:hover .td-collect,
+.task-list-row-btn:focus-visible .td-collect,
+.task-journey-detail .td-collect {
+  animation: td-mv-collect 2s ease-in-out both;
+}
+.task-list-row-btn:hover .td-out,
+.task-list-row-btn:focus-visible .td-out,
+.task-journey-detail .td-out {
+  animation: td-mv-transmit 2s ease-in-out both;
+}
+.task-list-row-btn:hover .td-src,
+.task-list-row-btn:focus-visible .td-src,
+.task-journey-detail .td-src {
+  animation: td-mv-emit 2s ease-in-out both;
+}
+.task-list-row-btn:hover .td-hub,
+.task-list-row-btn:focus-visible .td-hub,
+.task-journey-detail .td-hub {
+  animation: td-mv-hub 2s ease-in-out both;
+}
+.task-list-row-btn:hover .td-server-light,
+.task-list-row-btn:focus-visible .td-server-light,
+.task-journey-detail .td-server-light {
+  animation: td-mv-light 2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes td-mv-collect {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  8% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 1;
+    transform: translate(var(--td-dx, 10px), var(--td-dy, 0px));
+  }
+  38%,
+  100% {
+    opacity: 0;
+    transform: translate(var(--td-dx, 10px), var(--td-dy, 0px));
+  }
+}
+@keyframes td-mv-transmit {
+  0%,
+  46% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  54% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 1;
+    transform: translate(var(--td-dx, 7px), var(--td-dy, 0px));
+  }
+  82%,
+  100% {
+    opacity: 0;
+    transform: translate(var(--td-dx, 7px), var(--td-dy, 0px));
+  }
+}
+@keyframes td-mv-emit {
+  0% {
+    transform: scale(1);
+  }
+  10% {
+    transform: scale(1.14);
+  }
+  22% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes td-mv-hub {
+  0%,
+  26% {
+    transform: scale(1);
+  }
+  36% {
+    transform: scale(1.12);
+  }
+  46% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes td-mv-light {
+  0%,
+  68% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  88% {
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ── review_mismatches diorama ────────────────────────────
+   "Deal with apps that cross your line": a swipe-to-decide gesture. The app
+   card swipes toward a verdict — a keep (✓) on the left, a remove (✕) on the
+   right — and the side it lands on illuminates from desaturated grey to
+   colour. Here the verdict is "remove": the card swipes right and the ✕
+   lights up red while the ✓ stays grey. The card's resting position IS the
+   swiped one (base transform), so the settled frame reads as the decision —
+   the reduced-motion punchline. Card motion is transform-only; the
+   illumination is an opacity fade of a colour overlay over the grey badge
+   (so the whole thing stays compositor-only). */
+.td-rv-card {
+  transform: translateX(9px) rotate(11deg);
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.td-rv-cardbg {
+  fill: rgba(127, 127, 127, 0.16);
+  stroke: rgba(127, 127, 127, 0.42);
+  stroke-width: 1;
+}
+.td-rv-appicon {
+  fill: var(--blue, #0a84ff);
+}
+.td-rv-line {
+  fill: rgba(127, 127, 127, 0.55);
+}
+.td-rv-badge-base {
+  /* Desaturated verdict badge — both sides start neutral grey. */
+  fill: rgba(127, 127, 127, 0.5);
+}
+.td-rv-lit {
+  /* Colour overlay over the grey ✕ badge; fades in to "illuminate" the
+     chosen side. Base (resting) = lit. */
+  fill: var(--red, #ff453a);
+}
+.td-rv-glyph {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.task-list-row-btn:hover .td-rv-card,
+.task-list-row-btn:focus-visible .td-rv-card,
+.task-journey-detail .td-rv-card {
+  animation: td-rv-swipe 1.7s cubic-bezier(0.32, 1.25, 0.6, 1) both;
+}
+.task-list-row-btn:hover .td-rv-lit,
+.task-list-row-btn:focus-visible .td-rv-lit,
+.task-journey-detail .td-rv-lit {
+  animation: td-rv-illuminate 1.7s ease-out both;
+}
+@keyframes td-rv-swipe {
+  0% {
+    opacity: 0;
+    transform: translateX(0) translateY(5px) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+  42% {
+    transform: translateX(0) rotate(0deg);
+  }
+  100% {
+    transform: translateX(9px) rotate(11deg);
+  }
+}
+@keyframes td-rv-illuminate {
+  0%,
+  52% {
+    opacity: 0;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ── compare_two_apps diorama ────────────────────────────
+   "Compare two apps side by side": two app cards weigh in on a balance beam
+   over a fulcrum, and it tips toward the lighter (collects-less) app on the
+   right, which lights up with a green winner outline. The beam pivots about
+   the fulcrum (transform-box: view-box, origin at the apex); the winner
+   outline is an opacity fade of a green stroke (compositor-only). Resting
+   state = tipped + winner lit — the reduced-motion punchline. */
+.td-cmp-fulcrum,
+.td-cmp-bar {
+  fill: rgba(127, 127, 127, 0.5);
+}
+.td-cmp-cardbg {
+  fill: rgba(127, 127, 127, 0.16);
+  stroke: rgba(127, 127, 127, 0.42);
+  stroke-width: 1;
+}
+.td-cmp-line {
+  fill: rgba(127, 127, 127, 0.55);
+}
+.td-cmp-win {
+  fill: none;
+  stroke: var(--green, #30d158);
+  stroke-width: 1.6;
+}
+.td-cmp-beam {
+  transform: rotate(-9deg);
+  transform-origin: 28px 32px;
+  transform-box: view-box;
+}
+.task-list-row-btn:hover .td-cmp-beam,
+.task-list-row-btn:focus-visible .td-cmp-beam,
+.task-journey-detail .td-cmp-beam {
+  animation: td-cmp-tip 1.7s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.task-list-row-btn:hover .td-cmp-win,
+.task-list-row-btn:focus-visible .td-cmp-win,
+.task-journey-detail .td-cmp-win {
+  animation: td-cmp-win-in 1.7s ease-out both;
+}
+@keyframes td-cmp-tip {
+  0%,
+  35% {
+    transform: rotate(0deg);
+  }
+  58% {
+    transform: rotate(-12deg);
+  }
+  74% {
+    transform: rotate(-7.5deg);
+  }
+  100% {
+    transform: rotate(-9deg);
+  }
+}
+@keyframes td-cmp-win-in {
+  0%,
+  52% {
+    opacity: 0;
+  }
+  74% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ── open_any_app_detail diorama ────────────────────────────
+   "Open one app's report": a report document rises open (fade + lift) and its
+   privacy-label rows cascade in one after another (staggered via .td-doc-chip-2
+   / -3 delays). translateY + opacity only (compositor-only); the base frame is
+   the full report — the reduced-motion punchline. */
+.td-doc-bg {
+  fill: rgba(127, 127, 127, 0.16);
+  stroke: rgba(127, 127, 127, 0.42);
+  stroke-width: 1;
+}
+.td-doc-icon {
+  fill: var(--blue, #0a84ff);
+}
+.td-doc-title {
+  fill: rgba(127, 127, 127, 0.5);
+}
+.td-doc-chip {
+  fill: rgba(127, 127, 127, 0.4);
+}
+.task-list-row-btn:hover .td-doc-card,
+.task-list-row-btn:focus-visible .td-doc-card,
+.task-journey-detail .td-doc-card {
+  animation: td-doc-open 1.5s ease-out both;
+}
+/* Longhand so the per-row .td-doc-chip-2 / -3 animation-delay survives. */
+.task-list-row-btn:hover .td-doc-chip,
+.task-list-row-btn:focus-visible .td-doc-chip,
+.task-journey-detail .td-doc-chip {
+  animation-name: td-doc-chip;
+  animation-duration: 1.4s;
+  animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  animation-fill-mode: both;
+}
+.td-doc-chip-2 {
+  animation-delay: 0.12s;
+}
+.td-doc-chip-3 {
+  animation-delay: 0.24s;
+}
+@keyframes td-doc-open {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  22% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes td-doc-chip {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  46% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

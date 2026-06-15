@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Audience } from "../../lib/feature-flag-rules";
 import type { OptInCandidate, ResolvedTask, UserTaskId } from "../../lib/tasks";
+import TaskDiorama, { DIORAMA_TASK_IDS } from "./TaskDiorama";
 import TaskGateModal from "./TaskGateModal";
 import UserTasksMutationAlert from "./UserTasksMutationAlert";
 import { useUserTasks } from "./UserTasksProvider";
@@ -73,6 +74,20 @@ export default function TaskListInteractive({
     }
     return [...open, ...done];
   }, [provider.ready, tasks, initialVisibleRows]);
+
+  // The first actionable row that ships an inline diorama gets the at-rest
+  // "start here" breathing cue. Scoped to diorama rows (not just the first
+  // actionable row overall) so the cue is visible while only some rows have
+  // dioramas — once every row has one this converges to "first actionable
+  // row".
+  const recommendedDioramaId = useMemo(() => {
+    const first = visibleRows.find(
+      (r) =>
+        (r.state === "ready" || r.state === "in_progress") &&
+        DIORAMA_TASK_IDS.has(r.id)
+    );
+    return first?.id ?? null;
+  }, [visibleRows]);
 
   // Use provider candidates after first fetch; before that, render from
   // the server-resolved list so the chip tray appears on first paint.
@@ -243,9 +258,17 @@ export default function TaskListInteractive({
         onClick={() => void handleTaskClick(task)}
         type="button"
       >
-        <span aria-hidden="true" className="task-list-row-glyph">
-          {STATE_GLYPH[task.state]}
-        </span>
+        {DIORAMA_TASK_IDS.has(task.id) ? (
+          <TaskDiorama
+            id={task.id}
+            recommended={task.id === recommendedDioramaId}
+            state={task.state}
+          />
+        ) : (
+          <span aria-hidden="true" className="task-list-row-glyph">
+            {STATE_GLYPH[task.state]}
+          </span>
+        )}
         <span className="task-list-row-text">
           <span className="task-list-row-title">{t(`${task.id}.title`)}</span>
           <span className="task-list-row-body">{t(`${task.id}.body`)}</span>
@@ -368,13 +391,22 @@ export default function TaskListInteractive({
             </ol>
             {current && (
               <div className="task-journey-detail" key={current.id}>
-                <div className="task-journey-detail-text">
-                  <p className="task-journey-detail-title">
-                    {t(`${current.id}.title`)}
-                  </p>
-                  <p className="task-journey-detail-body">
-                    {t(`${current.id}.body`)}
-                  </p>
+                <div className="task-journey-detail-main">
+                  {DIORAMA_TASK_IDS.has(current.id) && (
+                    <TaskDiorama
+                      id={current.id}
+                      recommended={false}
+                      state={current.state}
+                    />
+                  )}
+                  <div className="task-journey-detail-text">
+                    <p className="task-journey-detail-title">
+                      {t(`${current.id}.title`)}
+                    </p>
+                    <p className="task-journey-detail-body">
+                      {t(`${current.id}.body`)}
+                    </p>
+                  </div>
                 </div>
                 <div className="task-journey-detail-actions">
                   <button
