@@ -1,5 +1,22 @@
 {
   "_comment": "Round 2 skeleton — populated initially with audience-aware copy needed for the tour and the focus surfaces. Round 3 PRs (3, 4, 5) extract the remaining ~2000 strings from existing components.",
+  "feature_toggle": {
+    "heading": "Fine-tune features",
+    "hint": "Optional. Switch individual features on or off — your choice here overrides what the goals above would turn on.",
+    "on": "On",
+    "off": "Off",
+    "aria_on": "{feature} is on. Activate to turn it off.",
+    "aria_off": "{feature} is off. Activate to turn it on.",
+    "reset": "Reset {feature} to match your focus",
+    "features": {
+      "ai_summary": "AI policy summaries",
+      "compare": "Compare apps",
+      "privacy_map": "Privacy Map",
+      "stats": "Stats & charts",
+      "notifications": "Notifications",
+      "shortlist": "Shortlist"
+    }
+  },
   "verdict": {
     "safe_label": "Marked safe",
     "safe_short": "Safe",
@@ -424,6 +441,7 @@
   },
   "focus_purpose": {
     "primary_aria": "Primary purpose",
+    "audience_heading": "Who's this for?",
     "primary": {
       "monitor": {
         "title": "Monitor my apps for changes",

@@ -91,14 +91,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Mutual exclusion: minimal can't combine with monitor or cleanup.
-  // If client sent both, minimal wins (matches the screen 2 UI behaviour
-  // where picking "Just the basics" deselects the other checkboxes).
+  // If client sent both, minimal wins (matches the "Keep it minimal" switch
+  // which deselects the goal tiles). Selecting no goal tiles is now a VALID
+  // empty state — it resolves to the hard-default baseline surface — so there
+  // is deliberately no silent fallback to monitor here.
   if (minimal) {
     monitor = false;
     cleanup = false;
-  } else if (!(monitor || cleanup)) {
-    // Silent fallback per §4.2 — empty primary goals defaults to monitor.
-    monitor = true;
   }
   const finalWorkflow =
     workflow ?? inferFocusWorkflow({ audience, monitor, cleanup, minimal });

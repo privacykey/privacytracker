@@ -1,5 +1,22 @@
 {
   "_comment": "Simplified Chinese translation. Mirrors the namespace structure of locales/en.json exactly — every key in en.json must have a corresponding zh.json entry or next-intl will fall through to the key name as a string.",
+  "feature_toggle": {
+    "heading": "微调功能",
+    "hint": "可选。逐项开启或关闭功能 — 此处的选择会覆盖上方目标默认开启的内容。",
+    "on": "开启",
+    "off": "关闭",
+    "aria_on": "{feature} 已开启。点按可关闭。",
+    "aria_off": "{feature} 已关闭。点按可开启。",
+    "reset": "将 {feature} 重置为与你的关注一致",
+    "features": {
+      "ai_summary": "AI 政策摘要",
+      "compare": "应用对比",
+      "privacy_map": "隐私地图",
+      "stats": "统计与图表",
+      "notifications": "通知",
+      "shortlist": "候选清单"
+    }
+  },
   "verdict": {
     "safe_label": "标记为安全",
     "safe_short": "安全",
@@ -424,6 +441,7 @@
   },
   "focus_purpose": {
     "primary_aria": "主要用途",
+    "audience_heading": "这是为谁使用？",
     "primary": {
       "monitor": {
         "title": "监控我的应用变化",

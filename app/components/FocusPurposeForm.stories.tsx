@@ -75,9 +75,32 @@ export const HelpingLovedOne: Story = {
   },
 };
 
-/** Advanced options expanded on mount (the `?customize=1` deep-link path). */
-export const AdvancedOpen: Story = {
-  args: { advancedInitiallyOpen: true },
+/** Empty baseline — no goal tiles selected (a valid hard-default surface). */
+export const EmptyBaseline: Story = {
+  args: {
+    initial: {
+      audience: "self",
+      monitor: false,
+      cleanup: false,
+      minimal: false,
+      accessibility: false,
+      workflow: "custom",
+    },
+  },
+};
+
+/** "Keep it minimal" — the subtractive switch, mutually exclusive with tiles. */
+export const Minimal: Story = {
+  args: {
+    initial: {
+      audience: "self",
+      monitor: false,
+      cleanup: false,
+      minimal: true,
+      accessibility: false,
+      workflow: "custom",
+    },
+  },
 };
 
 /** Mid-submit: the form is disabled and shows the saving label. */
