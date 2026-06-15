@@ -30,6 +30,11 @@ import type {
   AnnotationTag,
   AnnotationVisibility,
 } from "@/lib/annotations";
+import {
+  ANNOTATION_RELATIVE_TIERS,
+  formatRelativeTime,
+  type RelativeTranslator,
+} from "@/lib/relative-time";
 
 /**
  * Annotation renderer — full GFM (tables, task lists, strikethrough,
@@ -1462,24 +1467,6 @@ function MarkdownToolbar({ textareaRef, setContent }: ToolbarProps) {
   );
 }
 
-type AnnT = (key: string, values?: Record<string, string | number>) => string;
-function relativeTime(t: AnnT, ts: number): string {
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) {
-    return t("rel_just_now");
-  }
-  if (s < 3600) {
-    return t("rel_minutes", { count: Math.floor(s / 60) });
-  }
-  if (s < 86_400) {
-    return t("rel_hours", { count: Math.floor(s / 3600) });
-  }
-  const d = Math.floor(s / 86_400);
-  if (d === 1) {
-    return t("rel_yesterday");
-  }
-  if (d < 30) {
-    return t("rel_days", { count: d });
-  }
-  return t("rel_months", { count: Math.floor(d / 30) });
+function relativeTime(t: RelativeTranslator, ts: number): string {
+  return formatRelativeTime(t, ts, ANNOTATION_RELATIVE_TIERS);
 }

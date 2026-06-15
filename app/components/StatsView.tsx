@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { CATEGORY_META } from "../../lib/privacy-meta";
+import {
+  formatRelativeTime,
+  type RelativeTranslator,
+  STATS_RELATIVE_TIERS,
+} from "../../lib/relative-time";
 import type { StatsData } from "../../lib/stats";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 import CompareAppsView from "./CompareAppsView";
@@ -16,16 +21,8 @@ import SmallMultiples from "./charts/SmallMultiples";
 import InfoTooltip from "./InfoTooltip";
 import Toast from "./Toast";
 
-type TimeT = (key: string, values?: Record<string, string | number>) => string;
-function timeAgo(t: TimeT, ts: number): string {
-  const d = Math.floor((Date.now() - ts) / 86_400_000);
-  if (d === 0) {
-    return t("today");
-  }
-  if (d === 1) {
-    return t("yesterday");
-  }
-  return t("days_ago", { count: d });
+function timeAgo(t: RelativeTranslator, ts: number): string {
+  return formatRelativeTime(t, ts, STATS_RELATIVE_TIERS);
 }
 
 // Synthetic app_ids mirrored from lib/notifications.ts. Recent Changes pulls

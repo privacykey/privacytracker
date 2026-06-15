@@ -37,6 +37,10 @@ import {
   clearClientDiagnostics,
   snapshotClientDiagnostics,
 } from "@/lib/client-diagnostics";
+import {
+  DIAGNOSTICS_RELATIVE_TIERS,
+  formatRelativeTime,
+} from "@/lib/relative-time";
 import Sparkline from "./Sparkline";
 
 const RUNTIME_POLL_MS = 2000;
@@ -288,22 +292,8 @@ function formatUptime(seconds: number): string {
 }
 
 function formatRelative(t: FormatTranslator, at: number): string {
-  const delta = Date.now() - at;
-  if (delta < 1000) {
-    return t("relative_just_now");
-  }
-  if (delta < 60_000) {
-    return t("relative_seconds_ago", {
-      seconds: String(Math.floor(delta / 1000)),
-    });
-  }
-  if (delta < 3_600_000) {
-    return t("relative_minutes_ago", {
-      minutes: String(Math.floor(delta / 60_000)),
-    });
-  }
-  return t("relative_hours_ago", {
-    hours: String(Math.floor(delta / 3_600_000)),
+  return formatRelativeTime(t, at, DIAGNOSTICS_RELATIVE_TIERS, {
+    stringify: true,
   });
 }
 

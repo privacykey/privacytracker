@@ -2542,6 +2542,10 @@
     "empty_hidden_prefix": "🔕 所有当前通知已被你的偏好隐藏。",
     "empty_hidden_link": "调整偏好 →",
     "stale_app_title": "此通知来源的导入现在指向不同的 App Store 列表。",
+    "time_just_now": "刚刚",
+    "time_minutes_ago": "{count} 分钟前",
+    "time_hours_ago": "{count} 小时前",
+    "time_days_ago": "{count} 天前",
     "headlines": {
       "ai_timeout": "AI 请求超时",
       "unmatched_apps": "有未匹配的应用待查看",
