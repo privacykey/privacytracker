@@ -44,6 +44,43 @@ test("focus workflow validation and inference are conservative", () => {
   assert.equal(workflowAllowsAuditBundle("other_monitor"), false);
 });
 
+test("/api/focus accepts an empty goal selection without a silent monitor fallback", async () => {
+  const keys = [
+    "flag.focus.audience",
+    "flag.focus.goal.monitor",
+    "flag.focus.goal.cleanup",
+    "flag.focus.goal.minimal",
+    "flag.focus.goal.accessibility",
+    "flag.focus.workflow",
+  ];
+  const prior = new Map(keys.map((key) => [key, getSetting(key, "")]));
+  try {
+    for (const key of keys) {
+      setSetting(key, "");
+    }
+
+    const res = await POST(
+      new Request("http://127.0.0.1/api/focus", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ audience: "self" }),
+      }) as Parameters<typeof POST>[0]
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    // No goal tiles selected is a valid empty baseline — monitor must NOT be
+    // silently forced on (the old §4.2 behaviour, removed in the redesign).
+    assert.equal(body.monitor, false);
+    assert.equal(body.cleanup, false);
+    assert.equal(body.minimal, false);
+    assert.equal(getSetting("flag.focus.goal.monitor", ""), "false");
+  } finally {
+    for (const [key, value] of prior) {
+      setSetting(key, value);
+    }
+  }
+});
+
 test("/api/focus infers workflow when omitted and returns explicit workflow when provided", async () => {
   const keys = [
     "flag.focus.audience",

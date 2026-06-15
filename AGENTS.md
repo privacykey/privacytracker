@@ -47,11 +47,43 @@ Re-syncs call the same `fetchAndParseApp(url, resync=true)` path, which is what 
 ### Feature flags (round 3 — v0.1.0)
 
 Every user-facing surface is gated by the focus system: audience (`self` /
-`loved_one` / `guardian`) × goals (`understand`, `declutter`, `minimal`,
+`loved_one` / `guardian`) × goals (`monitor`, `cleanup`, `minimal`,
 plus an `accessibility` modifier). Defaults flow through a layered
 resolver — hard default → audience rule → goal rule → accessibility
 modifier → runtime-environment (Tauri) → dependency check → user
 override (final word).
+
+**Onboarding captures focus directly (multi-select).** The `/welcome` +
+settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
+`FocusEditForm`). It is multi-select, not a single "purpose":
+- **Goal tiles** map 1:1 to goal booleans — *Monitor my apps* → `monitor`,
+  *Clean up my phone* → `cleanup`. The *Help a friend* tile is NOT a goal;
+  it sets `audience = loved_one` and stays in lockstep with the audience
+  control. `monitor`/`cleanup` re-key the old `understand`/`declutter`
+  bundles unchanged (`GOAL_RULES.monitor` == the old understand 8 flags,
+  `GOAL_RULES.cleanup` == the old declutter 16).
+- **"Who's this for?"** is a visible 3-up segmented control (Me / Someone
+  else / A child = `self` / `loved_one` / `guardian`); *A child* (guardian)
+  is reachable only here and reveals the child-age band picker.
+- **"Keep it minimal"** is the subtractive `minimal` strip as an explicit
+  switch, mutually exclusive with the goal tiles.
+- **No silent default:** selecting no tiles is a VALID empty baseline that
+  resolves to the hard-default surface — `/api/focus` and `activeGoalsFrom`
+  no longer force `monitor` on. (Pinned by `tests/app/focus-workflow.test.ts`
+  and `tests/app/feature-flags.test.ts`.)
+- **`FeatureToggleRow`** (`app/components/FeatureToggleRow.tsx`) is a curated
+  row of ~6 WIRED per-feature toggles under the tiles. It reads resolved
+  values from `GET /api/feature-flags` and writes USER OVERRIDES via
+  `POST`/`DELETE /api/feature-flags/overrides` — overrides win last in the
+  resolver, so a toggle here beats whatever the goals set (round-trip pinned
+  by `tests/app/feature-flag-overrides-route.test.ts`).
+
+The read-only `describePurpose` (`lib/onboarding-purpose.ts`) is the one-way
+bridge that collapses a stored focus back to a single tile label
+(`monitor` / `cleanup` / `help` / `custom`) for display surfaces
+(`YourFocusCard`, the `HomeView` FocusStrip, `FocusPreviewBanner`).
+`resolvePurposeSelection` turns the form's multi-select state into the
+persisted focus + follow-up task opt-ins.
 
 **Five-module split** (don't break this — Next 16 enforces it):
 
@@ -63,7 +95,7 @@ override (final word).
 
 **Flag keys** are typed (`FlagKey` union); typos fail at `tsc`. Adding a flag means: (1) add the key to the union in `feature-flag-rules.ts`, (2) add a `HARD_DEFAULTS` entry, (3) add rules in the relevant tables only if behaviour differs from the default.
 
-**Migration** runs eagerly in `instrumentation.ts` (5 ordered steps: schema check → user_intent → notification_prefs → callout rename → quarantine). Idempotent end-to-end. Up to 3 retries on failure before the error UI surfaces a "Reset DB" escape hatch.
+**Migration** (`lib/migrations/v1_feature_flags.ts`, `MIGRATION_VERSION = 2`) runs eagerly in `instrumentation.ts` (6 ordered steps: schema check → user_intent → notification_prefs → callout rename → quarantine → focus_goal_rename). The last step moves any stored `flag.focus.goal.understand`/`.declutter` keys onto `.monitor`/`.cleanup` for installs from before the re-key. Idempotent end-to-end (pinned by `tests/app/feature-flag-migration.test.ts`). Up to 3 retries on failure before the error UI surfaces a "Reset DB" escape hatch.
 
 **Annotations** (`annotations` table) and **audit-bundle export** (`lib/audit-bundle.ts`) sit on top of the flag system. Private notes (`visibility = 'private'`) are unconditionally excluded from exports at the SQL level — there is no force-include path.
 
