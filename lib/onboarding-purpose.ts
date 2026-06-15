@@ -14,9 +14,9 @@ export interface PurposeSelection {
   advanced?: {
     accessibility: boolean;
     audience: Audience;
-    declutter: boolean;
+    cleanup: boolean;
     minimal: boolean;
-    understand: boolean;
+    monitor: boolean;
     workflow?: FocusWorkflow;
   };
   helpOutcome?: HelpOutcome;
@@ -33,19 +33,19 @@ export interface ResolvedPurposeFocus {
    * `undefined` = leave the stored value unchanged; `null` = explicit clear.
    */
   childAgeBand?: AgeBandKey | null;
-  declutter: boolean;
+  cleanup: boolean;
   minimal: boolean;
+  monitor: boolean;
   taskOptIns: UserTaskId[];
-  understand: boolean;
   workflow: FocusWorkflow;
 }
 
 export interface PurposeFocusInput {
   accessibility: boolean;
   audience: Audience;
-  declutter: boolean;
+  cleanup: boolean;
   minimal: boolean;
-  understand: boolean;
+  monitor: boolean;
   workflow?: FocusWorkflow;
 }
 
@@ -54,22 +54,22 @@ export function resolvePurposeSelection(
 ): ResolvedPurposeFocus {
   const taskOptIns = new Set<UserTaskId>();
   let audience: Audience = "self";
-  let understand = true;
-  let declutter = false;
+  let monitor = true;
+  let cleanup = false;
   let minimal = false;
   let accessibility = false;
   let workflow: FocusWorkflow = "self_monitor";
 
   if (selection.primary === "cleanup") {
-    understand = false;
-    declutter = true;
+    monitor = false;
+    cleanup = true;
     workflow = "self_cleanup";
     taskOptIns.add("remove_apps_from_phone");
   } else if (selection.primary === "help") {
     audience =
       selection.helpRelationship === "child" ? "guardian" : "loved_one";
-    understand = true;
-    declutter = true;
+    monitor = true;
+    cleanup = true;
     workflow =
       selection.helpOutcome === "monitor" ? "other_monitor" : "other_handoff";
     taskOptIns.add(
@@ -79,13 +79,13 @@ export function resolvePurposeSelection(
     );
   } else if (selection.primary === "custom" && selection.advanced) {
     audience = selection.advanced.audience;
-    understand = selection.advanced.understand;
-    declutter = selection.advanced.declutter;
+    monitor = selection.advanced.monitor;
+    cleanup = selection.advanced.cleanup;
     minimal = selection.advanced.minimal;
     accessibility = selection.advanced.accessibility;
     workflow =
       selection.advanced.workflow ??
-      inferFocusWorkflow({ audience, understand, declutter, minimal });
+      inferFocusWorkflow({ audience, monitor, cleanup, minimal });
   } else {
     taskOptIns.add("setup_background_mode");
   }
@@ -94,23 +94,23 @@ export function resolvePurposeSelection(
     accessibility = true;
   }
   if (selection.secondary?.policy && !minimal) {
-    understand = true;
+    monitor = true;
     taskOptIns.add("setup_background_mode");
   }
   if (minimal) {
-    understand = false;
-    declutter = false;
+    monitor = false;
+    cleanup = false;
     workflow = workflow === "custom" ? workflow : "custom";
-  } else if (!(understand || declutter)) {
-    understand = true;
+  } else if (!(monitor || cleanup)) {
+    monitor = true;
   } else if (selection.primary === "custom" && !selection.advanced?.workflow) {
-    workflow = inferFocusWorkflow({ audience, understand, declutter, minimal });
+    workflow = inferFocusWorkflow({ audience, monitor, cleanup, minimal });
   }
 
   return {
     audience,
-    understand,
-    declutter,
+    monitor,
+    cleanup,
     minimal,
     accessibility,
     workflow,
@@ -123,8 +123,8 @@ export function selectionFromFocus(input: PurposeFocusInput): PurposeSelection {
     input.workflow ??
     inferFocusWorkflow({
       audience: input.audience,
-      understand: input.understand,
-      declutter: input.declutter,
+      monitor: input.monitor,
+      cleanup: input.cleanup,
       minimal: input.minimal,
     });
 
@@ -156,8 +156,8 @@ export function selectionFromFocus(input: PurposeFocusInput): PurposeSelection {
     secondary,
     advanced: {
       audience: input.audience,
-      understand: input.understand,
-      declutter: input.declutter,
+      monitor: input.monitor,
+      cleanup: input.cleanup,
       minimal: input.minimal,
       accessibility: input.accessibility,
       workflow,
@@ -203,7 +203,7 @@ export function recommendedPrivacyPresetForFocus(
   if (
     workflow === "self_cleanup" ||
     workflow === "other_handoff" ||
-    focus.goals.has("declutter")
+    focus.goals.has("cleanup")
   ) {
     return "balanced";
   }

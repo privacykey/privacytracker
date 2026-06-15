@@ -8,7 +8,7 @@ function ctx(
   return {
     focus: {
       audience: "self",
-      goals: new Set(["understand"]),
+      goals: new Set(["monitor"]),
       aiConfigured: false,
     },
     overrides,
@@ -50,7 +50,7 @@ function guardianCtx(
   return {
     focus: {
       audience: "guardian",
-      goals: new Set(["understand"]),
+      goals: new Set(["monitor"]),
       aiConfigured: false,
     },
     overrides,

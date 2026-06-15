@@ -18,8 +18,8 @@ import {
 
 function focus(opts: {
   audience?: FocusState["audience"];
-  understand?: boolean;
-  declutter?: boolean;
+  monitor?: boolean;
+  cleanup?: boolean;
   minimal?: boolean;
   accessibility?: boolean;
   aiConfigured?: boolean;
@@ -27,8 +27,8 @@ function focus(opts: {
   return {
     audience: opts.audience ?? "self",
     goals: activeGoalsFrom({
-      understand: opts.understand ?? false,
-      declutter: opts.declutter ?? false,
+      monitor: opts.monitor ?? false,
+      cleanup: opts.cleanup ?? false,
       minimal: opts.minimal ?? false,
       accessibility: opts.accessibility ?? false,
     }),
@@ -82,8 +82,8 @@ test("every TASK_DEF has a unique id", () => {
   }
 });
 
-test("default self audience with no goals: universal tasks only, no declutter/understand-only ones", () => {
-  const f = focus({}); // self + understand silent default
+test("default self audience with no goals: universal tasks only, no cleanup/monitor-only ones", () => {
+  const f = focus({}); // self + monitor silent default
   const ctx = emptyCtx({ focus: f });
   const resolved = resolveTasks(
     f,
@@ -93,18 +93,19 @@ test("default self audience with no goals: universal tasks only, no declutter/un
     NOW
   );
   const ids = new Set(resolved.map((r) => r.id));
-  // activeGoalsFrom defaults to {understand} when no goal is set — that lets
-  // compare_two_apps in, but review_mismatches requires declutter/minimal.
+  // No goal tiles selected = a valid empty state (no silent default). Only
+  // universal tasks appear; goal-gated ones (compare → monitor/cleanup,
+  // review_mismatches → cleanup/minimal) stay out.
   assert.ok(ids.has("view_privacy_map"));
   assert.ok(ids.has("open_any_app_detail"));
   assert.ok(ids.has("create_privacy_profile"));
-  assert.ok(ids.has("compare_two_apps"));
+  assert.ok(!ids.has("compare_two_apps"));
   assert.ok(!ids.has("review_mismatches"));
   assert.ok(!ids.has("setup_background_mode"));
 });
 
-test("declutter goal adds review_mismatches", () => {
-  const f = focus({ declutter: true });
+test("cleanup goal adds review_mismatches", () => {
+  const f = focus({ cleanup: true });
   const ctx = emptyCtx({ focus: f });
   const resolved = resolveTasks(
     f,
@@ -116,7 +117,7 @@ test("declutter goal adds review_mismatches", () => {
   assert.ok(resolved.some((r) => r.id === "review_mismatches"));
 });
 
-test("minimal goal also enables review_mismatches but suppresses compare (no understand/declutter)", () => {
+test("minimal goal also enables review_mismatches but suppresses compare (no monitor/cleanup)", () => {
   const f = focus({ minimal: true });
   const ctx = emptyCtx({ focus: f });
   const resolved = resolveTasks(
@@ -189,7 +190,7 @@ test("completionCheck for create_privacy_profile flips on hasPrivacyProfile", ()
 });
 
 test("review_mismatches is blocked when create_privacy_profile is not done", () => {
-  const f = focus({ declutter: true });
+  const f = focus({ cleanup: true });
   const ctx = emptyCtx({ focus: f, hasPrivacyProfile: false });
   const resolved = resolveTasks(
     f,
@@ -203,7 +204,7 @@ test("review_mismatches is blocked when create_privacy_profile is not done", () 
 });
 
 test("review_mismatches unblocks once the profile exists", () => {
-  const f = focus({ declutter: true });
+  const f = focus({ cleanup: true });
   const ctx = emptyCtx({ focus: f, hasPrivacyProfile: true });
   const resolved = resolveTasks(
     f,
@@ -388,7 +389,7 @@ test("remove_apps_from_phone completes once at least one uninstall verdict is se
 });
 
 test("export_audit_bundle appears only for handoff workflow and completes after export", () => {
-  const f = focus({ audience: "loved_one", understand: true, declutter: true });
+  const f = focus({ audience: "loved_one", monitor: true, cleanup: true });
   const noWorkflow = emptyCtx({ focus: f, workflow: "other_monitor" });
   let candidates = getOptInCandidates(
     f,

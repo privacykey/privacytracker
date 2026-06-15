@@ -108,8 +108,8 @@ export default function FocusPurposeForm({
   );
   const [customFocus, setCustomFocus] = useState({
     audience: initial.audience,
-    understand: initial.understand,
-    declutter: initial.declutter,
+    monitor: initial.monitor,
+    cleanup: initial.cleanup,
     minimal: initial.minimal,
     accessibility: initial.accessibility,
     workflow: initial.workflow,
@@ -148,9 +148,9 @@ export default function FocusPurposeForm({
     patch: Partial<{
       accessibility: boolean;
       audience: Audience;
-      declutter: boolean;
+      cleanup: boolean;
       minimal: boolean;
-      understand: boolean;
+      monitor: boolean;
       workflow: FocusWorkflow;
     }>
   ) {
@@ -158,10 +158,10 @@ export default function FocusPurposeForm({
     setCustomFocus((prev) => {
       const next = { ...prev, ...patch, workflow: patch.workflow ?? "custom" };
       if (patch.minimal === true) {
-        next.understand = false;
-        next.declutter = false;
+        next.monitor = false;
+        next.cleanup = false;
       }
-      if ((patch.understand || patch.declutter) && next.minimal) {
+      if ((patch.monitor || patch.cleanup) && next.minimal) {
         next.minimal = false;
       }
       return next;
@@ -444,24 +444,22 @@ export default function FocusPurposeForm({
                 <h3>{t("advanced.goals")}</h3>
                 <div className="focus-purpose-pills">
                   <button
-                    aria-pressed={
-                      customFocus.understand && primary === "custom"
-                    }
-                    className={`pill-button ${customFocus.understand && primary === "custom" ? "active" : ""}`}
+                    aria-pressed={customFocus.monitor && primary === "custom"}
+                    className={`pill-button ${customFocus.monitor && primary === "custom" ? "active" : ""}`}
                     disabled={saving || customFocus.minimal}
                     onClick={() =>
-                      updateCustom({ understand: !customFocus.understand })
+                      updateCustom({ monitor: !customFocus.monitor })
                     }
                     type="button"
                   >
                     {tGoal("understand.label")}
                   </button>
                   <button
-                    aria-pressed={customFocus.declutter && primary === "custom"}
-                    className={`pill-button ${customFocus.declutter && primary === "custom" ? "active" : ""}`}
+                    aria-pressed={customFocus.cleanup && primary === "custom"}
+                    className={`pill-button ${customFocus.cleanup && primary === "custom" ? "active" : ""}`}
                     disabled={saving || customFocus.minimal}
                     onClick={() =>
-                      updateCustom({ declutter: !customFocus.declutter })
+                      updateCustom({ cleanup: !customFocus.cleanup })
                     }
                     type="button"
                   >

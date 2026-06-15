@@ -9,8 +9,8 @@ const meta: Meta<typeof WelcomeSplash> = {
     initialChildAgeBand: null,
     initialFocus: {
       audience: "self",
-      understand: true,
-      declutter: false,
+      monitor: true,
+      cleanup: false,
       minimal: false,
       accessibility: false,
       workflow: "self_monitor",
@@ -27,8 +27,8 @@ export const LovedOne: Story = {
   args: {
     initialFocus: {
       audience: "loved_one",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: false,
       workflow: "other_handoff",
@@ -40,8 +40,8 @@ export const Guardian: Story = {
   args: {
     initialFocus: {
       audience: "guardian",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: false,
       workflow: "other_monitor",

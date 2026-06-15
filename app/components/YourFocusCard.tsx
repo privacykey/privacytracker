@@ -106,8 +106,8 @@ export default async function YourFocusCard() {
   // to the goal chips for advanced combinations with no single purpose card.
   const purpose = describePurpose({
     audience: focus.audience,
-    understand: focus.goals.has("understand"),
-    declutter: focus.goals.has("declutter"),
+    monitor: focus.goals.has("monitor"),
+    cleanup: focus.goals.has("cleanup"),
     minimal: focus.goals.has("minimal"),
     accessibility: accessibilityActive,
     workflow,
@@ -130,11 +130,11 @@ export default async function YourFocusCard() {
   const summarySentences: string[] = [t(`summary.${focus.audience}`)];
   if (focus.goals.has("minimal")) {
     summarySentences.push(t("summary.with_minimal"));
-  } else if (focus.goals.has("understand") && focus.goals.has("declutter")) {
+  } else if (focus.goals.has("monitor") && focus.goals.has("cleanup")) {
     summarySentences.push(t("summary.with_understand_declutter"));
-  } else if (focus.goals.has("understand")) {
+  } else if (focus.goals.has("monitor")) {
     summarySentences.push(t("summary.with_understand"));
-  } else if (focus.goals.has("declutter")) {
+  } else if (focus.goals.has("cleanup")) {
     summarySentences.push(t("summary.with_declutter"));
   }
   if (accessibilityActive) {
@@ -328,10 +328,10 @@ function describeGoals(
   if (goals.has("minimal")) {
     out.push({ key: "minimal", label: tGoal("minimal.label") });
   } else {
-    if (goals.has("understand")) {
+    if (goals.has("monitor")) {
       out.push({ key: "understand", label: tGoal("understand.label") });
     }
-    if (goals.has("declutter")) {
+    if (goals.has("cleanup")) {
       out.push({ key: "declutter", label: tGoal("declutter.label") });
     }
   }

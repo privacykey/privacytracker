@@ -42,9 +42,9 @@ export default function FocusEditPage() {
         initialAccessibility={focus.goals.has("accessibility")}
         initialAudience={initialAudience}
         initialChildAgeBand={isValidAgeBand(storedBand) ? storedBand : null}
-        initialDeclutter={focus.goals.has("declutter")}
+        initialDeclutter={focus.goals.has("cleanup")}
         initialMinimal={focus.goals.has("minimal")}
-        initialUnderstand={focus.goals.has("understand")}
+        initialUnderstand={focus.goals.has("monitor")}
         initialWorkflow={initialWorkflow}
       />
     </>

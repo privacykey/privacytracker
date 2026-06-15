@@ -75,8 +75,8 @@ export default function FocusPreviewBanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           audience: preview.audience,
-          understand: preview.understand,
-          declutter: preview.declutter,
+          monitor: preview.monitor,
+          cleanup: preview.cleanup,
           minimal: preview.minimal,
           accessibility: preview.accessibility,
           workflow: preview.workflow,
@@ -203,11 +203,11 @@ function goalLabelsFor(
   const out: string[] = [];
   if (preview.minimal) {
     out.push(tGoal("minimal.label"));
-  } else if (preview.understand || preview.declutter) {
-    if (preview.understand) {
+  } else if (preview.monitor || preview.cleanup) {
+    if (preview.monitor) {
       out.push(tGoal("understand.label"));
     }
-    if (preview.declutter) {
+    if (preview.cleanup) {
       out.push(tGoal("declutter.label"));
     }
   } else {

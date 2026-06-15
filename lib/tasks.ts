@@ -127,7 +127,7 @@ export const TASK_DEFS: UserTaskDef[] = [
     route: "/dashboard/review-recommendations",
     prerequisites: ["create_privacy_profile"],
     i18nKey: "review_mismatches",
-    includedWhen: (focus) => has(focus, "declutter") || has(focus, "minimal"),
+    includedWhen: (focus) => has(focus, "cleanup") || has(focus, "minimal"),
     completionCheck: (ctx) => ctx.verdictCount >= 1,
   },
   {
@@ -135,8 +135,7 @@ export const TASK_DEFS: UserTaskDef[] = [
     route: "/dashboard/compare",
     prerequisites: [],
     i18nKey: "compare_two_apps",
-    includedWhen: (focus) =>
-      has(focus, "understand") || has(focus, "declutter"),
+    includedWhen: (focus) => has(focus, "monitor") || has(focus, "cleanup"),
     completionCheck: (ctx) => ctx.compareVisitedAt != null,
   },
   {

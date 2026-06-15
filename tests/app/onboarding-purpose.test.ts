@@ -11,8 +11,8 @@ import {
 test("purpose mappings produce focus payloads and follow-up task opt-ins", () => {
   assert.deepEqual(resolvePurposeSelection({ primary: "monitor" }), {
     audience: "self",
-    understand: true,
-    declutter: false,
+    monitor: true,
+    cleanup: false,
     minimal: false,
     accessibility: false,
     workflow: "self_monitor",
@@ -21,8 +21,8 @@ test("purpose mappings produce focus payloads and follow-up task opt-ins", () =>
 
   assert.deepEqual(resolvePurposeSelection({ primary: "cleanup" }), {
     audience: "self",
-    understand: false,
-    declutter: true,
+    monitor: false,
+    cleanup: true,
     minimal: false,
     accessibility: false,
     workflow: "self_cleanup",
@@ -37,8 +37,8 @@ test("purpose mappings produce focus payloads and follow-up task opt-ins", () =>
     }),
     {
       audience: "loved_one",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: false,
       workflow: "other_handoff",
@@ -54,8 +54,8 @@ test("purpose mappings produce focus payloads and follow-up task opt-ins", () =>
     }),
     {
       audience: "guardian",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: false,
       workflow: "other_monitor",
@@ -70,29 +70,29 @@ test("secondary purpose cards layer onto the primary selection", () => {
     secondary: { accessibility: true, policy: true },
   });
   assert.equal(resolved.accessibility, true);
-  assert.equal(resolved.understand, true);
-  assert.equal(resolved.declutter, true);
+  assert.equal(resolved.monitor, true);
+  assert.equal(resolved.cleanup, true);
   assert.deepEqual(resolved.taskOptIns.sort(), [
     "remove_apps_from_phone",
     "setup_background_mode",
   ]);
 });
 
-test("advanced minimal stays mutually exclusive with understand and declutter", () => {
+test("advanced minimal stays mutually exclusive with monitor and cleanup", () => {
   const resolved = resolvePurposeSelection({
     primary: "custom",
     advanced: {
       audience: "self",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: true,
       accessibility: true,
       workflow: "custom",
     },
   });
   assert.equal(resolved.minimal, true);
-  assert.equal(resolved.understand, false);
-  assert.equal(resolved.declutter, false);
+  assert.equal(resolved.monitor, false);
+  assert.equal(resolved.cleanup, false);
   assert.equal(resolved.accessibility, true);
   assert.equal(resolved.workflow, "custom");
 });
@@ -101,8 +101,8 @@ test("focus can be mapped back into a purpose selection", () => {
   assert.deepEqual(
     selectionFromFocus({
       audience: "guardian",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: true,
       workflow: "other_handoff",
@@ -120,8 +120,8 @@ test("recommended privacy preset follows audience and workflow", () => {
   const selfUnderstand = {
     audience: "self" as const,
     goals: activeGoalsFrom({
-      understand: true,
-      declutter: false,
+      monitor: true,
+      cleanup: false,
       minimal: false,
       accessibility: false,
     }),
@@ -139,8 +139,8 @@ test("recommended privacy preset follows audience and workflow", () => {
       {
         audience: "self",
         goals: activeGoalsFrom({
-          understand: false,
-          declutter: true,
+          monitor: false,
+          cleanup: true,
           minimal: false,
           accessibility: false,
         }),
@@ -153,8 +153,8 @@ test("recommended privacy preset follows audience and workflow", () => {
   const guardian = {
     audience: "guardian" as const,
     goals: activeGoalsFrom({
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: false,
     }),
@@ -168,21 +168,21 @@ test("recommended privacy preset follows audience and workflow", () => {
 test("describePurpose maps a stored focus back to its /welcome purpose", () => {
   const base = {
     audience: "self" as const,
-    understand: false,
-    declutter: false,
+    monitor: false,
+    cleanup: false,
     minimal: false,
     accessibility: false,
   };
 
-  // Monitor: self + understand-only.
+  // Monitor: self + monitor-only.
   assert.deepEqual(
-    describePurpose({ ...base, understand: true, workflow: "self_monitor" }),
+    describePurpose({ ...base, monitor: true, workflow: "self_monitor" }),
     { primary: "monitor", isCustom: false }
   );
 
-  // Clean up: self + declutter-only.
+  // Clean up: self + cleanup-only.
   assert.deepEqual(
-    describePurpose({ ...base, declutter: true, workflow: "self_cleanup" }),
+    describePurpose({ ...base, cleanup: true, workflow: "self_cleanup" }),
     { primary: "cleanup", isCustom: false }
   );
 
@@ -191,8 +191,8 @@ test("describePurpose maps a stored focus back to its /welcome purpose", () => {
     describePurpose({
       ...base,
       audience: "loved_one",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       workflow: "other_handoff",
     }),
     { primary: "help", isCustom: false }
@@ -203,8 +203,8 @@ test("describePurpose maps a stored focus back to its /welcome purpose", () => {
     describePurpose({
       ...base,
       audience: "guardian",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       workflow: "other_monitor",
     }),
     { primary: "help", isCustom: false }
@@ -220,8 +220,8 @@ test("describePurpose maps a stored focus back to its /welcome purpose", () => {
   assert.deepEqual(
     describePurpose({
       ...base,
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       workflow: "custom",
     }),
     { primary: "custom", isCustom: true }

@@ -32,8 +32,8 @@ function beforeEach(): void {
   // these explicitly so the test focuses on the bypass logic.
   setActiveFocus({
     audience: "self",
-    understand: false,
-    declutter: false,
+    monitor: false,
+    cleanup: false,
     minimal: false,
     accessibility: false,
   });
@@ -59,8 +59,8 @@ test("acknowledgeNoBackup does NOT bypass the audience gate", () => {
   beforeEach();
   setActiveFocus({
     audience: "loved_one",
-    understand: false,
-    declutter: false,
+    monitor: false,
+    cleanup: false,
     minimal: false,
     accessibility: false,
   }); // audience gate denies

@@ -18,8 +18,8 @@ interface Props {
 
 const DEFAULT_FOCUS: PurposeFocusInput = {
   audience: "self",
-  understand: true,
-  declutter: false,
+  monitor: true,
+  cleanup: false,
   minimal: false,
   accessibility: false,
   workflow: "self_monitor",
@@ -69,8 +69,8 @@ export default function WelcomeSplash({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           audience: focus.audience,
-          understand: focus.understand,
-          declutter: focus.declutter,
+          monitor: focus.monitor,
+          cleanup: focus.cleanup,
           minimal: focus.minimal,
           accessibility: focus.accessibility,
           workflow: focus.workflow,

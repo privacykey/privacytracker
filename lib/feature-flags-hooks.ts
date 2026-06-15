@@ -48,6 +48,6 @@ export function useFocus(): FocusState {
 
 const FALLBACK_FOCUS: FocusState = {
   audience: "self",
-  goals: new Set(["understand"]),
+  goals: new Set(["monitor"]),
   aiConfigured: false,
 };

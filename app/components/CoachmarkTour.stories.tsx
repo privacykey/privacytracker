@@ -30,7 +30,7 @@ export const EnabledUnderstand: Story = {
     enabled: true,
     audience: "self",
     aiConfigured: false,
-    goals: new Set(["understand"]),
+    goals: new Set(["monitor"]),
   },
 };
 
@@ -40,7 +40,7 @@ export const EnabledUnderstandDeclutter: Story = {
     enabled: true,
     audience: "self",
     aiConfigured: true,
-    goals: new Set(["understand", "declutter"]),
+    goals: new Set(["monitor", "cleanup"]),
   },
 };
 
@@ -49,6 +49,6 @@ export const Disabled: Story = {
     enabled: false,
     audience: "self",
     aiConfigured: false,
-    goals: new Set(["understand"]),
+    goals: new Set(["monitor"]),
   },
 };

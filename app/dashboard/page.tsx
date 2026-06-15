@@ -156,18 +156,18 @@ export default async function DashboardPage({
         return null;
       }
       const focus = getActiveFocus();
-      const understand = focus.goals.has("understand");
-      const declutter = focus.goals.has("declutter");
+      const monitor = focus.goals.has("monitor");
+      const cleanup = focus.goals.has("cleanup");
       return {
         purpose: describePurpose({
           audience: focus.audience,
-          understand,
-          declutter,
+          monitor,
+          cleanup,
           minimal: focus.goals.has("minimal"),
           accessibility: focus.goals.has("accessibility"),
           workflow: getActiveFocusWorkflow(focus),
         }).primary,
-        understandDeclutter: understand && declutter,
+        understandDeclutter: monitor && cleanup,
       };
     } catch {
       return null;

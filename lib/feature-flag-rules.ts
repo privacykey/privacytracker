@@ -30,7 +30,7 @@
 
 export type FlagValue = "on" | "off" | "collapsed";
 export type Audience = "self" | "loved_one" | "guardian";
-export type PrimaryGoal = "understand" | "declutter" | "minimal";
+export type PrimaryGoal = "monitor" | "cleanup" | "minimal";
 export type Modifier = "accessibility";
 
 /**
@@ -637,7 +637,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
 //
 // `self` is the baseline (no rules). `loved_one` elevates share/export. `guardian`
 // trims power-user surfaces (carers rarely need them). `goal.declutter` will
-// re-enable some `guardian` hides — see GOAL_RULES.declutter below.
+// re-enable some `guardian` hides — see GOAL_RULES.cleanup below.
 
 export const AUDIENCE_RULES: Record<
   Audience,
@@ -698,18 +698,18 @@ export const AUDIENCE_RULES: Record<
 // GOAL_RULES — primary goal overlays
 // ============================================================================
 //
-// Multiple primary goals can be active (e.g. understand AND declutter). Goals
-// are applied in the order [understand, declutter, minimal] — minimal is
-// mutually exclusive with the others so it never coexists, but the order is
-// fixed for determinism. `goal.accessibility` is a separate modifier — see
-// ACCESSIBILITY_RULES below.
+// Multiple goal tiles can be active (e.g. monitor AND cleanup). Goals are
+// applied in the order [monitor, cleanup, minimal] — minimal ("Keep it
+// minimal") is mutually exclusive with the others so it never coexists, but
+// the order is fixed for determinism. `goal.accessibility` is a separate
+// modifier — see ACCESSIBILITY_RULES below.
 
 export const GOAL_RULES: Record<
   PrimaryGoal,
   Partial<Record<FlagKey, FlagValue>>
 > = {
-  // ----- understand: tracking + comprehension
-  understand: {
+  // ----- monitor: tracking + comprehension (was "understand")
+  monitor: {
     "flag.detail.policy.ai_summary": "on", // AI summaries are the comprehension lever
     "flag.detail.policy.lens_grid": "on", // lens cards expose policy stance
     "flag.detail.charts.category_trend": "on", // historical trends matter for tracking
@@ -720,8 +720,8 @@ export const GOAL_RULES: Record<
     "flag.detail.timeline.wayback_rows": "on", // historical context for comprehension
   },
 
-  // ----- declutter: action — remove worst offenders, re-enable some guardian hides
-  declutter: {
+  // ----- cleanup: action — remove worst offenders, re-enable some guardian hides (was "declutter")
+  cleanup: {
     "flag.dashboard.risk_section": "on", // already on; declutter emphasises (component reads goals)
     "flag.dashboard.callout.declutter": "on", // declutter-specific callout
     "flag.dashboard.callout.understand_only": "off", // suppress the understand-only callout when declutter is also on
@@ -994,31 +994,31 @@ export const TOUR_STEPS: TourStepDef[] = [
     id: "bell",
     target: '[data-tour="notification-bell"]',
     i18nKey: "tour.bell",
-    includedWhen: (s) => has(s, "understand"), // tracking surface
+    includedWhen: (s) => has(s, "monitor"), // tracking surface
   },
   {
     id: "severity_pill",
     target: '[data-tour="severity-pill-first"]',
     i18nKey: "tour.severity_pill",
-    includedWhen: (s) => has(s, "declutter"), // declutter cares about risk
+    includedWhen: (s) => has(s, "cleanup"), // declutter cares about risk
   },
   {
     id: "compare",
     target: '[data-tour="compare-button"]',
     i18nKey: "tour.compare",
-    includedWhen: (s) => has(s, "declutter"), // declutterers compare to pick winners
+    includedWhen: (s) => has(s, "cleanup"), // declutterers compare to pick winners
   },
   {
     id: "timeline",
     target: '[data-tour="timeline"]',
     i18nKey: "tour.timeline",
-    includedWhen: (s) => has(s, "understand"), // timeline = tracking
+    includedWhen: (s) => has(s, "monitor"), // timeline = tracking
   },
   {
     id: "ai_summary",
     target: '[data-tour="ai-summary"]',
     i18nKey: "tour.ai_summary",
-    includedWhen: (s) => has(s, "understand") && s.aiConfigured, // only if user has an AI provider
+    includedWhen: (s) => has(s, "monitor") && s.aiConfigured, // only if user has an AI provider
   },
   {
     id: "a11y_filter",
@@ -1049,24 +1049,23 @@ export const TOUR_STEPS: TourStepDef[] = [
  * Caller is responsible for reading the keys from app_settings.
  */
 export function activeGoalsFrom(input: {
-  understand: boolean;
-  declutter: boolean;
+  monitor: boolean;
+  cleanup: boolean;
   minimal: boolean;
   accessibility: boolean;
 }): Set<PrimaryGoal | Modifier> {
   const goals = new Set<PrimaryGoal | Modifier>();
   if (input.minimal) {
-    goals.add("minimal"); // minimal is mutually exclusive with understand/declutter — caller should validate
+    goals.add("minimal"); // "Keep it minimal" — mutually exclusive with the goal tiles; caller validates
   } else {
-    if (input.understand) {
-      goals.add("understand");
+    if (input.monitor) {
+      goals.add("monitor");
     }
-    if (input.declutter) {
-      goals.add("declutter");
+    if (input.cleanup) {
+      goals.add("cleanup");
     }
-    if (goals.size === 0) {
-      goals.add("understand"); // silent default per §4.2
-    }
+    // No silent default: selecting no goal tiles is a valid empty state
+    // (resolves to the hard-default baseline surface).
   }
   if (input.accessibility) {
     goals.add("accessibility");

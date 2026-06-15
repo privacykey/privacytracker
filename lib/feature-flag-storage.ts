@@ -94,8 +94,8 @@ export function getActiveFocus(): FocusState {
   const audience = (getSetting("flag.focus.audience", "") ||
     "self") as Audience;
   const goals = activeGoalsFrom({
-    understand: getSetting("flag.focus.goal.understand") === "true",
-    declutter: getSetting("flag.focus.goal.declutter") === "true",
+    monitor: getSetting("flag.focus.goal.monitor") === "true",
+    cleanup: getSetting("flag.focus.goal.cleanup") === "true",
     minimal: getSetting("flag.focus.goal.minimal") === "true",
     accessibility: getSetting("flag.focus.goal.accessibility") === "true",
   });
@@ -113,8 +113,8 @@ export function getActiveFocusWorkflow(
   }
   return inferFocusWorkflow({
     audience: focus.audience,
-    understand: focus.goals.has("understand"),
-    declutter: focus.goals.has("declutter"),
+    monitor: focus.goals.has("monitor"),
+    cleanup: focus.goals.has("cleanup"),
     minimal: focus.goals.has("minimal"),
   });
 }
@@ -122,8 +122,8 @@ export function getActiveFocusWorkflow(
 /** Write the active focus atomically (single transaction). */
 export function setActiveFocus(
   focus: Pick<FocusState, "audience"> & {
-    understand: boolean;
-    declutter: boolean;
+    monitor: boolean;
+    cleanup: boolean;
     minimal: boolean;
     accessibility: boolean;
     workflow?: FocusWorkflow;
@@ -134,13 +134,13 @@ export function setActiveFocus(
       focus.workflow ??
       inferFocusWorkflow({
         audience: focus.audience,
-        understand: focus.understand,
-        declutter: focus.declutter,
+        monitor: focus.monitor,
+        cleanup: focus.cleanup,
         minimal: focus.minimal,
       });
     setSetting("flag.focus.audience", focus.audience);
-    setSetting("flag.focus.goal.understand", String(focus.understand));
-    setSetting("flag.focus.goal.declutter", String(focus.declutter));
+    setSetting("flag.focus.goal.monitor", String(focus.monitor));
+    setSetting("flag.focus.goal.cleanup", String(focus.cleanup));
     setSetting("flag.focus.goal.minimal", String(focus.minimal));
     setSetting("flag.focus.goal.accessibility", String(focus.accessibility));
     setSetting("flag.focus.workflow", workflow);
