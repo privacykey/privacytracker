@@ -3069,14 +3069,29 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 0;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border);
+  /* WCAG 1.4.10 reflow: at 320px (and worse under the x-large text scale)
+     the full tab strip is wider than the viewport. Scroll the strip
+     horizontally instead of pushing the whole document sideways — same
+     pattern as the mobile .settings-sidebar-nav pill strip. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.detail-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .detail-tab {
+  /* flex-shrink: 0 + white-space: nowrap keep each tab at its natural size so
+     the row scrolls (see .detail-tabs) rather than squashing tabs or wrapping a
+     label mid-word. */
+  flex-shrink: 0;
   padding: 10px 20px;
   margin-bottom: -1px;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-2);
+  white-space: nowrap;
   border-bottom: 2px solid transparent;
   transition:
     color 0.15s,
@@ -3127,8 +3142,14 @@ html[data-theme-override="high-contrast"] .nav {
 
 .accordion-header-left {
   display: flex;
+  /* WCAG 1.4.10 reflow: at 320px (and worse under the x-large text scale) the
+     title + count + mismatch chip can't sit on one line. Let the group wrap and
+     shrink so the chip drops to a second line instead of widening the document.
+     min-width: 0 lets this flex child shrink below its content width. */
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+  min-width: 0;
 }
 
 .accordion-title {
