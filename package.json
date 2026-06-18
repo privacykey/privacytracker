@@ -39,7 +39,7 @@
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "better-sqlite3": "^12.10.0",
-    "dompurify": "3.4.9",
+    "dompurify": "3.4.11",
     "echarts": "^6.1.0",
     "marked": "^18.0.3",
     "next": "16.2.9",
