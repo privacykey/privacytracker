@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Mutual exclusion: minimal can't combine with understand or declutter.
-  // If client sent both, minimal wins (matches the screen 2 UI behaviour
+  // If client sent both, minimal wins (matches the goals-picker UI behaviour
   // where picking "Just the basics" deselects the other checkboxes).
   if (minimal) {
     understand = false;

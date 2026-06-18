@@ -18,11 +18,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Pre-wizard splash. Captures the user's audience; goals come on the next
- * screen (`/onboard/goals`). Pre-selects the previous audience on re-entry
- * (Settings → Adjust, or browser-back from /onboard/goals) so the card
- * stays highlighted. Checks `flag.focus.audience` directly because
- * `getActiveFocus()` returns 'self' as a default-when-unset.
+ * Pre-wizard splash. Captures the user's audience AND goals in a single
+ * step via FocusPurposeForm (the same form the Settings focus editor
+ * reuses) — there is no separate goals screen; `/onboard/goals` is now a
+ * redirect stub to `/welcome?customize=1`. Pre-fills the previous focus on
+ * re-entry (Settings → Adjust) so the cards stay highlighted. Checks
+ * `flag.focus.audience` directly because `getActiveFocus()` returns 'self'
+ * as a default-when-unset.
  */
 export default function WelcomePage() {
   const focus = (() => {
