@@ -13,6 +13,11 @@ import {
   type NotificationTypeKey,
   resolvePrefs as resolveNotificationPrefs,
 } from "../../lib/notification-prefs";
+import {
+  formatRelativeTime,
+  NOTIFICATION_RELATIVE_TIERS,
+  type RelativeTranslator,
+} from "../../lib/relative-time";
 
 interface NotifEntry {
   app_id: string;
@@ -69,18 +74,10 @@ type ResumeEntryType =
   | "policy_resumed"
   | "policy_stale_cleared";
 
-function timeAgo(ts: number): string {
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) {
-    return "just now";
-  }
-  if (s < 3600) {
-    return `${Math.floor(s / 60)}m ago`;
-  }
-  if (s < 86_400) {
-    return `${Math.floor(s / 3600)}h ago`;
-  }
-  return `${Math.floor(s / 86_400)}d ago`;
+function timeAgo(t: RelativeTranslator, ts: number): string {
+  return formatRelativeTime(t, ts, NOTIFICATION_RELATIVE_TIERS, {
+    stringify: true,
+  });
 }
 
 interface NotificationBellProps {
@@ -865,7 +862,9 @@ export default function NotificationBell({
                         )}
                       </div>
                       <div className="notif-change-text">{subline}</div>
-                      <div className="notif-time">{timeAgo(n.created_at)}</div>
+                      <div className="notif-time">
+                        {timeAgo(t, n.created_at)}
+                      </div>
                     </div>
                   </Link>
                 );

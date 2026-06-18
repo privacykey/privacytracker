@@ -2527,6 +2527,10 @@
     "empty_hidden_prefix": "🔕 All current notifications are hidden by your preferences.",
     "empty_hidden_link": "Adjust preferences →",
     "stale_app_title": "The import this notification came from now points at a different App Store listing.",
+    "time_just_now": "just now",
+    "time_minutes_ago": "{count}m ago",
+    "time_hours_ago": "{count}h ago",
+    "time_days_ago": "{count}d ago",
     "headlines": {
       "ai_timeout": "AI request timed out",
       "unmatched_apps": "Unmatched apps to review",
