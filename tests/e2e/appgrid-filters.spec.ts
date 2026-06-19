@@ -57,8 +57,8 @@ test.beforeEach(async ({ request }) => {
     headers: sameOriginHeaders,
     data: {
       audience: "self",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: true,
     },
