@@ -363,7 +363,15 @@ export default function FocusPurposeForm({
           </div>
         )}
 
-        <FeatureToggleRow />
+        <FeatureToggleRow
+          focusSelection={{
+            audience,
+            monitor,
+            cleanup,
+            minimal,
+            accessibility,
+          }}
+        />
 
         {error && (
           <div aria-live="assertive" className="welcome-error" role="alert">

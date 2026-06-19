@@ -8,6 +8,11 @@
     "aria_on": "{feature} 已开启。点按可关闭。",
     "aria_off": "{feature} 已关闭。点按可开启。",
     "reset": "将 {feature} 重置为与你的关注一致",
+    "locked_hint": "需要管理员权限才能更改这些设置。请先在设置中解锁。",
+    "locked_aria": "{feature} 已锁定 — 需要管理员权限才能更改。",
+    "write_failed": "未能保存，请重试。",
+    "rate_limited": "更改过于频繁。请稍候再重试。",
+    "retry": "重试",
     "features": {
       "ai_summary": "AI 政策摘要",
       "compare": "应用对比",

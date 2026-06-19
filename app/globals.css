@@ -29853,6 +29853,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .feature-toggle-item {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
 }
 
 .feature-toggle-chip {
@@ -29939,6 +29940,46 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   .feature-toggle-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Read-only state when an admin token is configured but the session is locked. */
+.feature-toggle-chip--locked {
+  cursor: default;
+}
+
+/* Inline, retryable write error — wraps onto its own line below the chip.
+   Carries a glyph + text so it never relies on colour alone (a11y baseline). */
+.feature-toggle-error {
+  display: flex;
+  flex-basis: 100%;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--red, #ff3b30);
+}
+
+.feature-toggle-retry {
+  padding: 2px 10px;
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.feature-toggle-retry:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.feature-toggle-retry:focus-visible {
+  outline: 2px solid var(--blue, #0a84ff);
+  outline-offset: 2px;
 }
 
 .profile-recommend-card {
