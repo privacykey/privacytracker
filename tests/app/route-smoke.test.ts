@@ -149,8 +149,15 @@ test("exportBackup scrubs sensitive app_settings values from the envelope", asyn
   // future audit-bundle composer. Defence is at the lib layer because all
   // three call sites funnel through this one function.
   const sentinel = `sk-route-smoke-DO-NOT-LEAK-${Date.now()}`;
-  const webhookSentinel =
-    "https://hooks.slack.com/services/TROUTE/BROUTE/DO-NOT-LEAK";
+  // Embed a unique, non-URL-shaped token in the webhook path and assert on
+  // *that* below. Probing the serialised envelope with `includes(<bare URL>)`
+  // trips CodeQL's js/incomplete-url-substring-sanitization, which can't tell a
+  // leak-detection assertion from a host-allowlist check. A per-run token (same
+  // pattern as the API-key sentinel above) is both a stronger leak probe and
+  // clear of the false positive — if the stored URL leaks, the token leaks with
+  // it.
+  const webhookToken = `route-smoke-webhook-DO-NOT-LEAK-${Date.now()}`;
+  const webhookSentinel = `https://hooks.slack.com/services/TROUTE/BROUTE/${webhookToken}`;
   setSetting("ai_api_key", sentinel);
   setSetting("notification_webhook_url", webhookSentinel);
 
@@ -173,7 +180,7 @@ test("exportBackup scrubs sensitive app_settings values from the envelope", asyn
       "serialised backup envelope must not contain the plaintext API key"
     );
     assert.equal(
-      serialised.includes(webhookSentinel),
+      serialised.includes(webhookToken),
       false,
       "serialised backup envelope must not contain the plaintext webhook URL"
     );
