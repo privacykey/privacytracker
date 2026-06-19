@@ -34,5 +34,11 @@ allowBuilds:
 # `[ERR_PNPM_LOCKFILE_CONFIG_MISMATCH]` in CI when the two sources
 # disagree on field-set. Patches GHSA-qx2v-qp2m-jg93 (XSS via
 # unescaped end-style tag in CSS stringify, fixed in 8.5.10).
+#
+# `@babel/core` is forced to the patched 7.29.1 line. Next pins it
+# transitively at 7.29.0 (next > styled-jsx > @babel/core), which
+# `pnpm audit --prod` rejects for GHSA-4x5r-pxfx-6jf8 (arbitrary file
+# read via a sourceMappingURL comment, fixed in 7.29.1).
 overrides:
   postcss: ^8.5.12
+  '@babel/core': ^7.29.1

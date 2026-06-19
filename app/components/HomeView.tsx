@@ -47,6 +47,11 @@ import {
   describeWorstMismatchLocalised,
   TIER_META,
 } from "../../lib/privacy-profile";
+import {
+  DASHBOARD_RELATIVE_TIERS,
+  formatRelativeTime,
+  type RelativeTranslator,
+} from "../../lib/relative-time";
 import { scrollPulse } from "../../lib/scroll-pulse";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import type {
@@ -105,34 +110,10 @@ function handleHashClick(
   }
 }
 
-type RelT = (
-  key: string,
-  values?: Record<string, string | number | Date>
-) => string;
-
-function relativeTime(t: RelT, ts: number): string {
-  if (!ts) {
-    return t("dash");
-  }
-  const s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 60) {
-    return t("just_now");
-  }
-  if (s < 3600) {
-    return t("minutes_ago", { count: Math.floor(s / 60) });
-  }
-  if (s < 86_400) {
-    return t("hours_ago", { count: Math.floor(s / 3600) });
-  }
-  const d = Math.floor(s / 86_400);
-  if (d === 1) {
-    return t("yesterday");
-  }
-  if (d < 30) {
-    return t("days_ago", { count: d });
-  }
-  const months = Math.floor(d / 30);
-  return t("months_ago", { count: months });
+function relativeTime(t: RelativeTranslator, ts: number): string {
+  return formatRelativeTime(t, ts, DASHBOARD_RELATIVE_TIERS, {
+    dashKey: "dash",
+  });
 }
 
 const RISK_CLS: Record<TriageApp["riskLevel"], string> = {

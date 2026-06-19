@@ -91,6 +91,7 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.devopts.activity_log",
   "flag.devopts.advanced_accordion",
   "flag.devopts.ai.debug_logging",
+  "flag.devopts.tasks_preview_default",
   "flag.nav.app_count_badge",
   "flag.nav.notification_bell",
   "flag.nav.task_center_trigger",
@@ -211,7 +212,6 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.onboarding.audience_picker",
   "flag.onboarding.audience_picker.skip",
   "flag.onboarding.goals_picker",
-  "flag.onboarding.goals_picker.skip",
   "flag.onboarding.goals_picker.minimal_option",
   "flag.onboarding.goals_picker.accessibility_modifier",
   // Privacy-profile setup step (server gate redirects to /onboard when off).

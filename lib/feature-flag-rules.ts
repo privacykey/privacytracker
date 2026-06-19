@@ -229,7 +229,6 @@ export type FlagKey =
   | "flag.onboarding.audience_picker"
   | "flag.onboarding.audience_picker.skip"
   | "flag.onboarding.goals_picker"
-  | "flag.onboarding.goals_picker.skip"
   | "flag.onboarding.goals_picker.minimal_option"
   | "flag.onboarding.goals_picker.accessibility_modifier"
   | "flag.onboarding.privacy_profile_setup"
@@ -290,6 +289,14 @@ export type FlagKey =
   | "flag.devopts.activity_log.retention_days"
   | "flag.devopts.advanced_accordion"
   | "flag.devopts.feature_flag_presets"
+  // Dev-only preview toggle. When 'on', the dashboard task checklist
+  // ("Your privacy check-up") is resolved as a brand-new user would see
+  // it — every task forced to its un-done/default state, ignoring the
+  // real `user_tasks_state` blob and derived completion. Lets devs preview
+  // the checklist + its row dioramas without clearing their actual profile
+  // or task progress. Purely presentational + reversible; flip 'off' and
+  // the real state returns. Wired in `lib/tasks-server.ts`.
+  | "flag.devopts.tasks_preview_default"
   // Phase 3 of the audit-bundle action flow. When 'on' AND the active
   // audience is 'self', the Apps grid surfaces a "Review & uninstall"
   // entry point and the device-side workflow can call the
@@ -511,8 +518,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   // Onboarding — pre-wizard
   "flag.onboarding.audience_picker": "on", // screen 1 — WHO
   "flag.onboarding.audience_picker.skip": "on", // screen 1 'skip' link
-  "flag.onboarding.goals_picker": "on", // screen 2 — WHY
-  "flag.onboarding.goals_picker.skip": "on", // screen 2 'skip' link
+  "flag.onboarding.goals_picker": "on", // goals/purpose section — WHY
   "flag.onboarding.goals_picker.minimal_option": "on", // 'just the basics' alternative
   "flag.onboarding.goals_picker.accessibility_modifier": "on", // a11y modifier checkbox
   "flag.onboarding.privacy_profile_setup": "off", // declutter goal turns this on
@@ -574,6 +580,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.devopts.activity_log.retention_days": "off", // numeric flag — deferred to v0.1.0; v1 doesn't prune
   "flag.devopts.advanced_accordion": "collapsed", // Advanced accordion in dev opts
   "flag.devopts.feature_flag_presets": "on", // on by default; loved_one/guardian/minimal turn off (preset workflow is self-audience-coded)
+  "flag.devopts.tasks_preview_default": "off", // dev: render the task checklist in its fresh/default state for previewing
   "flag.settings.date_format.user_preference": "on", // user can override locale-default (auto/24h/12h) in Settings; actual preference in app_settings.date_format_preference
 
   // Stats
@@ -926,7 +933,6 @@ export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
     "flag.onboarding.step.choose_method",
 
   // Goals picker sub-options depend on the picker
-  "flag.onboarding.goals_picker.skip": "flag.onboarding.goals_picker",
   "flag.onboarding.goals_picker.minimal_option": "flag.onboarding.goals_picker",
   "flag.onboarding.goals_picker.accessibility_modifier":
     "flag.onboarding.goals_picker",

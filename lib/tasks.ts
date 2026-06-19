@@ -233,9 +233,13 @@ export function resolveTaskState(
   userState: { started_at?: number; dismissed_at?: number } | undefined,
   allTasks: { id: UserTaskId; isCompleted: boolean }[],
   /** Now-ish, injectable for tests. */
-  now: number = Date.now()
+  now: number = Date.now(),
+  /** Dev preview: treat the task as never-completed regardless of the
+   *  derived signal, so the checklist can render in its fresh/default
+   *  state. See `flag.devopts.tasks_preview_default` in tasks-server.ts. */
+  forceIncomplete = false
 ): ResolvedTaskState {
-  if (def.completionCheck(ctx)) {
+  if (!forceIncomplete && def.completionCheck(ctx)) {
     return "completed";
   }
   if (userState?.dismissed_at) {
@@ -289,8 +293,14 @@ export function resolveTasks(
     >;
   },
   env: { isDesktop: boolean },
-  now: number = Date.now()
+  now: number = Date.now(),
+  /** Dev preview options. `forceIncomplete` renders every task in its
+   *  un-done/default state (see `flag.devopts.tasks_preview_default`). The
+   *  caller pairs it with an empty blob to also drop dismissed/opted-in
+   *  state, yielding the full "brand-new user" checklist. */
+  options: { forceIncomplete?: boolean } = {}
 ): ResolvedTask[] {
+  const forceIncomplete = options.forceIncomplete ?? false;
   // Visible = passes includedWhen AND (not optInOnly OR opted in).
   const visibleDefs = TASK_DEFS.filter((d) => {
     if (!d.includedWhen(focus, env, ctx)) {
@@ -308,7 +318,7 @@ export function resolveTasks(
   // and unblocks `remove_apps_from_phone` even before they opt in).
   const completionMap = new Map<UserTaskId, boolean>();
   for (const d of TASK_DEFS) {
-    completionMap.set(d.id, d.completionCheck(ctx));
+    completionMap.set(d.id, forceIncomplete ? false : d.completionCheck(ctx));
   }
 
   return visibleDefs.map((def) => {
@@ -321,7 +331,8 @@ export function resolveTasks(
         id: d.id,
         isCompleted: completionMap.get(d.id) ?? false,
       })),
-      now
+      now,
+      forceIncomplete
     );
     return {
       id: def.id,
@@ -357,8 +368,13 @@ export function getOptInCandidates(
       >
     >;
   },
-  env: { isDesktop: boolean }
+  env: { isDesktop: boolean },
+  /** Dev preview options — see `resolveTasks`. When `forceIncomplete` is
+   *  set, an opt-in task is offered even if its derived completion is true,
+   *  so the tray shows the full default set of candidates. */
+  options: { forceIncomplete?: boolean } = {}
 ): OptInCandidate[] {
+  const forceIncomplete = options.forceIncomplete ?? false;
   return TASK_DEFS.filter((d) => {
     if (!d.optInOnly) {
       return false;
@@ -370,8 +386,8 @@ export function getOptInCandidates(
       return false;
     }
     // Don't offer to opt into a task you're already done with — that's
-    // confusing UX. Derived-completion still applies.
-    if (d.completionCheck(ctx)) {
+    // confusing UX. Derived-completion still applies (unless previewing).
+    if (!forceIncomplete && d.completionCheck(ctx)) {
       return false;
     }
     return true;

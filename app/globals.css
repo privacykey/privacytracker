@@ -3069,14 +3069,29 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 0;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--border);
+  /* WCAG 1.4.10 reflow: at 320px (and worse under the x-large text scale)
+     the full tab strip is wider than the viewport. Scroll the strip
+     horizontally instead of pushing the whole document sideways — same
+     pattern as the mobile .settings-sidebar-nav pill strip. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.detail-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .detail-tab {
+  /* flex-shrink: 0 + white-space: nowrap keep each tab at its natural size so
+     the row scrolls (see .detail-tabs) rather than squashing tabs or wrapping a
+     label mid-word. */
+  flex-shrink: 0;
   padding: 10px 20px;
   margin-bottom: -1px;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-2);
+  white-space: nowrap;
   border-bottom: 2px solid transparent;
   transition:
     color 0.15s,
@@ -3127,8 +3142,14 @@ html[data-theme-override="high-contrast"] .nav {
 
 .accordion-header-left {
   display: flex;
+  /* WCAG 1.4.10 reflow: at 320px (and worse under the x-large text scale) the
+     title + count + mismatch chip can't sit on one line. Let the group wrap and
+     shrink so the chip drops to a second line instead of widening the document.
+     min-width: 0 lets this flex child shrink below its content width. */
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+  min-width: 0;
 }
 
 .accordion-title {
@@ -28183,10 +28204,16 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   align-items: center;
 }
 
+/* Reflow (WCAG 1.4.10): the cmd-row and its nowrap <code> are flex children
+   whose default min-width:auto floors them at the upgrade command's full
+   content width — that defeats the max-width/ellipsis below and pushes the
+   banner past a 320px viewport. min-width:0 on both lets max-width + ellipsis
+   actually constrain the command; the <640px actions override does the rest. */
 .update-banner__cmd-row {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-width: 0;
   padding: 4px 4px 4px 10px;
   background: color-mix(in srgb, var(--text) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
@@ -28194,6 +28221,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .update-banner__cmd {
+  min-width: 0;
   max-width: min(420px, 60vw);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -28245,6 +28273,13 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 @media (max-width: 640px) {
   .update-banner__inner {
     padding: 10px 14px;
+  }
+  /* Size the actions block to the full inner row instead of its (non-shrinking,
+     flex-shrink:0) content width, so it can't push past the viewport; min-width:0
+     then lets its contents shrink to fit within that row. */
+  .update-banner__actions {
+    flex-basis: 100%;
+    min-width: 0;
   }
   .update-banner__cmd {
     max-width: 100%;
