@@ -205,9 +205,9 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.settings.ai.debug_logging",
   // Focus card on Settings
   "flag.settings.focus.picker",
-  // Onboarding screens 1 (WelcomeSplash) and 2 (GoalsScreen) sub-flags.
-  // Each filters one piece of the form; hidden pickers fall back to the
-  // audience-aware silent default.
+  // Onboarding/settings focus form (WelcomeSplash + FocusEditForm →
+  // FocusPurposeForm) sub-flags. Each gates one piece of the multi-select
+  // form (goal tiles, audience control, minimal switch, a11y modifier).
   "flag.onboarding.audience_picker",
   "flag.onboarding.audience_picker.skip",
   "flag.onboarding.goals_picker",
