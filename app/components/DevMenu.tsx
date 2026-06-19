@@ -99,9 +99,9 @@ interface FocusInfo {
   accessibility: boolean;
   aiConfigured: boolean;
   audience: "self" | "loved_one" | "guardian";
-  declutter: boolean;
+  cleanup: boolean;
   minimal: boolean;
-  understand: boolean;
+  monitor: boolean;
 }
 
 /**
@@ -126,11 +126,11 @@ const AUDIENCE_OPTIONS: Array<{
 ];
 
 const GOAL_OPTIONS: Array<{
-  key: "understand" | "declutter" | "minimal" | "accessibility";
+  key: "monitor" | "cleanup" | "minimal" | "accessibility";
   labelKey: string;
 }> = [
-  { key: "understand", labelKey: "goal_understand" },
-  { key: "declutter", labelKey: "goal_declutter" },
+  { key: "monitor", labelKey: "goal_monitor" },
+  { key: "cleanup", labelKey: "goal_cleanup" },
   { key: "minimal", labelKey: "goal_minimal" },
   { key: "accessibility", labelKey: "goal_accessibility" },
 ];
@@ -892,8 +892,8 @@ export default function DevMenu() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             audience: next.audience,
-            understand: next.understand,
-            declutter: next.declutter,
+            monitor: next.monitor,
+            cleanup: next.cleanup,
             minimal: next.minimal,
             accessibility: next.accessibility,
           }),
@@ -906,7 +906,7 @@ export default function DevMenu() {
           setFocus(previous); // rollback
           return;
         }
-        // The server normalises (e.g. promotes `understand=true` when
+        // The server normalises (e.g. promotes `monitor=true` when
         // both primary goals are unset); adopt its echo so the picker
         // never drifts from what's actually persisted.
         setFocus({
@@ -954,18 +954,18 @@ export default function DevMenu() {
   );
 
   const toggleGoal = useCallback(
-    (goal: "understand" | "declutter" | "minimal" | "accessibility") => {
+    (goal: "monitor" | "cleanup" | "minimal" | "accessibility") => {
       if (!focus) {
         return;
       }
       const current = focus[goal];
       // Mutual exclusion mirrors the /api/focus normaliser: picking
-      // `minimal` clears understand + declutter; checking either of
+      // `minimal` clears monitor + cleanup; checking either of
       // those clears `minimal`. Accessibility is independent.
       let next: FocusInfo = { ...focus, [goal]: !current };
       if (goal === "minimal" && !current) {
-        next = { ...next, understand: false, declutter: false };
-      } else if ((goal === "understand" || goal === "declutter") && !current) {
+        next = { ...next, monitor: false, cleanup: false };
+      } else if ((goal === "monitor" || goal === "cleanup") && !current) {
         next = { ...next, minimal: false };
       }
       writeFocus(next);
@@ -1837,11 +1837,11 @@ function describeGoalsForToast(t: DevT, focus: FocusInfo): string {
   if (focus.minimal) {
     parts.push(t("goal_minimal"));
   }
-  if (focus.understand) {
-    parts.push(t("goal_understand"));
+  if (focus.monitor) {
+    parts.push(t("goal_monitor"));
   }
-  if (focus.declutter) {
-    parts.push(t("goal_declutter"));
+  if (focus.cleanup) {
+    parts.push(t("goal_cleanup"));
   }
   if (focus.accessibility) {
     parts.push(t("goal_accessibility"));
