@@ -64,8 +64,8 @@ export default function FocusEditForm({
       }
       initial={{
         audience: initialAudience,
-        understand: initialUnderstand,
-        declutter: initialDeclutter,
+        monitor: initialUnderstand,
+        cleanup: initialDeclutter,
         minimal: initialMinimal,
         accessibility: initialAccessibility,
         workflow: initialWorkflow,

@@ -32,8 +32,8 @@ test.beforeEach(async ({ request }) => {
     headers: sameOriginHeaders,
     data: {
       audience: "loved_one",
-      understand: true,
-      declutter: false,
+      monitor: true,
+      cleanup: false,
       minimal: false,
       accessibility: true,
     },

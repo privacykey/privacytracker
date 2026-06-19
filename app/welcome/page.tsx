@@ -42,8 +42,8 @@ export default function WelcomePage() {
     audienceStored && focus
       ? {
           audience: focus.audience,
-          understand: focus.goals.has("understand"),
-          declutter: focus.goals.has("declutter"),
+          monitor: focus.goals.has("monitor"),
+          cleanup: focus.goals.has("cleanup"),
           minimal: focus.goals.has("minimal"),
           accessibility: focus.goals.has("accessibility"),
           workflow: getActiveFocusWorkflow(focus),

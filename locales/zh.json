@@ -1,5 +1,22 @@
 {
   "_comment": "Simplified Chinese translation. Mirrors the namespace structure of locales/en.json exactly — every key in en.json must have a corresponding zh.json entry or next-intl will fall through to the key name as a string.",
+  "feature_toggle": {
+    "heading": "微调功能",
+    "hint": "可选。逐项开启或关闭功能 — 此处的选择会覆盖上方目标默认开启的内容。",
+    "on": "开启",
+    "off": "关闭",
+    "aria_on": "{feature} 已开启。点按可关闭。",
+    "aria_off": "{feature} 已关闭。点按可开启。",
+    "reset": "将 {feature} 重置为与你的关注一致",
+    "features": {
+      "ai_summary": "AI 政策摘要",
+      "compare": "应用对比",
+      "privacy_map": "隐私地图",
+      "stats": "统计与图表",
+      "notifications": "通知",
+      "shortlist": "候选清单"
+    }
+  },
   "verdict": {
     "safe_label": "标记为安全",
     "safe_short": "安全",
@@ -242,12 +259,6 @@
       "safe_section": "安全（{count}）："
     }
   },
-  "intent": {
-    "curious": "我只是好奇",
-    "cleanup": "删除侵入性应用",
-    "hygiene": "提升我的安全卫生",
-    "family": "守护我的家人"
-  },
   "risk": {
     "high_label": "高风险",
     "moderate_label": "中等风险",
@@ -376,13 +387,13 @@
     }
   },
   "goal": {
-    "understand": {
-      "label": "帮我了解我的应用并长期跟踪",
-      "subtext": "时间线、AI 摘要、历史图表。"
+    "monitor": {
+      "label": "监控我的应用变化",
+      "subtext": "应用变化时提醒，并保留历史记录。"
     },
-    "declutter": {
-      "label": "找出并删除最差的应用",
-      "subtext": "风险分级、不一致检测、删除快捷方式。"
+    "cleanup": {
+      "label": "清理我的手机",
+      "subtext": "找出占用最多的应用，并协助删除。"
     },
     "minimal": {
       "label": "只显示基本信息",
@@ -396,9 +407,9 @@
   "onboarding": {
     "welcome": {
       "eyebrow": "欢迎",
-      "headline": "你打算如何使用 privacytracker？",
-      "subhead": "选择最接近的用途。",
-      "subhead_long": "选择最接近的用途。之后可以随时在设置中微调。",
+      "headline": "你想做些什么？",
+      "subhead": "选择任意符合的项 — 可以多选。",
+      "subhead_long": "选择任意符合的项 — 可以多选，之后也能在设置中调整。",
       "skip": "暂时跳过",
       "next": "下一步",
       "back": "返回",
@@ -414,23 +425,24 @@
     }
   },
   "focus_purpose": {
-    "primary_aria": "主要用途",
+    "primary_aria": "你想做什么",
+    "audience_heading": "这是为谁使用？",
     "primary": {
       "monitor": {
         "title": "监控我的应用变化",
-        "body": "在 App Store 上的标签或政策发生变化时持续跟踪。"
+        "body": "帮你留意应用。当某个应用开始索取更多信息时我们会告诉你，你也能看到它们随时间的变化。"
       },
       "cleanup": {
         "title": "清理我的手机",
-        "body": "查看应用是否符合你的隐私档案，然后移除或替换最严重的问题应用，寻找更合适的替代应用。"
+        "body": "找出占用最多的应用，清除你不需要的 — 最值得关注的会排在前面，并协助你删除。"
       },
       "help": {
-        "title": "帮助别人做决定",
-        "body": "为另一位用户准备建议，或在这里监控他们的应用列表。"
+        "title": "帮助朋友",
+        "body": "在查看别人的应用？我们会帮你整理发现的内容，方便你分享或一起讨论。"
       },
       "custom": {
         "title": "自定义设置",
-        "body": "使用高级选项直接选择审查对象和目标。"
+        "body": "不符合单一选项的组合 — 请参见下方的目标。"
       }
     },
     "animation": {
@@ -1077,9 +1089,9 @@
       "self": "你正在为自己审查应用。",
       "loved_one": "你正在为关心的人审查应用。",
       "guardian": "你被设置为儿童设备的监护人。",
-      "with_understand": "我们将展示隐私详情和政策摘要，帮助你理解每个应用。",
-      "with_declutter": "我们将在工具中突出建议移除或替换的应用。",
-      "with_understand_declutter": "我们会把「为什么收集此项」的细节与精简提示结合，便于据此采取行动。",
+      "with_monitor": "应用发生变化时我们会通知你，并保留可回溯的历史记录。",
+      "with_cleanup": "我们会指出值得删除或替换的应用，并帮助你处理。",
+      "with_monitor_cleanup": "我们会在应用变化时提醒你，并指出值得清理的应用，方便你据此行动。",
       "with_minimal": "我们将保持仪表板简洁 — 只显示需要决定的应用。",
       "with_accessibility": "我们将把无障碍数据和高对比度选项带到前台。"
     },
@@ -1119,18 +1131,11 @@
   "focus_edit": {
     "page_title": "调整你的关注重点",
     "subtitle": "你的更改会先在整个应用中预览，然后再提交。关闭此标签页会取消预览。",
-    "audience_heading": "你在为谁审查？",
-    "audience_aria": "审查对象",
-    "goals_heading": "你希望从中获得什么？",
-    "goals_aria": "主要目标",
-    "or_divider": "— 或 —",
     "save": "保存并预览",
     "cancel": "取消",
     "stage_failed": "无法暂存预览。浏览器存储可能已禁用。",
     "help_link": "这是怎么工作的？",
-    "footnote_prompt": "想了解更多？",
-    "minimal_announce_on": "“理解”和“清理”已禁用 — 已选择“仅显示基本信息”。",
-    "minimal_announce_off": "已取消“仅显示基本信息”。"
+    "footnote_prompt": "想了解更多？"
   },
   "page_metadata": {
     "manual_apps_title": "自定义应用 — privacytracker",

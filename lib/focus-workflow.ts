@@ -21,9 +21,9 @@ export function isFocusWorkflow(value: unknown): value is FocusWorkflow {
 
 export interface FocusWorkflowInput {
   audience: Audience;
-  declutter: boolean;
+  cleanup: boolean;
   minimal: boolean;
-  understand: boolean;
+  monitor: boolean;
 }
 
 /**
@@ -36,10 +36,10 @@ export function inferFocusWorkflow(input: FocusWorkflowInput): FocusWorkflow {
     return "custom";
   }
   if (input.audience === "self") {
-    if (input.understand && !input.declutter) {
+    if (input.monitor && !input.cleanup) {
       return "self_monitor";
     }
-    if (input.declutter && !input.understand) {
+    if (input.cleanup && !input.monitor) {
       return "self_cleanup";
     }
   }

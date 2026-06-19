@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import PurposeCardScene from "../../components/PurposeCardScene";
 
 export const metadata: Metadata = {
   title: "Your Focus — privacytracker",
   description:
-    "How the audience and goal model tailors the dashboard, what each option means, and how to change it.",
+    "How the choices you make on the welcome screen — what you want to do, who it's for, and which features you want — tailor the dashboard, what each option means, and how to change it.",
 };
 
 /**
@@ -50,6 +51,21 @@ export default async function HelpFocusPage() {
   // pass, tracked separately under deferred long-form translations.
   const t = await getTranslations("help_focus_page");
   const tSec = await getTranslations("help_focus_page.sections");
+  // Reuse the /welcome purpose animations to illustrate the goals section.
+  const tPurpose = await getTranslations("focus_purpose");
+  const tAnim = await getTranslations("focus_purpose.animation");
+  // The live form randomises the monitor scene's "what changed" line; here
+  // one representative example is enough.
+  const sceneProps = {
+    deleteLabel: tAnim("cleanup.delete"),
+    helpDetail: tAnim("help.detail"),
+    helpTitle: tAnim("help.title"),
+    monitorChangeText: tAnim("monitor.change", {
+      app: "ShoeDrop",
+      label: tAnim("labels.location"),
+    }),
+    monitorTitle: tAnim("monitor.title"),
+  };
   return (
     <div className="legal-page">
       <header className="legal-page-hero">
@@ -90,27 +106,30 @@ export default async function HelpFocusPage() {
                 {tSec("what_is")}
               </h2>
               <p className="legal-license-blurb">
-                A small bundle of preferences — an audience plus a set of goals
-                — that the app uses to decide what to show, what to hide, and
-                what to highlight.
+                A small bundle of preferences — what you want to do, who
+                it&rsquo;s for, and which individual features you want — that
+                the app uses to decide what to show, what to hide, and what to
+                highlight.
               </p>
             </header>
             <p>
-              You pick it during onboarding (or skip and accept the defaults),
-              and you can change it any time from{" "}
+              You set it on the welcome screen (or skip and accept the
+              defaults), and you can change it any time from{" "}
               <Link href="/dashboard/settings#focus">
                 Settings → Your focus
               </Link>
               .
             </p>
             <p>
-              Every individual feature is also user-overridable. If your focus
-              hides something you actually want, you can flip the underlying
-              flag on under{" "}
+              Every individual feature is also yours to flip. The focus screen
+              has a row of feature toggles for the common ones (AI summaries,
+              Compare, Privacy Map, and so on), and you can change any feature
+              under{" "}
               <Link href="/dashboard/settings#feature-flags">
                 Developer Options → Feature flags
               </Link>
-              .
+              . A feature you switch on or off there wins over what your goals
+              would set.
             </p>
           </section>
 
@@ -168,23 +187,43 @@ export default async function HelpFocusPage() {
                 exclusive with the others.
               </p>
             </header>
+            <div className="help-focus-scenes">
+              {(["monitor", "cleanup", "help"] as const).map((p) => (
+                <figure className="help-focus-scene" key={p}>
+                  <PurposeCardScene {...sceneProps} purpose={p} />
+                  <figcaption>{tPurpose(`primary.${p}.title`)}</figcaption>
+                </figure>
+              ))}
+            </div>
+            <p>
+              On the welcome screen you pick{" "}
+              <strong>what you&rsquo;d like to do</strong> — and you can choose
+              more than one. <em>Monitor my apps for changes</em> and{" "}
+              <em>Clean up my phone</em> each switch on the tools below.{" "}
+              <em>Help a friend</em> is about <em>who</em> you&rsquo;re checking
+              for rather than a tool — it sets the audience to someone else (see{" "}
+              <a href="#audiences">Audiences</a> above).{" "}
+              <strong>Keep it minimal</strong> is a separate switch that strips
+              things back, so it can&rsquo;t be combined with the others.
+            </p>
             <ul className="legal-bullets">
               <li>
-                <strong>Understand my apps and track over time</strong> — turns
-                on the timeline, AI policy summaries, history charts, and
+                <strong>Monitor my apps for changes</strong> — we keep an eye on
+                your apps and tell you when one starts asking for more. You get
+                a timeline, plain-language policy summaries, history charts, and
                 notifications.
               </li>
               <li>
-                <strong>Find and remove the worst offenders</strong> — surfaces
-                risk classification, profile-mismatch badges, and delete
-                shortcuts. Low-severity apps collapse by default so the
-                decisions you need to make are visible up top.
+                <strong>Clean up my phone</strong> — we spot the apps that take
+                the most and put them first, with risk labels, profile-mismatch
+                flags, and a hand to remove or replace them. Low-severity apps
+                tuck away so the decisions worth making stay up top.
               </li>
               <li>
-                <strong>Just the basics</strong> — a deliberately stripped-down
-                audit surface. Hides Compare, Privacy Map, Manual Apps, the Task
-                Center, and most of the chrome. Useful when you just want a
-                quick health check, not a deep dive.
+                <strong>Keep it minimal</strong> — a deliberately quiet view.
+                Hides the extras — Compare, Privacy Map, Manual Apps, the Task
+                Center, and most of the chrome — so you get a quick health
+                check, not a deep dive.
               </li>
             </ul>
           </section>

@@ -52,7 +52,7 @@ export const FLAG_REGISTRY: Record<FlagKey, FlagRegistration> =
 // Sample descriptions — concrete examples of the registry entry shape.
 export const SAMPLE_DESCRIPTIONS: Partial<Record<FlagKey, string>> = {
   "flag.detail.policy.ai_summary":
-    "AI-generated summary of the privacy policy. Off by default; turned on by goal.understand or goal.declutter.",
+    "AI-generated summary of the privacy policy. Off by default; turned on by goal.monitor or goal.cleanup.",
   "flag.detail.policy.safety_summary":
     'Guardian-only "is this safe for them?" summary above the lens grid. Requires a guardian-tuned AI prompt variant.',
   "flag.detail.annotations_sidebar":
@@ -137,8 +137,8 @@ function computeFlag(key: FlagKey, ctx: ResolverContext): FlagValue {
     value = audienceRule;
   }
 
-  // 3. Goal rules — apply each active primary goal in fixed order [understand, declutter, minimal].
-  for (const goal of ["understand", "declutter", "minimal"] as const) {
+  // 3. Goal rules — apply each active goal in fixed order [monitor, cleanup, minimal].
+  for (const goal of ["monitor", "cleanup", "minimal"] as const) {
     if (ctx.focus.goals.has(goal)) {
       const goalRule = GOAL_RULES[goal][key];
       if (goalRule !== undefined) {
@@ -197,8 +197,8 @@ function computeFlag(key: FlagKey, ctx: ResolverContext): FlagValue {
 export function getFocusState(read: (key: string) => string): FocusState {
   const audience = (read("flag.focus.audience") || "self") as Audience;
   const goals = activeGoalsFrom({
-    understand: read("flag.focus.goal.understand") === "true",
-    declutter: read("flag.focus.goal.declutter") === "true",
+    monitor: read("flag.focus.goal.monitor") === "true",
+    cleanup: read("flag.focus.goal.cleanup") === "true",
     minimal: read("flag.focus.goal.minimal") === "true",
     accessibility: read("flag.focus.goal.accessibility") === "true",
   });
@@ -365,7 +365,7 @@ export function withFlags<T>(
   const synthesisedContext: ResolverContext = activeCache?.context ?? {
     focus: {
       audience: "self",
-      goals: new Set(["understand"]),
+      goals: new Set(["monitor"]),
       aiConfigured: false,
     },
     overrides: newOverrides,

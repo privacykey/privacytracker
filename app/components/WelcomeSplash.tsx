@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { AgeBandKey } from "@/lib/age-rating";
@@ -18,8 +18,8 @@ interface Props {
 
 const DEFAULT_FOCUS: PurposeFocusInput = {
   audience: "self",
-  understand: true,
-  declutter: false,
+  monitor: true,
+  cleanup: false,
   minimal: false,
   accessibility: false,
   workflow: "self_monitor",
@@ -30,7 +30,6 @@ export default function WelcomeSplash({
   initialFocus,
 }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const t = useTranslations("onboarding.welcome");
   const tCommon = useTranslations("common");
   const sampleDataButtonOn =
@@ -69,8 +68,8 @@ export default function WelcomeSplash({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           audience: focus.audience,
-          understand: focus.understand,
-          declutter: focus.declutter,
+          monitor: focus.monitor,
+          cleanup: focus.cleanup,
           minimal: focus.minimal,
           accessibility: focus.accessibility,
           workflow: focus.workflow,
@@ -134,7 +133,6 @@ export default function WelcomeSplash({
 
   return (
     <FocusPurposeForm
-      advancedInitiallyOpen={searchParams?.get("customize") === "1"}
       error={error}
       extraActions={
         audiencePickerSkipOn ? (

@@ -38,12 +38,12 @@ export interface FocusPreview {
   audience: Audience;
   /** Guardian child age band. `undefined` = leave unchanged; `null` = clear. */
   childAgeBand?: AgeBandKey | null;
-  declutter: boolean;
+  cleanup: boolean;
   minimal: boolean;
+  monitor: boolean;
   /** Epoch ms when the user staged this preview. Used by the banner. */
   startedAt: number;
   taskOptIns?: UserTaskId[];
-  understand: boolean;
   workflow: FocusWorkflow;
 }
 
@@ -85,13 +85,13 @@ export function getPreviewFocus(): FocusPreview | null {
     ) {
       return null;
     }
-    const understand = Boolean(parsed.understand);
-    const declutter = Boolean(parsed.declutter);
+    const monitor = Boolean(parsed.monitor);
+    const cleanup = Boolean(parsed.cleanup);
     const minimal = Boolean(parsed.minimal);
     return {
       audience,
-      understand,
-      declutter,
+      monitor,
+      cleanup,
       minimal,
       accessibility: Boolean(parsed.accessibility),
       childAgeBand: isValidAgeBand(parsed.childAgeBand)
@@ -101,7 +101,7 @@ export function getPreviewFocus(): FocusPreview | null {
           : undefined,
       workflow: isFocusWorkflow(parsed.workflow)
         ? parsed.workflow
-        : inferFocusWorkflow({ audience, understand, declutter, minimal }),
+        : inferFocusWorkflow({ audience, monitor, cleanup, minimal }),
       taskOptIns: Array.isArray(parsed.taskOptIns)
         ? parsed.taskOptIns.filter((id: unknown): id is UserTaskId =>
             PREVIEW_TASK_IDS.includes(id as UserTaskId)

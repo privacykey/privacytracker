@@ -12,5 +12,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function OnboardGoalsPage() {
-  redirect("/welcome?customize=1");
+  redirect("/welcome");
 }

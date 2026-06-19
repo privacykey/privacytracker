@@ -1,5 +1,22 @@
 {
   "_comment": "Round 2 skeleton — populated initially with audience-aware copy needed for the tour and the focus surfaces. Round 3 PRs (3, 4, 5) extract the remaining ~2000 strings from existing components.",
+  "feature_toggle": {
+    "heading": "Fine-tune features",
+    "hint": "Optional. Switch individual features on or off — your choice here overrides what the goals above would turn on.",
+    "on": "On",
+    "off": "Off",
+    "aria_on": "{feature} is on. Activate to turn it off.",
+    "aria_off": "{feature} is off. Activate to turn it on.",
+    "reset": "Reset {feature} to match your focus",
+    "features": {
+      "ai_summary": "AI policy summaries",
+      "compare": "Compare apps",
+      "privacy_map": "Privacy Map",
+      "stats": "Stats & charts",
+      "notifications": "Notifications",
+      "shortlist": "Shortlist"
+    }
+  },
   "verdict": {
     "safe_label": "Marked safe",
     "safe_short": "Safe",
@@ -242,12 +259,6 @@
       "safe_section": "Safe ({count}):"
     }
   },
-  "intent": {
-    "curious": "I'm just curious",
-    "cleanup": "Delete invasive apps",
-    "hygiene": "Improve my security hygiene",
-    "family": "Keep my family safe"
-  },
   "risk": {
     "high_label": "High risk",
     "moderate_label": "Moderate risk",
@@ -376,13 +387,13 @@
     }
   },
   "goal": {
-    "understand": {
-      "label": "Help me understand my apps and track over time",
-      "subtext": "Timeline, AI summaries, history charts."
+    "monitor": {
+      "label": "Monitor my apps for changes",
+      "subtext": "Alerts when an app changes, plus its history over time."
     },
-    "declutter": {
-      "label": "Find and remove the worst offenders",
-      "subtext": "Risk classification, mismatch detection, delete shortcuts."
+    "cleanup": {
+      "label": "Clean up my phone",
+      "subtext": "Finds the apps that take the most, with help to remove them."
     },
     "minimal": {
       "label": "Just the basics",
@@ -396,9 +407,9 @@
   "onboarding": {
     "welcome": {
       "eyebrow": "Welcome",
-      "headline": "What are you using privacytracker for?",
-      "subhead": "Choose the closest purpose.",
-      "subhead_long": "Choose the closest purpose. You can fine-tune this any time in Settings.",
+      "headline": "What would you like to do?",
+      "subhead": "Pick anything that fits — you can choose more than one.",
+      "subhead_long": "Pick anything that fits — you can choose more than one, and change it later in Settings.",
       "skip": "Skip for now",
       "next": "Next",
       "back": "Back",
@@ -414,23 +425,24 @@
     }
   },
   "focus_purpose": {
-    "primary_aria": "Primary purpose",
+    "primary_aria": "What you want to do",
+    "audience_heading": "Who's this for?",
     "primary": {
       "monitor": {
         "title": "Monitor my apps for changes",
-        "body": "Keeps track when labels or policies change on the App Store."
+        "body": "Keep an eye on your apps. We'll tell you when one starts asking for more, and you can see how they've changed over time."
       },
       "cleanup": {
         "title": "Clean up my phone",
-        "body": "See if apps match your privacy profile, then remove or replace the worst offenders to find better suited apps."
+        "body": "Spot the apps that take the most and clear out what you don't need — the ones worth a look come first, with a hand to remove them."
       },
       "help": {
-        "title": "Help someone else decide",
-        "body": "Prepare recommendations for another person or monitor their app list here."
+        "title": "Help a friend",
+        "body": "Looking through someone else's apps? We'll help you gather what you find so you can share it or talk it over."
       },
       "custom": {
         "title": "Custom setup",
-        "body": "Use advanced options to choose the audience and goals directly."
+        "body": "A mix that doesn't match a single tile — see your goals below."
       }
     },
     "animation": {
@@ -489,7 +501,7 @@
       }
     },
     "advanced": {
-      "summary": "Advanced options",
+      "summary": "Set audience and goals manually",
       "audience": "Audience",
       "goals": "Goals"
     },
@@ -1077,9 +1089,9 @@
       "self": "You're auditing apps for yourself.",
       "loved_one": "You're auditing apps for someone you care about.",
       "guardian": "You're set up as a guardian for a child's device.",
-      "with_understand": "We'll surface privacy detail and policy summaries to help you understand each app.",
-      "with_declutter": "We'll highlight apps to remove or replace alongside the other tools.",
-      "with_understand_declutter": "We'll mix \"why is this collected\" detail with declutter prompts so you can act on what you learn.",
+      "with_monitor": "We'll let you know when an app changes, and keep a history you can look back on.",
+      "with_cleanup": "We'll point out the apps worth removing or replacing, and help you act on them.",
+      "with_monitor_cleanup": "We'll flag when apps change and point out the ones worth clearing out, so you can act on what you see.",
       "with_minimal": "We'll keep the dashboard quiet — just the apps that need a decision.",
       "with_accessibility": "We'll bring accessibility data and high-contrast options forward."
     },
@@ -1119,18 +1131,11 @@
   "focus_edit": {
     "page_title": "Adjust your focus",
     "subtitle": "Your changes will preview across the app before you commit them. Closing this tab cancels the preview.",
-    "audience_heading": "Who are you auditing for?",
-    "audience_aria": "Audience",
-    "goals_heading": "What do you want from this?",
-    "goals_aria": "Primary goals",
-    "or_divider": "— or —",
     "save": "Save & preview",
     "cancel": "Cancel",
     "stage_failed": "Could not stage preview. Browser storage may be disabled.",
     "help_link": "How does this work?",
-    "footnote_prompt": "Want more detail?",
-    "minimal_announce_on": "Understand and declutter disabled — Just the basics selected.",
-    "minimal_announce_off": "Just the basics deselected."
+    "footnote_prompt": "Want more detail?"
   },
   "page_metadata": {
     "manual_apps_title": "Manual apps — privacytracker",

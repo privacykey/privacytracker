@@ -52,11 +52,7 @@ import { useModalFocus } from "../../lib/use-modal-focus";
 // primary goal — flipping it on layers ACCESSIBILITY_RULES across
 // every column at once.
 
-type GoalSetKey =
-  | "understand"
-  | "declutter"
-  | "understand+declutter"
-  | "minimal";
+type GoalSetKey = "monitor" | "cleanup" | "monitor+cleanup" | "minimal";
 
 interface ComboDef {
   audience: Audience;
@@ -69,9 +65,9 @@ interface ComboDef {
 
 const AUDIENCES: readonly Audience[] = ["self", "loved_one", "guardian"];
 const GOAL_SETS: readonly GoalSetKey[] = [
-  "understand",
-  "declutter",
-  "understand+declutter",
+  "monitor",
+  "cleanup",
+  "monitor+cleanup",
   "minimal",
 ];
 
@@ -82,9 +78,9 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
 };
 
 const GOAL_SHORT: Record<GoalSetKey, string> = {
-  understand: "U",
-  declutter: "D",
-  "understand+declutter": "U+D",
+  monitor: "U",
+  cleanup: "D",
+  "monitor+cleanup": "U+D",
   minimal: "M",
 };
 
@@ -102,13 +98,13 @@ function goalsFor(
   accessibility: boolean
 ): Set<PrimaryGoal | Modifier> {
   const goals = new Set<PrimaryGoal | Modifier>();
-  if (goalSet === "understand") {
-    goals.add("understand");
-  } else if (goalSet === "declutter") {
-    goals.add("declutter");
-  } else if (goalSet === "understand+declutter") {
-    goals.add("understand");
-    goals.add("declutter");
+  if (goalSet === "monitor") {
+    goals.add("monitor");
+  } else if (goalSet === "cleanup") {
+    goals.add("cleanup");
+  } else if (goalSet === "monitor+cleanup") {
+    goals.add("monitor");
+    goals.add("cleanup");
   } else if (goalSet === "minimal") {
     goals.add("minimal");
   }
@@ -138,7 +134,7 @@ function resolveFor(
     value = audienceRule;
   }
 
-  for (const goal of ["understand", "declutter", "minimal"] as const) {
+  for (const goal of ["monitor", "cleanup", "minimal"] as const) {
     if (goals.has(goal)) {
       const r = GOAL_RULES[goal][key];
       if (r !== undefined) {
@@ -466,15 +462,15 @@ export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
 
     // Goal-only overrides: same value across every audience for a
     // given goal, differing from HARD_DEFAULTS.
-    const PRIMARY_GOALS: PrimaryGoal[] = ["understand", "declutter", "minimal"];
+    const PRIMARY_GOALS: PrimaryGoal[] = ["monitor", "cleanup", "minimal"];
     for (const goal of PRIMARY_GOALS) {
       lines.push(`// GOAL_RULES.${goal}`);
       // Combos that include this goal:
       const goalCombos = COMBOS.filter((c) =>
-        goal === "understand"
-          ? c.goalSet === "understand" || c.goalSet === "understand+declutter"
-          : goal === "declutter"
-            ? c.goalSet === "declutter" || c.goalSet === "understand+declutter"
+        goal === "monitor"
+          ? c.goalSet === "monitor" || c.goalSet === "monitor+cleanup"
+          : goal === "cleanup"
+            ? c.goalSet === "cleanup" || c.goalSet === "monitor+cleanup"
             : c.goalSet === "minimal"
       );
       const flagToValues: Map<FlagKey, Set<FlagValue>> = new Map();

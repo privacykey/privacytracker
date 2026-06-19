@@ -28558,6 +28558,29 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   isolation: isolate;
 }
 
+/* /help/focus reuse of the /welcome purpose scenes. The scene itself is
+   flex: 1 1 auto + 152px tall, so each sits in a column-flex figure that
+   gives it full width. */
+.help-focus-scenes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 20px;
+}
+
+.help-focus-scene {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.help-focus-scene figcaption {
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 .fps-phone,
 .fps-desktop,
 .fps-help-desktop,
@@ -29537,7 +29560,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .focus-purpose-card--onboarding .focus-purpose-scene * {
+  .focus-purpose-scene * {
     animation: none !important;
   }
 
@@ -29796,6 +29819,126 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   gap: 10px;
   justify-content: flex-end;
   margin-top: 18px;
+}
+
+/* "Who's this for?" — demoted audience control, now a visible 3-up segmented
+   control rather than buried in the old Advanced panel. */
+.focus-purpose-audience {
+  margin-top: 18px;
+}
+
+.focus-purpose-segmented--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Feature toggle row — curated per-feature overrides under the focus tiles.
+   Each chip reads its resolved value and writes a user override on flip. */
+.feature-toggle-row {
+  margin-top: 18px;
+}
+
+.feature-toggle-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.feature-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.feature-toggle-item {
+  position: relative;
+  display: flex;
+}
+
+.feature-toggle-chip {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  align-items: center;
+  min-height: 52px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  text-align: left;
+  appearance: none;
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.feature-toggle-chip.is-on {
+  background: color-mix(in srgb, var(--blue, #0a84ff) 12%, transparent);
+  border-color: color-mix(in srgb, var(--blue, #0a84ff) 48%, var(--border));
+}
+
+.feature-toggle-chip:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.feature-toggle-chip:focus-visible,
+.feature-toggle-reset:focus-visible {
+  outline: 2px solid var(--blue, #0a84ff);
+  outline-offset: 2px;
+}
+
+.feature-toggle-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.feature-toggle-label {
+  flex: 1;
+  line-height: 1.3;
+}
+
+.feature-toggle-state {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+}
+
+.feature-toggle-state--on {
+  color: var(--blue, #0a84ff);
+  background: color-mix(in srgb, var(--blue, #0a84ff) 14%, transparent);
+  border-color: color-mix(in srgb, var(--blue, #0a84ff) 50%, var(--border));
+}
+
+.feature-toggle-reset {
+  flex: 0 0 auto;
+  width: 28px;
+  margin-left: 6px;
+  font-size: 14px;
+  color: var(--text-2);
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.feature-toggle-reset:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+@media (max-width: 760px) {
+  .feature-toggle-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .profile-recommend-card {

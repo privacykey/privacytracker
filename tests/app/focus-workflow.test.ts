@@ -16,8 +16,8 @@ test("focus workflow validation and inference are conservative", () => {
   assert.equal(
     inferFocusWorkflow({
       audience: "self",
-      understand: true,
-      declutter: false,
+      monitor: true,
+      cleanup: false,
       minimal: false,
     }),
     "self_monitor"
@@ -25,8 +25,8 @@ test("focus workflow validation and inference are conservative", () => {
   assert.equal(
     inferFocusWorkflow({
       audience: "self",
-      understand: false,
-      declutter: true,
+      monitor: false,
+      cleanup: true,
       minimal: false,
     }),
     "self_cleanup"
@@ -34,8 +34,8 @@ test("focus workflow validation and inference are conservative", () => {
   assert.equal(
     inferFocusWorkflow({
       audience: "loved_one",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
     }),
     "custom"
@@ -44,11 +44,48 @@ test("focus workflow validation and inference are conservative", () => {
   assert.equal(workflowAllowsAuditBundle("other_monitor"), false);
 });
 
+test("/api/focus accepts an empty goal selection without a silent monitor fallback", async () => {
+  const keys = [
+    "flag.focus.audience",
+    "flag.focus.goal.monitor",
+    "flag.focus.goal.cleanup",
+    "flag.focus.goal.minimal",
+    "flag.focus.goal.accessibility",
+    "flag.focus.workflow",
+  ];
+  const prior = new Map(keys.map((key) => [key, getSetting(key, "")]));
+  try {
+    for (const key of keys) {
+      setSetting(key, "");
+    }
+
+    const res = await POST(
+      new Request("http://127.0.0.1/api/focus", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ audience: "self" }),
+      }) as Parameters<typeof POST>[0]
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    // No goal tiles selected is a valid empty baseline — monitor must NOT be
+    // silently forced on (the old §4.2 behaviour, removed in the redesign).
+    assert.equal(body.monitor, false);
+    assert.equal(body.cleanup, false);
+    assert.equal(body.minimal, false);
+    assert.equal(getSetting("flag.focus.goal.monitor", ""), "false");
+  } finally {
+    for (const [key, value] of prior) {
+      setSetting(key, value);
+    }
+  }
+});
+
 test("/api/focus infers workflow when omitted and returns explicit workflow when provided", async () => {
   const keys = [
     "flag.focus.audience",
-    "flag.focus.goal.understand",
-    "flag.focus.goal.declutter",
+    "flag.focus.goal.monitor",
+    "flag.focus.goal.cleanup",
     "flag.focus.goal.minimal",
     "flag.focus.goal.accessibility",
     "flag.focus.workflow",
@@ -65,7 +102,7 @@ test("/api/focus infers workflow when omitted and returns explicit workflow when
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           audience: "self",
-          declutter: true,
+          cleanup: true,
         }),
       }) as Parameters<typeof POST>[0]
     );
@@ -80,8 +117,8 @@ test("/api/focus infers workflow when omitted and returns explicit workflow when
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           audience: "guardian",
-          understand: true,
-          declutter: true,
+          monitor: true,
+          cleanup: true,
           workflow: "other_monitor",
         }),
       }) as Parameters<typeof POST>[0]
@@ -95,12 +132,12 @@ test("/api/focus infers workflow when omitted and returns explicit workflow when
     assert.equal(getBody.workflow, "other_monitor");
     assert.deepEqual(
       activeGoalsFrom({
-        understand: getBody.understand,
-        declutter: getBody.declutter,
+        monitor: getBody.monitor,
+        cleanup: getBody.cleanup,
         minimal: getBody.minimal,
         accessibility: getBody.accessibility,
       }),
-      new Set(["understand", "declutter"])
+      new Set(["monitor", "cleanup"])
     );
   } finally {
     for (const [key, value] of prior) {

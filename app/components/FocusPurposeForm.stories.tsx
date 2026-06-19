@@ -14,8 +14,8 @@ const meta = {
     cancelLabel: "Back",
     initial: {
       audience: "self",
-      understand: true,
-      declutter: false,
+      monitor: true,
+      cleanup: false,
       minimal: false,
       accessibility: false,
       workflow: "self_monitor",
@@ -47,13 +47,13 @@ export const Settings: Story = {
   },
 };
 
-/** Declutter starting point — understand off, declutter on. */
+/** Declutter starting point — monitor off, cleanup on. */
 export const Declutter: Story = {
   args: {
     initial: {
       audience: "self",
-      understand: false,
-      declutter: true,
+      monitor: false,
+      cleanup: true,
       minimal: false,
       accessibility: false,
       workflow: "self_cleanup",
@@ -66,8 +66,8 @@ export const HelpingLovedOne: Story = {
   args: {
     initial: {
       audience: "loved_one",
-      understand: true,
-      declutter: true,
+      monitor: true,
+      cleanup: true,
       minimal: false,
       accessibility: false,
       workflow: "other_handoff",
@@ -75,9 +75,32 @@ export const HelpingLovedOne: Story = {
   },
 };
 
-/** Advanced options expanded on mount (the `?customize=1` deep-link path). */
-export const AdvancedOpen: Story = {
-  args: { advancedInitiallyOpen: true },
+/** Empty baseline — no goal tiles selected (a valid hard-default surface). */
+export const EmptyBaseline: Story = {
+  args: {
+    initial: {
+      audience: "self",
+      monitor: false,
+      cleanup: false,
+      minimal: false,
+      accessibility: false,
+      workflow: "custom",
+    },
+  },
+};
+
+/** "Keep it minimal" — the subtractive switch, mutually exclusive with tiles. */
+export const Minimal: Story = {
+  args: {
+    initial: {
+      audience: "self",
+      monitor: false,
+      cleanup: false,
+      minimal: true,
+      accessibility: false,
+      workflow: "custom",
+    },
+  },
 };
 
 /** Mid-submit: the form is disabled and shows the saving label. */

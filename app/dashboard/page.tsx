@@ -17,15 +17,14 @@ import {
 import { getDashboardLayout } from "../../lib/dashboard-layout-server";
 import {
   getActiveFocus,
+  getActiveFocusWorkflow,
   getWelcomedAt,
   setWelcomedAt,
 } from "../../lib/feature-flag-storage";
 import { resolveFlagFromDb } from "../../lib/feature-flags-server";
 import { countManualApps } from "../../lib/manual-apps-server";
-import {
-  getManualAppsBannerDismissed,
-  getUserIntent,
-} from "../../lib/preferences-server";
+import { describePurpose } from "../../lib/onboarding-purpose";
+import { getManualAppsBannerDismissed } from "../../lib/preferences-server";
 import { getMismatchedApps } from "../../lib/privacy-profile-server";
 import { getSetting } from "../../lib/scheduler";
 import {
@@ -39,7 +38,10 @@ import {
 } from "../../lib/verdicts";
 import BundleImportProvenanceBanner from "../components/BundleImportProvenanceBanner";
 import CoachmarkTour from "../components/CoachmarkTour";
-import HomeView, { type DashboardFlagState } from "../components/HomeView";
+import HomeView, {
+  type DashboardFlagState,
+  type FocusSummary,
+} from "../components/HomeView";
 import Nav from "../components/Nav";
 import SampleModeView from "../components/SampleModeView";
 import TaskList from "../components/TaskList";
@@ -131,22 +133,42 @@ export default async function DashboardPage({
   }
 
   if (!triage || triage.totalApps === 0) {
-    // If the user hasn't picked an archetype yet, send them to the welcome
-    // splash first so dashboard tailoring has something to key off once
-    // they finish onboarding. Otherwise jump straight to the import wizard.
-    const intent = (() => {
+    // If the user hasn't set a focus yet, send them to the welcome splash
+    // first so dashboard tailoring has something to key off once they
+    // finish onboarding. Otherwise jump straight to the import wizard.
+    // Read the raw setting (getActiveFocus() defaults audience to 'self').
+    const focusSet = (() => {
       try {
-        return getUserIntent();
+        return getSetting("flag.focus.audience", "") !== "";
       } catch {
-        return null;
+        return false;
       }
     })();
-    redirect(intent ? "/onboard" : "/welcome");
+    redirect(focusSet ? "/onboard" : "/welcome");
   }
 
-  const userIntent = (() => {
+  // Summarise the focus for HomeView's own tailoring (focus strip + stale
+  // elevation). `null` when no focus is stored — getActiveFocus() defaults
+  // audience to 'self', so gate on the raw setting first.
+  const focusSummary: FocusSummary | null = (() => {
     try {
-      return getUserIntent();
+      if (getSetting("flag.focus.audience", "") === "") {
+        return null;
+      }
+      const focus = getActiveFocus();
+      const monitor = focus.goals.has("monitor");
+      const cleanup = focus.goals.has("cleanup");
+      return {
+        purpose: describePurpose({
+          audience: focus.audience,
+          monitor,
+          cleanup,
+          minimal: focus.goals.has("minimal"),
+          accessibility: focus.goals.has("accessibility"),
+          workflow: getActiveFocusWorkflow(focus),
+        }).primary,
+        understandDeclutter: monitor && cleanup,
+      };
     } catch {
       return null;
     }
@@ -180,10 +202,10 @@ export default async function DashboardPage({
     console.warn("[dashboard] getMismatchedApps failed:", error);
   }
 
-  // Round 3 PR 3: pre-resolve dashboard flags server-side so HomeView gets
-  // the right initial markup with no hydration flash. Errors fall back to
-  // an undefined flag-state, which makes HomeView use the legacy intent
-  // checks — safe degradation if the resolver itself misbehaves.
+  // Pre-resolve dashboard flags server-side so HomeView gets the right
+  // initial markup with no hydration flash. Errors fall back to an
+  // undefined flag-state, which makes HomeView's callouts default off —
+  // safe degradation if the resolver itself misbehaves.
   const flags: DashboardFlagState | undefined = (() => {
     try {
       const resolve = (k: Parameters<typeof resolveFlagFromDb>[0]) =>
@@ -397,6 +419,7 @@ export default async function DashboardPage({
         backgroundCalloutVisible={backgroundCalloutVisible}
         editMode={editLayoutRequested && (flags?.layoutEditorVisible ?? true)}
         flags={flags}
+        focusSummary={focusSummary}
         layout={dashboardLayout}
         manualAppsBannerDismissed={manualAppsBannerDismissed}
         manualAppsCount={manualAppsCount}
@@ -419,7 +442,6 @@ export default async function DashboardPage({
           />
         }
         triage={triage}
-        userIntent={userIntent}
       />
       {tourEnabled && tourFocus && (
         <CoachmarkTour

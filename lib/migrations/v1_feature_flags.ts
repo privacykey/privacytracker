@@ -39,7 +39,7 @@ import { getSetting, setSetting } from "../scheduler";
 
 // ---------------------------------------------------------------------------
 
-const MIGRATION_VERSION = 1;
+const MIGRATION_VERSION = 2;
 const MIGRATION_KEY = "feature_flag_migration_version";
 
 /** Mapping from old `user_intent` enum to new audience + goals (§4.5). */
@@ -47,14 +47,14 @@ const INTENT_MAP: Record<
   string,
   {
     audience: Audience;
-    understand: boolean;
-    declutter: boolean;
+    monitor: boolean;
+    cleanup: boolean;
   }
 > = {
-  curious: { audience: "self", understand: true, declutter: false },
-  cleanup: { audience: "self", understand: false, declutter: true },
-  hygiene: { audience: "self", understand: true, declutter: true },
-  family: { audience: "guardian", understand: true, declutter: false },
+  curious: { audience: "self", monitor: true, cleanup: false },
+  cleanup: { audience: "self", monitor: false, cleanup: true },
+  hygiene: { audience: "self", monitor: true, cleanup: true },
+  family: { audience: "guardian", monitor: true, cleanup: false },
 };
 
 /** Old callout flag keys that get their overrides dropped during the rename. */
@@ -116,6 +116,7 @@ export function runFeatureFlagMigration(): StepResult[] {
     );
     results.push(runStep("callout_rename", stepCalloutRename));
     results.push(runStep("quarantine_check", stepQuarantineCheck));
+    results.push(runStep("focus_goal_rename", stepFocusGoalRename));
   } catch (e) {
     // recordActivity is best-effort here; if even that fails we re-throw
     // the original error rather than swallowing it.
@@ -243,12 +244,36 @@ function stepUserIntentMigration(): void {
   const transaction = db.transaction(() => {
     setActiveFocus({
       audience: mapped.audience,
-      understand: mapped.understand,
-      declutter: mapped.declutter,
+      monitor: mapped.monitor,
+      cleanup: mapped.cleanup,
       minimal: false,
       accessibility: false,
     });
     db.prepare("DELETE FROM app_settings WHERE key = 'user_intent'").run();
+  });
+  transaction();
+}
+
+// ---------------------------------------------------------------------------
+// Step 6: focus goal rename — understand→monitor, declutter→cleanup
+// ---------------------------------------------------------------------------
+
+function stepFocusGoalRename(): void {
+  // The goal taxonomy was re-keyed. Move any stored goal flags onto the new
+  // keys so installs from before the rename keep their focus. Idempotent —
+  // safe to re-run; the old keys are dropped once moved.
+  const renames: ReadonlyArray<readonly [string, string]> = [
+    ["flag.focus.goal.understand", "flag.focus.goal.monitor"],
+    ["flag.focus.goal.declutter", "flag.focus.goal.cleanup"],
+  ];
+  const transaction = db.transaction(() => {
+    for (const [oldKey, newKey] of renames) {
+      const value = getSetting(oldKey, "");
+      if (value !== "" && getSetting(newKey, "") === "") {
+        setSetting(newKey, value);
+      }
+      db.prepare("DELETE FROM app_settings WHERE key = ?").run(oldKey);
+    }
   });
   transaction();
 }

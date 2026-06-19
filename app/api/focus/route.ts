@@ -35,8 +35,8 @@ export async function GET() {
   const workflow = getActiveFocusWorkflow(focus);
   return NextResponse.json({
     audience: focus.audience,
-    understand: focus.goals.has("understand"),
-    declutter: focus.goals.has("declutter"),
+    monitor: focus.goals.has("monitor"),
+    cleanup: focus.goals.has("cleanup"),
     minimal: focus.goals.has("minimal"),
     accessibility: focus.goals.has("accessibility"),
     aiConfigured: focus.aiConfigured,
@@ -50,9 +50,9 @@ interface FocusBody {
   audience: Audience;
   /** Guardian child age band (AgeBandKey); "" or null clears it. */
   childAgeBand?: string | null;
-  declutter?: boolean;
+  cleanup?: boolean;
   minimal?: boolean;
-  understand?: boolean;
+  monitor?: boolean;
   workflow?: FocusWorkflow;
 }
 
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Coerce goal flags to booleans. Undefined fields default to false.
-  let understand = Boolean(body.understand);
-  let declutter = Boolean(body.declutter);
+  let monitor = Boolean(body.monitor);
+  let cleanup = Boolean(body.cleanup);
   const minimal = Boolean(body.minimal);
   const accessibility = Boolean(body.accessibility);
   const workflow = body.workflow;
@@ -90,19 +90,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Mutual exclusion: minimal can't combine with understand or declutter.
-  // If client sent both, minimal wins (matches the goals-picker UI behaviour
-  // where picking "Just the basics" deselects the other checkboxes).
+  // Mutual exclusion: minimal can't combine with monitor or cleanup.
+  // If client sent both, minimal wins (matches the "Keep it minimal" switch
+  // which deselects the goal tiles). Selecting no goal tiles is now a VALID
+  // empty state — it resolves to the hard-default baseline surface — so there
+  // is deliberately no silent fallback to monitor here.
   if (minimal) {
-    understand = false;
-    declutter = false;
-  } else if (!(understand || declutter)) {
-    // Silent fallback per §4.2 — empty primary goals defaults to understand.
-    understand = true;
+    monitor = false;
+    cleanup = false;
   }
   const finalWorkflow =
-    workflow ??
-    inferFocusWorkflow({ audience, understand, declutter, minimal });
+    workflow ?? inferFocusWorkflow({ audience, monitor, cleanup, minimal });
 
   // Guardian child age band. `undefined` = field absent = leave unchanged
   // (older callers don't send it); "" / null = explicit clear. The band is
@@ -123,8 +121,8 @@ export async function POST(request: NextRequest) {
   try {
     setActiveFocus({
       audience,
-      understand,
-      declutter,
+      monitor,
+      cleanup,
       minimal,
       accessibility,
       workflow: finalWorkflow,
@@ -142,8 +140,8 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     audience,
-    understand,
-    declutter,
+    monitor,
+    cleanup,
     minimal,
     accessibility,
     workflow: finalWorkflow,

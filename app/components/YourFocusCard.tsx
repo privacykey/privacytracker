@@ -20,6 +20,7 @@ import {
   getFocusUpdatedAt,
 } from "@/lib/feature-flag-storage";
 import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { describePurpose } from "@/lib/onboarding-purpose";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 
 interface AnnotationCountRow {
@@ -38,9 +39,16 @@ const AUDIENCE_ICONS: Record<"self" | "loved_one" | "guardian", string> = {
 // Accessibility isn't here — the modifier chip renders an
 // `<AccessibilityFigureGlyph />` SVG instead of a single emoji.
 const GOAL_ICONS: Record<string, string> = {
-  understand: "🔍",
-  declutter: "🧹",
+  monitor: "🔍",
+  cleanup: "🧹",
   minimal: "📋",
+};
+// /welcome primary-purpose icons — shown in place of the goal chips when
+// the focus maps to a single purpose card.
+const PURPOSE_ICONS: Record<string, string> = {
+  monitor: "🔍",
+  cleanup: "🧹",
+  help: "🧭",
 };
 
 function getActiveAnnotationCount(): number {
@@ -57,11 +65,13 @@ function getActiveAnnotationCount(): number {
 }
 
 export default async function YourFocusCard() {
-  // Three translation namespaces: `your_focus_card` (card chrome),
-  // `audience` (audience chip label), `goal` (goal chip labels).
+  // Four translation namespaces: `your_focus_card` (card chrome),
+  // `audience` (audience chip label), `focus_purpose` (the /welcome purpose
+  // chip + accessibility label), `goal` (custom-focus fallback chips).
   const t = await getTranslations("your_focus_card");
   const tAudience = await getTranslations("audience");
   const tGoal = await getTranslations("goal");
+  const tPurpose = await getTranslations("focus_purpose");
 
   const focus = getActiveFocus();
   const audienceSet = focus.audience !== undefined && Boolean(focus.audience);
@@ -92,6 +102,16 @@ export default async function YourFocusCard() {
   const goalChips = describeGoals(focus.goals, tGoal);
   const workflow = getActiveFocusWorkflow(focus);
   const accessibilityActive = focus.goals.has("accessibility");
+  // Lead with the /welcome purpose (Monitor / Clean up / Help); fall back
+  // to the goal chips for advanced combinations with no single purpose card.
+  const purpose = describePurpose({
+    audience: focus.audience,
+    monitor: focus.goals.has("monitor"),
+    cleanup: focus.goals.has("cleanup"),
+    minimal: focus.goals.has("minimal"),
+    accessibility: accessibilityActive,
+    workflow,
+  });
   const isLovedOne = focus.audience === "loved_one";
   // Gate the annotation count behind `flag.dashboard.annotation_banner`
   // so non-loved_one audiences skip the DB hit.
@@ -110,12 +130,12 @@ export default async function YourFocusCard() {
   const summarySentences: string[] = [t(`summary.${focus.audience}`)];
   if (focus.goals.has("minimal")) {
     summarySentences.push(t("summary.with_minimal"));
-  } else if (focus.goals.has("understand") && focus.goals.has("declutter")) {
-    summarySentences.push(t("summary.with_understand_declutter"));
-  } else if (focus.goals.has("understand")) {
-    summarySentences.push(t("summary.with_understand"));
-  } else if (focus.goals.has("declutter")) {
-    summarySentences.push(t("summary.with_declutter"));
+  } else if (focus.goals.has("monitor") && focus.goals.has("cleanup")) {
+    summarySentences.push(t("summary.with_monitor_cleanup"));
+  } else if (focus.goals.has("monitor")) {
+    summarySentences.push(t("summary.with_monitor"));
+  } else if (focus.goals.has("cleanup")) {
+    summarySentences.push(t("summary.with_cleanup"));
   }
   if (accessibilityActive) {
     summarySentences.push(t("summary.with_accessibility"));
@@ -187,8 +207,9 @@ export default async function YourFocusCard() {
         </Link>
       </header>
 
-      {/* Chip strip — same audience + goal vocabulary as the onboarding
-          screens; accessibility renders an SVG figure-in-circle. */}
+      {/* Chip strip — audience + the /welcome purpose (Monitor / Clean up /
+          Help), falling back to goal chips for custom focuses; accessibility
+          renders an SVG figure-in-circle. */}
       <div className="your-focus-card__chips" role="list">
         <span className="chip chip--audience" role="listitem">
           <span aria-hidden="true" className="chip-icon">
@@ -196,20 +217,33 @@ export default async function YourFocusCard() {
           </span>
           <span className="chip-label">{audienceChip}</span>
         </span>
-        {goalChips.map(({ key, label }) => (
-          <span className="chip chip--goal" key={key} role="listitem">
-            <span aria-hidden="true" className="chip-icon">
-              {GOAL_ICONS[key] ?? ""}
+        {purpose.isCustom ? (
+          goalChips.map(({ key, label }) => (
+            <span className="chip chip--goal" key={key} role="listitem">
+              <span aria-hidden="true" className="chip-icon">
+                {GOAL_ICONS[key] ?? ""}
+              </span>
+              <span className="chip-label">{label}</span>
             </span>
-            <span className="chip-label">{label}</span>
+          ))
+        ) : (
+          <span className="chip chip--purpose" role="listitem">
+            <span aria-hidden="true" className="chip-icon">
+              {PURPOSE_ICONS[purpose.primary] ?? ""}
+            </span>
+            <span className="chip-label">
+              {tPurpose(`primary.${purpose.primary}.title`)}
+            </span>
           </span>
-        ))}
+        )}
         {accessibilityActive && (
           <span className="chip chip--modifier" role="listitem">
             <span aria-hidden="true" className="chip-icon">
               <AccessibilityFigureGlyph size={16} />
             </span>
-            <span className="chip-label">{tGoal("accessibility.label")}</span>
+            <span className="chip-label">
+              {tPurpose("secondary.accessibility.title")}
+            </span>
           </span>
         )}
       </div>
@@ -282,7 +316,7 @@ export default async function YourFocusCard() {
 
 /**
  * Render active goals as `{ key, label }` entries in display order:
- * understand → declutter (if both checked) → minimal. Accessibility is
+ * monitor → cleanup (if both checked) → minimal. Accessibility is
  * rendered separately. Takes the goal-namespace `t` so this helper stays
  * sync (the caller already awaits translations once).
  */
@@ -294,11 +328,11 @@ function describeGoals(
   if (goals.has("minimal")) {
     out.push({ key: "minimal", label: tGoal("minimal.label") });
   } else {
-    if (goals.has("understand")) {
-      out.push({ key: "understand", label: tGoal("understand.label") });
+    if (goals.has("monitor")) {
+      out.push({ key: "monitor", label: tGoal("monitor.label") });
     }
-    if (goals.has("declutter")) {
-      out.push({ key: "declutter", label: tGoal("declutter.label") });
+    if (goals.has("cleanup")) {
+      out.push({ key: "cleanup", label: tGoal("cleanup.label") });
     }
   }
   return out;
