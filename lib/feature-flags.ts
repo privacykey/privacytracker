@@ -127,6 +127,27 @@ export function resolveFlag(key: FlagKey, ctx?: ResolverContext): FlagValue {
   return value;
 }
 
+/**
+ * Resolve the FOCUS-ONLY value of a flag — what the audience/goal rules alone
+ * yield, ignoring the user's own override of THIS key while keeping every other
+ * override in place (so a dependency parent's override still applies). This is
+ * the baseline a feature toggle compares against to decide whether flipping it
+ * should WRITE an override (the desired value diverges from focus) or CLEAR one
+ * (the desired value already matches focus). See FeatureToggleRow.tsx.
+ */
+export function resolveFocusBaseline(
+  key: FlagKey,
+  ctx: ResolverContext
+): FlagValue {
+  // Fast path + avoids needless cache churn when this key has no override.
+  if (!ctx.overrides.has(key)) {
+    return resolveFlag(key, ctx);
+  }
+  const stripped = new Map(ctx.overrides);
+  stripped.delete(key);
+  return resolveFlag(key, { ...ctx, overrides: stripped });
+}
+
 function computeFlag(key: FlagKey, ctx: ResolverContext): FlagValue {
   // 1. Hard default.
   let value: FlagValue = HARD_DEFAULTS[key];

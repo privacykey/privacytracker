@@ -15,13 +15,19 @@ import {
   HARD_DEFAULTS,
 } from "@/lib/feature-flag-rules";
 import { isWired } from "@/lib/feature-flag-wired";
-import { resolveFlag } from "@/lib/feature-flags";
+import { resolveFlag, resolveFocusBaseline } from "@/lib/feature-flags";
 import { getResolverContextFromDb } from "@/lib/feature-flags-server";
 
 export const dynamic = "force-dynamic";
 
 interface FlagRow {
   currentValue: FlagValue;
+  /**
+   * The focus-derived value with THIS key's own override stripped — i.e. what
+   * the audience/goal rules alone would yield. Lets a curated toggle decide
+   * whether flipping should write an override or clear one. Additive field.
+   */
+  focusValue: FlagValue;
   hardDefault: FlagValue;
   key: FlagKey;
   override: FlagValue | null;
@@ -40,11 +46,13 @@ export async function GET() {
         const hardDefault = HARD_DEFAULTS[key];
         const override = ctx.overrides.get(key) ?? null;
         const currentValue = resolveFlag(key, ctx);
+        const focusValue = resolveFocusBaseline(key, ctx);
         return {
           key,
           surface,
           hardDefault,
           currentValue,
+          focusValue,
           override,
           wired: isWired(key),
         };

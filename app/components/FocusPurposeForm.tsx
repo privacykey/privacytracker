@@ -13,7 +13,10 @@ import {
   resolvePurposeSelection,
 } from "@/lib/onboarding-purpose";
 import { useFlag } from "../../lib/feature-flags-hooks";
-import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
+import {
+  rovingTabIndex,
+  useRovingRadioGroup,
+} from "../../lib/use-roving-radiogroup";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 import FeatureToggleRow from "./FeatureToggleRow";
 import PurposeCardScene, { PURPOSE_ICONS } from "./PurposeCardScene";
@@ -272,9 +275,10 @@ export default function FocusPurposeForm({
             <div
               aria-label={t("guardian_age.heading")}
               className="focus-purpose-pills"
+              onKeyDown={radioKeyDown}
               role="radiogroup"
             >
-              {AGE_BAND_KEYS.map((band) => (
+              {AGE_BAND_KEYS.map((band, index) => (
                 <button
                   aria-checked={childAgeBand === band}
                   className={`pill-button ${childAgeBand === band ? "active" : ""}`}
@@ -284,6 +288,11 @@ export default function FocusPurposeForm({
                     setChildAgeBand((prev) => (prev === band ? null : band))
                   }
                   role="radio"
+                  tabIndex={rovingTabIndex(
+                    childAgeBand === band,
+                    index,
+                    childAgeBand !== null
+                  )}
                   type="button"
                 >
                   {tAgeBand(`labels.${band}`)}
