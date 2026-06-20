@@ -10,9 +10,9 @@ import {
 /**
  * Pins the focus-only baseline that FeatureToggleRow compares against to decide
  * whether flipping a feature should WRITE an override or CLEAR one (review
- * finding #5), plus the in-progress reflection the resolve-preview route serves
- * (#4). The contract lives in resolveFocusBaseline, so it's unit-testable
- * without HTTP — the routes are thin wrappers over it.
+ * finding #5). GET /api/feature-flags surfaces this as `focusValue` via
+ * resolveFocusBaseline, so the contract is unit-testable without HTTP — the
+ * route is a thin wrapper over it.
  */
 
 type Goal = "monitor" | "cleanup" | "minimal" | "accessibility";
@@ -78,7 +78,7 @@ test("resolveFocusBaseline strips ONLY this key — a dependency parent's overri
   );
 });
 
-test("baseline tracks the in-progress goal selection, not persisted focus (#4)", () => {
+test("focusValue reflects the active goal set", () => {
   const minimalGoals = [
     ...activeGoalsFrom({
       monitor: false,
@@ -95,8 +95,8 @@ test("baseline tracks the in-progress goal selection, not persisted focus (#4)",
       accessibility: false,
     }),
   ] as Goal[];
-  // resolve-preview resolves exactly this against the unsaved selection:
-  // 'Keep it minimal' turns Stats off; a monitor selection leaves it on.
+  // The GET computes focusValue this way against the SAVED focus:
+  // 'Keep it minimal' turns Stats off; a monitor focus leaves it on.
   assert.equal(
     resolveFocusBaseline("flag.page.stats", focusCtx(minimalGoals)),
     "off"

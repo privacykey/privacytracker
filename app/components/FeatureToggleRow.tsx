@@ -4,33 +4,24 @@
  * FeatureToggleRow — a curated row of per-feature on/off toggles shown under
  * the focus tiles on /welcome and in the settings focus editor.
  *
- * Each toggle shows whether a feature is currently on, and flipping it writes
- * (or clears) a per-flag USER OVERRIDE via /api/feature-flags/overrides.
- * Overrides are the resolver's final word, so a flip sticks regardless of which
- * goals the focus selects — but a flip that lands the feature back on whatever
- * the goals would give CLEARS the override instead of pinning a redundant one
- * (so later goal changes can move it again). The decision is made against the
- * focus-only baseline the server supplies:
- *   - GET /api/feature-flags now returns `focusValue` per flag = the value the
- *     audience/goal rules alone yield (this key's own override stripped).
- *   - When the form passes the in-progress `focusSelection`, we additionally
- *     POST it to /api/feature-flags/resolve-preview so the baseline (and the
- *     display of non-overridden toggles) tracks the goals being edited, not the
- *     last-saved focus.
+ * Each toggle shows whether a feature is currently on (per your SAVED focus) and
+ * flipping it writes (or clears) a per-flag USER OVERRIDE via
+ * /api/feature-flags/overrides. Overrides are the resolver's final word, so a
+ * flip sticks regardless of which goals the focus selects — but a flip that
+ * lands the feature back on whatever your goals already give CLEARS the override
+ * instead of pinning a redundant one (so later goal changes can move it again).
+ * That decision is made against the focus-only baseline the server supplies:
+ * GET /api/feature-flags returns `focusValue` per flag = the value the
+ * audience/goal rules alone yield (this key's own override stripped).
+ *
+ * The row reflects the SAVED focus, not whatever goals are being edited in the
+ * form — if someone changes a goal they almost certainly mean it, so the toggles
+ * don't second-guess it with a live preview. After a save the resolved values
+ * (and this row, on its next mount) reflect the new focus.
  *
  * Overrides write IMMEDIATELY and independently of the form's Save — they are
- * meaningful on their own and outlive an abandoned focus edit by design. Do not
- * "fix" this by batching them onto form submit; focus and overrides are
- * separate persistence axes.
- *
- * Known edge: the clear-vs-pin decision uses the SAME baseline as the display
- * (the in-progress preview) so a flip can never visually reject the user's
- * click. If a user previews a goal change, toggles a feature to the previewed
- * value, then abandons WITHOUT saving the focus, a now-redundant override can
- * be left against the still-persisted focus. It's harmless and self-correcting
- * — the ↺ reset clears it — and is the deliberate cost of immediate-write +
- * live preview. Deciding against the persisted baseline instead would make the
- * toggle reject clicks whenever the preview diverges, which is worse.
+ * meaningful on their own. Don't batch them onto form submit; focus and
+ * overrides are separate persistence axes.
  *
  * Mirrors the writeOverride / deleteOverride pattern in
  * DevOptionsFeatureFlagPanel.tsx — this is the friendly, curated counterpart.
@@ -39,7 +30,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import type { Audience, FlagKey, FlagValue } from "@/lib/feature-flag-rules";
+import type { FlagKey, FlagValue } from "@/lib/feature-flag-rules";
 
 interface ToggleDef {
   /** i18n key under `feature_toggle.features.*`. */
@@ -50,7 +41,8 @@ interface ToggleDef {
 
 /**
  * The curated set. Every key is wired (a real surface reads it) and lives in
- * `WIRED_FLAGS`. Keep in lockstep with PREVIEW_KEYS in the resolve-preview route.
+ * `WIRED_FLAGS`. Tunable — add/remove a line here and an entry under
+ * `feature_toggle.features.*` in the locales.
  */
 const TOGGLES: readonly ToggleDef[] = [
   { key: "flag.detail.policy.ai_summary", i18n: "ai_summary", icon: "📝" },
@@ -77,24 +69,10 @@ interface ApiFlagRow {
 
 type WriteErrorKind = "rate_limited" | "write_failed";
 
-/** The in-progress goal selection the form is editing, if it passes one. */
-export interface FocusSelection {
-  accessibility: boolean;
-  audience: Audience;
-  cleanup: boolean;
-  minimal: boolean;
-  monitor: boolean;
-}
-
-export default function FeatureToggleRow({
-  focusSelection,
-}: {
-  focusSelection?: FocusSelection;
-}) {
+export default function FeatureToggleRow() {
   const t = useTranslations("feature_toggle");
   const router = useRouter();
   const [rows, setRows] = useState<Map<string, FlagState>>(new Map());
-  const [preview, setPreview] = useState<Map<string, FlagValue>>(new Map());
   const [loaded, setLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -177,50 +155,6 @@ export default function FeatureToggleRow({
     };
   }, []);
 
-  // In-progress focus reflection: when the form passes its live selection,
-  // debounce a read-only resolve so the baseline tracks the goals being edited.
-  const focusKey = focusSelection ? JSON.stringify(focusSelection) : null;
-  useEffect(() => {
-    if (!focusKey) {
-      setPreview(new Map());
-      return;
-    }
-    let cancelled = false;
-    const handle = setTimeout(async () => {
-      try {
-        const res = await fetch("/api/feature-flags/resolve-preview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: focusKey,
-        });
-        if (!res.ok) {
-          return;
-        }
-        const data = (await res.json()) as {
-          focusValues?: Record<string, FlagValue>;
-        };
-        if (cancelled) {
-          return;
-        }
-        const next = new Map<string, FlagValue>();
-        for (const [k, v] of Object.entries(data.focusValues ?? {})) {
-          next.set(k, v);
-        }
-        setPreview(next);
-      } catch {
-        // Preview is best-effort; baseline falls back to the GET focusValue.
-      }
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(handle);
-    };
-  }, [focusKey]);
-
-  function baselineFor(key: string, row: FlagState): FlagValue {
-    return preview.get(key) ?? row.focusValue;
-  }
-
   function clearWriteError(key: string) {
     setWriteErrors((prev) => {
       if (!prev.has(key)) {
@@ -284,11 +218,12 @@ export default function FeatureToggleRow({
     if (!row) {
       return;
     }
-    const baseline = baselineFor(key, row);
+    const baseline = row.focusValue;
     const displayed = row.override ?? baseline;
     const target: FlagValue = displayed === "on" ? "off" : "on";
-    // The #5 fix: clear the override when the desired value already matches
-    // focus, otherwise pin it.
+    // Clear the override when the desired value already matches what the goals
+    // give (no redundant pin); otherwise pin it. Display and decision share the
+    // same baseline, so a flip can never visually reject the click.
     const clearing = target === baseline;
     void runWrite(key, row, clearing ? null : target, () =>
       clearing
@@ -350,7 +285,7 @@ export default function FeatureToggleRow({
       <div className="feature-toggle-grid">
         {TOGGLES.map((tg) => {
           const row = rows.get(tg.key);
-          const baseline = row ? baselineFor(tg.key, row) : "off";
+          const baseline = row?.focusValue ?? "off";
           const overridden = row?.override != null;
           const displayed = overridden ? (row?.override ?? baseline) : baseline;
           const on = displayed === "on";
