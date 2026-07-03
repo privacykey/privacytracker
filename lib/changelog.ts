@@ -11,6 +11,7 @@ export type {
   ReviewAction,
   ReviewActionRecord,
   ReviewChangelogRow,
+  SinceInstallDiff,
   SnapshotChangelogRow,
   SnoozeDays,
   UnacknowledgedChangeEvent,
@@ -25,6 +26,7 @@ import type {
   ReviewAction,
   ReviewActionRecord,
   ReviewChangelogRow,
+  SinceInstallDiff,
   SnapshotChangelogRow,
   SnoozeDays,
   UnacknowledgedChangeEvent,
@@ -115,6 +117,121 @@ export function diffSnapshots(
   }
 
   return changes;
+}
+
+/** Minimal projection of a `privacy_snapshots` row used for endpoint picks. */
+interface SnapshotEndpointRow {
+  app_version: string | null;
+  scraped_at: number;
+  snapshot_json: string | null;
+  source: string | null;
+}
+
+/**
+ * Compute the cumulative privacy-label diff between the snapshot that was in
+ * effect when the user first started tracking the app (`apps.firstSeen`) and
+ * the latest snapshot on file — the "Since you added this app" view.
+ *
+ * This is a pure read: every `privacy_snapshots` row already stores the full
+ * `snapshot_json`, so we just pick the two endpoints and reuse
+ * `diffSnapshots`. No re-scrape, no new storage. The baseline is the newest
+ * snapshot at-or-before `firstSeen`; when there's nothing that old (the
+ * Wayback backfill hasn't reached install yet, or `firstSeen` predates the
+ * first record) the earliest snapshot stands in and `baselineIsApprox` is
+ * set so the UI can say "earliest record we have".
+ *
+ * Returns `null` when the app is unknown or has no usable snapshot yet.
+ */
+export function getSinceInstallDiff(appId: string): SinceInstallDiff | null {
+  const appRow = db
+    .prepare("SELECT firstSeen FROM apps WHERE id = ?")
+    .get(appId) as { firstSeen: number } | undefined;
+  if (!appRow) {
+    return null;
+  }
+  const firstSeen = Number(appRow.firstSeen) || 0;
+
+  const latest = db
+    .prepare(
+      `SELECT scraped_at, snapshot_json, source, app_version
+         FROM privacy_snapshots
+        WHERE app_id = ? AND snapshot_json IS NOT NULL
+        ORDER BY scraped_at DESC
+        LIMIT 1`
+    )
+    .get(appId) as SnapshotEndpointRow | undefined;
+  if (!latest?.snapshot_json) {
+    return null;
+  }
+
+  // Baseline = newest snapshot at-or-before the user's first-seen date.
+  let baseline = db
+    .prepare(
+      `SELECT scraped_at, snapshot_json, source, app_version
+         FROM privacy_snapshots
+        WHERE app_id = ? AND snapshot_json IS NOT NULL AND scraped_at <= ?
+        ORDER BY scraped_at DESC
+        LIMIT 1`
+    )
+    .get(appId, firstSeen) as SnapshotEndpointRow | undefined;
+
+  let baselineIsApprox = false;
+  if (!baseline?.snapshot_json) {
+    // Nothing at-or-before install — fall back to the earliest snapshot and
+    // flag the comparison as approximate.
+    baseline = db
+      .prepare(
+        `SELECT scraped_at, snapshot_json, source, app_version
+           FROM privacy_snapshots
+          WHERE app_id = ? AND snapshot_json IS NOT NULL
+          ORDER BY scraped_at ASC
+          LIMIT 1`
+      )
+      .get(appId) as SnapshotEndpointRow | undefined;
+    baselineIsApprox = true;
+  }
+  if (!baseline?.snapshot_json) {
+    return null;
+  }
+
+  let baselineSnap: PrivacyTypeSnapshot[];
+  let latestSnap: PrivacyTypeSnapshot[];
+  try {
+    baselineSnap = JSON.parse(baseline.snapshot_json) as PrivacyTypeSnapshot[];
+    latestSnap = JSON.parse(latest.snapshot_json) as PrivacyTypeSnapshot[];
+  } catch {
+    return null;
+  }
+
+  // Same row on both ends → only one snapshot exists; nothing to diff.
+  const isSingleSnapshot = baseline.scraped_at === latest.scraped_at;
+  const changes = isSingleSnapshot
+    ? []
+    : diffSnapshots(baselineSnap, latestSnap);
+
+  let addedCount = 0;
+  let removedCount = 0;
+  for (const change of changes) {
+    if (change.type === "added") {
+      addedCount += 1;
+    } else if (change.type === "removed") {
+      removedCount += 1;
+    }
+  }
+
+  return {
+    firstSeen,
+    baselineDate: baseline.scraped_at,
+    baselineSource: baseline.source === "wayback" ? "wayback" : "live",
+    baselineVersion: baseline.app_version ?? null,
+    baselineIsApprox,
+    isSingleSnapshot,
+    latestDate: latest.scraped_at,
+    latestVersion: latest.app_version ?? null,
+    changes,
+    addedCount,
+    removedCount,
+  };
 }
 
 export interface SaveSnapshotOptions {

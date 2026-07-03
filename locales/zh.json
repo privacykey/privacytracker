@@ -5585,5 +5585,16 @@
     "esafety_link": "打开 esafety.gov.au/parents",
     "how_we_flag_title": "privacytracker 如何标记应用",
     "how_we_flag_copy": "当监护人关注设置了孩子的年龄段后，每个被跟踪应用的 App Store 年龄分级（4+、9+、13+、16+、18+）都会与之比较。分级高于该年龄段的应用会在应用网格和详情页显示警示标签，并在仪表盘上显示提示。没有分级数据的应用绝不会被标记 — 没有数据就不报警。"
+  },
+  "since_install": {
+    "card_title": "自您添加此应用以来",
+    "no_changes": "隐私标签没有变化",
+    "summary_added": "{count, plural, other {新增 # 项标签}}",
+    "summary_removed": "{count, plural, other {移除 # 项标签}}",
+    "compared_install": "与 {date} 的基准对比",
+    "compared_approx": "与现有最早记录（{date}）对比",
+    "from_archive_suffix": " · 由网络存档重建",
+    "show_details": "查看变化详情",
+    "hide_details": "隐藏详情"
   }
 }

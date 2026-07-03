@@ -5585,5 +5585,16 @@
     "esafety_link": "Open esafety.gov.au/parents",
     "how_we_flag_title": "How privacytracker flags apps",
     "how_we_flag_copy": "When a guardian focus has a child age range set, every tracked app's App Store age rating (4+, 9+, 13+, 16+, 18+) is compared against it. Apps rated above the range get a warning pill on the app grid and the app's detail page, plus a dashboard notice. Apps with no captured rating are never flagged — no data, no alarm."
+  },
+  "since_install": {
+    "card_title": "Since you added this app",
+    "no_changes": "No privacy-label changes",
+    "summary_added": "{count, plural, one {# label added} other {# labels added}}",
+    "summary_removed": "{count, plural, one {# label removed} other {# labels removed}}",
+    "compared_install": "Compared with your baseline from {date}",
+    "compared_approx": "Compared with the earliest record we have ({date})",
+    "from_archive_suffix": " · reconstructed from the web archive",
+    "show_details": "Show what changed",
+    "hide_details": "Hide details"
   }
 }

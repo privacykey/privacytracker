@@ -156,6 +156,47 @@ export interface UnacknowledgedChanges {
 }
 
 /**
+ * Cumulative diff between the app's install-era baseline snapshot and its
+ * latest snapshot — "what's changed since you started tracking this app",
+ * as opposed to the per-sync incremental diffs the timeline shows.
+ *
+ * Built read-time by `getSinceInstallDiff` from the full `snapshot_json`
+ * blobs already stored on every `privacy_snapshots` row, so it needs no new
+ * storage and no re-scraping. The baseline is the newest snapshot
+ * at-or-before `apps.firstSeen`; when none exists (backfill hasn't reached
+ * install, or `firstSeen` predates the first record) the earliest snapshot
+ * stands in and `baselineIsApprox` is set.
+ */
+export interface SinceInstallDiff {
+  /** Count of added category/label entries from baseline → latest. */
+  addedCount: number;
+  /** epoch ms of the baseline snapshot actually used. */
+  baselineDate: number;
+  /**
+   * True when no snapshot exists at-or-before `firstSeen`, so the earliest
+   * available snapshot stood in as the baseline. The UI flags the headline
+   * as approximate ("earliest record we have") in that case.
+   */
+  baselineIsApprox: boolean;
+  /** Provenance of the baseline snapshot. */
+  baselineSource: "live" | "wayback";
+  /** App Store version string at baseline capture, if known. */
+  baselineVersion: string | null;
+  /** The diff entries (added / removed) from baseline → latest. */
+  changes: ChangeEntry[];
+  /** epoch ms the user first started tracking the app (`apps.firstSeen`). */
+  firstSeen: number;
+  /** True when only one usable snapshot exists, so there's nothing to diff. */
+  isSingleSnapshot: boolean;
+  /** epoch ms of the latest snapshot. */
+  latestDate: number;
+  /** App Store version string at latest capture, if known. */
+  latestVersion: string | null;
+  /** Count of removed entries from baseline → latest. */
+  removedCount: number;
+}
+
+/**
  * Review-panel actions. Names match the `action` column on
  * `change_review_actions` and the API body keys.
  *   reviewed   — user acknowledged; clears the badge

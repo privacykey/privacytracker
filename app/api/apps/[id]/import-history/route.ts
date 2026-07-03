@@ -72,6 +72,23 @@ export async function POST(
     );
   }
 
+  // Optional denser cadence. Body `{ intervalMonths: 1..6 }` overrides the
+  // default quarterly reconstruction (1 = monthly). Anything missing or out
+  // of range falls back to the default — the button has no body at all.
+  let intervalMonths: number | undefined;
+  const body = (await request.json().catch(() => null)) as {
+    intervalMonths?: unknown;
+  } | null;
+  const rawInterval = body?.intervalMonths;
+  if (
+    typeof rawInterval === "number" &&
+    Number.isFinite(rawInterval) &&
+    rawInterval >= 1 &&
+    rawInterval <= 6
+  ) {
+    intervalMonths = Math.floor(rawInterval);
+  }
+
   const actorIp = requestActorIp(request);
   const userAgent = request.headers.get("user-agent");
   const startedAt = Date.now();
@@ -86,7 +103,10 @@ export async function POST(
 
   let result: ImportAppHistoryResult;
   try {
-    result = await importAppHistory(app);
+    result = await importAppHistory(
+      app,
+      intervalMonths ? { intervalMonths } : {}
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Import failed";
     recordAudit({
