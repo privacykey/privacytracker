@@ -74,6 +74,7 @@ import InfoTooltip from "./InfoTooltip";
 import { getLastNonAppPath } from "./NavigationHistoryTracker";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import RateLimitBanner from "./RateLimitBanner";
+import SinceInstallCard from "./SinceInstallCard";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
 import VerdictPicker from "./VerdictPicker";
@@ -1795,6 +1796,11 @@ export default function AppDetailView({
           id="tabpanel-changelog"
           role="tabpanel"
         >
+          {/* Cumulative "since you added this app" diff — the net change from
+              the install-era baseline snapshot to today, above the
+              change-by-change timeline below. Self-hides until there's a
+              real multi-snapshot baseline to compare against. */}
+          <SinceInstallCard appId={app.id} />
           <ChangelogTimeline
             appId={app.id}
             defaultShowImported={waybackShowImportedDefault}

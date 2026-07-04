@@ -4,7 +4,8 @@
  * back to APP_STORE_HISTORICAL_FLOOR (Q1 2021).
  *
  * Flow per app:
- *   1. computeQuarterlyTargets() → chronological list of target dates.
+ *   1. computeHistoricalTargets() → chronological list of target dates
+ *      (quarterly by default, plus an install-date anchor).
  *   2. Ask Wayback for the closest capture of the App Store product page
  *      via archive.org/wayback/available.
  *   3. Fetch archived HTML via the `id_` replay variant (strips toolbar)
@@ -85,41 +86,97 @@ const ARCHIVE_HTML_TIMEOUT_MS = 30_000;
 const WAYBACK_HOSTS = ["web.archive.org", "archive.org"];
 
 /**
- * List of target dates to attempt, oldest first. Steps back from `today`
- * in 3-month increments down to the launch anchor. `today` is clamped to
- * launch if earlier.
+ * Options for {@link computeHistoricalTargets}.
  */
-export function computeQuarterlyTargets(
+export interface HistoricalTargetOptions {
+  /**
+   * Extra dates to probe regardless of the interval grid — typically the
+   * user's install date (`apps.firstSeen`) so the reconstruction always
+   * tries to capture the privacy state from when they started tracking the
+   * app. Anchors outside `[floor, now]` are ignored; anchors within a day
+   * of an existing target are de-duped.
+   */
+  anchorDates?: Date[];
+  /**
+   * Months between successive targets. Defaults to {@link QUARTER_MONTHS}
+   * (one snapshot per calendar quarter). Lower values (e.g. `1` = monthly)
+   * produce a denser reconstruction at the cost of more archive.org probes.
+   * Clamped to `>= 1`.
+   */
+  intervalMonths?: number;
+}
+
+/**
+ * List of target dates to attempt, oldest first. Steps back from `today`
+ * in `intervalMonths` increments down to the launch anchor, then folds in
+ * any `anchorDates` (e.g. the install date) that fall inside the window.
+ * `today` is clamped to launch if earlier.
+ */
+export function computeHistoricalTargets(
   today: Date = new Date(),
-  launchDate: Date = APP_STORE_WEB_LAUNCH
+  launchDate: Date = APP_STORE_WEB_LAUNCH,
+  options: HistoricalTargetOptions = {}
 ): Date[] {
+  const intervalMonths = Math.max(
+    1,
+    Math.floor(options.intervalMonths ?? QUARTER_MONTHS)
+  );
   const floor = launchDate.getTime();
   const now = Math.max(today.getTime(), floor);
 
   const targets: number[] = [];
 
-  // Walk backwards from today in 3-month steps; the launch date is
+  // Walk backwards from today in `intervalMonths` steps; the launch date is
   // appended explicitly so we always cover the first Wayback-available
   // moment even if the step overshoots.
   const cursor = new Date(now);
-  cursor.setUTCMonth(cursor.getUTCMonth() - QUARTER_MONTHS);
+  cursor.setUTCMonth(cursor.getUTCMonth() - intervalMonths);
   while (cursor.getTime() > floor) {
     targets.push(cursor.getTime());
-    cursor.setUTCMonth(cursor.getUTCMonth() - QUARTER_MONTHS);
+    cursor.setUTCMonth(cursor.getUTCMonth() - intervalMonths);
   }
   targets.push(floor);
+
+  // Install anchors (and any other explicit dates) — clamp into the window so
+  // backfill always probes the install era even when it doesn't line up with
+  // the interval grid.
+  for (const anchor of options.anchorDates ?? []) {
+    const ms = anchor.getTime();
+    if (Number.isFinite(ms) && ms >= floor && ms <= now) {
+      targets.push(ms);
+    }
+  }
 
   // Sort ascending so importers can diff chronologically.
   targets.sort((a, b) => a - b);
 
-  // De-duplicate in case the cursor happened to land exactly on the floor.
+  // De-duplicate: collapse targets within a day of their predecessor so an
+  // anchor that lands on (or beside) an interval target — or a cursor that
+  // lands exactly on the floor — doesn't double-probe the same capture.
   const unique: Date[] = [];
   for (const ts of targets) {
-    if (unique.length === 0 || unique[unique.length - 1].getTime() !== ts) {
+    if (
+      unique.length === 0 ||
+      ts - unique[unique.length - 1].getTime() > ONE_DAY_MS
+    ) {
       unique.push(new Date(ts));
     }
   }
   return unique;
+}
+
+/**
+ * Quarterly cadence wrapper kept for back-compat — existing callers and the
+ * docs reference it by name. Equivalent to {@link computeHistoricalTargets}
+ * with the default 3-month interval and no anchors.
+ */
+export function computeQuarterlyTargets(
+  today: Date = new Date(),
+  launchDate: Date = APP_STORE_WEB_LAUNCH
+): Date[] {
+  return computeHistoricalTargets(today, launchDate, {
+    intervalMonths: QUARTER_MONTHS,
+  });
 }
 
 export interface ImportAppHistoryOptions {
@@ -129,6 +186,12 @@ export interface ImportAppHistoryOptions {
    * a new app doesn't double-insert quarters you've already pulled.
    */
   dedupeWindowMs?: number;
+  /**
+   * Months between reconstructed snapshots. Defaults to quarterly
+   * (`QUARTER_MONTHS` = 3). Pass `1` for a denser monthly reconstruction.
+   * Threaded straight into {@link computeHistoricalTargets}.
+   */
+  intervalMonths?: number;
   /** Optional progress hook — called once per target. */
   onProgress?: (event: ImportProgressEvent) => void;
   /** Optional cancellation signal for bulk runs. */
@@ -208,7 +271,24 @@ export async function importAppHistory(
   const onProgress = options.onProgress;
   const signal = options.signal;
 
-  const targets = computeQuarterlyTargets(today);
+  // Anchor a target on the user's install date (apps.firstSeen) so the
+  // reconstruction always tries to capture the privacy state from when they
+  // started tracking the app — that install-era snapshot is exactly the
+  // baseline the "Since you added this app" view diffs against. Falls back to
+  // the plain interval grid when firstSeen is unknown (legacy 0 rows).
+  const anchorDates: Date[] = [];
+  const firstSeenRow = db
+    .prepare("SELECT firstSeen FROM apps WHERE id = ?")
+    .get(app.id) as { firstSeen: number } | undefined;
+  const firstSeenMs = Number(firstSeenRow?.firstSeen) || 0;
+  if (firstSeenMs > 0) {
+    anchorDates.push(new Date(firstSeenMs));
+  }
+
+  const targets = computeHistoricalTargets(today, APP_STORE_WEB_LAUNCH, {
+    intervalMonths: options.intervalMonths,
+    anchorDates,
+  });
 
   const existing = db
     .prepare(
