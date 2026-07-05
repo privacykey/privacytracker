@@ -60,7 +60,7 @@
     "cross-env": "^10.1.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "ultracite": "7.8.4",
+    "ultracite": "7.9.0",
     "storybook": "^10.4.6",
     "@storybook/nextjs": "^10.4.6",
     "@storybook/addon-a11y": "^10.4.6",
