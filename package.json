@@ -43,7 +43,7 @@
     "echarts": "^6.1.0",
     "marked": "^18.0.5",
     "next": "16.2.9",
-    "next-intl": "4.13.0",
+    "next-intl": "4.13.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "server-only": "^0.0.1",
