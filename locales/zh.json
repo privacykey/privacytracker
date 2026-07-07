@@ -180,7 +180,8 @@
       "skip_backup_title": "不备份直接继续。在任何应用被移除之前，我们仍会要求你再次输入 DELETE。",
       "mismatch_heading": "提示 — 这可能不是正确的设备",
       "mismatch_body": "{count, plural, one {你即将删除的应用中有 # 个不是从该设备导入的。cfgutil 不会移除未安装的应用。} other {你即将删除的应用中有 # 个不是从该设备导入的。cfgutil 不会移除未安装的应用。}}",
-      "mismatch_more": "…还有 {count} 个"
+      "mismatch_more": "…还有 {count} 个",
+      "record_failed": "备份已完成，但保存备份记录失败。删除步骤将看不到此备份，可能会拒绝执行或要求进行\"无备份\"确认。"
     },
     "act": {
       "heading": "从手机移除应用",
@@ -203,7 +204,13 @@
       "backup_ok": "已于 {time} 备份 {device}",
       "backup_missing_warn": "该设备没有最近的备份。",
       "backup_missing_action": "先备份",
-      "default_device_name": "已连接的设备"
+      "default_device_name": "已连接的设备",
+      "gate_denied_audience": "安全检查拒绝了本次操作，未删除任何应用：只有当你的关注对象设置为\"自己\"时才能移除应用。",
+      "gate_denied_flag": "安全检查拒绝了本次操作，未删除任何应用：开发者选项中的\"从手机移除应用\"开关未开启。",
+      "gate_denied_backup": "安全检查拒绝了本次操作，未删除任何应用：没有该设备 24 小时内的备份记录。请先运行备份，然后重试。",
+      "gate_denied_generic": "安全检查拒绝了本次操作，未删除任何应用。",
+      "gate_unreachable": "无法连接安全检查服务，因此未删除任何应用。请确认 privacytracker 本地服务正在运行，然后重试。",
+      "record_failures": "{count, plural, one {# 项移除操作} other {# 项移除操作}}未能写入活动日志 — 应用仍已处理，但本次运行的审计记录不完整。"
     },
     "saved_notes": {
       "heading": "你的备注",

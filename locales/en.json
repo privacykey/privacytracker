@@ -180,7 +180,8 @@
       "skip_backup_title": "Continue without a backup. We'll ask you to type DELETE again before any app is removed.",
       "mismatch_heading": "Heads up — this might not be the right device",
       "mismatch_body": "{count, plural, one {# of the apps you're about to delete wasn't imported from this device. cfgutil will refuse to remove an app that isn't installed.} other {# of the apps you're about to delete weren't imported from this device. cfgutil will refuse to remove apps that aren't installed.}}",
-      "mismatch_more": "…and {count} more"
+      "mismatch_more": "…and {count} more",
+      "record_failed": "The backup completed, but saving its record failed. The delete step won't see this backup and may refuse or ask for the no-backup confirmation."
     },
     "act": {
       "heading": "Remove apps from your phone",
@@ -203,7 +204,13 @@
       "backup_ok": "Backup of {device} taken at {time}",
       "backup_missing_warn": "No recent backup of this device.",
       "backup_missing_action": "Back up first",
-      "default_device_name": "the connected device"
+      "default_device_name": "the connected device",
+      "gate_denied_audience": "The safety check refused this run, so nothing was deleted: app removal is only available when your focus is set to just you.",
+      "gate_denied_flag": "The safety check refused this run, so nothing was deleted: the \"Remove apps from your phone\" option is switched off in Developer Options.",
+      "gate_denied_backup": "The safety check refused this run, so nothing was deleted: it has no record of a fresh backup (under 24 hours old) for this device. Run a backup, then try again.",
+      "gate_denied_generic": "The safety check refused this run, so nothing was deleted.",
+      "gate_unreachable": "Couldn't reach the safety check, so nothing was deleted. Check that privacytracker's local service is running and try again.",
+      "record_failures": "{count, plural, one {# removal} other {# removals}} couldn't be written to the activity log — the apps were still processed, but the audit trail for this run is incomplete."
     },
     "saved_notes": {
       "heading": "Your notes",

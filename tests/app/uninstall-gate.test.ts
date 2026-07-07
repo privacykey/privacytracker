@@ -14,7 +14,12 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { checkUninstallGate } from "../../lib/device-actions";
+import {
+  checkUninstallGate,
+  getLastBackup,
+  normalizeEcid,
+  recordBackup,
+} from "../../lib/device-actions";
 import {
   createDevice,
   getDeviceEcidsForApps,
@@ -111,6 +116,62 @@ test("a stale backup (>24h) is denied unless acknowledgeNoBackup overrides", () 
 
   const overrideGate = checkUninstallGate(ECID, { acknowledgeNoBackup: true });
   assert.equal(overrideGate.allowed, true);
+});
+
+// ─── ECID normalisation ───────────────────────────────────────────
+// cfgutil keys its JSON `Output` by `0x`-prefixed hex ECIDs (e.g.
+// `0x9118908BB6027`), and the webview passes that spelling through
+// verbatim. The stamp store must accept it — and read back the same
+// stamp under any prefix/case spelling of the same ECID.
+
+const RAW_CFGUTIL_ECID = "0x9118908BB6027";
+
+test("recordBackup + gate accept cfgutil's 0x-prefixed ECIDs", () => {
+  beforeEach();
+  recordBackup({
+    ecid: RAW_CFGUTIL_ECID,
+    path: "/tmp/backup",
+    finishedAt: Date.now() - 60_000,
+    deviceName: "Test iPhone",
+  });
+  const gate = checkUninstallGate(RAW_CFGUTIL_ECID);
+  assert.equal(gate.allowed, true);
+});
+
+test("a stamp reads back regardless of 0x prefix or hex case", () => {
+  beforeEach();
+  recordBackup({
+    ecid: "0x9118908bb6027",
+    path: "/tmp/backup",
+    finishedAt: Date.now() - 60_000,
+    deviceName: null,
+  });
+  assert.notEqual(getLastBackup("9118908BB6027"), null);
+  assert.equal(checkUninstallGate("0X9118908BB6027").allowed, true);
+});
+
+test("normalizeEcid canonicalises valid spellings and rejects the rest", () => {
+  assert.equal(normalizeEcid("0x9118908BB6027"), "9118908BB6027");
+  assert.equal(normalizeEcid("0X9118908bb6027"), "9118908BB6027");
+  assert.equal(normalizeEcid(" ABCDEF1234567890 "), "ABCDEF1234567890");
+  // Settings-key injection shapes and non-hex garbage must not pass.
+  assert.equal(normalizeEcid("flag.devopts.cfgutil_uninstall"), null);
+  assert.equal(normalizeEcid("0x"), null);
+  assert.equal(normalizeEcid(""), null);
+  assert.equal(normalizeEcid("zzzz11112222"), null);
+  assert.equal(normalizeEcid("0x123"), null); // hex body too short
+});
+
+test("recordBackup throws on a malformed ECID", () => {
+  beforeEach();
+  assert.throws(() =>
+    recordBackup({
+      ecid: "not-an-ecid",
+      path: "/tmp/backup",
+      finishedAt: Date.now(),
+      deviceName: null,
+    })
+  );
 });
 
 // ─── getDeviceEcidsForApps ────────────────────────────────────────

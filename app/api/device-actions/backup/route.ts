@@ -15,7 +15,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
-import { recordBackup } from "@/lib/device-actions";
+import { normalizeEcid, recordBackup } from "@/lib/device-actions";
 import { getActiveFocus } from "@/lib/feature-flag-storage";
 import { readBoundedJson } from "@/lib/security";
 
@@ -44,8 +44,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.ecid || typeof body.ecid !== "string") {
-    return NextResponse.json({ error: "ecid is required" }, { status: 400 });
+  if (
+    !body.ecid ||
+    typeof body.ecid !== "string" ||
+    !normalizeEcid(body.ecid)
+  ) {
+    return NextResponse.json(
+      { error: "a valid ecid is required" },
+      { status: 400 }
+    );
   }
   if (!body.path || typeof body.path !== "string") {
     return NextResponse.json({ error: "path is required" }, { status: 400 });

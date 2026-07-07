@@ -121,6 +121,19 @@ interface Props {
  */
 type Step = "review" | "compare" | "action" | "backup" | "act";
 
+/**
+ * Maps `DeviceActionGate` denial reasons (see lib/device-actions.ts) to
+ * `review_rec.act.*` message keys for the pre-flight banner. Unknown
+ * reasons fall back to `gate_denied_generic` in the caller — fail
+ * closed with an honest "refused" message rather than guessing.
+ */
+const GATE_DENIAL_KEYS: Record<string, string> = {
+  audience: "gate_denied_audience",
+  backup_missing: "gate_denied_backup",
+  backup_stale: "gate_denied_backup",
+  flag: "gate_denied_flag",
+};
+
 interface BackupState {
   device: ConnectedDevice | null;
   error: string | null;
@@ -223,6 +236,14 @@ export default function ReviewRecommendationsView({
   const [uninstallStates, setUninstallStates] = useState<
     Record<string, UninstallState>
   >({});
+  /**
+   * True when the backup itself succeeded but persisting its stamp
+   * (POST /api/device-actions/backup) failed. The act step's pre-flight
+   * gate reads the server-side stamp, so an unrecorded backup will be
+   * treated as missing — this flag surfaces that mismatch on the
+   * backup step instead of letting the act step refuse "mysteriously".
+   */
+  const [backupRecordFailed, setBackupRecordFailed] = useState(false);
   /**
    * Per-row free-text "replacing with" memo — captured during the
    * Compare step. Stored in component state only (not persisted) so
@@ -368,6 +389,20 @@ export default function ReviewRecommendationsView({
     null | "list" | "final" | "executing"
   >(null);
   const [bulkConfirmText, setBulkConfirmText] = useState("");
+  /**
+   * Set when the pre-flight gate check (GET /api/device-actions/
+   * uninstall) refuses the run or can't be reached. The bulk loop is
+   * aborted before any cfgutil call fires; this renders as an alert
+   * banner on the act step.
+   */
+  const [bulkGateError, setBulkGateError] = useState<string | null>(null);
+  /**
+   * Count of activity-log writes (POST /api/device-actions/uninstall)
+   * that failed during the last bulk run. The removals themselves
+   * already ran — this only drives an "audit trail is incomplete"
+   * warning so the user knows the log can't be trusted for this run.
+   */
+  const [recordingFailures, setRecordingFailures] = useState(0);
   // Modal focus management for the two bulk dialogs — declared here, after
   // `bulkModal`, since the hook's `open` reads it.
   const bulkListCardRef = useModalFocus<HTMLDivElement>({
@@ -616,6 +651,7 @@ export default function ReviewRecommendationsView({
       return;
     }
     const device = devices.find((d) => d.ecid === selectedEcid) ?? null;
+    setBackupRecordFailed(false);
     setBackup({
       status: "running",
       device,
@@ -635,8 +671,9 @@ export default function ReviewRecommendationsView({
       });
       return;
     }
+    let recorded = false;
     try {
-      await fetch("/api/device-actions/backup", {
+      const res = await fetch("/api/device-actions/backup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -646,9 +683,17 @@ export default function ReviewRecommendationsView({
           deviceName: device?.name ?? null,
         }),
       });
+      recorded = res.ok;
+      if (!res.ok) {
+        console.warn("[review] backup record refused:", res.status);
+      }
     } catch (e) {
       console.warn("[review] failed to record backup:", e);
     }
+    // The backup itself succeeded — a failed recording downgrades to a
+    // warning, not a failed step. Without the stamp the act step's
+    // pre-flight will refuse the backed-up path, so tell the user now.
+    setBackupRecordFailed(!recorded);
     setBackup({
       status: "done",
       device,
@@ -669,8 +714,9 @@ export default function ReviewRecommendationsView({
         [row.id]: { status: "running", error: null },
       }));
       const result = await removeAppViaCfgutil(selectedEcid, row.bundleId);
+      let recorded = false;
       try {
-        await fetch("/api/device-actions/uninstall", {
+        const res = await fetch("/api/device-actions/uninstall", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -683,8 +729,17 @@ export default function ReviewRecommendationsView({
             acknowledgeNoBackup,
           }),
         });
+        recorded = res.ok;
+        if (!res.ok) {
+          console.warn("[review] uninstall record refused:", res.status);
+        }
       } catch (e) {
         console.warn("[review] failed to record uninstall outcome:", e);
+      }
+      if (!recorded) {
+        // The removal already ran — losing the audit row is a
+        // warning-level problem, surfaced once per bulk run.
+        setRecordingFailures((n) => n + 1);
       }
       setUninstallStates((prev) => ({
         ...prev,
@@ -701,19 +756,52 @@ export default function ReviewRecommendationsView({
   );
 
   /**
-   * Sequential bulk-uninstall runner. Iterates the queue, calling
-   * `runUninstall` per row. Errors don't abort the batch — the per-app
-   * state surfaces ✓/✕/spinner inline, and the user sees a summary
-   * once the loop finishes. Apps that lack a bundle ID are skipped
-   * (cfgutil needs one) and surface as `error`.
+   * Sequential bulk-uninstall runner. Pre-flights the server-side gate
+   * (audience + flag + backup freshness) BEFORE the first cfgutil call
+   * and aborts fail-closed when it refuses or can't be reached — the
+   * per-row POSTs after each removal only *record* outcomes, so this
+   * is the one point where the server can still stop the run. Then it
+   * iterates the queue, calling `runUninstall` per row. Errors don't
+   * abort the batch — the per-app state surfaces ✓/✕/spinner inline,
+   * and the user sees a summary once the loop finishes. Apps that lack
+   * a bundle ID are skipped (cfgutil needs one) and surface as `error`.
    *
-   * The `acknowledgeNoBackup` flag flows through to every per-app
-   * request so the server-side gate can allow the bypass uniformly
-   * across the batch.
+   * The `acknowledgeNoBackup` flag flows through the pre-flight and
+   * every per-app request so the server-side gate can allow the bypass
+   * uniformly across the batch.
    */
   const runBulkUninstall = useCallback(
     async (acknowledgeNoBackup: boolean) => {
       if (!selectedEcid) {
+        return;
+      }
+      setBulkGateError(null);
+      setRecordingFailures(0);
+      try {
+        const qs = new URLSearchParams({ ecid: selectedEcid });
+        if (acknowledgeNoBackup) {
+          qs.set("acknowledgeNoBackup", "1");
+        }
+        const res = await fetch(`/api/device-actions/uninstall?${qs}`, {
+          cache: "no-store",
+        });
+        const gate = res.ok
+          ? ((await res.json()) as { allowed?: boolean; reason?: string })
+          : null;
+        if (gate?.allowed !== true) {
+          const key = gate
+            ? (GATE_DENIAL_KEYS[gate.reason ?? ""] ?? "gate_denied_generic")
+            : "gate_unreachable";
+          setBulkGateError(tAct(key));
+          setBulkModal(null);
+          setBulkConfirmText("");
+          return;
+        }
+      } catch (e) {
+        console.warn("[review] gate pre-flight failed:", e);
+        setBulkGateError(tAct("gate_unreachable"));
+        setBulkModal(null);
+        setBulkConfirmText("");
         return;
       }
       setBulkModal("executing");
@@ -1725,6 +1813,11 @@ export default function ReviewRecommendationsView({
                   })}
             </p>
           )}
+          {backup.status === "done" && backupRecordFailed && (
+            <p className="review-rec-error" role="alert">
+              ⚠ {tBackup("record_failed")}
+            </p>
+          )}
           {backup.status === "error" && (
             <p className="review-rec-error" role="alert">
               {backup.error}
@@ -1745,7 +1838,8 @@ export default function ReviewRecommendationsView({
               on file so the user understands which Modal 2 variant
               they'll see. Fresh ✓ → reassuring; missing / stale ⚠ →
               warning. Drives no other behaviour here; the actual gate
-              decision is made server-side when the bulk loop runs. */}
+              decision is the server-side pre-flight at the top of
+              runBulkUninstall, before any removal fires. */}
           {uninstallQueue.length > 0 && (
             <div
               className={`review-rec-backup-status${
@@ -1776,6 +1870,23 @@ export default function ReviewRecommendationsView({
                 </span>
               )}
             </div>
+          )}
+
+          {/* Pre-flight refusal / audit-trail warnings. The gate error
+              means NOTHING was removed; the recording warning means
+              removals ran but one or more activity rows failed to
+              persist. Both are aria-live so screen-reader users hear
+              the outcome of a Delete click that didn't open the
+              executing state. */}
+          {bulkGateError && (
+            <p className="review-rec-error" role="alert">
+              {bulkGateError}
+            </p>
+          )}
+          {recordingFailures > 0 && (
+            <p className="review-rec-error" role="alert">
+              ⚠ {tAct("record_failures", { count: recordingFailures })}
+            </p>
           )}
 
           {uninstallQueue.length === 0 ? (
@@ -1878,6 +1989,7 @@ export default function ReviewRecommendationsView({
                       disabled={bulkModal === "executing"}
                       onClick={() => {
                         setBulkConfirmText("");
+                        setBulkGateError(null);
                         setBulkModal("list");
                       }}
                       type="button"
