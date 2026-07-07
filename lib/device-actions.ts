@@ -30,16 +30,29 @@ export const BACKUP_FRESHNESS_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SETTINGS_BACKUP_PREFIX = "cfgutil_last_backup_";
 
 /**
- * Apple ECIDs are hex strings (typically 12-20 chars). Validate at every
- * TS-side entry point even though the Rust command also char-allowlists,
- * so a stray caller can't synthesise a key like
- * `cfgutil_last_backup_flag.devopts.cfgutil_uninstall` via string
+ * Canonicalise an ECID for use in a settings key, or return null when
+ * the value isn't a plausible ECID.
+ *
+ * cfgutil prints ECIDs as `0x`-prefixed hex — its JSON `Output`
+ * dictionaries are keyed by strings like `0x9118908BB6027`, and that
+ * exact spelling is what the webview passes through from
+ * `list_connected_devices`. Strip the prefix and upper-case the hex
+ * body so a stamp written under any spelling (`0x9118908bb6027`,
+ * `9118908BB6027`, …) reads back under every other.
+ *
+ * Validation still matters even though the Rust commands also
+ * char-allowlist: a stray caller must not be able to synthesise a key
+ * like `cfgutil_last_backup_flag.devopts.cfgutil_uninstall` via string
  * concatenation and collide with another setting key. Defence in depth
  * — if the Rust validator changes or another TS entry point is added,
  * this still keeps the namespace unambiguous.
  */
-function isValidEcid(value: string): boolean {
-  return /^[A-Fa-f0-9]{8,24}$/.test(value);
+export function normalizeEcid(value: string): string | null {
+  const body = value.trim().replace(/^0[xX]/, "");
+  if (!/^[A-Fa-f0-9]{8,24}$/.test(body)) {
+    return null;
+  }
+  return body.toUpperCase();
 }
 
 interface BackupStamp {
@@ -120,10 +133,11 @@ export function checkUninstallGate(
 
 /** Most recent backup stamp for the given ECID, or null. */
 export function getLastBackup(ecid: string): BackupStamp | null {
-  if (!isValidEcid(ecid)) {
+  const normalized = normalizeEcid(ecid);
+  if (!normalized) {
     return null;
   }
-  const key = SETTINGS_BACKUP_PREFIX + ecid;
+  const key = SETTINGS_BACKUP_PREFIX + normalized;
   const raw = getSetting(key, "");
   if (!raw) {
     return null;
@@ -149,10 +163,11 @@ export function recordBackup(opts: {
   finishedAt: number;
   deviceName: string | null;
 }): void {
-  if (!isValidEcid(opts.ecid)) {
+  const normalized = normalizeEcid(opts.ecid);
+  if (!normalized) {
     throw new Error(`recordBackup: invalid ECID ${opts.ecid}`);
   }
-  const key = SETTINGS_BACKUP_PREFIX + opts.ecid;
+  const key = SETTINGS_BACKUP_PREFIX + normalized;
   const stamp: BackupStamp = {
     finishedAt: opts.finishedAt,
     path: opts.path,

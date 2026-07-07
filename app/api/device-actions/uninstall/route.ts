@@ -6,16 +6,21 @@
  * `run_cfgutil_remove_app`. This endpoint:
  *
  *   1. Re-runs the gate check server-side (audience + flag + backup
- *      freshness) so a malicious page can't bypass the webview's
- *      gating by hand-crafting an invoke. Returns 403 with a
- *      structured `{ reason }` body when refused so the wizard can
- *      render the right copy.
+ *      freshness) before writing any audit row, so a hand-crafted API
+ *      call can't stamp legitimate-looking rows for a gated-off
+ *      configuration. Returns 403 with a structured `{ reason }` body
+ *      when refused so the wizard can render the right copy. Note the
+ *      limits of this check: the destructive call itself is a Tauri
+ *      command that never passes through this server — the control
+ *      that actually stops a compromised webview is the native
+ *      Touch ID prompt inside `run_cfgutil_remove_app`.
  *   2. Writes a `cfgutil_uninstall` activity row regardless of
  *      success — failures are as important to log as successes.
  *
  * The endpoint is GET-able too: `GET /api/device-actions/uninstall?ecid=…`
  * returns the gate result without committing anything. The wizard
- * uses this to decide whether to render the uninstall buttons at all.
+ * calls this as a fail-closed pre-flight at the top of its bulk
+ * uninstall loop, before the first removal fires.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
