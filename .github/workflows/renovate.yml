@@ -1,0 +1,88 @@
+#
+# Renovate — single-PR dependency updates.
+#
+# Replaces Dependabot (see the deleted .github/dependabot.yml). Renovate
+# regenerates pnpm-lock.yaml *natively* — the whole reason for the switch —
+# and, per renovate.json, bundles every non-major update across all four
+# ecosystems (npm, cargo, docker, github-actions) into ONE PR on a stable
+# branch. Major upgrades are parked on the Dependency Dashboard issue for
+# manual, one-at-a-time review.
+#
+# Two ways to run:
+#   1. Scheduled  — Mondays; renovate.json's `schedule` is the effective
+#                   time gate, so the job no-ops fast outside the window.
+#   2. Manual     — Actions ▸ Renovate ▸ "Run workflow". Defaults to a
+#                   DRY RUN: it logs the exact PR it *would* open and
+#                   changes nothing. Flip `dryRun` to `null` to go live.
+#                   Manual runs ignore the Monday time-gate so you can
+#                   test any day.
+#
+# Token (Settings ▸ Secrets and variables ▸ Actions ▸ RENOVATE_TOKEN):
+#   Optional for a DRY RUN — the built-in GITHUB_TOKEN is enough to preview.
+#   REQUIRED for live runs whose PR must trigger CI: PRs opened with the
+#   default GITHUB_TOKEN do NOT trigger `on: pull_request` workflows (GitHub's
+#   recursion guard), so the ci.yml checks would never run and the branch-
+#   protection gate would stay pending. Use a fine-grained PAT or a GitHub
+#   App installation token (contents:write + pull-requests:write + workflows)
+#   so the update PR is authored by a distinct identity and CI fires normally.
+#
+# Alternative to this workflow: install the hosted Mend Renovate GitHub App
+# on the repo instead. It reads the same renovate.json, its PRs trigger CI
+# automatically (no PAT to manage), and its onboarding PR doubles as the
+# dry-run preview. If you go that route, delete this workflow so the two
+# don't both run. Pick exactly one activation path.
+#
+name: Renovate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'full = preview only, open no PR (default) · null = go live and open the PR'
+        type: choice
+        options:
+          - 'full'
+          - 'null'
+        default: 'full'
+      logLevel:
+        description: 'Renovate log level'
+        type: choice
+        options:
+          - 'info'
+          - 'debug'
+        default: 'info'
+  schedule:
+    # Sunday 21:00 UTC ≈ Monday 07:00–08:00 Australia/Melbourne, inside
+    # renovate.json's "before 9am on monday" window (robust across DST).
+    - cron: '0 21 * * 0'
+
+# Never let two Renovate runs race on the same branch/lockfile.
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Run Renovate
+        uses: renovatebot/github-action@b50d2ba2bd928235abdcc14d06dfafc217f1c565  # v46.1.18
+        with:
+          configurationFile: renovate.json
+          token: ${{ secrets.RENOVATE_TOKEN || github.token }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+          # Scheduled runs go live ('null' = dry-run disabled). Manual runs
+          # honour the dropdown, which defaults to 'full' (preview only).
+          RENOVATE_DRY_RUN: ${{ github.event_name == 'schedule' && 'null' || inputs.dryRun }}
+          # Manual runs bypass renovate.json's Monday time-gate so testing
+          # works any day; scheduled runs leave it in force.
+          RENOVATE_FORCE: ${{ github.event_name == 'workflow_dispatch' && '{"schedule":null}' || '' }}

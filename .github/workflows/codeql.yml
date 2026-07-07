@@ -1,24 +1,39 @@
 name: CodeQL
 
-# Run CodeQL only against `main` + on a weekly schedule. PR triggers
-# are intentionally OFF — we're on the free GitHub Actions tier and a
-# 2-job matrix (JS/TS + Rust) on every PR push was eating the bulk of
-# our Action minutes for marginal additional coverage. Trade-off:
-# CodeQL findings now surface post-merge rather than pre-merge.
+# Run CodeQL against `main`, on a weekly schedule, and on PRs that touch
+# dependency manifests. Broad PR scanning stays OFF — we're on the free
+# GitHub Actions tier and a 2-job matrix (JS/TS + Rust) on *every* PR push
+# was eating the bulk of our Action minutes for marginal coverage. The
+# `pull_request` + `paths` filter below is the deliberate exception: it
+# scans Renovate's single dependency-update PR (and any hand-made dep
+# change) pre-merge, since a lockfile/manifest bump is exactly where a
+# newly-pulled transitive vuln would land. Feature PRs that don't touch
+# these paths still skip CodeQL and surface findings post-merge.
 #
 # - main: every merged push runs CodeQL so the latest tip is always
 #   scanned and the weekly cron has a fresh baseline.
 # - schedule: weekly (Sun 18:24 UTC). CodeQL's upstream rule database
 #   updates regularly; a re-scan catches new findings even when the
 #   code hasn't changed.
+# - pull_request (paths-filtered): dependency-manifest changes only —
+#   the paths mirror what Renovate edits across all four ecosystems.
 #
-# To re-enable PR scanning later, add a `pull_request:` block with the
-# `paths:` filter that was here previously (see git blame on this
-# file). Or drop the filter for full coverage at higher cost.
+# To scan ALL PRs (full pre-merge coverage at higher cost), drop the
+# `paths:` filter below.
 on:
   push:
     branches:
       - main
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'src-tauri/Cargo.toml'
+      - 'src-tauri/Cargo.lock'
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
+      - 'deploy/**/compose.yaml'
+      - '.github/workflows/**'
   schedule:
     - cron: '24 18 * * 0'
 
