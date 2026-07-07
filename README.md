@@ -64,6 +64,7 @@ Full documentation lives at
 - [User guide](https://privacytracker-docs.privacykey.org/quickstart) — how to import apps, read privacy labels, set up alerts
 - [AI provider setup](https://privacytracker-docs.privacykey.org/quickstart) — bring your own OpenAI / Anthropic / local model
 - [Architecture](https://privacytracker-docs.privacykey.org/develop/architecture) — for developers and contributors
+- [Architecture & workflows (in-repo)](docs/ARCHITECTURE.md) — end-to-end diagrams of every process, with weak points marked and an improvement backlog
 - [Security](https://privacytracker-docs.privacykey.org/security) — how to report a vulnerability
 
 ## License

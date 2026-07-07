@@ -30,7 +30,7 @@ Separate Python companion script in `scripts/ios-app-import/` (stdlib-only, Pyth
 
 ## Architecture
 
-This is a Next.js 16 App Router app (TypeScript, React 19) backed by a single local SQLite file. All scraping, parsing, diffing, and AI calls happen server-side inside API routes that import helpers from `lib/`.
+This is a Next.js 16 App Router app (TypeScript, React 19) backed by a single local SQLite file. All scraping, parsing, diffing, and AI calls happen server-side inside API routes that import helpers from `lib/`. End-to-end workflow diagrams (system map, import/delete/sync/wayback flows, gate chain) with known weak points marked live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### Data flow (the core loop)
 
