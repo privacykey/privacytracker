@@ -1,0 +1,45 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "Australia/Melbourne",
+  "schedule": ["before 9am on monday"],
+  "labels": ["dependencies"],
+  "postUpdateOptions": ["pnpmDedupe"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 9am on monday"]
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["dependencies", "security"]
+  },
+  "packageRules": [
+    {
+      "description": "Bundle every non-major update (all four ecosystems: npm, cargo, docker, github-actions), plus digest bumps and weekly lockfile maintenance, into ONE reviewable PR on a stable branch. pnpm-lock.yaml is regenerated natively by Renovate as part of the same PR.",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest",
+        "lockFileMaintenance"
+      ],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-non-major"
+    },
+    {
+      "description": "Hold major upgrades (e.g. Next 16 to 17, Tauri 2 to 3, caddy:2 to :3) back as individually reviewable entries on the Dependency Dashboard rather than auto-opening PRs. Tick one there to let Renovate raise its own PR when you're ready to take the breaking change.",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Never try to bump privacytracker's own published image referenced in the deploy compose files.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/privacykey/privacytracker"],
+      "enabled": false
+    }
+  ]
+}

@@ -28,6 +28,12 @@ The test suite is intentionally small and focused (`pnpm test`). Container healt
 
 Separate Python companion script in `scripts/ios-app-import/` (stdlib-only, Python 3.9+): `python3 scripts/ios-app-import/export_ios_apps.py --mode backup|device`. It is *not* wired into the Node app — it produces a `.txt`/`.csv` that the user feeds back into the web onboarding flow.
 
+## Dependency updates (Renovate, not Dependabot)
+
+Dependency bumps are driven by **Renovate**, not Dependabot — `.github/dependabot.yml` was removed because its pnpm support left `pnpm-lock.yaml` stale (needing a manual regen) and it fanned each ecosystem out into separate, mutually-conflicting PRs. Renovate regenerates the lockfile natively and, per `renovate.json`, bundles every **non-major** update across all four ecosystems (npm, cargo, docker, github-actions) into a **single** PR on a stable branch. **Major** upgrades are held on the Dependency Dashboard issue (`dependencyDashboardApproval`) for one-at-a-time review — tick one there to let Renovate raise its PR. Do NOT reintroduce a `dependabot.yml`; that would duplicate Renovate's PRs.
+
+Activation is one of two mutually-exclusive paths (pick one): the self-hosted `.github/workflows/renovate.yml` (weekly cron + a `workflow_dispatch` **dry-run** button that previews the PR without opening it — needs a `RENOVATE_TOKEN` secret for live-run PRs to trigger CI, since GITHUB_TOKEN-authored PRs don't), **or** the hosted Mend Renovate GitHub App (its PRs trigger CI automatically; delete the workflow if you install the app). Both read the same `renovate.json`. See the header comment in the workflow for the token rationale.
+
 ## Architecture
 
 This is a Next.js 16 App Router app (TypeScript, React 19) backed by a single local SQLite file. All scraping, parsing, diffing, and AI calls happen server-side inside API routes that import helpers from `lib/`.
