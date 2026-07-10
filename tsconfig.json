@@ -31,7 +31,9 @@
     ".next-test/types/**/*.ts",
     ".next-test/dev/types/**/*.ts",
     ".next-stress/types/**/*.ts",
-    ".next-stress/dev/types/**/*.ts"
+    ".next-stress/dev/types/**/*.ts",
+    ".next-e2e/types/**/*.ts",
+    ".next-e2e/dev/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }
