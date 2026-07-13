@@ -40,6 +40,8 @@ mod app_menu;
 mod zoom;
 #[cfg(target_os = "macos")]
 mod touch_id;
+#[cfg(target_os = "macos")]
+mod credential_key;
 
 use std::sync::Mutex;
 

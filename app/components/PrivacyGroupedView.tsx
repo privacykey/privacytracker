@@ -291,83 +291,57 @@ function CategoryCard({
       id={anchorId}
       ref={cardRef}
     >
-      {/*
-        Card header — used to be a `<button>` but it nested another
-        `<button>` (InfoTooltip's trigger) inside, which is invalid HTML
-        and produced a Next.js hydration error. Switching to a
-        `role="button"` div sidesteps the nesting rule while keeping
-        every behaviour the original button had:
-          • click — `onClick` toggles expand
-          • Enter / Space keys — explicit `onKeyDown` (native buttons
-            handle these automatically; div+role doesn't, hence the
-            handler below)
-          • aria-expanded — same attribute on a different element
-          • focusable — `tabIndex={0}` puts it in the tab order
-        Visually unchanged because `.pmap-card-header` styling doesn't
-        depend on the element being a `<button>`.
-      */}
-      <div
-        aria-expanded={expanded}
-        className="pmap-card-header"
-        onClick={() => setExpanded((v) => !v)}
-        onKeyDown={(e) => {
-          // Mirror the native <button> keyboard contract: Enter and
-          // Space both activate. preventDefault on Space stops the
-          // page from scrolling alongside our toggle.
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setExpanded((v) => !v);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-      >
-        <span aria-hidden="true" className="pmap-card-icon">
-          {icon}
-        </span>
-
-        <span className="pmap-card-title-block">
-          <span className="pmap-card-title-row">
-            <span className="pmap-card-title">{label}</span>
-            {meta?.description && (
-              <span
-                className="pmap-card-info"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <InfoTooltip text={meta.description} />
-              </span>
-            )}
+      <div className="pmap-card-header">
+        <button
+          aria-expanded={expanded}
+          className="pmap-card-toggle"
+          onClick={() => setExpanded((v) => !v)}
+          type="button"
+        >
+          <span aria-hidden="true" className="pmap-card-icon">
+            {icon}
           </span>
-          <span className="pmap-card-subtitle">
-            {tMap("card_app_count", { count: category.apps.length })}
-            {isSensitive && (
-              <span
-                className="pmap-card-sensitive-chip"
-                title={tMap("sensitive_category_title")}
-              >
-                {tMap("sensitive_chip")}
-              </span>
-            )}
-          </span>
-        </span>
 
-        <span aria-hidden="true" className="pmap-card-chevron">
-          <svg
-            aria-hidden="true"
-            fill="none"
-            height="12"
-            viewBox="0 0 12 12"
-            width="12"
-          >
-            <path
-              d="M2.5 4.25L6 7.75L9.5 4.25"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.6"
-            />
-          </svg>
-        </span>
+          <span className="pmap-card-title-block">
+            <span className="pmap-card-title-row">
+              <span className="pmap-card-title">{label}</span>
+            </span>
+            <span className="pmap-card-subtitle">
+              {tMap("card_app_count", { count: category.apps.length })}
+              {isSensitive && (
+                <span
+                  className="pmap-card-sensitive-chip"
+                  title={tMap("sensitive_category_title")}
+                >
+                  {tMap("sensitive_chip")}
+                </span>
+              )}
+            </span>
+          </span>
+
+          <span aria-hidden="true" className="pmap-card-chevron">
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="12"
+              viewBox="0 0 12 12"
+              width="12"
+            >
+              <path
+                d="M2.5 4.25L6 7.75L9.5 4.25"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.6"
+              />
+            </svg>
+          </span>
+        </button>
+        {meta?.description && (
+          <span className="pmap-card-info">
+            <InfoTooltip text={meta.description} />
+          </span>
+        )}
       </div>
 
       {!expanded && category.apps.length > 0 && (

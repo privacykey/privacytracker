@@ -142,7 +142,7 @@ test("exportBackup scrubs sensitive app_settings values from the envelope", asyn
     "../../lib/backup"
   );
 
-  // Persist known plaintext secrets, then dump a backup envelope and assert
+  // Persist known secrets, then dump a backup envelope and assert
   // that (a) each row is still present (so restore knows the column is
   // managed) and (b) its `value` column is empty so no secret leaks through
   // any caller of `exportBackup` — direct route, scheduled snapshot, or
@@ -162,7 +162,7 @@ test("exportBackup scrubs sensitive app_settings values from the envelope", asyn
   setSetting("notification_webhook_url", webhookSentinel);
 
   try {
-    // Sanity check: the value really is in app_settings before we scrub.
+    // Sanity check: the settings layer can read both values before we scrub.
     assert.equal(getSetting("ai_api_key", ""), sentinel);
     assert.equal(getSetting("notification_webhook_url", ""), webhookSentinel);
 

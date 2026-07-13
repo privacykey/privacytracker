@@ -1619,11 +1619,19 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .pmap-card-header {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.pmap-card-toggle {
   display: grid;
+  flex: 1;
   grid-template-columns: auto 1fr auto;
   gap: 14px;
   align-items: center;
-  width: 100%;
+  min-width: 0;
   padding: 14px 16px;
   font: inherit;
   color: inherit;
@@ -1631,14 +1639,13 @@ html[data-theme-override="high-contrast"] .nav {
   cursor: pointer;
   background: transparent;
   border: none;
-  transition: background 0.12s ease;
 }
 
-.pmap-card-header:hover {
+.pmap-card-header:has(.pmap-card-toggle:hover) {
   background: var(--surface-hover);
 }
 
-.pmap-card-header:focus-visible {
+.pmap-card-toggle:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: -2px;
 }
@@ -1683,6 +1690,7 @@ html[data-theme-override="high-contrast"] .nav {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
+  padding-right: 16px;
 }
 
 .pmap-card-subtitle {
@@ -3113,30 +3121,40 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .accordion-header {
-  /* Now rendered as a <button>, so reset UA button defaults and stretch
-     the element to fill the accordion section. */
   display: flex;
   align-items: center;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  transition: background 0.15s;
+}
+
+.accordion-header-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
   justify-content: space-between;
-  /* Now rendered as a <button>, so reset UA button defaults and stretch
-     the element to fill the accordion section. */
-  width: 100%;
+  min-width: 0;
   padding: 18px 20px;
   font: inherit;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  background: var(--surface);
+  background: transparent;
   border: 0;
-  border-radius: var(--r-lg);
-  transition: background 0.15s;
+}
+
+.accordion-header-info {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-right: 20px;
 }
 
 .accordion-section:has(.accordion-body) .accordion-header {
   border-bottom-right-radius: 0;
   border-bottom-left-radius: 0;
 }
-.accordion-header:hover {
+.accordion-header:has(.accordion-header-toggle:hover) {
   background: var(--surface-hover);
 }
 

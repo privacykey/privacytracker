@@ -102,6 +102,8 @@ objc2 = "0.6"
 # notifications.rs. AppKit is dynamically loaded by macOS at app launch,
 # so we don't need a typed wrapper to call into it.
 objc2-foundation = "0.3"
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFData", "CFDictionary", "CFNumber", "CFString"] }
+objc2-security = { version = "0.3", default-features = false, features = ["SecBase", "SecItem", "SecRandom"] }
 # Bumped 0.2 → 0.3 because 0.2 was built against objc2 0.5; once we
 # pin objc2 = "0.6" directly, having LAContext implement 0.5's
 # Message/Encode traits while our msg_send!/msg_send_id! macros expand

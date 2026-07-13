@@ -11,6 +11,8 @@
 
 use std::fs::{self, File};
 use std::io;
+#[cfg(target_os = "macos")]
+use std::io::Write;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -144,6 +146,8 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     let port = pick_free_port()?;
     let data_dir = resolve_data_dir(app)?;
     std::fs::create_dir_all(&data_dir)?;
+    #[cfg(target_os = "macos")]
+    let credential_key = crate::credential_key::load_or_create(&data_dir)?;
 
     let server_js = resolve_server_js(app, &data_dir)?;
     let node = resolve_node_binary(&server_js)?;
@@ -192,6 +196,12 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
 
+    #[cfg(target_os = "macos")]
+    cmd.env("PRIVACYTRACKER_SECRET_KEY_STDIN", "1")
+        .stdin(Stdio::piped());
+    #[cfg(not(target_os = "macos"))]
+    cmd.stdin(Stdio::null());
+
     // Detach the sidecar from our Cocoa app's GUI Services session so it
     // doesn't show up in the macOS Dock as a "node" / "exec" icon. When a
     // Cocoa app (Tauri's wry webview) spawns a subprocess, the child
@@ -222,9 +232,18 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
         }
     }
 
-    let child = cmd
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("failed to spawn sidecar: {e}"))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or("failed to open sidecar credential channel")?;
+        stdin.write_all(credential_key.as_bytes())?;
+    }
 
     let base_url = format!("http://127.0.0.1:{port}");
     Ok(Boot {

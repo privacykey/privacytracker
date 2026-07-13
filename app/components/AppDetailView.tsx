@@ -4238,70 +4238,56 @@ function PrivacyTypeSection({
 
   return (
     <div className="accordion-section">
-      {/* Button (not a div) so keyboard users can toggle with Space/Enter
-          and screen readers announce it as an expand/collapse control.
-          aria-controls ties it to the body region it shows/hides. */}
-      {/*
-        Accordion header — used to be a `<button>` but it nests an
-        `InfoTooltip` (which renders its own `<button>`), and HTML
-        disallows nested buttons (Next.js prints a hydration error).
-        Same fix as the privacy-page card-header: switch to a
-        `role="button"` div with explicit Enter/Space handling. Native
-        buttons get keyboard activation for free; div+role doesn't,
-        hence the onKeyDown. aria-expanded + aria-controls semantics
-        are unchanged.
-      */}
-      <div
-        aria-controls={panelId}
-        aria-expanded={open}
-        className="accordion-header"
-        id={headerId}
-        onClick={() => setOpen(!open)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setOpen(!open);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="accordion-header-left">
-          <div className="tooltip-inline">
+      <div className="accordion-header">
+        <button
+          aria-controls={panelId}
+          aria-expanded={open}
+          className="accordion-header-toggle"
+          id={headerId}
+          onClick={() => setOpen(!open)}
+          type="button"
+        >
+          <div className="accordion-header-left">
             <span className={`severity-badge ${sev?.cls ?? "severity-none"}`}>
               <PrivacyTypeIcon identifier={privacyType.identifier} />
               {sevLabel}
             </span>
-            {sevDescription && <InfoTooltip text={sevDescription} />}
-          </div>
-          <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-            {tAppGrid("n_categories_aria", {
-              count: privacyType.categories.length,
-            })}
-          </span>
-          {hasMismatches && (
-            <span
-              aria-label={tDetail("mismatch_chip.aria", {
-                count: mismatchedCats.size,
+            <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+              {tAppGrid("n_categories_aria", {
+                count: privacyType.categories.length,
               })}
-              className="accordion-mismatch-chip"
-              title={tDetail("tooltips.categories_exceed_profile")}
-            >
-              {tDetail("mismatch_chip.label", { count: mismatchedCats.size })}
             </span>
-          )}
-        </div>
-        <span
-          aria-hidden="true"
-          style={{
-            color: "var(--text-3)",
-            fontSize: 12,
-            transition: "transform 0.2s",
-            transform: open ? "rotate(180deg)" : "none",
-          }}
-        >
-          ▼
-        </span>
+            {hasMismatches && (
+              <span
+                aria-label={tDetail("mismatch_chip.aria", {
+                  count: mismatchedCats.size,
+                })}
+                className="accordion-mismatch-chip"
+                title={tDetail("tooltips.categories_exceed_profile")}
+              >
+                {tDetail("mismatch_chip.label", {
+                  count: mismatchedCats.size,
+                })}
+              </span>
+            )}
+          </div>
+          <span
+            aria-hidden="true"
+            style={{
+              color: "var(--text-3)",
+              fontSize: 12,
+              transition: "transform 0.2s",
+              transform: open ? "rotate(180deg)" : "none",
+            }}
+          >
+            ▼
+          </span>
+        </button>
+        {sevDescription && (
+          <span className="accordion-header-info">
+            <InfoTooltip text={sevDescription} />
+          </span>
+        )}
       </div>
 
       {open && (

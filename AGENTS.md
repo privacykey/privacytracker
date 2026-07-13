@@ -179,7 +179,7 @@ Contract pinned by `tests/app/apps-pagination.test.ts`.
 
 ### AI configuration
 
-`lib/ai-config.ts` is the single source of truth for providers (`disabled` | `openai` | `anthropic` | `custom`), default base URLs, default models, and per-provider behavior flags (`providerUsesChatCompletions`, `providerLikelyNeedsChunking`, `providerRequiresApiKey`). `custom` targets Ollama or any OpenAI-compatible endpoint. The legacy `ollama` value is normalized to `custom` in `normalizeAiProvider`. All persisted settings live in the `app_settings` key/value table via `lib/scheduler.ts` (`getSetting`/`setSetting`).
+`lib/ai-config.ts` is the single source of truth for providers (`disabled` | `openai` | `anthropic` | `custom`), default base URLs, default models, and per-provider behavior flags (`providerUsesChatCompletions`, `providerLikelyNeedsChunking`, `providerRequiresApiKey`). `custom` targets Ollama or any OpenAI-compatible endpoint. The legacy `ollama` value is normalized to `custom` in `normalizeAiProvider`. All persisted settings live in the `app_settings` key/value table via `lib/scheduler.ts` (`getSetting`/`setSetting`). Secret-shaped settings (`ai_api_key`, `notification_webhook_url`) are transparently encrypted by `lib/secret-settings.ts`; add future credentials to `SECRET_SETTING_KEYS` rather than handling encryption at individual call sites. Shipped macOS builds keep the master key in Login Keychain (`src-tauri/src/credential_key.rs`) and pass it once to the Node sidecar over stdin. Docker/self-hosted installs use the private `.secret-key` file in `PRIVACYTRACKER_DATA_DIR`, or an operator-supplied `PRIVACYTRACKER_SECRET_KEY` environment value.
 
 ### Background sync
 

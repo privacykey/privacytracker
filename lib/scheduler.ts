@@ -1,5 +1,11 @@
 import db from "./db";
 import {
+  decryptSecret,
+  encryptSecret,
+  isEncryptedSecret,
+  SECRET_SETTING_KEYS,
+} from "./secret-settings";
+import {
   canStartSyncManualRun,
   type RunSyncBulkResult,
   runBulkSync,
@@ -14,16 +20,38 @@ const INTERVALS_MS: Record<SyncSchedule, number> = {
 };
 
 export function getSetting(key: string, defaultValue = ""): string {
-  return (
-    (db.prepare("SELECT value FROM app_settings WHERE key = ?").get(key) as any)
-      ?.value ?? defaultValue
-  );
+  const stored = (
+    db.prepare("SELECT value FROM app_settings WHERE key = ?").get(key) as
+      | { value: string }
+      | undefined
+  )?.value;
+  if (stored === undefined) {
+    return defaultValue;
+  }
+  if (!(stored && SECRET_SETTING_KEYS.has(key))) {
+    return stored;
+  }
+  if (!isEncryptedSecret(stored)) {
+    db.prepare("UPDATE app_settings SET value = ? WHERE key = ?").run(
+      encryptSecret(key, stored),
+      key
+    );
+    return stored;
+  }
+  try {
+    return decryptSecret(key, stored);
+  } catch (error) {
+    console.error(`[settings] unable to decrypt ${key}:`, error);
+    return defaultValue;
+  }
 }
 
 export function setSetting(key: string, value: string): void {
+  const stored =
+    value && SECRET_SETTING_KEYS.has(key) ? encryptSecret(key, value) : value;
   db.prepare(
     "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)"
-  ).run(key, value);
+  ).run(key, stored);
 }
 
 /**
@@ -41,9 +69,7 @@ export function setSettingIfUnset(key: string, value: string): void {
   if (existing !== undefined && existing !== "") {
     return;
   }
-  db.prepare(
-    "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)"
-  ).run(key, value);
+  setSetting(key, value);
 }
 
 export function getSchedulerStatus() {

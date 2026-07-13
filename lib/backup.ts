@@ -26,6 +26,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import db from "./db";
+import { SECRET_SETTING_KEYS } from "./secret-settings";
 import { recordAudit, sanitizePolicyUrl } from "./security";
 
 export const CURRENT_BACKUP_VERSION = 1;
@@ -188,10 +189,7 @@ export interface BackupEnvelope {
  * persist plaintext secrets on the filesystem. Doing it here is the only
  * point that catches every code path — current and future.
  */
-export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
-  "ai_api_key",
-  "notification_webhook_url",
-]);
+export const SENSITIVE_SETTING_KEYS = SECRET_SETTING_KEYS;
 
 /**
  * `app_settings` keys we refuse to write during a restore. These are

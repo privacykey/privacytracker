@@ -135,10 +135,29 @@ browserFlow(
     // Instagram fixture) doesn't break the spec.
     await expect(page.locator(".category-card-mismatch").first()).toBeVisible();
 
+    // The accordion toggle and its help tooltip are sibling buttons. This
+    // avoids the invalid nested-interactive pattern that breaks screen-reader
+    // navigation while preserving native Space/Enter activation.
+    const accordionHeader = page.locator(".accordion-header").first();
+    await expect(accordionHeader.locator("button button")).toHaveCount(0);
+    const accordionToggle = accordionHeader.locator(".accordion-header-toggle");
+    await accordionToggle.focus();
+    await page.keyboard.press("Space");
+    await expect(accordionToggle).toHaveAttribute("aria-expanded", "false");
+
+    await page.goto("/dashboard/privacy");
+    const privacyHeader = page.locator(".pmap-card-header").first();
+    await expect(privacyHeader.locator("button button")).toHaveCount(0);
+    const privacyToggle = privacyHeader.locator(".pmap-card-toggle");
+    await privacyToggle.focus();
+    await page.keyboard.press("Space");
+    await expect(privacyToggle).toHaveAttribute("aria-expanded", "true");
+
     // Timeline lives behind the Changelog tab — click it to activate
     // the panel before asserting. The canned seed writes a baseline
     // snapshot plus 1–2 back-dated history rows, so at least one
     // .timeline-item should render once the tab is active.
+    await page.goto(`/apps/${instagram!.id}`);
     await page.locator("#tab-changelog").click();
     await expect(page.locator(".timeline-item").first()).toBeVisible();
   }
