@@ -147,10 +147,11 @@ body:
     attributes:
       label: Server logs or browser console output
       description: |
-        Paste anything that looked relevant. For server logs:
+        Paste only the smallest relevant excerpt. Redact API keys, admin
+        tokens, webhook URLs, local usernames and paths, device identifiers,
+        and app names you do not want public. For server logs:
         `docker compose logs --tail 200 app`. For the browser, open DevTools →
-        Console and copy the red entries. Don't worry about scrubbing URLs —
-        we only need enough context to reproduce.
+        Console and copy the relevant red entries.
       render: shell
     validations:
       required: false

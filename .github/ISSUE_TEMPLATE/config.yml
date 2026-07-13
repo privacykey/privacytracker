@@ -5,6 +5,9 @@
 blank_issues_enabled: false
 
 contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/privacykey/privacytracker/security/advisories/new
+    about: Send security-sensitive reports privately. Do not open a public issue.
   - name: Question or discussion
     url: https://github.com/privacykey/privacytracker/discussions
     about: For open-ended questions, ideas, or "is this expected?" — use Discussions instead of an issue.
