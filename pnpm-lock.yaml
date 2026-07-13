@@ -91,6 +91,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.17)
+      axe-core:
+        specifier: ^4.11.4
+        version: 4.11.4
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0

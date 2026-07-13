@@ -807,6 +807,7 @@ export default function AnnotationsSidebar({
             : "")
         }
         id="annotations-sidebar-body"
+        inert={!expanded}
       >
         {/*
           Composer is permanently mounted alongside the notes list.

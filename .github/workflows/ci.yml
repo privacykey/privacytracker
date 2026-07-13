@@ -105,7 +105,9 @@ jobs:
         # pnpm exec replaces npx for resolving binaries from node_modules.
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Browser E2E
+      # Includes tests/e2e/accessibility.spec.ts, which runs axe-core
+      # against representative first-run and populated-app routes.
+      - name: Browser E2E and accessibility
         run: pnpm test:e2e
 
       - name: Upload Playwright report

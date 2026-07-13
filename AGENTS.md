@@ -13,6 +13,7 @@ pnpm lint              # Ultracite (Biome) — lint + format check
 pnpm lint:fix          # Ultracite auto-fix (safe rules only)
 pnpm typecheck         # TypeScript without emitting files
 pnpm test              # focused node:test suite
+pnpm test:a11y         # WCAG A/AA scans of representative browser routes
 pnpm lint:i18n         # check locales/*.json key parity against en.json
 ```
 

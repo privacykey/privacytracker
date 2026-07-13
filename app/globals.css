@@ -62,6 +62,9 @@
   --text: #f0f0f5;
   --text-2: #a0a0b0;
   --text-3: #8e8e93;
+  /* Compatibility aliases used by the co-located component stylesheets. */
+  --text-secondary: var(--text-2);
+  --text-tertiary: var(--text-3);
 
   /* Accent */
   --blue: #0a84ff;
@@ -166,7 +169,9 @@
     --border: rgba(0, 0, 0, 0.07);
     --border-strong: rgba(0, 0, 0, 0.13);
     --text: #1c1c1e;
-    --text-2: #6c6c80;
+    /* Dark enough to stay AA on the alert/info tinted cards as well as the
+       plain page surfaces. Also keeps secondary text stronger than text-3. */
+    --text-2: #5c5c70;
     /* Light-mode tertiary bumped from #aeaeb2 (~2.0:1) to #636368 so it
        meets WCAG 2.2 AA 4.5:1 not just on --bg / --bg-2 but also on the
        --bg-3 surfaces it sits on (icon placeholders, kbd chips, and the
@@ -176,11 +181,12 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
-    --blue: #0071e3;
-    --blue-hover: #0077ed;
+    /* #0071e3 fell below 4.5:1 on the light red/blue callout tints. */
+    --blue: #0066cc;
+    --blue-hover: #005fbf;
     --blue-soft: #dbeafe;
-    --cream: #7a643b;
-    --cream-dim: rgba(122, 100, 59, 0.12);
+    --cream: #735c35;
+    --cream-dim: rgba(115, 92, 53, 0.12);
     /* Severity / accent palette, light variants. The dark-theme brights
        (#ff453a, #ff9f0a, #ffd60a, #30d158, #40c8c8, #f43f5e) sit at only
        1.3–3.3:1 against white — unusable as text. These darker same-hue
@@ -231,16 +237,16 @@ html[data-theme-override="light"] {
   --border: rgba(0, 0, 0, 0.07);
   --border-strong: rgba(0, 0, 0, 0.13);
   --text: #1c1c1e;
-  --text-2: #6c6c80;
+  --text-2: #5c5c70;
   --text-3: #636368;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
-  --blue: #0071e3;
-  --blue-hover: #0077ed;
+  --blue: #0066cc;
+  --blue-hover: #005fbf;
   --blue-soft: #dbeafe;
-  --cream: #7a643b;
-  --cream-dim: rgba(122, 100, 59, 0.12);
+  --cream: #735c35;
+  --cream-dim: rgba(115, 92, 53, 0.12);
   /* Light severity / accent palette — see the @media light block above. */
   --red: #c20012;
   --red-dim: rgba(194, 0, 18, 0.12);
@@ -2061,7 +2067,7 @@ html[data-theme-override="high-contrast"] .nav {
 
 /* ── Accessibility chip in the detail-hero meta row ─────────────────── */
 
-/* Blue pill for "this app declares accessibility features" — primary
+/* Teal pill for "this app declares accessibility features" — primary
    variant is an interactive button that jumps to the Accessibility tab.
    The muted variant is a non-interactive label for apps where Apple
    showed the shelf but the developer filed nothing. */
@@ -2073,10 +2079,10 @@ html[data-theme-override="high-contrast"] .nav {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
-  color: var(--accent, #0a84ff);
+  color: var(--teal);
   cursor: pointer;
-  background: color-mix(in srgb, var(--accent, #0a84ff) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent, #0a84ff) 38%, transparent);
+  background: color-mix(in srgb, var(--teal) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--teal) 38%, transparent);
   border-radius: 999px;
   transition:
     background 0.15s ease,
@@ -2086,8 +2092,8 @@ html[data-theme-override="high-contrast"] .nav {
 .detail-a11y-chip:hover,
 .detail-a11y-chip:focus-visible {
   outline: none;
-  background: color-mix(in srgb, var(--accent, #0a84ff) 28%, transparent);
-  border-color: color-mix(in srgb, var(--accent, #0a84ff) 55%, transparent);
+  background: color-mix(in srgb, var(--teal) 28%, transparent);
+  border-color: color-mix(in srgb, var(--teal) 55%, transparent);
 }
 
 .detail-a11y-chip-count {
@@ -2100,8 +2106,8 @@ html[data-theme-override="high-contrast"] .nav {
   font-size: 11px;
   font-weight: 700;
   font-feature-settings: "tnum" 1;
-  color: var(--accent, #0a84ff);
-  background: color-mix(in srgb, var(--accent, #0a84ff) 35%, transparent);
+  color: var(--teal);
+  background: color-mix(in srgb, var(--teal) 35%, transparent);
   border-radius: 9px;
 }
 
@@ -11097,9 +11103,9 @@ body.review-rec-print-active .review-rec-print a {
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 11px;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   color: var(--text-2);
@@ -11113,16 +11119,6 @@ body.review-rec-print-active .review-rec-print a {
     background 0.15s,
     border-color 0.15s,
     color 0.15s;
-}
-
-/* WCAG 2.2 SC 2.5.8 — invisible hit-area extension. The painted disc
-   stays 20px; the pseudo-element grows the clickable box to 24×24.
-   -3px, not -2px: absolute positioning resolves against the padding
-   box, which sits 1px (the border) inside the visible 20px disc. */
-.info-tooltip-trigger::after {
-  position: absolute;
-  inset: -3px;
-  content: "";
 }
 
 .info-tooltip-trigger:hover,
@@ -15677,14 +15673,8 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-sm);
-  opacity: 0.75;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-  transition: opacity 160ms ease;
-}
-
-.kbd-hint-anchor:hover {
-  opacity: 1;
 }
 
 .kbd-hint-button {
@@ -16451,14 +16441,8 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-sm);
-  opacity: 0.75;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
-  transition: opacity 160ms ease;
-}
-
-.site-info-hint-anchor:hover {
-  opacity: 1;
 }
 
 /* 2.4.11 Focus Not Obscured: the pill floats over the bottom of the sticky
@@ -26439,11 +26423,19 @@ html[data-theme-override="high-contrast"] .kbd-hint-anchor {
 html[data-theme-override="high-contrast"] .btn-primary,
 html[data-theme-override="high-contrast"] .btn-primary:hover,
 html[data-theme-override="high-contrast"] .btn-primary svg,
-html[data-theme-override="high-contrast"] .detail-a11y-chip,
-html[data-theme-override="high-contrast"] .detail-a11y-chip svg,
 html[data-theme-override="high-contrast"] .sort-tab.active,
 html[data-theme-override="high-contrast"] .sort-tab.active:hover {
   color: #000000 !important;
+}
+
+html[data-theme-override="high-contrast"] .detail-a11y-chip {
+  color: #000000 !important;
+  background: var(--teal) !important;
+  border-color: var(--teal) !important;
+}
+html[data-theme-override="high-contrast"] .detail-a11y-chip-count {
+  color: #000000 !important;
+  background: rgba(0, 0, 0, 0.14) !important;
 }
 
 /* HC override for the segmented-toggle-style active .nav-link pill. Its
@@ -30159,8 +30151,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .locale-switcher__option.is-active {
   font-weight: 600;
-  color: color-mix(in srgb, var(--blue, #3b82f6) 90%, var(--text));
-  background: color-mix(in srgb, var(--blue, #3b82f6) 22%, transparent);
+  color: var(--bg-2);
+  background: var(--blue);
   border-radius: 8px;
 }
 
@@ -31668,7 +31660,6 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .home-layout-footer-secondary {
   font-size: 12px;
   color: var(--text-3);
-  opacity: 0.85;
 }
 
 .home-layout-footer-sep {

@@ -895,7 +895,9 @@ export default function DevOptionsFeatureFlagPanel() {
           settings. */}
       <div className="dev-options-flag-panel__floating-toggle">
         <div className="dev-options-flag-panel__floating-toggle-text">
-          <strong>{tDev("dev_menu_trigger.title")}</strong>
+          <strong id="dev-menu-trigger-label">
+            {tDev("dev_menu_trigger.title")}
+          </strong>
           <span className="dev-options-flag-panel__floating-toggle-hint">
             {tDev.rich("dev_menu_trigger.hint", {
               kbd: (chunks) => <kbd className="kbd">{chunks}</kbd>,
@@ -904,6 +906,7 @@ export default function DevOptionsFeatureFlagPanel() {
         </div>
         <button
           aria-checked={floatingOverlayOn}
+          aria-labelledby="dev-menu-trigger-label"
           className={`switch-toggle${floatingOverlayOn ? " is-on" : ""}`}
           onClick={toggleFloatingOverlay}
           role="switch"
