@@ -25,7 +25,12 @@ export const dataDir = process.env.PRIVACYTRACKER_DATA_DIR
   ? path.resolve(process.env.PRIVACYTRACKER_DATA_DIR)
   : path.join(process.cwd(), "data");
 if (!(isBuildPhase || fs.existsSync(dataDir))) {
-  fs.mkdirSync(dataDir, { recursive: true });
+  fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+}
+if (!(isBuildPhase || process.platform === "win32")) {
+  // Existing installs may predate the private-mode default. Tighten the
+  // directory on every open so upgrades repair it without a separate migration.
+  fs.chmodSync(dataDir, 0o700);
 }
 
 export const dbPath = isBuildPhase
@@ -36,6 +41,20 @@ const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 db.pragma("busy_timeout = 5000");
 db.pragma("foreign_keys = ON");
+
+if (!(isBuildPhase || process.platform === "win32")) {
+  // SQLite creates WAL/SHM siblings lazily. The private directory is the
+  // primary boundary; chmod any files already present as defence in depth.
+  for (const file of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
+    try {
+      fs.chmodSync(file, 0o600);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS apps (

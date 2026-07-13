@@ -293,10 +293,14 @@ browserFlow(
       .locator(".candidate-row")
       .filter({ hasText: "Apple" });
     await expect(appleRow).toHaveCount(1);
-    await appleRow.click();
+    // Candidate rows are native toggle buttons: keyboard users must be able
+    // to choose one without falling back to pointer-only click handlers.
+    await appleRow.focus();
+    await appleRow.press("Space");
 
     // The Apple row should now be the chosen one.
     await expect(appleRow).toHaveClass(/chosen/);
+    await expect(appleRow).toHaveAttribute("aria-pressed", "true");
     await expect(
       block
         .locator(".candidate-row.chosen")

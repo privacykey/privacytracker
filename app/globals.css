@@ -5705,7 +5705,11 @@ html[data-theme-override="high-contrast"] .nav {
   display: flex;
   gap: 12px;
   align-items: center;
+  width: 100%;
   padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   cursor: pointer;
   border-radius: var(--r-md);
   transition: background 0.12s;

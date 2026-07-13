@@ -1,25 +1,34 @@
 <div align="center">
 
-<img src="public/brand-icon.png" alt="privacytracker" width="120" />
+<img src="public/brand-icon.png" alt="privacytracker" width="96" />
 
 # privacytracker
 
 **See how iOS apps quietly change what they collect about you.**
 
+[Download](https://github.com/privacykey/privacytracker/releases/latest) ·
+[Documentation](https://privacytracker-docs.privacykey.org/introduction) ·
+[Ask a question](https://github.com/privacykey/privacytracker/discussions)
+
+[![CI](https://github.com/privacykey/privacytracker/actions/workflows/ci.yml/badge.svg)](https://github.com/privacykey/privacytracker/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/privacykey/privacytracker?display_name=tag)](https://github.com/privacykey/privacytracker/releases/latest)
+[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 </div>
 
----
+privacytracker is a local-first dashboard for the privacy labels Apple publishes
+on every App Store listing.
 
-privacytracker keeps an eye on the privacy labels Apple shows on each app's
-App Store page — the *Data Used to Track You*, *Data Linked to You* and *Data
-Not Linked to You* sections — and tells you when an app you use changes them.
-It can also summarise developer privacy policies in plain language and pull
-historical label snapshots back to 2021 so you can see how an app's data
-practices evolved over time.
+- **Watch for changes** to the data your apps collect, link to you, or use to
+  track you.
+- **Understand privacy policies** with optional plain-language AI summaries.
+- **Rebuild an app's history** from archived App Store pages back to 2021.
+- **Keep your audit local** in a SQLite database on your own computer.
 
-It runs entirely on your own computer. No accounts, no servers, no tracking.
+> No account, hosted backend, or product telemetry. Cloud AI is optional and
+> uses your own provider credentials.
 
-## Get it
+## Install
 
 ### macOS — Homebrew (recommended)
 
@@ -42,19 +51,6 @@ background.
 Available as a Docker image — see the
 [user guide](https://privacytracker-docs.privacykey.org/quickstart)
 for setup.
-
-## Screenshots
-
-<!-- Drop screenshots into docs/screenshots/ and link them here.
-     Suggested set:
-       1. Dashboard with the privacy-label severity heatmap
-       2. Per-app timeline showing a label change over time
-       3. AI policy summary panel
-       4. Wayback historical import view
--->
-
-> 📸 *[The user guide](https://privacytracker-docs.privacykey.org/quickstart)
-> walks through every screen.*
 
 ## Learn more
 

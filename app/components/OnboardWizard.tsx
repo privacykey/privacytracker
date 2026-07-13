@@ -9329,7 +9329,8 @@ function SearchResultBlock({
                   candidate.bundleId.toLowerCase()
             );
             return (
-              <div
+              <button
+                aria-pressed={chosen?.appleId === candidate.appleId}
                 // The `tracked` modifier applies row-level styling (tint
                 // + left border). The inline "Tracked" chip next to the
                 // candidate name is back on top of that — removing it
@@ -9344,6 +9345,7 @@ function SearchResultBlock({
                     chosen?.appleId === candidate.appleId ? null : candidate
                   )
                 }
+                type="button"
               >
                 <span
                   style={{
@@ -9369,7 +9371,7 @@ function SearchResultBlock({
 
                 {candidate.iconUrl && (
                   <Image
-                    alt={candidate.name}
+                    alt=""
                     className="candidate-icon"
                     height={40}
                     src={candidate.iconUrl}
@@ -9415,7 +9417,7 @@ function SearchResultBlock({
                     </div>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
 

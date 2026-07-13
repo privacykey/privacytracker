@@ -202,7 +202,7 @@ export default function Nav({ appCount, flags }: NavProps) {
       data-tier={tier}
       ref={navRef}
     >
-      <Link className="nav-brand" href="/dashboard">
+      <Link aria-label={t("brand")} className="nav-brand" href="/dashboard">
         {/* Served from /public; regenerate via `python3 tools/build_icons.py`. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -266,7 +266,11 @@ export default function Nav({ appCount, flags }: NavProps) {
             footer landmark (app/layout.tsx) so it's reachable from
             every page — including non-navbar routes — and sits next
             to the accessibility / keyboard hint cluster bottom-right. */}
-        <Link className="btn btn-sm btn-primary nav-add-apps" href="/onboard">
+        <Link
+          aria-label={t("add_apps_label")}
+          className="btn btn-sm btn-primary nav-add-apps"
+          href="/onboard"
+        >
           <span className="nav-add-apps-label">{t("add_apps_label")}</span>
           <span aria-hidden="true" className="nav-add-apps-compact">
             +

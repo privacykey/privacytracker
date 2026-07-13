@@ -119,9 +119,13 @@ export default function ImportedAppsTable({
       {/* Inline bulk-paste input. Newline-separated names — commits
           on "+ Add" click or Cmd/Ctrl-Enter inside the textarea. */}
       <div className="imported-apps-table-add">
+        <label className="sr-only" htmlFor="onboard-app-names">
+          {t("add_placeholder")}
+        </label>
         <textarea
           className="textarea imported-apps-table-add-input"
           data-testid="onboard-app-names"
+          id="onboard-app-names"
           onChange={(e) => onPendingChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
