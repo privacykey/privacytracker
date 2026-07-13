@@ -35,6 +35,7 @@ Run the checks relevant to your change:
 
 ```bash
 pnpm lint
+pnpm lint:versions
 pnpm typecheck
 pnpm test
 pnpm lint:i18n

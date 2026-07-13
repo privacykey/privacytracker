@@ -2,8 +2,9 @@ name: Release
 
 # Manual-trigger release workflow.
 # You pick patch / minor / major when you click "Run workflow" in the Actions tab.
-# Steps: quality sanity-gate → bump package.json → prepend CHANGELOG.md →
-# commit to main → create v-tag → create GitHub Release with auto-generated notes.
+# Steps: quality sanity-gate → bump web + desktop metadata → prepend
+# CHANGELOG.md → commit to main → create v-tag → create GitHub Release with
+# auto-generated notes.
 #
 # The existing docker-publish.yml workflow listens on `push: tags: v*`, so the tag
 # push here will automatically rebuild and publish the image to GHCR.
@@ -125,6 +126,14 @@ jobs:
           echo "version=${NEW_VERSION}"      >> "$GITHUB_OUTPUT"
           echo "Bumped to ${NEW_VERSION}"
 
+      # The native menu + diagnostics use Rust's CARGO_PKG_VERSION rather
+      # than Tauri's package.json-backed bundle version. Keep all three
+      # release surfaces on the same value before building the release commit.
+      - name: Sync desktop release version
+        run: |
+          node scripts/sync-release-version.mjs
+          pnpm lint:versions
+
       - name: Prepend CHANGELOG.md
         run: |
           NEW_VERSION="${{ steps.bump.outputs.version }}"
@@ -160,7 +169,7 @@ jobs:
       - name: Commit, tag, and push
         run: |
           NEW_VERSION="${{ steps.bump.outputs.version }}"
-          git add package.json pnpm-lock.yaml CHANGELOG.md
+          git add package.json pnpm-lock.yaml src-tauri/Cargo.toml src-tauri/Cargo.lock CHANGELOG.md
           git commit -m "chore(release): ${NEW_VERSION}"
           git tag "${NEW_VERSION}"
           # Push commit first, then the tag. If main has branch protection that

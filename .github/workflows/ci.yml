@@ -64,6 +64,9 @@ jobs:
       - name: Check locale parity
         run: pnpm lint:i18n
 
+      - name: Check release version parity
+        run: pnpm lint:versions
+
       - name: Test iOS import helper
         run: pnpm test:ios-import-helper
 

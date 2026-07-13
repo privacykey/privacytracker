@@ -11,6 +11,7 @@ pnpm build             # production build
 pnpm start             # serve the production build
 pnpm lint              # Ultracite (Biome) — lint + format check
 pnpm lint:fix          # Ultracite auto-fix (safe rules only)
+pnpm lint:versions     # package.json ↔ Tauri Cargo version parity
 pnpm typecheck         # TypeScript without emitting files
 pnpm test              # focused node:test suite
 pnpm test:a11y         # WCAG A/AA scans of representative browser routes
