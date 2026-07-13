@@ -30,6 +30,7 @@ interface FocusPurposeFormProps {
   initial: PurposeFocusInput;
   /** Stored guardian child age band, when one is set. */
   initialChildAgeBand?: AgeBandKey | null;
+  intro?: ReactNode;
   mode: "onboarding" | "settings";
   onCancel?: () => void;
   onSubmit: (resolved: ResolvedPurposeFocus) => void | Promise<void>;
@@ -58,6 +59,7 @@ export default function FocusPurposeForm({
   extraActions,
   footer,
   initial,
+  intro,
   initialChildAgeBand = null,
   mode,
   onCancel,
@@ -190,6 +192,7 @@ export default function FocusPurposeForm({
         {eyebrow && <div className="welcome-eyebrow">{eyebrow}</div>}
         <h1 className="wizard-title">{title}</h1>
         <p className="wizard-subtitle">{subtitle}</p>
+        {intro}
 
         {tiles.length > 0 && (
           <div
@@ -363,7 +366,7 @@ export default function FocusPurposeForm({
           </div>
         )}
 
-        <FeatureToggleRow />
+        {mode === "settings" && <FeatureToggleRow />}
 
         {error && (
           <div aria-live="assertive" className="welcome-error" role="alert">

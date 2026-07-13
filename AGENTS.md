@@ -79,8 +79,10 @@ settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
   no longer force `monitor` on. (Pinned by `tests/app/focus-workflow.test.ts`
   and `tests/app/feature-flags.test.ts`.)
 - **`FeatureToggleRow`** (`app/components/FeatureToggleRow.tsx`) is a curated
-  row of ~6 WIRED per-feature toggles under the tiles. It reads resolved
-  values from `GET /api/feature-flags` and writes USER OVERRIDES via
+  row of ~6 WIRED per-feature toggles under the tiles in the Settings focus
+  editor. It is deliberately omitted from `/welcome`: its overrides persist
+  immediately, independently of the unsaved onboarding selection. It reads
+  resolved values from `GET /api/feature-flags` and writes USER OVERRIDES via
   `POST`/`DELETE /api/feature-flags/overrides` — overrides win last in the
   resolver, so a toggle here beats whatever the goals set (round-trip pinned
   by `tests/app/feature-flag-overrides-route.test.ts`).

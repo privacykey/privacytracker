@@ -16,12 +16,18 @@ interface Props {
   initialFocus: PurposeFocusInput | null;
 }
 
-const DEFAULT_FOCUS: PurposeFocusInput = {
+const EMPTY_FOCUS: PurposeFocusInput = {
   audience: "self",
-  monitor: true,
+  monitor: false,
   cleanup: false,
   minimal: false,
   accessibility: false,
+  workflow: "custom",
+};
+
+const SAMPLE_FOCUS: PurposeFocusInput = {
+  ...EMPTY_FOCUS,
+  monitor: true,
   workflow: "self_monitor",
 };
 
@@ -93,7 +99,7 @@ export default function WelcomeSplash({
   }
 
   function handleSkip() {
-    void commitAndContinue({ ...DEFAULT_FOCUS, taskOptIns: [] });
+    void commitAndContinue({ ...EMPTY_FOCUS, taskOptIns: [] });
   }
 
   function handleSampleData() {
@@ -101,7 +107,7 @@ export default function WelcomeSplash({
     void fetch("/api/focus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(DEFAULT_FOCUS),
+      body: JSON.stringify(SAMPLE_FOCUS),
     }).finally(() => {
       router.push("/dashboard?sample=1");
     });
@@ -110,9 +116,10 @@ export default function WelcomeSplash({
   const footer = (
     <>
       {sampleDataButtonOn && (
-        <div className="welcome-tertiary">
+        <div className="welcome-sample-card">
+          <p className="welcome-sample-copy">{t("sample_data_hint")}</p>
           <button
-            className="welcome-link welcome-sample-data"
+            className="btn btn-secondary welcome-sample-data"
             disabled={saving}
             onClick={handleSampleData}
             type="button"
@@ -148,8 +155,16 @@ export default function WelcomeSplash({
       }
       eyebrow={t("eyebrow")}
       footer={footer}
-      initial={initialFocus ?? DEFAULT_FOCUS}
+      initial={initialFocus ?? EMPTY_FOCUS}
       initialChildAgeBand={initialChildAgeBand}
+      intro={
+        <p className="welcome-local-first">
+          {t("local_first")}{" "}
+          <Link className="welcome-link" href="/privacy-policy">
+            {t("local_first_link")}
+          </Link>
+        </p>
+      }
       mode="onboarding"
       onSubmit={(resolved) => commitAndContinue(resolved)}
       saving={saving}

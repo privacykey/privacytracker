@@ -17386,6 +17386,41 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
   margin-top: 8px;
 }
 
+.welcome-local-first {
+  width: fit-content;
+  padding: 8px 12px;
+  margin: -2px 0 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--green) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--green) 32%, var(--border));
+  border-radius: var(--r-md);
+}
+
+.welcome-sample-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  margin-top: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.welcome-sample-copy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.welcome-sample-data {
+  flex: 0 0 auto;
+}
+
 .welcome-skip {
   margin-left: auto;
 }
@@ -17422,6 +17457,16 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
     margin-left: 0;
   }
   .welcome-actions .btn {
+    width: 100%;
+  }
+
+  .welcome-sample-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .welcome-sample-data {
+    justify-content: center;
     width: 100%;
   }
 }

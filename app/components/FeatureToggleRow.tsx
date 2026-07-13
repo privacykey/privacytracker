@@ -2,7 +2,7 @@
 
 /**
  * FeatureToggleRow — a curated row of per-feature on/off toggles shown under
- * the focus tiles on /welcome and in the settings focus editor.
+ * the focus tiles in the settings focus editor.
  *
  * Each toggle shows whether a feature is currently on (per your SAVED focus) and
  * flipping it writes (or clears) a per-flag USER OVERRIDE via
