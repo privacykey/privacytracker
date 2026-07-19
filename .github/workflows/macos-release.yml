@@ -504,7 +504,7 @@ jobs:
   assemble-latest-json:
     name: Assemble + publish latest.json
     needs: build-and-sign
-    runs-on: macos-15
+    runs-on: macos-26
     # Skip on dry-runs — the .sig files won't have hit the draft release
     # yet, and there's no point computing a manifest you're not going to
     # publish.
