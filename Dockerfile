@@ -11,6 +11,9 @@ ARG NODE_IMAGE=node:24.15.0-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c
 # Keep this in lockstep with `packageManager` in package.json and the
 # `pnpm/action-setup` version in every .github/workflows/*. A drift here
 # means Docker builds resolve deps with a different pnpm than CI does.
+# Renovate bumps this line itself (customManagers regex in renovate.json),
+# in the same grouped PR as the other pnpm pins — don't edit it by hand
+# unless you're changing all of them together.
 ARG PNPM_VERSION=11.1.2
 
 FROM ${NODE_IMAGE} AS builder
