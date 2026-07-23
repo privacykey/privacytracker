@@ -35,10 +35,15 @@ allowBuilds:
 # disagree on field-set. Patches GHSA-qx2v-qp2m-jg93 (XSS via
 # unescaped end-style tag in CSS stringify, fixed in 8.5.10).
 #
-# `@babel/core` is forced to the patched 7.29.1 line. Next pins it
-# transitively at 7.29.0 (next > styled-jsx > @babel/core), which
-# `pnpm audit --prod` rejects for GHSA-4x5r-pxfx-6jf8 (arbitrary file
-# read via a sourceMappingURL comment, fixed in 7.29.1).
+# `@babel/core` is force-resolved to the v8 major. The override
+# originally pinned the patched ^7.29.1 line: Next pins it transitively
+# at 7.29.0 (next > styled-jsx > @babel/core), which `pnpm audit --prod`
+# rejects for GHSA-4x5r-pxfx-6jf8 (arbitrary file read via a
+# sourceMappingURL comment, fixed in 7.29.1 — v8 includes the fix).
+# Overrides bypass peer ranges, so v8 is force-fed to consumers that
+# peer-declare ^7 (babel-loader@9, babel-plugin-polyfill-*); the compat
+# canary is `pnpm build-storybook`, the only surface in this repo that
+# actually executes Babel.
 #
 # `sharp` is forced to the patched 0.35 line. Next (even 16.2.11) still
 # pins it transitively at ^0.34.5 (next > sharp, used by the image
@@ -47,5 +52,5 @@ allowBuilds:
 # Drop this once Next's own range moves to >=0.35.
 overrides:
   postcss: ^8.5.12
-  '@babel/core': ^7.29.1
+  '@babel/core': ^8.0.0
   sharp: ^0.35.0
