@@ -798,7 +798,11 @@ export default function AnnotationsSidebar({
       */}
       <div
         // aria-hidden when collapsed so screen readers skip the list
-        // entirely while it's not visible.
+        // entirely while it's not visible; inert additionally pulls the
+        // composer/buttons out of the tab order — aria-hidden alone
+        // left focusable children inside a hidden subtree (an axe
+        // aria-hidden-focus violation, and a keyboard trap into
+        // invisible controls).
         aria-hidden={!expanded}
         className={
           "annotations-sidebar__body" +
@@ -807,6 +811,7 @@ export default function AnnotationsSidebar({
             : "")
         }
         id="annotations-sidebar-body"
+        inert={!expanded}
       >
         {/*
           Composer is permanently mounted alongside the notes list.

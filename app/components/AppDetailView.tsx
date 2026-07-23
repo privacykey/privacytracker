@@ -4238,40 +4238,37 @@ function PrivacyTypeSection({
 
   return (
     <div className="accordion-section">
-      {/* Button (not a div) so keyboard users can toggle with Space/Enter
-          and screen readers announce it as an expand/collapse control.
-          aria-controls ties it to the body region it shows/hides. */}
       {/*
-        Accordion header — used to be a `<button>` but it nests an
-        `InfoTooltip` (which renders its own `<button>`), and HTML
-        disallows nested buttons (Next.js prints a hydration error).
-        Same fix as the privacy-page card-header: switch to a
-        `role="button"` div with explicit Enter/Space handling. Native
-        buttons get keyboard activation for free; div+role doesn't,
-        hence the onKeyDown. aria-expanded + aria-controls semantics
-        are unchanged.
+        Accordion header. The toggle is a real `<button>` (wrapping the
+        severity badge — the section's visible title) with the
+        `InfoTooltip` as its SIBLING, not a descendant: the previous
+        role="button" div wrapped the tooltip's own <button>, which is
+        the axe `nested-interactive` violation (a focusable control
+        inside a control). The row div keeps a plain onClick as a
+        pointer-only convenience so the whole header stays clickable —
+        same blessed pattern as the modal overlays (see biome.jsonc);
+        keyboard and AT users get the native button.
       */}
-      <div
-        aria-controls={panelId}
-        aria-expanded={open}
-        className="accordion-header"
-        id={headerId}
-        onClick={() => setOpen(!open)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setOpen(!open);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-      >
+      <div className="accordion-header" onClick={() => setOpen(!open)}>
         <div className="accordion-header-left">
           <div className="tooltip-inline">
-            <span className={`severity-badge ${sev?.cls ?? "severity-none"}`}>
-              <PrivacyTypeIcon identifier={privacyType.identifier} />
-              {sevLabel}
-            </span>
+            <button
+              aria-controls={panelId}
+              aria-expanded={open}
+              className="inline-header-toggle"
+              id={headerId}
+              onClick={(e) => {
+                // The row's convenience onClick would double-toggle.
+                e.stopPropagation();
+                setOpen(!open);
+              }}
+              type="button"
+            >
+              <span className={`severity-badge ${sev?.cls ?? "severity-none"}`}>
+                <PrivacyTypeIcon identifier={privacyType.identifier} />
+                {sevLabel}
+              </span>
+            </button>
             {sevDescription && <InfoTooltip text={sevDescription} />}
           </div>
           <span style={{ fontSize: 13, color: "var(--text-2)" }}>

@@ -98,7 +98,11 @@ export default function ImportedAppsTable({
       <div
         className={`imported-apps-table-rows${isEmpty ? " is-empty" : ""}`}
         data-testid="imported-apps-rows"
-        role="list"
+        // No list role while empty — the hint <div> is not a listitem,
+        // and a role="list" whose only child isn't one is an
+        // aria-required-children violation. The role comes back with
+        // the first committed row.
+        role={isEmpty ? undefined : "list"}
       >
         {isEmpty ? (
           <div className="imported-apps-table-empty-hint">
@@ -120,6 +124,10 @@ export default function ImportedAppsTable({
           on "+ Add" click or Cmd/Ctrl-Enter inside the textarea. */}
       <div className="imported-apps-table-add">
         <textarea
+          // A placeholder is not an accessible name (it vanishes as
+          // soon as the field has content) — the aria-label is the
+          // programmatic name per WCAG 3.3.2 / 4.1.2.
+          aria-label={t("add_aria_label")}
           className="textarea imported-apps-table-add-input"
           data-testid="onboard-app-names"
           onChange={(e) => onPendingChange(e.target.value)}
