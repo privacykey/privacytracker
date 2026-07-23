@@ -835,6 +835,7 @@
       "task_steps_label": "{done} / {total} 步"
     },
     "search_block": {
+      "candidates_group_aria": "“{query}”的 App Store 匹配结果",
       "edit_app_name": "应用名称",
       "edit_seller": "开发者",
       "edit_seller_csv": "（来自 CSV — 调整以重新排序）",

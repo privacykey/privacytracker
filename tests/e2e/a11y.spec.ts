@@ -253,7 +253,7 @@ browserFlow(
     });
 
     // Step 3 — matched block with the candidate list expanded, so the
-    // candidate rows (the surface awaiting native controls) are in
+    // candidate rows (a roving radiogroup of role=radio buttons) are in
     // the scanned DOM.
     await page.getByTestId("onboard-app-names").fill("Notes");
     await page.getByTestId("imported-apps-add").click();

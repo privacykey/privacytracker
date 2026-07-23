@@ -5705,8 +5705,18 @@ html[data-theme-override="high-contrast"] .nav {
   display: flex;
   gap: 12px;
   align-items: center;
+  width: 100%;
   padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  /* The row is a <button role="radio"> (native semantics for the
+     candidate picker) — neutralise the UA button chrome so it keeps
+     rendering as the flex row it always was. */
+  appearance: none;
   cursor: pointer;
+  background: transparent;
+  border: 0;
   border-radius: var(--r-md);
   transition: background 0.12s;
 }
