@@ -14,10 +14,9 @@ import { tabTo } from "./helpers/keyboard";
  * "Keyboard navigation" system setting makes WebKit skip buttons and
  * links entirely, which is an OS behaviour, not a bug (see AGENTS.md).
  *
- * The candidate-selection spec at the bottom is `fixme`-gated: it is
- * the acceptance test for the tracked candidate-selection fix
- * (candidate rows are bare clickable <div>s today). Remove the `fixme`
- * in the PR that converts them to native controls.
+ * Covers the full manual-entry path including candidate selection —
+ * the candidate rows are a roving radiogroup, so the last spec guards
+ * the arrow-key selection contract.
  */
 
 const sameOriginHeaders = {
@@ -186,49 +185,62 @@ browserFlow(
 );
 
 // ---------------------------------------------------------------------------
-// Acceptance test for the tracked candidate-selection fix
+// Candidate selection — regression guard for the radiogroup conversion
 // ---------------------------------------------------------------------------
 //
-// The candidate rows in SearchResultBlock are bare clickable <div>s
-// today (no role, no tabIndex, no keyboard handler), so this spec
-// cannot pass. It documents the required end state: expand the
-// alternate candidates and choose one using only the keyboard. When
-// the fix converts the rows to native controls (radiogroup pattern, like
-// the wizard's method cards), remove this `fixme` and the spec becomes
-// the regression guard for that fix.
+// The candidate rows are `<button role="radio">` inside a roving
+// radiogroup (lib/use-roving-radiogroup.ts): Tab enters the group on
+// the chosen row, arrows move with selection-follows-focus. This spec
+// picks the non-default Apple candidate using only the keyboard.
 
-// `test.fixme` (not `browserFlow.fixme`) — the CODEX_SANDBOX alias is
-// `test.skip`, which has no `.fixme` property; fixme already never runs.
-test.fixme("keyboard-only: pick a non-default candidate in the match step (pending candidate-row fix)", async ({
-  page,
-}) => {
-  await mockSearchFromFixtures(page);
-  await keyboardToTextEntry(page);
+browserFlow(
+  "keyboard-only: pick a non-default candidate in the match step",
+  async ({ page }) => {
+    await mockSearchFromFixtures(page);
+    await keyboardToTextEntry(page);
 
-  const textarea = page.getByTestId("onboard-app-names");
-  await tabTo(page, textarea);
-  await page.keyboard.type("Notes");
-  const addBtn = page.getByTestId("imported-apps-add");
-  await tabTo(page, addBtn);
-  await page.keyboard.press("Enter");
-  const searchBtn = page.getByTestId("onboard-search");
-  await tabTo(page, searchBtn);
-  await page.keyboard.press("Enter");
+    const textarea = page.getByTestId("onboard-app-names");
+    await tabTo(page, textarea);
+    await page.keyboard.type("Notes");
+    const addBtn = page.getByTestId("imported-apps-add");
+    await tabTo(page, addBtn);
+    await page.keyboard.press("Enter");
+    const searchBtn = page.getByTestId("onboard-search");
+    await tabTo(page, searchBtn);
+    await page.keyboard.press("Enter");
 
-  const block = page
-    .locator(".search-result-item")
-    .filter({ hasText: "Notes" });
-  await expect(block).toHaveCount(1);
+    const block = page
+      .locator(".search-result-item")
+      .filter({ hasText: "Notes" });
+    await expect(block).toHaveCount(1);
 
-  // Expand the alternate candidates from the keyboard.
-  const showMore = block.locator(".show-more-btn");
-  await tabTo(page, showMore);
-  await page.keyboard.press("Enter");
+    // The auto-chosen top candidate is the group's tab stop.
+    const defaultRow = block
+      .locator(".candidate-row")
+      .filter({ hasText: "Random Notes Co" });
 
-  // Reach the Apple candidate row and select it — this is the part
-  // that requires the candidate rows to become native controls.
-  const appleRow = block.locator(".candidate-row").filter({ hasText: "Apple" });
-  await tabTo(page, appleRow);
-  await page.keyboard.press("Space");
-  await expect(appleRow).toHaveClass(/chosen/);
-});
+    // Expand the alternate candidates from the keyboard.
+    const showMore = block.locator(".show-more-btn");
+    await tabTo(page, showMore);
+    await page.keyboard.press("Enter");
+
+    // Radios sit before the show-more button in DOM order, so step
+    // BACK into the group — focus lands on the chosen radio (the
+    // roving tab stop), then ArrowDown moves to the Apple row and
+    // selects it (selection follows focus).
+    await page.keyboard.press("Shift+Tab");
+    await expect(defaultRow).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+
+    const appleRow = block
+      .locator(".candidate-row")
+      .filter({ hasText: "Apple" });
+    await expect(appleRow).toBeFocused();
+    await expect(appleRow).toHaveClass(/chosen/);
+    await expect(appleRow).toHaveAttribute("aria-checked", "true");
+    await expect(defaultRow).toHaveAttribute("aria-checked", "false");
+
+    // The import CTA reflects the keyboard-made choice.
+    await expect(page.getByTestId("onboard-confirm-import")).toBeEnabled();
+  }
+);

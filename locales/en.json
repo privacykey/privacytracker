@@ -835,6 +835,7 @@
       "task_steps_label": "{done} / {total} steps"
     },
     "search_block": {
+      "candidates_group_aria": "App Store matches for {query}",
       "edit_app_name": "App name",
       "edit_seller": "Seller",
       "edit_seller_csv": "(from CSV — tweak to re-rank)",

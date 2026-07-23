@@ -8990,6 +8990,7 @@ function SearchResultBlock({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(result.query);
   const [draftDeveloper, setDraftDeveloper] = useState(developerHint);
+  const candidateRadioKeyDown = useRovingRadioGroup();
 
   // When collapsed and the user has chosen a candidate, show THAT one — not
   // the iTunes #1 pick — so "Show less" after selecting a non-top match
@@ -9313,75 +9314,93 @@ function SearchResultBlock({
         </div>
       ) : (
         <>
-          {candidates.map((candidate) => {
-            // Bundle-ID fallback catches the legacy-import duplicate
-            // case where the same physical app exists under a
-            // different App Store track ID — see TrackedApp comment.
-            const candidateTracked =
-              trackedByAppleId.get(candidate.appleId) ??
-              (candidate.bundleId
-                ? trackedByBundleId?.get(candidate.bundleId)
-                : undefined);
-            const bundleMismatch = Boolean(
-              result.sourceBundleId &&
-                candidate.bundleId &&
-                result.sourceBundleId.toLowerCase() !==
-                  candidate.bundleId.toLowerCase()
-            );
-            return (
-              <div
-                // The `tracked` modifier applies row-level styling (tint
-                // + left border). The inline "Tracked" chip next to the
-                // candidate name is back on top of that — removing it
-                // made the selected-candidate case ambiguous when the
-                // block-level "Re-sync App info" pill scrolled off-
-                // screen on long lists, so the per-row chip earns its
-                // keep even with some visual duplication.
-                className={`candidate-row ${chosen?.appleId === candidate.appleId ? "chosen" : ""} ${candidateTracked ? "tracked" : ""}`}
-                key={candidate.appleId}
-                onClick={() =>
-                  onChoose(
-                    chosen?.appleId === candidate.appleId ? null : candidate
-                  )
-                }
-              >
-                <span
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 4,
-                    border: `2px solid ${chosen?.appleId === candidate.appleId ? "var(--blue)" : "var(--border-strong)"}`,
-                    background:
-                      chosen?.appleId === candidate.appleId
-                        ? "var(--blue)"
-                        : "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 10,
-                    color: "#fff",
-                    flexShrink: 0,
-                    transition: "all 0.15s",
-                  }}
+          {/* Native radio semantics for candidate selection (roving
+              radiogroup pattern — see lib/use-roving-radiogroup.ts and
+              the biome.jsonc a11y-override rationale): Tab enters the
+              group on the chosen row, arrows move with selection-
+              follows-focus, and clicking/Space on the chosen row again
+              still clears it (toggle radios — the hook's checked guard
+              keeps arrow passes from clearing on the way through). */}
+          <div
+            aria-label={t("candidates_group_aria", { query: result.query })}
+            onKeyDown={candidateRadioKeyDown}
+            role="radiogroup"
+          >
+            {candidates.map((candidate, candidateIndex) => {
+              // Bundle-ID fallback catches the legacy-import duplicate
+              // case where the same physical app exists under a
+              // different App Store track ID — see TrackedApp comment.
+              const candidateTracked =
+                trackedByAppleId.get(candidate.appleId) ??
+                (candidate.bundleId
+                  ? trackedByBundleId?.get(candidate.bundleId)
+                  : undefined);
+              const bundleMismatch = Boolean(
+                result.sourceBundleId &&
+                  candidate.bundleId &&
+                  result.sourceBundleId.toLowerCase() !==
+                    candidate.bundleId.toLowerCase()
+              );
+              const isChosen = chosen?.appleId === candidate.appleId;
+              return (
+                <button
+                  aria-checked={isChosen}
+                  // The `tracked` modifier applies row-level styling (tint
+                  // + left border). The inline "Tracked" chip next to the
+                  // candidate name is back on top of that — removing it
+                  // made the selected-candidate case ambiguous when the
+                  // block-level "Re-sync App info" pill scrolled off-
+                  // screen on long lists, so the per-row chip earns its
+                  // keep even with some visual duplication.
+                  className={`candidate-row ${isChosen ? "chosen" : ""} ${candidateTracked ? "tracked" : ""}`}
+                  key={candidate.appleId}
+                  onClick={() => onChoose(isChosen ? null : candidate)}
+                  role="radio"
+                  tabIndex={rovingTabIndex(
+                    isChosen,
+                    candidateIndex,
+                    chosenIsVisibleWhenCollapsed
+                  )}
+                  type="button"
                 >
-                  {chosen?.appleId === candidate.appleId ? "✓" : ""}
-                </span>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 4,
+                      border: `2px solid ${isChosen ? "var(--blue)" : "var(--border-strong)"}`,
+                      background: isChosen ? "var(--blue)" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 10,
+                      color: "#fff",
+                      flexShrink: 0,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {isChosen ? "✓" : ""}
+                  </span>
 
-                {candidate.iconUrl && (
-                  <Image
-                    alt={candidate.name}
-                    className="candidate-icon"
-                    height={40}
-                    src={candidate.iconUrl}
-                    style={{ objectFit: "cover" }}
-                    unoptimized
-                    width={40}
-                  />
-                )}
-                <div className="candidate-body">
-                  <div className="candidate-name">
-                    {candidate.name}
-                    {/* Inline "already tracking" chip. Renders for every
+                  {candidate.iconUrl && (
+                    <Image
+                      // Decorative inside the radio button — the adjacent
+                      // candidate-name text IS the accessible name; a
+                      // non-empty alt would read the name twice.
+                      alt=""
+                      className="candidate-icon"
+                      height={40}
+                      src={candidate.iconUrl}
+                      style={{ objectFit: "cover" }}
+                      unoptimized
+                      width={40}
+                    />
+                  )}
+                  <div className="candidate-body">
+                    <div className="candidate-name">
+                      {candidate.name}
+                      {/* Inline "already tracking" chip. Renders for every
                         tracked candidate (not just the chosen one) so
                         users browsing alternate matches can still tell
                         which rows would re-sync rather than add a
@@ -9391,33 +9410,34 @@ function SearchResultBlock({
                         deliberate: the chip is visible alongside the
                         name even on long lists where the block header
                         has scrolled off. */}
-                    {candidateTracked && (
-                      <span
-                        aria-label={t("candidate_tracking_aria")}
-                        className="candidate-tracked-chip"
-                      >
-                        {t("candidate_tracking_chip")}
-                      </span>
-                    )}
-                    {bundleMismatch && (
-                      <span className="candidate-bundle-warning">
-                        Bundle differs
-                      </span>
+                      {candidateTracked && (
+                        <span
+                          aria-label={t("candidate_tracking_aria")}
+                          className="candidate-tracked-chip"
+                        >
+                          {t("candidate_tracking_chip")}
+                        </span>
+                      )}
+                      {bundleMismatch && (
+                        <span className="candidate-bundle-warning">
+                          Bundle differs
+                        </span>
+                      )}
+                    </div>
+                    <div className="candidate-dev">{candidate.developer}</div>
+                    {result.sourceBundleId && (
+                      <div className="candidate-dev">
+                        Imported {result.sourceBundleId}
+                        {candidate.bundleId
+                          ? ` · App Store ${candidate.bundleId}`
+                          : ""}
+                      </div>
                     )}
                   </div>
-                  <div className="candidate-dev">{candidate.developer}</div>
-                  {result.sourceBundleId && (
-                    <div className="candidate-dev">
-                      Imported {result.sourceBundleId}
-                      {candidate.bundleId
-                        ? ` · App Store ${candidate.bundleId}`
-                        : ""}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
 
           {result.candidates.length > 1 && (
             <button
