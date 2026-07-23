@@ -144,6 +144,15 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     let port = pick_free_port()?;
     let data_dir = resolve_data_dir(app)?;
     std::fs::create_dir_all(&data_dir)?;
+    // Private data dir (0700) before the sidecar boots — the Node side
+    // chmods the DB files themselves on open (lib/db.ts), but the dir
+    // itself should never be world-listable even briefly. Best-effort:
+    // a perms failure must not stop the sidecar from starting.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&data_dir, std::fs::Permissions::from_mode(0o700));
+    }
 
     let server_js = resolve_server_js(app, &data_dir)?;
     let node = resolve_node_binary(&server_js)?;

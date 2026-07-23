@@ -25,13 +25,46 @@ export const dataDir = process.env.PRIVACYTRACKER_DATA_DIR
   ? path.resolve(process.env.PRIVACYTRACKER_DATA_DIR)
   : path.join(process.cwd(), "data");
 if (!(isBuildPhase || fs.existsSync(dataDir))) {
-  fs.mkdirSync(dataDir, { recursive: true });
+  fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 }
 
 export const dbPath = isBuildPhase
   ? ":memory:"
   : path.join(dataDir, "privacy.db");
+
+/*
+ * Tighten on-disk permissions: 0700 on the data dir, 0600 on the DB and
+ * its WAL/SHM sidecars. The file holds the user's full app inventory,
+ * notes, and (today) AI provider keys; the process umask would otherwise
+ * leave everything world-readable on multi-user machines. Runs on every
+ * open so existing installs are fixed on the next boot, and BEFORE the
+ * journal_mode=WAL pragma so freshly-created -wal/-shm files inherit the
+ * 0600 (SQLite copies the main DB file's mode onto its sidecar files).
+ * Best-effort by design: chmod is meaningless on Windows and can fail on
+ * exotic mounts — a permissions failure must never prevent the DB from
+ * opening.
+ */
+export function tightenDataPermissions(): void {
+  if (isBuildPhase) {
+    return;
+  }
+  const targets: [string, number][] = [
+    [dataDir, 0o700],
+    [dbPath, 0o600],
+    [`${dbPath}-wal`, 0o600],
+    [`${dbPath}-shm`, 0o600],
+  ];
+  for (const [target, mode] of targets) {
+    try {
+      fs.chmodSync(target, mode);
+    } catch {
+      // Target missing (WAL not created yet) or FS without POSIX modes.
+    }
+  }
+}
+
 const db = new Database(dbPath);
+tightenDataPermissions();
 
 db.pragma("journal_mode = WAL");
 db.pragma("busy_timeout = 5000");
