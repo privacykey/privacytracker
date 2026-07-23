@@ -159,6 +159,8 @@ The timeline renders wayback rows with a purple dot (`.timeline-dot.wayback`), a
 
 Pragmas set on open: `journal_mode = WAL`, `busy_timeout = 5000`, `foreign_keys = ON`. The DB file path is always `<cwd>/data/privacy.db`, created on demand. `better-sqlite3` is declared in top-level `serverExternalPackages` in `next.config.js` — keep it there so Next doesn't try to bundle it.
 
+**Permissions are private by contract:** every open runs `tightenDataPermissions()` (`lib/db.ts`) — `0700` on the data dir, `0600` on `privacy.db` + `-wal`/`-shm` — so pre-existing loose installs are fixed on their next boot, and the WAL pragma runs *after* the chmod so sidecar files inherit `0600`. The Tauri sidecar sets `0700` on the dir at creation too (`src-tauri/src/sidecar.rs`). Best-effort on purpose (no-op on Windows; never fatal). Consequences: on a bind-mount deploy the host user needs `sudo` to look inside `./data` (CI's `compose-smoke` does `sudo test -f`), and anything new that writes secrets inside the data dir should still set its own `0600` like `lib/backup.ts` does. Pinned by `tests/app/data-dir-permissions.test.ts`.
+
 All DB calls are **synchronous**. Multi-step writes use `db.transaction(() => { … })()` (see `saveToDb` in `lib/scraper.ts`) — follow that pattern for any new write path that touches more than one table.
 
 ### API surface (`app/api/*/route.ts`)

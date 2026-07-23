@@ -387,7 +387,11 @@ jobs:
           # Proves uid 100 could actually write through the bind mount — the
           # core of BUG 2. /api/ready only goes green once the data dir is
           # writable, but assert the file exists too for an unambiguous signal.
-          test -f data/privacy.db
+          # sudo because the app chmods data/ to 0700 (owned by uid 100) on
+          # open — see tightenDataPermissions in lib/db.ts — so the runner
+          # user can no longer stat inside it. That lockdown is the intended
+          # behaviour, and this assertion must not depend on it being absent.
+          sudo test -f data/privacy.db
 
       - name: Stop root compose (bind mount)
         if: always()
