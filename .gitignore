@@ -101,3 +101,7 @@ __smoketest.ts
 storybook-static
 /.next-stress
 /scripts/stress/results/
+
+# Local a11y/e2e iteration builds (PLAYWRIGHT_PORT=3001 + NEXT_DIST_DIR=.next-e2e,
+# so the suite can run alongside a long-lived `next dev` holding :3000 and .next)
+/.next-e2e
