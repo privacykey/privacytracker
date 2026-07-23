@@ -41,5 +41,16 @@
       "matchPackageNames": ["ghcr.io/privacykey/privacytracker"],
       "enabled": false
     }
+  ],
+  "customManagers": [
+    {
+      "description": "The Dockerfile bootstraps pnpm from ARG PNPM_VERSION, which must stay in lockstep with `packageManager` in package.json and the pnpm/action-setup pins in the workflows. Treat it as the npm `pnpm` package so the same bump lands in the same grouped non-major PR — without this it drifts (PR #125 moved everything to 11.12.0 while the ARG stayed 11.1.2).",
+      "customType": "regex",
+      "managerFilePatterns": ["/^Dockerfile$/"],
+      "matchStrings": ["ARG PNPM_VERSION=(?<currentValue>.*)"],
+      "datasourceTemplate": "npm",
+      "packageNameTemplate": "pnpm",
+      "versioningTemplate": "npm"
+    }
   ]
 }
