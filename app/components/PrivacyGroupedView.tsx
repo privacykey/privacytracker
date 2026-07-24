@@ -292,43 +292,34 @@ function CategoryCard({
       ref={cardRef}
     >
       {/*
-        Card header — used to be a `<button>` but it nested another
-        `<button>` (InfoTooltip's trigger) inside, which is invalid HTML
-        and produced a Next.js hydration error. Switching to a
-        `role="button"` div sidesteps the nesting rule while keeping
-        every behaviour the original button had:
-          • click — `onClick` toggles expand
-          • Enter / Space keys — explicit `onKeyDown` (native buttons
-            handle these automatically; div+role doesn't, hence the
-            handler below)
-          • aria-expanded — same attribute on a different element
-          • focusable — `tabIndex={0}` puts it in the tab order
-        Visually unchanged because `.pmap-card-header` styling doesn't
-        depend on the element being a `<button>`.
+        Card header. The toggle is a real `<button>` wrapping the card
+        title, with the `InfoTooltip` as its SIBLING — the previous
+        role="button" div contained the tooltip's own <button>, i.e. a
+        focusable control nested inside a control (axe
+        `nested-interactive`; same defect the app-detail accordion
+        had). The row div keeps a plain onClick as a pointer-only
+        convenience so the whole header stays clickable; keyboard and
+        AT users get the native button.
       */}
-      <div
-        aria-expanded={expanded}
-        className="pmap-card-header"
-        onClick={() => setExpanded((v) => !v)}
-        onKeyDown={(e) => {
-          // Mirror the native <button> keyboard contract: Enter and
-          // Space both activate. preventDefault on Space stops the
-          // page from scrolling alongside our toggle.
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setExpanded((v) => !v);
-          }
-        }}
-        role="button"
-        tabIndex={0}
-      >
+      <div className="pmap-card-header" onClick={() => setExpanded((v) => !v)}>
         <span aria-hidden="true" className="pmap-card-icon">
           {icon}
         </span>
 
         <span className="pmap-card-title-block">
           <span className="pmap-card-title-row">
-            <span className="pmap-card-title">{label}</span>
+            <button
+              aria-expanded={expanded}
+              className="inline-header-toggle"
+              onClick={(e) => {
+                // The row's convenience onClick would double-toggle.
+                e.stopPropagation();
+                setExpanded((v) => !v);
+              }}
+              type="button"
+            >
+              <span className="pmap-card-title">{label}</span>
+            </button>
             {meta?.description && (
               <span
                 className="pmap-card-info"

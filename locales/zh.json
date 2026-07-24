@@ -637,6 +637,7 @@
         "empty_header": "暂无应用",
         "count_header": "{count, plural, other {# 个应用待搜索}}",
         "empty_hint": "在上方拖入 Apple Configurator 的 CSV、粘贴截图，或在下方输入名称开始。",
+        "add_aria_label": "要添加的应用名称，每行一个",
         "add_placeholder": "添加更多应用 —— 每行一个，按 ⌘/Ctrl-Enter 添加",
         "add_label": "+ 加入列表",
         "remove_title": "从列表中移除 {name}",
@@ -2627,6 +2628,7 @@
   },
   "nav": {
     "brand": "privacytracker",
+    "brand_home_aria": "privacytracker — 主页",
     "links": {
       "home": "首页",
       "apps": "应用",

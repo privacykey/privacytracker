@@ -38,8 +38,7 @@ const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
 // Known tracked issues — delete each entry in the same PR as its fix
 // ---------------------------------------------------------------------------
 
-/** Reason strings, shared so the entries stay greppable per fixing PR. */
-const R_NAMES = "pending fix: accessible names / labels / structure";
+/** Reason string, shared so the entries stay greppable per fixing PR. */
 const R_CONTRAST = "pending fix: colour-contrast sweep of secondary text/links";
 
 const contrast = (match: string): KnownIssue => ({
@@ -48,27 +47,9 @@ const contrast = (match: string): KnownIssue => ({
   reason: R_CONTRAST,
 });
 
-/**
- * The unlabeled app-names textarea (a known, tracked defect) is NOT
- * listed here: axe's accessible-name computation accepts a placeholder,
- * so the `label` rule never fires on it. That defect is covered by
- * human review + the keyboard spec, not this gate.
- */
 const KNOWN_ONBOARD: KnownIssue[] = [
   contrast("kbd-hint-link"),
   contrast("site-info-hint-link"),
-];
-
-/** Step 2 only — the violation exists while the import table is empty
- * (its hint <div> is the sole child of a role="list" container), so it
- * disappears by the match step once rows are committed. */
-const KNOWN_ONBOARD_STEP2: KnownIssue[] = [
-  ...KNOWN_ONBOARD,
-  {
-    rule: "aria-required-children",
-    match: "imported-apps-table-rows",
-    reason: R_NAMES,
-  },
 ];
 
 const KNOWN_WELCOME: KnownIssue[] = [
@@ -87,27 +68,13 @@ const KNOWN_DASHBOARD: KnownIssue[] = [
 ];
 
 const KNOWN_APP_DETAIL: KnownIssue[] = [
-  // Accordion header nests the InfoTooltip <button> inside a
-  // role="button" element.
-  { rule: "nested-interactive", match: "accordion-header", reason: R_NAMES },
-  // Gate-found: the collapsed annotations sidebar is aria-hidden but
-  // keeps focusable children in the tab order.
-  { rule: "aria-hidden-focus", match: "annotations-sidebar", reason: R_NAMES },
   contrast("detail-a11y-chip"),
   contrast("detail-tab"),
   contrast("app-detail-footer-link"),
   contrast("kbd-hint-link"),
 ];
 
-const KNOWN_MOBILE_NAV: KnownIssue[] = [
-  // "Add Apps" link loses its accessible name in compact tiers (label
-  // display:none, visible "+" aria-hidden).
-  { rule: "link-name", match: "nav-add-apps", reason: R_NAMES },
-  // Gate-found: the brand/home link is icon-only with no accessible
-  // name at mobile width.
-  { rule: "link-name", match: "nav-brand", reason: R_NAMES },
-  contrast("nav-drawer-link"),
-];
+const KNOWN_MOBILE_NAV: KnownIssue[] = [contrast("nav-drawer-link")];
 
 // ---------------------------------------------------------------------------
 // Shared setup helpers
@@ -249,7 +216,7 @@ browserFlow(
     // Step 2 — the app-names textarea view.
     await expect(page.getByTestId("onboard-app-names")).toBeVisible();
     await expectNoBlockingViolations(page, "onboard-step2", {
-      knownIssues: KNOWN_ONBOARD_STEP2,
+      knownIssues: KNOWN_ONBOARD,
     });
 
     // Step 3 — matched block with the candidate list expanded, so the

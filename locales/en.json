@@ -637,6 +637,7 @@
         "empty_header": "No apps yet",
         "count_header": "{count, plural, one {# app ready to search} other {# apps ready to search}}",
         "empty_hint": "Drop a Configurator CSV above, paste screenshots, or type names below to get started.",
+        "add_aria_label": "App names to add, one per line",
         "add_placeholder": "Add more apps — one per line, then ⌘/Ctrl-Enter to add",
         "add_label": "+ Add to list",
         "remove_title": "Remove {name} from the list",
@@ -2627,6 +2628,7 @@
   },
   "nav": {
     "brand": "privacytracker",
+    "brand_home_aria": "privacytracker — home",
     "links": {
       "home": "Home",
       "apps": "Apps",

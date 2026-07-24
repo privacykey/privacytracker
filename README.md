@@ -67,6 +67,18 @@ Full documentation lives at
 - [Architecture & workflows (in-repo)](docs/ARCHITECTURE.md) — end-to-end diagrams of every process, with weak points marked and an improvement backlog
 - [Security](https://privacytracker-docs.privacykey.org/security) — how to report a vulnerability
 
+## Where your data lives
+
+Everything is stored in a single local SQLite file (`data/privacy.db` — a
+Docker named volume by default, or the app-data directory in the desktop
+build). The app restricts it to your user account on open (`0700` on the
+directory, `0600` on the database files). Be aware that if you configure
+an AI provider, **your API key is stored in plaintext inside that local
+database** — anyone with access to your user account (or your backups)
+can read it, so treat the machine as the trust boundary and prefer a
+key with a spending cap. Moving desktop keys into the OS keychain is
+planned.
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).

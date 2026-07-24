@@ -3113,13 +3113,12 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .accordion-header {
-  /* Now rendered as a <button>, so reset UA button defaults and stretch
-     the element to fill the accordion section. */
+  /* Plain div row (the real toggle is the .inline-header-toggle
+     <button> inside it); the button-ish resets are kept so the rule
+     stays element-agnostic. */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* Now rendered as a <button>, so reset UA button defaults and stretch
-     the element to fill the accordion section. */
   width: 100%;
   padding: 18px 20px;
   font: inherit;
@@ -3138,6 +3137,25 @@ html[data-theme-override="high-contrast"] .nav {
 }
 .accordion-header:hover {
   background: var(--surface-hover);
+}
+
+/* The real toggle <button> inside expandable headers (app-detail
+   accordion, privacy-map cards). The row div supplies the visual
+   chrome and a pointer-only convenience onClick; this button carries
+   aria-expanded + keyboard activation and must render as if it were
+   plain inline content. Focus ring comes from the global
+   :focus-visible rule. */
+.inline-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  appearance: none;
+  cursor: pointer;
+  background: none;
+  border: 0;
 }
 
 .accordion-header-left {
