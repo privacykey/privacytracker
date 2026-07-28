@@ -437,6 +437,7 @@
     }
   },
   "focus_purpose": {
+    "advanced_summary": "高级：微调各项功能",
     "primary_aria": "你想做什么",
     "audience_heading": "这是为谁使用？",
     "primary": {

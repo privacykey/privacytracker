@@ -82,7 +82,26 @@ settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
   values from `GET /api/feature-flags` and writes USER OVERRIDES via
   `POST`/`DELETE /api/feature-flags/overrides` — overrides win last in the
   resolver, so a toggle here beats whatever the goals set (round-trip pinned
-  by `tests/app/feature-flag-overrides-route.test.ts`).
+  by `tests/app/feature-flag-overrides-route.test.ts`). In **onboarding**
+  it renders inside a collapsed `<details class="focus-purpose-advanced">`
+  ("Advanced: fine-tune individual features"); in **settings** it stays
+  expanded. The disclosure exists because six always-open toggles pushed
+  the primary CTA off a phone screen — keep it collapsed by default.
+- **Post-onboarding guide: exactly one.** The `TaskList` checklist is the
+  primary guide and is always on; `flag.onboarding.coachmark_tour` now
+  defaults **off** (it used to be `on`, so a new user landed on a dimmed
+  dashboard with a tour whose first step pointed at the checklist behind
+  it). It stays user-overridable — don't re-enable the default without
+  removing the checklist.
+- **AI summaries default to `disabled`.** The wizard's provider state
+  starts at `"disabled"` and a stored `"disabled"` is honoured on load
+  (there used to be a remap back to `"openai"`, which made the opt-out
+  unrepresentable). "Save & generate" is disabled until the provider's
+  fields validate — `aiSettingsComplete` in `OnboardWizard.tsx` is the
+  single source of truth, shared with the "Test connection" button.
+- First-run acceptance across the five audiences (monitor / cleanup /
+  loved_one / guardian+age-band / no-goals) plus the disclosure and
+  sticky-CTA contracts is pinned by `tests/e2e/onboarding-personas.spec.ts`.
 
 The read-only `describePurpose` (`lib/onboarding-purpose.ts`) is the one-way
 bridge that collapses a stored focus back to a single tile label

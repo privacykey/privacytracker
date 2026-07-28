@@ -645,7 +645,10 @@ export default function OnboardWizard({
 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [storedAi, setStoredAi] = useState<StoredAiSettings | null>(null);
-  const [aiProvider, setAiProvider] = useState<AIProvider>("openai");
+  /* Default OFF, not OpenAI: sending every app's privacy policy to a
+     third-party API is opt-in, and pre-selecting a provider the user
+     has no key for meant the step opened in an unsatisfiable state. */
+  const [aiProvider, setAiProvider] = useState<AIProvider>("disabled");
   const [aiApiKey, setAiApiKey] = useState("");
   const [aiBaseUrl, setAiBaseUrl] = useState(resolveDefaultBaseUrl("openai"));
   const [aiModel, setAiModel] = useState(resolveDefaultModel("openai"));
@@ -1274,8 +1277,11 @@ export default function OnboardWizard({
         const loadedProvider = normalizeAiProvider(
           data.ai_provider ?? "disabled"
         );
-        const nextProvider =
-          loadedProvider === "disabled" ? "openai" : loadedProvider;
+        /* Honour a stored "disabled" instead of flipping it back to
+           OpenAI — that remap made the opt-out unrepresentable in the
+           wizard, so a user who declined summaries saw a provider
+           pre-selected again on their next visit. */
+        const nextProvider = loadedProvider;
         const nextAi: StoredAiSettings = {
           provider: nextProvider,
           apiKey: data.ai_api_key ?? "",
@@ -4052,6 +4058,19 @@ export default function OnboardWizard({
     void startScraping(entries, list);
   };
 
+  /**
+   * Are the AI provider fields complete enough to save? Mirrors the
+   * checks inside `saveAiSettings` so the primary CTA can be disabled
+   * up-front instead of letting the user click into an inline error —
+   * the same condition the "Test connection" button already used.
+   * `disabled` needs no fields, so it is trivially valid.
+   */
+  const aiSettingsComplete =
+    aiProvider === "disabled" ||
+    (Boolean(aiBaseUrl.trim()) &&
+      Boolean(aiModel.trim()) &&
+      (!providerRequiresApiKey(aiProvider) || Boolean(aiApiKey.trim())));
+
   const saveAiSettings = async (): Promise<boolean> => {
     setAiError("");
 
@@ -5248,9 +5267,7 @@ export default function OnboardWizard({
                     <button
                       className="btn btn-secondary ai-test-button"
                       disabled={
-                        aiTestStatus === "testing" ||
-                        !aiBaseUrl.trim() ||
-                        (providerRequiresApiKey(aiProvider) && !aiApiKey.trim())
+                        aiTestStatus === "testing" || !aiSettingsComplete
                       }
                       onClick={() => void testAiConnection()}
                       type="button"
@@ -5324,7 +5341,10 @@ export default function OnboardWizard({
                 <button
                   className="btn btn-primary btn-lg"
                   disabled={
-                    savingAi || !settingsLoaded || aiProvider === "disabled"
+                    savingAi ||
+                    !settingsLoaded ||
+                    aiProvider === "disabled" ||
+                    !aiSettingsComplete
                   }
                   onClick={() => void runPolicyRegeneration()}
                   style={{ flex: 1 }}
