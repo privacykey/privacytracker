@@ -363,7 +363,21 @@ export default function FocusPurposeForm({
           </div>
         )}
 
-        <FeatureToggleRow />
+        {/* Per-feature toggles. In onboarding they sit behind an
+            "Advanced" disclosure: they're an override layer for the
+            goals above, and rendering all six inline pushed the primary
+            CTA off a phone screen entirely. Settings keeps them
+            expanded — someone on that page came to fiddle. */}
+        {mode === "onboarding" ? (
+          <details className="focus-purpose-advanced">
+            <summary className="focus-purpose-advanced-summary">
+              {t("advanced_summary")}
+            </summary>
+            <FeatureToggleRow />
+          </details>
+        ) : (
+          <FeatureToggleRow />
+        )}
 
         {error && (
           <div aria-live="assertive" className="welcome-error" role="alert">

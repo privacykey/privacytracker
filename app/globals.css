@@ -29849,6 +29849,50 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   margin-top: 18px;
 }
 
+/* "Advanced: fine-tune individual features" disclosure wrapping the
+   per-feature toggles during onboarding. Collapsed by default — the
+   goal tiles above already set sensible values, and six always-open
+   toggles pushed the CTA off-screen on phones. */
+.focus-purpose-advanced {
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.focus-purpose-advanced-summary {
+  padding: 12px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.focus-purpose-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Disclosure triangle, rotating on open. */
+.focus-purpose-advanced-summary::before {
+  display: inline-block;
+  margin-right: 8px;
+  content: "\25B8";
+  transition: transform 140ms ease;
+}
+
+.focus-purpose-advanced[open] .focus-purpose-advanced-summary::before {
+  transform: rotate(90deg);
+}
+
+.focus-purpose-advanced-summary:hover {
+  color: var(--text);
+}
+
+/* The row supplies its own heading; inside the disclosure the summary
+   already names the section. */
+.focus-purpose-advanced .feature-toggle-row > .focus-purpose-secondary-heading {
+  display: none;
+}
+
 /* "Who's this for?" — demoted audience control, now a visible 3-up segmented
    control rather than buried in the old Advanced panel. */
 .focus-purpose-audience {
@@ -30080,17 +30124,43 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     max-width: min(680px, 100%);
   }
 
+  /* Goal cards on phones: the old 340px min-height + 142px illustration
+     meant exactly ONE card filled a 844px-tall screen, so the other two
+     goals and the primary CTA were invisible without scrolling. Drop the
+     card floor (content decides) and shrink the illustration.
+
+     The scene's artwork is absolutely positioned at fixed pixel offsets
+     inside an overflow:hidden box, so a shorter box CROPS it (phone icon
+     sliced, only 2 of 4 review rows visible). Instead keep the 152px
+     design box and scale it: the row becomes a block with the radio
+     pinned top-right, the scene is widened by 1/scale so it still fills
+     the card, and the parent's height reclaims the space the transform
+     frees (152 × 0.55 ≈ 84px). */
   .focus-purpose-card--onboarding .focus-purpose-option {
-    min-height: 340px;
-    padding: 20px;
+    min-height: 0;
+    padding: 16px;
   }
 
   .focus-purpose-card--onboarding .focus-purpose-option .method-card-top {
-    min-height: 142px;
+    position: relative;
+    display: block;
+    height: 84px;
+    min-height: 0;
+    margin-bottom: 12px;
   }
 
   .focus-purpose-card--onboarding .focus-purpose-scene {
-    height: 142px;
+    width: calc(100% / 0.55);
+    height: 152px;
+    transform: scale(0.55);
+    transform-origin: top left;
+  }
+
+  .focus-purpose-card--onboarding .focus-purpose-option .method-card-radio {
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin-top: 0;
   }
 
   .focus-purpose-card--onboarding .focus-purpose-secondary-option {
@@ -30100,6 +30170,21 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   .focus-purpose-actions,
   .profile-recommend-header {
     align-items: stretch;
+  }
+
+  /* Keep the primary action reachable without scrolling to the end of
+     the form. The card scrolls under it; the blurred backdrop keeps
+     the button legible over whatever passes beneath. */
+  .focus-purpose-card--onboarding .focus-purpose-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+    margin-top: 12px;
+    background: color-mix(in srgb, var(--bg-2) 92%, transparent);
+    border-top: 1px solid var(--border);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
   }
 
   .profile-recommend-header {
