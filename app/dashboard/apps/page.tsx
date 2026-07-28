@@ -137,7 +137,6 @@ export default function AppsPage() {
       };
     } catch (e) {
       console.warn("[apps-page] flag resolution failed:", e);
-      return;
     }
   })();
 

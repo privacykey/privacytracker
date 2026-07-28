@@ -48,7 +48,10 @@ test("privacy policy sync fetches source text, calls AI once, and stores a norma
     }
     if (url === `${AI_BASE_URL}/chat/completions`) {
       assert.equal(
-        (init?.headers as Record<string, string>).Authorization,
+        // See the matching note in ai-policy-sample.test.ts — the `?.`
+        // keeps a missing `init` an assertion failure rather than a
+        // TypeError thrown from inside the fetch stub.
+        (init?.headers as Record<string, string> | undefined)?.Authorization,
         "Bearer fixture-api-key"
       );
       const requestBody = JSON.parse(String(init?.body)) as Record<string, any>;

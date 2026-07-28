@@ -57,10 +57,7 @@ function sanitizeSpec(raw: string | string[] | undefined): string | undefined {
     } catch {
       /* fall through */
     }
-    return;
   }
-
-  return;
 }
 
 interface ComparePageProps {

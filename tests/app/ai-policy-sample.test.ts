@@ -25,7 +25,11 @@ test("sample policy summary route uses the selected model and saved masked OpenA
     const url = String(input);
     if (url === "https://api.openai.test/v1/chat/completions") {
       assert.equal(
-        (init?.headers as Record<string, string>).Authorization,
+        // `?.` on the cast too: without it, a call that passed no init
+        // would throw a TypeError here instead of failing the assertion,
+        // turning a clear "wrong Authorization header" into a confusing
+        // crash inside the fetch stub.
+        (init?.headers as Record<string, string> | undefined)?.Authorization,
         "Bearer saved-openai-key"
       );
       const requestBody = JSON.parse(String(init?.body)) as Record<string, any>;

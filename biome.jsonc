@@ -68,7 +68,21 @@
         "noImgElement": "off",
         "useTopLevelRegex": "off",
         "noBarrelFile": "off",
-        "noNamespaceImport": "off"
+        "noNamespaceImport": "off",
+        // --- New in ultracite 7.9 / Biome 2.5.5 ---
+        // noJsxPropsBind (682 hits): flags inline arrow props like
+        // `onClick={() => setOpen(true)}`. That's the idiom this entire
+        // UI is written in; silencing it would mean wrapping ~700 call
+        // sites in useCallback for a re-render cost we have never
+        // measured as a problem. Revisit only if profiling says so.
+        "noJsxPropsBind": "off",
+        // noAwaitInLoops (62 hits): sequential awaits here are almost
+        // always DELIBERATE. The scrapers, bulk sync, wayback import and
+        // policy runners walk apps one at a time precisely to stay under
+        // Apple's rate limits — see the 429 handling in
+        // lib/sync-bulk-runner.ts. Promise.all() would be an outage, not
+        // an optimisation.
+        "noAwaitInLoops": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
@@ -84,7 +98,23 @@
         "useDefaultSwitchClause": "off",
         "noDescendingSpecificity": "off",
         "noExportedImports": "off",
-        "useNumericSeparators": "off"
+        "useNumericSeparators": "off",
+        // --- New in ultracite 7.9 / Biome 2.5.5 ---
+        // Stylistic-only, consistent with the convention-driven entries
+        // above. noIncrementDecrement (155) wants `i += 1` over `i++`;
+        // useDestructuring (109) wants `const { a } = obj`;
+        // useConsistentMethodSignatures (26) wants property-style method
+        // types. None change behaviour, all would churn hundreds of
+        // lines across files nobody is otherwise touching.
+        "noIncrementDecrement": "off",
+        "useDestructuring": "off",
+        "useConsistentMethodSignatures": "off",
+        // useErrorCause (22 hits): the only one here with real merit —
+        // attaching `{ cause }` when rethrowing genuinely helps debug
+        // scraper and sync failures. Left off so this dependency bump
+        // stays a policy change rather than a 22-site refactor; worth
+        // adopting deliberately in its own PR.
+        "useErrorCause": "off"
       },
       "suspicious": {
         "noExplicitAny": "off",
@@ -95,7 +125,40 @@
         "noEvolvingTypes": "off",
         "noControlCharactersInRegex": "off",
         "noDuplicateProperties": "off",
-        "noEmptyBlockStatements": "off"
+        "noEmptyBlockStatements": "off",
+        // --- New in ultracite 7.9 / Biome 2.5.5 ---
+        // noUnnecessaryConditions (396 hits): type-aware, and our types
+        // are deliberately more optimistic than reality. Most of this
+        // codebase parses data we do not control — Apple's App Store
+        // JSON, archive.org captures, AI provider responses, user CSVs —
+        // where a field typed non-nullable is absolutely still capable
+        // of arriving undefined. Deleting those guards because the type
+        // says they're redundant is how you turn a resilient parser into
+        // a crash. The guards stay.
+        "noUnnecessaryConditions": "off",
+        // noLeakedRender (434 hits): flags `{cond && <X/>}` because a
+        // numeric/string `cond` would render `0` or `""`. Ours are
+        // booleans or `.length > 0` comparisons, so the pattern is safe
+        // as written, and rewriting 434 sites to ternaries would be pure
+        // churn.
+        "noLeakedRender": "off",
+        // noEqualsToNull (21 hits): `x == null` is an intentional idiom —
+        // it's the concise "null or undefined" check, which is exactly
+        // what we mean at every one of these sites.
+        "noEqualsToNull": "off",
+        // useArraySortCompare (12 hits): every occurrence sorts strings,
+        // where the default lexicographic sort IS the intended order.
+        // Checked individually — no numeric sorts hiding in here.
+        "useArraySortCompare": "off",
+        // noNestedPromises (3 hits): all three are
+        // `await res.json().catch(() => null)`, the standard safe-parse
+        // for a response that may not be JSON. Not a nesting mistake.
+        "noNestedPromises": "off",
+        // noShadow (40 hits): shadowing is mostly small callback params
+        // (`app`, `row`, `err`) reusing an outer name in a tighter
+        // scope, which reads fine. Renaming 40 of them would churn more
+        // than it clarifies.
+        "noShadow": "off"
       },
       "nursery": {
         // Off: this rule is Tailwind-specific (sorts utility classes per
@@ -106,6 +169,30 @@
         // conditional class doesn't merge into the base class name). Still
         // in Biome's nursery tier — unstable on top of being inapplicable.
         "useSortedClasses": "off"
+      }
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        // useSortedKeys (3,556 hits) alphabetises the keys of every
+        // object literal in the repo. Off for two reasons, the second
+        // one non-negotiable:
+        //
+        //   1. It would rewrite ~600 files and bury `git blame` for a
+        //      purely cosmetic ordering, and it fights deliberate
+        //      groupings (config objects, SEVERITY_CONFIG, the tier maps
+        //      in lib/privacy-profile.ts) where related keys sit
+        //      together on purpose.
+        //   2. Object literal order is OBSERVABLE in our data. Snapshots
+        //      are persisted as `JSON.stringify`d blobs in
+        //      `privacy_snapshots.snapshot_json`, and `getChangelog`
+        //      compares a wayback row against an adjacent live row for
+        //      BYTE-IDENTICAL equality to set `matches_live_sync` (see
+        //      AGENTS.md). Reordering keys in the objects that feed a
+        //      snapshot changes those bytes and silently breaks that
+        //      comparison against every row already in users' databases.
+        "useSortedKeys": "off"
       }
     }
   }

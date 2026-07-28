@@ -218,9 +218,7 @@ export async function sidecarBaseUrl(): Promise<string | undefined> {
   try {
     const url = await invoke("sidecar_base_url");
     return typeof url === "string" ? url : undefined;
-  } catch {
-    return;
-  }
+  } catch {}
 }
 
 /**
