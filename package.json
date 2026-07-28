@@ -22,6 +22,7 @@
     "test:ios-import-helper": "python3 -m unittest discover -s tests/ios-app-import -p '*_test.py'",
     "test:tauri": "cargo test --manifest-path src-tauri/Cargo.toml",
     "smoke:release": "node --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/release-smoke.test.ts",
+    "screenshots": "node scripts/capture-screenshots.mjs",
     "audit:repo-settings": "node scripts/audit-github-settings.mjs",
     "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
     "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",

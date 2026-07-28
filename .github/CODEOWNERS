@@ -1,0 +1,31 @@
+# Code owners are requested for review automatically on every pull request
+# that touches a matching path. This file documents the reality that `main`
+# is admin-protected: @AdamXweb is the only account that can merge.
+#
+# Syntax: https://docs.github.com/articles/about-code-owners
+# Later matches win, so the catch-all goes first.
+
+*                       @AdamXweb
+
+# Surfaces where a mistake is expensive or hard to reverse. Called out
+# individually so the review request is obviously deliberate rather than
+# an artefact of the catch-all.
+
+# Release + CI plumbing: a bad workflow can publish or sign something.
+/.github/workflows/     @AdamXweb
+/Dockerfile             @AdamXweb
+/docker-compose.yml     @AdamXweb
+
+# Desktop shell: Tauri capabilities and IPC commands are a security
+# boundary (see AGENTS.md on the three-place command registration).
+/src-tauri/             @AdamXweb
+
+# Storage layer: schema migrations run eagerly on boot against real user
+# data, and the permissions contract lives here.
+/lib/db.ts              @AdamXweb
+/lib/migrations/        @AdamXweb
+
+# Disclosure surfaces — legal and privacy copy shown to users.
+/app/legal/             @AdamXweb
+/app/privacy-policy/    @AdamXweb
+/.github/SECURITY.md    @AdamXweb
