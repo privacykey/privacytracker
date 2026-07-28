@@ -4,7 +4,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { expectNoBlockingViolations, type KnownIssue } from "./helpers/axe";
+import { expectNoBlockingViolations } from "./helpers/axe";
 
 /**
  * Blocking accessibility gate.
@@ -15,10 +15,10 @@ import { expectNoBlockingViolations, type KnownIssue } from "./helpers/axe";
  * violations fail CI (this file runs inside the `quality` job's
  * Playwright step like every other spec here).
  *
- * Known, already-tracked defects are suppressed
- * via per-surface allowlists in `helpers/axe.ts` style — each entry
- * names the fix that must delete it. Everything else is a regression
- * and fails immediately.
+ * The known-issue allowlist (see `helpers/axe.ts`) is EMPTY: every
+ * defect it tracked has been fixed. If a new violation must ship
+ * temporarily, add a per-surface entry whose reason names the pending
+ * fix — and delete it in the same PR as that fix.
  *
  * Keyboard-only coverage lives in `onboarding-keyboard.spec.ts`; this
  * file is DOM/ARIA analysis only (axe cannot see that a plain
@@ -33,48 +33,6 @@ const sameOriginHeaders = {
 // Skip the browser flow inside CODEX_SANDBOX runs — matches the
 // pattern used by every other spec in this directory.
 const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
-
-// ---------------------------------------------------------------------------
-// Known tracked issues — delete each entry in the same PR as its fix
-// ---------------------------------------------------------------------------
-
-/** Reason string, shared so the entries stay greppable per fixing PR. */
-const R_CONTRAST = "pending fix: colour-contrast sweep of secondary text/links";
-
-const contrast = (match: string): KnownIssue => ({
-  rule: "color-contrast",
-  match,
-  reason: R_CONTRAST,
-});
-
-const KNOWN_ONBOARD: KnownIssue[] = [
-  contrast("kbd-hint-link"),
-  contrast("site-info-hint-link"),
-];
-
-const KNOWN_WELCOME: KnownIssue[] = [
-  // SiteInfoHint's floating pill links (Privacy policy / Legal / GitHub).
-  contrast("site-info-hint-link"),
-];
-
-const KNOWN_DASHBOARD: KnownIssue[] = [
-  contrast("site-info-hint-link"),
-  contrast("task-list-card-attribution"),
-  contrast("task-list-add-tray"),
-  contrast("task-journey-detail-actions"),
-  contrast("home-section-count"),
-  contrast("home-layout-footer"),
-  contrast("coachmark-"),
-];
-
-const KNOWN_APP_DETAIL: KnownIssue[] = [
-  contrast("detail-a11y-chip"),
-  contrast("detail-tab"),
-  contrast("app-detail-footer-link"),
-  contrast("kbd-hint-link"),
-];
-
-const KNOWN_MOBILE_NAV: KnownIssue[] = [contrast("nav-drawer-link")];
 
 // ---------------------------------------------------------------------------
 // Shared setup helpers
@@ -193,9 +151,7 @@ browserFlow(
     await page.goto("/welcome");
     await expect(page.locator(".focus-purpose-card").first()).toBeVisible();
 
-    await expectNoBlockingViolations(page, "welcome", {
-      knownIssues: KNOWN_WELCOME,
-    });
+    await expectNoBlockingViolations(page, "welcome");
   }
 );
 
@@ -215,9 +171,7 @@ browserFlow(
 
     // Step 2 — the app-names textarea view.
     await expect(page.getByTestId("onboard-app-names")).toBeVisible();
-    await expectNoBlockingViolations(page, "onboard-step2", {
-      knownIssues: KNOWN_ONBOARD,
-    });
+    await expectNoBlockingViolations(page, "onboard-step2");
 
     // Step 3 — matched block with the candidate list expanded, so the
     // candidate rows (a roving radiogroup of role=radio buttons) are in
@@ -233,9 +187,7 @@ browserFlow(
     await block.locator(".show-more-btn").click();
     await expect(block.locator(".candidate-row").first()).toBeVisible();
 
-    await expectNoBlockingViolations(page, "onboard-match", {
-      knownIssues: KNOWN_ONBOARD,
-    });
+    await expectNoBlockingViolations(page, "onboard-match");
   }
 );
 
@@ -252,9 +204,12 @@ browserFlow(
     await page.goto("/dashboard");
     await expect(page.locator("main").first()).toBeVisible();
 
-    await expectNoBlockingViolations(page, "dashboard", {
-      knownIssues: KNOWN_DASHBOARD,
-    });
+    // The coachmark tour (when it auto-opens) pops in with a ~220ms
+    // entrance animation, and axe measures mid-animation colours as
+    // diluted — let the UI settle before scanning.
+    await page.waitForTimeout(600);
+
+    await expectNoBlockingViolations(page, "dashboard");
   }
 );
 
@@ -271,9 +226,7 @@ browserFlow(
     await page.goto(`/apps/${instagramId}`);
     await expect(page.locator("h1.detail-hero-name")).toHaveText("Instagram");
 
-    await expectNoBlockingViolations(page, "app-detail", {
-      knownIssues: KNOWN_APP_DETAIL,
-    });
+    await expectNoBlockingViolations(page, "app-detail");
   }
 );
 
@@ -297,6 +250,11 @@ browserFlow(
     await expect(menuTrigger).toBeVisible();
     await menuTrigger.click();
 
+    // Same settle as the dashboard scan: the drawer slides in over
+    // 180ms (and the coachmark may be popping in behind it) — scanning
+    // mid-transition measures diluted colours.
+    await page.waitForTimeout(600);
+
     // Scope the scan to the nav element (compact bar + drawer both live
     // inside `nav.nav`). Unscoped, this scan re-covers the dashboard
     // behind the drawer, whose TaskList renders state-dependently
@@ -304,7 +262,6 @@ browserFlow(
     // dashboard scan above already owns that surface deterministically.
     await expectNoBlockingViolations(page, "mobile-nav", {
       include: "nav.nav",
-      knownIssues: KNOWN_MOBILE_NAV,
     });
   }
 );

@@ -176,7 +176,9 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
-    --blue: #0071e3;
+    /* #0066cc, not #0071e3: 4.5:1+ both as text on tinted surfaces
+     (#f2f2f7: 4.99) and under white button labels (5.57). */
+    --blue: #0066cc;
     --blue-hover: #0077ed;
     --blue-soft: #dbeafe;
     --cream: #7a643b;
@@ -236,7 +238,9 @@ html[data-theme-override="light"] {
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
-  --blue: #0071e3;
+  /* #0066cc, not #0071e3: 4.5:1+ both as text on tinted surfaces
+     (#f2f2f7: 4.99) and under white button labels (5.57). */
+  --blue: #0066cc;
   --blue-hover: #0077ed;
   --blue-soft: #dbeafe;
   --cream: #7a643b;
@@ -775,7 +779,10 @@ html[data-theme-override="high-contrast"] .nav {
   padding: 12px 14px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--text-2);
+  /* Full-strength text, not --text-2: the drawer's liquid-glass
+     surface is translucent over whatever content sits behind it, so
+     muted text can't guarantee 4.5:1 on every blend. */
+  color: var(--text);
   border-radius: var(--r-md);
   transition:
     color 120ms ease,
@@ -1066,7 +1073,9 @@ html[data-theme-override="high-contrast"] .nav {
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
-  color: var(--text-2);
+  /* Full-strength for the same translucent-surface reason as
+     .nav-drawer-link above. */
+  color: var(--text);
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
@@ -2065,10 +2074,13 @@ html[data-theme-override="high-contrast"] .nav {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.2;
-  color: var(--accent, #0a84ff);
+  /* --blue nudged toward the theme text colour: the chip's tinted
+     background sits on the grey hero surface, where plain --blue is
+     ~4.2:1 — the 12% text admixture clears 4.5 in both themes. */
+  color: color-mix(in srgb, var(--blue, #0066cc) 88%, var(--text));
   cursor: pointer;
-  background: color-mix(in srgb, var(--accent, #0a84ff) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent, #0a84ff) 38%, transparent);
+  background: color-mix(in srgb, var(--blue, #0066cc) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue, #0066cc) 38%, transparent);
   border-radius: 999px;
   transition:
     background 0.15s ease,
@@ -2078,8 +2090,8 @@ html[data-theme-override="high-contrast"] .nav {
 .detail-a11y-chip:hover,
 .detail-a11y-chip:focus-visible {
   outline: none;
-  background: color-mix(in srgb, var(--accent, #0a84ff) 28%, transparent);
-  border-color: color-mix(in srgb, var(--accent, #0a84ff) 55%, transparent);
+  background: color-mix(in srgb, var(--blue, #0066cc) 12%, transparent);
+  border-color: color-mix(in srgb, var(--blue, #0066cc) 55%, transparent);
 }
 
 .detail-a11y-chip-count {
@@ -2092,8 +2104,8 @@ html[data-theme-override="high-contrast"] .nav {
   font-size: 11px;
   font-weight: 700;
   font-feature-settings: "tnum" 1;
-  color: var(--accent, #0a84ff);
-  background: color-mix(in srgb, var(--accent, #0a84ff) 35%, transparent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--blue, #0066cc) 18%, transparent);
   border-radius: 9px;
 }
 
@@ -14226,7 +14238,7 @@ button.import-history-stat.is-active {
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--text-2);
+  color: var(--text);
   text-transform: none;
   letter-spacing: 0.02em;
   background: color-mix(in srgb, var(--text-3) 14%, transparent);
@@ -15683,7 +15695,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-sm);
-  opacity: 0.75;
+  /* Resting opacity used to be 0.75, which diluted the --text-2
+     links inside below 4.5:1 — the translucent color-mix background +
+     blur keep the pill visually quiet without failing contrast. */
+  opacity: 1;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   transition: opacity 160ms ease;
@@ -16457,7 +16472,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-sm);
-  opacity: 0.75;
+  /* Resting opacity used to be 0.75, which diluted the --text-2
+     links inside below 4.5:1 — the translucent color-mix background +
+     blur keep the pill visually quiet without failing contrast. */
+  opacity: 1;
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   transition: opacity 160ms ease;
@@ -31758,8 +31776,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .home-layout-footer-secondary {
   font-size: 12px;
+  /* No resting opacity — 0.85 diluted --text-3 to 3.9:1 on the page bg. */
   color: var(--text-3);
-  opacity: 0.85;
 }
 
 .home-layout-footer-sep {
