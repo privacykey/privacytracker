@@ -44,6 +44,7 @@ whichever AI provider you configure.
 | `pnpm test:e2e` | Playwright browser suite |
 | `pnpm lint:i18n` | Locale key parity against `en.json` |
 | `pnpm test:tauri` | Rust helper tests |
+| `pnpm screenshots` | Capture UI screenshots from the demo fixture (see the script header for the server it expects) |
 
 ## Before you open a pull request
 

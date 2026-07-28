@@ -19,6 +19,8 @@ Going forward, changes are recorded here as they land.
   keyboard-only coverage of the onboarding path.
 - Community health documentation — contributing guide, code of conduct,
   support guide, pull-request template, and code owners.
+- `pnpm screenshots` — captures a consistent set of UI screenshots from
+  the built-in demo fixture, for docs and release notes.
 
 ### Changed
 

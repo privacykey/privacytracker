@@ -6,6 +6,10 @@
 
 **See how iOS apps quietly change what they collect about you.**
 
+[Install for macOS](#macos--homebrew-recommended) ·
+[Run with Docker](#linux--windows--self-host) ·
+[Documentation](https://privacytracker-docs.privacykey.org/introduction)
+
 </div>
 
 ---
@@ -46,6 +50,8 @@ for setup.
 ## Screenshots
 
 <!-- Drop screenshots into docs/screenshots/ and link them here.
+     `pnpm screenshots` (scripts/capture-screenshots.mjs) captures a
+     consistent set against the built-in demo fixture.
      Suggested set:
        1. Dashboard with the privacy-label severity heatmap
        2. Per-app timeline showing a label change over time

@@ -49,6 +49,21 @@ half is *unreadable* rather than *passing*, because `GITHUB_TOKEN` lacks
 repo-admin scope for that endpoint. A fine-grained PAT with
 `administration:read` fixes it; same rationale as `RENOVATE_TOKEN`.
 
+`pnpm screenshots` (`scripts/capture-screenshots.mjs`) captures a
+consistent set of UI screenshots into `docs/screenshots/` — the apps
+grid, an app detail page, the dashboard's risk sections, the privacy map,
+and a phone-width shot. Output is **gitignored**: the images are for
+docs, issues, and release notes, not the repo. It needs a production
+build served on :3001 with a **disposable** data dir, because it calls
+`/api/reset` and seeds the canned demo fixture (never real data). The
+script disables the coachmark tour before capturing; without that the
+dashboard shot is a dimmed spotlight overlay. Two capture quirks are
+commented in the script: `scrollIntoViewIfNeeded()` no-ops when the
+target is already partly visible (hence the dashboard's explicit scroll
+offset past the first-run checklist), and the phone shot is taken at the
+top of the page because mid-scroll the sort pills bleed through the
+translucent nav.
+
 Contributor-facing docs (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
 `SUPPORT.md`, `CHANGELOG.md`, `.github/PULL_REQUEST_TEMPLATE.md`,
 `.github/CODEOWNERS`) are the human counterpart to this file. Keep
