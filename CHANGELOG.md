@@ -1,0 +1,112 @@
+# Changelog
+
+All notable changes to this project are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Entries for `v0.1.0` – `v0.1.2` were written retrospectively from the
+[GitHub release notes](https://github.com/privacykey/privacytracker/releases);
+they summarise each release rather than listing every merged pull request.
+Going forward, changes are recorded here as they land.
+
+## [Unreleased]
+
+### Added
+
+- Blocking accessibility gate in CI: axe-core scans of the welcome screen,
+  onboarding import flow, dashboard, app detail, and mobile navigation, plus
+  keyboard-only coverage of the onboarding path.
+- Community health documentation — contributing guide, code of conduct,
+  support guide, pull-request template, and code owners.
+
+### Changed
+
+- **First-run experience.** Per-feature toggles moved behind an "Advanced"
+  disclosure, illustrated goal cards shrunk on phones, and the primary action
+  pinned to a sticky footer so it stays reachable. AI summaries now default to
+  **Disabled** instead of preselecting a provider, and a stored "disabled"
+  choice is honoured on reload. "Save & generate" stays disabled until the
+  provider's fields validate. New users now get exactly one post-onboarding
+  guide — the task checklist — instead of a checklist plus a coachmark tour
+  pointing at it.
+- Import candidate selection is now a native radio group: keyboard-operable
+  with arrow keys, and announced correctly by screen readers.
+
+### Fixed
+
+- **The SQLite database is now private by default** — `0700` on the data
+  directory, `0600` on the database and its write-ahead-log files. Existing
+  installations are tightened automatically on their next start. The file
+  holds your full app inventory, your notes, and (for now) any configured AI
+  provider key.
+- Accessible names restored for the icon-only home and "Add Apps" links in the
+  compact navigation bar.
+- Expandable section headers no longer nest their info-tooltip button inside
+  the toggle, and the collapsed notes sidebar no longer keeps invisible
+  controls in the tab order.
+- The app-name entry field has a real label rather than only a placeholder.
+- Colour contrast now meets WCAG AA across the interface: link and secondary
+  text colours, the accent blue in light mode, and the navigation drawer were
+  all below the 4.5:1 threshold in places.
+
+### Security
+
+- Documented in the README that a configured AI provider key is stored in
+  plaintext in the local database. Moving desktop keys into the OS keychain is
+  planned.
+
+## [0.1.2] — 2026-06-12
+
+### Added
+
+- Animated onboarding purpose cards and dashboard vignettes.
+- Periodic health check with non-destructive self-heal for long-running
+  instances.
+- Read-only deployment mode for shared or kiosk installs.
+
+### Changed
+
+- Privacy-label icons and ordering aligned with Apple's own presentation.
+- Full internationalisation sweep — the interface is translator-ready and
+  round-trips through Crowdin.
+- Onboarding hardening across the four import paths.
+
+## [0.1.1] — 2026-05-20
+
+### Fixed
+
+- **Launch-time freeze affecting every copy of v0.1.0.** The bundled Node
+  helper exited immediately with `MODULE_NOT_FOUND` for `@swc/helpers`,
+  leaving an unresponsive window. The packaging step had dereferenced pnpm's
+  symlinked `node_modules` layout, moving `@swc/helpers` out of Node's
+  resolution path; it now preserves those relative symlinks verbatim through
+  both staging and the release tarball.
+
+  The auto-updater runs *after* the Node helper boots, so it never fired on
+  v0.1.0 — anyone on that version had to install v0.1.1 manually. Every
+  install from v0.1.1 onward self-updates normally.
+
+## [0.1.0] — 2026-05-18
+
+Initial beta release, available as a macOS app, a Docker image, or a plain
+Next.js app.
+
+### Added
+
+- App Store privacy-label tracking with change detection over time.
+- Historical back-fill to Q1 2021 via the Wayback Machine.
+- Focus-tailored dashboard adapting to who the device belongs to (yourself, a
+  loved one, or someone you support) and what you want from it.
+- Four onboarding import paths: typed names, CSV/TXT upload, Apple
+  Configurator on desktop, and screenshot OCR.
+- Changelog timelines, privacy heatmap, per-app severity strips, an editable
+  home-card layout, and exportable audit bundles.
+- AI-generated privacy-policy summaries with a bring-your-own provider model.
+- Background sync with a notifications bell, and crash-safe resume across the
+  live, Wayback, and privacy-policy jobs.
+
+[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/privacykey/privacytracker/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/privacykey/privacytracker/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/privacykey/privacytracker/releases/tag/v0.1.0

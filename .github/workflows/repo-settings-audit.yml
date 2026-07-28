@@ -1,0 +1,96 @@
+#
+# Repository settings audit — scheduled drift check.
+#
+# Runs the read-only `scripts/audit-github-settings.mjs` on a weekly cron so
+# a silently-flipped setting (branch protection weakened, secret scanning
+# switched off, a required check renamed) surfaces on its own rather than
+# the next time someone happens to run the script by hand. The script only
+# READS the GitHub API — it never changes a setting.
+#
+# Token (Settings ▸ Secrets and variables ▸ Actions ▸ REPO_AUDIT_TOKEN):
+#   OPTIONAL, but without it the audit is partial. The built-in GITHUB_TOKEN
+#   cannot read `repos/{repo}/branches/main/protection` (that endpoint needs
+#   repo-admin), so the branch-protection half of the report degrades to
+#   "[check] main branch protection readable/enabled" on every run — a
+#   permanent false alarm. Add a fine-grained PAT with `administration:read`
+#   + `metadata:read` on this repository to get the full picture. Same class
+#   of problem, and same fix, as RENOVATE_TOKEN in renovate.yml.
+#
+# Failure policy: ADVISORY by default. A scheduled job that goes red every
+# week for a setting nobody intends to change is a job people learn to
+# ignore, so the cron run always exits 0 and writes its findings to the job
+# summary. Run it manually with `strict: true` when you want a hard pass/fail
+# (e.g. before a release, or to confirm a fix).
+#
+name: Repo settings audit
+
+on:
+  schedule:
+    # Mondays 07:00 UTC — before the week's PRs land, after Renovate's
+    # Sunday-night run so a settings change it triggered is visible.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail the job when a setting needs attention'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Setup Node
+        # No pnpm install needed — the audit script is stdlib-only and shells
+        # out to the `gh` CLI, which is preinstalled on GitHub runners.
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6
+        with:
+          node-version: '24'
+
+      - name: Run audit
+        id: audit
+        env:
+          # Falls back to GITHUB_TOKEN so the workflow still produces a
+          # useful (if partial) report before anyone configures the PAT.
+          GH_TOKEN: ${{ secrets.REPO_AUDIT_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -o pipefail
+          if [ -z "${{ secrets.REPO_AUDIT_TOKEN }}" ]; then
+            echo "::notice::REPO_AUDIT_TOKEN is not set — running with GITHUB_TOKEN. Branch-protection checks will report as unreadable; see this workflow's header comment."
+          fi
+          STRICT=""
+          if [ "${{ inputs.strict }}" = "true" ]; then
+            STRICT="--strict"
+          fi
+          node scripts/audit-github-settings.mjs $STRICT | tee audit-output.txt
+        continue-on-error: true
+
+      - name: Publish report to job summary
+        if: always()
+        run: |
+          {
+            echo "## Repository settings audit"
+            echo ""
+            echo '```'
+            cat audit-output.txt 2>/dev/null || echo "(no output — the audit step failed before producing a report)"
+            echo '```'
+            echo ""
+            echo "Lines marked \`[check]\` need attention. This report is advisory;"
+            echo "re-run from the Actions tab with **strict** enabled for a hard pass/fail."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce result
+        # Only the manual strict run can fail the job — see the failure
+        # policy in this file's header.
+        if: inputs.strict == true && steps.audit.outcome == 'failure'
+        run: |
+          echo "::error::Repository settings audit failed in strict mode — see the job summary."
+          exit 1
