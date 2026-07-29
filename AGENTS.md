@@ -17,10 +17,10 @@ pnpm lint:i18n         # check locales/*.json key parity against en.json
 ```
 
 The repo enforces pnpm via `"packageManager": "pnpm@11.1.2"` in
-`package.json` and ships a `pnpm-lock.yaml` / `pnpm-workspace.yaml`. All
-six GitHub workflows run `pnpm install --frozen-lockfile`. Using `npm`
-locally will mostly work against the pnpm lockfile but is unsupported
-and risks drift.
+`package.json` and ships a `pnpm-lock.yaml` / `pnpm-workspace.yaml`.
+Every workflow that installs dependencies (six of the ten) runs
+`pnpm install --frozen-lockfile`. Using `npm` locally will mostly work
+against the pnpm lockfile but is unsupported and risks drift.
 
 Docker (production): `docker compose up --build -d`. By default the SQLite DB lives in a Docker-managed **named volume** (`privacytracker-data`), so data survives rebuilds and the container's non-root `audit` user (uid 100 / gid 101) can write it on any host with no setup. Back it up with `docker compose cp web:/app/data ./data-backup`. This is a change from the old `./data` bind mount, which broke on a fresh Linux host: Docker auto-creates the bind source as `root:root`, uid 100 can't create `privacy.db`, and `lib/db.ts` throws `SQLITE_CANTOPEN` (macOS Docker Desktop hid this by uid-mapping bind mounts). If you'd rather keep the DB on the host at `./data/privacy.db`, layer on `docker-compose.bind-mount.yml` after the one-time `mkdir -p data && sudo chown 100:101 data`: `docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml up --build -d`. The `compose-smoke` CI job exercises both paths (and asserts `/fonts/InterVariable.woff2` + `/brand-icon.png` actually serve — the runtime image must copy `public/`).
 
@@ -33,6 +33,43 @@ Separate Python companion script in `scripts/ios-app-import/` (stdlib-only, Pyth
 Dependency bumps are driven by **Renovate**, not Dependabot — `.github/dependabot.yml` was removed because its pnpm support left `pnpm-lock.yaml` stale (needing a manual regen) and it fanned each ecosystem out into separate, mutually-conflicting PRs. Renovate regenerates the lockfile natively and, per `renovate.json`, bundles every **non-major** update across all four ecosystems (npm, cargo, docker, github-actions) into a **single** PR on a stable branch. A `customManagers` regex additionally treats the Dockerfile's `ARG PNPM_VERSION` as the npm `pnpm` package, so the Docker pnpm pin rides in that same PR instead of drifting from `packageManager` (which is what happened in PR #125). **Major** upgrades are held on the Dependency Dashboard issue (`dependencyDashboardApproval`) for one-at-a-time review — tick one there to let Renovate raise its PR. Do NOT reintroduce a `dependabot.yml`; that would duplicate Renovate's PRs.
 
 Activation is one of two mutually-exclusive paths (pick one): the self-hosted `.github/workflows/renovate.yml` (weekly cron + a `workflow_dispatch` **dry-run** button that previews the PR without opening it — needs a `RENOVATE_TOKEN` secret for live-run PRs to trigger CI, since GITHUB_TOKEN-authored PRs don't), **or** the hosted Mend Renovate GitHub App (its PRs trigger CI automatically; delete the workflow if you install the app). Both read the same `renovate.json`. See the header comment in the workflow for the token rationale.
+
+## Repo settings drift check
+
+`scripts/audit-github-settings.mjs` (`pnpm audit:repo-settings`) is a
+**read-only** check that the repo's GitHub settings still match intent —
+branch protection on `main`, required checks (`quality`, `container-smoke`),
+secret scanning, Dependabot alerts, CodeQL. `.github/workflows/repo-settings-audit.yml`
+runs it weekly and writes the report to the job summary.
+
+Two things to know before trusting a green run: the cron leg is **advisory**
+(it always exits 0 — use the `workflow_dispatch` run with `strict: true` for
+a hard pass/fail), and without a `REPO_AUDIT_TOKEN` secret the branch-protection
+half is *unreadable* rather than *passing*, because `GITHUB_TOKEN` lacks
+repo-admin scope for that endpoint. A fine-grained PAT with
+`administration:read` fixes it; same rationale as `RENOVATE_TOKEN`.
+
+`pnpm screenshots` (`scripts/capture-screenshots.mjs`) captures a
+consistent set of UI screenshots into `docs/screenshots/` — the apps
+grid, an app detail page, the dashboard's risk sections, the privacy map,
+and a phone-width shot. Output is **gitignored**: the images are for
+docs, issues, and release notes, not the repo. It needs a production
+build served on :3001 with a **disposable** data dir, because it calls
+`/api/reset` and seeds the canned demo fixture (never real data). The
+script disables the coachmark tour before capturing; without that the
+dashboard shot is a dimmed spotlight overlay. Two capture quirks are
+commented in the script: `scrollIntoViewIfNeeded()` no-ops when the
+target is already partly visible (hence the dashboard's explicit scroll
+offset past the first-run checklist), and the phone shot is taken at the
+top of the page because mid-scroll the sort pills bleed through the
+translucent nav.
+
+Contributor-facing docs (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
+`SUPPORT.md`, `CHANGELOG.md`, `.github/PULL_REQUEST_TEMPLATE.md`,
+`.github/CODEOWNERS`) are the human counterpart to this file. Keep
+CONTRIBUTING's command table in sync with the Commands section above, and
+add a `CHANGELOG.md` entry under `## [Unreleased]` for anything a user
+would notice.
 
 ## Architecture
 
@@ -82,7 +119,26 @@ settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
   values from `GET /api/feature-flags` and writes USER OVERRIDES via
   `POST`/`DELETE /api/feature-flags/overrides` — overrides win last in the
   resolver, so a toggle here beats whatever the goals set (round-trip pinned
-  by `tests/app/feature-flag-overrides-route.test.ts`).
+  by `tests/app/feature-flag-overrides-route.test.ts`). In **onboarding**
+  it renders inside a collapsed `<details class="focus-purpose-advanced">`
+  ("Advanced: fine-tune individual features"); in **settings** it stays
+  expanded. The disclosure exists because six always-open toggles pushed
+  the primary CTA off a phone screen — keep it collapsed by default.
+- **Post-onboarding guide: exactly one.** The `TaskList` checklist is the
+  primary guide and is always on; `flag.onboarding.coachmark_tour` now
+  defaults **off** (it used to be `on`, so a new user landed on a dimmed
+  dashboard with a tour whose first step pointed at the checklist behind
+  it). It stays user-overridable — don't re-enable the default without
+  removing the checklist.
+- **AI summaries default to `disabled`.** The wizard's provider state
+  starts at `"disabled"` and a stored `"disabled"` is honoured on load
+  (there used to be a remap back to `"openai"`, which made the opt-out
+  unrepresentable). "Save & generate" is disabled until the provider's
+  fields validate — `aiSettingsComplete` in `OnboardWizard.tsx` is the
+  single source of truth, shared with the "Test connection" button.
+- First-run acceptance across the five audiences (monitor / cleanup /
+  loved_one / guardian+age-band / no-goals) plus the disclosure and
+  sticky-CTA contracts is pinned by `tests/e2e/onboarding-personas.spec.ts`.
 
 The read-only `describePurpose` (`lib/onboarding-purpose.ts`) is the one-way
 bridge that collapses a stored focus back to a single tile label

@@ -4387,9 +4387,7 @@ function parseRunLog(
         return result;
       })
       .filter(Boolean) as PolicyRunPhase[];
-  } catch {
-    return;
-  }
+  } catch {}
 }
 
 /**

@@ -524,7 +524,13 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.onboarding.privacy_profile_setup": "off", // declutter goal turns this on
   "flag.onboarding.accessibility_profile_setup": "off", // accessibility modifier turns this on
   "flag.onboarding.sample_data_button": "on", // 'try with sample data' button on screen 1
-  "flag.onboarding.coachmark_tour": "on", // post-import dashboard tour
+  /* Post-import dashboard tour. Default OFF: the TaskList checklist is
+     the primary post-onboarding guide, and running both meant a new
+     user landed on a dimmed dashboard with a tour whose first step
+     pointed at the checklist behind it — two guides competing for the
+     same moment. Users who want the tour can switch it on (it stays a
+     user-overridable flag); the checklist remains always-on. */
+  "flag.onboarding.coachmark_tour": "off",
   "flag.onboarding.device_name_step": "on", // "Name your device" gating in OnboardWizard
 
   // Onboarding — wizard steps + methods

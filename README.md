@@ -6,6 +6,10 @@
 
 **See how iOS apps quietly change what they collect about you.**
 
+[Install for macOS](#macos--homebrew-recommended) ·
+[Run with Docker](#linux--windows--self-host) ·
+[Documentation](https://privacytracker-docs.privacykey.org/introduction)
+
 </div>
 
 ---
@@ -46,6 +50,8 @@ for setup.
 ## Screenshots
 
 <!-- Drop screenshots into docs/screenshots/ and link them here.
+     `pnpm screenshots` (scripts/capture-screenshots.mjs) captures a
+     consistent set against the built-in demo fixture.
      Suggested set:
        1. Dashboard with the privacy-label severity heatmap
        2. Per-app timeline showing a label change over time
@@ -78,6 +84,41 @@ database** — anyone with access to your user account (or your backups)
 can read it, so treat the machine as the trust boundary and prefer a
 key with a spending cap. Moving desktop keys into the OS keychain is
 planned.
+
+## Project status
+
+**Beta.** The core loop — track apps, detect label changes, browse history —
+is stable and in daily use. Interfaces and database schema may still shift
+between minor versions; migrations run automatically on start, but keep a
+backup (Settings → Backup & Restore) before upgrading if your data matters
+to you.
+
+| Platform | Status |
+| --- | --- |
+| macOS (Apple Silicon + Intel) | Signed, notarised, self-updating |
+| Docker / self-host | Supported — `docker compose up --build -d` |
+| Linux / Windows desktop | Not packaged yet; run the Docker image or from source |
+
+Releases are published on
+[GitHub Releases](https://github.com/privacykey/privacytracker/releases) and
+the [Homebrew tap](https://github.com/privacykey/tap), and documented in
+[CHANGELOG.md](CHANGELOG.md). Versioning follows
+[semver](https://semver.org/): while the project is pre-1.0, breaking changes
+can land in a minor bump, and each release note calls them out. macOS
+installs update themselves in the background.
+
+## Contributing
+
+Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for
+setup, the commands CI runs, and the conventions that are easy to miss (the
+accessibility gate is blocking, and copy goes through i18n).
+
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Getting help / where to ask](SUPPORT.md)
+- [Reporting a vulnerability](.github/SECURITY.md) — please don't open a
+  public issue
+- [AGENTS.md](AGENTS.md) — the canonical deep-dive on how everything fits
+  together
 
 ## License
 

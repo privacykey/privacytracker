@@ -71,7 +71,6 @@ export default function ShortlistPage() {
       };
     } catch (e) {
       console.warn("[shortlist-page] flag resolution failed:", e);
-      return;
     }
   })();
 

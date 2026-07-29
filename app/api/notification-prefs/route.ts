@@ -159,7 +159,6 @@ export async function PUT(request: Request) {
     if (typeof v === "boolean") {
       return v;
     }
-    return;
   }
   for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as [
     FlagNotificationTypeKey,

@@ -187,7 +187,7 @@
 .task-list-row-body {
   font-size: 12px;
   line-height: 1.35;
-  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  color: var(--text-2, #6c6c80);
 }
 .task-list-row-arrow {
   font-size: 16px;
@@ -196,7 +196,7 @@
 }
 .task-list-row-btn:hover .task-list-row-arrow,
 .task-list-row-btn:focus-visible .task-list-row-arrow {
-  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  color: var(--text-2, #6c6c80);
   transform: translateX(2px);
 }
 .task-list-row-completed .task-list-row-title {
@@ -227,7 +227,7 @@
   padding: 18px 14px;
   font-size: 14px;
   line-height: 1.4;
-  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  color: var(--text-2, #6c6c80);
   text-align: center;
 }
 
@@ -263,7 +263,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.4;
-  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  color: var(--text-2, #6c6c80);
 }
 .task-list-card-attribution-link {
   color: inherit;
@@ -315,7 +315,7 @@
   padding: 6px 12px;
   margin: 0 0 20px;
   font-size: 13px;
-  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  color: var(--text-2, #6c6c80);
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.15));
@@ -348,7 +348,7 @@
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-secondary, rgba(127, 127, 127, 0.85));
+  color: var(--text-2, #6c6c80);
   letter-spacing: 0.01em;
 }
 .task-list-add-tray-chips {

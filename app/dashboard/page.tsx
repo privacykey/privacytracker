@@ -239,7 +239,6 @@ export default async function DashboardPage({
       };
     } catch (error) {
       console.warn("[dashboard] flag resolution failed:", error);
-      return;
     }
   })();
 
@@ -354,9 +353,7 @@ export default async function DashboardPage({
         pageStats: resolveFlagFromDb("flag.page.stats") === "on",
         pageShortlist: resolveFlagFromDb("flag.page.shortlist") === "on",
       };
-    } catch {
-      return;
-    }
+    } catch {}
   })();
 
   // Round 3 v1 final — provenance banner for users who recently

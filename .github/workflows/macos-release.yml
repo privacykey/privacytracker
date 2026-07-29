@@ -295,7 +295,7 @@ jobs:
       #     push fires this workflow (see `tagName` / `releaseName` below).
       - name: Build, sign, notarize, and upload
         id: tauri
-        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5  # v0
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f  # action-v1.0.0
         env:
           # --- GitHub Release upload ---
           # tauri-action attaches the signed .dmg / .app.tar.gz to a
@@ -384,16 +384,29 @@ jobs:
           # other platform's signature is dropped. The `assemble-latest-json`
           # job below merges both legs' .sig payloads into one manifest
           # that lists every platform we ship.
-          includeUpdaterJson: false
+          #
+          # These two inputs replace v0's single `includeUpdaterJson`,
+          # which action-v1.0.0 removed. BOTH default to `true`, so
+          # leaving them out would silently restore the exact clobbering
+          # this block exists to prevent — and because GitHub only
+          # *warns* about unknown inputs, the old key would have kept
+          # "working" right up until a release shipped a broken manifest.
+          uploadUpdaterJson: false
+          # v1 split .sig upload out of the manifest flag. v0 suppressed
+          # both together, and the staging step below depends on the
+          # release NOT carrying tauri's own .sig (see its step 1 note).
+          uploadUpdaterSignatures: false
 
       # Stage the per-arch updater signature so the assemble job can
       # build a multi-platform latest.json without re-running tauri.
       # The hard part is getting a fresh .sig file that matches the
       # .app.tar.gz on the draft release:
       #
-      #   1. tauri-action with `includeUpdaterJson: false` skips
+      #   1. tauri-action with `uploadUpdaterSignatures: false` skips
       #      uploading the .sig sidecar to the GitHub release
       #      (`gh release view v0.1.0` lists only .dmg + .app.tar.gz).
+      #      On the v0 action this was folded into `includeUpdaterJson`;
+      #      v1 splits it out, hence the separate input above.
       #   2. The on-disk .sig in `src-tauri/.../bundle/macos/` is
       #      stale: tauri-action repacks `privacytracker.app.tar.gz`
       #      AFTER the bundler's initial sign, so the saved .sig is

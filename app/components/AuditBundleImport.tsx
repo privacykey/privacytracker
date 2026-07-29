@@ -193,7 +193,6 @@ export default function AuditBundleImport() {
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     if (busy) {
-      return;
     }
   };
   const onDragLeave = (e: React.DragEvent) => {

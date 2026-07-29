@@ -437,6 +437,7 @@
     }
   },
   "focus_purpose": {
+    "advanced_summary": "Advanced: fine-tune individual features",
     "primary_aria": "What you want to do",
     "audience_heading": "Who's this for?",
     "primary": {
