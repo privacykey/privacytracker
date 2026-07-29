@@ -834,7 +834,6 @@ export default function AppDetailView({
     const resolved = resolveFromPath(refUrl.pathname + refUrl.search);
     if (resolved) {
       setBackDestination(resolved);
-      return;
     }
     // Anything else (onboarding wizard, help page, /apps/<other-id>) falls
     // through to the default "Dashboard" so the back button is always

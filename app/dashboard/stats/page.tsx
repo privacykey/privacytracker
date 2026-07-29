@@ -62,9 +62,7 @@ export default function StatsPage() {
         recentChangesFilter: r("flag.stats.recent_changes.filter"),
         offProfileCard: r("flag.stats.off_profile_card"),
       };
-    } catch {
-      return;
-    }
+    } catch {}
   })();
 
   return (

@@ -60,7 +60,6 @@ function parseSortDir(raw: string | null): ActivitySortDir | undefined {
   if (raw === "asc" || raw === "desc") {
     return raw;
   }
-  return;
 }
 
 function parseTimestamp(raw: string | null): number | undefined {
