@@ -15,18 +15,18 @@ import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
-import AuditBundleExport from "./AuditBundleExport";
 import AuditBundleImport from "./AuditBundleImport";
 import DateFormatPicker from "./DateFormatPicker";
 import DevOptionsFeatureFlagPanel from "./DevOptionsFeatureFlagPanel";
 import { useImportQueue } from "./ImportQueueProvider";
 import LanguageSuggestionBanner from "./LanguageSuggestionBanner";
-import LocaleSwitcher from "./LocaleSwitcher";
 import RateLimitBanner from "./RateLimitBanner";
 import SettingsAutoSaveToast, {
   pushSettingsToast,
 } from "./SettingsAutoSaveToast";
 import SettingsSidebar from "./SettingsSidebar";
+import ExportDataSection from "./settings/ExportDataSection";
+import LanguageSection from "./settings/LanguageSection";
 import { useTaskCenter } from "./TaskCenter";
 import TasksResetRow from "./TasksResetRow";
 import Toast from "./Toast";
@@ -820,7 +820,6 @@ export default function SettingsView({
   const tDeploy = useTranslations("settings.deployment_diagnostics_card");
   const tPolicyCard = useTranslations("settings.privacy_policies_card");
   const tBackupCard = useTranslations("settings.backup_card");
-  const tExportCard = useTranslations("settings.export_card");
   const tNotifPrefsCard = useTranslations("settings.notification_prefs_card");
   const tSchedule = useTranslations("settings.schedule");
   const tResetCard = useTranslations("settings.reset_app_card");
@@ -5529,20 +5528,7 @@ export default function SettingsView({
           https://privacytracker-docs.privacykey.org/develop/feature-flags, and the duplicate radio
           group was scheduled for removal in PR 5 but had stuck around.
           Removed in this pass; YourFocusCard owns the focus surface. */}
-              {/* Language picker — moved out of the global footer so it lives
-          alongside other personalisation controls inside the "You"
-          group. The component itself fetches the active locale from
-          `/api/locale`; this card is just chrome around it. Anchor id
-          `language` matches the SettingsSidebar entry. */}
-              <div className="settings-section" id="language">
-                <h2 className="settings-section-title">
-                  {tSections("language")}
-                </h2>
-                <p className="settings-section-subtitle">
-                  {tSettings("language_section.subtitle")}
-                </p>
-                <LocaleSwitcher />
-              </div>
+              <LanguageSection />
 
               {/* Privacy Profile — the per-category threshold picker from onboarding.
           Lives on its own endpoint so we don't bloat /api/settings; see
@@ -9841,62 +9827,7 @@ ollama serve`}
               )}
               {/* Data Export */}
               {settingsAdminExportOn && (
-                <div className="settings-section" id="export-data">
-                  <h2 className="settings-section-title">
-                    {tSections("export_data")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("export_data")}
-                  </p>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <a
-                      className="btn btn-secondary"
-                      download
-                      href="/api/export?format=csv"
-                    >
-                      {tExportCard("csv")}
-                    </a>
-                    <a
-                      className="btn btn-secondary"
-                      download
-                      href="/api/export?format=json"
-                    >
-                      {tExportCard("json")}
-                    </a>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-3)",
-                      marginTop: 12,
-                    }}
-                  >
-                    {tExportCard("formats_note")}
-                  </p>
-
-                  {/* Round 3 PR 5: audit-bundle export. Gated by
-            flag.settings.admin.export.audit_bundle (default off — on for
-            audience.loved_one). The component does its own client-side
-            flag probe via /api/feature-flags because the client useFlag
-            cache returns hard defaults on fresh loads — see the comment
-            on settingsAdminExportOn above. The server enforces the same
-            gate authoritatively, so the UI gate is just for show. */}
-                  <AuditBundleExport />
-                  {/* Wave I — `flag.settings.admin.export.audit_pdf` placeholder.
-            The flag is wired so users who flip it on see a "coming soon"
-            affordance and the rendering path stays exercised. */}
-                  {settingsAdminExportAuditPdfOn && (
-                    <button
-                      className="btn btn-secondary"
-                      disabled
-                      style={{ marginLeft: 8 }}
-                      title={tExportCard("audit_pdf_unavailable_title")}
-                      type="button"
-                    >
-                      {tExportCard("audit_pdf_coming_soon")}
-                    </button>
-                  )}
-                </div>
+                <ExportDataSection auditPdfOn={settingsAdminExportAuditPdfOn} />
               )}
 
               {/* Developer Options — only useful when debugging why an AI call is
