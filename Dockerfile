@@ -7,14 +7,14 @@
 #   2. Node/pnpm/native-addon installs are intentionally built on native
 #      runners per architecture in CI. Keeping the runtime pinned still avoids
 #      surprise native ABI churn between the amd64 and arm64 image legs.
-ARG NODE_IMAGE=node:24.15.0-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f
+ARG NODE_IMAGE=node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
 # Keep this in lockstep with `packageManager` in package.json and the
 # `pnpm/action-setup` version in every .github/workflows/*. A drift here
 # means Docker builds resolve deps with a different pnpm than CI does.
 # Renovate bumps this line itself (customManagers regex in renovate.json),
 # in the same grouped PR as the other pnpm pins — don't edit it by hand
 # unless you're changing all of them together.
-ARG PNPM_VERSION=11.1.2
+ARG PNPM_VERSION=11.17.0
 
 FROM ${NODE_IMAGE} AS builder
 
