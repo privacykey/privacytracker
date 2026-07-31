@@ -21,3 +21,12 @@ export interface SyncStatus {
   nextRun: number | null;
   schedule: Schedule;
 }
+
+/** Which UI language the post-region-change banner suggests switching to.
+ *  Mirrors LanguageSuggestionBanner's `target` prop. */
+export type LanguageSuggestion = "zh" | "en";
+
+/** Which bulk privacy-policy run is in flight. `fetch` re-scrapes source
+ *  text only; `all` re-scrapes and re-summarises. They share one
+ *  server-side mutex, so only one can run at a time. */
+export type PolicyBulkPhase = "fetch" | "all";
