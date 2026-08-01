@@ -19,7 +19,6 @@ import AuditBundleImport from "./AuditBundleImport";
 import DateFormatPicker from "./DateFormatPicker";
 import DevOptionsFeatureFlagPanel from "./DevOptionsFeatureFlagPanel";
 import { useImportQueue } from "./ImportQueueProvider";
-import LanguageSuggestionBanner from "./LanguageSuggestionBanner";
 import RateLimitBanner from "./RateLimitBanner";
 import SettingsAutoSaveToast, {
   pushSettingsToast,
@@ -28,6 +27,8 @@ import SettingsSidebar from "./SettingsSidebar";
 import ExportDataSection from "./settings/ExportDataSection";
 import LanguageSection from "./settings/LanguageSection";
 import PolicyAlertsSection from "./settings/PolicyAlertsSection";
+import PrivacyPoliciesBulkSection from "./settings/PrivacyPoliciesBulkSection";
+import RegionSection from "./settings/RegionSection";
 import SyncScheduleSection from "./settings/SyncScheduleSection";
 import type { Schedule, SyncStatus } from "./settings/types";
 import { useTaskCenter } from "./TaskCenter";
@@ -5918,70 +5919,16 @@ export default function SettingsView({
 
               {/* App Store Region */}
               {settingsSyncRegionOn && (
-                <div className="settings-section" id="region">
-                  <h2 className="settings-section-title">
-                    {tSections("app_store_region")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("app_store_region")}
-                  </p>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 12,
-                      alignItems: "center",
-                    }}
-                  >
-                    <label
-                      htmlFor="app-country"
-                      style={{ fontSize: 14, color: "var(--text-2)" }}
-                    >
-                      {tRegion("storefront_label")}
-                    </label>
-                    <select
-                      className="settings-select"
-                      disabled={countryAutoSave.saving}
-                      id="app-country"
-                      // Auto-save: changing the storefront immediately POSTs the
-                      // new code. We update local state synchronously so the
-                      // dropdown stays responsive, then fire `save` — its toast
-                      // surfaces success / failure. No Save button.
-                      onChange={(e) => {
-                        const next = normalizeCountry(e.target.value);
-                        setCountry(next);
-                        void countryAutoSave.save(next);
-                      }}
-                      style={{ minWidth: 220 }}
-                      value={country}
-                    >
-                      {COUNTRY_OPTIONS.map((opt) => (
-                        <option key={opt.code} value={opt.code}>
-                          {opt.label} ({opt.code.toUpperCase()})
-                        </option>
-                      ))}
-                    </select>
-
-                    {country === savedCountry && (
-                      <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                        {tRegion("current")}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Language suggestion — appears after a successful region save
-            when the new storefront's expected language differs from
-            the active UI locale. The banner hits /api/locale on click
-            (same path as the LocaleSwitcher) and reloads. Dismiss
-            clears the suggestion until the next region change. */}
-                  {languageSuggestion && (
-                    <LanguageSuggestionBanner
-                      onDismiss={() => setLanguageSuggestion(null)}
-                      target={languageSuggestion}
-                    />
-                  )}
-                </div>
+                <RegionSection
+                  autoSave={countryAutoSave}
+                  country={country}
+                  languageSuggestion={languageSuggestion}
+                  onDismissLanguageSuggestion={() =>
+                    setLanguageSuggestion(null)
+                  }
+                  savedCountry={savedCountry}
+                  setCountry={setCountry}
+                />
               )}
 
               {/*
@@ -6957,92 +6904,13 @@ ollama serve`}
         settings card from the user's POV.
       */}
               {settingsPoliciesThrottleOn && (
-                <div className="settings-section" id="privacy-policies-bulk">
-                  <h2 className="settings-section-title">
-                    {tSections("privacy_policies")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("privacy_policies")}
-                  </p>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 10,
-                      marginTop: 12,
-                    }}
-                  >
-                    <button
-                      className="btn btn-secondary"
-                      disabled={policyBulkRunning !== null}
-                      onClick={() => runBulkPolicySync("fetch")}
-                      title={tPolicyCard("rescrape_title")}
-                      type="button"
-                    >
-                      {policyBulkRunning === "fetch" ? (
-                        <>
-                          <span className="spinner" />{" "}
-                          {tPolicyCard("rescrape_busy")}
-                        </>
-                      ) : (
-                        tPolicyCard("rescrape")
-                      )}
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      disabled={policyBulkRunning !== null}
-                      onClick={() => runBulkPolicySync("all")}
-                      title={tPolicyCard("summarise_title")}
-                      type="button"
-                    >
-                      {policyBulkRunning === "all" ? (
-                        <>
-                          <span className="spinner" />{" "}
-                          {tPolicyCard("summarise_busy")}
-                        </>
-                      ) : (
-                        tPolicyCard("summarise")
-                      )}
-                    </button>
-                  </div>
-
-                  <label
-                    className="settings-checkbox-row"
-                    style={{ marginTop: 14 }}
-                  >
-                    <input
-                      checked={policyBulkForce}
-                      className="settings-checkbox"
-                      disabled={policyBulkRunning !== null}
-                      onChange={(event) =>
-                        setPolicyBulkForce(event.target.checked)
-                      }
-                      type="checkbox"
-                    />
-                    <span>
-                      {tPolicyCard("force_label")}
-                      <span
-                        className="settings-field-help"
-                        style={{ display: "block", marginTop: 4 }}
-                      >
-                        {tPolicyCard("force_help")}
-                      </span>
-                    </span>
-                  </label>
-
-                  {policyBulkSummary ? (
-                    <p
-                      style={{
-                        marginTop: 12,
-                        fontSize: 13,
-                        color: "var(--text-2)",
-                      }}
-                    >
-                      {tPolicyCard("last_run_lead")} {policyBulkSummary}
-                    </p>
-                  ) : null}
-                </div>
+                <PrivacyPoliciesBulkSection
+                  force={policyBulkForce}
+                  onRun={runBulkPolicySync}
+                  running={policyBulkRunning}
+                  setForce={setPolicyBulkForce}
+                  summary={policyBulkSummary}
+                />
               )}
 
               {/* Policy Change Alerts */}
