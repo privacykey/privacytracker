@@ -12,16 +12,11 @@ import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
 import { scrollPulse } from "../../lib/scroll-pulse";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
-import {
-  type ActivityLogRow,
-  useActivityLog,
-} from "../../lib/use-activity-log";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
 import AuditBundleImport from "./AuditBundleImport";
 import DateFormatPicker from "./DateFormatPicker";
-import DevOptionsFeatureFlagPanel from "./DevOptionsFeatureFlagPanel";
 import { useImportQueue } from "./ImportQueueProvider";
 import RateLimitBanner from "./RateLimitBanner";
 import SettingsAutoSaveToast, {
@@ -29,20 +24,27 @@ import SettingsAutoSaveToast, {
 } from "./SettingsAutoSaveToast";
 import SettingsSidebar from "./SettingsSidebar";
 import DeploymentDiagnosticsSection from "./settings/DeploymentDiagnosticsSection";
+import DeveloperSection from "./settings/DeveloperSection";
 import ExportDataSection from "./settings/ExportDataSection";
-import { fmtBytes } from "./settings/format";
+import {
+  fmtBytes,
+  fmtDate,
+  fmtDuration,
+  fmtRelativeTime,
+  type TimeT,
+} from "./settings/format";
 import LanguageSection from "./settings/LanguageSection";
 import PolicyAlertsSection from "./settings/PolicyAlertsSection";
 import PrivacyPoliciesBulkSection from "./settings/PrivacyPoliciesBulkSection";
 import RegionSection from "./settings/RegionSection";
 import SyncScheduleSection from "./settings/SyncScheduleSection";
 import type {
+  AiDebugLogRow,
   DeploymentDiagnostics,
   Schedule,
   SyncStatus,
 } from "./settings/types";
 import { useTaskCenter } from "./TaskCenter";
-import TasksResetRow from "./TasksResetRow";
 import Toast from "./Toast";
 
 /**
@@ -123,20 +125,6 @@ interface StoredAiSettings {
 }
 
 /** One row persisted in the `ai_debug_log` table (see lib/privacy-policy.ts). */
-interface AiDebugLogRow {
-  appId?: string;
-  appName?: string;
-  createdAt: number;
-  durationMs?: number;
-  error?: string;
-  id: string;
-  model?: string;
-  phase?: string;
-  prompt?: string;
-  provider?: string;
-  response?: string;
-}
-
 interface AiSamplePolicyResult {
   durationMs: number;
   mode: "direct" | "chunked";
@@ -344,99 +332,6 @@ const STATUS_META: Record<
   removed: { label: "Removed", tone: "mute", icon: "∅" },
 };
 
-type DateT = (key: string, values?: Record<string, string | number>) => string;
-
-/**
- * Format an epoch-ms as a localised "5 Apr 2025, 14:30" string. Translator
- * arg supplies the localised "Never" placeholder for unset (0) values; the
- * surrounding numeric formatting is handed to Intl.DateTimeFormat with the
- * `en-AU` locale so the date string keeps its day/month/year ordering
- * regardless of UI locale (zh users still see "5 Apr 2025" etc.).
- */
-function fmtDate(t: DateT, ts: number) {
-  if (!ts) {
-    return t("fmt_never");
-  }
-  return new Intl.DateTimeFormat("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(ts));
-}
-
-/** Human-readable type labels + emoji icons for the activity log rows. */
-const ACTIVITY_TYPE_LABELS: Record<string, string> = {
-  scrape: "Initial scrape",
-  resync: "Re-sync",
-  policy_summary: "Policy summary",
-  scheduled_sync: "Scheduled sync",
-  manual_sync: "Manual sync",
-  import: "Import",
-  backup_export: "Backup export",
-  backup_restore: "Backup restore",
-  reset: "Reset",
-  health_check: "Health check",
-};
-
-const ACTIVITY_TYPE_ICONS: Record<string, string> = {
-  scrape: "📥",
-  resync: "↻",
-  policy_summary: "📝",
-  scheduled_sync: "⏰",
-  manual_sync: "▶",
-  import: "📦",
-  backup_export: "💾",
-  backup_restore: "⟲",
-  reset: "⚠",
-  health_check: "🩺",
-};
-
-/** Rough "N minutes ago" formatter — coarse enough for a log view. */
-function fmtRelativeTime(t: TimeT, tDate: DateT, ts: number): string {
-  const now = Date.now();
-  const diff = now - ts;
-  if (diff < 0) {
-    return fmtDate(tDate, ts);
-  }
-  if (diff < 45_000) {
-    return t("rel_just_now");
-  }
-  if (diff < 90_000) {
-    return t("rel_one_min");
-  }
-  if (diff < 60 * 60_000) {
-    return t("rel_mins_ago", { count: Math.round(diff / 60_000) });
-  }
-  if (diff < 2 * 60 * 60_000) {
-    return t("rel_one_hr");
-  }
-  if (diff < 24 * 60 * 60_000) {
-    return t("rel_hrs_ago", { count: Math.round(diff / (60 * 60_000)) });
-  }
-  if (diff < 2 * 24 * 60 * 60_000) {
-    return t("rel_yesterday");
-  }
-  if (diff < 7 * 24 * 60 * 60_000) {
-    return t("rel_days_ago", { count: Math.round(diff / (24 * 60 * 60_000)) });
-  }
-  return fmtDate(tDate, ts);
-}
-
-/** Duration in a compact form: 430ms / 3.2s / 1m 20s. */
-function fmtDuration(ms: number): string {
-  if (ms < 1000) {
-    return `${Math.round(ms)}ms`;
-  }
-  if (ms < 60_000) {
-    return `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`;
-  }
-  const mins = Math.floor(ms / 60_000);
-  const secs = Math.round((ms % 60_000) / 1000);
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-}
-
 function fmtRelative(t: TimeT, ts: number | null) {
   if (!ts) {
     return "—";
@@ -471,14 +366,6 @@ function fmtShortDate(ts: number, mode: DateFormatMode) {
  * Format a short countdown to a future timestamp for queue retry UX.
  * `~5s`, `~2m 10s`, `~1h 05m`. Returns `now` if the timestamp is in the past.
  */
-/**
- * `t` is the translator namespaced at `settings.time`. Module-level so the
- * function signature stays stable for callers, but the strings now route
- * through the locale bundle. Numerals stay numeric — Intl.PluralRules
- * isn't useful for these compact countdowns since neither English nor
- * Mandarin distinguish them.
- */
-type TimeT = (key: string, values?: Record<string, string | number>) => string;
 function fmtQueueCountdown(t: TimeT, ts: number | null | undefined): string {
   if (!ts) {
     return t("queue_now");
@@ -744,16 +631,9 @@ export default function SettingsView({
   const tAiFooter = useTranslations("settings.ai.footer");
   const tLens = useTranslations("policy_lens");
   const tRating = useTranslations("policy_rating");
-  // Developer Options card sub-namespaces — split per sub-block so the
-  // call-sites stay short. activity_types/* is a 1:1 map onto the
-  // module-level ACTIVITY_TYPE_LABELS keys.
-  const tDevAiDebug = useTranslations("settings.dev_options.ai_debug");
-  const tDevActivity = useTranslations("settings.dev_options.activity_log");
-  const tDevActivityTypes = useTranslations(
-    "settings.dev_options.activity_types"
-  );
+  // Developer Options: the panels own their own namespaces now, but the
+  // AI-timeout auto-save toasts are wired up here, so this one stays.
   const tDevAiTimeouts = useTranslations("settings.dev_options.ai_timeouts");
-  const tDevPresets = useTranslations("settings.dev_options.presets");
   // Bottom-of-page modals — restore backup, delete import, remove app.
   // Their reset/wayback siblings already live under settings.* and so
   // do these for symmetry.
@@ -803,16 +683,6 @@ export default function SettingsView({
   // hints. The seven preference keys map onto snake_case translation
   // keys via a regex inside the loop below.
   const tNotifPrefs = useTranslations("notification_prefs");
-
-  // Wave I: gate the Dev Options sub-panels behind their flags. The
-  // top-level dev-opts entry is gated separately (`flag.devopts.visible`
-  // in the sidebar); these flags toggle the inner accordions/panels so
-  // a guardian audience can see the dev-opts sidebar entry but not the
-  // full debug surface area.
-  const devActivityLogOn = useFlag("flag.devopts.activity_log") === "on";
-  const devAdvancedAccordionFlag = useFlag("flag.devopts.advanced_accordion");
-  const devAdvancedAccordionOn = devAdvancedAccordionFlag !== "off";
-  const devAiDebugLoggingOn = useFlag("flag.devopts.ai.debug_logging") === "on";
 
   // Wave I: settings-card flags. Each card section in this view is gated
   // by exactly one flag so a profile can hide just the noisy bits without
@@ -872,18 +742,6 @@ export default function SettingsView({
   // value persists via app_settings.date_format_preference).
   const settingsDateFormatPrefOn =
     useFlag("flag.settings.date_format.user_preference") === "on";
-  // Wave I: activity-log retention-days input. Surface a placeholder
-  // input only when the flag is on so the rendering path stays
-  // exercised; v1 keeps the rolling log uncapped.
-  const devActivityLogRetentionDaysOn =
-    useFlag("flag.devopts.activity_log.retention_days") === "on";
-  // Wave I: feature-flag presets row above the Dev Options panel
-  // ("Self · understand", "Loved one · declutter" etc.). v1 ships a
-  // placeholder note when the flag is on; the preset-apply logic
-  // lands later.
-  const devFeatureFlagPresetsOn =
-    useFlag("flag.devopts.feature_flag_presets") === "on";
-
   // Wave I: AI Settings sub-flags. These nest inside the AI Policy
   // Summaries card (already gated by `flag.settings.ai.enabled` above)
   // so flipping the parent off hides them all; flipping a child off
@@ -891,12 +749,8 @@ export default function SettingsView({
   // card visible.
   const settingsAiProviderSelectorOn =
     useFlag("flag.settings.ai.provider_selector") === "on";
-  const settingsAiTimeoutConfigOn =
-    useFlag("flag.settings.ai.timeout_config") === "on";
   const settingsAiSummarizeOnImportOn =
     useFlag("flag.settings.ai.summarize_on_import") === "on";
-  const settingsAiDebugLoggingOn =
-    useFlag("flag.settings.ai.debug_logging") === "on";
   // Focus card on Settings — driven separately from the per-page focus
   // surface so admins can hide the picker without disabling the focus
   // system itself.
@@ -2230,30 +2084,6 @@ export default function SettingsView({
       }),
   });
 
-  /** Validator shared by all three AI timeout fields. Empty → ok (means
-   * "use default"). Non-empty must be an int between 10s and 15min. */
-  const validateAiTimeout = useCallback((raw: string): string | null => {
-    const trimmed = raw.trim();
-    if (trimmed === "") {
-      return null; // empty = default, allowed
-    }
-    const parsed = Number.parseInt(trimmed, 10);
-    if (!Number.isFinite(parsed) || parsed < 10_000 || parsed > 15 * 60_000) {
-      return "Timeout must be 10000–900000 ms";
-    }
-    return null;
-  }, []);
-
-  const makeAiTimeoutBlurHandler =
-    (raw: string, saver: (value: string) => Promise<unknown>) => () => {
-      const err = validateAiTimeout(raw);
-      if (err) {
-        pushSettingsToast({ kind: "error", message: err });
-        return;
-      }
-      void saver(raw.trim());
-    };
-
   // The legacy `saveUserIntent` writer has been removed alongside the
   // duplicate Your-Focus picker. Focus changes now happen via
   // FocusEditForm at /dashboard/settings/focus, which writes to the
@@ -2534,37 +2364,6 @@ export default function SettingsView({
     }
     setDebugLoading(false);
   };
-
-  // Activity log (server-side operational timeline) — paging, filters and
-  // live polling all live in lib/use-activity-log.ts. Renamed on destructure
-  // so the JSX below is untouched by the move; the panel that eventually owns
-  // this markup will call the hook directly and drop the prefixes.
-  const {
-    log: activityLog,
-    loading: activityLoading,
-    hasMore: activityHasMore,
-    total: activityTotal,
-    typeFilter: activityTypeFilter,
-    setTypeFilter: setActivityTypeFilter,
-    statusFilter: activityStatusFilter,
-    setStatusFilter: setActivityStatusFilter,
-    timeWindow: activityTimeWindow,
-    setTimeWindow: setActivityTimeWindow,
-    sortBy: activitySortBy,
-    setSortBy: setActivitySortBy,
-    sortDir: activitySortDir,
-    setSortDir: setActivitySortDir,
-    expandedId: activityExpandedId,
-    setExpandedId: setActivityExpandedId,
-    open: activityOpen,
-    setOpen: setActivityOpen,
-    livePaused: activityLivePaused,
-    setLivePaused: setActivityLivePaused,
-    flashing: activityFlashing,
-    load: loadActivityLog,
-  } = useActivityLog({
-    onLoadError: () => showToast(tToast("activity_log_load_failed")),
-  });
 
   const toggleImportRow = async (importRow: ImportRow) => {
     if (expandedImportId === importRow.id) {
@@ -8926,925 +8725,37 @@ ollama serve`}
                 <ExportDataSection auditPdfOn={settingsAdminExportAuditPdfOn} />
               )}
 
-              {/* Developer Options — only useful when debugging why an AI call is
-          stuck or returning garbage. The toggle is saved alongside the rest
-          of the AI settings; the log panel queries the server-side rolling
-          window written by lib/privacy-policy.ts. */}
+              {/* Developer Options — AI call logging, the operational activity
+          log, per-phase AI timeouts, and the feature-flag panel. Each of
+          those owns its own sub-flag; this gate decides only whether the
+          section exists at all. `debugLogging` is passed down rather than
+          owned by the panel because it round-trips through the AI settings
+          blob saved above. */}
               {devOptsVisible && (
-                <div className="settings-section" id="developer">
-                  <h2 className="settings-section-title">
-                    {tSections("developer_options")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("developer_options")}
-                  </p>
-
-                  <TasksResetRow />
-
-                  {/* Wave I: the whole AI debug-logging surface — toggle, load/clear
-            buttons, and the rolling log list — is gated behind two flags:
-            `flag.devopts.ai.debug_logging` (the dev-opts visibility) and
-            `flag.settings.ai.debug_logging` (the per-Settings card flag).
-            Both have to resolve on for the block to show; either off
-            collapses it. */}
-                  {devAiDebugLoggingOn && settingsAiDebugLoggingOn && (
-                    <>
-                      <label className="settings-checkbox-row">
-                        <input
-                          checked={debugLogging}
-                          className="settings-checkbox"
-                          onChange={(event) => {
-                            const next = event.target.checked;
-                            setDebugLogging(next);
-                            saveAiSettings({ debugLogging: next });
-                          }}
-                          type="checkbox"
-                        />
-                        <span>
-                          {tDevAiDebug("label")}
-                          <span
-                            className="settings-field-help"
-                            style={{ display: "block", marginTop: 4 }}
-                          >
-                            {tDevAiDebug("help")}
-                          </span>
-                        </span>
-                      </label>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          flexWrap: "wrap",
-                          marginTop: 16,
-                        }}
-                      >
-                        <button
-                          className="btn btn-secondary"
-                          disabled={debugLoading}
-                          onClick={() => void loadDebugLog()}
-                          type="button"
-                        >
-                          {debugLoading ? (
-                            <>
-                              <span className="spinner-sm" />{" "}
-                              {tDevAiDebug("loading")}
-                            </>
-                          ) : debugLog === null ? (
-                            tDevAiDebug("load")
-                          ) : (
-                            tDevAiDebug("refresh")
-                          )}
-                        </button>
-                        {debugLog !== null && debugLog.length > 0 && (
-                          <button
-                            className="btn btn-secondary"
-                            disabled={debugLoading}
-                            onClick={() => void clearDebugLog()}
-                            type="button"
-                          >
-                            {tDevAiDebug("clear")}
-                          </button>
-                        )}
-                      </div>
-
-                      {debugLog !== null && (
-                        <div style={{ marginTop: 16 }}>
-                          {debugLog.length === 0 ? (
-                            <div
-                              style={{
-                                fontSize: 13,
-                                color: "var(--text-3)",
-                                padding: "12px 2px",
-                              }}
-                            >
-                              {debugLogging
-                                ? tDevAiDebug("empty_active")
-                                : tDevAiDebug("empty_off")}
-                            </div>
-                          ) : (
-                            <ul
-                              style={{
-                                listStyle: "none",
-                                margin: 0,
-                                padding: 0,
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 8,
-                              }}
-                            >
-                              {debugLog.map((row) => {
-                                const isExpanded = debugExpandedId === row.id;
-                                const label = row.appName
-                                  ? `${row.appName} · ${row.phase ?? tDevAiDebug("unknown_phase")}`
-                                  : (row.phase ??
-                                    tDevAiDebug("fallback_label"));
-                                const providerLabel = row.provider
-                                  ? `${row.provider}${row.model ? ` / ${row.model}` : ""}`
-                                  : "";
-                                return (
-                                  <li
-                                    key={row.id}
-                                    style={{
-                                      border: "1px solid var(--border)",
-                                      borderRadius: 8,
-                                      padding: 12,
-                                      background: row.error
-                                        ? "rgba(255, 80, 80, 0.04)"
-                                        : "var(--surface-2)",
-                                    }}
-                                  >
-                                    <button
-                                      aria-expanded={isExpanded}
-                                      onClick={() =>
-                                        setDebugExpandedId((prev) =>
-                                          prev === row.id ? null : row.id
-                                        )
-                                      }
-                                      style={{
-                                        all: "unset",
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: 4,
-                                        width: "100%",
-                                      }}
-                                      type="button"
-                                    >
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: 10,
-                                          alignItems: "center",
-                                          flexWrap: "wrap",
-                                        }}
-                                      >
-                                        <span
-                                          style={{
-                                            fontWeight: 600,
-                                            fontSize: 13,
-                                          }}
-                                        >
-                                          {row.error ? "⚠ " : "✓ "}
-                                          {label}
-                                        </span>
-                                        {providerLabel && (
-                                          <span
-                                            style={{
-                                              fontSize: 12,
-                                              color: "var(--text-3)",
-                                            }}
-                                          >
-                                            · {providerLabel}
-                                          </span>
-                                        )}
-                                        <span
-                                          style={{
-                                            marginLeft: "auto",
-                                            fontSize: 12,
-                                            color: "var(--text-3)",
-                                          }}
-                                        >
-                                          {fmtDate(tSettings, row.createdAt)}
-                                          {typeof row.durationMs === "number" &&
-                                            tDevAiDebug("duration_suffix", {
-                                              ms: row.durationMs,
-                                            })}
-                                        </span>
-                                      </div>
-                                      {row.error && !isExpanded && (
-                                        <div
-                                          style={{
-                                            fontSize: 12,
-                                            color: "var(--red, #c03)",
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            whiteSpace: "nowrap",
-                                          }}
-                                        >
-                                          {row.error}
-                                        </div>
-                                      )}
-                                    </button>
-
-                                    {isExpanded && (
-                                      <div
-                                        style={{
-                                          marginTop: 12,
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: 10,
-                                        }}
-                                      >
-                                        {row.error && (
-                                          <div
-                                            style={{
-                                              fontSize: 12,
-                                              color: "var(--red, #c03)",
-                                              background:
-                                                "rgba(255, 80, 80, 0.08)",
-                                              padding: "8px 10px",
-                                              borderRadius: 6,
-                                              whiteSpace: "pre-wrap",
-                                              wordBreak: "break-word",
-                                            }}
-                                          >
-                                            {row.error}
-                                          </div>
-                                        )}
-                                        <div>
-                                          <div
-                                            style={{
-                                              fontSize: 12,
-                                              color: "var(--text-3)",
-                                              marginBottom: 4,
-                                            }}
-                                          >
-                                            {tDevAiDebug("prompt_heading")}
-                                          </div>
-                                          <pre
-                                            style={{
-                                              margin: 0,
-                                              padding: 10,
-                                              background: "var(--surface-1)",
-                                              border: "1px solid var(--border)",
-                                              borderRadius: 6,
-                                              fontSize: 12,
-                                              lineHeight: 1.45,
-                                              maxHeight: 320,
-                                              overflow: "auto",
-                                              whiteSpace: "pre-wrap",
-                                              wordBreak: "break-word",
-                                            }}
-                                          >
-                                            {row.prompt ||
-                                              tDevAiDebug("empty_value")}
-                                          </pre>
-                                        </div>
-                                        <div>
-                                          <div
-                                            style={{
-                                              fontSize: 12,
-                                              color: "var(--text-3)",
-                                              marginBottom: 4,
-                                            }}
-                                          >
-                                            {tDevAiDebug("response_heading")}
-                                          </div>
-                                          <pre
-                                            style={{
-                                              margin: 0,
-                                              padding: 10,
-                                              background: "var(--surface-1)",
-                                              border: "1px solid var(--border)",
-                                              borderRadius: 6,
-                                              fontSize: 12,
-                                              lineHeight: 1.45,
-                                              maxHeight: 320,
-                                              overflow: "auto",
-                                              whiteSpace: "pre-wrap",
-                                              wordBreak: "break-word",
-                                            }}
-                                          >
-                                            {row.response ||
-                                              tDevAiDebug("empty_value")}
-                                          </pre>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* Activity log — always-on operational timeline of scrapes, re-syncs,
-            policy summaries, and scheduled runs. Distinct from the AI debug
-            log above (which is opt-in and captures full prompt/response
-            payloads); this one is a user-friendly audit of boundary events so
-            a user can spot bugs or confirm their apps are being refreshed. */}
-                  {devActivityLogRetentionDaysOn && (
-                    <div
-                      className="settings-field"
-                      style={{
-                        marginBottom: 8,
-                        padding: "6px 0",
-                        fontSize: 12,
-                        color: "var(--text-3)",
-                      }}
-                    >
-                      <strong>{tDevActivity("retention_lead")}</strong>
-                      {tDevActivity("retention_body")}
-                    </div>
-                  )}
-                  {devActivityLogOn && (
-                    <details
-                      className="settings-advanced-details"
-                      id="activity-log"
-                      onToggle={(event) => {
-                        const isOpen = (event.target as HTMLDetailsElement)
-                          .open;
-                        setActivityOpen(isOpen);
-                        if (isOpen && activityLog === null) {
-                          void loadActivityLog(false);
-                        }
-                      }}
-                      open={activityOpen}
-                      style={{
-                        marginTop: 24,
-                        borderTop: "1px solid var(--border)",
-                        paddingTop: 16,
-                      }}
-                    >
-                      <summary
-                        style={{
-                          cursor: "pointer",
-                          fontSize: 14,
-                          fontWeight: 600,
-                          userSelect: "none",
-                        }}
-                      >
-                        {tDevActivity("summary")}
-                      </summary>
-                      <p
-                        className="settings-field-help"
-                        style={{ marginTop: 12, marginBottom: 12 }}
-                      >
-                        {tDevActivity("help")}
-                      </p>
-
-                      <div className="activity-log-toolbar">
-                        <label className="activity-log-filter">
-                          <span>{tDevActivity("filter_activity")}</span>
-                          <select
-                            className="settings-input"
-                            onChange={(event) =>
-                              setActivityTypeFilter(event.target.value)
-                            }
-                            value={activityTypeFilter}
-                          >
-                            <option value="">
-                              {tDevActivity("all_activity")}
-                            </option>
-                            <option value="scrape">
-                              {tDevActivityTypes("scrape")}
-                            </option>
-                            <option value="resync">
-                              {tDevActivityTypes("resync")}
-                            </option>
-                            <option value="policy_summary">
-                              {tDevActivityTypes("policy_summary")}
-                            </option>
-                            <option value="scheduled_sync">
-                              {tDevActivityTypes("scheduled_sync")}
-                            </option>
-                            <option value="manual_sync">
-                              {tDevActivityTypes("manual_sync")}
-                            </option>
-                            <option value="import">
-                              {tDevActivityTypes("import")}
-                            </option>
-                            <option value="backup_export">
-                              {tDevActivityTypes("backup_export")}
-                            </option>
-                            <option value="backup_restore">
-                              {tDevActivityTypes("backup_restore")}
-                            </option>
-                            <option value="reset">
-                              {tDevActivityTypes("reset")}
-                            </option>
-                          </select>
-                        </label>
-                        <label className="activity-log-filter">
-                          <span>{tDevActivity("filter_status")}</span>
-                          <select
-                            className="settings-input"
-                            onChange={(event) =>
-                              setActivityStatusFilter(event.target.value)
-                            }
-                            value={activityStatusFilter}
-                          >
-                            <option value="">
-                              {tDevActivity("all_statuses")}
-                            </option>
-                            <option value="ok">
-                              {tDevActivity("status_ok")}
-                            </option>
-                            <option value="error">
-                              {tDevActivity("status_error")}
-                            </option>
-                            <option value="partial">
-                              {tDevActivity("status_partial")}
-                            </option>
-                            <option value="cancelled">
-                              {tDevActivity("status_cancelled")}
-                            </option>
-                          </select>
-                        </label>
-                        <label className="activity-log-filter">
-                          <span>{tDevActivity("filter_since")}</span>
-                          <select
-                            className="settings-input"
-                            onChange={(event) =>
-                              setActivityTimeWindow(event.target.value)
-                            }
-                            value={activityTimeWindow}
-                          >
-                            <option value="">{tDevActivity("any_time")}</option>
-                            <option value="5m">
-                              {tDevActivity("last_5m")}
-                            </option>
-                            <option value="15m">
-                              {tDevActivity("last_15m")}
-                            </option>
-                            <option value="1h">
-                              {tDevActivity("last_1h")}
-                            </option>
-                            <option value="6h">
-                              {tDevActivity("last_6h")}
-                            </option>
-                            <option value="24h">
-                              {tDevActivity("last_24h")}
-                            </option>
-                            <option value="7d">
-                              {tDevActivity("last_7d")}
-                            </option>
-                          </select>
-                        </label>
-                        <label className="activity-log-filter">
-                          <span>{tDevActivity("filter_sort")}</span>
-                          <select
-                            className="settings-input"
-                            onChange={(event) => {
-                              const [field, dir] = event.target.value.split(
-                                ":"
-                              ) as [
-                                "started_at" | "ended_at" | "duration_ms",
-                                "asc" | "desc",
-                              ];
-                              setActivitySortBy(field);
-                              setActivitySortDir(dir);
-                            }}
-                            value={`${activitySortBy}:${activitySortDir}`}
-                          >
-                            <option value="started_at:desc">
-                              {tDevActivity("sort_started_desc")}
-                            </option>
-                            <option value="started_at:asc">
-                              {tDevActivity("sort_started_asc")}
-                            </option>
-                            <option value="ended_at:desc">
-                              {tDevActivity("sort_ended_desc")}
-                            </option>
-                            <option value="ended_at:asc">
-                              {tDevActivity("sort_ended_asc")}
-                            </option>
-                            <option value="duration_ms:desc">
-                              {tDevActivity("sort_duration_desc")}
-                            </option>
-                            <option value="duration_ms:asc">
-                              {tDevActivity("sort_duration_asc")}
-                            </option>
-                          </select>
-                        </label>
-                        <button
-                          className="btn btn-secondary"
-                          disabled={activityLoading}
-                          onClick={() => void loadActivityLog(false)}
-                          type="button"
-                        >
-                          {activityLoading && activityLog === null ? (
-                            <>
-                              <span className="spinner-sm" />{" "}
-                              {tDevActivity("loading")}
-                            </>
-                          ) : activityLog === null ? (
-                            tDevActivity("load")
-                          ) : (
-                            tDevActivity("refresh")
-                          )}
-                        </button>
-                        {/* Live-polling indicator. Only meaningful once the log has been
-                loaded at least once — before that the toolbar just shows the
-                "Load activity" button. Clicking toggles the pause state; the
-                dot pulses while live and goes grey when paused. */}
-                        {activityLog !== null && (
-                          <button
-                            aria-pressed={!activityLivePaused}
-                            className={
-                              // Brief flash when a new row was just prepended — purely
-                              // cosmetic, auto-cleared ~1.2s later by the flashing effect.
-                              `activity-log-live-toggle${activityLivePaused ? "is-paused" : ""}${
-                                !activityLivePaused && activityFlashing
-                                  ? "just-pulsed"
-                                  : ""
-                              }`
-                            }
-                            onClick={() =>
-                              setActivityLivePaused((prev) => !prev)
-                            }
-                            title={
-                              activityLivePaused
-                                ? tDevActivity("live_title_paused")
-                                : tDevActivity("live_title_active")
-                            }
-                            type="button"
-                          >
-                            <span
-                              aria-hidden
-                              className="activity-log-live-dot"
-                            />
-                            {activityLivePaused
-                              ? tDevActivity("paused")
-                              : tDevActivity("live")}
-                          </button>
-                        )}
-                      </div>
-
-                      {activityLog !== null && (
-                        <div style={{ marginTop: 12 }}>
-                          {activityLog.length === 0 ? (
-                            <div className="activity-log-empty">
-                              {(() => {
-                                const parts: string[] = [];
-                                if (activityStatusFilter) {
-                                  parts.push(`${activityStatusFilter}`);
-                                }
-                                if (activityTypeFilter) {
-                                  parts.push(
-                                    activityTypeFilter.replace(/_/g, " ")
-                                  );
-                                }
-                                if (parts.length > 0) {
-                                  return tDevActivity("empty_filter", {
-                                    filter: parts.join(" "),
-                                  });
-                                }
-                                return tDevActivity("empty_default");
-                              })()}
-                            </div>
-                          ) : (
-                            <>
-                              <ul className="activity-log-list">
-                                {activityLog.map((row) => {
-                                  const isExpanded =
-                                    activityExpandedId === row.id;
-                                  const typeLabel = ACTIVITY_TYPE_LABELS[
-                                    row.type
-                                  ]
-                                    ? tDevActivityTypes(
-                                        row.type as Parameters<
-                                          typeof tDevActivityTypes
-                                        >[0]
-                                      )
-                                    : row.type;
-                                  const typeIcon =
-                                    ACTIVITY_TYPE_ICONS[row.type] ?? "·";
-                                  const statusClass = `activity-status-pill activity-status-${row.status}`;
-                                  return (
-                                    <li
-                                      className={`activity-log-row activity-status-row-${row.status}`}
-                                      key={row.id}
-                                    >
-                                      <button
-                                        aria-expanded={isExpanded}
-                                        className="activity-log-header"
-                                        onClick={() =>
-                                          setActivityExpandedId((prev) =>
-                                            prev === row.id ? null : row.id
-                                          )
-                                        }
-                                        type="button"
-                                      >
-                                        <span
-                                          aria-hidden
-                                          className="activity-log-icon"
-                                        >
-                                          {typeIcon}
-                                        </span>
-                                        <span className="activity-log-title">
-                                          <span className="activity-log-type">
-                                            {typeLabel}
-                                          </span>
-                                          {row.appName && (
-                                            <span className="activity-log-appname">
-                                              {" "}
-                                              · {row.appName}
-                                            </span>
-                                          )}
-                                        </span>
-                                        <span className={statusClass}>
-                                          {row.status}
-                                        </span>
-                                        <span className="activity-log-meta">
-                                          {fmtRelativeTime(
-                                            tTime,
-                                            tSettings,
-                                            row.startedAt
-                                          )}
-                                          {typeof row.durationMs === "number" &&
-                                            row.durationMs > 0 && (
-                                              <>
-                                                {" "}
-                                                · {fmtDuration(row.durationMs)}
-                                              </>
-                                            )}
-                                        </span>
-                                      </button>
-                                      {row.summary && (
-                                        <div className="activity-log-summary">
-                                          {row.summary}
-                                        </div>
-                                      )}
-                                      {isExpanded && row.detail && (
-                                        <ActivityRowDetail row={row} />
-                                      )}
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                              <div className="activity-log-footer">
-                                <span className="activity-log-count">
-                                  {tDevActivity("showing", {
-                                    current: activityLog.length,
-                                    total: activityTotal,
-                                  })}
-                                </span>
-                                {activityHasMore && (
-                                  <button
-                                    className="btn btn-secondary"
-                                    disabled={activityLoading}
-                                    onClick={() => void loadActivityLog(true)}
-                                    type="button"
-                                  >
-                                    {activityLoading ? (
-                                      <>
-                                        <span className="spinner-sm" />{" "}
-                                        {tDevActivity("loading")}
-                                      </>
-                                    ) : (
-                                      tDevActivity("load_more")
-                                    )}
-                                  </button>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </details>
-                  )}
-
-                  {/* Advanced — per-phase AI request timeouts. Collapsed by default
-            because the defaults work for hosted providers and most local
-            setups; only becomes interesting once a user hits a timeout
-            (the bell notification routes them straight here via
-            #ai-timeouts, and the accordion auto-opens on that hash).
-            Wave I — gated behind `flag.devopts.advanced_accordion`; the
-            'collapsed' default surfaces the accordion but keeps it shut
-            on first paint so users without focus tweaks don't see it
-            sprawling open. */}
-                  {devAdvancedAccordionOn && settingsAiTimeoutConfigOn && (
-                    <details
-                      className="settings-advanced-details"
-                      id="ai-timeouts"
-                      onToggle={(event) =>
-                        setAdvancedAiOpen(
-                          (event.target as HTMLDetailsElement).open
-                        )
-                      }
-                      open={devAdvancedAccordionFlag === "on" || advancedAiOpen}
-                      style={{
-                        marginTop: 24,
-                        borderTop: "1px solid var(--border)",
-                        paddingTop: 16,
-                      }}
-                    >
-                      <summary
-                        style={{
-                          cursor: "pointer",
-                          fontSize: 14,
-                          fontWeight: 600,
-                          userSelect: "none",
-                        }}
-                      >
-                        {tDevAiTimeouts("summary")}
-                      </summary>
-                      <p
-                        className="settings-field-help"
-                        style={{ marginTop: 12, marginBottom: 12 }}
-                      >
-                        {tDevAiTimeouts("help")}
-                      </p>
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "repeat(auto-fit, minmax(220px, 1fr))",
-                          gap: 12,
-                        }}
-                      >
-                        <label
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>
-                            {tDevAiTimeouts("direct_label")}
-                          </span>
-                          <input
-                            className="settings-input"
-                            disabled={
-                              aiProvider === "disabled" ||
-                              aiTimeoutDirectAutoSave.saving
-                            }
-                            max={15 * 60_000}
-                            min={10_000}
-                            // Auto-save on blur — empty allowed (= server default),
-                            // otherwise must be 10000–900000 ms (validateAiTimeout).
-                            onBlur={makeAiTimeoutBlurHandler(
-                              aiTimeoutDirectMs,
-                              aiTimeoutDirectAutoSave.save
-                            )}
-                            onChange={(event) =>
-                              setAiTimeoutDirectMs(event.target.value)
-                            }
-                            placeholder={tPh("default")}
-                            step={1000}
-                            type="number"
-                            value={aiTimeoutDirectMs}
-                          />
-                          <span className="settings-field-help">
-                            {tDevAiTimeouts("direct_help")}
-                          </span>
-                        </label>
-
-                        <label
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>
-                            {tDevAiTimeouts("chunk_label")}
-                          </span>
-                          <input
-                            className="settings-input"
-                            disabled={
-                              aiProvider === "disabled" ||
-                              aiTimeoutChunkAutoSave.saving
-                            }
-                            max={15 * 60_000}
-                            min={10_000}
-                            onBlur={makeAiTimeoutBlurHandler(
-                              aiTimeoutChunkMs,
-                              aiTimeoutChunkAutoSave.save
-                            )}
-                            onChange={(event) =>
-                              setAiTimeoutChunkMs(event.target.value)
-                            }
-                            placeholder={tPh("default")}
-                            step={1000}
-                            type="number"
-                            value={aiTimeoutChunkMs}
-                          />
-                          <span className="settings-field-help">
-                            {tDevAiTimeouts("chunk_help")}
-                          </span>
-                        </label>
-
-                        <label
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>
-                            {tDevAiTimeouts("merge_label")}
-                          </span>
-                          <input
-                            className="settings-input"
-                            disabled={
-                              aiProvider === "disabled" ||
-                              aiTimeoutMergeAutoSave.saving
-                            }
-                            max={15 * 60_000}
-                            min={10_000}
-                            onBlur={makeAiTimeoutBlurHandler(
-                              aiTimeoutMergeMs,
-                              aiTimeoutMergeAutoSave.save
-                            )}
-                            onChange={(event) =>
-                              setAiTimeoutMergeMs(event.target.value)
-                            }
-                            placeholder={tPh("default")}
-                            step={1000}
-                            type="number"
-                            value={aiTimeoutMergeMs}
-                          />
-                          <span className="settings-field-help">
-                            {tDevAiTimeouts("merge_help")}
-                          </span>
-                        </label>
-                      </div>
-
-                      <p
-                        className="settings-field-help"
-                        style={{ marginTop: 12 }}
-                      >
-                        {tDevAiTimeouts.rich("footer", {
-                          save: (chunks) => <strong>{chunks}</strong>,
-                        })}
-                      </p>
-                    </details>
-                  )}
-
-                  {/* Round 3 PR 5: feature-flag panel inside the existing Developer
-            Options section. Pulls flag list + override state from
-            /api/feature-flags on mount; toggle/reset hit the override
-            endpoints. Sits below the AI debug log so users who only need
-            debug logging aren't scrolled past it. */}
-                  <div
-                    style={{
-                      marginTop: 32,
-                      paddingTop: 24,
-                      borderTop: "1px solid var(--border)",
-                    }}
-                  >
-                    {devFeatureFlagPresetsOn && (
-                      <div
-                        className="settings-field"
-                        style={{
-                          marginBottom: 12,
-                          padding: "8px 12px",
-                          background: "rgba(59, 130, 246, 0.06)",
-                          border: "1px dashed rgba(59, 130, 246, 0.35)",
-                          borderRadius: 8,
-                          fontSize: 12,
-                          color: "var(--text-2)",
-                        }}
-                      >
-                        <strong>{tDevPresets("lead")}</strong>
-                        {tDevPresets("body")}
-                      </div>
-                    )}
-                    {/* Authoring tool: write-down-the-spec matrix for which
-              flags should resolve to what under each (audience × goals)
-              combo. Sits above the live-overrides panel because it's
-              a planning surface — authors typically iterate the spec
-              first, then promote a column into live overrides via the
-              matrix's "Apply combo" buttons or paste the generated TS
-              patch into lib/feature-flag-rules.ts. */}
-                    <div
-                      className="settings-field"
-                      style={{
-                        marginBottom: 16,
-                        padding: "10px 12px",
-                        background: "var(--surface-2)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 8,
-                        display: "flex",
-                        gap: 12,
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <div style={{ flex: "1 1 240px", minWidth: 240 }}>
-                        <strong style={{ fontSize: 13 }}>
-                          Focus × Flags matrix
-                        </strong>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "var(--text-3)",
-                            marginTop: 2,
-                          }}
-                        >
-                          Author the desired flag value for every (audience ×
-                          goals) combo. Saves a draft locally; export as JSON or
-                          a TS patch when you&rsquo;re ready.
-                        </div>
-                      </div>
-                      <Link
-                        className="btn btn-secondary"
-                        href="/dashboard/settings/focus-matrix"
-                        style={{ fontSize: 13 }}
-                      >
-                        Open matrix →
-                      </Link>
-                    </div>
-                    <DevOptionsFeatureFlagPanel />
-                  </div>
-                </div>
+                <DeveloperSection
+                  advancedAiOpen={advancedAiOpen}
+                  aiProvider={aiProvider}
+                  aiTimeoutChunkAutoSave={aiTimeoutChunkAutoSave}
+                  aiTimeoutChunkMs={aiTimeoutChunkMs}
+                  aiTimeoutDirectAutoSave={aiTimeoutDirectAutoSave}
+                  aiTimeoutDirectMs={aiTimeoutDirectMs}
+                  aiTimeoutMergeAutoSave={aiTimeoutMergeAutoSave}
+                  aiTimeoutMergeMs={aiTimeoutMergeMs}
+                  clearDebugLog={clearDebugLog}
+                  debugExpandedId={debugExpandedId}
+                  debugLoading={debugLoading}
+                  debugLog={debugLog}
+                  debugLogging={debugLogging}
+                  loadDebugLog={loadDebugLog}
+                  saveAiSettings={saveAiSettings}
+                  setAdvancedAiOpen={setAdvancedAiOpen}
+                  setAiTimeoutChunkMs={setAiTimeoutChunkMs}
+                  setAiTimeoutDirectMs={setAiTimeoutDirectMs}
+                  setAiTimeoutMergeMs={setAiTimeoutMergeMs}
+                  setDebugExpandedId={setDebugExpandedId}
+                  setDebugLogging={setDebugLogging}
+                  showToast={showToast}
+                />
               )}
 
               {/* Reset App — destructive danger zone, deliberately the last
@@ -10375,190 +9286,6 @@ ollama serve`}
     </div>
   );
 }
-
-/**
- * Renders the expanded detail panel for one activity-log row.
- *
- * For rows with `status === 'error'` and a `detail.fetchDiagnostics` block
- * (populated by lib/privacy-policy.ts → PolicyFetchError, or lib/scraper.ts'
- * HTTP-aware catch block), we render a structured troubleshoot panel —
- * HTTP status, requested/final URL, origin, content-type, and any
- * remediation hints. Every other row falls back to the pre-existing
- * raw JSON dump so we don't regress the debug visibility the dev log
- * always had.
- */
-function ActivityRowDetail({ row }: { row: ActivityLogRow }) {
-  const tTroubleshoot = useTranslations(
-    "settings.dev_options.activity_log.troubleshoot"
-  );
-  const detail = row.detail;
-  if (!detail) {
-    return null;
-  }
-
-  const fetchDiag = (detail as Record<string, unknown>).fetchDiagnostics as
-    | Record<string, unknown>
-    | undefined;
-  const errorMessage =
-    typeof (detail as Record<string, unknown>).errorMessage === "string"
-      ? ((detail as Record<string, unknown>).errorMessage as string)
-      : null;
-
-  // Scalar info rows rendered as a small definition list. Kept as a plain
-  // array so we can filter out absent fields in one pass rather than
-  // wrapping each in its own conditional JSX block.
-  const diagnosticLines: Array<{ label: string; value: string }> = [];
-  if (fetchDiag) {
-    if (typeof fetchDiag.httpStatus === "number") {
-      diagnosticLines.push({
-        label: tTroubleshoot("label_http_status"),
-        value: String(fetchDiag.httpStatus),
-      });
-    }
-    if (typeof fetchDiag.origin === "string") {
-      // Map raw origin identifiers to locale keys; unknown values fall
-      // back to the raw string rather than rendering a missing-key error.
-      const ORIGIN_LABEL_KEYS: Record<string, string> = {
-        direct: "origin_direct",
-        browser_retry: "origin_browser_retry",
-        wayback: "origin_wayback",
-        normalize: "origin_normalize",
-      };
-      const originKey = ORIGIN_LABEL_KEYS[fetchDiag.origin as string];
-      diagnosticLines.push({
-        label: tTroubleshoot("label_failed_attempt"),
-        value: originKey ? tTroubleshoot(originKey) : String(fetchDiag.origin),
-      });
-    }
-    if (typeof fetchDiag.contentType === "string" && fetchDiag.contentType) {
-      diagnosticLines.push({
-        label: tTroubleshoot("label_content_type"),
-        value: fetchDiag.contentType as string,
-      });
-    }
-    if (typeof fetchDiag.networkHint === "string" && fetchDiag.networkHint) {
-      const NETWORK_HINT_LABEL_KEYS: Record<string, string> = {
-        timeout: "network_timeout",
-        dns: "network_dns",
-        connection_reset: "network_connection_reset",
-        network: "network_generic",
-      };
-      const hintKey = NETWORK_HINT_LABEL_KEYS[fetchDiag.networkHint as string];
-      diagnosticLines.push({
-        label: tTroubleshoot("label_network"),
-        value: hintKey ? tTroubleshoot(hintKey) : String(fetchDiag.networkHint),
-      });
-    }
-  }
-
-  const requestedUrl =
-    fetchDiag && typeof fetchDiag.requestedUrl === "string"
-      ? (fetchDiag.requestedUrl as string)
-      : typeof (detail as Record<string, unknown>).url === "string"
-        ? ((detail as Record<string, unknown>).url as string)
-        : null;
-  const finalUrl =
-    fetchDiag && typeof fetchDiag.finalUrl === "string"
-      ? (fetchDiag.finalUrl as string)
-      : null;
-  const troubleshoot =
-    fetchDiag && Array.isArray(fetchDiag.troubleshoot)
-      ? ((fetchDiag.troubleshoot as unknown[]).filter(
-          (x) => typeof x === "string"
-        ) as string[])
-      : [];
-
-  const showTroubleshoot =
-    row.status === "error" &&
-    (fetchDiag || errorMessage) &&
-    (diagnosticLines.length > 0 ||
-      troubleshoot.length > 0 ||
-      requestedUrl ||
-      errorMessage);
-
-  return (
-    <div className="activity-log-detail-wrap">
-      {showTroubleshoot && (
-        <div className="activity-log-troubleshoot">
-          <div className="activity-log-troubleshoot-title">
-            {tTroubleshoot("title")}
-          </div>
-          {errorMessage && (
-            <div className="activity-log-troubleshoot-message">
-              {errorMessage}
-            </div>
-          )}
-          {diagnosticLines.length > 0 && (
-            <dl className="activity-log-troubleshoot-facts">
-              {diagnosticLines.map((line) => (
-                <div
-                  className="activity-log-troubleshoot-fact"
-                  key={line.label}
-                >
-                  <dt>{line.label}</dt>
-                  <dd>{line.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {(requestedUrl || finalUrl) && (
-            <dl className="activity-log-troubleshoot-facts">
-              {requestedUrl && (
-                <div className="activity-log-troubleshoot-fact">
-                  <dt>{tTroubleshoot("label_requested_url")}</dt>
-                  <dd>
-                    <a
-                      href={requestedUrl}
-                      rel="noreferrer noopener"
-                      target="_blank"
-                    >
-                      {requestedUrl}
-                    </a>
-                  </dd>
-                </div>
-              )}
-              {finalUrl && finalUrl !== requestedUrl && (
-                <div className="activity-log-troubleshoot-fact">
-                  <dt>{tTroubleshoot("label_final_url")}</dt>
-                  <dd>
-                    <a
-                      href={finalUrl}
-                      rel="noreferrer noopener"
-                      target="_blank"
-                    >
-                      {finalUrl}
-                    </a>
-                  </dd>
-                </div>
-              )}
-            </dl>
-          )}
-          {troubleshoot.length > 0 && (
-            <>
-              <div className="activity-log-troubleshoot-subtitle">
-                {tTroubleshoot("try_title")}
-              </div>
-              <ul className="activity-log-troubleshoot-hints">
-                {troubleshoot.map((hint, index) => (
-                  <li key={index}>{hint}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
-      <details className="activity-log-detail-raw">
-        <summary>{tTroubleshoot("raw_json")}</summary>
-        <pre className="activity-log-detail">
-          {JSON.stringify(detail, null, 2)}
-        </pre>
-      </details>
-    </div>
-  );
-}
-
-// AuditBundleExport extracted to ./AuditBundleExport.tsx — the inline
-// helper that used to live here is now imported at the top of the file.
 
 // ── Start Over button ─────────────────────────────────────────────────────
 //
