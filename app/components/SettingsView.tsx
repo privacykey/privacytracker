@@ -19,17 +19,24 @@ import AuditBundleImport from "./AuditBundleImport";
 import DateFormatPicker from "./DateFormatPicker";
 import DevOptionsFeatureFlagPanel from "./DevOptionsFeatureFlagPanel";
 import { useImportQueue } from "./ImportQueueProvider";
-import LanguageSuggestionBanner from "./LanguageSuggestionBanner";
 import RateLimitBanner from "./RateLimitBanner";
 import SettingsAutoSaveToast, {
   pushSettingsToast,
 } from "./SettingsAutoSaveToast";
 import SettingsSidebar from "./SettingsSidebar";
+import DeploymentDiagnosticsSection from "./settings/DeploymentDiagnosticsSection";
 import ExportDataSection from "./settings/ExportDataSection";
+import { fmtBytes } from "./settings/format";
 import LanguageSection from "./settings/LanguageSection";
 import PolicyAlertsSection from "./settings/PolicyAlertsSection";
+import PrivacyPoliciesBulkSection from "./settings/PrivacyPoliciesBulkSection";
+import RegionSection from "./settings/RegionSection";
 import SyncScheduleSection from "./settings/SyncScheduleSection";
-import type { Schedule, SyncStatus } from "./settings/types";
+import type {
+  DeploymentDiagnostics,
+  Schedule,
+  SyncStatus,
+} from "./settings/types";
 import { useTaskCenter } from "./TaskCenter";
 import TasksResetRow from "./TasksResetRow";
 import Toast from "./Toast";
@@ -161,61 +168,6 @@ interface ActivityLogRow {
   status: string;
   summary: string | null;
   type: string;
-}
-
-type DeploymentCheckStatus = "ok" | "info" | "warn" | "bad";
-
-interface DeploymentDiagnosticCheck {
-  detail: string;
-  id: string;
-  label: string;
-  status: DeploymentCheckStatus;
-}
-
-interface DeploymentDiagnostics {
-  app: {
-    name: string;
-    version: string;
-    nodeEnv: string;
-    runtime: "desktop" | "web";
-    containerLikely: boolean;
-    platform: string;
-    arch: string;
-    node: string;
-    uptimeSeconds: number;
-  };
-  checks: DeploymentDiagnosticCheck[];
-  database: {
-    path: string;
-    dataDir: string;
-    dataDirSource: "env" | "cwd" | "memory";
-    exists: boolean;
-    sizeBytes: number | null;
-    writable: boolean;
-    journalMode: string | null;
-    error: string | null;
-  };
-  generatedAt: string;
-  health: {
-    status: "ok" | "degraded";
-    dbPingMs: number | null;
-    error: string | null;
-  };
-  network: {
-    host: string | null;
-    forwardedHost: string | null;
-    forwardedProto: string | null;
-    forwardedForPresent: boolean;
-    realIpPresent: boolean;
-    proxyDetected: boolean;
-    protocol: "http" | "https" | "unknown";
-    localOnlyHost: boolean;
-    lanOrDomainHost: boolean;
-  };
-  security: {
-    adminTokenConfigured: boolean;
-    adminTokenRequired: boolean;
-  };
 }
 
 interface BackupSnapshotSettings {
@@ -497,23 +449,6 @@ function fmtDuration(ms: number): string {
   const mins = Math.floor(ms / 60_000);
   const secs = Math.round((ms % 60_000) / 1000);
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-}
-
-function fmtBytes(bytes: number | null): string {
-  if (bytes === null || !Number.isFinite(bytes)) {
-    return "—";
-  }
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  const units = ["KB", "MB", "GB", "TB"];
-  let value = bytes / 1024;
-  let unit = units[0];
-  for (let i = 1; i < units.length && value >= 1024; i += 1) {
-    value /= 1024;
-    unit = units[i];
-  }
-  return `${value >= 10 ? value.toFixed(1) : value.toFixed(2)} ${unit}`;
 }
 
 function fmtRelative(t: TimeT, ts: number | null) {
@@ -5918,70 +5853,16 @@ export default function SettingsView({
 
               {/* App Store Region */}
               {settingsSyncRegionOn && (
-                <div className="settings-section" id="region">
-                  <h2 className="settings-section-title">
-                    {tSections("app_store_region")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("app_store_region")}
-                  </p>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 12,
-                      alignItems: "center",
-                    }}
-                  >
-                    <label
-                      htmlFor="app-country"
-                      style={{ fontSize: 14, color: "var(--text-2)" }}
-                    >
-                      {tRegion("storefront_label")}
-                    </label>
-                    <select
-                      className="settings-select"
-                      disabled={countryAutoSave.saving}
-                      id="app-country"
-                      // Auto-save: changing the storefront immediately POSTs the
-                      // new code. We update local state synchronously so the
-                      // dropdown stays responsive, then fire `save` — its toast
-                      // surfaces success / failure. No Save button.
-                      onChange={(e) => {
-                        const next = normalizeCountry(e.target.value);
-                        setCountry(next);
-                        void countryAutoSave.save(next);
-                      }}
-                      style={{ minWidth: 220 }}
-                      value={country}
-                    >
-                      {COUNTRY_OPTIONS.map((opt) => (
-                        <option key={opt.code} value={opt.code}>
-                          {opt.label} ({opt.code.toUpperCase()})
-                        </option>
-                      ))}
-                    </select>
-
-                    {country === savedCountry && (
-                      <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                        {tRegion("current")}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Language suggestion — appears after a successful region save
-            when the new storefront's expected language differs from
-            the active UI locale. The banner hits /api/locale on click
-            (same path as the LocaleSwitcher) and reloads. Dismiss
-            clears the suggestion until the next region change. */}
-                  {languageSuggestion && (
-                    <LanguageSuggestionBanner
-                      onDismiss={() => setLanguageSuggestion(null)}
-                      target={languageSuggestion}
-                    />
-                  )}
-                </div>
+                <RegionSection
+                  autoSave={countryAutoSave}
+                  country={country}
+                  languageSuggestion={languageSuggestion}
+                  onDismissLanguageSuggestion={() =>
+                    setLanguageSuggestion(null)
+                  }
+                  savedCountry={savedCountry}
+                  setCountry={setCountry}
+                />
               )}
 
               {/*
@@ -6957,92 +6838,13 @@ ollama serve`}
         settings card from the user's POV.
       */}
               {settingsPoliciesThrottleOn && (
-                <div className="settings-section" id="privacy-policies-bulk">
-                  <h2 className="settings-section-title">
-                    {tSections("privacy_policies")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("privacy_policies")}
-                  </p>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 10,
-                      marginTop: 12,
-                    }}
-                  >
-                    <button
-                      className="btn btn-secondary"
-                      disabled={policyBulkRunning !== null}
-                      onClick={() => runBulkPolicySync("fetch")}
-                      title={tPolicyCard("rescrape_title")}
-                      type="button"
-                    >
-                      {policyBulkRunning === "fetch" ? (
-                        <>
-                          <span className="spinner" />{" "}
-                          {tPolicyCard("rescrape_busy")}
-                        </>
-                      ) : (
-                        tPolicyCard("rescrape")
-                      )}
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      disabled={policyBulkRunning !== null}
-                      onClick={() => runBulkPolicySync("all")}
-                      title={tPolicyCard("summarise_title")}
-                      type="button"
-                    >
-                      {policyBulkRunning === "all" ? (
-                        <>
-                          <span className="spinner" />{" "}
-                          {tPolicyCard("summarise_busy")}
-                        </>
-                      ) : (
-                        tPolicyCard("summarise")
-                      )}
-                    </button>
-                  </div>
-
-                  <label
-                    className="settings-checkbox-row"
-                    style={{ marginTop: 14 }}
-                  >
-                    <input
-                      checked={policyBulkForce}
-                      className="settings-checkbox"
-                      disabled={policyBulkRunning !== null}
-                      onChange={(event) =>
-                        setPolicyBulkForce(event.target.checked)
-                      }
-                      type="checkbox"
-                    />
-                    <span>
-                      {tPolicyCard("force_label")}
-                      <span
-                        className="settings-field-help"
-                        style={{ display: "block", marginTop: 4 }}
-                      >
-                        {tPolicyCard("force_help")}
-                      </span>
-                    </span>
-                  </label>
-
-                  {policyBulkSummary ? (
-                    <p
-                      style={{
-                        marginTop: 12,
-                        fontSize: 13,
-                        color: "var(--text-2)",
-                      }}
-                    >
-                      {tPolicyCard("last_run_lead")} {policyBulkSummary}
-                    </p>
-                  ) : null}
-                </div>
+                <PrivacyPoliciesBulkSection
+                  force={policyBulkForce}
+                  onRun={runBulkPolicySync}
+                  running={policyBulkRunning}
+                  setForce={setPolicyBulkForce}
+                  summary={policyBulkSummary}
+                />
               )}
 
               {/* Policy Change Alerts */}
@@ -8538,332 +8340,21 @@ ollama serve`}
                 </div>
               )}
 
-              <div className="settings-section" id="deployment-diagnostics">
-                <h2 className="settings-section-title">
-                  {tSections("deployment_diagnostics")}
-                </h2>
-                <p className="settings-section-subtitle">
-                  {tSub("deployment_diagnostics")}
-                </p>
-
-                {deploymentDiagnosticsLoading && !deploymentDiagnostics ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                      color: "var(--text-3)",
-                    }}
-                  >
-                    <span className="spinner-sm" /> {tDeploy("loading")}
-                  </div>
-                ) : deploymentDiagnostics ? (
-                  <>
-                    <div className="settings-status-grid deployment-diagnostics-grid">
-                      <div className="settings-status-item">
-                        <div className="settings-status-label">
-                          {tDeploy("version")}
-                        </div>
-                        <div className="settings-status-value">
-                          {deploymentDiagnostics.app.version}
-                        </div>
-                      </div>
-                      <div className="settings-status-item">
-                        <div className="settings-status-label">
-                          {tDeploy("health")}
-                        </div>
-                        <div
-                          className="settings-status-value"
-                          style={{
-                            color:
-                              deploymentDiagnostics.health.status === "ok"
-                                ? "var(--green)"
-                                : "var(--danger)",
-                          }}
-                        >
-                          {deploymentDiagnostics.health.status === "ok"
-                            ? tDeploy("health_ok")
-                            : tDeploy("health_degraded")}
-                        </div>
-                      </div>
-                      <div className="settings-status-item">
-                        <div className="settings-status-label">
-                          {tDeploy("database")}
-                        </div>
-                        <div
-                          className="settings-status-value"
-                          style={{
-                            color: deploymentDiagnostics.database.writable
-                              ? "var(--green)"
-                              : "var(--danger)",
-                          }}
-                        >
-                          {deploymentDiagnostics.database.writable
-                            ? tDeploy("writable")
-                            : tDeploy("not_writable")}
-                        </div>
-                      </div>
-                      <div className="settings-status-item">
-                        <div className="settings-status-label">
-                          {tDeploy("access")}
-                        </div>
-                        <div className="settings-status-value">
-                          {deploymentDiagnostics.network.localOnlyHost
-                            ? tDeploy("access_local")
-                            : tDeploy("access_lan")}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="deployment-admin-card">
-                      <div>
-                        <div className="deployment-admin-title">
-                          {tDeploy("admin_unlock_title")}
-                        </div>
-                        <p className="deployment-admin-copy">
-                          {deploymentDiagnostics.security.adminTokenConfigured
-                            ? tDeploy("admin_unlock_body_configured")
-                            : tDeploy("admin_unlock_body_off")}
-                        </p>
-                        <div
-                          className={`deployment-admin-state${adminTokenUnlocked ? " is-unlocked" : ""}`}
-                          role="status"
-                        >
-                          {adminTokenUnlocked
-                            ? tDeploy("session_unlocked")
-                            : tDeploy("session_locked")}
-                        </div>
-                      </div>
-                      {deploymentDiagnostics.security.adminTokenConfigured ? (
-                        <div className="deployment-admin-controls">
-                          <label className="settings-field" style={{ gap: 6 }}>
-                            <span className="settings-field-label">
-                              {tDeploy("admin_token_input")}
-                            </span>
-                            <input
-                              autoComplete="off"
-                              className="settings-input"
-                              onChange={(event) =>
-                                setAdminTokenInput(event.target.value)
-                              }
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  event.preventDefault();
-                                  saveSessionAdminToken();
-                                }
-                              }}
-                              placeholder={tDeploy("admin_token_placeholder")}
-                              type="password"
-                              value={adminTokenInput}
-                            />
-                          </label>
-                          <div className="deployment-admin-actions">
-                            <button
-                              className="btn btn-secondary"
-                              disabled={!adminTokenInput.trim()}
-                              onClick={saveSessionAdminToken}
-                              type="button"
-                            >
-                              {tDeploy("admin_unlock")}
-                            </button>
-                            <button
-                              className="btn btn-ghost"
-                              disabled={!adminTokenUnlocked}
-                              onClick={clearSessionAdminToken}
-                              type="button"
-                            >
-                              {tDeploy("admin_lock")}
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div
-                      aria-label={tDeploy("checks_aria")}
-                      className="deployment-check-list"
-                    >
-                      {deploymentDiagnostics.checks.map((check) => (
-                        <div
-                          className={`deployment-check deployment-check-${check.status}`}
-                          key={check.id}
-                        >
-                          <div className="deployment-check-main">
-                            <span
-                              aria-hidden="true"
-                              className="deployment-check-dot"
-                            />
-                            <div>
-                              <div className="deployment-check-title">
-                                {check.label}
-                              </div>
-                              <div className="deployment-check-detail">
-                                {check.detail}
-                              </div>
-                            </div>
-                          </div>
-                          <span className="deployment-check-status">
-                            {tDeploy(`status_${check.status}`)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="deployment-detail-grid">
-                      <div className="deployment-detail-row">
-                        <span>{tDeploy("db_path")}</span>
-                        <code>{deploymentDiagnostics.database.path}</code>
-                      </div>
-                      <div className="deployment-detail-row">
-                        <span>{tDeploy("db_size")}</span>
-                        <strong>
-                          {fmtBytes(deploymentDiagnostics.database.sizeBytes)}
-                        </strong>
-                      </div>
-                      <div className="deployment-detail-row">
-                        <span>{tDeploy("host")}</span>
-                        <code>
-                          {deploymentDiagnostics.network.host ??
-                            tDeploy("unknown")}
-                        </code>
-                      </div>
-                      <div className="deployment-detail-row">
-                        <span>{tDeploy("proxy")}</span>
-                        <strong>
-                          {deploymentDiagnostics.network.proxyDetected
-                            ? tDeploy("proxy_detected")
-                            : tDeploy("proxy_not_detected")}
-                        </strong>
-                      </div>
-                      <div className="deployment-detail-row">
-                        <span>{tDeploy("admin_token")}</span>
-                        <strong>
-                          {deploymentDiagnostics.security.adminTokenConfigured
-                            ? tDeploy("admin_token_on")
-                            : tDeploy("admin_token_off")}
-                        </strong>
-                      </div>
-                      <div className="deployment-detail-row">
-                        <span>{tDeploy("runtime")}</span>
-                        <strong>
-                          {deploymentDiagnostics.app.runtime === "desktop"
-                            ? tDeploy("runtime_desktop")
-                            : deploymentDiagnostics.app.containerLikely
-                              ? tDeploy("runtime_container")
-                              : tDeploy("runtime_web")}
-                        </strong>
-                      </div>
-                    </div>
-
-                    <button
-                      className="btn btn-secondary"
-                      disabled={deploymentDiagnosticsLoading}
-                      onClick={() => void loadDeploymentDiagnostics()}
-                      style={{ marginTop: 16 }}
-                      type="button"
-                    >
-                      {deploymentDiagnosticsLoading ? (
-                        <>
-                          <span className="spinner" /> {tDeploy("refreshing")}
-                        </>
-                      ) : (
-                        tDeploy("refresh")
-                      )}
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={copyingDeploymentDiagnostics}
-                      onClick={() => void copyDeploymentSupportBundle()}
-                      style={{ marginTop: 16, marginLeft: 8 }}
-                      type="button"
-                    >
-                      {copyingDeploymentDiagnostics ? (
-                        <>
-                          <span className="spinner" /> {tDeploy("copying")}
-                        </>
-                      ) : (
-                        tDeploy("copy_bundle")
-                      )}
-                    </button>
-                  </>
-                ) : deploymentDiagnosticsLocked ? (
-                  // The non-local admin gate rejected the diagnostics read.
-                  // This card is the login destination every blocked surface
-                  // links to, so the unlock form must render even though the
-                  // diagnostics payload (and its adminTokenConfigured flag)
-                  // is unavailable — `adminTokenConfigured` comes from the
-                  // gate-exempt /api/auth/admin-token/status instead.
-                  <div className="settings-help-card" role="status">
-                    <div className="settings-help-title">
-                      {tDeploy("locked_title")}
-                    </div>
-                    <p className="settings-help-copy">
-                      {adminTokenConfigured
-                        ? tDeploy("locked_body")
-                        : tDeploy("locked_body_no_token")}
-                    </p>
-                    {adminTokenConfigured && (
-                      <div className="deployment-admin-controls">
-                        <label className="settings-field" style={{ gap: 6 }}>
-                          <span className="settings-field-label">
-                            {tDeploy("admin_token_input")}
-                          </span>
-                          <input
-                            autoComplete="off"
-                            className="settings-input"
-                            onChange={(event) =>
-                              setAdminTokenInput(event.target.value)
-                            }
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                saveSessionAdminToken();
-                              }
-                            }}
-                            placeholder={tDeploy("admin_token_placeholder")}
-                            type="password"
-                            value={adminTokenInput}
-                          />
-                        </label>
-                        <div className="deployment-admin-actions">
-                          <button
-                            className="btn btn-secondary"
-                            disabled={!adminTokenInput.trim()}
-                            onClick={saveSessionAdminToken}
-                            type="button"
-                          >
-                            {tDeploy("admin_unlock")}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="settings-help-card" role="status">
-                    <div className="settings-help-title">
-                      {tDeploy("unavailable_title")}
-                    </div>
-                    <p className="settings-help-copy">
-                      {deploymentDiagnosticsError ||
-                        tDeploy("unavailable_body")}
-                    </p>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={deploymentDiagnosticsLoading}
-                      onClick={() => void loadDeploymentDiagnostics()}
-                      type="button"
-                    >
-                      {deploymentDiagnosticsLoading ? (
-                        <>
-                          <span className="spinner" /> {tDeploy("refreshing")}
-                        </>
-                      ) : (
-                        tDeploy("try_again")
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
+              <DeploymentDiagnosticsSection
+                adminTokenConfigured={adminTokenConfigured}
+                adminTokenInput={adminTokenInput}
+                adminTokenUnlocked={adminTokenUnlocked}
+                copying={copyingDeploymentDiagnostics}
+                diagnostics={deploymentDiagnostics}
+                error={deploymentDiagnosticsError}
+                loading={deploymentDiagnosticsLoading}
+                locked={deploymentDiagnosticsLocked}
+                onClearAdminToken={clearSessionAdminToken}
+                onCopySupportBundle={copyDeploymentSupportBundle}
+                onReload={loadDeploymentDiagnostics}
+                onSaveAdminToken={saveSessionAdminToken}
+                setAdminTokenInput={setAdminTokenInput}
+              />
 
               {/* Backup & Restore */}
               {settingsAdminBackupOn && (
