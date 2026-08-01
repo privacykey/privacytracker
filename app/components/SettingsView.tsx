@@ -12,6 +12,10 @@ import { useDateFormat } from "../../lib/date-format-hook";
 import { useFlag } from "../../lib/feature-flags-hooks";
 import { scrollPulse } from "../../lib/scroll-pulse";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
+import {
+  type ActivityLogRow,
+  useActivityLog,
+} from "../../lib/use-activity-log";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { useSettingsAutoSave } from "../../lib/use-settings-auto-save";
@@ -150,24 +154,6 @@ interface AiSamplePolicyResult {
     expectedSignals: string[];
   };
   summary: PolicySummary;
-}
-
-/**
- * Activity row returned by /api/activity. Mirrors lib/activity.ts
- * ActivityRow, but kept duplicated here so the client bundle doesn't pull the
- * server-only `db` import chain via that module.
- */
-interface ActivityLogRow {
-  appId: string | null;
-  appName: string | null;
-  detail: Record<string, unknown> | null;
-  durationMs: number | null;
-  endedAt: number | null;
-  id: string;
-  startedAt: number;
-  status: string;
-  summary: string | null;
-  type: string;
 }
 
 interface BackupSnapshotSettings {
@@ -1015,31 +1001,6 @@ export default function SettingsView({
   const [debugLoading, setDebugLoading] = useState(false);
   const [debugExpandedId, setDebugExpandedId] = useState<string | null>(null);
 
-  // Activity log (server-side operational timeline). Lazy-loaded on first
-  // accordion open; `activityLog` stays null until then so we don't pay the
-  // network round-trip on every Settings visit.
-  const [activityLog, setActivityLog] = useState<ActivityLogRow[] | null>(null);
-  const [activityLoading, setActivityLoading] = useState(false);
-  const [activityHasMore, setActivityHasMore] = useState(false);
-  const [activityTotal, setActivityTotal] = useState(0);
-  const [activityTypeFilter, setActivityTypeFilter] = useState<string>("");
-  // Secondary filters — all three are empty string = "no filter", so the
-  // existing loaders can treat absence the same way they already treat
-  // `activityTypeFilter === ''`. Time window is expressed as a preset key
-  // that the loader converts into an absolute `since` timestamp at request
-  // time (computed client-side to keep the API stateless).
-  const [activityStatusFilter, setActivityStatusFilter] = useState<string>("");
-  const [activityTimeWindow, setActivityTimeWindow] = useState<string>(""); // '', '5m', '15m', '1h', '6h', '24h', '7d'
-  const [activitySortBy, setActivitySortBy] = useState<
-    "started_at" | "ended_at" | "duration_ms"
-  >("started_at");
-  const [activitySortDir, setActivitySortDir] = useState<"asc" | "desc">(
-    "desc"
-  );
-  const [activityExpandedId, setActivityExpandedId] = useState<string | null>(
-    null
-  );
-  const [activityOpen, setActivityOpen] = useState(false);
   // `saving`/`setSaving` used to gate the Sync Schedule Save button.
   // The auto-save renovation moved that to `scheduleAutoSave.saving`,
   // so the standalone state is gone. Other sections still keep their
@@ -2574,269 +2535,36 @@ export default function SettingsView({
     setDebugLoading(false);
   };
 
-  /**
-   * Load the first page of the activity log (or a refreshed page when the
-   * filter changes). `append` is for the Load more button; when true we fetch
-   * the next page and concat, otherwise we replace.
-   */
-  // When any of the filters or sort order change, refresh from scratch (but
-  // only after the panel has been opened at least once — otherwise the
-  // dropdowns firing on mount would kick a spurious fetch).
-  useEffect(() => {
-    if (activityLog === null) {
-      return;
-    }
-    // loadActivityLog is hoisted from below; same false-positive pattern
-    // as the toggleImportRow effect above (immutability's stale-closure
-    // concern applies to useCallback, not useEffect).
-    // eslint-disable-next-line react-hooks/immutability
-    void loadActivityLog(false);
-    setActivityExpandedId(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    activityTypeFilter,
-    activityStatusFilter,
-    activityTimeWindow,
-    activitySortBy,
-    activitySortDir,
-  ]);
-
-  const ACTIVITY_PAGE = 40;
-
-  /**
-   * Convert the user-facing time-window preset into an absolute epoch-ms
-   * lower bound at request time. We compute `since` here (not on the
-   * server) so the API stays fully stateless — no "since-now" semantics
-   * tucked away behind a server-clock assumption.
-   */
-  const timeWindowToSince = (window: string): number | null => {
-    if (!window) {
-      return null;
-    }
-    const now = Date.now();
-    const units: Record<string, number> = {
-      "5m": 5 * 60 * 1000,
-      "15m": 15 * 60 * 1000,
-      "1h": 60 * 60 * 1000,
-      "6h": 6 * 60 * 60 * 1000,
-      "24h": 24 * 60 * 60 * 1000,
-      "7d": 7 * 24 * 60 * 60 * 1000,
-    };
-    const delta = units[window];
-    return typeof delta === "number" ? now - delta : null;
-  };
-
-  /**
-   * Apply all active activity filters + sort to the URLSearchParams used by
-   * both `loadActivityLog` and `pollActivityLog`. Pulled into a helper so the
-   * two stay in lockstep — drift here was how an earlier iteration ended up
-   * polling for unfiltered rows while the user was looking at an "errors
-   * only" view.
-   */
-  const applyActivityQueryParams = (
-    params: URLSearchParams,
-    overrides?: {
-      type?: string;
-      status?: string;
-      timeWindow?: string;
-      sortBy?: string;
-      sortDir?: string;
-    }
-  ) => {
-    const type = overrides?.type ?? activityTypeFilter;
-    const status = overrides?.status ?? activityStatusFilter;
-    const timeWindow = overrides?.timeWindow ?? activityTimeWindow;
-    const sortBy = overrides?.sortBy ?? activitySortBy;
-    const sortDir = overrides?.sortDir ?? activitySortDir;
-    if (type) {
-      params.set("type", type);
-    }
-    if (status) {
-      params.set("status", status);
-    }
-    const since = timeWindowToSince(timeWindow);
-    if (since !== null) {
-      params.set("since", String(since));
-    }
-    if (sortBy) {
-      params.set("sortBy", sortBy);
-    }
-    if (sortDir) {
-      params.set("sortDir", sortDir);
-    }
-  };
-
-  const loadActivityLog = async (append = false) => {
-    setActivityLoading(true);
-    try {
-      const offset = append ? (activityLog?.length ?? 0) : 0;
-      const params = new URLSearchParams();
-      params.set("limit", String(ACTIVITY_PAGE));
-      params.set("offset", String(offset));
-      applyActivityQueryParams(params);
-      const res = await fetch(`/api/activity?${params.toString()}`);
-      if (!res.ok) {
-        showToast(tToast("activity_log_load_failed"));
-        setActivityLoading(false);
-        return;
-      }
-      const data = (await res.json()) as {
-        rows?: ActivityLogRow[];
-        total?: number;
-      };
-      const rows = Array.isArray(data.rows) ? data.rows : [];
-      const total = typeof data.total === "number" ? data.total : rows.length;
-      setActivityTotal(total);
-      setActivityLog((prev) => (append && prev ? [...prev, ...rows] : rows));
-      const loadedCount =
-        (append && activityLog ? activityLog.length : 0) + rows.length;
-      setActivityHasMore(loadedCount < total);
-    } catch (error) {
-      console.error("[settings] Failed to load activity log:", error);
-      showToast(tToast("activity_log_load_failed"));
-    }
-    setActivityLoading(false);
-  };
-
-  // ── Live activity polling ─────────────────────────────────────────────
-  //
-  // While the accordion is open we re-fetch the first page every few seconds
-  // and prepend rows we haven't seen yet (keyed by id). This keeps the list
-  // feeling live without a server-side event channel.
-  //
-  // Refs are used so the polling effect can close over the latest filter +
-  // loading flag without rebuilding the interval on every state change (which
-  // would reset the timer mid-tick and make polling irregular).
-  const activityTypeFilterRef = useRef<string>(activityTypeFilter);
-  useEffect(() => {
-    activityTypeFilterRef.current = activityTypeFilter;
-  }, [activityTypeFilter]);
-  const activityStatusFilterRef = useRef<string>(activityStatusFilter);
-  useEffect(() => {
-    activityStatusFilterRef.current = activityStatusFilter;
-  }, [activityStatusFilter]);
-  const activityTimeWindowRef = useRef<string>(activityTimeWindow);
-  useEffect(() => {
-    activityTimeWindowRef.current = activityTimeWindow;
-  }, [activityTimeWindow]);
-  const activitySortByRef = useRef<typeof activitySortBy>(activitySortBy);
-  useEffect(() => {
-    activitySortByRef.current = activitySortBy;
-  }, [activitySortBy]);
-  const activitySortDirRef = useRef<typeof activitySortDir>(activitySortDir);
-  useEffect(() => {
-    activitySortDirRef.current = activitySortDir;
-  }, [activitySortDir]);
-  const activityLoadingRef = useRef<boolean>(activityLoading);
-  useEffect(() => {
-    activityLoadingRef.current = activityLoading;
-  }, [activityLoading]);
-
-  // User-facing pause switch. Polling also yields to manual-action inflight
-  // state (activityLoadingRef) and to `document.hidden` so background tabs
-  // don't spam the server.
-  const [activityLivePaused, setActivityLivePaused] = useState(false);
-  // When a poll prepends a new row we briefly flash the "Live" indicator so
-  // the user gets visual confirmation that a fresh row just landed — not just
-  // that polling is wired up. `activityFlashing` is flipped true on arrival
-  // and auto-cleared ~1.2s later by the effect below.
-  const [activityFlashing, setActivityFlashing] = useState(false);
-
-  const ACTIVITY_POLL_MS = 3000;
-
-  const pollActivityLog = useCallback(async () => {
-    // Yield to user-initiated fetches so we don't prepend rows mid-scroll
-    // or clobber a "Load more" result that's still in flight.
-    if (activityLoadingRef.current) {
-      return;
-    }
-    try {
-      const params = new URLSearchParams();
-      params.set("limit", String(ACTIVITY_PAGE));
-      params.set("offset", "0");
-      applyActivityQueryParams(params, {
-        type: activityTypeFilterRef.current,
-        status: activityStatusFilterRef.current,
-        timeWindow: activityTimeWindowRef.current,
-        sortBy: activitySortByRef.current,
-        sortDir: activitySortDirRef.current,
-      });
-      const res = await fetch(`/api/activity?${params.toString()}`);
-      if (!res.ok) {
-        return;
-      }
-      const data = (await res.json()) as {
-        rows?: ActivityLogRow[];
-        total?: number;
-      };
-      const fresh = Array.isArray(data.rows) ? data.rows : [];
-      const total = typeof data.total === "number" ? data.total : fresh.length;
-      // `total` may legitimately decrease (retention trims the table at
-      // 2,000 rows), so we always sync the footer to the server's latest.
-      setActivityTotal(total);
-      setActivityLog((prev) => {
-        if (prev === null) {
-          return prev;
-        }
-        const existingIds = new Set(prev.map((r) => r.id));
-        const newOnly = fresh.filter((r) => !existingIds.has(r.id));
-        if (newOnly.length === 0) {
-          return prev;
-        }
-        // Fire the visual pulse from within the state updater so we only
-        // flash when a prepend actually happens.
-        setActivityFlashing(true);
-        return [...newOnly, ...prev];
-      });
-    } catch {
-      // Swallow transient polling errors — the "↻ Refresh" button is still
-      // available if the connection stays down, and noisy console logs on
-      // every failed tick would bury real problems.
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- applyActivityQueryParams is stable from closure
-  }, []);
-
-  // Boolean gate rather than depending on `activityLog` directly — otherwise
-  // the effect tears down and resets the timer on every successful prepend.
-  const activityLogLoaded = activityLog !== null;
-
-  // Auto-clear the "just-pulsed" flash ~1.2s after the most recent prepend.
-  // Decoupled from the polling effect so rapid back-to-back arrivals still
-  // reset the timer cleanly without disturbing the interval.
-  useEffect(() => {
-    if (!activityFlashing) {
-      return;
-    }
-    const t = window.setTimeout(() => setActivityFlashing(false), 1200);
-    return () => window.clearTimeout(t);
-  }, [activityFlashing]);
-
-  useEffect(() => {
-    if (!(activityOpen && activityLogLoaded) || activityLivePaused) {
-      return;
-    }
-    const tick = () => {
-      // Hidden tabs: skip the fetch but keep the interval ticking so we
-      // resume immediately on visibility change (via the listener below).
-      if (typeof document !== "undefined" && document.hidden) {
-        return;
-      }
-      void pollActivityLog();
-    };
-    const interval = window.setInterval(tick, ACTIVITY_POLL_MS);
-    // Immediate catch-up poll when the tab regains focus so the list
-    // reflects anything that landed while we were backgrounded.
-    const onVisibility = () => {
-      if (typeof document !== "undefined" && !document.hidden) {
-        void pollActivityLog();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [activityOpen, activityLogLoaded, activityLivePaused, pollActivityLog]);
+  // Activity log (server-side operational timeline) — paging, filters and
+  // live polling all live in lib/use-activity-log.ts. Renamed on destructure
+  // so the JSX below is untouched by the move; the panel that eventually owns
+  // this markup will call the hook directly and drop the prefixes.
+  const {
+    log: activityLog,
+    loading: activityLoading,
+    hasMore: activityHasMore,
+    total: activityTotal,
+    typeFilter: activityTypeFilter,
+    setTypeFilter: setActivityTypeFilter,
+    statusFilter: activityStatusFilter,
+    setStatusFilter: setActivityStatusFilter,
+    timeWindow: activityTimeWindow,
+    setTimeWindow: setActivityTimeWindow,
+    sortBy: activitySortBy,
+    setSortBy: setActivitySortBy,
+    sortDir: activitySortDir,
+    setSortDir: setActivitySortDir,
+    expandedId: activityExpandedId,
+    setExpandedId: setActivityExpandedId,
+    open: activityOpen,
+    setOpen: setActivityOpen,
+    livePaused: activityLivePaused,
+    setLivePaused: setActivityLivePaused,
+    flashing: activityFlashing,
+    load: loadActivityLog,
+  } = useActivityLog({
+    onLoadError: () => showToast(tToast("activity_log_load_failed")),
+  });
 
   const toggleImportRow = async (importRow: ImportRow) => {
     if (expandedImportId === importRow.id) {
