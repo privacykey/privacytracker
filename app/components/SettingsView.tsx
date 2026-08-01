@@ -27,6 +27,9 @@ import SettingsAutoSaveToast, {
 import SettingsSidebar from "./SettingsSidebar";
 import ExportDataSection from "./settings/ExportDataSection";
 import LanguageSection from "./settings/LanguageSection";
+import PolicyAlertsSection from "./settings/PolicyAlertsSection";
+import SyncScheduleSection from "./settings/SyncScheduleSection";
+import type { Schedule, SyncStatus } from "./settings/types";
 import { useTaskCenter } from "./TaskCenter";
 import TasksResetRow from "./TasksResetRow";
 import Toast from "./Toast";
@@ -86,7 +89,6 @@ import { ADMIN_TOKEN_CHANGED_EVENT } from "./AdminTokenBridge";
 // needs them.
 import PrivacyProfileEditor from "./PrivacyProfileEditor";
 
-type Schedule = "manual" | "daily" | "weekly";
 type WaybackRunStatus =
   | "idle"
   | "running"
@@ -159,13 +161,6 @@ interface ActivityLogRow {
   status: string;
   summary: string | null;
   type: string;
-}
-
-interface SyncStatus {
-  isRunning: boolean;
-  lastRun: number;
-  nextRun: number | null;
-  schedule: Schedule;
 }
 
 type DeploymentCheckStatus = "ok" | "info" | "warn" | "bad";
@@ -410,12 +405,6 @@ const STATUS_META: Record<
   queued: { label: "Queued", tone: "warn", icon: "⏱" },
   removed: { label: "Removed", tone: "mute", icon: "∅" },
 };
-
-const SCHEDULE_OPTIONS: { value: Schedule; label: string; desc: string }[] = [
-  { value: "manual", label: "Manual", desc: "Only sync when you ask" },
-  { value: "daily", label: "Daily", desc: "Every 24 hours automatically" },
-  { value: "weekly", label: "Weekly", desc: "Once a week automatically" },
-];
 
 type DateT = (key: string, values?: Record<string, string | number>) => string;
 
@@ -5918,91 +5907,13 @@ export default function SettingsView({
 
               {/* Sync Schedule */}
               {settingsSyncScheduleOn && (
-                <div className="settings-section" id="sync-schedule">
-                  <h2 className="settings-section-title">
-                    {tSections("sync_schedule")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("sync_schedule")}
-                  </p>
-
-                  {/* Semantically these are single-select options, so model them
-            as a radiogroup: each card is a radio in the group and screen
-            readers will announce "selected 1 of 4" etc. */}
-                  <div
-                    aria-label={tAria("sync_interval")}
-                    className="schedule-options"
-                    onKeyDown={scheduleRadioKeyDown}
-                    role="radiogroup"
-                  >
-                    {SCHEDULE_OPTIONS.map((opt) => {
-                      const selected = schedule === opt.value;
-                      // Localise label + desc per option. The English fallback
-                      // ("opt.label" / "opt.desc") covers the case where a new
-                      // schedule value lands in SCHEDULE_OPTIONS without a
-                      // matching translation key.
-                      const localisedLabel = (() => {
-                        try {
-                          return tSchedule(`${opt.value}_label`);
-                        } catch {
-                          return opt.label;
-                        }
-                      })();
-                      const localisedDesc = (() => {
-                        try {
-                          return tSchedule(`${opt.value}_desc`);
-                        } catch {
-                          return opt.desc;
-                        }
-                      })();
-                      return (
-                        <button
-                          aria-checked={selected}
-                          className={`schedule-option ${selected ? "active" : ""}`}
-                          disabled={scheduleAutoSave.saving}
-                          key={opt.value}
-                          // Auto-save semantics: clicking a radio card flips
-                          // the local `schedule` state AND fires the POST. The
-                          // toast surfaces success/failure; no Save button.
-                          onClick={() => {
-                            setSchedule(opt.value);
-                            void scheduleAutoSave.save(opt.value);
-                          }}
-                          role="radio"
-                          tabIndex={selected ? 0 : -1}
-                          type="button"
-                        >
-                          <div className="schedule-option-label">
-                            {localisedLabel}
-                          </div>
-                          <div className="schedule-option-desc">
-                            {localisedDesc}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {/* Save button removed — radio cards above auto-save on
-              click via `scheduleAutoSave`. The "current" badge below
-              still renders so the user can tell at a glance which
-              cadence is currently persisted. */}
-
-                    {status && schedule === status.schedule && (
-                      <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                        {tSchedule("current")}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <SyncScheduleSection
+                  autoSave={scheduleAutoSave}
+                  onRadioKeyDown={scheduleRadioKeyDown}
+                  schedule={schedule}
+                  setSchedule={setSchedule}
+                  status={status}
+                />
               )}
 
               {/* App Store Region */}
@@ -7135,46 +7046,12 @@ ollama serve`}
               )}
 
               {/* Policy Change Alerts */}
-              <div className="settings-section" id="policy-alerts">
-                <h2 className="settings-section-title">
-                  {tSections("policy_change_alerts")}
-                </h2>
-                <p className="settings-section-subtitle">
-                  {tSub("policy_change_alerts")}
-                </p>
-
-                <label className="settings-field" style={{ maxWidth: 320 }}>
-                  <span className="settings-field-label">
-                    {tPolicyAlerts("field_label")}
-                  </span>
-                  <input
-                    aria-describedby="policy-diff-alert-days-help"
-                    className="settings-input"
-                    disabled={policyDiffAlertDaysAutoSave.saving}
-                    max={3650}
-                    min={0}
-                    // Auto-save on blur. Save button removed; the bottom-center
-                    // toast surfaces success/failure. Mid-edit garbage stays
-                    // local until the field loses focus.
-                    onBlur={handlePolicyDiffAlertBlur}
-                    onChange={(event) =>
-                      setPolicyDiffAlertDays(event.target.value)
-                    }
-                    step={1}
-                    type="number"
-                    value={policyDiffAlertDays}
-                  />
-                  <span
-                    className="settings-field-help"
-                    id="policy-diff-alert-days-help"
-                    style={{ display: "block", marginTop: 4 }}
-                  >
-                    {tPolicyAlerts.rich("field_help", {
-                      strong: (chunks) => <strong>{chunks}</strong>,
-                    })}
-                  </span>
-                </label>
-              </div>
+              <PolicyAlertsSection
+                autoSave={policyDiffAlertDaysAutoSave}
+                days={policyDiffAlertDays}
+                onBlur={handlePolicyDiffAlertBlur}
+                setDays={setPolicyDiffAlertDays}
+              />
 
               {/* Policy Scraping Kill-Switch — global on/off. Stronger than the
           throttle (which just rate-limits). When on, every code path
