@@ -53,7 +53,7 @@ serde_json = "1"
 # `json` is required for `Response::into_json::<T>()` — it's an opt-in feature
 # in ureq 2.x because pulling serde_json bloats no-json users. We use it in
 # sidecar.rs / settings.rs / notifications.rs / diagnostics.rs.
-ureq = { version = "2", default-features = false, features = ["tls", "json"] }
+ureq = { version = "3", default-features = false, features = ["tls", "json"] }
 # std::sync::Mutex is fine for the tray state; no need for parking_lot here.
 once_cell = "1"
 # Cross-platform "what's the per-user app-data folder" resolver. We pass the
