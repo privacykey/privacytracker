@@ -86,3 +86,20 @@ export interface DeploymentDiagnostics {
     adminTokenRequired: boolean;
   };
 }
+
+/** One captured AI call from the opt-in debug log. Every field but
+ *  `id`/`createdAt` is optional — a failed call may have a prompt and an
+ *  error but no response. */
+export interface AiDebugLogRow {
+  appId?: string;
+  appName?: string;
+  createdAt: number;
+  durationMs?: number;
+  error?: string;
+  id: string;
+  model?: string;
+  phase?: string;
+  prompt?: string;
+  provider?: string;
+  response?: string;
+}
