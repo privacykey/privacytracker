@@ -5139,3 +5139,6 @@ export function useOnboardWizard({
     onProviderChange,
   };
 }
+
+/** The wizard's whole state machine, as handed to the step components. */
+export type OnboardWizardState = ReturnType<typeof useOnboardWizard>;
