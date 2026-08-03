@@ -22,6 +22,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { fmtDuration } from "@/app/components/settings/format";
+import type {
+  AiSamplePolicyResult,
+  StoredAiSettings,
+} from "@/app/components/settings/types";
+import type { useTaskCenter } from "@/app/components/TaskCenter";
 import {
   type AIProvider,
   getAiModelOptions,
@@ -30,27 +36,16 @@ import {
   resolveDefaultModel,
 } from "@/lib/ai-config";
 import { useSettingsAutoSave } from "@/lib/use-settings-auto-save";
-import { fmtDuration } from "@/app/components/settings/format";
-import type { useTaskCenter } from "@/app/components/TaskCenter";
-import { pushSettingsToast } from "@/app/components/SettingsAutoSaveToast";
-import type {
-  AiSamplePolicyResult,
-  StoredAiSettings,
-} from "@/app/components/settings/types";
 
 type T = (key: string, values?: Record<string, string | number>) => string;
 
 export function useAiSettings({
-  showToast,
-  tToast,
   tAiProvider,
   tAiSample,
   tDevAiTimeouts,
   taskCenter,
   loadSettings,
 }: {
-  showToast: (msg: string) => void;
-  tToast: T;
   tAiProvider: T;
   tAiSample: T;
   tDevAiTimeouts: T;
@@ -545,7 +540,34 @@ export function useAiSettings({
   // anymore. The same gating now lives inline in `saveAiSettings`,
   // which silently skips POSTs when required fields are missing.
 
+  /**
+   * Apply a settings blob fetched by SettingsView's shared loader.
+   *
+   * That loader reads every settings key in one request, so it hands the AI
+   * slice over here rather than this hook mounting a duplicate fetch. Doing
+   * it through one entry point also keeps the eight setters it would
+   * otherwise need private to the hook.
+   */
+  const hydrate = (nextAi: StoredAiSettings) => {
+    setStoredAi(nextAi);
+    setAiProvider(nextAi.provider);
+    setAiApiKey(nextAi.apiKey);
+    setAiBaseUrl(nextAi.baseUrl);
+    setAiModel(nextAi.model);
+    // Reveal the API-key field for the custom provider only when the server
+    // already has a key stored (round-trips as "__SET__"). Otherwise the
+    // field stays hidden — which is the right default for local LLM
+    // endpoints that don't use a key at all.
+    setCustomApiKeyEnabled(nextAi.provider === "custom" && !!nextAi.apiKey);
+    setSummarizeOnImport(nextAi.summarizeOnImport);
+    setDebugLogging(nextAi.debugLogging);
+    setAiTimeoutDirectMs(nextAi.timeoutDirectMs);
+    setAiTimeoutChunkMs(nextAi.timeoutChunkMs);
+    setAiTimeoutMergeMs(nextAi.timeoutMergeMs);
+  };
+
   return {
+    hydrate,
     storedAi,
     setStoredAi,
     aiProvider,
