@@ -53,10 +53,14 @@ import ImportedAppsTable from "./ImportedAppsTable";
 import { useImportQueue } from "./ImportQueueProvider";
 import LanguageSuggestionBanner from "./LanguageSuggestionBanner";
 import LiveTextModal from "./LiveTextModal";
+import CancelSummariesModal from "./onboard/CancelSummariesModal";
 import PolicyRunPanel from "./onboard/PolicyRunPanel";
+import RateLimitPauseModal from "./onboard/RateLimitPauseModal";
+import RestoreBackupModal from "./onboard/RestoreBackupModal";
 import SearchResultBlock from "./onboard/SearchResultBlock";
 import type {
   AppCandidate,
+  OnboardRestorePreview,
   PolicyPhaseStatus,
   PolicyRegenerateStatus,
   PolicyRunPhase,
@@ -296,9 +300,6 @@ export default function OnboardWizard({
   const tStep2 = useTranslations("onboard.step2");
   const tStep3 = useTranslations("onboard.step3");
   const tStep4 = useTranslations("onboard.step4");
-  const tModalRestore = useTranslations("onboard.modals.restore_backup");
-  const tModalCancel = useTranslations("onboard.modals.cancel_summaries");
-  const tModalRate = useTranslations("onboard.modals.rate_limit_pause");
   const tCfg = useTranslations("onboard.cfgutil");
   const tStatus = useTranslations("onboard_status");
   const tPolicyRun = useTranslations("onboard.policy_run");
@@ -994,13 +995,6 @@ export default function OnboardWizard({
   // Mirrors the Settings flow: pick → preview → typed-confirmation → apply.
   // Inline here because the onboarding shell has no SettingsView in scope.
   type OnboardRestoreStage = "idle" | "previewing" | "confirm" | "applying";
-  interface OnboardRestorePreview {
-    exportedAt: number | null;
-    perTable: { name: string; rows: number }[];
-    totalRows: number;
-    version: number;
-    warnings: string[];
-  }
   const restoreFileRef = useRef<HTMLInputElement>(null);
   const [restoreStage, setRestoreStage] = useState<OnboardRestoreStage>("idle");
   const [restorePreview, setRestorePreview] =
@@ -8270,187 +8264,26 @@ export default function OnboardWizard({
 
       {(restoreStage === "confirm" || restoreStage === "applying") &&
         restorePreview && (
-          <div
-            className="modal-overlay"
-            onClick={() => {
-              if (restoreStage !== "applying") {
-                resetRestoreFlow();
-              }
-            }}
-          >
-            <div
-              aria-labelledby="onboard-restore-title"
-              aria-modal="true"
-              className="modal-card"
-              onClick={(event) => event.stopPropagation()}
-              ref={restoreModalCardRef}
-              role="dialog"
-              tabIndex={-1}
-            >
-              <div className="modal-badge">{tModalRestore("badge")}</div>
-              <h2 className="modal-title" id="onboard-restore-title">
-                {tModalRestore("title")}
-              </h2>
-              <p className="modal-copy">
-                {pendingRestoreFilename ? (
-                  <>
-                    <strong>{pendingRestoreFilename}</strong>
-                    {restorePreview.exportedAt
-                      ? tModalRestore("exported_suffix", {
-                          date: new Date(
-                            restorePreview.exportedAt
-                          ).toLocaleDateString(),
-                        })
-                      : null}{" "}
-                    {tModalRestore("version_suffix", {
-                      version: restorePreview.version,
-                    })}{" "}
-                    {tModalRestore("rows", { count: restorePreview.totalRows })}
-                  </>
-                ) : (
-                  tModalRestore("no_filename", {
-                    count: restorePreview.totalRows,
-                    tables: restorePreview.perTable.length,
-                  })
-                )}
-              </p>
-
-              <div
-                aria-label={tModalRestore("rows_per_table_aria")}
-                className="backup-preview-table"
-              >
-                {restorePreview.perTable
-                  .filter((row) => row.rows > 0)
-                  .map((row) => (
-                    <div className="backup-preview-row" key={row.name}>
-                      <span className="backup-preview-name">{row.name}</span>
-                      <span className="backup-preview-count">
-                        {row.rows.toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-
-              {restorePreview.warnings.length > 0 && (
-                <ul className="backup-preview-warnings">
-                  {restorePreview.warnings.map((warning, index) => (
-                    <li key={index}>⚠ {warning}</li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="modal-warning" style={{ marginTop: 12 }}>
-                {tModalRestore("warning")}
-              </div>
-
-              <label
-                className="modal-confirm-label"
-                htmlFor="onboard-restore-input"
-              >
-                {tModalRestore.rich("confirm_label", {
-                  code: (chunks) => <code>{chunks}</code>,
-                })}
-              </label>
-              <input
-                autoComplete="off"
-                autoCorrect="off"
-                className="modal-confirm-input"
-                disabled={restoreStage === "applying"}
-                id="onboard-restore-input"
-                onChange={(event) => {
-                  setRestoreConfirmText(event.target.value);
-                  if (restoreError) {
-                    setRestoreError("");
-                  }
-                }}
-                placeholder={tModalRestore("confirm_placeholder")}
-                spellCheck={false}
-                type="text"
-                value={restoreConfirmText}
-              />
-
-              {restoreError && (
-                <p
-                  style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}
-                >
-                  {restoreError}
-                </p>
-              )}
-
-              <div className="modal-actions">
-                <button
-                  className="btn btn-ghost"
-                  disabled={restoreStage === "applying"}
-                  onClick={resetRestoreFlow}
-                  type="button"
-                >
-                  {tModalRestore("cancel")}
-                </button>
-                <button
-                  className="btn btn-danger"
-                  disabled={
-                    restoreStage === "applying" ||
-                    restoreConfirmText.trim().toUpperCase() !== "RESTORE"
-                  }
-                  onClick={handleRestoreConfirm}
-                  type="button"
-                >
-                  {restoreStage === "applying"
-                    ? tModalRestore("restoring")
-                    : tModalRestore("confirm")}
-                </button>
-              </div>
-            </div>
-          </div>
+          <RestoreBackupModal
+            handleRestoreConfirm={handleRestoreConfirm}
+            pendingRestoreFilename={pendingRestoreFilename}
+            resetRestoreFlow={resetRestoreFlow}
+            restoreConfirmText={restoreConfirmText}
+            restoreError={restoreError}
+            restoreModalCardRef={restoreModalCardRef}
+            restorePreview={restorePreview}
+            restoreStage={restoreStage}
+            setRestoreConfirmText={setRestoreConfirmText}
+            setRestoreError={setRestoreError}
+          />
         )}
 
-      {cancelModalOpen && (
-        <div
-          className="modal-overlay"
-          onClick={() => setCancelModalOpen(false)}
-        >
-          <div
-            aria-describedby="cancel-modal-copy"
-            aria-labelledby="cancel-modal-title"
-            aria-modal="true"
-            className="modal-card cancel-confirm-modal"
-            onClick={(event) => event.stopPropagation()}
-            ref={cancelModalCardRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <h2 className="modal-title" id="cancel-modal-title">
-              {tModalCancel("title")}
-            </h2>
-            <p className="modal-copy" id="cancel-modal-copy">
-              {tModalCancel("body")}
-            </p>
-            <div className="modal-actions">
-              <button
-                className="btn btn-ghost"
-                onClick={() => setCancelModalOpen(false)}
-                type="button"
-              >
-                {tModalCancel("keep_going")}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => requestStop("after-current")}
-                type="button"
-              >
-                {tModalCancel("stop_after_current")}
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={() => requestStop("now")}
-                type="button"
-              >
-                {tModalCancel("stop_now")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CancelSummariesModal
+        cancelModalCardRef={cancelModalCardRef}
+        cancelModalOpen={cancelModalOpen}
+        requestStop={requestStop}
+        setCancelModalOpen={setCancelModalOpen}
+      />
 
       {/* Rate-limit pause modal. Opened by the scrape loop on the first
           Apple 429. Gives the user two concrete next steps so they don't
@@ -8461,80 +8294,13 @@ export default function OnboardWizard({
               (AI summaries) for whatever apps imported cleanly before the
               rate-limit hit. Hidden when nothing imported successfully,
               since there'd be nothing to summarise. */}
-      {rateLimitPauseModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => setRateLimitPauseModal(null)}
-        >
-          <div
-            aria-describedby="rate-limit-modal-copy"
-            aria-labelledby="rate-limit-modal-title"
-            aria-modal="true"
-            className="modal-card rate-limit-pause-modal"
-            onClick={(event) => event.stopPropagation()}
-            ref={rateLimitModalCardRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="modal-badge">{tModalRate("badge")}</div>
-            <h2 className="modal-title" id="rate-limit-modal-title">
-              {tModalRate("title")}
-            </h2>
-            <p className="modal-copy" id="rate-limit-modal-copy">
-              {tModalRate("body_lead")}
-              {tModalRate.rich("body_queued", {
-                count: rateLimitPauseModal.queuedCount,
-                b: (chunks) => <strong>{chunks}</strong>,
-              })}
-              {tModalRate("body_retry_minutes", {
-                count: Math.max(
-                  1,
-                  Math.round(rateLimitPauseModal.retryAfterMs / 60_000)
-                ),
-              })}
-              {rateLimitPauseModal.successCount > 0 &&
-                tModalRate.rich("body_success", {
-                  count: rateLimitPauseModal.successCount,
-                  b: (chunks) => <strong>{chunks}</strong>,
-                })}
-            </p>
-            <div className="modal-actions">
-              <button
-                className="btn btn-ghost"
-                onClick={() => setRateLimitPauseModal(null)}
-                type="button"
-              >
-                {tModalRate("stay_here")}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setRateLimitPauseModal(null);
-                  router.push("/dashboard/settings/import-history");
-                }}
-                type="button"
-              >
-                {tModalRate("view_history")}
-              </button>
-              {rateLimitPauseModal.successCount > 0 && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setRateLimitPauseModal(null);
-                    // Step 5 = AI summaries. The button in the page
-                    // footer does the same thing, but the modal makes
-                    // it a one-click path from the pause itself.
-                    setStep(5);
-                  }}
-                  type="button"
-                >
-                  {tModalRate("summarise")}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <RateLimitPauseModal
+        rateLimitModalCardRef={rateLimitModalCardRef}
+        rateLimitPauseModal={rateLimitPauseModal}
+        router={router}
+        setRateLimitPauseModal={setRateLimitPauseModal}
+        setStep={setStep}
+      />
 
       <LiveTextModal
         onClose={() => setLiveTextModalOpen(false)}

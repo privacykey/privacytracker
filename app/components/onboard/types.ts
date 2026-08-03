@@ -108,3 +108,23 @@ export interface PolicyRegenerateStatus {
 }
 
 export type PolicyRunPhase = "fetch" | "summarise" | null;
+
+/** Where the three-phase backup restore offered during onboarding
+ *  currently is. */
+export type OnboardRestoreStage =
+  | "idle"
+  | "previewing"
+  | "confirm"
+  | "applying";
+
+/** What the server reports it found inside an uploaded backup. */
+export interface OnboardRestorePreview {
+  exportedAt: number | null;
+  perTable: { name: string; rows: number }[];
+  totalRows: number;
+  version: number;
+  warnings: string[];
+}
+
+/** Wizard step index. */
+export type Step = 1 | 2 | 3 | 4 | 5;
