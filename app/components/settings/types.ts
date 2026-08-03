@@ -1,3 +1,6 @@
+import type { AIProvider } from "@/lib/ai-config";
+import type { PolicySummary } from "@/lib/policy-summary-meta";
+
 /**
  * Types shared between SettingsView and the extracted section components.
  *
@@ -170,4 +173,40 @@ export interface BackupSnapshotsPayload {
   pruned?: BackupSnapshotRow[];
   settings: BackupSnapshotSettings;
   snapshots: BackupSnapshotRow[];
+}
+
+/** The AI settings blob as the server reports it back — the baseline the
+ *  editor diffs against to decide whether anything changed. */
+export interface StoredAiSettings {
+  apiKey: string;
+  baseUrl: string;
+  debugLogging: boolean;
+  model: string;
+  provider: AIProvider;
+  summarizeOnImport: boolean;
+  timeoutChunkMs: string;
+  // Per-phase AI request timeouts, persisted as strings so the input can
+  // hold "" while the user is mid-edit. Empty string = server default.
+  timeoutDirectMs: string;
+  timeoutMergeMs: string;
+}
+
+/** Result of the sample-policy dry run in the AI Summaries card. */
+export interface AiSamplePolicyResult {
+  durationMs: number;
+  mode: "direct" | "chunked";
+  model: string;
+  ok: true;
+  provider: string;
+  sample: {
+    appName: string;
+    developer: string;
+    policyUrl: string;
+    policyText: string;
+    scenario: string;
+    wordCount: number;
+    reviewChecklist: string[];
+    expectedSignals: string[];
+  };
+  summary: PolicySummary;
 }
