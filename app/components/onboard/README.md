@@ -34,6 +34,14 @@ needed no redesign — only a file each:
 - `PolicyRunPanel` / `PolicyPhaseCell` — progress for the optional
   policy-summary run
 
+Plus the three dialogs, which came out the same way the settings modals
+did — they are page-level overlays, so the gate stays in the wizard and
+only the markup moves:
+
+- `RestoreBackupModal` — recover an install instead of re-importing
+- `CancelSummariesModal` — stop the policy run now or after the current app
+- `RateLimitPauseModal` — Apple pushed back; the queue drains in the background
+
 ## Verifying an extraction
 
 Unlike settings, this flow has a **behavioural** net rather than a
