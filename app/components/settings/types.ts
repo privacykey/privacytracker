@@ -103,3 +103,71 @@ export interface AiDebugLogRow {
   provider?: string;
   response?: string;
 }
+
+/** Where the three-phase backup restore currently is. Not a boolean:
+ *  restoring the wrong backup is unrecoverable, so the preview step
+ *  between "picked a file" and "applied it" is not skippable. */
+export type BackupRestoreStage = "idle" | "previewing" | "confirm" | "applying";
+
+/** Lifecycle of a bulk Wayback import. `*_requested` are the windows
+ *  between the user clicking and the runner reaching its next app
+ *  boundary — the only points where it can safely stop. */
+export type WaybackRunStatus =
+  | "idle"
+  | "running"
+  | "pause_requested"
+  | "paused"
+  | "cancel_requested"
+  | "stale";
+
+/** Live tally while a bulk Wayback import runs; null when idle. */
+export interface WaybackProgress {
+  currentAppName: string | null;
+  failed: number;
+  imported: number;
+  index: number;
+  skipped: number;
+  total: number;
+  unchanged: number;
+}
+
+/** Summary of the previous bulk Wayback run, as persisted server-side. */
+export interface WaybackLastRun {
+  endedAt: number | null;
+  startedAt: number;
+  status: "ok" | "partial" | "error" | "cancelled";
+  summary: string | null;
+  totals: {
+    appsAttempted: number;
+    appsWithImports: number;
+    targetsAttempted: number;
+    imported: number;
+    unchanged: number;
+    skipped: number;
+    failed: number;
+  } | null;
+}
+
+export interface BackupSnapshotSettings {
+  enabled: boolean;
+  intervalHours: number;
+  lastRunAt: number | null;
+  nextRunAt: number | null;
+  retentionCount: number;
+}
+
+export interface BackupSnapshotRow {
+  createdAt: number;
+  filename: string;
+  path: string;
+  sizeBytes: number;
+}
+
+/** Response shape of the backup-snapshots endpoints. */
+export interface BackupSnapshotsPayload {
+  created?: BackupSnapshotRow;
+  directory: string;
+  pruned?: BackupSnapshotRow[];
+  settings: BackupSnapshotSettings;
+  snapshots: BackupSnapshotRow[];
+}
