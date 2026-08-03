@@ -152,6 +152,13 @@ export function itemMatchesFilter(
   return status === filter;
 }
 
+/** Staged target for the "Remove from Apps" confirm dialog. */
+export interface PendingItemRemoval {
+  appId: string;
+  importRow: ImportRow;
+  item: ImportItemRow;
+}
+
 export function useImportHistory({
   importQueue,
   router,
@@ -229,11 +236,8 @@ export function useImportHistory({
    * Mirrors the `.modal-overlay` / `.modal-card` pattern used elsewhere
    * in this view (wayback-remove, reset-app).
    */
-  const [pendingItemRemoval, setPendingItemRemoval] = useState<null | {
-    importRow: ImportRow;
-    item: ImportItemRow;
-    appId: string;
-  }>(null);
+  const [pendingItemRemoval, setPendingItemRemoval] =
+    useState<PendingItemRemoval | null>(null);
   // Id of the import item currently re-scraping its existing App Store URL.
   // Drives the spinner on the "Retry import" button — separate from the
   // change-match apply state so a bare retry (no search UI) doesn't need to
