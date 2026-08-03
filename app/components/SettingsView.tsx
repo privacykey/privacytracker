@@ -21,27 +21,32 @@ import SettingsAutoSaveToast, {
 import SettingsSidebar from "./SettingsSidebar";
 import AiSummariesSection from "./settings/AiSummariesSection";
 import BackupSection from "./settings/BackupSection";
+import DeleteImportModal from "./settings/DeleteImportModal";
 import DeploymentDiagnosticsSection from "./settings/DeploymentDiagnosticsSection";
 import DeveloperSection from "./settings/DeveloperSection";
 import ExportDataSection from "./settings/ExportDataSection";
-import { fmtShortDate } from "./settings/format";
 import ImportHistoryLinkCard from "./settings/ImportHistoryLinkCard";
 import ImportHistorySection from "./settings/ImportHistorySection";
 import LanguageSection from "./settings/LanguageSection";
 import PolicyAlertsSection from "./settings/PolicyAlertsSection";
 import PrivacyPoliciesBulkSection from "./settings/PrivacyPoliciesBulkSection";
 import RegionSection from "./settings/RegionSection";
+import RemoveItemModal from "./settings/RemoveItemModal";
+import ResetAppModal from "./settings/ResetAppModal";
 import ResetSection from "./settings/ResetSection";
+import RestoreBackupModal from "./settings/RestoreBackupModal";
 import SyncScheduleSection from "./settings/SyncScheduleSection";
 import SyncStatusSection from "./settings/SyncStatusSection";
 import type {
   AiDebugLogRow,
+  BackupRestorePreview,
   DeploymentDiagnostics,
   Schedule,
   StoredAiSettings,
   SyncStatus,
 } from "./settings/types";
 import WaybackImportSection from "./settings/WaybackImportSection";
+import WaybackRemoveModal from "./settings/WaybackRemoveModal";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
 
@@ -278,9 +283,7 @@ export default function SettingsView({
   const tBackupCard = useTranslations("settings.backup_card");
   const tNotifPrefsCard = useTranslations("settings.notification_prefs_card");
   const tSchedule = useTranslations("settings.schedule");
-  const tResetCard = useTranslations("settings.reset_app_card");
   const tWayback = useTranslations("settings.wayback");
-  const tWaybackRemove = useTranslations("settings.wayback.remove_modal");
   const tAiProvider = useTranslations("settings.ai.provider");
   const tAiSample = useTranslations("settings.ai.sample");
   // Developer Options: the panels own their own namespaces now, but the
@@ -289,9 +292,6 @@ export default function SettingsView({
   // Bottom-of-page modals — restore backup, delete import, remove app.
   // Their reset/wayback siblings already live under settings.* and so
   // do these for symmetry.
-  const tModalRestore = useTranslations("settings.modals.restore_backup");
-  const tModalDelete = useTranslations("settings.modals.delete_import");
-  const tModalRemoveApp = useTranslations("settings.modals.remove_app");
   // Privacy & Accessibility profile cards — toggle hint, Save button,
   // saved-count summary, unsaved/empty hints.
   const tPrivProfile = useTranslations("settings.privacy_profile_card");
@@ -307,7 +307,6 @@ export default function SettingsView({
   // showToast() call sites through next-intl.
   const tToast = useTranslations("settings.toasts");
   const tAria = useTranslations("settings.aria");
-  const tPh = useTranslations("settings.placeholders");
   // Per-row notification-preference labels + descriptions + example
   // hints. The seven preference keys map onto snake_case translation
   // keys via a regex inside the loop below.
@@ -640,13 +639,6 @@ export default function SettingsView({
   // RESTORE and commits. Phase state lives in `restoreStage`; the parsed
   // payload is stashed in `pendingRestore` so we don't re-read the file.
   type BackupRestoreStage = "idle" | "previewing" | "confirm" | "applying";
-  interface BackupRestorePreview {
-    exportedAt: number | null;
-    perTable: { name: string; rows: number }[];
-    totalRows: number;
-    version: number;
-    warnings: string[];
-  }
   const [exportingBackup, setExportingBackup] = useState(false);
   const [restoreStage, setRestoreStage] = useState<BackupRestoreStage>("idle");
   const [restorePreview, setRestorePreview] =
@@ -3852,463 +3844,57 @@ export default function SettingsView({
 
       <Toast>{toast}</Toast>
 
-      {(restoreStage === "confirm" || restoreStage === "applying") &&
-        restorePreview && (
-          <div
-            className="modal-overlay"
-            onClick={() => {
-              if (restoreStage !== "applying") {
-                resetRestoreFlow();
-              }
-            }}
-          >
-            <div
-              aria-labelledby="restore-backup-title"
-              aria-modal="true"
-              className="modal-card"
-              onClick={(event) => event.stopPropagation()}
-              ref={restoreModalRef}
-              role="dialog"
-              tabIndex={-1}
-            >
-              <div className="modal-badge">{tModalRestore("badge")}</div>
-              <h2 className="modal-title" id="restore-backup-title">
-                {tModalRestore("title")}
-              </h2>
-              <p className="modal-copy">
-                {pendingRestoreFilename ? (
-                  <>
-                    <strong>{pendingRestoreFilename}</strong>
-                    {restorePreview.exportedAt
-                      ? tModalRestore("exported_suffix", {
-                          date: fmtShortDate(
-                            restorePreview.exportedAt,
-                            dateMode
-                          ),
-                        })
-                      : null}{" "}
-                    {tModalRestore("version_suffix", {
-                      version: restorePreview.version,
-                    })}{" "}
-                    {tModalRestore("rows", { count: restorePreview.totalRows })}
-                  </>
-                ) : (
-                  tModalRestore("no_filename", {
-                    count: restorePreview.totalRows,
-                    tables: restorePreview.perTable.length,
-                  })
-                )}
-              </p>
+      <RestoreBackupModal
+        dateMode={dateMode}
+        exportingBackup={exportingBackup}
+        handleExportBackup={handleExportBackup}
+        handleRestoreConfirm={handleRestoreConfirm}
+        pendingRestoreFilename={pendingRestoreFilename}
+        resetRestoreFlow={resetRestoreFlow}
+        restoreConfirmText={restoreConfirmText}
+        restoreError={restoreError}
+        restoreModalRef={restoreModalRef}
+        restorePreview={restorePreview}
+        restoreStage={restoreStage}
+        setRestoreConfirmText={setRestoreConfirmText}
+        setRestoreError={setRestoreError}
+      />
 
-              <div
-                aria-label={tAria("rows_per_table")}
-                className="backup-preview-table"
-              >
-                {restorePreview.perTable
-                  .filter((row) => row.rows > 0)
-                  .map((row) => (
-                    <div className="backup-preview-row" key={row.name}>
-                      <span className="backup-preview-name">{row.name}</span>
-                      <span className="backup-preview-count">
-                        {row.rows.toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-              </div>
+      <DeleteImportModal
+        confirmDeleteImport={confirmDeleteImport}
+        dateMode={dateMode}
+        deleteImportModalRef={deleteImportModalRef}
+        deleteTarget={deleteTarget}
+        deleting={deleting}
+        setDeleteTarget={setDeleteTarget}
+      />
 
-              {restorePreview.warnings.length > 0 && (
-                <ul className="backup-preview-warnings">
-                  {restorePreview.warnings.map((warning, index) => (
-                    <li key={index}>⚠ {warning}</li>
-                  ))}
-                </ul>
-              )}
+      <WaybackRemoveModal
+        closeWaybackRemoveModal={closeWaybackRemoveModal}
+        removeAllWaybackHistory={removeAllWaybackHistory}
+        waybackRemoveModalRef={waybackRemoveModalRef}
+        waybackRemoveOpen={waybackRemoveOpen}
+        waybackRemoving={waybackRemoving}
+      />
 
-              <div className="modal-warning" style={{ marginTop: 12 }}>
-                <strong>{tModalRestore("warning_lead")}</strong>
-                {tModalRestore("warning_body")}
-              </div>
+      <RemoveItemModal
+        confirmRemoveItemFromDashboard={confirmRemoveItemFromDashboard}
+        pendingItemRemoval={pendingItemRemoval}
+        removeItemModalRef={removeItemModalRef}
+        removingItemId={removingItemId}
+        setPendingItemRemoval={setPendingItemRemoval}
+      />
 
-              <div className="destructive-backup-offer">
-                <div className="destructive-backup-copy">
-                  {tBackupCard("download_current_before_restore")}
-                </div>
-                <button
-                  className="btn btn-secondary"
-                  disabled={exportingBackup || restoreStage === "applying"}
-                  onClick={handleExportBackup}
-                  type="button"
-                >
-                  {exportingBackup
-                    ? tBackupCard("download_busy")
-                    : tBackupCard("download_before_destructive")}
-                </button>
-              </div>
-
-              <label
-                className="modal-confirm-label"
-                htmlFor="restore-confirm-input"
-              >
-                {tModalRestore.rich("confirm_label", {
-                  code: (chunks) => <code>{chunks}</code>,
-                })}
-              </label>
-              <input
-                autoComplete="off"
-                autoCorrect="off"
-                className="modal-confirm-input"
-                disabled={restoreStage === "applying"}
-                id="restore-confirm-input"
-                onChange={(event) => {
-                  setRestoreConfirmText(event.target.value);
-                  if (restoreError) {
-                    setRestoreError("");
-                  }
-                }}
-                placeholder={tPh("restore_confirm")}
-                spellCheck={false}
-                type="text"
-                value={restoreConfirmText}
-              />
-
-              {restoreError && (
-                <p
-                  style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}
-                >
-                  {restoreError}
-                </p>
-              )}
-
-              <div className="modal-actions">
-                <button
-                  className="btn btn-ghost"
-                  disabled={restoreStage === "applying"}
-                  onClick={resetRestoreFlow}
-                  type="button"
-                >
-                  {tModalRestore("cancel")}
-                </button>
-                <button
-                  className="btn btn-danger"
-                  disabled={
-                    restoreStage === "applying" ||
-                    restoreConfirmText.trim().toUpperCase() !== "RESTORE"
-                  }
-                  onClick={handleRestoreConfirm}
-                  type="button"
-                >
-                  {restoreStage === "applying"
-                    ? tModalRestore("restoring")
-                    : tModalRestore("confirm")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-      {deleteTarget && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            if (!deleting) {
-              setDeleteTarget(null);
-            }
-          }}
-        >
-          <div
-            aria-labelledby="delete-import-title"
-            aria-modal="true"
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-            ref={deleteImportModalRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="modal-badge">{tModalDelete("badge")}</div>
-            <h2 className="modal-title" id="delete-import-title">
-              {tModalDelete("title")}
-            </h2>
-            <p className="modal-copy">
-              {tModalDelete("meta", {
-                date: fmtShortDate(deleteTarget.importRow.createdAt, dateMode),
-                total: deleteTarget.importRow.total,
-                imported: deleteTarget.importRow.imported,
-              })}
-            </p>
-
-            <div className="delete-import-options">
-              <label
-                className={`delete-import-option${deleteTarget.mode === "history-only" ? " is-active" : ""}`}
-              >
-                <input
-                  checked={deleteTarget.mode === "history-only"}
-                  disabled={deleting}
-                  name="delete-import-mode"
-                  onChange={() =>
-                    setDeleteTarget({ ...deleteTarget, mode: "history-only" })
-                  }
-                  type="radio"
-                  value="history-only"
-                />
-                <div>
-                  <div className="delete-import-option-label">
-                    {tModalDelete("option_history_only_label")}
-                  </div>
-                  <div className="delete-import-option-desc">
-                    {tModalDelete("option_history_only_desc")}
-                  </div>
-                </div>
-              </label>
-
-              <label
-                className={`delete-import-option${deleteTarget.mode === "with-apps" ? " is-active" : ""}`}
-              >
-                <input
-                  checked={deleteTarget.mode === "with-apps"}
-                  disabled={deleting}
-                  name="delete-import-mode"
-                  onChange={() =>
-                    setDeleteTarget({ ...deleteTarget, mode: "with-apps" })
-                  }
-                  type="radio"
-                  value="with-apps"
-                />
-                <div>
-                  <div className="delete-import-option-label">
-                    {tModalDelete("option_with_apps_label")}
-                  </div>
-                  <div className="delete-import-option-desc">
-                    {tModalDelete("option_with_apps_desc", {
-                      count: deleteTarget.importRow.imported,
-                    })}
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="btn btn-secondary"
-                disabled={deleting}
-                onClick={() => setDeleteTarget(null)}
-                type="button"
-              >
-                {tModalDelete("cancel")}
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={deleting}
-                onClick={() => void confirmDeleteImport()}
-                type="button"
-              >
-                {deleting ? (
-                  <>
-                    <span className="spinner-sm" /> {tModalDelete("deleting")}
-                  </>
-                ) : deleteTarget.mode === "with-apps" ? (
-                  tModalDelete("confirm_with_apps")
-                ) : (
-                  tModalDelete("confirm_history")
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {waybackRemoveOpen && (
-        <div className="modal-overlay" onClick={closeWaybackRemoveModal}>
-          <div
-            aria-describedby="wayback-remove-copy"
-            aria-labelledby="wayback-remove-title"
-            aria-modal="true"
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-            ref={waybackRemoveModalRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="modal-badge">{tWaybackRemove("badge")}</div>
-            <h2 className="modal-title" id="wayback-remove-title">
-              {tWaybackRemove("title")}
-            </h2>
-            <p className="modal-copy" id="wayback-remove-copy">
-              {tWaybackRemove("body")}
-            </p>
-            <div className="modal-actions">
-              <button
-                className="btn btn-secondary"
-                disabled={waybackRemoving}
-                onClick={closeWaybackRemoveModal}
-                type="button"
-              >
-                {tWaybackRemove("cancel")}
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={waybackRemoving}
-                onClick={() => void removeAllWaybackHistory()}
-                type="button"
-              >
-                {waybackRemoving ? (
-                  <>
-                    <span className="spinner-sm" /> {tWaybackRemove("removing")}
-                  </>
-                ) : (
-                  tWaybackRemove("confirm")
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/*
-        Confirm modal for the inline "Remove from Apps" button on an
-        import-history row. Replaces the previous `window.confirm` so
-        the destructive UX matches the wayback-remove + reset-app
-        dialogs above.
-      */}
-      {pendingItemRemoval &&
-        (() => {
-          const { item } = pendingItemRemoval;
-          const label = item.appName || item.editedQuery || item.query;
-          const closing = removingItemId !== null;
-          return (
-            <div
-              className="modal-overlay"
-              onClick={() => {
-                if (!closing) {
-                  setPendingItemRemoval(null);
-                }
-              }}
-            >
-              <div
-                aria-describedby="remove-item-copy"
-                aria-labelledby="remove-item-title"
-                aria-modal="true"
-                className="modal-card"
-                onClick={(event) => event.stopPropagation()}
-                ref={removeItemModalRef}
-                role="dialog"
-                tabIndex={-1}
-              >
-                <div className="modal-badge">{tModalRemoveApp("badge")}</div>
-                <h2 className="modal-title" id="remove-item-title">
-                  {tModalRemoveApp("title", { name: label })}
-                </h2>
-                <p className="modal-copy" id="remove-item-copy">
-                  {tModalRemoveApp("body")}
-                </p>
-                <div className="modal-actions">
-                  <button
-                    className="btn btn-secondary"
-                    disabled={closing}
-                    onClick={() => setPendingItemRemoval(null)}
-                    type="button"
-                  >
-                    {tModalRemoveApp("cancel")}
-                  </button>
-                  <button
-                    autoFocus
-                    className="btn btn-danger"
-                    disabled={closing}
-                    onClick={() => void confirmRemoveItemFromDashboard()}
-                    type="button"
-                  >
-                    {closing ? (
-                      <>
-                        <span aria-hidden="true" className="spinner-sm" />{" "}
-                        {tModalRemoveApp("removing")}
-                      </>
-                    ) : (
-                      tModalRemoveApp("confirm")
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-      {resetStep > 0 && (
-        <div className="modal-overlay" onClick={closeResetModal}>
-          <div
-            aria-describedby="reset-app-copy"
-            aria-labelledby="reset-app-title"
-            aria-modal="true"
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-            ref={resetModalRef}
-            role="dialog"
-            tabIndex={-1}
-          >
-            <div className="modal-badge">{tResetCard("modal_badge")}</div>
-            <h2 className="modal-title" id="reset-app-title">
-              {resetStep === 1
-                ? tResetCard("modal_title_step_1")
-                : tResetCard("modal_title_step_2")}
-            </h2>
-            <p className="modal-copy" id="reset-app-copy">
-              {resetStep === 1
-                ? tResetCard("modal_body_step_1")
-                : tResetCard("modal_body_step_2")}
-            </p>
-            {resetStep === 2 && (
-              <div className="destructive-backup-offer">
-                <div className="destructive-backup-copy">
-                  {tBackupCard("download_before_reset")}
-                </div>
-                <button
-                  className="btn btn-secondary"
-                  disabled={exportingBackup || resetting}
-                  onClick={handleExportBackup}
-                  type="button"
-                >
-                  {exportingBackup
-                    ? tBackupCard("download_busy")
-                    : tBackupCard("download_before_destructive")}
-                </button>
-              </div>
-            )}
-            <div className="modal-actions">
-              <button
-                className="btn btn-secondary"
-                disabled={resetting}
-                onClick={closeResetModal}
-                type="button"
-              >
-                {tResetCard("cancel")}
-              </button>
-
-              {resetStep === 1 ? (
-                <button
-                  className="btn btn-danger"
-                  onClick={() => setResetStep(2)}
-                  type="button"
-                >
-                  {tResetCard("continue")}
-                </button>
-              ) : (
-                <button
-                  className="btn btn-danger"
-                  disabled={resetting}
-                  onClick={() => void resetAllData()}
-                  type="button"
-                >
-                  {resetting ? (
-                    <>
-                      <span className="spinner-sm" /> {tResetCard("resetting")}
-                    </>
-                  ) : (
-                    tResetCard("delete_and_restart")
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ResetAppModal
+        closeResetModal={closeResetModal}
+        exportingBackup={exportingBackup}
+        handleExportBackup={handleExportBackup}
+        resetAllData={resetAllData}
+        resetModalRef={resetModalRef}
+        resetStep={resetStep}
+        resetting={resetting}
+        setResetStep={setResetStep}
+      />
     </div>
   );
 }

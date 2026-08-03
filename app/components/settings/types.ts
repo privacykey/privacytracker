@@ -210,3 +210,13 @@ export interface AiSamplePolicyResult {
   };
   summary: PolicySummary;
 }
+
+/** What the server reports it found inside an uploaded backup file,
+ *  shown for confirmation before anything is replaced. */
+export interface BackupRestorePreview {
+  exportedAt: number | null;
+  perTable: { name: string; rows: number }[];
+  totalRows: number;
+  version: number;
+  warnings: string[];
+}
