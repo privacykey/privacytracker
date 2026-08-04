@@ -37,6 +37,7 @@ import ResetSection from "./settings/ResetSection";
 import RestoreBackupModal from "./settings/RestoreBackupModal";
 import SyncScheduleSection from "./settings/SyncScheduleSection";
 import SyncStatusSection from "./settings/SyncStatusSection";
+import type { SettingsGroup } from "./settings/section-groups";
 import type {
   AiDebugLogRow,
   BackupRestorePreview,
@@ -218,13 +219,22 @@ interface SettingsViewProps {
    * page so we can keep its DB read out of this client bundle.
    */
   focusCard?: React.ReactNode;
-  viewMode?: "all" | "import-history";
+  /** Which slice of Settings to render. "all" is the landing page;
+   *  "import-history" is its own route; the four group values back the
+   *  per-group routes derived from SettingsSidebar's SECTION_GROUPS. */
+  viewMode?: "all" | "import-history" | SettingsGroup;
 }
 
 export default function SettingsView({
   viewMode = "all",
   focusCard,
 }: SettingsViewProps = {}) {
+  // A group renders when the page is the full landing view, or when it is
+  // that group's own route. Keeping the gate here rather than in each
+  // section means the route split does not have to touch the sections.
+  const showGroup = (group: SettingsGroup) =>
+    viewMode === "all" || viewMode === group;
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const taskCenter = useTaskCenter();
@@ -2980,7 +2990,7 @@ export default function SettingsView({
         {viewMode === "all" && <SettingsSidebar />}
 
         <div className="settings-content">
-          {viewMode === "all" && (
+          {showGroup("you") && (
             <>
               {/* Round 3 PR 3: server-rendered Your Focus card sits at the top of
           Settings. Mounts before the "You" heading so it reads as the
@@ -3409,6 +3419,10 @@ export default function SettingsView({
                   </label>
                 </div>
               )}
+            </>
+          )}
+          {showGroup("sync") && (
+            <>
               <h3 className="settings-group-heading">
                 {tSettings("sidebar.group_data_sync")}
               </h3>
@@ -3522,6 +3536,10 @@ export default function SettingsView({
                   triggerSync={triggerSync}
                 />
               )}
+            </>
+          )}
+          {showGroup("policies") && (
+            <>
               <h3 className="settings-group-heading">
                 {tSettings("sidebar.group_policies_ai")}
               </h3>
@@ -3704,7 +3722,7 @@ export default function SettingsView({
             <ImportHistorySection ih={ih} />
           )}
 
-          {viewMode === "all" && (
+          {showGroup("admin") && (
             <>
               <h3 className="settings-group-heading">
                 {tSettings("sidebar.group_admin")}
