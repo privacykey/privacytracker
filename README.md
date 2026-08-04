@@ -23,6 +23,12 @@ practices evolved over time.
 
 It runs entirely on your own computer. No accounts, no servers, no tracking.
 
+The policy summaries are the one optional exception, and they are **off by
+default**. Turning them on means bringing your own model — OpenAI, Anthropic,
+or any OpenAI-compatible endpoint including a local Ollama — under
+**Settings → AI Policy Summaries**, or during onboarding. Nothing is sent
+anywhere until you configure a provider yourself.
+
 ## Get it
 
 ### macOS — Homebrew (recommended)
@@ -68,7 +74,6 @@ Full documentation lives at
 **[privacytracker-docs.privacykey.org](https://privacytracker-docs.privacykey.org/introduction)**:
 
 - [User guide](https://privacytracker-docs.privacykey.org/quickstart) — how to import apps, read privacy labels, set up alerts
-- [AI provider setup](https://privacytracker-docs.privacykey.org/quickstart) — bring your own OpenAI / Anthropic / local model
 - [Architecture](https://privacytracker-docs.privacykey.org/develop/architecture) — for developers and contributors
 - [Architecture & workflows (in-repo)](docs/ARCHITECTURE.md) — end-to-end diagrams of every process, with weak points marked and an improvement backlog
 - [Security](https://privacytracker-docs.privacykey.org/security) — how to report a vulnerability
