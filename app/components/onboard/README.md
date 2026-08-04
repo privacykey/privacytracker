@@ -25,6 +25,21 @@ first with the JSX untouched, so each half can be reviewed on its own.
 
 ## What's here now
 
+All five steps, each taking the hook's return value as a single `w`
+prop. `OnboardWizard.tsx` is now a ~230-line shell: the step indicator,
+the five step tags, and the dialogs.
+
+Note the `step === N` gate lives *inside* each step component, which is
+the opposite of the settings convention. There the gate answered "does
+this card exist for this user" — the shell's business. Here it is the
+wizard's routing, and keeping it inside means the extracted markup is a
+verbatim copy of what shipped.
+
+Translators also come from `w`: they moved into the hook with the rest
+of the component head, so calling `useTranslations` again inside a step
+shadows the destructured binding.
+
+
 The four components that were already factored at the bottom of
 `OnboardWizard.tsx` as module-level functions with explicit props. They
 needed no redesign — only a file each:
