@@ -3,34 +3,30 @@
   "version": "0.1.2",
   "private": true,
   "license": "Apache-2.0",
-  "packageManager": "pnpm@11.18.0",
-  "engines": {
-    "node": ">=24.0.0 <27.0.0"
-  },
   "scripts": {
-    "dev": "next dev",
+    "audit:repo-settings": "node scripts/audit-github-settings.mjs",
     "build": "next build",
-    "start": "next start",
+    "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
+    "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
+    "build-storybook": "storybook build",
+    "dev": "next dev",
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
     "lint:i18n": "node scripts/check-i18n-parity.mjs",
-    "pretypecheck": "next typegen",
-    "typecheck": "tsc --noEmit",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "smoke:release": "node --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/release-smoke.test.ts",
+    "start": "next start",
+    "storybook": "storybook dev -p 6006",
+    "tauri": "tauri",
+    "tauri:build": "tauri build",
+    "tauri:dev": "node scripts/ensure-standalone-stub.mjs && tauri dev --features devtools",
     "test": "node --conditions=react-server --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/**/*.test.ts",
     "test:coverage": "rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --conditions=react-server --experimental-test-coverage --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/**/*.test.ts",
     "test:e2e": "playwright test",
     "test:ios-import-helper": "python3 -m unittest discover -s tests/ios-app-import -p '*_test.py'",
     "test:tauri": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "smoke:release": "node --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/release-smoke.test.ts",
-    "screenshots": "node scripts/capture-screenshots.mjs",
-    "audit:repo-settings": "node scripts/audit-github-settings.mjs",
-    "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
-    "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
-    "tauri": "tauri",
-    "tauri:dev": "node scripts/ensure-standalone-stub.mjs && tauri dev --features devtools",
-    "tauri:build": "tauri build",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "pretypecheck": "next typegen",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -67,5 +63,9 @@
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "ultracite": "7.10.0"
+  },
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=24.0.0 <27.0.0"
   }
 }
