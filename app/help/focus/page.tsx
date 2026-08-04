@@ -115,7 +115,7 @@ export default async function HelpFocusPage() {
             <p>
               You set it on the welcome screen (or skip and accept the
               defaults), and you can change it any time from{" "}
-              <Link href="/dashboard/settings#focus">
+              <Link href="/dashboard/settings/you#focus">
                 Settings → Your focus
               </Link>
               .
@@ -125,7 +125,7 @@ export default async function HelpFocusPage() {
               has a row of feature toggles for the common ones (AI summaries,
               Compare, Privacy Map, and so on), and you can change any feature
               under{" "}
-              <Link href="/dashboard/settings#feature-flags">
+              <Link href="/dashboard/settings/admin#feature-flags">
                 Developer Options → Feature flags
               </Link>
               . A feature you switch on or off there wins over what your goals

@@ -20,27 +20,41 @@ export const SETTINGS_GROUPS = ["you", "sync", "policies", "admin"] as const;
 export type SettingsGroup = (typeof SETTINGS_GROUPS)[number];
 
 /**
- * Every section, in the order it appears on the page, keyed by its owning
- * group. Order matters twice: the sidebar renders in this order, and the
- * scroll-spy assumes sidebar order matches document order.
+ * Every section that renders, in document order, keyed by its owning group.
+ * Order matters twice: it is the order the page paints, and the scroll-spy
+ * assumes sidebar order matches document order.
  *
- * Sections that already have their own route (focus, layout, devices,
- * import-history, focus-matrix) still appear here — the landing page shows
- * a link card in their slot, and the sidebar entry points at the card.
+ * This lists all 23 sections, not the 19 the sidebar advertises. Four —
+ * date-format, accessibility-labels, review-queue-preferences and
+ * policy-scrape-disabled — render without a sidebar entry. They are here
+ * so their anchors still resolve to the right route: someone who bookmarked
+ * `#date-format` should not land nowhere just because the sidebar never
+ * offered them the link.
+ *
+ * Sections that already have their own route (focus, import-history) still
+ * appear — the landing shows a link card in their slot.
  */
 export const GROUP_SECTIONS: Record<SettingsGroup, readonly string[]> = {
   you: [
     "focus",
+    "date-format",
     "language",
     "privacy-profile",
     "accessibility-profile",
     "notifications",
   ],
-  sync: ["sync-schedule", "region", "sync-status"],
+  sync: [
+    "sync-schedule",
+    "region",
+    "accessibility-labels",
+    "review-queue-preferences",
+    "sync-status",
+  ],
   policies: [
     "ai-summaries",
     "privacy-policies-bulk",
     "policy-alerts",
+    "policy-scrape-disabled",
     "policy-scrape-throttle",
   ],
   admin: [

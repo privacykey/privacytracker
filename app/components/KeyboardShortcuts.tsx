@@ -68,7 +68,7 @@ const DEV_NAV_SHORTCUTS: NavShortcut[] = [
     keys: "g then f",
     step: "f",
     labelKey: "nav_feature_flags_dev",
-    href: "/dashboard/settings#developer",
+    href: "/dashboard/settings/admin#developer",
   },
 ];
 

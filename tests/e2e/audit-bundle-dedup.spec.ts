@@ -75,7 +75,8 @@ browserFlow(
     await expect(exportRes).toBeOK();
     const bundleJson = await exportRes.text();
 
-    await page.goto("/dashboard/settings");
+    // Export Data lives on the Admin group route since the settings split.
+    await page.goto("/dashboard/settings/admin");
     // Wait for the import widget to mount before attaching the file —
     // setInputFiles auto-waits on the input existing, not on the
     // owning component's drop handler being wired up.

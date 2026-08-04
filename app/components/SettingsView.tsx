@@ -2254,7 +2254,7 @@ export default function SettingsView({
       title: taskTitle,
       subtitle: tPolicyCard("task_preparing"),
       kind: "sync",
-      href: "/dashboard/settings#privacy-policies-bulk",
+      href: "/dashboard/settings/policies#privacy-policies-bulk",
       onCancel: () => controller.abort(),
     });
 
@@ -2449,7 +2449,7 @@ export default function SettingsView({
       title: tWayback("task_title"),
       subtitle: tWayback("task_preparing"),
       kind: "sync",
-      href: "/dashboard/settings#wayback-import",
+      href: "/dashboard/settings/admin#wayback-import",
       onCancel: () => {
         void controlWaybackImport("cancel");
       },
@@ -2987,7 +2987,10 @@ export default function SettingsView({
       <div
         className={`settings-layout${viewMode === "import-history" ? " settings-layout-standalone" : ""}`}
       >
-        {viewMode === "all" && <SettingsSidebar />}
+        {/* The sidebar is the cross-route navigation, so every group
+            route needs it — only import-history is standalone, with its
+            own back link. */}
+        {viewMode !== "import-history" && <SettingsSidebar />}
 
         <div className="settings-content">
           {showGroup("you") && (
@@ -3733,7 +3736,7 @@ export default function SettingsView({
           review-and-retry UI on its own page lets the Settings landing
           stay scannable and gives the history enough room for the
           expandable rows + inline change-match flow. */}
-              {viewMode === "all" && settingsImportHistoryOn && (
+              {showGroup("admin") && settingsImportHistoryOn && (
                 <ImportHistoryLinkCard />
               )}
 

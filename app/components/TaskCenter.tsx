@@ -112,9 +112,9 @@ const SERVER_JOB_KIND: Record<ServerJobKey, TaskKind> = {
 };
 
 const SERVER_JOB_HREF: Record<ServerJobKey, string> = {
-  wayback: "/dashboard/settings#import-history",
-  sync: "/dashboard/settings#sync-schedule",
-  policy: "/dashboard/settings#privacy-policies-bulk",
+  wayback: "/dashboard/settings/admin#import-history",
+  sync: "/dashboard/settings/sync#sync-schedule",
+  policy: "/dashboard/settings/policies#privacy-policies-bulk",
 };
 
 export interface TaskProgress {
@@ -824,7 +824,7 @@ export function TaskCenterTrigger() {
           }
         }
       } else {
-        router.push("/dashboard/settings#sync-schedule");
+        router.push("/dashboard/settings/sync#sync-schedule");
       }
     },
     [pathname, router]
@@ -896,7 +896,7 @@ export function TaskCenterTrigger() {
               </div>
               <Link
                 className="task-center-upcoming"
-                href="/dashboard/settings#sync-schedule"
+                href="/dashboard/settings/sync#sync-schedule"
                 onClick={goToSyncSchedule}
               >
                 <div aria-hidden="true" className="task-center-upcoming-icon">

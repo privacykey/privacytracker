@@ -95,7 +95,7 @@ export default function NonLocalReadOnlyBanner() {
           <span className="nonlocal-banner__body">{t("body")}</span>{" "}
           <Link
             className="nonlocal-banner__link"
-            href="/dashboard/settings#deployment-diagnostics"
+            href="/dashboard/settings/admin#deployment-diagnostics"
           >
             {t("link")}
           </Link>

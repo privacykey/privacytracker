@@ -281,7 +281,7 @@ export default function Step3ConfirmMatches({
                   {searchBlocked && (
                     <>
                       {" "}
-                      <Link href="/dashboard/settings#deployment-diagnostics">
+                      <Link href="/dashboard/settings/admin#deployment-diagnostics">
                         {tStatus("search_access_blocked_link")}
                       </Link>
                     </>

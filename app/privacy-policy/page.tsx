@@ -20,7 +20,7 @@ export const metadata: Metadata = {
  *
  * Server component — renders without JS so readers with scripts disabled
  * still get the full text. Anchor navigation is pure <a href="#…"> links,
- * no JS required. Only cross-page jumps into /dashboard/settings#ai-summaries
+ * no JS required. Only cross-page jumps into /dashboard/settings/policies#ai-summaries
  * rely on client-side code (the pulse is nice-to-have — the scroll is
  * handled by the browser).
  */
@@ -33,7 +33,7 @@ const GITHUB_REPO = "https://github.com/privacykey/privacytracker";
 // recognises. Kept as a named constant so the two places we reference it
 // (the "Going fully offline" prose + the sidebar entry, if we ever add one)
 // don't drift apart.
-const SETTINGS_AI_HASH = "/dashboard/settings#ai-summaries";
+const SETTINGS_AI_HASH = "/dashboard/settings/policies#ai-summaries";
 
 // One third-party endpoint the app may call, plus the purpose / trigger /
 // data shape. Kept as a typed record so the renderer can group them by
