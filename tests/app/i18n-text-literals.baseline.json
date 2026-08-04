@@ -47,7 +47,7 @@
     "unread hidden by your preferences &middot;"
   ],
   "app/components/onboard/SearchResultBlock.tsx": ["Bundle differs"],
-  "app/components/OnboardWizard.tsx": ["↺ Re-run import"],
+  "app/components/onboard/Step2EnterApps.tsx": ["↺ Re-run import"],
   "app/components/settings/DeveloperSection.tsx": [
     "Focus × Flags matrix",
     "Author the desired flag value for every (audience × goals) combo. Saves a draft locally; export as J",
