@@ -142,7 +142,9 @@ export const TASK_DEFS: UserTaskDef[] = [
     id: "setup_background_mode",
     // Universal route — works on web (configures auto-sync) and on desktop
     // (the Background Mode wizard callout is already on this page).
-    route: "/dashboard/settings#sync",
+    // No section has ever had id="sync"; this anchor resolved to nothing.
+    // The sync group now has a real route, so point at that.
+    route: "/dashboard/settings/sync",
     prerequisites: [],
     i18nKey: "setup_background_mode",
     includedWhen: () => true,
@@ -183,7 +185,7 @@ export const TASK_DEFS: UserTaskDef[] = [
   },
   {
     id: "export_audit_bundle",
-    route: "/dashboard/settings#export-data",
+    route: "/dashboard/settings/admin#export-data",
     prerequisites: [],
     i18nKey: "export_audit_bundle",
     includedWhen: (_focus, _env, ctx) => ctx.workflow === "other_handoff",

@@ -1049,7 +1049,9 @@ export default function ReviewRecommendationsView({
             {tGate("body_after_audience")}
           </p>
           <p>
-            <Link href="/dashboard/settings#focus">{tGate("switch_link")}</Link>{" "}
+            <Link href="/dashboard/settings/you#focus">
+              {tGate("switch_link")}
+            </Link>{" "}
             {tGate("switch_suffix")}
           </p>
         </div>

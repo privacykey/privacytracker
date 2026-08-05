@@ -24,7 +24,7 @@ export default function UserTasksMutationAlert() {
       {blocked ? (
         <>
           {t("mutation_blocked", { status: mutationError.status })}{" "}
-          <Link href="/dashboard/settings#deployment-diagnostics">
+          <Link href="/dashboard/settings/admin#deployment-diagnostics">
             {t("mutation_blocked_link")}
           </Link>
         </>

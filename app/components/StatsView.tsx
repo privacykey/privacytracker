@@ -66,7 +66,7 @@ function resolveRecentChangeDestination(
     firstType === "ai_timeout"
   ) {
     return {
-      href: "/dashboard/settings#ai-timeouts",
+      href: "/dashboard/settings/admin#ai-timeouts",
       headline: tHeadlines("ai_timeout"),
     };
   }
@@ -103,7 +103,7 @@ function resolveRecentChangeDestination(
     firstType === "wayback_stale_cleared"
   ) {
     return {
-      href: "/dashboard/settings#wayback-import",
+      href: "/dashboard/settings/admin#wayback-import",
       headline:
         firstType === "wayback_stale_cleared"
           ? tHeadlines("wayback_lock_cleared")
@@ -116,7 +116,7 @@ function resolveRecentChangeDestination(
     firstType === "sync_stale_cleared"
   ) {
     return {
-      href: "/dashboard/settings#sync-status",
+      href: "/dashboard/settings/sync#sync-status",
       headline:
         firstType === "sync_stale_cleared"
           ? tHeadlines("sync_lock_cleared")
@@ -129,7 +129,7 @@ function resolveRecentChangeDestination(
     firstType === "policy_stale_cleared"
   ) {
     return {
-      href: "/dashboard/settings#privacy-policies-bulk",
+      href: "/dashboard/settings/policies#privacy-policies-bulk",
       headline:
         firstType === "policy_stale_cleared"
           ? tHeadlines("policy_lock_cleared")

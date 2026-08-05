@@ -62,7 +62,10 @@ export default function FocusMatrixPage() {
       <Nav />
       <div className="legal-page">
         <header className="legal-page-hero">
-          <Link className="priv-back-link" href="/dashboard/settings#developer">
+          <Link
+            className="priv-back-link"
+            href="/dashboard/settings/admin#developer"
+          >
             ← Back to Developer Options
           </Link>
           <p className="priv-eyebrow">Developer · Authoring</p>

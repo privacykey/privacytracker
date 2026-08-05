@@ -1559,7 +1559,7 @@ export default function DevMenu() {
                     </button>
                     <Link
                       className="dev-menu-config-link"
-                      href="/dashboard/settings#privacy-profile"
+                      href="/dashboard/settings/you#privacy-profile"
                       onClick={() => setOpen(false)}
                     >
                       {tDev("edit_in_settings")}
@@ -1607,7 +1607,7 @@ export default function DevMenu() {
                     </button>
                     <Link
                       className="dev-menu-config-link"
-                      href="/dashboard/settings#accessibility-profile"
+                      href="/dashboard/settings/you#accessibility-profile"
                       onClick={() => setOpen(false)}
                     >
                       {tDev("edit_in_settings")}
@@ -1750,7 +1750,7 @@ export default function DevMenu() {
           <div className="dev-menu-popover-footer">
             <Link
               className="dev-menu-deep-link"
-              href="/dashboard/settings#developer"
+              href="/dashboard/settings/admin#developer"
               onClick={() => setOpen(false)}
             >
               {tDev("open_full_panel")}

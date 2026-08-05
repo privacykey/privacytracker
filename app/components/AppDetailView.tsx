@@ -4617,7 +4617,7 @@ function AccessibilityPanel({
           <div className="a11y-profile-key-hint">
             {tDetail.rich("a11y_profile_key_hint", {
               link: (chunks) => (
-                <Link href="/dashboard/settings#accessibility-profile">
+                <Link href="/dashboard/settings/you#accessibility-profile">
                   {chunks}
                 </Link>
               ),

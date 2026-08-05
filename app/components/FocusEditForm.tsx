@@ -43,11 +43,11 @@ export default function FocusEditForm({
       setError(t("stage_failed"));
       return;
     }
-    router.push("/dashboard/settings#focus");
+    router.push("/dashboard/settings/you#focus");
   }
 
   function handleCancel() {
-    router.push("/dashboard/settings#focus");
+    router.push("/dashboard/settings/you#focus");
   }
 
   return (

@@ -208,7 +208,7 @@ export function useAiSettings({
       title: tAiSample("task_title"),
       subtitle: tAiSample("task_subtitle"),
       kind: "sync",
-      href: "/dashboard/settings#ai-summaries",
+      href: "/dashboard/settings/policies#ai-summaries",
       onCancel: () => controller.abort(),
     });
 

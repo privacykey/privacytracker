@@ -32,7 +32,7 @@ const SAMPLE_TASKS: ResolvedTask[] = [
     audience: "self",
     state: "ready",
     prerequisites: [],
-    route: "/dashboard/settings#privacy-profile",
+    route: "/dashboard/settings/you#privacy-profile",
     startedAt: null,
     dismissedAt: null,
     optedInAt: null,

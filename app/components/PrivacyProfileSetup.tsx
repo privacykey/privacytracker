@@ -306,7 +306,7 @@ export default function PrivacyProfileSetup({
           {t("footnote_pre")}
           <Link
             className="welcome-link"
-            href="/dashboard/settings#privacy-profile"
+            href="/dashboard/settings/you#privacy-profile"
           >
             {t("footnote_link")}
           </Link>

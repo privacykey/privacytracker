@@ -144,7 +144,8 @@ browserFlow(
     expect(parsed.recommender_name).toBe(RECOMMENDER_NAME);
 
     // Step 2 — Drive the import UI. Navigate to Settings, drop the bundle.
-    await page.goto("/dashboard/settings");
+    // Export Data lives on the Admin group route since the settings split.
+    await page.goto("/dashboard/settings/admin");
 
     // Wait for the widget container to mount before attaching the file.
     // setInputFiles auto-waits on the locator existing, but it doesn't
@@ -202,7 +203,8 @@ const EXPORT_RECOMMENDER_NAME = "Settings UI Recommender";
 browserFlow(
   "audit-bundle export UI: form submission triggers a download with the right bundle",
   async ({ page }) => {
-    await page.goto("/dashboard/settings");
+    // Export Data lives on the Admin group route since the settings split.
+    await page.goto("/dashboard/settings/admin");
 
     // Open the export panel.
     const openBtn = page.locator(".audit-bundle-export__open-btn");
