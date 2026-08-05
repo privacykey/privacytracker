@@ -29,6 +29,38 @@ or any OpenAI-compatible endpoint including a local Ollama — under
 **Settings → AI Policy Summaries**, or during onboarding. Nothing is sent
 anywhere until you configure a provider yourself.
 
+## What it does
+
+**Get your apps in.** Four ways, because there is no good API for "what is
+installed on my phone": screenshots of your App Library (read with on-device
+OCR), a text or CSV file, an Apple Configurator export, or typing names in.
+There is also a stdlib-only [Python helper](scripts/ios-app-import) that reads
+an iTunes backup or a connected device and writes a list you can feed in.
+
+**Watch what changes.** Re-syncs diff each app's labels against the last
+snapshot and tell you what moved — a new tracking category, a permission that
+became linked to your identity. The per-app timeline shows every change since
+you started tracking it.
+
+**Decide what you are comfortable with.** Set a privacy profile — *Strict*,
+*Balanced*, *Anti-tracking only*, *Permissive*, or per-category — and the app
+flags which of your apps do not match, rather than leaving you to read
+fourteen categories per app yourself.
+
+**Work out what to remove.** Review recommendations and a shortlist help you
+go from "this is uncomfortable" to a decision, and you can compare apps
+side by side before choosing between them.
+
+**Set it up for who you are helping.** The interface adapts depending on
+whether you are looking at your own phone, helping someone else with theirs,
+or checking a child's — the last of which adds age-rating checks and a
+parental-controls guide. It also has an accessibility mode where colour is
+never the only signal.
+
+Also in the box: manual entries for apps that were never on the App Store,
+a customisable dashboard, statistics, backup and restore, an exportable audit
+bundle, and webhook notifications.
+
 ## Get it
 
 ### macOS — Homebrew (recommended)
@@ -52,21 +84,6 @@ background.
 Available as a Docker image — see the
 [user guide](https://privacytracker-docs.privacykey.org/quickstart)
 for setup.
-
-## Screenshots
-
-<!-- Drop screenshots into docs/screenshots/ and link them here.
-     `pnpm screenshots` (scripts/capture-screenshots.mjs) captures a
-     consistent set against the built-in demo fixture.
-     Suggested set:
-       1. Dashboard with the privacy-label severity heatmap
-       2. Per-app timeline showing a label change over time
-       3. AI policy summary panel
-       4. Wayback historical import view
--->
-
-> 📸 *[The user guide](https://privacytracker-docs.privacykey.org/quickstart)
-> walks through every screen.*
 
 ## Learn more
 
@@ -102,7 +119,7 @@ to you.
 | --- | --- |
 | macOS (Apple Silicon + Intel) | Signed, notarised, self-updating |
 | Docker / self-host | Supported — `docker compose up --build -d` |
-| Linux / Windows desktop | Not packaged yet; run the Docker image or from source |
+| Linux / Windows desktop | No native build yet — Docker is the supported route |
 
 Releases are published on
 [GitHub Releases](https://github.com/privacykey/privacytracker/releases) and
