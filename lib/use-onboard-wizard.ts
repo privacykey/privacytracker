@@ -885,8 +885,13 @@ export function useOnboardWizard({
   // Configurator imports where the active row sits well below the
   // viewport and the user wants to see where the list ends.
   const scrapeListEndRef = useRef<HTMLDivElement | null>(null);
-  // Drive an ETA tick so elapsed / remaining numbers update without waiting for state changes.
-  const [etaTick, setEtaTick] = useState(0);
+  // Re-render driver for the ETA numbers: PolicyRunPanel recomputes
+  // elapsed/remaining from `phaseAvgMs` on every render, so all this has
+  // to do is force one render a second while a phase is active. The tick
+  // value itself is never read — the state *update* is the mechanism —
+  // which is why it is discarded, same as `setNowTick` in
+  // use-import-history.
+  const [, setEtaTick] = useState(0);
   useEffect(() => {
     if (activePhase === null) {
       return;
@@ -5050,7 +5055,6 @@ export function useOnboardWizard({
     activeAbortRef,
     scrapeActiveRowRef,
     scrapeListEndRef,
-    etaTick,
     setEtaTick,
     restoreFileRef,
     restoreStage,

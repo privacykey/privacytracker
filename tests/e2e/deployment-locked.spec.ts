@@ -63,7 +63,7 @@ browserFlow(
       })
     );
 
-    await page.goto("/dashboard/settings#deployment-diagnostics");
+    await page.goto("/dashboard/settings/admin#deployment-diagnostics");
 
     const section = page.locator("#deployment-diagnostics");
     await expect(section).toBeVisible();

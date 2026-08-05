@@ -45,7 +45,11 @@ export interface FocusState {
 }
 
 // ============================================================================
-// FlagKey — every registered flag in v1 (~204 keys)
+// FlagKey — every registered flag. Deliberately no count here: the last
+// one ("~204") sat stale for 20 keys. HARD_DEFAULTS is typed
+// Record<FlagKey, FlagValue>, so union and defaults cannot drift from
+// each other, and tests/app/feature-flag-wired.test.ts pins the set
+// against actual consumers.
 // ============================================================================
 
 export type FlagKey =

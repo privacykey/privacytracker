@@ -1,7 +1,12 @@
 # Settings section components
 
-`SettingsView.tsx` grew to ~11.6k lines rendering 18 sections from a single
-component. This directory is where those sections move, one at a time.
+`SettingsView.tsx` grew to ~11.6k lines rendering every section from a
+single component. This directory is where its sections moved, one at a
+time — 20 of the 23 live here now, the state machines went to
+`lib/use-{import-history,ai-settings,activity-log}.ts`, and Settings is
+served from four group routes (see `section-groups.ts`). What remains in
+`SettingsView.tsx` (~3.9k lines) is mostly the shared state head; seven
+small sections still render inline.
 
 ## The extraction contract
 
