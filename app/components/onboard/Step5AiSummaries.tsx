@@ -38,7 +38,6 @@ export default function Step5AiSummaries({
     aiTestLatency,
     aiTestMessage,
     aiTestStatus,
-    etaTick,
     onProviderChange,
     onboardPostDashboardSkipOn,
     onboardStepAiSummariesOn,
@@ -346,7 +345,6 @@ export default function Step5AiSummaries({
       {step === 5 && onboardStepAiSummariesOn && policyProgress.length > 0 && (
         <PolicyRunPanel
           activePhase={activePhase}
-          etaTick={etaTick}
           onCancelRequest={() => setCancelModalOpen(true)}
           onViewDashboard={() => router.push("/dashboard")}
           phaseAvgMs={phaseAvgMs}

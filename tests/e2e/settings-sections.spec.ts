@@ -3,8 +3,11 @@ import { expect, type Page, test } from "@playwright/test";
 /**
  * Structural regression net for the settings surface.
  *
- * `SettingsView.tsx` is ~11.6k lines rendering 18 sections from a single
- * component, and it is about to be split into per-section components. The
+ * Written when `SettingsView.tsx` was ~11.6k lines rendering every section
+ * from a single component, ahead of splitting it apart. That split is done
+ * — ~20 section components plus four group routes — and this net caught
+ * two real regressions during it (a sidebar that vanished from the group
+ * routes, and a link card pinned to the old landing view). The
  * logic *behind* settings is well covered by the unit suite (notification
  * prefs, policy throttle, diagnostics, backup, profiles, wayback…), but
  * before this file existed almost nothing exercised the component's own

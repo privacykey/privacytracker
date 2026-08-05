@@ -26,7 +26,6 @@ export default function PolicyRunPanel({
   activePhase: PolicyRunPhase;
   runDone: boolean;
   phaseAvgMs: { fetch: number | null; summarise: number | null };
-  etaTick: number;
   onCancelRequest: () => void;
   onViewDashboard: () => void;
 }) {

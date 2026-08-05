@@ -187,7 +187,7 @@ browserFlow(
     // privacy-profile section. The page also has a one-shot pulse for
     // hash deep-links — we don't assert on it, just confirm the section
     // is reachable and the editor is mounted with the saved profile.
-    await page.goto("/dashboard/settings#privacy-profile");
+    await page.goto("/dashboard/settings/you#privacy-profile");
 
     const section = page.locator("#privacy-profile");
     await expect(section).toBeVisible();

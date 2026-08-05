@@ -1,7 +1,9 @@
 # Onboarding wizard components
 
-`OnboardWizard.tsx` is ~8.6k lines: five steps of markup over one large
-state machine. This directory is where its pieces move.
+`OnboardWizard.tsx` was ~9.5k lines: five steps of markup over one large
+state machine. The split is complete — the machine lives in
+`lib/use-onboard-wizard.ts`, every step and dialog lives here, and the
+wizard itself is a ~230-line shell.
 
 ## Why this can't copy the settings split
 
