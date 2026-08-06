@@ -8,9 +8,11 @@
 #      runners per architecture in CI. Keeping the runtime pinned still avoids
 #      surprise native ABI churn between the amd64 and arm64 image legs.
 ARG NODE_IMAGE=node:24.18.1-alpine@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3
-# Keep this in lockstep with `packageManager` in package.json and the
-# `pnpm/action-setup` version in every .github/workflows/*. A drift here
-# means Docker builds resolve deps with a different pnpm than CI does.
+# Keep this in lockstep with `packageManager` in package.json — the
+# workflows' pnpm/action-setup steps read `packageManager` directly, so
+# package.json and this ARG are the only two places the pnpm version
+# lives. A drift here means Docker builds resolve deps with a different
+# pnpm than CI does.
 # Renovate bumps this line itself (customManagers regex in renovate.json),
 # in the same grouped PR as the other pnpm pins — don't edit it by hand
 # unless you're changing all of them together.
