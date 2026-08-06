@@ -31,6 +31,10 @@
 # `tests/e2e/` specs tracked, but never commit run output.
 /test-results/
 /playwright-report/
+# Visual-regression baselines (tests/e2e/visual.spec.ts) are local-only:
+# platform-specific pixels AND app screenshots, which stay out of the
+# public repo (same policy as docs/screenshots). See docs/CSS.md.
+/tests/e2e/*-snapshots/
 /blob-report/
 /.playwright-data/
 
