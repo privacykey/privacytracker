@@ -17,38 +17,73 @@
  */
 
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { useFlag } from "@/lib/feature-flags-hooks";
 import { fmtDate } from "./format";
 import type { AiDebugLogRow } from "./types";
 
 export default function AiDebugLogPanel({
+  showToast,
   debugLogging,
   setDebugLogging,
   saveAiSettings,
-  debugLog,
-  debugLoading,
-  loadDebugLog,
-  clearDebugLog,
-  debugExpandedId,
-  setDebugExpandedId,
 }: {
+  showToast: (msg: string) => void;
   debugLogging: boolean;
   setDebugLogging: (next: boolean) => void;
   /** Persists the AI settings blob; only `debugLogging` is overridden here. */
   saveAiSettings: (overrides: { debugLogging: boolean }) => void;
-  /** null until the user first loads the log — the fetch is deliberately lazy. */
-  debugLog: AiDebugLogRow[] | null;
-  debugLoading: boolean;
-  loadDebugLog: () => Promise<void>;
-  clearDebugLog: () => Promise<void>;
-  debugExpandedId: string | null;
-  setDebugExpandedId: (next: (prev: string | null) => string | null) => void;
 }) {
   const devAiDebugLoggingOn = useFlag("flag.devopts.ai.debug_logging") === "on";
   const settingsAiDebugLoggingOn =
     useFlag("flag.settings.ai.debug_logging") === "on";
   const tSettings = useTranslations("settings");
+  const tToast = useTranslations("settings.toasts");
   const tDevAiDebug = useTranslations("settings.dev_options.ai_debug");
+
+  const [debugLog, setDebugLog] = useState<AiDebugLogRow[] | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugExpandedId, setDebugExpandedId] = useState<string | null>(null);
+
+  // Load the most recent captured prompt/response pairs. The endpoint already
+  // caps the rolling window, so we don't paginate here — one shot is enough
+  // for the small "what did I just send?" use case this panel is for.
+  const loadDebugLog = async () => {
+    setDebugLoading(true);
+    try {
+      const res = await fetch("/api/ai/debug-log");
+      if (!res.ok) {
+        showToast(tToast("debug_log_load_failed"));
+        setDebugLoading(false);
+        return;
+      }
+      const data = (await res.json()) as { rows?: AiDebugLogRow[] };
+      setDebugLog(Array.isArray(data.rows) ? data.rows : []);
+    } catch (error) {
+      console.error("[settings] Failed to load debug log:", error);
+      showToast(tToast("debug_log_load_failed"));
+    }
+    setDebugLoading(false);
+  };
+
+  const clearDebugLog = async () => {
+    setDebugLoading(true);
+    try {
+      const res = await fetch("/api/ai/debug-log", { method: "DELETE" });
+      if (!res.ok) {
+        showToast(tToast("debug_log_clear_failed"));
+        setDebugLoading(false);
+        return;
+      }
+      setDebugLog([]);
+      setDebugExpandedId(null);
+      showToast(tToast("debug_log_cleared"));
+    } catch (error) {
+      console.error("[settings] Failed to clear debug log:", error);
+      showToast(tToast("debug_log_clear_failed"));
+    }
+    setDebugLoading(false);
+  };
 
   return (
     <>

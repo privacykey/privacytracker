@@ -10,6 +10,7 @@ import { scrollPulse } from "../../lib/scroll-pulse";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import { useAiSettings } from "../../lib/use-ai-settings";
 import { useBackup } from "../../lib/use-backup";
+import { useDeployment } from "../../lib/use-deployment";
 import { useImportHistory } from "../../lib/use-import-history";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useProfiles } from "../../lib/use-profiles";
@@ -41,13 +42,7 @@ import RestoreBackupModal from "./settings/RestoreBackupModal";
 import SyncScheduleSection from "./settings/SyncScheduleSection";
 import SyncStatusSection from "./settings/SyncStatusSection";
 import type { SettingsGroup } from "./settings/section-groups";
-import type {
-  AiDebugLogRow,
-  DeploymentDiagnostics,
-  Schedule,
-  StoredAiSettings,
-  SyncStatus,
-} from "./settings/types";
+import type { Schedule, StoredAiSettings, SyncStatus } from "./settings/types";
 import WaybackImportSection from "./settings/WaybackImportSection";
 import WaybackRemoveModal from "./settings/WaybackRemoveModal";
 import { useTaskCenter } from "./TaskCenter";
@@ -83,7 +78,6 @@ import {
   normalizeCountry,
 } from "../../lib/region";
 import AccessibilityProfileEditor from "./AccessibilityProfileEditor";
-import { ADMIN_TOKEN_CHANGED_EVENT } from "./AdminTokenBridge";
 // Intent picker state is gone — see the comment by `loadPreferences`
 // for context. The exports are kept in `lib/preferences.ts` for any
 // other consumer (e.g. the welcome splash) but Settings no longer
@@ -242,7 +236,6 @@ export default function SettingsView({
   const tA11yLabels = useTranslations("settings.accessibility_labels_card");
   const tReviewQueueSettings = useTranslations("settings.review_queue_card");
   const tSyncStatus = useTranslations("settings.sync_status");
-  const tDeploy = useTranslations("settings.deployment_diagnostics_card");
   const tPolicyCard = useTranslations("settings.privacy_policies_card");
   const tNotifPrefsCard = useTranslations("settings.notification_prefs_card");
   const tSchedule = useTranslations("settings.schedule");
@@ -342,32 +335,6 @@ export default function SettingsView({
   // re-polling its own status.
   const importQueue = useImportQueue();
   const [status, setStatus] = useState<SyncStatus | null>(null);
-  const [deploymentDiagnostics, setDeploymentDiagnostics] =
-    useState<DeploymentDiagnostics | null>(null);
-  const [deploymentDiagnosticsLoading, setDeploymentDiagnosticsLoading] =
-    useState(false);
-  const [deploymentDiagnosticsError, setDeploymentDiagnosticsError] =
-    useState("");
-  /**
-   * True when GET /api/deployment/diagnostics was rejected by the proxy's
-   * non-local admin gate (401/403) rather than failing on its own. Renders
-   * the unlock form instead of the generic "unable to load" card — the
-   * diagnostics card is the login destination every blocked surface links
-   * to, so it must stay usable while locked.
-   */
-  const [deploymentDiagnosticsLocked, setDeploymentDiagnosticsLocked] =
-    useState(false);
-  const [copyingDeploymentDiagnostics, setCopyingDeploymentDiagnostics] =
-    useState(false);
-  const [adminTokenInput, setAdminTokenInput] = useState("");
-  const [adminTokenUnlocked, setAdminTokenUnlocked] = useState(false);
-  /**
-   * Whether AUDITOR_ADMIN_TOKEN is configured server-side, read from the
-   * gate-exempt /api/auth/admin-token/status endpoint so it's available
-   * even while the diagnostics payload itself is locked. Defaults true so
-   * the unlock form doesn't flash out while the status call is in flight.
-   */
-  const [adminTokenConfigured, setAdminTokenConfigured] = useState(true);
   const [schedule, setSchedule] = useState<Schedule>("manual");
   // APG keyboard contract for the sync-schedule radiogroup: one tab
   // stop, arrows move focus only — the cards auto-save a POST on
@@ -406,18 +373,6 @@ export default function SettingsView({
   const [scrapeDisabled, setScrapeDisabled] = useState<boolean>(false);
   const [scrapeThrottleMinutes, setScrapeThrottleMinutes] =
     useState<string>("60");
-  // Saving flag now lives on `scrapeThrottleAutoSave.saving`.
-  const [debugLog, setDebugLog] = useState<AiDebugLogRow[] | null>(null);
-  const [debugLoading, setDebugLoading] = useState(false);
-  const [debugExpandedId, setDebugExpandedId] = useState<string | null>(null);
-
-  // `saving`/`setSaving` used to gate the Sync Schedule Save button.
-  // The auto-save renovation moved that to `scheduleAutoSave.saving`,
-  // so the standalone state is gone. Other sections still keep their
-  // own `savingX` flags for now until they're auto-save'd in turn.
-  // Saving flag now lives on `aiSettingsAutoSave.saving` (post-Section 7
-  // of the renovation).
-  const [syncing, setSyncing] = useState(false);
   // Bulk "Privacy Policies" section. `policyBulkRunning` tracks the client-side
   // inflight state separate from the server-side mutex so we can disable both
   // buttons without another round-trip, and the forceBypassThrottle checkbox
@@ -472,6 +427,9 @@ export default function SettingsView({
   // post-renovation (the Save button is gone; the Reset Defaults button
   // reads the hook directly).
 
+  // Manual sync-in-flight flag for the Sync Status card's button.
+  const [syncing, setSyncing] = useState(false);
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(""), TOAST_HOLD_MS);
@@ -503,6 +461,25 @@ export default function SettingsView({
     handleRestoreConfirm,
     restoreModalRef,
   } = useBackup({ showToast });
+
+  // Deployment diagnostics + session admin token live in
+  // lib/use-deployment.ts; the unlock flow re-pulls the backup list
+  // through the loader handed in here.
+  const {
+    deploymentDiagnostics,
+    deploymentDiagnosticsLoading,
+    deploymentDiagnosticsError,
+    deploymentDiagnosticsLocked,
+    copyingDeploymentDiagnostics,
+    adminTokenInput,
+    setAdminTokenInput,
+    adminTokenUnlocked,
+    adminTokenConfigured,
+    loadDeploymentDiagnostics,
+    saveSessionAdminToken,
+    clearSessionAdminToken,
+    copyDeploymentSupportBundle,
+  } = useDeployment({ showToast, loadBackupSnapshots });
 
   // Privacy + accessibility profiles — state, auto-saves, undo stack
   // and loaders live in lib/use-profiles.ts.
@@ -582,136 +559,6 @@ export default function SettingsView({
     const data = await res.json();
     setStatus(data);
     setSchedule(data.schedule ?? "manual");
-  };
-
-  const loadDeploymentDiagnostics = async () => {
-    setDeploymentDiagnosticsLoading(true);
-    try {
-      const res = await fetch("/api/deployment/diagnostics", {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
-          // The proxy's non-local admin gate, not a server failure. Flip
-          // the locked state so the section renders the unlock form —
-          // every blocked surface links here to log in, so a dead
-          // "unable to load" card would strand the user.
-          setDeploymentDiagnosticsLocked(true);
-          setDeploymentDiagnostics(null);
-          setDeploymentDiagnosticsError("");
-          return;
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const data = (await res.json()) as DeploymentDiagnostics;
-      setDeploymentDiagnostics(data);
-      setDeploymentDiagnosticsLocked(false);
-      setDeploymentDiagnosticsError("");
-    } catch (error) {
-      console.warn("[settings] loadDeploymentDiagnostics failed:", error);
-      setDeploymentDiagnosticsError(tDeploy("load_failed"));
-    } finally {
-      setDeploymentDiagnosticsLoading(false);
-    }
-  };
-
-  const refreshAdminUnlockState = async () => {
-    try {
-      const res = await fetch("/api/auth/admin-token/status", {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        setAdminTokenUnlocked(false);
-        return;
-      }
-      const data = (await res.json()) as {
-        configured?: boolean;
-        unlocked?: boolean;
-      };
-      setAdminTokenConfigured(Boolean(data.configured));
-      setAdminTokenUnlocked(Boolean(data.unlocked));
-    } catch {
-      setAdminTokenUnlocked(false);
-    }
-  };
-
-  const saveSessionAdminToken = async () => {
-    const token = adminTokenInput.trim();
-    if (!token) {
-      return;
-    }
-    try {
-      const res = await fetch("/api/auth/admin-token/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      if (!res.ok) {
-        showToast(tDeploy("admin_unlock_failed"));
-        return;
-      }
-      window.dispatchEvent(new Event(ADMIN_TOKEN_CHANGED_EVENT));
-      setAdminTokenInput("");
-      setAdminTokenUnlocked(true);
-      showToast(tDeploy("admin_unlock_saved"));
-      // The gate just opened — re-pull the data it was hiding so the
-      // section populates without a manual refresh.
-      void loadDeploymentDiagnostics();
-      void loadBackupSnapshots();
-    } catch {
-      showToast(tDeploy("admin_unlock_failed"));
-    }
-  };
-
-  const clearSessionAdminToken = async () => {
-    try {
-      await fetch("/api/auth/admin-token/logout", { method: "POST" });
-      window.dispatchEvent(new Event(ADMIN_TOKEN_CHANGED_EVENT));
-    } catch {
-      /* no-op */
-    }
-    setAdminTokenUnlocked(false);
-    setAdminTokenInput("");
-    showToast(tDeploy("admin_unlock_cleared"));
-  };
-
-  const writeClipboardText = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.setAttribute("readonly", "true");
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
-  };
-
-  const copyDeploymentSupportBundle = async () => {
-    if (copyingDeploymentDiagnostics) {
-      return;
-    }
-    setCopyingDeploymentDiagnostics(true);
-    try {
-      const res = await fetch("/api/deployment/support-bundle", {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const bundle = await res.json();
-      await writeClipboardText(JSON.stringify(bundle, null, 2));
-      showToast(tDeploy("copy_success"));
-    } catch (error) {
-      console.warn("[settings] copyDeploymentSupportBundle failed:", error);
-      showToast(tDeploy("copy_failed"));
-    } finally {
-      setCopyingDeploymentDiagnostics(false);
-    }
   };
 
   // The legacy `handleSaveBackupSnapshotSettings` writer is gone —
@@ -1084,46 +931,6 @@ export default function SettingsView({
   // FocusEditForm at /dashboard/settings/focus, which writes to the
   // audience + goals storage modules directly.
 
-  // Load the most recent captured prompt/response pairs. The endpoint already
-  // caps the rolling window, so we don't paginate here — one shot is enough
-  // for the small "what did I just send?" use case this panel is for.
-  const loadDebugLog = async () => {
-    setDebugLoading(true);
-    try {
-      const res = await fetch("/api/ai/debug-log");
-      if (!res.ok) {
-        showToast(tToast("debug_log_load_failed"));
-        setDebugLoading(false);
-        return;
-      }
-      const data = (await res.json()) as { rows?: AiDebugLogRow[] };
-      setDebugLog(Array.isArray(data.rows) ? data.rows : []);
-    } catch (error) {
-      console.error("[settings] Failed to load debug log:", error);
-      showToast(tToast("debug_log_load_failed"));
-    }
-    setDebugLoading(false);
-  };
-
-  const clearDebugLog = async () => {
-    setDebugLoading(true);
-    try {
-      const res = await fetch("/api/ai/debug-log", { method: "DELETE" });
-      if (!res.ok) {
-        showToast(tToast("debug_log_clear_failed"));
-        setDebugLoading(false);
-        return;
-      }
-      setDebugLog([]);
-      setDebugExpandedId(null);
-      showToast(tToast("debug_log_cleared"));
-    } catch (error) {
-      console.error("[settings] Failed to clear debug log:", error);
-      showToast(tToast("debug_log_clear_failed"));
-    }
-    setDebugLoading(false);
-  };
-
   // ── Change-match / re-add inline widget ────────────────────────────────
 
   useEffect(() => {
@@ -1133,19 +940,8 @@ export default function SettingsView({
       loadImports(),
       loadPreferences(),
       loadNotificationPrefs(),
-      loadDeploymentDiagnostics(),
     ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-once effect
-  }, []);
-
-  useEffect(() => {
-    refreshAdminUnlockState();
-    window.addEventListener(ADMIN_TOKEN_CHANGED_EVENT, refreshAdminUnlockState);
-    return () =>
-      window.removeEventListener(
-        ADMIN_TOKEN_CHANGED_EVENT,
-        refreshAdminUnlockState
-      );
   }, []);
 
   // Auto-open the Developer Options → Advanced accordion when the page is
@@ -2504,18 +2300,12 @@ export default function SettingsView({
                   aiTimeoutDirectMs={aiTimeoutDirectMs}
                   aiTimeoutMergeAutoSave={aiTimeoutMergeAutoSave}
                   aiTimeoutMergeMs={aiTimeoutMergeMs}
-                  clearDebugLog={clearDebugLog}
-                  debugExpandedId={debugExpandedId}
-                  debugLoading={debugLoading}
-                  debugLog={debugLog}
                   debugLogging={debugLogging}
-                  loadDebugLog={loadDebugLog}
                   saveAiSettings={saveAiSettings}
                   setAdvancedAiOpen={setAdvancedAiOpen}
                   setAiTimeoutChunkMs={setAiTimeoutChunkMs}
                   setAiTimeoutDirectMs={setAiTimeoutDirectMs}
                   setAiTimeoutMergeMs={setAiTimeoutMergeMs}
-                  setDebugExpandedId={setDebugExpandedId}
                   setDebugLogging={setDebugLogging}
                   showToast={showToast}
                 />
