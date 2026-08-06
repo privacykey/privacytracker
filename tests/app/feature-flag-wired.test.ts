@@ -112,3 +112,20 @@ test("WIRED_FLAGS contains only registered flags", () => {
     `WIRED_FLAGS names ${unregistered.length} key(s) with no HARD_DEFAULTS entry, so they can never resolve:\n  ${unregistered.join("\n  ")}`
   );
 });
+
+test("every registered flag is consumed somewhere outside the registry", () => {
+  // A key can pass both parity checks above while being pure dead weight:
+  // registered in HARD_DEFAULTS, absent from WIRED_FLAGS, and consumed by
+  // nothing. The 2026-08 inventory review found four of those — all
+  // registered in one commit as aspirational gates for features that then
+  // shipped unguarded. This closes the loophole: registering a flag now
+  // requires actually gating something with it (a migration seed or
+  // storybook fixture counts — those are deliberate references).
+  const referenced = flagsReferencedInCode();
+  const dead = Object.keys(HARD_DEFAULTS).filter((key) => !referenced.has(key));
+  assert.deepEqual(
+    dead,
+    [],
+    `${dead.length} registered flag(s) are consumed by nothing under app/ or lib/ — either wire a gate or remove the key from lib/feature-flag-rules.ts:\n  ${dead.join("\n  ")}`
+  );
+});
