@@ -25,6 +25,26 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Minimum gap between live checks even when forced via ?refresh=1. */
 const FORCE_REFRESH_MIN_GAP_MS = 5 * 60 * 1000;
 
+/**
+ * Failure backoff. A failed check used to stamp only the error, never the
+ * clock — so with GitHub unreachable (offline, rate-limited), every caller
+ * re-hit the network until one succeeded. Now failures back off
+ * exponentially: 15 min after the first, doubling per consecutive failure,
+ * capped at the success TTL. `force` (the explicit ?refresh=1 path) still
+ * bypasses the backoff — a deliberate user action should be allowed to
+ * retry — but keeps its own 5-minute throttle.
+ */
+const FAIL_BACKOFF_BASE_MS = 15 * 60 * 1000;
+
+/** Pure so it can be pinned by tests: how long after `lastFailed` a
+ *  non-forced check should stay off the network. */
+export function failureBackoffMs(failCount: number): number {
+  if (failCount <= 0) {
+    return 0;
+  }
+  return Math.min(CACHE_TTL_MS, FAIL_BACKOFF_BASE_MS * 2 ** (failCount - 1));
+}
+
 /** Hard cap on the request. */
 const FETCH_TIMEOUT_MS = 8000;
 
@@ -40,6 +60,8 @@ const KEY_LATEST_URL = "update_latest_url"; // html_url of the release
 const KEY_LATEST_PUBDATE = "update_latest_pub_date"; // ISO 8601
 const KEY_LAST_ERROR = "update_last_error"; // human-readable, optional
 const KEY_LAST_FORCED = "update_last_forced_check"; // unix ms, throttle for ?refresh=1
+const KEY_LAST_FAILED = "update_last_failed"; // unix ms of the last failed live check
+const KEY_FAIL_COUNT = "update_fail_count"; // consecutive failures since last success
 
 // Notes are stored as a preview only — full body is on GitHub.
 const NOTES_PREVIEW_MAX_CHARS = 4000;
@@ -171,7 +193,12 @@ export interface CheckResult {
   /** True if we actually went out to the network. False = used cache. */
   performed: boolean;
   /** Reason we didn't run (cache fresh / disabled / throttled / error). */
-  skipReason?: "disabled" | "cache_fresh" | "force_throttled" | "in_progress";
+  skipReason?:
+    | "disabled"
+    | "cache_fresh"
+    | "force_throttled"
+    | "in_progress"
+    | "backoff";
   /** Status snapshot after the check (or unchanged cache). */
   status: UpdateStatus;
 }
@@ -201,6 +228,15 @@ export async function checkForUpdate(
     return { performed: false, skipReason: "cache_fresh", status: status0 };
   }
 
+  if (!options.force) {
+    const lastFailed =
+      Number.parseInt(getSetting(KEY_LAST_FAILED, "0"), 10) || 0;
+    const failCount = Number.parseInt(getSetting(KEY_FAIL_COUNT, "0"), 10) || 0;
+    if (lastFailed > 0 && now - lastFailed < failureBackoffMs(failCount)) {
+      return { performed: false, skipReason: "backoff", status: status0 };
+    }
+  }
+
   if (options.force) {
     const lastForced =
       Number.parseInt(getSetting(KEY_LAST_FORCED, "0"), 10) || 0;
@@ -223,12 +259,18 @@ export async function checkForUpdate(
     try {
       const release = await fetchLatestRelease();
       writeReleaseToSettings(release, now);
+      setSetting(KEY_LAST_FAILED, "0");
+      setSetting(KEY_FAIL_COUNT, "0");
       const status = getCachedUpdateStatus();
       return { performed: true, status };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       // Persist the error so the UI can surface it; don't clobber the cache.
       setSetting(KEY_LAST_ERROR, msg.slice(0, 500));
+      setSetting(KEY_LAST_FAILED, String(now));
+      const prevFails =
+        Number.parseInt(getSetting(KEY_FAIL_COUNT, "0"), 10) || 0;
+      setSetting(KEY_FAIL_COUNT, String(prevFails + 1));
       const status = getCachedUpdateStatus();
       return { performed: true, status, error: msg };
     } finally {
