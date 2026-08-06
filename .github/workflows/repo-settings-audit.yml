@@ -42,17 +42,20 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node
         # No pnpm install needed — the audit script is stdlib-only and shells
         # out to the `gh` CLI, which is preinstalled on GitHub runners.
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
 
       - name: Run audit
         id: audit

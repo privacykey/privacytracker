@@ -13,23 +13,26 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # pnpm needs to be installed before setup-node so that the latter's
-      # cache: 'pnpm' resolver can locate the pnpm binary on PATH. Pinned
-      # to an exact patch so CI and Docker use the same resolver behavior.
+      # cache: 'pnpm' resolver can locate the pnpm binary on PATH. No
+      # explicit version here: the action reads `packageManager` from
+      # package.json, the single source of truth (the Dockerfile's ARG
+      # PNPM_VERSION mirrors it via Renovate).
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
-        with:
-          version: 11.18.0
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -129,21 +132,22 @@ jobs:
     # regressions without holding up unrelated PRs. Promote to a hard
     # gate (`continue-on-error: false`) once the story set stabilises.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     continue-on-error: true
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
-        with:
-          version: 11.18.0
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -171,9 +175,12 @@ jobs:
     # and catches the common regressions: missing imports, type-error
     # changes after a tauri version bump, mismatched crate features.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Tauri Linux build dependencies
         # Tauri's webview backend on Linux links against gtk + webkit2gtk;
@@ -193,7 +200,7 @@ jobs:
         # script below. Doesn't need pnpm or a node_modules install.
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
 
       # See the matching note in the `quality` job — tauri-build needs
       # `resources/standalone.tar` to exist before `cargo check` will
@@ -227,11 +234,14 @@ jobs:
 
   container-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: quality
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Build Docker image
         run: docker build -t privacytracker-smoke .
@@ -316,11 +326,14 @@ jobs:
     #     fresh Linux host (root-owned auto-created bind source) → /api/ready never
     #     goes green. macOS Docker Desktop hides this by uid-mapping bind mounts.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: quality
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # --- Leg A: the documented default (named volume) ---
       - name: Start root compose (named volume)
