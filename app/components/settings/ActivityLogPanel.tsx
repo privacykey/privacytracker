@@ -14,6 +14,7 @@
  * accordion is lazy: nothing is fetched until it is first opened.
  */
 
+import "./activity-log.css";
 import { useTranslations } from "next-intl";
 import { useFlag } from "@/lib/feature-flags-hooks";
 import { useActivityLog } from "@/lib/use-activity-log";

@@ -23,6 +23,7 @@
  * deep-links to it, and SettingsView pulses it on that hash.
  */
 
+import "./ai-summaries.css";
 import { useTranslations } from "next-intl";
 import {
   AI_PROVIDER_OPTIONS,
