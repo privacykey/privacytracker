@@ -23,6 +23,7 @@ import SettingsAutoSaveToast, {
   pushSettingsToast,
 } from "./SettingsAutoSaveToast";
 import SettingsSidebar from "./SettingsSidebar";
+import AccessibilityLabelsSection from "./settings/AccessibilityLabelsSection";
 import AiSummariesSection from "./settings/AiSummariesSection";
 import BackupSection from "./settings/BackupSection";
 import DeleteImportModal from "./settings/DeleteImportModal";
@@ -32,13 +33,17 @@ import ExportDataSection from "./settings/ExportDataSection";
 import ImportHistoryLinkCard from "./settings/ImportHistoryLinkCard";
 import ImportHistorySection from "./settings/ImportHistorySection";
 import LanguageSection from "./settings/LanguageSection";
+import NotificationPrefsSection from "./settings/NotificationPrefsSection";
 import PolicyAlertsSection from "./settings/PolicyAlertsSection";
+import PolicyScrapeKillSwitchSection from "./settings/PolicyScrapeKillSwitchSection";
+import PolicyScrapeThrottleSection from "./settings/PolicyScrapeThrottleSection";
 import PrivacyPoliciesBulkSection from "./settings/PrivacyPoliciesBulkSection";
 import RegionSection from "./settings/RegionSection";
 import RemoveItemModal from "./settings/RemoveItemModal";
 import ResetAppModal from "./settings/ResetAppModal";
 import ResetSection from "./settings/ResetSection";
 import RestoreBackupModal from "./settings/RestoreBackupModal";
+import ReviewQueuePrefsSection from "./settings/ReviewQueuePrefsSection";
 import SyncScheduleSection from "./settings/SyncScheduleSection";
 import SyncStatusSection from "./settings/SyncStatusSection";
 import type { SettingsGroup } from "./settings/section-groups";
@@ -65,7 +70,6 @@ import {
 } from "../../lib/ai-config";
 import {
   DEFAULT_NOTIFICATION_PREFS,
-  NOTIFICATION_TYPE_KEYS,
   type NotificationPrefs,
   type NotificationTypeKey,
   resolvePrefs as resolveNotificationPrefs,
@@ -265,7 +269,6 @@ export default function SettingsView({
   // Per-row notification-preference labels + descriptions + example
   // hints. The seven preference keys map onto snake_case translation
   // keys via a regex inside the loop below.
-  const tNotifPrefs = useTranslations("notification_prefs");
 
   // Wave I: settings-card flags. Each card section in this view is gated
   // by exactly one flag so a profile can hide just the noisy bits without
@@ -1766,135 +1769,15 @@ export default function SettingsView({
           DB, so turning the toggle back on immediately re-surfaces anything
           that fired while the type was muted. */}
               {settingsNotificationsPrefsOn && (
-                <div className="settings-section" id="notifications">
-                  <h2 className="settings-section-title">
-                    {tSections("notifications")}
-                  </h2>
-                  <p className="settings-section-subtitle">
-                    {tSub("notifications")}
-                  </p>
-
-                  <div
-                    aria-label={tAria("notification_types")}
-                    className="notification-prefs-list"
-                    role="group"
-                  >
-                    {NOTIFICATION_TYPE_KEYS.map((key) => {
-                      const enabled = notificationPrefs[key];
-                      const inputId = `notif-pref-${key}`;
-                      // Map the camelCase enum key onto the snake_case
-                      // translation-key prefix used in the locale bundle
-                      // (e.g. `labelChanges` → `label_changes`).
-                      const tKey = key.replace(
-                        /[A-Z]/g,
-                        (m) => `_${m.toLowerCase()}`
-                      );
-                      return (
-                        <label
-                          className="notification-prefs-row"
-                          htmlFor={inputId}
-                          key={key}
-                        >
-                          <input
-                            checked={enabled}
-                            className="notification-prefs-toggle"
-                            id={inputId}
-                            onChange={(event) => {
-                              const next = {
-                                ...notificationPrefs,
-                                [key]: event.target.checked,
-                              };
-                              setNotificationPrefs(next);
-                              // Auto-save: debounced PUT so rapid toggling
-                              // collapses into one server write + one toast.
-                              scheduleNotificationPrefsSave(next);
-                            }}
-                            type="checkbox"
-                          />
-                          <span className="notification-prefs-copy">
-                            <span className="notification-prefs-label">
-                              {tNotifPrefs(`${tKey}_label`)}
-                            </span>
-                            <span className="notification-prefs-description">
-                              {tNotifPrefs(`${tKey}_desc`)}
-                            </span>
-                            <span className="notification-prefs-example">
-                              {tNotifPrefs(`${tKey}_example`)}
-                            </span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      marginTop: 14,
-                    }}
-                  >
-                    {/* Save button removed — checkboxes auto-save via debounced
-              `scheduleNotificationPrefsSave`. The Reset Defaults helper
-              stays so power users can wipe to baseline in one click; it
-              also routes through the same debounced save path. */}
-                    <button
-                      className="btn btn-ghost"
-                      disabled={
-                        notificationPrefsAutoSave.saving ||
-                        NOTIFICATION_TYPE_KEYS.every(
-                          (key) =>
-                            notificationPrefs[key] ===
-                            DEFAULT_NOTIFICATION_PREFS[key]
-                        )
-                      }
-                      onClick={() => {
-                        const next = { ...DEFAULT_NOTIFICATION_PREFS };
-                        setNotificationPrefs(next);
-                        scheduleNotificationPrefsSave(next);
-                      }}
-                      type="button"
-                    >
-                      {tNotifPrefsCard("reset_defaults")}
-                    </button>
-                    {NOTIFICATION_TYPE_KEYS.every(
-                      (key) =>
-                        notificationPrefs[key] === savedNotificationPrefs[key]
-                    ) && (
-                      <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                        {tNotifPrefsCard("up_to_date")}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Settings-autosave Task Center mirror. Lives at the bottom of
-            the Notifications section because it's a "where does this
-            notice show up" control — the bell vs. the Task Center
-            dropdown — rather than a per-event toggle like the rows
-            above. localStorage-backed, per-browser. */}
-                  <label
-                    className="settings-checkbox-row"
-                    style={{ marginTop: 14 }}
-                  >
-                    <input
-                      checked={autosaveLogToTaskCenter}
-                      className="settings-checkbox"
-                      onChange={(e) => onAutosaveLogToggle(e.target.checked)}
-                      type="checkbox"
-                    />
-                    <span>
-                      {tNotifPrefsCard("autosave_log_label")}
-                      <span
-                        className="settings-field-help"
-                        style={{ display: "block", marginTop: 4 }}
-                      >
-                        {tNotifPrefsCard("autosave_log_help")}
-                      </span>
-                    </span>
-                  </label>
-                </div>
+                <NotificationPrefsSection
+                  autosaveLogToTaskCenter={autosaveLogToTaskCenter}
+                  notificationPrefs={notificationPrefs}
+                  notificationPrefsAutoSave={notificationPrefsAutoSave}
+                  onAutosaveLogToggle={onAutosaveLogToggle}
+                  savedNotificationPrefs={savedNotificationPrefs}
+                  scheduleNotificationPrefsSave={scheduleNotificationPrefsSave}
+                  setNotificationPrefs={setNotificationPrefs}
+                />
               )}
             </>
           )}
@@ -1938,68 +1821,21 @@ export default function SettingsView({
         section (which shapes what we scrape) and Sync Status (which shapes
         when) because it straddles both.
       */}
-              <div className="settings-section" id="accessibility-labels">
-                <h2 className="settings-section-title">
-                  {tSections("accessibility_labels")}
-                </h2>
-                <p className="settings-section-subtitle">
-                  {tSub("accessibility_labels")}
-                </p>
-
-                <label className="settings-checkbox-row">
-                  <input
-                    checked={trackAccessibility}
-                    className="settings-checkbox"
-                    disabled={trackAccessibilityAutoSave.saving}
-                    onChange={(event) =>
-                      void saveTrackAccessibility(event.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    {tA11yLabels("checkbox_lead")}
-                    <span
-                      className="settings-field-help"
-                      style={{ display: "block", marginTop: 4 }}
-                    >
-                      {tA11yLabels("checkbox_help")}
-                    </span>
-                  </span>
-                </label>
-              </div>
+              <AccessibilityLabelsSection
+                saveTrackAccessibility={saveTrackAccessibility}
+                trackAccessibility={trackAccessibility}
+                trackAccessibilityAutoSave={trackAccessibilityAutoSave}
+              />
 
               {/* Review-queue preferences — single toggle for the progress bar
           shown in the Tinder-style review carousel. Tiny standalone
           section so users can find it via "queue" search; expand later
           if more queue prefs land. */}
-              <div className="settings-section" id="review-queue-preferences">
-                <h2 className="settings-section-title">
-                  {tSections("review_queue")}
-                </h2>
-                <p className="settings-section-subtitle">
-                  {tSub("review_queue")}
-                </p>
-                <label className="settings-checkbox-row">
-                  <input
-                    checked={queueShowProgressBar}
-                    className="settings-checkbox"
-                    disabled={queueShowProgressBarAutoSave.saving}
-                    onChange={(event) =>
-                      void saveQueueShowProgressBar(event.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    {tReviewQueueSettings("progress_bar_label")}
-                    <span
-                      className="settings-field-help"
-                      style={{ display: "block", marginTop: 4 }}
-                    >
-                      {tReviewQueueSettings("progress_bar_help")}
-                    </span>
-                  </span>
-                </label>
-              </div>
+              <ReviewQueuePrefsSection
+                queueShowProgressBar={queueShowProgressBar}
+                queueShowProgressBarAutoSave={queueShowProgressBarAutoSave}
+                saveQueueShowProgressBar={saveQueueShowProgressBar}
+              />
 
               {/* Sync Status — manual "Sync Now" trigger + last-sync info. Shares
           the `flag.settings.sync.schedule` gate because the manual button
@@ -2058,141 +1894,23 @@ export default function SettingsView({
           that would fetch a privacy-policy URL is silenced, the manual
           sync buttons return 409, and a crashed bulk-policy resume on
           next boot is cancelled cleanly with an activity-log entry. */}
-              <div className="settings-section" id="policy-scrape-disabled">
-                <h2 className="settings-section-title">
-                  {tSections("policy_scrape_disabled")}
-                </h2>
-                <p className="settings-section-subtitle">
-                  {tSub("policy_scrape_disabled")}
-                </p>
-
-                <label
-                  className="settings-field"
-                  style={{
-                    maxWidth: 480,
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <input
-                    aria-describedby="policy-scrape-disabled-help"
-                    checked={scrapeDisabled}
-                    className="settings-checkbox"
-                    disabled={scrapeDisabledAutoSave.saving}
-                    onChange={(event) => {
-                      const disabled = event.target.checked;
-                      setScrapeDisabled(disabled);
-                      void scrapeDisabledAutoSave.save({ disabled });
-                    }}
-                    type="checkbox"
-                  />
-                  <span className="settings-field-label" style={{ margin: 0 }}>
-                    {tPolicyThrottle("scrape_disabled_label")}
-                  </span>
-                </label>
-                <span
-                  className="settings-field-help"
-                  id="policy-scrape-disabled-help"
-                  style={{ display: "block", marginTop: 8, maxWidth: 600 }}
-                >
-                  {tPolicyThrottle.rich("scrape_disabled_help", {
-                    strong: (chunks) => <strong>{chunks}</strong>,
-                    em: (chunks) => <em>{chunks}</em>,
-                  })}
-                </span>
-              </div>
+              <PolicyScrapeKillSwitchSection
+                scrapeDisabled={scrapeDisabled}
+                scrapeDisabledAutoSave={scrapeDisabledAutoSave}
+                setScrapeDisabled={setScrapeDisabled}
+              />
 
               {/* Policy Scrape Throttle */}
-              <div className="settings-section" id="policy-scrape-throttle">
-                <h2 className="settings-section-title">
-                  {tSections("policy_scrape_throttle")}
-                </h2>
-                <p className="settings-section-subtitle">
-                  {tSub("policy_scrape_throttle")}
-                </p>
-                {scrapeDisabled && (
-                  <p
-                    className="settings-section-subtitle"
-                    style={{ fontStyle: "italic", opacity: 0.7 }}
-                  >
-                    {tPolicyThrottle("throttle_inert_when_disabled")}
-                  </p>
-                )}
-
-                <label
-                  className="settings-field"
-                  style={{
-                    maxWidth: 420,
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <input
-                    checked={scrapeThrottleEnabled}
-                    disabled={scrapeThrottleAutoSave.saving || scrapeDisabled}
-                    // Checkbox flips save immediately — discrete intent. Use
-                    // the latest minutes value (already validated on its own
-                    // blur) so toggling enabled→disabled→enabled keeps the
-                    // cooldown the user typed.
-                    onChange={(event) => {
-                      const enabled = event.target.checked;
-                      setScrapeThrottleEnabled(enabled);
-                      const parsed = Number.parseInt(scrapeThrottleMinutes, 10);
-                      const minutes = Number.isFinite(parsed)
-                        ? Math.min(10_080, Math.max(0, parsed))
-                        : 0;
-                      saveScrapeThrottle({ enabled, minutes });
-                    }}
-                    type="checkbox"
-                  />
-                  <span className="settings-field-label" style={{ margin: 0 }}>
-                    {tPolicyThrottle("enabled_label")}
-                  </span>
-                </label>
-
-                <label
-                  className="settings-field"
-                  style={{ maxWidth: 320, marginTop: 12 }}
-                >
-                  <span className="settings-field-label">
-                    {tPolicyThrottle("cooldown_label")}
-                  </span>
-                  <input
-                    aria-describedby="policy-scrape-throttle-help"
-                    className="settings-input"
-                    disabled={
-                      !scrapeThrottleEnabled ||
-                      scrapeThrottleAutoSave.saving ||
-                      scrapeDisabled
-                    }
-                    max={10_080}
-                    min={0}
-                    // Auto-save on blur with validation. Same as the alert
-                    // input above — keystrokes update local state freely;
-                    // the POST only fires when the user tabs away.
-                    onBlur={handleScrapeThrottleBlur}
-                    onChange={(event) =>
-                      setScrapeThrottleMinutes(event.target.value)
-                    }
-                    step={1}
-                    type="number"
-                    value={scrapeThrottleMinutes}
-                  />
-                  <span
-                    className="settings-field-help"
-                    id="policy-scrape-throttle-help"
-                    style={{ display: "block", marginTop: 4 }}
-                  >
-                    {tPolicyThrottle.rich("cooldown_help", {
-                      strong: (chunks) => <strong>{chunks}</strong>,
-                    })}
-                  </span>
-                </label>
-              </div>
+              <PolicyScrapeThrottleSection
+                handleScrapeThrottleBlur={handleScrapeThrottleBlur}
+                saveScrapeThrottle={saveScrapeThrottle}
+                scrapeDisabled={scrapeDisabled}
+                scrapeThrottleAutoSave={scrapeThrottleAutoSave}
+                scrapeThrottleEnabled={scrapeThrottleEnabled}
+                scrapeThrottleMinutes={scrapeThrottleMinutes}
+                setScrapeThrottleEnabled={setScrapeThrottleEnabled}
+                setScrapeThrottleMinutes={setScrapeThrottleMinutes}
+              />
             </>
           )}
           {viewMode === "import-history" && settingsImportHistoryOn && (
