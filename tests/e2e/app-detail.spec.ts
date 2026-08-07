@@ -84,6 +84,22 @@ test.beforeEach(async ({ request }) => {
     },
   });
   await expect(profile).toBeOK();
+
+  // Accessibility profile so the Accessibility tab renders the
+  // preference key + per-row chips. voice_control is deliberately a
+  // feature the canned Instagram fixture does NOT declare, so the
+  // "required but missing" rendering is exercised too.
+  const a11yProfile = await request.put("/api/accessibility-profile", {
+    headers: sameOriginHeaders,
+    data: {
+      profile: {
+        voiceover: "required",
+        voice_control: "required",
+        captions: "nice",
+      },
+    },
+  });
+  await expect(a11yProfile).toBeOK();
 });
 
 browserFlow(
@@ -135,11 +151,99 @@ browserFlow(
     // Instagram fixture) doesn't break the spec.
     await expect(page.locator(".category-card-mismatch").first()).toBeVisible();
 
+    // ── Change review panel ──────────────────────────────────────────
+    // The canned seed leaves changes_acknowledged_at at 0, so the
+    // history rows' diffs surface as unacknowledged and the "What's
+    // changed" panel must render, along with the hero badge that links
+    // to it.
+    await expect(page.locator("#what-changed")).toBeVisible();
+    await expect(page.locator(".change-badge-link")).toBeVisible();
+    await expect(page.locator(".change-review-event").first()).toBeVisible();
+
+    // ── Privacy-type accordion toggle ────────────────────────────────
+    // The header toggle is a real <button> carrying aria-expanded /
+    // aria-controls (the PR #137 a11y contract, with the InfoTooltip as
+    // a SIBLING rather than a nested control). Collapse and re-expand
+    // the first section to pin that the button drives the panel. The
+    // clicks are polled because this is the page's first interaction —
+    // React may not have attached handlers yet on a cold server (same
+    // `toPass` pattern as the onboarding specs).
+    const firstToggle = page.locator(".inline-header-toggle").first();
+    const bodiesBefore = await page.locator(".accordion-body").count();
+    await expect(firstToggle).toHaveAttribute("aria-expanded", "true");
+    await expect(async () => {
+      await firstToggle.click();
+      await expect(firstToggle).toHaveAttribute("aria-expanded", "false", {
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expect(page.locator(".accordion-body")).toHaveCount(bodiesBefore - 1);
+    await expect(async () => {
+      await firstToggle.click();
+      await expect(firstToggle).toHaveAttribute("aria-expanded", "true", {
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expect(page.locator(".accordion-body")).toHaveCount(bodiesBefore);
+
+    // ── Accessibility tab ────────────────────────────────────────────
+    // The canned Instagram fixture declares 5 canonical features, so
+    // the panel renders declared AND not-declared rows, and the saved
+    // accessibility profile (see beforeEach) adds the preference key +
+    // per-row chips — including voice_control as "required but not
+    // declared". Tab activations are polled too (selecting a selected
+    // tab is a no-op, so re-clicking is safe).
+    await expect(async () => {
+      await page.locator("#tab-accessibility").click();
+      await expect(page.locator(".a11y-summary-card")).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expect(
+      page.locator(".a11y-feature-row.is-declared").first()
+    ).toBeVisible();
+    await expect(
+      page.locator(".a11y-feature-row.is-missing").first()
+    ).toBeVisible();
+    await expect(page.locator(".a11y-profile-key")).toBeVisible();
+    await expect(
+      page.locator(".a11y-feature-row.preference-missing").first()
+    ).toBeVisible();
+
+    // ── AI Policy tab ────────────────────────────────────────────────
+    // The canned seed persists the fixture's hand-written summary as a
+    // ready privacy_policy_analyses row, so the panel must render fully
+    // populated: overview, highlights, the lens grid, the rating-shift
+    // strip (previous summary flipped data_retention), and the
+    // recent-change banner (two seeded policy versions, current one 9
+    // days old — inside the default 90-day window).
+    await expect(async () => {
+      await page.locator("#tab-policy").click();
+      await expect(page.locator(".policy-summary-overview")).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expect(page.locator(".policy-highlight-pill").first()).toBeVisible();
+    await expect(page.locator(".policy-lens-card").first()).toBeVisible();
+    await expect(page.locator(".policy-change-strip")).toBeVisible();
+    await expect(page.locator(".policy-diff-alert")).toBeVisible();
+    await expect(page.locator(".policy-ai-disclaimer")).toBeVisible();
+
     // Timeline lives behind the Changelog tab — click it to activate
     // the panel before asserting. The canned seed writes a baseline
     // snapshot plus 1–2 back-dated history rows, so at least one
     // .timeline-item should render once the tab is active.
-    await page.locator("#tab-changelog").click();
-    await expect(page.locator(".timeline-item").first()).toBeVisible();
+    await expect(async () => {
+      await page.locator("#tab-changelog").click();
+      await expect(page.locator(".timeline-item").first()).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+
+    // ── Provenance footer ────────────────────────────────────────────
+    // Renders on every detail page — without an import-history row it
+    // degrades to the "imported on <firstSeen>" line with a link into
+    // Import History.
+    await expect(page.locator(".app-detail-footer")).toBeVisible();
   }
 );
