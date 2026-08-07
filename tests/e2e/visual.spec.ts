@@ -137,6 +137,19 @@ test.beforeEach(async ({ request }) => {
  * the canned fixture seeds snapshot times relative to seed time, so the
  * minutes drift between runs), and anything mid-animation. Same technique
  * as the DOM-diff harness used throughout the component split.
+ *
+ * The task-center trigger needs the same treatment for a different reason.
+ * Its badge counts background jobs that are *in flight right now*, and its
+ * `is-active` class restyles the button whenever that count is above zero —
+ * so the nav, which appears in every shot, changes with how long the run
+ * happened to take before this particular screenshot. Adding one test to
+ * this file was enough to flip it from 3 to 2 and fail an unrelated
+ * baseline. Both are normalised to the idle state.
+ *
+ * The trade is explicit: the net no longer covers the badge's own styling
+ * (it is `position: absolute`, so removing it shifts nothing else). That is
+ * a real gap, but a smaller one than a net that fails for reasons no CSS
+ * change caused — the failure mode that gets a net ignored, then deleted.
  */
 async function settle(page: Page) {
   await page.waitForTimeout(1500);
@@ -152,6 +165,10 @@ async function settle(page: Page) {
         el.textContent = "~FROZEN";
       }
     }
+    document.querySelector(".task-center-badge")?.remove();
+    document
+      .querySelector(".task-center-trigger")
+      ?.classList.remove("is-active");
   });
 }
 
@@ -239,6 +256,32 @@ visual("apps grid", async ({ page }) => {
   await expect(page.locator("main")).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("apps-grid.png", shotOptions(page));
+});
+
+/**
+ * Compare was in the net's original spec and got missed when the first
+ * nine shots landed. It matters more than most: CompareAppsView is the
+ * largest remaining unsplit component, so this is the net that has to be
+ * in place before anyone takes it on.
+ *
+ * The assertions before the shot are the empty-fixture guard — the page
+ * boots with blank slots for an unknown id rather than erroring, so a
+ * screenshot of two empty columns would compare clean forever and prove
+ * nothing.
+ */
+visual("compare", async ({ page, request }) => {
+  const res = await request.get("/api/apps");
+  const apps = (await res.json()) as { id: string; name: string }[];
+  const [appA, appB] = apps;
+  await page.goto(`/dashboard/compare?a=id:${appA.id}&b=id:${appB.id}`);
+  await expect(
+    page.getByText(appA.name, { exact: true }).first()
+  ).toBeVisible();
+  await expect(
+    page.getByText(appB.name, { exact: true }).first()
+  ).toBeVisible();
+  await settle(page);
+  await expect(page).toHaveScreenshot("compare.png", SHOT);
 });
 
 /** Resolve the canned Instagram app (the richest fixture: five declared
