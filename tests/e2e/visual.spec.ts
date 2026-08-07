@@ -281,7 +281,7 @@ visual("compare", async ({ page, request }) => {
     page.getByText(appB.name, { exact: true }).first()
   ).toBeVisible();
   await settle(page);
-  await expect(page).toHaveScreenshot("compare.png", SHOT);
+  await expect(page).toHaveScreenshot("compare.png", shotOptions(page));
 });
 
 /** Resolve the canned Instagram app (the richest fixture: five declared
