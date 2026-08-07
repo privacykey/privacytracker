@@ -546,21 +546,30 @@ export default function AppChangeTimeline({
             fontSize: 11,
           }}
         >
+          {/* These counters are DOM text (unlike the canvas bands), so
+              they use the theme tokens — the fixed band hexes are only
+              ~2.4–3.8:1 against the light background at this size, which
+              fails WCAG AA (axe color-contrast, app-detail changelog-tab
+              scan). Same rule the a11y-added counter below already
+              follows with --cyan. Bands keep the literal hexes because
+              ECharts paints them on canvas. */}
           <span>
-            <span style={{ color: COLORS.added, fontWeight: 600 }}>
+            <span style={{ color: "var(--red, #ef4444)", fontWeight: 600 }}>
               +{totals.added}
             </span>
             <span style={{ marginLeft: 4 }}>{tChart("summary_added")}</span>
           </span>
           <span>
-            <span style={{ color: COLORS.removed, fontWeight: 600 }}>
+            <span style={{ color: "var(--green, #10b981)", fontWeight: 600 }}>
               −{totals.removed}
             </span>
             <span style={{ marginLeft: 4 }}>{tChart("summary_removed")}</span>
           </span>
           {totals.modified > 0 && (
             <span>
-              <span style={{ color: COLORS.modified, fontWeight: 600 }}>
+              <span
+                style={{ color: "var(--orange, #f59e0b)", fontWeight: 600 }}
+              >
                 ~{totals.modified}
               </span>
               <span style={{ marginLeft: 4 }}>
@@ -570,7 +579,7 @@ export default function AppChangeTimeline({
           )}
           {totals.policy > 0 && (
             <span>
-              <span style={{ color: COLORS.policy, fontWeight: 600 }}>
+              <span style={{ color: "var(--blue, #2563eb)", fontWeight: 600 }}>
                 {totals.policy}
               </span>
               <span style={{ marginLeft: 4 }}>{tChart("summary_policy")}</span>
@@ -598,7 +607,9 @@ export default function AppChangeTimeline({
           )}
           {totals.syncs > 0 && (
             <span>
-              <span style={{ color: COLORS.syncs, fontWeight: 600 }}>
+              <span
+                style={{ color: "var(--text-2, #94a3b8)", fontWeight: 600 }}
+              >
                 {totals.syncs}
               </span>
               <span style={{ marginLeft: 4 }}>{tChart("summary_syncs")}</span>

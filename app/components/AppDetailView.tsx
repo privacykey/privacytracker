@@ -3620,8 +3620,8 @@ function PolicyRunLogStrip({
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 8,
-        background: "var(--surface-2, #101727)",
-        border: "1px solid var(--border-1, #26324a)",
+        background: "var(--surface-2, var(--surface))",
+        border: "1px solid var(--border-1, var(--border))",
         fontSize: 13,
         color: "var(--text-2, #9fb3c8)",
       }}
@@ -3709,8 +3709,8 @@ function PolicyPreviewBlock({
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 8,
-        background: "var(--surface-2, #101727)",
-        border: "1px solid var(--border-1, #26324a)",
+        background: "var(--surface-2, var(--surface))",
+        border: "1px solid var(--border-1, var(--border))",
       }}
     >
       <div
@@ -3782,8 +3782,8 @@ function AiSummaryDisclaimer({
         marginBottom: 12,
         padding: "10px 12px",
         borderRadius: 8,
-        background: "var(--surface-2, #101727)",
-        border: "1px solid var(--border-1, #26324a)",
+        background: "var(--surface-2, var(--surface))",
+        border: "1px solid var(--border-1, var(--border))",
         fontSize: 12,
         display: "flex",
         gap: 8,
@@ -3844,8 +3844,8 @@ function PolicyChunkNotesBlock({ notes }: { notes: PolicyChunkNote[] }) {
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 8,
-        background: "var(--surface-2, #101727)",
-        border: "1px solid var(--border-1, #26324a)",
+        background: "var(--surface-2, var(--surface))",
+        border: "1px solid var(--border-1, var(--border))",
         fontSize: 12,
       }}
     >

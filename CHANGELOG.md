@@ -14,6 +14,16 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Canned sample data now populates every app-detail surface: each demo app
+  gets its hand-written AI policy summary stored as a real, ready analysis
+  (lens grid, highlights, and source preview render without any AI provider),
+  declared accessibility features on the Accessibility tab, and — for
+  Instagram — a policy-change history that lights up the recent-change banner
+  and the rating-shift strip.
+- The app-detail axe gate now also scans the Accessibility, AI Policy, and
+  Change History tabs (activated and populated), and the app-detail E2E spec
+  covers the change-review panel, the privacy-label accordion toggle, and all
+  three tabs.
 - Blocking accessibility gate in CI: axe-core scans of the welcome screen,
   onboarding import flow, dashboard, app detail, and mobile navigation, plus
   keyboard-only coverage of the onboarding path.
@@ -37,6 +47,12 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Light-theme colour contrast on the app-detail page now meets WCAG AA:
+  not-declared accessibility rows no longer dim their text below the
+  threshold, the "Declared by developer" tag and the preference-key legend
+  use theme-aware colours, the AI-policy note boxes no longer render dark
+  navy in light mode, and the change-history chart's +N/−N counters use the
+  theme palette instead of fixed chart-band colours.
 - **The SQLite database is now private by default** — `0700` on the data
   directory, `0600` on the database and its write-ahead-log files. Existing
   installations are tightened automatically on their next start. The file

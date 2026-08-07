@@ -2257,8 +2257,13 @@ html[data-theme-override="high-contrast"] .nav {
   border-color: color-mix(in srgb, var(--accent, #0a84ff) 28%, var(--border));
 }
 
-.a11y-feature-row.is-missing {
-  opacity: 0.85;
+/* Quiet the not-declared rows via the decorative status icon only.
+   Row-level `opacity: 0.85` dimmed the description / state text below
+   the WCAG AA 4.5:1 floor in light mode (axe `color-contrast`, caught
+   by the app-detail accessibility-tab scan) — the icon is aria-hidden,
+   so it can carry the dimming without any contrast cost. */
+.a11y-feature-row.is-missing .a11y-feature-status {
+  opacity: 0.7;
 }
 
 .a11y-feature-status {
@@ -2342,7 +2347,12 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .a11y-feature-row.is-declared .a11y-feature-state {
-  color: var(--accent, #0a84ff);
+  /* --blue, not the --accent fallback: --accent has no per-theme
+     definition so it always resolves to #0a84ff, which is only 3.3:1
+     against the accent-tinted declared-row card in light mode. --blue
+     swaps to the darker #0066cc in light (5:1 here) and stays #0a84ff
+     in dark, so dark rendering is unchanged. */
+  color: var(--blue);
 }
 
 /* ── Accessibility profile key ──────────────────────────────────────────
@@ -2412,7 +2422,10 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 6px 14px;
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--text-2);
+  /* --text, not --text-2: the muted grey lands at 4.4:1 on this card's
+     teal tint in light mode — just under the WCAG AA floor (axe
+     color-contrast, app-detail accessibility-tab scan). */
+  color: var(--text);
 }
 
 .a11y-profile-key-tier {
