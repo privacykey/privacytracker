@@ -59,6 +59,14 @@ Same rules as `../settings/README.md`, restated where they differ:
 
 ## What's here now
 
+The change-review family:
+
+- `ChangeReviewPanel.tsx` — the "What's changed since you last checked"
+  panel and everything only it consumes: the private `ChangeReviewEvent`
+  row, `classifyChange`, the event/snooze date formatters, and the
+  severity-i18n key table. One export; the whole family has a single
+  consumer chain, so it stays one file.
+
 The AI Policy tab family:
 
 - `PolicySummaryPanel.tsx` — the tab's top-level component (the panel
