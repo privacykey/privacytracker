@@ -172,7 +172,7 @@ persisted focus + follow-up task opt-ins.
 
 **Kill-switch:** `flag.devopts.feature_flag_system.enabled = off` collapses every flag to its hard default. Use this if a release misbehaves; flipping it back on re-engages the rule engine without a code rollback.
 
-Inventory + rule design: see [Feature flags](https://privacytracker-docs.privacykey.org/develop/feature-flags).
+Inventory + rule design: see [Feature flags](https://docs.privacytracker.privacykey.org/develop/feature-flags).
 
 ### Editable home-dashboard layout
 
@@ -230,7 +230,7 @@ All DB calls are **synchronous**. Multi-step writes use `db.transaction(() => { 
 
 ### API surface (`app/api/*/route.ts`)
 
-Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://privacytracker-docs.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing.
+Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://docs.privacytracker.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing.
 
 ### Apps grid pagination (large fleets)
 
@@ -342,7 +342,7 @@ Both pages are server components sharing the `.legal-layout` / `.legal-sidebar` 
 
 ## Translations
 
-Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://privacytracker-docs.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
+Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://docs.privacytracker.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
 
 ICU placeholders (`{count, plural, one {# app} other {# apps}}`, `{name}`, etc.) are validated by Crowdin on upload and by `next-intl` at render. Don't strip braces or rename placeholders without coordinating across both bundles. Brand names (privacytracker, App Store, Apple Configurator, ToS;DR, PrivacySpy) stay in English in every locale; they're proper nouns. Module-level English fallback maps in components (e.g. `RISK_LABEL` in HomeView, `CATEGORY_META` in lib/privacy-meta) are intentionally kept after the JSX swapped to translator lookups — they document what the keys mean for future contributors and serve as the safety net when a translator key is missing.
 

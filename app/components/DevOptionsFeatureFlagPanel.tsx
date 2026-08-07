@@ -10,7 +10,7 @@
  * Renders a kill-switch banner when `flag.devopts.feature_flag_system.enabled`
  * is overridden off — re-enable button restores normal flag behaviour.
  *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags.
  */
 
 import Link from "next/link";

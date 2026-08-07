@@ -4,7 +4,7 @@
  * AuditBundleImport — UI for accepting an audit bundle exported by another
  * instance of the app.
  *
- * Flow (matches https://privacytracker-docs.privacykey.org/develop/feature-flags):
+ * Flow (matches https://docs.privacytracker.privacykey.org/develop/feature-flags):
  *
  *   1. User clicks "Import audit bundle" or drops a file on the drop-zone.
  *   2. We POST the file to /api/import/audit-bundle (no `confirm`) for a

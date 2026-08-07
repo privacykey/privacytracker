@@ -1512,7 +1512,7 @@ export default function SettingsView({
               {/* The legacy "Your Focus" intent picker used to render here. It was
           superseded by the YourFocusCard at the top of the page (chip
           strip + Adjust → /dashboard/settings/focus) per
-          https://privacytracker-docs.privacykey.org/develop/feature-flags, and the duplicate radio
+          https://docs.privacytracker.privacykey.org/develop/feature-flags, and the duplicate radio
           group was scheduled for removal in PR 5 but had stuck around.
           Removed in this pass; YourFocusCard owns the focus surface. */}
               <LanguageSection />

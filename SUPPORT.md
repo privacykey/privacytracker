@@ -4,11 +4,11 @@
 
 Most questions are answered in the docs:
 
-- **[User guide](https://privacytracker-docs.privacykey.org/quickstart)** —
+- **[User guide](https://docs.privacytracker.privacykey.org/quickstart)** —
   importing apps, reading privacy labels, setting up alerts
-- **[AI provider setup](https://privacytracker-docs.privacykey.org/quickstart)** —
+- **[AI provider setup](https://docs.privacytracker.privacykey.org/quickstart)** —
   bringing your own OpenAI / Anthropic / local model
-- **[Full documentation](https://privacytracker-docs.privacykey.org/introduction)**
+- **[Full documentation](https://docs.privacytracker.privacykey.org/introduction)**
 
 ## Where to ask
 

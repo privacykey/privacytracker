@@ -23547,7 +23547,7 @@ html[data-theme-override="light"]
  *
  * The DB stores raw markdown; `marked` renders it client-side via
  * `dangerouslySetInnerHTML` inside `.annotation-card__content`. The
- * spec (https://privacytracker-docs.privacykey.org/develop/feature-flags) calls for full GFM —
+ * spec (https://docs.privacytracker.privacykey.org/develop/feature-flags) calls for full GFM —
  * tables, task lists, strikethrough, autolinks — so the rules below
  * style each block-level + inline element marked emits.
  *

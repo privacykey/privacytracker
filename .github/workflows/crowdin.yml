@@ -83,7 +83,7 @@ jobs:
             - [ ] `pnpm lint:i18n` passes (checks locale key parity).
             - [ ] Skim the diff for any unexpected English-language regressions.
 
-            See https://privacytracker-docs.privacykey.org/develop/translations for the full workflow.
+            See https://docs.privacytracker.privacykey.org/develop/translations for the full workflow.
           pull_request_base_branch_name: main
           pull_request_labels: |
             i18n

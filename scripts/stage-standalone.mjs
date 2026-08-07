@@ -205,7 +205,7 @@ if (process.platform === "darwin") {
   if (!existsSync(sourceNode)) {
     console.error(
       `stage-standalone: cannot find Node binary at ${sourceNode}. ` +
-        "See https://privacytracker-docs.privacykey.org/develop/tauri for the curl invocation that " +
+        "See https://docs.privacytracker.privacykey.org/develop/tauri for the curl invocation that " +
         "downloads it."
     );
     process.exit(1);

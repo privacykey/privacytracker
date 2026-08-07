@@ -6,7 +6,7 @@
  * Renders one of two states: an "audience unset" setup CTA linking to
  * /onboard/welcome, or a chip strip + Adjust + (?) help link. For
  * `loved_one` it also surfaces an annotation count when notes exist.
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
 import Link from "next/link";
