@@ -1,4 +1,9 @@
-import { expect, type Page, test } from "@playwright/test";
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  test,
+} from "@playwright/test";
 
 /**
  * Visual-regression net for the CSS migration (docs/CSS.md).
@@ -51,6 +56,44 @@ test.beforeEach(async ({ request }) => {
     headers: sameOriginHeaders,
   });
   await expect(seed).toBeOK();
+  // Profiles make the shots strictly richer: privacy mismatch borders /
+  // badges on the label cards, and the preference key + per-row chips on
+  // the accessibility tab (voice_control is required-but-not-declared for
+  // the canned Instagram, so that rendering is covered too). Same shapes
+  // the app-detail behavioural spec uses.
+  const profile = await request.put("/api/privacy-profile", {
+    headers: sameOriginHeaders,
+    data: {
+      profile: {
+        CONTACT_INFO: "not_linked",
+        HEALTH_AND_FITNESS: "not_collected",
+        FINANCIAL_INFO: "not_linked",
+        LOCATION: "not_collected",
+        SENSITIVE_INFO: "not_collected",
+        CONTACTS: "not_collected",
+        USER_CONTENT: "not_linked",
+        BROWSING_HISTORY: "not_collected",
+        SEARCH_HISTORY: "not_linked",
+        IDENTIFIERS: "not_linked",
+        PURCHASES: "not_linked",
+        USAGE_DATA: "not_linked",
+        DIAGNOSTICS: "not_linked",
+        OTHER: "not_collected",
+      },
+    },
+  });
+  await expect(profile).toBeOK();
+  const a11yProfile = await request.put("/api/accessibility-profile", {
+    headers: sameOriginHeaders,
+    data: {
+      profile: {
+        voiceover: "required",
+        voice_control: "required",
+        captions: "nice",
+      },
+    },
+  });
+  await expect(a11yProfile).toBeOK();
   // Force every flag-gated section on so the shots cover the full surface —
   // a selector for a hidden section would otherwise never be exercised.
   for (const key of [
@@ -93,8 +136,12 @@ test.beforeEach(async ({ request }) => {
 async function settle(page: Page) {
   await page.waitForTimeout(1500);
   await page.evaluate(() => {
+    // Byte sizes are their own pattern (leaf text that IS a size, e.g.
+    // the admin route's "Database size: 512.0 KB") — the SQLite file
+    // grows as the suite itself runs, so the number differs between the
+    // baseline run and the verify run.
     const volatile =
-      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\d{1,2}:\d{2}(\s*[AP]M)?)/i;
+      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)/i;
     for (const el of document.querySelectorAll("main *, .wizard *")) {
       if (el.children.length === 0 && volatile.test(el.textContent ?? "")) {
         el.textContent = "~FROZEN";
@@ -191,12 +238,55 @@ visual("compare", async ({ page, request }) => {
   await expect(page).toHaveScreenshot("compare.png", SHOT);
 });
 
-visual("app detail", async ({ page, request }) => {
+/** Resolve the canned Instagram app (the richest fixture: five declared
+ * accessibility features, a ready policy summary with a previous-summary
+ * shift, unacknowledged changes, timeline history incl. a wayback row)
+ * and open its detail page. */
+async function gotoAppDetail(page: Page, request: APIRequestContext) {
   const res = await request.get("/api/apps");
   const apps = (await res.json()) as { id: string; name: string }[];
   const target = apps.find((a) => a.name === "Instagram") ?? apps[0];
   await page.goto(`/apps/${target.id}`);
   await expect(page.locator("h1").first()).toBeVisible();
+}
+
+visual("app detail", async ({ page, request }) => {
+  await gotoAppDetail(page, request);
   await settle(page);
   await expect(page).toHaveScreenshot("app-detail.png", SHOT);
+});
+
+// Per-tab shots — the AppDetailView split moves each of these panels
+// into its own file, so each populated tab needs its own pixel gate.
+// Tab clicks are polled (React may not have attached handlers yet on a
+// cold server; re-clicking a selected tab is a no-op).
+
+async function openTab(page: Page, tabId: string, revealed: string) {
+  await expect(async () => {
+    await page.locator(tabId).click();
+    await expect(page.locator(revealed).first()).toBeVisible({
+      timeout: 500,
+    });
+  }).toPass({ timeout: 10_000 });
+}
+
+visual("app detail: accessibility tab", async ({ page, request }) => {
+  await gotoAppDetail(page, request);
+  await openTab(page, "#tab-accessibility", ".a11y-feature-row");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-detail-accessibility.png", SHOT);
+});
+
+visual("app detail: AI policy tab", async ({ page, request }) => {
+  await gotoAppDetail(page, request);
+  await openTab(page, "#tab-policy", ".policy-lens-card");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-detail-policy.png", SHOT);
+});
+
+visual("app detail: change history tab", async ({ page, request }) => {
+  await gotoAppDetail(page, request);
+  await openTab(page, "#tab-changelog", ".timeline-item");
+  await settle(page);
+  await expect(page).toHaveScreenshot("app-detail-changelog.png", SHOT);
 });

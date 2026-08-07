@@ -19,6 +19,14 @@
  * Using the canonical form here means seeded sample apps go through the
  * same mismatch-detection codepaths as scraped apps.
  */
+import {
+  POLICY_LENSES,
+  type PolicyLensKey,
+  type PolicyLensSummary,
+  type PolicyRating,
+  type PolicySummary,
+} from "./policy-summary-meta";
+
 export type SamplePrivacyTypeIdentifier =
   | "DATA_USED_TO_TRACK_YOU"
   | "DATA_LINKED_TO_YOU"
@@ -38,8 +46,14 @@ export interface SampleAppPrivacyType {
 
 export interface SampleAppPolicySummary {
   highlights: string[];
-  /** Keyed by lens id ('collection_scope', 'ads_marketing', etc.). */
-  lenses: Record<string, "concerning" | "mixed" | "unclear" | "favorable">;
+  /**
+   * Keyed by the live lens vocabulary from `POLICY_LENSES` so the seeded
+   * summaries flow through the same lens-grid + i18n codepaths as real
+   * AI output. Typed against `PolicyLensKey` / `PolicyRating` so a lens
+   * rename in `lib/policy-summary-meta.ts` fails `tsc` here instead of
+   * silently rendering an unknown key.
+   */
+  lenses: Partial<Record<PolicyLensKey, PolicyRating>>;
   paragraph: string;
   promptVersion: number;
 }
@@ -78,8 +92,25 @@ export interface SampleHistoryStep {
 }
 
 export interface SampleApp {
+  /**
+   * Declared accessibility features, as canonical identifiers from
+   * `CANONICAL_ACCESSIBILITY_FEATURES` (`lib/accessibility-types.ts`),
+   * e.g. `'voiceover'`, `'larger_text'`. The seeder resolves each to the
+   * catalogue entry for title/description/icon. Only meaningful when
+   * `hasAccessibilityLabels` is true; omitted/empty means the app's
+   * accessibility shelf renders canonical-baseline-only.
+   */
+  accessibilityFeatures?: string[];
   /** Pre-baked AI summary (no provider needed). */
   aiSummary: SampleAppPolicySummary;
+  /**
+   * When set, the seeder stores this as the *previous* summary (with a
+   * back-dated `previous_summary_at`) and writes two policy-version rows,
+   * so the AI Policy tab's rating-shift strip and the recent-change
+   * banner render for this app. Use sparingly — one or two apps at most,
+   * or the demo reads as "every policy just changed".
+   */
+  aiSummaryPrevious?: SampleAppPolicySummary;
   developer: string;
   hasAccessibilityLabels: boolean;
   hasPrivacyDetails: boolean;
@@ -104,6 +135,13 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "high",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "larger_text",
+      "dark_interface",
+      "captions",
+      "reduced_motion",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_USED_TO_TRACK_YOU",
@@ -135,7 +173,7 @@ export const SAMPLE_APPS: SampleApp[] = [
     ],
     aiSummary: {
       paragraph:
-        "Instagram collects an extensive range of personal data — identifiers, location, browsing and search history — and uses much of it to track users across other companies\u2019 apps and websites. The privacy policy permits sharing with Meta\u2019s ad partners and acknowledges that some data may be retained for years even after account deletion.",
+        "Instagram collects an extensive range of personal data — identifiers, location, browsing and search history — and uses much of it to track users across other companies\u2019 apps and websites. The privacy policy permits sharing with Meta\u2019s ad partners and acknowledges that some data may be retained after account deletion.",
       highlights: [
         "Tracks users across third-party apps for advertising",
         "Collects precise location and contact information",
@@ -146,9 +184,30 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "concerning",
         ads_marketing: "concerning",
         third_party_sharing: "concerning",
-        retention: "mixed",
-        user_rights: "mixed",
-        security_posture: "favorable",
+        tracking_analytics: "concerning",
+        data_retention: "mixed",
+        user_controls: "mixed",
+      },
+      promptVersion: 1,
+    },
+    // Previous summary — one lens better than today (data_retention was
+    // "favorable", now "mixed") so the rating-shift strip has a real
+    // worsening to render, and the recent-change banner fires.
+    aiSummaryPrevious: {
+      paragraph:
+        "Instagram collects a broad range of personal data and uses much of it for advertising across Meta’s network. An earlier revision of the policy described shorter retention windows for deactivated accounts.",
+      highlights: [
+        "Tracks users across third-party apps for advertising",
+        "Collects precise location and contact information",
+        "Shorter stated retention windows for deactivated accounts",
+      ],
+      lenses: {
+        collection_scope: "concerning",
+        ads_marketing: "concerning",
+        third_party_sharing: "concerning",
+        tracking_analytics: "concerning",
+        data_retention: "favorable",
+        user_controls: "mixed",
       },
       promptVersion: 1,
     },
@@ -295,9 +354,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "concerning",
         ads_marketing: "concerning",
         third_party_sharing: "concerning",
-        retention: "mixed",
-        user_rights: "mixed",
-        security_posture: "mixed",
+        data_retention: "mixed",
+        user_controls: "mixed",
       },
       promptVersion: 1,
     },
@@ -372,6 +430,12 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "moderate",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "larger_text",
+      "dark_interface",
+      "differentiate_without_color_alone",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_USED_TO_TRACK_YOU",
@@ -402,9 +466,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "mixed",
         ads_marketing: "mixed",
         third_party_sharing: "mixed",
-        retention: "favorable",
-        user_rights: "favorable",
-        security_posture: "favorable",
+        data_retention: "favorable",
+        user_controls: "favorable",
       },
       promptVersion: 1,
     },
@@ -468,6 +531,7 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "moderate",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: ["voiceover", "larger_text", "captions"],
     privacyTypes: [
       {
         identifier: "DATA_LINKED_TO_YOU",
@@ -498,9 +562,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "mixed",
         ads_marketing: "mixed",
         third_party_sharing: "concerning",
-        retention: "mixed",
-        user_rights: "mixed",
-        security_posture: "favorable",
+        data_retention: "mixed",
+        user_controls: "mixed",
       },
       promptVersion: 1,
     },
@@ -554,6 +617,12 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "moderate",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "larger_text",
+      "dark_interface",
+      "sufficient_contrast",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_LINKED_TO_YOU",
@@ -585,9 +654,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "mixed",
         ads_marketing: "favorable",
         third_party_sharing: "mixed",
-        retention: "mixed",
-        user_rights: "favorable",
-        security_posture: "favorable",
+        data_retention: "mixed",
+        user_controls: "favorable",
       },
       promptVersion: 1,
     },
@@ -625,6 +693,14 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "low",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "voice_control",
+      "larger_text",
+      "dark_interface",
+      "reduced_motion",
+      "audio_descriptions",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_LINKED_TO_YOU",
@@ -650,9 +726,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "favorable",
         ads_marketing: "favorable",
         third_party_sharing: "favorable",
-        retention: "favorable",
-        user_rights: "favorable",
-        security_posture: "favorable",
+        data_retention: "favorable",
+        user_controls: "favorable",
       },
       promptVersion: 1,
     },
@@ -684,6 +759,13 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "low",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "voice_control",
+      "larger_text",
+      "dark_interface",
+      "sufficient_contrast",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_NOT_LINKED_TO_YOU",
@@ -704,9 +786,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "favorable",
         ads_marketing: "favorable",
         third_party_sharing: "favorable",
-        retention: "favorable",
-        user_rights: "favorable",
-        security_posture: "favorable",
+        data_retention: "favorable",
+        user_controls: "favorable",
       },
       promptVersion: 1,
     },
@@ -733,6 +814,12 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "minimal",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "voice_control",
+      "larger_text",
+      "dark_interface",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_NOT_LINKED_TO_YOU",
@@ -752,9 +839,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "favorable",
         ads_marketing: "favorable",
         third_party_sharing: "favorable",
-        retention: "favorable",
-        user_rights: "favorable",
-        security_posture: "favorable",
+        data_retention: "favorable",
+        user_controls: "favorable",
       },
       promptVersion: 1,
     },
@@ -781,6 +867,13 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "minimal",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "larger_text",
+      "dark_interface",
+      "sufficient_contrast",
+      "reduced_motion",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_NOT_LINKED_TO_YOU",
@@ -800,9 +893,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "favorable",
         ads_marketing: "favorable",
         third_party_sharing: "favorable",
-        retention: "favorable",
-        user_rights: "favorable",
-        security_posture: "favorable",
+        data_retention: "favorable",
+        user_controls: "favorable",
       },
       promptVersion: 1,
     },
@@ -829,6 +921,12 @@ export const SAMPLE_APPS: SampleApp[] = [
     riskTier: "minimal",
     hasPrivacyDetails: true,
     hasAccessibilityLabels: true,
+    accessibilityFeatures: [
+      "voiceover",
+      "larger_text",
+      "dark_interface",
+      "reduced_motion",
+    ],
     privacyTypes: [
       {
         identifier: "DATA_NOT_LINKED_TO_YOU",
@@ -848,9 +946,8 @@ export const SAMPLE_APPS: SampleApp[] = [
         collection_scope: "favorable",
         ads_marketing: "favorable",
         third_party_sharing: "favorable",
-        retention: "favorable",
-        user_rights: "favorable",
-        security_posture: "favorable",
+        data_retention: "favorable",
+        user_controls: "favorable",
       },
       promptVersion: 1,
     },
@@ -922,4 +1019,68 @@ export function hasSampleApps(): boolean {
     return false;
   }
   return window.sessionStorage.getItem(SESSION_KEY) !== null;
+}
+
+// ── Seeder converters ─────────────────────────────────────────────────
+//
+// The canned fixture's summary shape is deliberately compact (a ratings
+// record instead of the live `PolicyLensSummary[]`). These helpers turn
+// it into the exact shapes the seed route persists, so the AI Policy tab
+// renders the demo data through the same codepaths as real AI output.
+
+/**
+ * Demo filler for the per-lens sentence the live pipeline generates.
+ * Hand-written like the fixture paragraphs; keyed by rating so every
+ * lens gets copy consistent with its badge.
+ */
+export const SAMPLE_LENS_NOTE_BY_RATING: Record<PolicyRating, string> = {
+  favorable: "The sampled policy reads as protective in this area.",
+  mixed: "The sampled policy mixes protective and permissive language here.",
+  concerning: "The sampled policy reads as broad and permissive in this area.",
+  unclear: "The sampled policy does not address this area clearly.",
+};
+
+/**
+ * Convert a fixture summary into the live `PolicySummary` shape.
+ * Only the lenses the fixture rates are emitted — the reader's
+ * `normalizePolicySummary` fills the remaining canonical lenses with
+ * its standard "not addressed" entry, same as a real short summary.
+ */
+export function sampleSummaryToPolicySummary(
+  sample: SampleAppPolicySummary
+): PolicySummary {
+  const lenses: PolicyLensSummary[] = [];
+  for (const { key } of POLICY_LENSES) {
+    const rating = sample.lenses[key];
+    if (!rating) {
+      continue;
+    }
+    lenses.push({ key, rating, summary: SAMPLE_LENS_NOTE_BY_RATING[rating] });
+  }
+  return {
+    overview: sample.paragraph,
+    highlights: sample.highlights,
+    lenses,
+  };
+}
+
+/**
+ * Deterministic stand-in for the fetched policy page text. Labels itself
+ * as sample data so nobody mistakes the source preview for a real
+ * developer document.
+ */
+export function samplePolicySourceText(
+  sample: SampleApp,
+  summary: SampleAppPolicySummary = sample.aiSummary
+): string {
+  return [
+    `${sample.name} Privacy Policy (sample)`,
+    "",
+    `This sample document stands in for ${sample.developer}'s real privacy policy so the demo can exercise the summary pipeline without fetching anything.`,
+    "",
+    summary.paragraph,
+    "",
+    "Key points:",
+    ...summary.highlights.map((h) => `- ${h}`),
+  ].join("\n");
 }
