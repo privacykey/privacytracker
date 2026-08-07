@@ -18,8 +18,8 @@ export default function PolicyPreviewBlock({
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 8,
-        background: "var(--surface-2, var(--surface))",
-        border: "1px solid var(--border-1, var(--border))",
+        background: "var(--surface-2)",
+        border: "1px solid var(--border-1)",
       }}
     >
       <div
@@ -51,7 +51,7 @@ export default function PolicyPreviewBlock({
           maxHeight: 320,
           overflow: "auto",
           fontSize: 12,
-          background: "var(--surface-3, #0b1220)",
+          background: "var(--surface-3)",
           padding: 10,
           borderRadius: 6,
           whiteSpace: "pre-wrap",
