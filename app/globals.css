@@ -48,9 +48,36 @@
   --surface-hover: rgba(255, 255, 255, 0.07);
   --surface-active: rgba(255, 255, 255, 0.1);
 
+  /* Numbered surface ladder. A whole family of styles (app-detail policy
+     blocks, settings panels, activity/import rows) was authored against
+     `--surface-1/2/3` names that were never defined — every use without
+     a fallback computed to a transparent background, and inline styles
+     papered over it with dark-only literals that broke light mode.
+     Levels:
+       --surface-1 — alias of --surface (base card fill). A var() alias,
+                     so every theme block's --surface redefinition (and
+                     the data-a11y-solid collapse) flows through without
+                     re-declaring it.
+       --surface-2 — nested panel *inside* a --surface card, one step
+                     stronger so the nesting reads.
+       --surface-3 — innermost well / hover step above --surface-2.
+     Only the literal --surface-2/-3 values are re-declared per theme.
+     Each step moves further in its theme's own direction (more white on
+     dark, more white on light) rather than inverting per theme — these
+     composite *behind* body copy, so a step that darkens a light theme
+     silently eats the AA headroom --text-2 needs. See the light block. */
+  --surface-1: var(--surface);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-3: rgba(255, 255, 255, 0.09);
+
   /* Borders */
   --border: rgba(255, 255, 255, 0.07);
   --border-strong: rgba(255, 255, 255, 0.13);
+  /* --border-1 / --border-2 are live aliases of --border, defined once
+     here for the same reason as --surface-1: inline styles were authored
+     against the numbered names. Keep new code on --border / --border-strong. */
+  --border-1: var(--border);
+  --border-2: var(--border);
 
   /* Text
      - --text   : primary (AAA vs. --bg)
@@ -163,6 +190,19 @@
     --surface: rgba(255, 255, 255, 0.7);
     --surface-hover: rgba(255, 255, 255, 0.9);
     --surface-active: rgba(255, 255, 255, 1);
+    /* Nested surfaces step *whiter* in light mode, continuing the
+       --surface → --surface-hover → --surface-active progression above
+       rather than inverting it. A dark tint reads as better separation
+       but composites *underneath* --text-2 (#6c6c80), which only clears
+       AA by a hair on --bg: 4% black drops it to ~4.2:1 and fails the
+       axe gate on .a11y-disclaimer. Stepping toward white can never
+       score worse than --surface already does, and the 1px --border
+       every one of these panels carries is what actually draws the
+       nesting. (--surface-1 and --border-1/-2 are var() aliases in the
+       base block; they pick up this block's --surface / --border
+       automatically.) */
+    --surface-2: rgba(255, 255, 255, 0.9);
+    --surface-3: rgba(255, 255, 255, 1);
     --border: rgba(0, 0, 0, 0.07);
     --border-strong: rgba(0, 0, 0, 0.13);
     --text: #1c1c1e;
@@ -230,6 +270,9 @@ html[data-theme-override="light"] {
   --surface: rgba(255, 255, 255, 0.7);
   --surface-hover: rgba(255, 255, 255, 0.9);
   --surface-active: rgba(255, 255, 255, 1);
+  /* Nested-surface steps — see the @media light block above. */
+  --surface-2: rgba(255, 255, 255, 0.9);
+  --surface-3: rgba(255, 255, 255, 1);
   --border: rgba(0, 0, 0, 0.07);
   --border-strong: rgba(0, 0, 0, 0.13);
   --text: #1c1c1e;
@@ -273,6 +316,10 @@ html[data-theme-override="dark"] {
   --surface: rgba(255, 255, 255, 0.04);
   --surface-hover: rgba(255, 255, 255, 0.07);
   --surface-active: rgba(255, 255, 255, 0.1);
+  /* Re-pin the nested-surface steps to the dark defaults (same rationale
+     as the severity palette re-pin below). */
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-3: rgba(255, 255, 255, 0.09);
   --border: rgba(255, 255, 255, 0.07);
   --border-strong: rgba(255, 255, 255, 0.13);
   --text: #f0f0f5;
@@ -1079,7 +1126,7 @@ html[data-theme-override="high-contrast"] .nav {
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 2px solid var(--bg);
   border-radius: 999px;
 }
@@ -1121,7 +1168,7 @@ html[data-theme-override="high-contrast"] .nav {
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 2px solid var(--bg);
   border-radius: 999px;
 }
@@ -1939,7 +1986,7 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 2px;
   min-width: 240px;
   padding: 4px;
-  background: var(--surface-1, var(--surface));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
@@ -3948,7 +3995,7 @@ html[data-theme-override="high-contrast"] .nav {
   height: 34px;
   color: var(--text);
   cursor: pointer;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 999px;
   transition:
@@ -5787,10 +5834,11 @@ html[data-theme-override="high-contrast"] .nav {
 /* ── "Remind me later" snooze dropdown ────────────────────────────────
    Lives next to the Mark-as-reviewed / Dismiss buttons on the single-app
    detail page. The panel must track the active theme — earlier inline
-   styles referenced `--surface-1` / `--surface-2` tokens that don't
-   exist in this codebase, which rendered the menu white-on-white in
-   dark mode. Using the real tokens (--bg-2, --border-strong, --text,
-   --surface-hover) keeps it readable in both light and dark. */
+   styles referenced `--surface-1` / `--surface-2` before those tokens
+   were defined, which rendered the menu white-on-white in dark mode.
+   The solid tokens (--bg-2, --border-strong, --text, --surface-hover)
+   are kept on purpose: a floating menu wants an opaque panel, not the
+   translucent nested-surface tint. */
 .snooze-menu-wrap {
   position: relative;
   display: inline-block;
@@ -6210,7 +6258,7 @@ html[data-theme-override="high-contrast"] .nav {
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 999px;
 }
@@ -6241,7 +6289,7 @@ html[data-theme-override="high-contrast"] .nav {
 .review-rec-saved-note {
   position: relative;
   padding: 10px 12px;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -6403,7 +6451,7 @@ html[data-theme-override="high-contrast"] .nav {
   border-radius: 5px;
 }
 .review-rec-shortlist-chip-icon-placeholder {
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 .review-rec-shortlist-chip-name {
@@ -6553,7 +6601,7 @@ html[data-theme-override="high-contrast"] .nav {
 }
 .compare-source-shortlist-chip-icon-placeholder {
   display: inline-block;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 .compare-source-shortlist-chip-name {
@@ -6759,7 +6807,7 @@ html[data-theme-override="high-contrast"] .nav {
 }
 .compare-related-chip-icon-placeholder {
   display: inline-block;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 .compare-related-chip-body {
@@ -6911,7 +6959,7 @@ html[data-theme-override="high-contrast"] .nav {
 }
 .review-rec-row-replacement-suggestion-icon-placeholder {
   display: inline-block;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 .review-rec-row-replacement-suggestion-body {
@@ -7012,7 +7060,7 @@ html[data-theme-override="high-contrast"] .nav {
   border-radius: 7px;
 }
 .review-rec-summary-icon-placeholder {
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 .review-rec-summary-body {
@@ -7090,7 +7138,7 @@ html[data-theme-override="high-contrast"] .nav {
 }
 .review-rec-summary-replacement-icon-placeholder {
   display: inline-block;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 .review-rec-summary-replacement-name {
@@ -12520,7 +12568,7 @@ body.review-rec-print-active .review-rec-print a {
 .verdict-picker {
   padding: 18px 20px;
   margin-top: 24px;
-  background: var(--surface-1, var(--surface));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
@@ -17153,7 +17201,7 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 12px;
   color: var(--text);
-  background: var(--surface-1, var(--surface));
+  background: var(--surface-1);
   border-radius: 4px;
 }
 
@@ -18487,10 +18535,11 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
    the editor card so there's no portal / z-index gymnastics.
 
    Uses --bg-2 (the solid surface token) on purpose: the earlier
-   --surface-1 reference is a token that doesn't exist in this codebase
-   (see the same-named lesson at the snooze-menu comment near line
-   5030), so it fell back to `initial` and the bubble rendered as a
-   transparent overlay with the table rows bleeding through underneath.
+   --surface-1 reference predated that token's definition, so it fell
+   back to `initial` and the bubble rendered as a transparent overlay
+   with the table rows bleeding through underneath (same lesson as the
+   snooze-menu comment further up). Even now that --surface-1 exists it
+   resolves to the *translucent* --surface — wrong for an overlay.
    --bg-2 is solid in light/dark/HC themes AND is the target that the
    data-a11y-solid="on" rule collapses translucent surfaces onto, so
    this also satisfies "Reduce Transparency" automatically. */
@@ -19151,7 +19200,7 @@ html[data-theme-override="light"]
 }
 
 .profile-replace-row:hover {
-  background: var(--surface-3, var(--surface-2));
+  background: var(--surface-3);
   transform: translateY(-1px);
 }
 
@@ -19159,7 +19208,7 @@ html[data-theme-override="light"]
   flex-shrink: 0;
   width: 36px;
   height: 36px;
-  background: var(--surface-3, var(--surface-2));
+  background: var(--surface-3);
   border-radius: 8px;
 }
 
@@ -20169,7 +20218,7 @@ html[data-theme-override="light"]
 .shortlist-match-panel {
   padding: 12px 14px;
   margin-bottom: 14px;
-  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
@@ -21781,7 +21830,7 @@ html[data-theme-override="light"]
   font-size: 10px;
   font-weight: 600;
   color: var(--text-3);
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 999px;
 }
@@ -22305,7 +22354,7 @@ html[data-theme-override="light"]
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: var(--surface-1, var(--surface));
+  background: var(--surface-1);
   border: 1px solid transparent;
   border-radius: 8px;
   transition:
@@ -22601,19 +22650,11 @@ html[data-theme-override="light"]
 }
 
 .dev-options-flag-panel__flag-row:hover {
-  background: color-mix(
-    in srgb,
-    var(--blue, #0a84ff) 4%,
-    var(--surface-1, var(--surface))
-  );
+  background: color-mix(in srgb, var(--blue, #0a84ff) 4%, var(--surface-1));
 }
 
 .dev-options-flag-panel__flag-row.is-overridden {
-  background: color-mix(
-    in srgb,
-    var(--blue, #0a84ff) 8%,
-    var(--surface-1, var(--surface))
-  );
+  background: color-mix(in srgb, var(--blue, #0a84ff) 8%, var(--surface-1));
   border-color: color-mix(in srgb, var(--blue, #0a84ff) 45%, transparent);
 }
 
@@ -23199,7 +23240,7 @@ html[data-theme-override="light"]
   margin: 12px 0 0;
   font-size: 12.5px;
   list-style: none;
-  background: var(--surface-1, var(--surface));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -23701,7 +23742,7 @@ html[data-theme-override="light"]
   overflow: auto;
   font-size: 12.5px;
   line-height: 1.45;
-  background: var(--surface-2, color-mix(in srgb, var(--text) 6%, transparent));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -24014,7 +24055,7 @@ html[data-theme-override="light"]
 .annotation-card {
   position: relative;
   padding: 12px 14px;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -24303,7 +24344,7 @@ html[data-theme-override="light"]
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -24405,7 +24446,7 @@ html[data-theme-override="light"]
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border-top: 1px solid var(--border);
 }
 .annotations-composer-hint {
@@ -24747,7 +24788,7 @@ html[data-theme-override="light"]
   margin: 6px 0 0;
   line-height: 1.6;
   list-style: disc;
-  background: var(--surface-1, var(--surface));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -25140,6 +25181,10 @@ html[data-theme-override="high-contrast"] {
   --surface: #000000;
   --surface-hover: #1a1a1a;
   --surface-active: #262626;
+  /* Solid nested-surface steps — HC relies on the white borders for
+     structure, so these only need to be mildly distinct from --surface. */
+  --surface-2: #101010;
+  --surface-3: #1a1a1a;
   --border: #ffffff;
   --border-strong: #ffffff;
   --text: #ffffff;
@@ -25255,6 +25300,11 @@ html[data-a11y-solid="on"] {
   --surface: var(--bg-2);
   --surface-hover: var(--bg-3);
   --surface-active: var(--bg-3);
+  /* Nested-surface steps collapse onto --bg-3 so a panel inside a card
+     still reads one level deeper than the --bg-2 the card collapses to.
+     (--surface-1 aliases --surface, so it follows the line above.) */
+  --surface-2: var(--bg-3);
+  --surface-3: var(--bg-3);
   --popover-bg: var(--bg-2);
   --popover-border: var(--border-strong);
 }
@@ -26535,7 +26585,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 .changelog-row-app-icon-placeholder {
   display: inline-block;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 .changelog-row-time {
@@ -28985,10 +29035,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   padding: 4px;
   margin-top: 4px;
   font-size: 13px;
-  background: var(
-    --surface-1,
-    color-mix(in srgb, var(--bg, #08080f) 90%, var(--text) 10%)
-  );
+  background: var(--surface-1);
   border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   border-radius: 10px;
 }
@@ -29458,7 +29505,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .focus-matrix-surface-row > th {
   padding: 0 !important;
-  background: var(--surface-3, rgba(0, 0, 0, 0.04));
+  background: var(--surface-3);
   border-bottom: 1px solid var(--border);
 }
 
@@ -30146,7 +30193,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  background: var(--surface-1, var(--bg-2));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
@@ -30188,7 +30235,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   padding: 9px 10px;
   text-align: left;
   cursor: pointer;
-  background: var(--surface-1, var(--bg-2));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 8px;
   transition:
@@ -30310,7 +30357,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  background: var(--surface-1, var(--bg-2));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
@@ -30595,7 +30642,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   font-weight: 500;
   color: var(--text-1);
   cursor: pointer;
-  background: var(--surface-1, var(--bg-2));
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 999px;
   transition:

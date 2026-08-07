@@ -173,7 +173,7 @@ function LiveTextIllustration() {
     >
       {/* Phone frame */}
       <rect
-        fill="var(--surface-2, #1c1c1e)"
+        fill="var(--surface-2)"
         height="488"
         rx="40"
         ry="40"
@@ -325,7 +325,7 @@ function LiveTextIllustration() {
 
       {/* Live Text button (three lines in a frame) */}
       <rect
-        fill="var(--surface-2, #1c1c1e)"
+        fill="var(--surface-2)"
         height="28"
         rx="6"
         ry="6"

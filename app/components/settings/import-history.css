@@ -165,7 +165,7 @@ button.import-history-stat.is-active {
   padding: 14px;
   margin: 10px 2px 4px;
   line-height: 1.5;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px dashed var(--border);
   border-radius: var(--r-md);
 }
@@ -189,7 +189,7 @@ button.import-history-stat.is-active {
   justify-content: space-between;
   padding: 10px 14px;
   margin-bottom: 14px;
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
 }
@@ -205,7 +205,7 @@ button.import-history-stat.is-active {
 }
 
 .import-history-filter-banner-mute {
-  background: var(--surface-2, var(--surface));
+  background: var(--surface-2);
   border-color: var(--border);
 }
 
