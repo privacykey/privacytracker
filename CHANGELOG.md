@@ -21,8 +21,18 @@ Going forward, changes are recorded here as they land.
   support guide, pull-request template, and code owners.
 - `pnpm screenshots` — captures a consistent set of UI screenshots from
   the built-in demo fixture, for docs and release notes.
+- A `justfile` collecting the common workflows — `just --list` shows the
+  set, covering the dev loop, the desktop (Tauri) build, Docker, and the
+  verification suites.
 
 ### Changed
+
+- **Settings is now four pages instead of one.** Your preferences, sync,
+  policies and admin each get their own address
+  (`/dashboard/settings/you`, `/sync`, `/policies`, `/admin`), so a page
+  loads only what it needs and you can link someone straight to the part
+  you mean. Existing links and bookmarks — including the ones in
+  notifications — still land in the right place.
 
 - **First-run experience.** Per-feature toggles moved behind an "Advanced"
   disclosure, illustrated goal cards shrunk on phones, and the primary action
@@ -37,6 +47,12 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- **Failed update checks now back off** instead of retrying forever. An
+  installation with no internet access used to attempt a connection to
+  GitHub — and wait out its timeout — every time anything asked whether an
+  update was available. Consecutive failures now widen the gap between
+  attempts (15 minutes, doubling, up to a day). Checking manually still
+  makes a real attempt straight away.
 - **The SQLite database is now private by default** — `0700` on the data
   directory, `0600` on the database and its write-ahead-log files. Existing
   installations are tightened automatically on their next start. The file
