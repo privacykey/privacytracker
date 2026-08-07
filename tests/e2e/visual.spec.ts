@@ -94,6 +94,24 @@ test.beforeEach(async ({ request }) => {
     },
   });
   await expect(a11yProfile).toBeOK();
+  // Devices are cross-suite state: device-sync / audit-bundle specs
+  // create named devices, and the apps grid's device <select> sizes
+  // itself to its widest option — so stray devices shift everything to
+  // the right of the dropdown by a few pixels between run contexts.
+  // Normalise to the seeded "Unknown device" placeholder only.
+  const devicesRes = await request.get("/api/devices", {
+    headers: sameOriginHeaders,
+  });
+  const { devices } = (await devicesRes.json()) as {
+    devices: Array<{ id: string; isUnknownPlaceholder?: boolean }>;
+  };
+  for (const device of devices) {
+    if (!device.isUnknownPlaceholder) {
+      await request.delete(`/api/devices/${device.id}`, {
+        headers: sameOriginHeaders,
+      });
+    }
+  }
   // Force every flag-gated section on so the shots cover the full surface —
   // a selector for a hidden section would otherwise never be exercised.
   for (const key of [
@@ -141,7 +159,7 @@ async function settle(page: Page) {
     // grows as the suite itself runs, so the number differs between the
     // baseline run and the verify run.
     const volatile =
-      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)/i;
+      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\bjust now\b)|(\bmoments? ago\b)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)/i;
     for (const el of document.querySelectorAll("main *, .wizard *")) {
       if (el.children.length === 0 && volatile.test(el.textContent ?? "")) {
         el.textContent = "~FROZEN";
@@ -154,17 +172,45 @@ async function settle(page: Page) {
   });
 }
 
-const SHOT = {
-  fullPage: true,
-  animations: "disabled",
-} as const;
+/**
+ * Screenshot options. Three elements are masked because they carry
+ * run-order state rather than page content: the notification bell (its
+ * unread badge appears when *other* specs' seeds fire notifications),
+ * the Task Center trigger (its done-count ticks up as background work
+ * completes), and the first-run checklist — both its dashboard card and
+ * its nav icon (step-completion state flips as suite activity satisfies
+ * the steps). Masking the stable
+ * outer wrappers — not the badge itself — keeps the masked box constant
+ * whether or not the inner state indicator exists in a given run.
+ *
+ * Even with the masks, compare baselines and verify runs FROM THE SAME
+ * DB CONTEXT (fresh data dir, or at least no other suites interleaved
+ * between the two runs): the dashboard legitimately renders stateful
+ * content (callouts, activity, risk sections) that no mask can or
+ * should hide.
+ */
+function shotOptions(page: Page) {
+  return {
+    fullPage: true,
+    animations: "disabled" as const,
+    mask: [
+      page.locator(".notif-bell-wrap"),
+      page.locator(".task-center"),
+      page.locator(".task-list-card"),
+      page.locator(".task-list-icon-wrap"),
+    ],
+  };
+}
 
 for (const group of ["you", "sync", "policies", "admin"] as const) {
   visual(`settings route: ${group}`, async ({ page }) => {
     await page.goto(`/dashboard/settings/${group}`);
     await expect(page.locator(".settings-sidebar")).toBeVisible();
     await settle(page);
-    await expect(page).toHaveScreenshot(`settings-${group}.png`, SHOT);
+    await expect(page).toHaveScreenshot(
+      `settings-${group}.png`,
+      shotOptions(page)
+    );
   });
 }
 
@@ -177,7 +223,7 @@ visual("onboarding: step 1, choose method", async ({ page }) => {
   await page.getByText("Other import options").click();
   await expect(page.getByTestId("onboard-method-manual")).toBeVisible();
   await settle(page);
-  await expect(page).toHaveScreenshot("onboard-step1.png", SHOT);
+  await expect(page).toHaveScreenshot("onboard-step1.png", shotOptions(page));
 });
 
 visual("onboarding: step 2, manual entry", async ({ page }) => {
@@ -195,21 +241,21 @@ visual("onboarding: step 2, manual entry", async ({ page }) => {
   await page.getByTestId("onboard-step1-continue").click();
   await expect(page.getByTestId("onboard-app-names")).toBeVisible();
   await settle(page);
-  await expect(page).toHaveScreenshot("onboard-step2.png", SHOT);
+  await expect(page).toHaveScreenshot("onboard-step2.png", shotOptions(page));
 });
 
 visual("dashboard", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page.locator("main")).toBeVisible();
   await settle(page);
-  await expect(page).toHaveScreenshot("dashboard.png", SHOT);
+  await expect(page).toHaveScreenshot("dashboard.png", shotOptions(page));
 });
 
 visual("apps grid", async ({ page }) => {
   await page.goto("/dashboard/apps");
   await expect(page.locator("main")).toBeVisible();
   await settle(page);
-  await expect(page).toHaveScreenshot("apps-grid.png", SHOT);
+  await expect(page).toHaveScreenshot("apps-grid.png", shotOptions(page));
 });
 
 /**
@@ -235,7 +281,7 @@ visual("compare", async ({ page, request }) => {
     page.getByText(appB.name, { exact: true }).first()
   ).toBeVisible();
   await settle(page);
-  await expect(page).toHaveScreenshot("compare.png", SHOT);
+  await expect(page).toHaveScreenshot("compare.png", shotOptions(page));
 });
 
 /** Resolve the canned Instagram app (the richest fixture: five declared
@@ -253,7 +299,7 @@ async function gotoAppDetail(page: Page, request: APIRequestContext) {
 visual("app detail", async ({ page, request }) => {
   await gotoAppDetail(page, request);
   await settle(page);
-  await expect(page).toHaveScreenshot("app-detail.png", SHOT);
+  await expect(page).toHaveScreenshot("app-detail.png", shotOptions(page));
 });
 
 // Per-tab shots — the AppDetailView split moves each of these panels
@@ -274,19 +320,28 @@ visual("app detail: accessibility tab", async ({ page, request }) => {
   await gotoAppDetail(page, request);
   await openTab(page, "#tab-accessibility", ".a11y-feature-row");
   await settle(page);
-  await expect(page).toHaveScreenshot("app-detail-accessibility.png", SHOT);
+  await expect(page).toHaveScreenshot(
+    "app-detail-accessibility.png",
+    shotOptions(page)
+  );
 });
 
 visual("app detail: AI policy tab", async ({ page, request }) => {
   await gotoAppDetail(page, request);
   await openTab(page, "#tab-policy", ".policy-lens-card");
   await settle(page);
-  await expect(page).toHaveScreenshot("app-detail-policy.png", SHOT);
+  await expect(page).toHaveScreenshot(
+    "app-detail-policy.png",
+    shotOptions(page)
+  );
 });
 
 visual("app detail: change history tab", async ({ page, request }) => {
   await gotoAppDetail(page, request);
   await openTab(page, "#tab-changelog", ".timeline-item");
   await settle(page);
-  await expect(page).toHaveScreenshot("app-detail-changelog.png", SHOT);
+  await expect(page).toHaveScreenshot(
+    "app-detail-changelog.png",
+    shotOptions(page)
+  );
 });

@@ -59,6 +59,15 @@ Same rules as `../settings/README.md`, restated where they differ:
 
 ## What's here now
 
+The labels + accessibility family:
+
+- `PrivacyTypeSection.tsx` — one privacy-type accordion (header button +
+  severity badge + category-card grid with profile-mismatch flags). The
+  header carries the PR #137 a11y semantics noted above.
+- `AccessibilityPanel.tsx` — the Accessibility tab: canonical-baseline
+  merge, declared/missing rows, preference key + per-row chips.
+- `WhatsNewSection.tsx` — the collapsed-when-long release-notes card.
+
 The change-review family:
 
 - `ChangeReviewPanel.tsx` — the "What's changed since you last checked"
