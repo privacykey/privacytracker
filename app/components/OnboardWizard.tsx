@@ -1,4 +1,5 @@
 "use client";
+import "./onboard/onboard.css";
 import type { DeviceClass } from "../../lib/device";
 import { useOnboardWizard } from "../../lib/use-onboard-wizard";
 import DeviceSyncDiffOverlay from "./DeviceSyncDiffOverlay";
