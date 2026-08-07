@@ -7,7 +7,7 @@
  *
  * AI summaries are hand-written (not generated) to avoid requiring an AI
  * provider during the demo. They look like real summaries for educational
- * value — see https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * value — see https://docs.privacytracker.privacykey.org/develop/feature-flags.
  *
  * Components that read tracked apps merge sessionStorage results with the
  * DB results when the sample-data flag is on (wiring lands in PR 3).

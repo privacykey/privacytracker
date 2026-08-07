@@ -3,7 +3,7 @@
  * Companion to `lib/feature-flag-rules.ts` (rule tables).
  * Server: import `resolveFlag` here + `getResolverContextFromDb` from
  * `lib/feature-flags-server.ts`. Client: use `lib/feature-flags-hooks.ts`.
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
 import {

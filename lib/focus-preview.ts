@@ -8,7 +8,7 @@
  * and survives same-tab refreshes. Helpers guard `typeof window` so they're
  * safe to call from SSR — they just return null.
  *
- * Docs: https://privacytracker-docs.privacykey.org/develop/feature-flags
+ * Docs: https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
 import { type AgeBandKey, isValidAgeBand } from "./age-rating";

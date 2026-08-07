@@ -3,7 +3,7 @@
 Every process the app runs — from typing an app name to deleting one off a plugged-in
 iPhone — drawn as flow diagrams across the runtimes, with known weak points marked where
 they live. Companion to the prose in [AGENTS.md](../AGENTS.md) and the hosted docs at
-[privacytracker-docs.privacykey.org](https://privacytracker-docs.privacykey.org/develop/architecture).
+[docs.privacytracker.privacykey.org](https://docs.privacytracker.privacykey.org/develop/architecture).
 
 **How to read the markers.** `⚠ §N·M` = open finding, `✅ §N·M` = fixed. Every marker is a
 row in the [improvement backlog](#7--improvement-backlog) at the bottom. When you fix one,

@@ -5,7 +5,7 @@
  * `.audit.json` bundle produced by another instance of the app — the
  * recommender's run — and merges it into the loved one's local DB.
  *
- * Spec: https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * Spec: https://docs.privacytracker.privacykey.org/develop/feature-flags.
  *
  * Flow:
  *

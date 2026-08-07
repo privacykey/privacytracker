@@ -23,7 +23,7 @@
 #   bash scripts/export-signing-assets.sh
 #
 # Prereqs:
-#   • You've already completed Parts 1-3 of https://privacytracker-docs.privacykey.org/develop/build-from-source on this Mac.
+#   • You've already completed Parts 1-3 of https://docs.privacytracker.privacykey.org/develop/build-from-source on this Mac.
 #   • pbcopy (shipped with macOS).
 
 set -euo pipefail
@@ -84,7 +84,7 @@ say "This script copies each GitHub secret to your clipboard one at a time."
 say "Follow along in GitHub → Settings → Environments → macos-signing."
 say
 say "You'll be asked for paths to two files and an optional password. If you"
-say "haven't generated them yet, quit now and work through https://privacytracker-docs.privacykey.org/develop/build-from-source"
+say "haven't generated them yet, quit now and work through https://docs.privacytracker.privacykey.org/develop/build-from-source"
 say "through Part 3 first."
 say
 read -r -p "Ready to proceed? [y/N] " proceed
@@ -112,7 +112,7 @@ say "Finding Developer ID Application certs in your login keychain…"
 identities=$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2}')
 if [[ -z "$identities" ]]; then
   err "No 'Developer ID Application' cert found in Keychain."
-  err "Complete Part 1 of https://privacytracker-docs.privacykey.org/develop/build-from-source, then re-run this script."
+  err "Complete Part 1 of https://docs.privacytracker.privacykey.org/develop/build-from-source, then re-run this script."
   exit 1
 fi
 

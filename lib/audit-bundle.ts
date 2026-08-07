@@ -25,7 +25,7 @@
  * Filename convention: `{recommender-name}-{ISO-date}-{HHmm}.audit.json`,
  * with `audit-{date}-{HHmm}.audit.json` as the no-name fallback.
  *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags.
  */
 
 import packageJson from "../package.json";

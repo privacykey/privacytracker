@@ -2,7 +2,7 @@
  * Feature flag storage — SQLite-backed override persistence. Wraps queries
  * against the `feature_flag_overrides` table and the focus keys in
  * `app_settings`. The resolver in `lib/feature-flags.ts` imports from here.
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
 import db from "./db";

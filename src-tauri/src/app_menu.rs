@@ -40,7 +40,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use crate::zoom;
 
 const GITHUB_REPO_URL: &str = "https://github.com/privacykey/privacytracker";
-const DOCS_URL: &str = "https://privacytracker-docs.privacykey.org/quickstart";
+const DOCS_URL: &str = "https://docs.privacytracker.privacykey.org/quickstart";
 const ISSUE_URL: &str =
     "https://github.com/privacykey/privacytracker/issues/new?template=bug_report.yml";
 

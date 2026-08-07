@@ -8,7 +8,7 @@
 
 [Install for macOS](#macos--homebrew-recommended) ·
 [Run with Docker](#linux--windows--self-host) ·
-[Documentation](https://privacytracker-docs.privacykey.org/introduction)
+[Documentation](https://docs.privacytracker.privacykey.org/introduction)
 
 </div>
 
@@ -82,18 +82,18 @@ background.
 ### Linux / Windows / self-host
 
 Available as a Docker image — see the
-[user guide](https://privacytracker-docs.privacykey.org/quickstart)
+[user guide](https://docs.privacytracker.privacykey.org/quickstart)
 for setup.
 
 ## Learn more
 
 Full documentation lives at
-**[privacytracker-docs.privacykey.org](https://privacytracker-docs.privacykey.org/introduction)**:
+**[docs.privacytracker.privacykey.org](https://docs.privacytracker.privacykey.org/introduction)**:
 
-- [User guide](https://privacytracker-docs.privacykey.org/quickstart) — how to import apps, read privacy labels, set up alerts
-- [Architecture](https://privacytracker-docs.privacykey.org/develop/architecture) — for developers and contributors
+- [User guide](https://docs.privacytracker.privacykey.org/quickstart) — how to import apps, read privacy labels, set up alerts
+- [Architecture](https://docs.privacytracker.privacykey.org/develop/architecture) — for developers and contributors
 - [Architecture & workflows (in-repo)](docs/ARCHITECTURE.md) — end-to-end diagrams of every process, with weak points marked and an improvement backlog
-- [Security](https://privacytracker-docs.privacykey.org/security) — how to report a vulnerability
+- [Security](https://docs.privacytracker.privacykey.org/security) — how to report a vulnerability
 
 ## Where your data lives
 
@@ -123,7 +123,7 @@ to you.
 
 Releases are published on
 [GitHub Releases](https://github.com/privacykey/privacytracker/releases) and
-the [Homebrew tap](https://github.com/privacykey/tap), and documented in
+the [Homebrew tap](https://github.com/privacykey/homebrew-tap), and documented in
 [CHANGELOG.md](CHANGELOG.md). Versioning follows
 [semver](https://semver.org/): while the project is pre-1.0, breaking changes
 can land in a minor bump, and each release note calls them out. macOS

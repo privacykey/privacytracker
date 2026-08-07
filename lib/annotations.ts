@@ -10,7 +10,7 @@
  * Each create/edit/delete writes to activity_log via recordActivity so
  * the operation appears in the dashboard feed and in Dev Options.
  *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags.
  */
 
 import { recordActivity } from "./activity";

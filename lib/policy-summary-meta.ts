@@ -74,7 +74,7 @@ export interface ExternalPolicyReference {
  * Guardian-tuned safety summary: 1-paragraph (~120–220 words) plus 3–5
  * bullet concerns specific to minors. Optional on the schema because
  * pre-feature summaries don't have it and only `audience === 'guardian'`
- * runs request it. See https://privacytracker-docs.privacykey.org/develop/feature-flags
+ * runs request it. See https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 export interface PolicySummarySafety {
   /** 3-5 specific concerns. May be empty if the model couldn't extract any. */

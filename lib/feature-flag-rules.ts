@@ -2,7 +2,7 @@
  * Feature flag rules — v1
  *
  * Hand-authored rule tables that drive the feature-flag system described at
- * https://privacytracker-docs.privacykey.org/develop/feature-flags. Each flag has a hard default; some have
+ * https://docs.privacytracker.privacykey.org/develop/feature-flags. Each flag has a hard default; some have
  * additional rules that activate based on the user's audience, goals, or
  * accessibility modifier.
  *
@@ -951,7 +951,7 @@ export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
 //
 // Tour pulls from this pool on launch and includes only steps whose
 // `includedWhen` predicate returns true for the user's current state. See
-// https://privacytracker-docs.privacykey.org/develop/feature-flags.
+// https://docs.privacytracker.privacykey.org/develop/feature-flags.
 //
 // `i18nKey` resolves through next-intl with `{possessive}` interpolation so
 // audience copy adapts ('your apps' / 'their apps' / 'your child's apps').

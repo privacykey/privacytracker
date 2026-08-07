@@ -546,7 +546,7 @@ db.exec(`
      goal → accessibility → runtime-env → dependency → override.
      Quarantined rows (flag_key not in current registry) persist but don't
      participate in resolution.
-     https://privacytracker-docs.privacykey.org/develop/feature-flags */
+     https://docs.privacytracker.privacykey.org/develop/feature-flags */
   CREATE TABLE IF NOT EXISTS feature_flag_overrides (
     flag_key        TEXT    PRIMARY KEY,
     override_value  TEXT    NOT NULL,

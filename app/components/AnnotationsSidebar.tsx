@@ -12,7 +12,7 @@
  * Auto-save is debounced 1s after the last keystroke. Delete is soft (sets
  * `deleted_at`); a 30s undo toast lets the user reverse it before purge.
  *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags.
  */
 
 import DOMPurify from "dompurify";
@@ -315,7 +315,7 @@ function commit(
  * Apply the Cmd/Ctrl+B / Cmd/Ctrl+I / Cmd/Ctrl+K markdown shortcuts
  * inside a textarea. Returns true when the event was handled (caller
  * should call preventDefault). Mirrors the shortcuts described in
- * https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * https://docs.privacytracker.privacykey.org/develop/feature-flags.
  *
  *   Cmd+B → wraps selection in **double asterisks**
  *   Cmd+I → wraps selection in *single asterisks*
