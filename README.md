@@ -13,7 +13,6 @@
 [![Project status](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fprivacykey%2F.github%2Fmain%2Fbadges%2Fprivacytracker.json)](https://github.com/privacykey/.github/blob/main/STATUS.md#privacytracker)
 [![Release](https://img.shields.io/github/v/release/privacykey/privacytracker?label=release)](https://github.com/privacykey/privacytracker/releases/latest)
 [![Licence](https://img.shields.io/github/license/privacykey/privacytracker?label=licence)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/privacykey/privacytracker/ci.yml?branch=main&label=ci)](https://github.com/privacykey/privacytracker/actions/workflows/ci.yml)
 
 </div>
 
@@ -110,11 +109,15 @@ Contributions are welcome — **[CONTRIBUTING.md](CONTRIBUTING.md)** has the ful
 setup. The commands CI runs:
 
 ```bash
-npm run lint        # ultracite
-npm run typecheck   # tsc --noEmit
-npm test            # node --test
-npm run lint:i18n   # translation parity
+pnpm install --frozen-lockfile
+pnpm lint         # Ultracite (Biome) — lint + format
+pnpm typecheck    # tsc --noEmit
+pnpm test         # node:test suite
+pnpm lint:i18n    # locale key parity against en.json
 ```
+
+Use **pnpm**, not npm — the repo pins `pnpm@11.1.2` via `packageManager` and
+every workflow installs from `pnpm-lock.yaml`. Node 24+ is required.
 
 Two conventions are easy to miss: the accessibility gate is blocking, and all
 user-facing copy goes through i18n. [AGENTS.md](AGENTS.md) is the canonical
