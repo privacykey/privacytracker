@@ -10,7 +10,7 @@
 [Run with Docker](#linux-windows--self-host) ·
 [What it does](#what-it-does)
 
-[![Project status](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FAdamXweb%2FAdamXweb%2Fmain%2Fbadges%2Fprivacykey%2Fprivacytracker.json)](https://github.com/AdamXweb/AdamXweb/blob/main/STATUS.md#privacykeyprivacytracker)
+[![Project status](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fprivacykey%2F.github%2Fmain%2Fbadges%2Fprivacytracker.json)](https://github.com/privacykey/.github/blob/main/STATUS.md#privacytracker)
 [![Release](https://img.shields.io/github/v/release/privacykey/privacytracker?label=release)](https://github.com/privacykey/privacytracker/releases/latest)
 [![Licence](https://img.shields.io/github/license/privacykey/privacytracker?label=licence)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/privacykey/privacytracker/ci.yml?branch=main&label=ci)](https://github.com/privacykey/privacytracker/actions/workflows/ci.yml)
@@ -20,7 +20,7 @@
 <!-- disclosure:start -->
 > [!WARNING]
 > **Pre-1.0 — no stable release yet.** Anything can change in any release, including a patch: APIs, config keys, file formats, and data already on disk. Keep your own backups.
-> **Project status.** The badge above is generated from [my status list](https://github.com/AdamXweb/AdamXweb#project-status), which says what I promise for this project and every other one.
+> **Project status.** The badge above is generated from [the privacykey status list](https://github.com/privacykey/.github/blob/main/STATUS.md), which says what I promise for this project and every other one.
 <!-- disclosure:end -->
 
 ---
