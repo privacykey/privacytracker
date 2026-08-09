@@ -19,7 +19,7 @@
 #     from forks can't see them — GitHub strips environment secrets for
 #     untrusted PRs at the platform level.
 #
-# See https://privacytracker-docs.privacykey.org/develop/build-from-source for the one-time setup of certificates, the App
+# See https://docs.privacytracker.privacykey.org/develop/build-from-source for the one-time setup of certificates, the App
 # Store Connect API key, and the Tauri updater key.
 
 name: macOS desktop release

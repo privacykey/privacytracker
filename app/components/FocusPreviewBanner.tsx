@@ -12,7 +12,7 @@
  * Mounted in app/layout.tsx so every route gets the banner. Server-
  * rendered flag decisions don't reflect preview state until commit, so
  * Keep triggers a hard reload.
- * https://privacytracker-docs.privacykey.org/develop/feature-flags
+ * https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
 import { useTranslations } from "next-intl";

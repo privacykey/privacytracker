@@ -6,7 +6,7 @@
  * on flags that are toggleable but inert, so testers can see at a glance
  * whether their override should produce a visible change.
  *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags.
  */
 
 import type { FlagKey } from "./feature-flag-rules";

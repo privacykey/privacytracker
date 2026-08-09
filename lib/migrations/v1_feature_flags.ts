@@ -24,7 +24,7 @@
  * failure the runner aborts (no partial migration), and instrumentation.ts
  * surfaces the failure in the migration error UI.
  *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags for the design.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags for the design.
  */
 
 import { recordActivity } from "../activity";
