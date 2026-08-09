@@ -247,7 +247,7 @@ export default function WaybackImportSection({
             padding: 12,
             border: "1px solid var(--border)",
             borderRadius: 8,
-            background: "var(--surface-2, rgba(0,0,0,0.02))",
+            background: "var(--surface-2)",
             fontSize: 13,
             color: "var(--text-2)",
           }}

@@ -23,8 +23,8 @@ export default function PolicyChunkNotesBlock({
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 8,
-        background: "var(--surface-2, var(--surface))",
-        border: "1px solid var(--border-1, var(--border))",
+        background: "var(--surface-2)",
+        border: "1px solid var(--border-1)",
         fontSize: 12,
       }}
     >
@@ -54,8 +54,8 @@ export default function PolicyChunkNotesBlock({
             style={{
               padding: 10,
               borderRadius: 6,
-              background: "var(--surface-3, #0b1220)",
-              border: "1px solid var(--border-2, #1a2238)",
+              background: "var(--surface-3)",
+              border: "1px solid var(--border-2)",
             }}
           >
             <div style={{ fontWeight: 600, marginBottom: 6 }}>

@@ -83,6 +83,14 @@ Going forward, changes are recorded here as they land.
 - Colour contrast now meets WCAG AA across the interface: link and secondary
   text colours, the accent blue in light mode, and the navigation drawer were
   all below the 4.5:1 threshold in places.
+- Nested panels — activity-log rows, the developer tools cards, and
+  import-history banners — now have visible backgrounds. They were styled
+  against `--surface-1/2/3` and `--border-1/2` design tokens that were never
+  actually defined, so they rendered transparent. Defining those tokens for
+  light, dark, high-contrast and reduce-transparency modes also clears the
+  last dark-only boxes on the app-detail policy blocks (the scrollable source
+  and trace wells) and in the Live Text illustration, which drew a dark phone
+  frame in the light theme.
 
 ### Security
 

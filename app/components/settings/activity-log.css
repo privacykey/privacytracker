@@ -40,7 +40,7 @@
   line-height: 1;
   color: var(--text-2);
   cursor: pointer;
-  background: var(--surface-1, transparent);
+  background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: 999px;
   /* Fence for the dot's z-index:-1 halo pseudo — see .change-dot-group. */
@@ -52,7 +52,7 @@
 }
 
 .activity-log-live-toggle:hover {
-  background: var(--surface-2, rgba(0, 0, 0, 0.04));
+  background: var(--surface-2);
 }
 
 .activity-log-live-toggle:focus-visible {
