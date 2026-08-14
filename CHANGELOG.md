@@ -57,6 +57,10 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The Stats page's policy radar no longer reshuffles which six apps it
+  shows between visits: when several apps share the same last-synced
+  time (which every bulk sync produces), the selection previously fell
+  back to database scan order.
 - Light-theme colour contrast on the app-detail page now meets WCAG AA:
   not-declared accessibility rows no longer dim their text below the
   threshold, the "Declared by developer" tag and the preference-key legend
