@@ -259,7 +259,7 @@ const main = async () => {
   console.log(
     `cold start: ${fmt(report.cold_start_ms)} ms · idle RSS: ${report.idle_rss_kb ?? "—"} kB · loaded RSS: ${report.loaded_rss_kb ?? "—"} kB\n`
   );
-  console.log("| route | p50 ms | p95 ms | p99 ms | burst(" + CONC + ") ms |");
+  console.log(`| route | p50 ms | p95 ms | p99 ms | burst(${CONC}) ms |`);
   console.log("| --- | --- | --- | --- | --- |");
   for (const [name, r] of Object.entries(report.routes)) {
     console.log(
