@@ -29,12 +29,19 @@ export const dynamic = "force-dynamic";
  * GET — return the current focus + AI-configured derivation. Used by the
  * developer menu to seed its audience/goals toggles without forcing
  * every consumer to parse the full feature-flag list.
+ *
+ * `audienceSet` is the raw has-the-user-ever-chosen signal: the resolved
+ * focus always carries an audience (the resolver defaults it), so the
+ * root landing page's "send first-time visitors to /welcome" decision
+ * needs the unresolved setting. Added when that page became a client
+ * shell (Rust-core Phase 0).
  */
 export async function GET() {
   const focus = getActiveFocus();
   const workflow = getActiveFocusWorkflow(focus);
   return NextResponse.json({
     audience: focus.audience,
+    audienceSet: getSetting("flag.focus.audience", "") !== "",
     monitor: focus.goals.has("monitor"),
     cleanup: focus.goals.has("cleanup"),
     minimal: focus.goals.has("minimal"),

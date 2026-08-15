@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { getAllApps } from "../../../../lib/scraper";
 import Nav from "../../../components/Nav";
+import RequireAppsGate from "../../../components/RequireAppsGate";
 import SettingsView from "../../../components/SettingsView";
-
-export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
@@ -26,22 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
  * "Unmatched apps to review", and "Import needs attention" all land here.
  */
 export default function ImportHistoryPage() {
-  let apps: any[] = [];
-  try {
-    apps = getAllApps() as any[];
-  } catch (error) {
-    // DB not ready — same behaviour as the Settings page.
-    console.warn("[import-history-page] getAllApps failed:", error);
-  }
-
-  if (apps.length === 0) {
-    redirect("/onboard");
-  }
-
   return (
     <>
       <Nav />
-      <SettingsView viewMode="import-history" />
+      <RequireAppsGate>
+        <SettingsView viewMode="import-history" />
+      </RequireAppsGate>
     </>
   );
 }
