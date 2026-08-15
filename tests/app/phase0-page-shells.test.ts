@@ -26,6 +26,10 @@ const CONVERTED_PAGES = [
   "app/dashboard/settings/policies/page.tsx",
   "app/dashboard/settings/admin/page.tsx",
   "app/dashboard/settings/import-history/page.tsx",
+  "app/dashboard/settings/devices/page.tsx",
+  "app/dashboard/settings/focus/page.tsx",
+  "app/dashboard/manual-apps/page.tsx",
+  "app/changelog/page.tsx",
 ];
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..");
