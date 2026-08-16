@@ -15,8 +15,6 @@ import { getTranslations } from "next-intl/server";
 import DiagnosticsView from "../../components/DiagnosticsView";
 import Nav from "../../components/Nav";
 
-export const dynamic = "force-dynamic";
-
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
   return {

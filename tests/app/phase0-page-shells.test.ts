@@ -11,6 +11,20 @@
  * Append-only: when a page converts, add it here in the same PR. The
  * ledger doubles as the migration's progress meter (35 pages total —
  * see the Phase 0 plan).
+ *
+ * Two things this deliberately does NOT assert, both owned by the final
+ * layout batch:
+ *
+ *  - `generateMetadata` may still call `getTranslations`. The locale is
+ *    resolved per-request from the NEXT_LOCALE cookie (see i18n.ts), so
+ *    a statically prerendered page would bake the English title while
+ *    the body still renders translated. Page titles move to the client
+ *    with the layout.
+ *  - Dropping `force-dynamic` does not by itself make a route static:
+ *    the root layout calls headers() (CSP nonce) and cookies() (locale),
+ *    which forces the whole tree dynamic. So `next build` shows every
+ *    route as ƒ until the layout converts — this ledger, not the build
+ *    output, is the per-page proof until then.
  */
 
 import assert from "node:assert/strict";
@@ -30,6 +44,13 @@ const CONVERTED_PAGES = [
   "app/dashboard/settings/focus/page.tsx",
   "app/dashboard/manual-apps/page.tsx",
   "app/changelog/page.tsx",
+  "app/dashboard/diagnostics/page.tsx",
+  "app/dashboard/about/ai-disclosure/page.tsx",
+  "app/dashboard/settings/focus-matrix/page.tsx",
+  "app/help/export-app-list/page.tsx",
+  "app/help/focus/page.tsx",
+  "app/about/page.tsx",
+  "app/onboard/goals/page.tsx",
 ];
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..");
@@ -54,10 +75,22 @@ for (const page of CONVERTED_PAGES) {
       `${page} re-declared force-dynamic`
     );
 
+    // Server navigation helpers, matched on the IMPORT SPECIFIER rather
+    // than on the call text — a client shell may legitimately mention
+    // `redirect()` in a comment explaining what it replaced, and
+    // `router.replace()` is the client equivalent, not a violation.
+    const navImport = src.match(
+      /import\s*\{([^}]*)\}\s*from\s+"next\/navigation"/
+    );
+    const navNames = (navImport?.[1] ?? "").split(",").map((n) =>
+      n
+        .trim()
+        .split(/\s+as\s+/)[0]
+        .trim()
+    );
     assert.ok(
       !(
-        /from\s+"next\/navigation"[^;]*;?/.test(src) &&
-        src.includes("redirect(")
+        navNames.includes("redirect") || navNames.includes("permanentRedirect")
       ),
       `${page} uses a server-side redirect() again`
     );
