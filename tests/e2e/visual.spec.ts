@@ -158,8 +158,15 @@ async function settle(page: Page) {
     // the admin route's "Database size: 512.0 KB") — the SQLite file
     // grows as the suite itself runs, so the number differs between the
     // baseline run and the verify run.
+    //
+    // ABSOLUTE dates ("Aug 16, 2026" and "16 Aug 2026", both date-format
+    // modes) are volatile for the same reason relative times are: every
+    // date on screen derives from a fixture timestamp seeded relative to
+    // NOW, so a baseline captured before midnight fails against a verify
+    // run after it. Without this, the net reports five failures for a
+    // day boundary and a real regression would hide among them.
     const volatile =
-      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\bjust now\b)|(\bmoments? ago\b)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)/i;
+      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\bjust now\b)|(\bmoments? ago\b)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)|(\b[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4}\b)|(\b\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\b)/i;
     for (const el of document.querySelectorAll("main *, .wizard *")) {
       if (el.children.length === 0 && volatile.test(el.textContent ?? "")) {
         el.textContent = "~FROZEN";
