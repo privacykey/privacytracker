@@ -62,24 +62,65 @@ const CONVERTED_PAGES = [
   "app/welcome/page.tsx",
   "app/onboard/page.tsx",
   "app/onboard/profile/page.tsx",
+  "app/help/definitions/page.tsx",
+  "app/help/parental-controls/page.tsx",
 ];
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..");
+
+/**
+ * lib/ modules a converted page may still import: pure constants and
+ * pure functions, no database and no server-only marker. Each one is
+ * re-verified below, so adding a DB import to any of them breaks this
+ * test rather than silently re-coupling a "converted" page.
+ */
+const PURE_LIB_MODULES = new Set([
+  "i18n-meta",
+  "privacy-meta",
+  "parental-resources",
+]);
+
+for (const moduleName of PURE_LIB_MODULES) {
+  test(`phase0 shell: lib/${moduleName} is still pure`, () => {
+    const src = readFileSync(
+      join(REPO_ROOT, "lib", `${moduleName}.ts`),
+      "utf8"
+    );
+    for (const forbidden of ["./db", "better-sqlite3", "server-only"]) {
+      assert.ok(
+        !src.includes(`"${forbidden}"`),
+        `lib/${moduleName} now imports ${forbidden} — it can no longer be
+         imported by a converted page; move the usage client-side or drop
+         it from PURE_LIB_MODULES.`
+      );
+    }
+  });
+}
 
 for (const page of CONVERTED_PAGES) {
   test(`phase0 shell: ${page} has no server-side reads`, () => {
     const src = readFileSync(join(REPO_ROOT, page), "utf8");
 
-    // No lib/ import can reach this page: the server-coupled modules
-    // (db, scraper, scheduler, feature-flags-server, …) all live there,
-    // and the client-safe lib modules aren't needed by a shell either.
-    // Import-specifier match only, so prose in comments doesn't count.
-    const libImport = src.match(/from\s+"[^"]*\blib\/[^"]*"/);
-    assert.equal(
-      libImport,
-      null,
-      `${page} imports from lib/ again: ${libImport?.[0]}`
-    );
+    // No SERVER-COUPLED lib/ import can reach this page — db, scraper,
+    // scheduler, feature-flags-server and friends all live there, and a
+    // shell must not touch them.
+    //
+    // Pure constant/helper modules are allowed (see PURE_LIB_MODULES):
+    // they hold no state and reach no database, so a server component
+    // that renders from them inlines their values at build time, which
+    // is exactly what a static export needs. Allowing them means a page
+    // like /help/definitions — 600 lines of explanation rendered from
+    // CATEGORY_META — can be a genuine shell instead of being excluded
+    // on a technicality. The allowlist is enforced below, so a module
+    // that later grows a DB import fails this test rather than sneaking
+    // through. Import-specifier match only, so comment prose is ignored.
+    for (const [, spec] of src.matchAll(/from\s+"([^"]*\blib\/[^"]*)"/g)) {
+      const moduleName = spec.slice(spec.lastIndexOf("lib/") + 4);
+      assert.ok(
+        PURE_LIB_MODULES.has(moduleName),
+        `${page} imports server-coupled lib/${moduleName}`
+      );
+    }
 
     assert.ok(
       !src.includes('export const dynamic = "force-dynamic"'),
