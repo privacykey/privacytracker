@@ -37,12 +37,38 @@ interface PrivacyGroup {
 // ── Main component ────────────────────────────────────────────────────
 
 export default function PrivacyGroupedView({
-  initialData,
+  initialData = [],
 }: {
-  initialData: PrivacyGroup[];
+  /**
+   * Seed groups. The page passes none — Rust-core Phase 0 made it a
+   * shell — so the grouped view loads on mount from
+   * `GET /api/apps?view=grouped`, the endpoint that already served
+   * exactly `getGroupedPrivacyView()`.
+   */
+  initialData?: PrivacyGroup[];
 }) {
   const tMap = useTranslations("privacy_map");
   const [search, setSearch] = useState("");
+  const [data, setData] = useState<PrivacyGroup[]>(initialData);
+
+  useEffect(() => {
+    let live = true;
+    fetch("/api/apps?view=grouped")
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      )
+      .then((json: PrivacyGroup[]) => {
+        if (live && Array.isArray(json)) {
+          setData(json);
+        }
+      })
+      .catch((error) => {
+        console.warn("[privacy-map] load failed:", error);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // If the user landed here via a deep-link like
   // `/dashboard/privacy#cat-DATA_LINKED_TO_YOU-USER_CONTENT` we capture both
@@ -82,7 +108,7 @@ export default function PrivacyGroupedView({
   }, []);
 
   const filtered = sortPrivacyTypesForDisplay(
-    initialData
+    data
       .map((group) => ({
         ...group,
         categories: group.categories.filter(
@@ -97,7 +123,7 @@ export default function PrivacyGroupedView({
       .filter((group) => group.categories.length > 0)
   );
 
-  if (initialData.length === 0) {
+  if (data.length === 0) {
     return (
       <div className="page-container">
         <div className="empty-state">
