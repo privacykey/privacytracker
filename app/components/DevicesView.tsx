@@ -34,9 +34,17 @@ export interface DeviceListEntry {
 }
 
 export default function DevicesView({
-  initialDevices,
+  initialDevices = [],
 }: {
-  initialDevices: DeviceListEntry[];
+  /**
+   * Seed rows. The app passes nothing — Rust-core Phase 0 made the page
+   * a shell, so the list loads on mount through the same `refresh()`
+   * this component already used after mutations (`/api/devices` returns
+   * the identical shape, `appCount` included). Storybook still seeds
+   * fixtures through this prop; there the mount fetch simply fails and
+   * `refresh()` leaves the seeded state alone.
+   */
+  initialDevices?: DeviceListEntry[];
 }) {
   const t = useTranslations("devices");
   const searchParams = useSearchParams();
@@ -110,6 +118,10 @@ export default function DevicesView({
       console.warn("[devices] refresh failed:", error);
     }
   }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   const handleRenameStart = (device: DeviceListEntry) => {
     setRenamingId(device.id);

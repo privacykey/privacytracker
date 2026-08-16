@@ -3,8 +3,6 @@ import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 import pkg from "../../package.json";
 
-export const dynamic = "force-dynamic";
-
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("about_page");
   return {

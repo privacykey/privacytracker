@@ -57,6 +57,11 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The activity log's type filter works for every event type again. It
+  validated the requested type against a list that had fallen eight
+  entries behind — so filtering by newer events (privacy-profile preset
+  changes, verdicts, migrations, health checks) silently returned the
+  *unfiltered* feed instead.
 - The Stats page's policy radar no longer reshuffles which six apps it
   shows between visits: when several apps share the same last-synced
   time (which every bulk sync produces), the selection previously fell

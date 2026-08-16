@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import FlagGated from "@/app/components/FlagGated";
+import RequireFlagGate from "@/app/components/RequireFlagGate";
 import pkg from "../../package.json";
-
-export const dynamic = "force-dynamic";
 
 /**
  * Pull a dep's version straight from package.json at build time.
@@ -479,103 +477,100 @@ export default async function LegalPage() {
   // off in Dev Options 404s the route. Same caveat as /privacy-policy —
   // shipping a privacy auditor without the licensing disclosure is bad
   // form, but the flag exists for embedded / OEM builds.
-  if (resolveFlagFromDb("flag.legal.terms_page") !== "on") {
-    notFound();
-  }
-
   // i18n — page chrome only (back link, eyebrow, title, subtitle, sidebar
   // aria + heading). The dependency table + per-licence prose stays
   // English in v1; full translation is tracked separately because it
   // requires careful handling of SPDX identifiers and dep descriptions.
   const t = await getTranslations("legal_page");
 
-  // Wave I — `flag.legal.audit_bundle_note` toggles a paragraph on
-  // /legal explaining what audit-bundle exports include + omit. Off by
-  // default; flipping it on surfaces the disclosure for users testing
-  // the export today.
-  const showAuditBundleNote =
-    resolveFlagFromDb("flag.legal.audit_bundle_note") === "on";
-
   const grouped = groupByLicense(DEPENDENCIES);
   const licenseGroups = LICENSE_ORDER.filter((id) => grouped[id]?.length);
 
   return (
-    <div className="legal-page">
-      <header className="legal-page-hero">
-        <Link className="priv-back-link" href="/">
-          {t("back_to_app")}
-        </Link>
-        <p className="priv-eyebrow">{t("eyebrow")}</p>
-        <h1 className="legal-page-title">{t("title")}</h1>
-        <p className="legal-page-sub">
-          {t.rich("subtitle", { code: (chunks) => <code>{chunks}</code> })}
-        </p>
-        {showAuditBundleNote && (
-          <p className="legal-page-sub" style={{ marginTop: 14 }}>
-            {t.rich("audit_bundle_note", {
-              strong: (chunks) => <strong>{chunks}</strong>,
-              em: (chunks) => <em>{chunks}</em>,
-              code: (chunks) => <code>{chunks}</code>,
-            })}
+    <RequireFlagGate flag="flag.legal.terms_page">
+      <div className="legal-page">
+        <header className="legal-page-hero">
+          <Link className="priv-back-link" href="/">
+            {t("back_to_app")}
+          </Link>
+          <p className="priv-eyebrow">{t("eyebrow")}</p>
+          <h1 className="legal-page-title">{t("title")}</h1>
+          <p className="legal-page-sub">
+            {t.rich("subtitle", { code: (chunks) => <code>{chunks}</code> })}
           </p>
-        )}
-      </header>
+          {/* Wave I — `flag.legal.audit_bundle_note` toggles a paragraph
+            explaining what audit-bundle exports include + omit. Off by
+            default; flipping it on surfaces the disclosure. */}
+          <FlagGated flag="flag.legal.audit_bundle_note">
+            <p className="legal-page-sub" style={{ marginTop: 14 }}>
+              {t.rich("audit_bundle_note", {
+                strong: (chunks) => <strong>{chunks}</strong>,
+                em: (chunks) => <em>{chunks}</em>,
+                code: (chunks) => <code>{chunks}</code>,
+              })}
+            </p>
+          </FlagGated>
+        </header>
 
-      <div className="legal-layout">
-        <aside aria-label={t("sidebar_aria")} className="legal-sidebar">
-          <p className="legal-sidebar-title">{t("sidebar_jump")}</p>
-          <ul className="legal-sidebar-list">
-            {licenseGroups.map((id) => (
-              <li key={id}>
-                <a className="legal-sidebar-link" href={`#${licenseSlug(id)}`}>
-                  <span>{LICENSE_META[id].name}</span>
-                  <span className="legal-sidebar-count">
-                    {grouped[id].length}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </aside>
-
-        <div className="legal-content">
-          {licenseGroups.map((id) => {
-            const meta = LICENSE_META[id];
-            return (
-              <section
-                aria-labelledby={`${licenseSlug(id)}-heading`}
-                className="legal-license-group"
-                id={licenseSlug(id)}
-                key={id}
-              >
-                <header className="legal-license-head">
-                  <h2
-                    className="legal-license-name"
-                    id={`${licenseSlug(id)}-heading`}
+        <div className="legal-layout">
+          <aside aria-label={t("sidebar_aria")} className="legal-sidebar">
+            <p className="legal-sidebar-title">{t("sidebar_jump")}</p>
+            <ul className="legal-sidebar-list">
+              {licenseGroups.map((id) => (
+                <li key={id}>
+                  <a
+                    className="legal-sidebar-link"
+                    href={`#${licenseSlug(id)}`}
                   >
-                    {meta.name}
-                  </h2>
-                  <p className="legal-license-blurb">
-                    {meta.blurb}{" "}
-                    <a
-                      href={meta.url}
-                      rel="noopener noreferrer"
-                      target="_blank"
+                    <span>{LICENSE_META[id].name}</span>
+                    <span className="legal-sidebar-count">
+                      {grouped[id].length}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </aside>
+
+          <div className="legal-content">
+            {licenseGroups.map((id) => {
+              const meta = LICENSE_META[id];
+              return (
+                <section
+                  aria-labelledby={`${licenseSlug(id)}-heading`}
+                  className="legal-license-group"
+                  id={licenseSlug(id)}
+                  key={id}
+                >
+                  <header className="legal-license-head">
+                    <h2
+                      className="legal-license-name"
+                      id={`${licenseSlug(id)}-heading`}
                     >
-                      Full licence text ↗
-                    </a>
-                  </p>
-                </header>
-                <div className="legal-dep-list">
-                  {grouped[id].map((dep) => (
-                    <DepCard dep={dep} key={dep.name} />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+                      {meta.name}
+                    </h2>
+                    <p className="legal-license-blurb">
+                      {meta.blurb}{" "}
+                      <a
+                        href={meta.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        Full licence text ↗
+                      </a>
+                    </p>
+                  </header>
+                  <div className="legal-dep-list">
+                    {grouped[id].map((dep) => (
+                      <DepCard dep={dep} key={dep.name} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </RequireFlagGate>
   );
 }

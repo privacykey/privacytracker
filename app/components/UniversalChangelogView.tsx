@@ -8,7 +8,7 @@
  *   - hero chart (AppChangeTimeline in global mode)
  *   - the per-row feed
  *
- * The server page above hands in the apps list once at mount; we don't
+ * The apps list loads once at mount from /api/apps; we don't
  * refetch it because it's small and the filter dropdown doesn't need
  * live updates. Filter state is local React state — we don't persist
  * to the URL in v1 to keep the implementation tight, but `useState`
@@ -297,10 +297,41 @@ function detailHrefForEntry(row: UniversalChangeRow): string {
 }
 
 export default function UniversalChangelogView({
-  apps,
+  apps: initialApps = [],
 }: {
-  apps: AppForFilter[];
+  /**
+   * Seed rows for the app filter. The page passes none — Rust-core
+   * Phase 0 made it a shell — so the list loads on mount from
+   * `GET /api/apps`. Storybook may still seed through this prop.
+   */
+  apps?: AppForFilter[];
 }) {
+  const [apps, setApps] = useState<AppForFilter[]>(initialApps);
+  // Apps list for the filter dropdown. A failure leaves the dropdown
+  // with whatever it had — the same tolerance the server page applied
+  // when its query threw.
+  useEffect(() => {
+    let live = true;
+    fetch("/api/apps?limit=500")
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      )
+      .then((json: { apps?: AppForFilter[] }) => {
+        if (live && json.apps) {
+          setApps(
+            [...json.apps].sort((a, b) =>
+              a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+            )
+          );
+        }
+      })
+      .catch((error) => {
+        console.warn("[changelog] apps list load failed:", error);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
   const t = useTranslations("changelog_page");
   const tFilters = useTranslations("changelog_page.filters");
   const tRow = useTranslations("changelog_page.row");
