@@ -7,7 +7,7 @@ import type { Audience } from "@/lib/feature-flag-rules";
 import { type FocusWorkflow, isFocusWorkflow } from "@/lib/focus-workflow";
 import { recommendedPrivacyPresetForFocus } from "@/lib/onboarding-purpose";
 import type { PrivacyProfile, ProfilePresetKey } from "@/lib/privacy-profile";
-import { useFlagBundle } from "@/lib/use-flag-bundle";
+import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
 import PrivacyProfileSetup from "./PrivacyProfileSetup";
 
 /**
@@ -40,7 +40,17 @@ const SETUP_FLAGS = [
 export default function PrivacyProfileSetupLoader() {
   const router = useRouter();
   const flags = useFlagBundle(SETUP_FLAGS);
+  // useFlagBundle fails CLOSED (every key false on error), but this
+  // page's server gate failed OPEN — its try/catch returned
+  // `{ privacy: true, accessibility: true }`, so an unreadable flag kept
+  // both steps visible. Without this, a transient /api/feature-flags
+  // failure would bounce the user to /onboard and silently skip the
+  // step where the privacy profile gets created.
+  const { failedToLoad } = useFlagBundleStatus();
   const [ready, setReady] = useState(false);
+  // Tracked separately from `ready` so the flag-driven redirect can wait
+  // for the audience answer (see the ordering note below).
+  const [audienceOk, setAudienceOk] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<PrivacyProfile | null>(null);
   const [a11yProfile, setA11yProfile] = useState<AccessibilityProfile | null>(
     null
@@ -65,7 +75,10 @@ export default function PrivacyProfileSetupLoader() {
         if (!live) {
           return;
         }
-        if (!focus.audienceSet) {
+        if (focus.audienceSet) {
+          setAudienceOk(true);
+        } else {
+          setAudienceOk(false);
           router.replace("/welcome");
           return;
         }
@@ -95,6 +108,7 @@ export default function PrivacyProfileSetupLoader() {
       .catch((error) => {
         console.warn("[onboard/profile] load failed:", error);
         if (live) {
+          setAudienceOk(false);
           router.replace("/welcome");
         }
       });
@@ -103,17 +117,43 @@ export default function PrivacyProfileSetupLoader() {
     };
   }, [router]);
 
-  const showPrivacySetup = flags?.["flag.onboarding.privacy_profile_setup"];
+  const showPrivacySetup =
+    failedToLoad || flags?.["flag.onboarding.privacy_profile_setup"];
   const showAccessibilitySetup =
-    flags?.["flag.onboarding.accessibility_profile_setup"];
+    failedToLoad || flags?.["flag.onboarding.accessibility_profile_setup"];
 
   useEffect(() => {
-    if (flags && !(showPrivacySetup || showAccessibilitySetup)) {
+    // Ordering: the server checked the audience FIRST and only then the
+    // flags, so an audience-less visitor went to /welcome, not /onboard.
+    // Client-side both reads resolve in parallel, so this redirect waits
+    // for the audience answer — otherwise a both-flags-off result could
+    // fire first and send a first-time visitor on an extra hop.
+    if (
+      audienceOk === true &&
+      flags &&
+      !(failedToLoad || showPrivacySetup || showAccessibilitySetup)
+    ) {
       router.replace("/onboard");
     }
-  }, [flags, showPrivacySetup, showAccessibilitySetup, router]);
+  }, [
+    audienceOk,
+    flags,
+    failedToLoad,
+    showPrivacySetup,
+    showAccessibilitySetup,
+    router,
+  ]);
 
-  if (!(ready && flags && (showPrivacySetup || showAccessibilitySetup))) {
+  // Hold the whole subtree until every value is final: PrivacyProfileSetup
+  // seeds its editable state from these props via useState INITIALISERS,
+  // so a later prop change is ignored forever — a returning user's saved
+  // profile would be silently discarded, and Save would PUT the empty
+  // payload over it. `recommendedPreset` matters here too: null selects a
+  // different UI branch (no Activate button), not just different copy.
+  if (!(ready && (flags || failedToLoad))) {
+    return null;
+  }
+  if (!(showPrivacySetup || showAccessibilitySetup)) {
     return null;
   }
   return (
