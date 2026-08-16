@@ -19,10 +19,11 @@ import { countryLabel, DEFAULT_COUNTRY, normalizeCountry } from "@/lib/region";
  * rather than a `lib/` read — so it stays server-side like the page's
  * other translations.
  *
- * Until the setting lands the country falls back to DEFAULT_COUNTRY,
- * which is what `getSetting("app_country", DEFAULT_COUNTRY)` returned
- * for an unset value anyway — so the fallback render is a state the
- * server could already produce, not a new one.
+ * Both blocks render nothing until the setting resolves. Seeding with
+ * DEFAULT_COUNTRY instead would flash "United States (US)" at an
+ * au/gb/jp user before flipping — a wrong-country frame the server
+ * render never produced. An unset or unreadable setting still resolves
+ * to DEFAULT_COUNTRY, matching getSetting("app_country", DEFAULT_COUNTRY).
  *
  * `lib/region` is pure data + helpers (no DB), which is why it can be
  * imported from a client component.
@@ -85,37 +86,50 @@ interface Transparency {
 /** Read the storefront country, then resolve Apple's report link for it.
  *  Mirrors the page's former `resolveTransparencyLink(country, links)`. */
 function useTransparency(transparencyIndex: string): {
-  country: string;
+  country: string | null;
   transparency: Transparency;
 } {
-  const [country, setCountry] = useState(DEFAULT_COUNTRY);
+  // `null` until the setting lands. Seeding with DEFAULT_COUNTRY instead
+  // would render "United States (US)" to an au/gb/jp user for a frame
+  // and then flip — a wrong-country flash the server render never had.
+  // Callers hold these blocks back while this is null.
+  const [country, setCountry] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     fetch("/api/settings")
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { app_country?: string } | null) => {
-        if (live && json?.app_country) {
-          setCountry(normalizeCountry(json.app_country));
+        if (live) {
+          // An unset/unreadable setting resolves to DEFAULT_COUNTRY —
+          // exactly what getSetting("app_country", DEFAULT_COUNTRY) gave.
+          setCountry(
+            json?.app_country
+              ? normalizeCountry(json.app_country)
+              : DEFAULT_COUNTRY
+          );
         }
       })
       .catch(() => {
-        // Keep DEFAULT_COUNTRY — the same value an unset setting gave.
+        if (live) {
+          setCountry(DEFAULT_COUNTRY);
+        }
       });
     return () => {
       live = false;
     };
   }, []);
 
-  const transparency: Transparency = TRANSPARENCY_COUNTRY_CODES.has(country)
+  const resolved = country ?? DEFAULT_COUNTRY;
+  const transparency: Transparency = TRANSPARENCY_COUNTRY_CODES.has(resolved)
     ? {
-        url: `https://www.apple.com/legal/transparency/${country}.html`,
-        label: countryLabel(country),
+        url: `https://www.apple.com/legal/transparency/${resolved}.html`,
+        label: countryLabel(resolved),
         countrySpecific: true,
       }
     : {
         url: transparencyIndex,
-        label: countryLabel(country),
+        label: countryLabel(resolved),
         countrySpecific: false,
       };
 
@@ -131,6 +145,9 @@ export function DefinitionsTransparencyBody({
   const t = useTranslations("help_definitions_page");
   const { country, transparency } = useTransparency(transparencyIndex);
 
+  if (!country) {
+    return null;
+  }
   return (
     <>
       <p className="help-section-copy">
@@ -191,8 +208,11 @@ export function DefinitionsTransparencySource({
   transparencyIndex: string;
 }) {
   const tSrc = useTranslations("help_definitions_page.sources");
-  const { transparency } = useTransparency(transparencyIndex);
+  const { country, transparency } = useTransparency(transparencyIndex);
 
+  if (!country) {
+    return null;
+  }
   return (
     <li>
       <a
