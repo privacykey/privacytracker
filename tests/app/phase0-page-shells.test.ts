@@ -56,6 +56,11 @@ const CONVERTED_PAGES = [
   "app/dashboard/shortlist/page.tsx",
   "app/dashboard/settings/layout/page.tsx",
   "app/manual-apps/[id]/page.tsx",
+  "app/dashboard/compare/page.tsx",
+  "app/legal/page.tsx",
+  "app/privacy-policy/page.tsx",
+  "app/welcome/page.tsx",
+  "app/onboard/page.tsx",
 ];
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..");

@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { resolveFlagFromDb } from "@/lib/feature-flags-server";
-
-export const dynamic = "force-dynamic";
+import RequireFlagGate from "@/app/components/RequireFlagGate";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — privacytracker",
@@ -290,10 +287,6 @@ export default async function PrivacyPolicyPage() {
   // for every focus to avoid shipping a privacy auditor without a
   // privacy-policy disclosure of its own. The flag exists so OEM /
   // embedded builds can hide the route if needed.
-  if (resolveFlagFromDb("flag.legal.privacy_policy_page") !== "on") {
-    notFound();
-  }
-
   // i18n — server-side translations. The page chrome (back link,
   // hero title/subtitle, sidebar, section headings) reads from the
   // `privacy_policy_page` namespace. Section bodies + sub-section
@@ -323,43 +316,46 @@ export default async function PrivacyPolicyPage() {
     `&source-page=${encodeURIComponent(SOURCE_PAGE)}`;
 
   return (
-    <div className="privacy-policy-page">
-      <header className="priv-page-hero">
-        <Link className="priv-back-link" href="/">
-          {t("back_to_app")}
-        </Link>
-        <p className="priv-eyebrow">{t("eyebrow")}</p>
-        <h1 className="priv-page-title">{t("title")}</h1>
-        <p className="priv-page-sub">{t("subtitle")}</p>
-        <p className="priv-page-meta">
-          {t("last_updated", { date: lastUpdated })}
-        </p>
-      </header>
+    <RequireFlagGate flag="flag.legal.privacy_policy_page">
+      <div className="privacy-policy-page">
+        <header className="priv-page-hero">
+          <Link className="priv-back-link" href="/">
+            {t("back_to_app")}
+          </Link>
+          <p className="priv-eyebrow">{t("eyebrow")}</p>
+          <h1 className="priv-page-title">{t("title")}</h1>
+          <p className="priv-page-sub">{t("subtitle")}</p>
+          <p className="priv-page-meta">
+            {t("last_updated", { date: lastUpdated })}
+          </p>
+        </header>
 
-      <div className="legal-layout">
-        <aside aria-label={t("sidebar_aria")} className="legal-sidebar">
-          <p className="legal-sidebar-title">{t("sidebar_jump")}</p>
-          <ul className="legal-sidebar-list">
-            {SIDEBAR_SECTIONS.map((section) => (
-              <li key={section.id}>
-                <a className="legal-sidebar-link" href={`#${section.id}`}>
-                  <span>{tSec(section.labelKey)}</span>
-                  {section.hintKey && (
-                    <span className="legal-sidebar-count">
-                      {tSec(section.hintKey)}
-                    </span>
-                  )}
-                  {section.hint && !section.hintKey && (
-                    <span className="legal-sidebar-count">{section.hint}</span>
-                  )}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </aside>
+        <div className="legal-layout">
+          <aside aria-label={t("sidebar_aria")} className="legal-sidebar">
+            <p className="legal-sidebar-title">{t("sidebar_jump")}</p>
+            <ul className="legal-sidebar-list">
+              {SIDEBAR_SECTIONS.map((section) => (
+                <li key={section.id}>
+                  <a className="legal-sidebar-link" href={`#${section.id}`}>
+                    <span>{tSec(section.labelKey)}</span>
+                    {section.hintKey && (
+                      <span className="legal-sidebar-count">
+                        {tSec(section.hintKey)}
+                      </span>
+                    )}
+                    {section.hint && !section.hintKey && (
+                      <span className="legal-sidebar-count">
+                        {section.hint}
+                      </span>
+                    )}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </aside>
 
-        <div className="legal-content">
-          {/* App Store-style "Data Not Collected" callout. Mirrors the
+          <div className="legal-content">
+            {/* App Store-style "Data Not Collected" callout. Mirrors the
               shape of Apple's privacy nutrition card on the App Store
               listing so the page opens with the exact disclosure users
               already trust. Centred above the prose, role="img" with an
@@ -367,184 +363,221 @@ export default async function PrivacyPolicyPage() {
               single unit instead of three orphan strings. The same card
               shape lives on the marketing site
               (privacytracker website/privacy.html) — keep them in sync. */}
-          <div
-            aria-label={t("disclosure.aria")}
-            className="priv-disclosure-callout"
-            role="img"
-          >
-            <svg
-              aria-hidden="true"
-              className="priv-disclosure-tick"
-              fill="none"
-              focusable="false"
-              height="52"
-              viewBox="0 0 52 52"
-              width="52"
+            <div
+              aria-label={t("disclosure.aria")}
+              className="priv-disclosure-callout"
+              role="img"
             >
-              <circle
-                cx="26"
-                cy="26"
-                r="23"
-                stroke="currentColor"
-                strokeWidth="3"
-              />
-              <path
-                d="M15 27 L22 34 L37 19"
+              <svg
+                aria-hidden="true"
+                className="priv-disclosure-tick"
                 fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="4"
-              />
-            </svg>
-            <h2 className="priv-disclosure-title">{t("disclosure.title")}</h2>
-            <p className="priv-disclosure-body">{t("disclosure.body")}</p>
-          </div>
+                focusable="false"
+                height="52"
+                viewBox="0 0 52 52"
+                width="52"
+              >
+                <circle
+                  cx="26"
+                  cy="26"
+                  r="23"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+                <path
+                  d="M15 27 L22 34 L37 19"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="4"
+                />
+              </svg>
+              <h2 className="priv-disclosure-title">{t("disclosure.title")}</h2>
+              <p className="priv-disclosure-body">{t("disclosure.body")}</p>
+            </div>
 
-          <section
-            aria-labelledby="priv-nothing-heading"
-            className="priv-section"
-            id="priv-nothing"
-          >
-            <h2 className="priv-section-title" id="priv-nothing-heading">
-              {tSec("what_we_collect_full")}
-            </h2>
-            <p className="priv-section-lede priv-section-lede-strong">
-              {tBody("nothing_lede")}
-            </p>
-            <p className="priv-section-body">
-              {tBody.rich("nothing_body", {
-                code: (chunks) => <code>{chunks}</code>,
-              })}
-            </p>
-            <ul className="priv-out-of-scope-list">
-              {OUT_OF_SCOPE.map((item) => (
-                <li className="priv-out-of-scope-item" key={item.title}>
-                  <div className="priv-out-of-scope-title">{item.title}</div>
-                  <div className="priv-out-of-scope-detail">{item.detail}</div>
+            <section
+              aria-labelledby="priv-nothing-heading"
+              className="priv-section"
+              id="priv-nothing"
+            >
+              <h2 className="priv-section-title" id="priv-nothing-heading">
+                {tSec("what_we_collect_full")}
+              </h2>
+              <p className="priv-section-lede priv-section-lede-strong">
+                {tBody("nothing_lede")}
+              </p>
+              <p className="priv-section-body">
+                {tBody.rich("nothing_body", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
+              </p>
+              <ul className="priv-out-of-scope-list">
+                {OUT_OF_SCOPE.map((item) => (
+                  <li className="priv-out-of-scope-item" key={item.title}>
+                    <div className="priv-out-of-scope-title">{item.title}</div>
+                    <div className="priv-out-of-scope-detail">
+                      {item.detail}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section
+              aria-labelledby="priv-subprocessors-heading"
+              className="priv-section"
+              id="priv-subprocessors"
+            >
+              <h2
+                className="priv-section-title"
+                id="priv-subprocessors-heading"
+              >
+                {tSec("third_parties_full")}
+              </h2>
+              <p className="priv-section-lede">{tBody("third_parties_lede")}</p>
+              <p className="priv-section-body">
+                {tBody.rich("third_parties_body", {
+                  em: (chunks) => <em>{chunks}</em>,
+                })}
+              </p>
+
+              <h3 className="priv-subsection-title">
+                {tSec("appstore_metadata")}
+              </h3>
+              <p className="priv-subsection-sub">{tBody("appstore_sub")}</p>
+              <div className="priv-subproc-grid-wrap">
+                {APP_STORE_SUBPROCESSORS.map((s) => (
+                  <SubprocessorCard key={s.name} s={s} />
+                ))}
+              </div>
+
+              <h3 className="priv-subsection-title">
+                {tSec("developer_policies")}
+              </h3>
+              <p className="priv-subsection-sub">{tBody("developer_sub")}</p>
+              <div className="priv-subproc-grid-wrap">
+                {POLICY_SUBPROCESSORS.map((s) => (
+                  <SubprocessorCard key={s.name} s={s} />
+                ))}
+              </div>
+
+              <h3 className="priv-subsection-title">
+                {tSec("historical_archives")}
+              </h3>
+              <p className="priv-subsection-sub">{tBody("archives_sub")}</p>
+              <div className="priv-subproc-grid-wrap">
+                {ARCHIVE_SUBPROCESSORS.map((s) => (
+                  <SubprocessorCard key={s.name} s={s} />
+                ))}
+              </div>
+
+              <h3 className="priv-subsection-title">{tSec("ai_providers")}</h3>
+              <p className="priv-subsection-sub">
+                {tBody("ai_sub_prefix")}{" "}
+                <Link className="priv-inline-link" href={SETTINGS_AI_HASH}>
+                  {tBody("ai_sub_settings_link")}
+                </Link>
+                {tBody("ai_sub_suffix")}
+              </p>
+              <div className="priv-subproc-grid-wrap">
+                {AI_SUBPROCESSORS.map((s) => (
+                  <SubprocessorCard key={s.name} s={s} />
+                ))}
+              </div>
+
+              <h3 className="priv-subsection-title">{tSec("update_check")}</h3>
+              <p className="priv-subsection-sub">{tBody("update_check_sub")}</p>
+              <div className="priv-subproc-grid-wrap">
+                {UPDATE_CHECK_SUBPROCESSORS.map((s) => (
+                  <SubprocessorCard key={s.name} s={s} />
+                ))}
+              </div>
+            </section>
+
+            <section
+              aria-labelledby="priv-self-host-heading"
+              className="priv-section"
+              id="priv-self-host"
+            >
+              <h2 className="priv-section-title" id="priv-self-host-heading">
+                {tSec("going_offline_full")}
+              </h2>
+              <p className="priv-section-body">
+                {tBody.rich("going_offline_p1", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
+              </p>
+              <p className="priv-section-body">{tBody("going_offline_p2")}</p>
+              <ul className="priv-offline-steps">
+                <li>
+                  {tBody.rich("going_offline_step_ai", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                    settings: (chunks) => (
+                      <Link
+                        className="priv-inline-link priv-inline-link-settings"
+                        href={SETTINGS_AI_HASH}
+                      >
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
                 </li>
-              ))}
-            </ul>
-          </section>
+                <li>
+                  {tBody.rich("going_offline_step_wayback", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
+                </li>
+              </ul>
+              <p className="priv-section-body">{tBody("going_offline_p3")}</p>
+            </section>
 
-          <section
-            aria-labelledby="priv-subprocessors-heading"
-            className="priv-section"
-            id="priv-subprocessors"
-          >
-            <h2 className="priv-section-title" id="priv-subprocessors-heading">
-              {tSec("third_parties_full")}
-            </h2>
-            <p className="priv-section-lede">{tBody("third_parties_lede")}</p>
-            <p className="priv-section-body">
-              {tBody.rich("third_parties_body", {
-                em: (chunks) => <em>{chunks}</em>,
-              })}
-            </p>
-
-            <h3 className="priv-subsection-title">
-              {tSec("appstore_metadata")}
-            </h3>
-            <p className="priv-subsection-sub">{tBody("appstore_sub")}</p>
-            <div className="priv-subproc-grid-wrap">
-              {APP_STORE_SUBPROCESSORS.map((s) => (
-                <SubprocessorCard key={s.name} s={s} />
-              ))}
-            </div>
-
-            <h3 className="priv-subsection-title">
-              {tSec("developer_policies")}
-            </h3>
-            <p className="priv-subsection-sub">{tBody("developer_sub")}</p>
-            <div className="priv-subproc-grid-wrap">
-              {POLICY_SUBPROCESSORS.map((s) => (
-                <SubprocessorCard key={s.name} s={s} />
-              ))}
-            </div>
-
-            <h3 className="priv-subsection-title">
-              {tSec("historical_archives")}
-            </h3>
-            <p className="priv-subsection-sub">{tBody("archives_sub")}</p>
-            <div className="priv-subproc-grid-wrap">
-              {ARCHIVE_SUBPROCESSORS.map((s) => (
-                <SubprocessorCard key={s.name} s={s} />
-              ))}
-            </div>
-
-            <h3 className="priv-subsection-title">{tSec("ai_providers")}</h3>
-            <p className="priv-subsection-sub">
-              {tBody("ai_sub_prefix")}{" "}
-              <Link className="priv-inline-link" href={SETTINGS_AI_HASH}>
-                {tBody("ai_sub_settings_link")}
-              </Link>
-              {tBody("ai_sub_suffix")}
-            </p>
-            <div className="priv-subproc-grid-wrap">
-              {AI_SUBPROCESSORS.map((s) => (
-                <SubprocessorCard key={s.name} s={s} />
-              ))}
-            </div>
-
-            <h3 className="priv-subsection-title">{tSec("update_check")}</h3>
-            <p className="priv-subsection-sub">{tBody("update_check_sub")}</p>
-            <div className="priv-subproc-grid-wrap">
-              {UPDATE_CHECK_SUBPROCESSORS.map((s) => (
-                <SubprocessorCard key={s.name} s={s} />
-              ))}
-            </div>
-          </section>
-
-          <section
-            aria-labelledby="priv-self-host-heading"
-            className="priv-section"
-            id="priv-self-host"
-          >
-            <h2 className="priv-section-title" id="priv-self-host-heading">
-              {tSec("going_offline_full")}
-            </h2>
-            <p className="priv-section-body">
-              {tBody.rich("going_offline_p1", {
-                code: (chunks) => <code>{chunks}</code>,
-              })}
-            </p>
-            <p className="priv-section-body">{tBody("going_offline_p2")}</p>
-            <ul className="priv-offline-steps">
-              <li>
-                {tBody.rich("going_offline_step_ai", {
+            <section
+              aria-labelledby="priv-alternatives-heading"
+              className="priv-section"
+              id="priv-alternatives"
+            >
+              <h2 className="priv-section-title" id="priv-alternatives-heading">
+                {tSec("other_summarisers_full")}
+              </h2>
+              <p className="priv-section-body">{tBody("alternatives_p1")}</p>
+              <ul className="priv-offline-steps">
+                <li>
+                  {tBody.rich("alternatives_tosdr", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                    tosdr: (chunks) => (
+                      <a
+                        className="priv-inline-link"
+                        href="https://tosdr.org/"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        {chunks}
+                      </a>
+                    ),
+                  })}
+                </li>
+                <li>
+                  {tBody.rich("alternatives_privacyspy", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                    privacyspy: (chunks) => (
+                      <a
+                        className="priv-inline-link"
+                        href="https://privacyspy.org/"
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        {chunks}
+                      </a>
+                    ),
+                  })}
+                </li>
+              </ul>
+              <p className="priv-section-body">
+                {tBody.rich("alternatives_p2", {
                   strong: (chunks) => <strong>{chunks}</strong>,
-                  settings: (chunks) => (
-                    <Link
-                      className="priv-inline-link priv-inline-link-settings"
-                      href={SETTINGS_AI_HASH}
-                    >
-                      {chunks}
-                    </Link>
-                  ),
-                })}
-              </li>
-              <li>
-                {tBody.rich("going_offline_step_wayback", {
-                  strong: (chunks) => <strong>{chunks}</strong>,
-                })}
-              </li>
-            </ul>
-            <p className="priv-section-body">{tBody("going_offline_p3")}</p>
-          </section>
-
-          <section
-            aria-labelledby="priv-alternatives-heading"
-            className="priv-section"
-            id="priv-alternatives"
-          >
-            <h2 className="priv-section-title" id="priv-alternatives-heading">
-              {tSec("other_summarisers_full")}
-            </h2>
-            <p className="priv-section-body">{tBody("alternatives_p1")}</p>
-            <ul className="priv-offline-steps">
-              <li>
-                {tBody.rich("alternatives_tosdr", {
-                  strong: (chunks) => <strong>{chunks}</strong>,
+                  em: (chunks) => <em>{chunks}</em>,
                   tosdr: (chunks) => (
                     <a
                       className="priv-inline-link"
@@ -555,11 +588,6 @@ export default async function PrivacyPolicyPage() {
                       {chunks}
                     </a>
                   ),
-                })}
-              </li>
-              <li>
-                {tBody.rich("alternatives_privacyspy", {
-                  strong: (chunks) => <strong>{chunks}</strong>,
                   privacyspy: (chunks) => (
                     <a
                       className="priv-inline-link"
@@ -571,69 +599,43 @@ export default async function PrivacyPolicyPage() {
                     </a>
                   ),
                 })}
-              </li>
-            </ul>
-            <p className="priv-section-body">
-              {tBody.rich("alternatives_p2", {
-                strong: (chunks) => <strong>{chunks}</strong>,
-                em: (chunks) => <em>{chunks}</em>,
-                tosdr: (chunks) => (
-                  <a
-                    className="priv-inline-link"
-                    href="https://tosdr.org/"
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    {chunks}
-                  </a>
-                ),
-                privacyspy: (chunks) => (
-                  <a
-                    className="priv-inline-link"
-                    href="https://privacyspy.org/"
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    {chunks}
-                  </a>
-                ),
-              })}
-            </p>
-          </section>
+              </p>
+            </section>
 
-          <section
-            aria-labelledby="priv-questions-heading"
-            className="priv-section"
-            id="priv-questions"
-          >
-            <h2 className="priv-section-title" id="priv-questions-heading">
-              {tSec("questions_full")}
-            </h2>
-            <p className="priv-section-body">
-              {tBody.rich("questions_p1", {
-                code: (chunks) => <code>{chunks}</code>,
-              })}
-            </p>
-            <p className="priv-section-body">
-              <a
-                className="priv-cta-button"
-                href={issueUrl}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                Open an issue on GitHub ↗
-              </a>
-            </p>
-            <p className="priv-section-body" style={{ marginTop: 12 }}>
-              The full list of bundled libraries and their licences is on the{" "}
-              <Link className="priv-inline-link" href="/legal">
-                Legal page
-              </Link>
-              .
-            </p>
-          </section>
+            <section
+              aria-labelledby="priv-questions-heading"
+              className="priv-section"
+              id="priv-questions"
+            >
+              <h2 className="priv-section-title" id="priv-questions-heading">
+                {tSec("questions_full")}
+              </h2>
+              <p className="priv-section-body">
+                {tBody.rich("questions_p1", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
+              </p>
+              <p className="priv-section-body">
+                <a
+                  className="priv-cta-button"
+                  href={issueUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Open an issue on GitHub ↗
+                </a>
+              </p>
+              <p className="priv-section-body" style={{ marginTop: 12 }}>
+                The full list of bundled libraries and their licences is on the{" "}
+                <Link className="priv-inline-link" href="/legal">
+                  Legal page
+                </Link>
+                .
+              </p>
+            </section>
+          </div>
         </div>
       </div>
-    </div>
+    </RequireFlagGate>
   );
 }
