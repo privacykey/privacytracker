@@ -79,6 +79,57 @@ export function useFlagBundleStatus(): { failedToLoad: boolean } {
 }
 
 /**
+ * Resolve a fixed set of flag keys to their RAW values. `null` while
+ * loading.
+ *
+ * Most flags are on/off, so `useFlagBundle` below coerces to boolean —
+ * but a few are tri-state. `flag.detail.annotations_sidebar` is
+ * `"on" | "off" | "collapsed"` with a HARD_DEFAULT of `"collapsed"`, so
+ * `=== "on"` would read it as OFF and silently hide the annotations rail
+ * for the default audience. Anything consuming a non-boolean flag must
+ * use this instead.
+ */
+export function useFlagValues<K extends string>(
+  keys: readonly K[]
+): Record<K, FlagValue> | null {
+  const [values, setValues] = useState<Record<K, FlagValue> | null>(null);
+  const cacheKey = keys.join(",");
+
+  useEffect(() => {
+    let live = true;
+    loadFlags()
+      .then((map) => {
+        if (!live) {
+          return;
+        }
+        const out = {} as Record<K, FlagValue>;
+        for (const key of cacheKey.split(",") as K[]) {
+          const value = map.get(key);
+          if (value !== undefined) {
+            out[key] = value;
+          }
+        }
+        setValues(out);
+      })
+      .catch((error) => {
+        loadFailed = true;
+        console.warn("[flags] bundle load failed:", error);
+        if (live) {
+          // Empty map, NOT a map of "off": a tri-state consumer must be
+          // able to tell "couldn't read" from "resolved off" and apply
+          // its own default (see RequireFlagGate's failOpen).
+          setValues({} as Record<K, FlagValue>);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [cacheKey]);
+
+  return values;
+}
+
+/**
  * Resolve a fixed set of flag keys to booleans (`value === "on"`).
  * `null` while loading.
  */

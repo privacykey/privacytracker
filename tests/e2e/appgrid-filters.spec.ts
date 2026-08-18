@@ -91,6 +91,11 @@ browserFlow(
       .locator(".app-card")
       .filter({ hasNot: page.locator(".app-card-custom") });
 
+    // The grid loads client-side (Rust-core Phase 0), so wait for the
+    // first card before counting — count() does not retry, and an
+    // immediate call would read 0 and fail the >0 assertion below.
+    await expect(cards.first()).toBeVisible();
+
     // Capture the unfiltered count first. We don't pin a magic number
     // — the canned set is allowed to grow without breaking the spec —
     // we just need the BEFORE count to compare against AFTER.

@@ -128,7 +128,9 @@ const DESKTOP_SHOTS = [
   {
     path: "/dashboard/apps",
     file: "apps-grid.png",
-    waitFor: "main",
+    // `main` is the layout wrapper and exists before the grid loads
+    // client-side — wait for an actual card.
+    waitFor: ".app-card",
   },
   {
     path: `/apps/${detailApp.id}`,
@@ -178,7 +180,7 @@ const mob = await browser.newContext({
 await shot(await mob.newPage(), {
   path: "/dashboard/apps",
   file: "apps-grid-mobile.png",
-  waitFor: "main",
+  waitFor: ".app-card",
 });
 await mob.close();
 
