@@ -166,10 +166,32 @@ async function settle(page: Page) {
     // run after it. Without this, the net reports five failures for a
     // day boundary and a real regression would hide among them.
     const volatile =
-      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\bjust now\b)|(\bmoments? ago\b)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)|(\b[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4}\b)|(\b\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\b)/i;
-    for (const el of document.querySelectorAll("main *, .wizard *")) {
-      if (el.children.length === 0 && volatile.test(el.textContent ?? "")) {
-        el.textContent = "~FROZEN";
+      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\bjust now\b)|(\bmoments? ago\b)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)|(\b[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4}\b)|(\b\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\b)/gi;
+    // Walk TEXT NODES, not elements. The previous element-based pass
+    // only rewrote childless nodes, so a volatile value sharing a
+    // paragraph with any inline element was skipped — e.g. the policy
+    // banner's "…changed Aug 9, 2026, inside the 90-day window…" sits
+    // beside a <a>, so its date drifted straight past the freezer and
+    // failed the shot a day later. Replacing just the MATCHED substring
+    // (rather than the whole node) also keeps the surrounding copy, and
+    // collapses different-width values like "Aug 9" / "Aug 12" onto one
+    // token so following text doesn't reflow.
+    const roots = document.querySelectorAll("main, .wizard");
+    for (const root of roots) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node = walker.nextNode();
+      while (node) {
+        const text = node.nodeValue ?? "";
+        // No `volatile.test()` guard: the regex is global, and `test()`
+        // advances lastIndex, so guarding would make the NEXT node start
+        // matching mid-string and miss values. `replace` is a no-op when
+        // nothing matches, so calling it unconditionally is both correct
+        // and cheaper than resetting lastIndex by hand.
+        const frozen = text.replace(volatile, "~F");
+        if (frozen !== text) {
+          node.nodeValue = frozen;
+        }
+        node = walker.nextNode();
       }
     }
     document.querySelector(".task-center-badge")?.remove();

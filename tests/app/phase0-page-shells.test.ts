@@ -65,6 +65,7 @@ const CONVERTED_PAGES = [
   "app/help/definitions/page.tsx",
   "app/help/parental-controls/page.tsx",
   "app/dashboard/apps/page.tsx",
+  "app/dashboard/review-recommendations/page.tsx",
 ];
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..");
