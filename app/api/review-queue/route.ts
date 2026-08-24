@@ -6,6 +6,7 @@ import { getDeviceEcidsForApps } from "@/lib/devices";
 import type { AppProfileBadge } from "@/lib/privacy-profile";
 import { getProfileBadgesByApp } from "@/lib/privacy-profile-server";
 import { getAllApps } from "@/lib/scraper";
+import { checkRateLimit, rateLimitKeyForRequest } from "@/lib/security";
 import { listShortlistGroups } from "@/lib/shortlist";
 import type { ShortlistEntry } from "@/lib/shortlist-types";
 import {
@@ -53,6 +54,18 @@ interface ReviewRow {
 }
 
 export async function GET(request: Request) {
+  // Unauthenticated read, rate limited — same posture as /api/shortlist:
+  // this is the most expensive read here (per-row annotations), so a
+  // same-origin loop shouldn't be able to hammer SQLite with it.
+  const rate = checkRateLimit({
+    key: rateLimitKeyForRequest(request, "review-queue.list"),
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (!rate.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const countOnly = new URL(request.url).searchParams.get("count") === "1";
 
   const safe = <T>(fn: () => T, fallback: T, label: string): T => {
@@ -93,9 +106,12 @@ export async function GET(request: Request) {
     "getProfileBadgesByApp"
   );
 
+  // Keyed by sourceApp.id — the id lives on the nested sourceApp, not on
+  // the group. Typed (no cast) so a ShortlistGroup shape change fails tsc
+  // here instead of silently emptying every row's candidates.
   const shortlistsByApp: Record<string, ShortlistEntry[]> = {};
   for (const group of safe(() => listShortlistGroups(), [], "shortlist")) {
-    shortlistsByApp[(group as any).appId] = (group as any).entries ?? [];
+    shortlistsByApp[group.sourceApp.id] = group.entries;
   }
 
   const rows: ReviewRow[] = [];
