@@ -27,13 +27,25 @@ import type { FlagKey, FlagValue } from "./feature-flag-rules";
  */
 
 let cache: Map<string, FlagValue> | null = null;
+let cacheAt = 0;
+/**
+ * How long a fetched bundle stays fresh. The cache is module-level, so
+ * without an expiry it lives for the whole browser session — and now
+ * that the flag-consuming pages are client shells, `router.refresh()`
+ * after a settings change re-renders nothing that re-reads flags. The
+ * TTL bounds that staleness for every mutation path at once (focus
+ * edits, presets, dev menu); the curated toggles additionally clear the
+ * cache explicitly for an instant effect. Within one page load every
+ * consumer still shares a single fetch.
+ */
+const CACHE_TTL_MS = 30_000;
 let inFlight: Promise<Map<string, FlagValue>> | null = null;
 /** True once a load attempt has failed — lets callers distinguish
  *  "resolved off" from "couldn't read" (see RequireFlagGate's failOpen). */
 let loadFailed = false;
 
 function loadFlags(): Promise<Map<string, FlagValue>> {
-  if (cache) {
+  if (cache && Date.now() - cacheAt < CACHE_TTL_MS) {
     return Promise.resolve(cache);
   }
   if (!inFlight) {
@@ -47,6 +59,7 @@ function loadFlags(): Promise<Map<string, FlagValue>> {
           map.set(entry.key, entry.currentValue);
         }
         cache = map;
+        cacheAt = Date.now();
         return map;
       })
       .finally(() => {

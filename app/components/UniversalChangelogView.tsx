@@ -312,22 +312,37 @@ export default function UniversalChangelogView({
   // when its query threw.
   useEffect(() => {
     let live = true;
-    fetch("/api/apps?limit=500")
-      .then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
-      )
-      .then((json: { apps?: AppForFilter[] }) => {
-        if (live && json.apps) {
-          setApps(
-            [...json.apps].sort((a, b) =>
-              a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
-            )
-          );
+    // Page through the whole fleet — 500 is the endpoint's per-page cap,
+    // not the fleet cap, and this app is engineered for 5k–10k apps. A
+    // single-page fetch here silently dropped every app past the first
+    // 500 from the filter. Pages accumulate so a mid-walk failure still
+    // shows everything fetched so far.
+    (async () => {
+      const all: AppForFilter[] = [];
+      try {
+        for (let offset = 0; ; offset += 500) {
+          const res = await fetch(`/api/apps?limit=500&offset=${offset}`);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const json: { apps?: AppForFilter[]; total?: number } =
+            await res.json();
+          all.push(...(json.apps ?? []));
+          if (!json.apps?.length || all.length >= (json.total ?? 0)) {
+            break;
+          }
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.warn("[changelog] apps list load failed:", error);
-      });
+      }
+      if (live && all.length > 0) {
+        setApps(
+          all.sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+          )
+        );
+      }
+    })();
     return () => {
       live = false;
     };

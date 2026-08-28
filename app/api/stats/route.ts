@@ -1,6 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import {
+  checkRateLimit,
+  rateLimitKeyForRequest,
+} from "../../../lib/security";
 import { getStats } from "../../../lib/stats";
 
 /**
@@ -14,7 +18,19 @@ import { getStats } from "../../../lib/stats";
  * the same reason: the page can load the cheap cards immediately and
  * let each chart panel fetch its own data.
  */
-export async function GET() {
+export async function GET(request: Request) {
+  // Unauthenticated read, rate limited — same posture as /api/shortlist
+  // and /api/manual-apps: getStats() is one of the heavier aggregates,
+  // so a same-origin loop shouldn't be able to hammer SQLite with it.
+  const rate = checkRateLimit({
+    key: rateLimitKeyForRequest(request, "stats.read"),
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (!rate.allowed) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
     return NextResponse.json(getStats());
   } catch (error) {

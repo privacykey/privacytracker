@@ -5607,5 +5607,9 @@
     "from_archive_suffix": " · 由网络存档重建",
     "show_details": "查看变化详情",
     "hide_details": "隐藏详情"
+  },
+  "loader_error": {
+    "title": "此页面的数据加载失败。",
+    "retry": "重试"
   }
 }

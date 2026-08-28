@@ -196,6 +196,26 @@ async function benchRoute(path) {
   };
 }
 
+/** The --spawn'd server child, killed (whole process group) on every
+ *  exit path — see main().then/.catch at the bottom. */
+let spawnedChild = null;
+
+function killSpawned() {
+  if (!spawnedChild?.pid) {
+    return;
+  }
+  try {
+    // Negative pid = the detached process group, so next-server dies
+    // with its sh wrapper.
+    process.kill(-spawnedChild.pid, "SIGTERM");
+  } catch {
+    try {
+      spawnedChild.kill("SIGTERM");
+    } catch {}
+  }
+  spawnedChild = null;
+}
+
 const main = async () => {
   const report = {
     label: args.label,
@@ -208,14 +228,16 @@ const main = async () => {
     routes: {},
   };
 
-  let child = null;
   let pid = args.pid ? Number(args.pid) : null;
   if (args.spawn) {
-    child = spawn("sh", ["-c", args.spawn], {
+    // Own process GROUP (detached) so cleanup can signal the whole tree:
+    // `sh -c "cd x && next start"` doesn't forward SIGTERM to its
+    // children, so killing just the sh wrapper leaked the server.
+    spawnedChild = spawn("sh", ["-c", args.spawn], {
       stdio: "ignore",
-      detached: false,
+      detached: true,
     });
-    pid = child.pid;
+    pid = spawnedChild.pid;
     report.cold_start_ms = await waitReady();
   } else {
     await waitReady(10_000);
@@ -249,9 +271,6 @@ const main = async () => {
   if (pid) {
     report.loaded_rss_kb = rssTreeKb(pid);
   }
-  if (child) {
-    child.kill("SIGTERM");
-  }
 
   const fmt = (v) =>
     v == null ? "—" : typeof v === "number" ? v.toFixed(1) : v;
@@ -272,7 +291,16 @@ const main = async () => {
   }
 };
 
-main().catch((e) => {
-  console.error(String(e));
-  process.exit(1);
-});
+main()
+  .then(() => {
+    killSpawned();
+  })
+  .catch((e) => {
+    // The spawned server must die on the error path too — before this,
+    // a failed seed or a 500 on one route left `next start` holding the
+    // port, and the next run either hit EADDRINUSE or silently benched
+    // the stale orphan.
+    killSpawned();
+    console.error(String(e));
+    process.exit(1);
+  });

@@ -80,6 +80,8 @@ const PURE_LIB_MODULES = new Set([
   "i18n-meta",
   "privacy-meta",
   "parental-resources",
+  "onboarding-purpose",
+  "date-format",
 ]);
 
 for (const moduleName of PURE_LIB_MODULES) {
@@ -150,3 +152,84 @@ for (const page of CONVERTED_PAGES) {
     );
   });
 }
+
+// ---------------------------------------------------------------------------
+// Server-child sweep
+// ---------------------------------------------------------------------------
+//
+// The per-page assertions above scan only the page FILE — a page that
+// renders a server component child performing its own DB reads sails
+// straight through them (this actually happened: settings/you rendered
+// YourFocusCard, which imported lib/db, while the ledger vouched the
+// page was a shell). This sweep closes that hole: starting from each
+// converted page, walk every `app/components/*` import transitively;
+// any module on that graph WITHOUT a "use client" directive must import
+// no lib/ module outside PURE_LIB_MODULES. Client components are safe
+// to skip — everything they import is client-bundled by definition, and
+// a server-only import under one fails the build itself.
+
+const componentImportRe =
+  /from\s+"((?:@\/)?(?:\.\.\/)*(?:app\/)?components\/[A-Za-z0-9_/-]+)"/g;
+
+function componentImports(src: string): string[] {
+  const out: string[] = [];
+  for (const [, spec] of src.matchAll(componentImportRe)) {
+    const rel = spec.replace(/^(@\/)?(\.\.\/)*/, "");
+    out.push(rel.startsWith("app/") ? rel : `app/${rel}`);
+  }
+  return out;
+}
+
+function isClientModule(src: string): boolean {
+  const head = src.trimStart();
+  return head.startsWith('"use client"') || head.startsWith("'use client'");
+}
+
+test("phase0 shell: no converted page renders a server child with server-side reads", () => {
+  const visited = new Set<string>();
+  const offences: string[] = [];
+
+  const visit = (modulePath: string, chain: string[]) => {
+    if (visited.has(modulePath)) {
+      return;
+    }
+    visited.add(modulePath);
+    let src: string;
+    try {
+      src = readFileSync(join(REPO_ROOT, `${modulePath}.tsx`), "utf8");
+    } catch {
+      try {
+        src = readFileSync(join(REPO_ROOT, `${modulePath}.ts`), "utf8");
+      } catch {
+        return; // directory import or non-source — nothing to scan
+      }
+    }
+    if (isClientModule(src)) {
+      return;
+    }
+    for (const [, spec] of src.matchAll(/from\s+"([^"]*\blib\/[^"]*)"/g)) {
+      const moduleName = spec.slice(spec.lastIndexOf("lib/") + 4);
+      if (!PURE_LIB_MODULES.has(moduleName)) {
+        offences.push(
+          `${chain.join(" -> ")} -> ${modulePath} imports lib/${moduleName}`
+        );
+      }
+    }
+    for (const child of componentImports(src)) {
+      visit(child, [...chain, modulePath]);
+    }
+  };
+
+  for (const page of CONVERTED_PAGES) {
+    const src = readFileSync(join(REPO_ROOT, page), "utf8");
+    for (const child of componentImports(src)) {
+      visit(child, [page]);
+    }
+  }
+
+  assert.deepEqual(
+    offences,
+    [],
+    `server-component children of converted pages still reach server lib modules:\n  ${offences.join("\n  ")}`
+  );
+});

@@ -13,6 +13,7 @@ import type { Audience } from "@/lib/feature-flag-rules";
 import {
   getActiveFocus,
   getActiveFocusWorkflow,
+  getFocusUpdatedAt,
   setActiveFocus,
 } from "@/lib/feature-flag-storage";
 import {
@@ -49,6 +50,9 @@ export async function GET() {
     aiConfigured: focus.aiConfigured,
     workflow,
     childAgeBand: readValidChildAgeBand(),
+    // Additive: "Focus updated {date}" footnote data for YourFocusCard
+    // (null = never set, footnote suppressed).
+    updatedAt: getFocusUpdatedAt(),
   });
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { notFound, useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import ManualAppDetailView from "./ManualAppDetailView";
 
@@ -23,6 +24,7 @@ import ManualAppDetailView from "./ManualAppDetailView";
 type Payload = Omit<Parameters<typeof ManualAppDetailView>[0], never>;
 
 export default function ManualAppDetailLoader() {
+  const tMeta = useTranslations("page_metadata");
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const [data, setData] = useState<Payload | null>(null);
@@ -48,7 +50,12 @@ export default function ManualAppDetailLoader() {
         }
         if (json) {
           setData(json);
-          document.title = `${json.app.name} — privacytracker`;
+          // Localized ICU pattern — the same key generateMetadata used
+          // before this page became a shell; the hard-coded English
+          // template it briefly had dropped the zh title.
+          document.title = tMeta("manual_app_detail_title", {
+            name: json.app.name,
+          });
         } else {
           setMissing(true);
         }

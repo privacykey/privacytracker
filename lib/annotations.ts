@@ -102,6 +102,23 @@ function generateId(): string {
  * effectively gone from the user's perspective and we sweep them here on
  * read so the data layer stays self-cleaning without a background job.
  */
+/**
+ * Apps with at least one non-deleted annotation. Drives YourFocusCard's
+ * loved_one "{N} apps with notes" subtext — moved here from an inline
+ * db.prepare in the card when it became a client component (Rust-core
+ * Phase 0); served by GET /api/annotations?countApps=1.
+ */
+export function countAppsWithAnnotations(): number {
+  const row = db
+    .prepare(`
+    SELECT COUNT(DISTINCT app_id) AS count
+    FROM annotations
+    WHERE deleted_at IS NULL
+  `)
+    .get() as { count: number } | undefined;
+  return row?.count ?? 0;
+}
+
 export function listAnnotations(appId: string): Annotation[] {
   const cutoff = Date.now() - SOFT_DELETE_WINDOW_MS;
 

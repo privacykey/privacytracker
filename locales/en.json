@@ -5607,5 +5607,9 @@
     "from_archive_suffix": " · reconstructed from the web archive",
     "show_details": "Show what changed",
     "hide_details": "Hide details"
+  },
+  "loader_error": {
+    "title": "This page couldn't load its data.",
+    "retry": "Try again"
   }
 }
