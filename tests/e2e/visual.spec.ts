@@ -166,7 +166,7 @@ async function settle(page: Page) {
     // run after it. Without this, the net reports five failures for a
     // day boundary and a real regression would hide among them.
     const volatile =
-      /(\d+\s*(second|minute|hour|day|s|m|h)s?\s*(ago|from now)?)|(\bjust now\b)|(\bmoments? ago\b)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)|(\b[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4}\b)|(\b\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\b)|(\b[A-Z][a-z]{2}\s+\d{1,2}\b)/gi;
+      /(\d+\s*((second|minute|hour|day)s?|[smh])\b\s*(ago|from now)?)|(\bjust now\b)|(\bmoments? ago\b)|(\d{1,2}:\d{2}(\s*[AP]M)?)|(^\s*\d+(\.\d+)?\s*(B|KB|MB|GB)\s*$)|(\b[A-Z][a-z]{2}\s+\d{1,2},\s*\d{4}\b)|(\b\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\b)|(\b[A-Z][a-z]{2}\s+\d{1,2}\b)/gi;
     // Walk TEXT NODES, not elements. The previous element-based pass
     // only rewrote childless nodes, so a volatile value sharing a
     // paragraph with any inline element was skipped — e.g. the policy
