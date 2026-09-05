@@ -23,6 +23,12 @@ import crypto from "node:crypto";
 import { promises as dns } from "node:dns";
 import db from "./db";
 import { clientIpFromHeaders, isNetworkExposed } from "./deployment-trust";
+import {
+  isMetadataHost,
+  isPrivateIpv4,
+  isPrivateIpv6,
+} from "./network-address";
+import { outboundDispatcher } from "./outbound-dispatcher";
 
 // ─────────────────────────────────────────────
 // URL validation
@@ -69,110 +75,7 @@ const BLOCKED_HOSTNAMES = new Set<string>([
  * single most valuable SSRF target on a cloud host. There is no legitimate
  * reason for the AI base URL (or any user-configured URL) to hit these.
  */
-const METADATA_HOSTNAMES = new Set<string>([
-  "metadata.google.internal",
-  "metadata",
-  "instance-data",
-  "instance-data.ec2.internal",
-]);
-
-function isMetadataHost(host: string): boolean {
-  const h = host.toLowerCase();
-  if (METADATA_HOSTNAMES.has(h)) {
-    return true;
-  }
-  // IPv4 literals: anything in 169.254.0.0/16 counts as metadata-adjacent
-  // (IMDS lives at 169.254.169.254; ECS task metadata at 169.254.170.2).
-  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (v4) {
-    const a = Number(v4[1]);
-    const b = Number(v4[2]);
-    if (a === 169 && b === 254) {
-      return true;
-    }
-  }
-  // IPv6 metadata: AWS uses fd00:ec2::254 and GCP/Azure use fe80::a9fe:a9fe-ish
-  // link-local. Blocking anything in fe80::/10 here is conservative but cheap.
-  if (h.includes(":")) {
-    const stripped = h.replace(/^\[|\]$/g, "");
-    if (stripped.startsWith("fd00:ec2")) {
-      return true;
-    }
-    if (/^fe[89ab]/.test(stripped)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-export function isPrivateIpv4(hostname: string): boolean {
-  // Plain dotted quad check; doesn't cover integer/octal/mixed forms which we
-  // reject up front by requiring strict dotted-quad shape.
-  const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!match) {
-    return false;
-  }
-  const octets = match.slice(1, 5).map(Number);
-  if (octets.some((o) => o < 0 || o > 255)) {
-    return true; // reject malformed
-  }
-
-  const [a, b] = octets;
-  // 0.0.0.0/8, 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16 (link-local incl. 169.254.169.254),
-  // 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10 (CGNAT), 224.0.0.0/4 (multicast)
-  if (a === 0) {
-    return true;
-  }
-  if (a === 10) {
-    return true;
-  }
-  if (a === 127) {
-    return true;
-  }
-  if (a === 169 && b === 254) {
-    return true;
-  }
-  if (a === 172 && b >= 16 && b <= 31) {
-    return true;
-  }
-  if (a === 192 && b === 168) {
-    return true;
-  }
-  if (a === 100 && b >= 64 && b <= 127) {
-    return true;
-  }
-  if (a >= 224) {
-    return true;
-  }
-  return false;
-}
-
-export function isPrivateIpv6(hostname: string): boolean {
-  // Strip brackets Node may leave on URL.hostname for IPv6.
-  const stripped = hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  if (!stripped.includes(":")) {
-    return false;
-  }
-  if (stripped === "::" || stripped === "::1") {
-    return true;
-  }
-  // fc00::/7 (unique-local), fe80::/10 (link-local), ff00::/8 (multicast),
-  // ::ffff:0:0/96 (IPv4-mapped — let isPrivateIpv4 handle the mapped part).
-  if (/^fc|^fd/.test(stripped)) {
-    return true;
-  }
-  if (/^fe[89ab]/.test(stripped)) {
-    return true;
-  }
-  if (/^ff/.test(stripped)) {
-    return true;
-  }
-  if (stripped.startsWith("::ffff:")) {
-    const mapped = stripped.slice("::ffff:".length);
-    return isPrivateIpv4(mapped);
-  }
-  return false;
-}
+export { isPrivateIpv4, isPrivateIpv6 } from "./network-address";
 
 /**
  * Validate a URL is safe to fetch from the server. Rejects non-http(s)
@@ -231,7 +134,15 @@ export function validateExternalUrl(
     };
   }
 
-  const host = parsed.hostname.toLowerCase();
+  if (parsed.username || parsed.password) {
+    return {
+      ok: false,
+      error: "invalid_url",
+      detail: "URL credentials are not supported",
+    };
+  }
+
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, "");
   if (!host) {
     return { ok: false, error: "invalid_url", detail: "URL has no hostname" };
   }
@@ -427,14 +338,7 @@ export interface SafeFetchOptions {
   method?: string;
   /** 'follow' (default) | 'error' | 'manual'. */
   redirect?: RequestRedirect;
-  /**
-   * Strictly verify the hostname doesn't resolve to a private IP.
-   * Defaults to **true** — callers that hit `allowPrivateHosts: true`
-   * targets (Ollama, etc.) get bypassed automatically; callers
-   * targeting a public allowlist (Apple, Wayback) want this on by
-   * default to close the DNS-rebinding window. Opt out by passing
-   * `resolveAndCheck: false` explicitly.
-   */
+  /** Force real DNS checks in tests. Production checks cannot be disabled. */
   resolveAndCheck?: boolean;
   /** Optional caller-controlled abort signal, composed with the timeout. */
   signal?: AbortSignal;
@@ -465,46 +369,23 @@ export async function safeFetch(
 
   const url = validation.url;
 
-  // DNS-rebinding guard. Default-on. For public-only callers we require the
-  // host to resolve to a public address. Callers that opt into private hosts
-  // (Ollama et al) skip *that* check — the whole point of that mode is to
-  // allow private resolutions — but they still get the metadata-resolve
-  // check, because a hostname that rebinds to 169.254.169.254 (IMDS) is the
-  // one private target we never permit regardless of the opt-in. Callers that
-  // want the lookup off entirely pass `resolveAndCheck: false`.
-  const resolveAndCheck = options.resolveAndCheck ?? defaultResolveAndCheck();
-  if (resolveAndCheck) {
-    await assertResolvedHostAllowed(url.hostname, options.allowPrivateHosts);
-  }
-
   const maxBytes = options.maxBytes ?? 5 * 1024 * 1024; // 5 MiB
   const timeoutMs = options.timeoutMs ?? 15_000;
   const maxRedirects = options.maxRedirects ?? 5;
   const redirect: RequestRedirect = options.redirect ?? "manual";
   const signal = withTimeoutSignal(timeoutMs, options.signal);
 
-  // `currentUrl` holds the *validated* URL we're about to fetch — never the
-  // raw caller input. It starts life as `validation.url` (which has already
-  // passed protocol / hostname / metadata / private-IP / allowlist gates in
-  // `validateExternalUrl`, plus the optional DNS-rebinding check via
-  // `hostResolvesToPublic` above). Every 3xx redirect target is re-run
-  // through *both* gates below before being reassigned here, so the loop
-  // invariant is "currentUrl has cleared every SSRF check the caller asked
-  // for". Keeping this typed as a URL object (rather than a string) makes
-  // the validated-not-raw distinction visible at the fetch site to both
-  // human reviewers and static analysers — CodeQL's js/request-forgery flag
-  // on the fetch call here is a known false positive because the analyser
-  // can't trace through `validateExternalUrl`'s branching return shape.
+  // Every hop is validated again by safeFetchStream, including its socket DNS.
   let currentUrl: URL = url;
   let redirectsUsed = 0;
+  let currentHeaders = options.headers;
 
   // We follow redirects manually so we can re-validate every hop's hostname.
   // This defends against an initial allowlisted URL 302-ing to an internal IP.
   while (true) {
-    const res = await fetch(currentUrl, {
-      method: options.method ?? "GET",
-      headers: options.headers,
-      body: options.body,
+    const res = await safeFetchStream(currentUrl.toString(), {
+      ...options,
+      headers: currentHeaders,
       redirect: "manual",
       signal,
     });
@@ -514,6 +395,7 @@ export async function safeFetch(
       if (!location) {
         return readBounded(res, currentUrl.toString(), maxBytes);
       }
+      await res.body?.cancel();
       redirectsUsed += 1;
       if (redirectsUsed > maxRedirects) {
         throw new Error(`safeFetch: too many redirects (${redirectsUsed})`);
@@ -535,41 +417,37 @@ export async function safeFetch(
         );
       }
       const nextValidatedUrl = nextValidation.url;
-      if (resolveAndCheck) {
-        await assertResolvedHostAllowed(
-          nextValidatedUrl.hostname,
-          options.allowPrivateHosts
+      if (nextValidatedUrl.origin !== currentUrl.origin) {
+        if (options.body != null) {
+          throw new Error("Refusing cross-origin redirect with a request body");
+        }
+        currentHeaders = Object.fromEntries(
+          Object.entries(currentHeaders ?? {}).filter(
+            ([key]) =>
+              !["authorization", "cookie", "proxy-authorization"].includes(
+                key.toLowerCase()
+              )
+          )
         );
       }
       currentUrl = nextValidatedUrl;
       continue;
     }
 
+    if (
+      redirect === "error" &&
+      res.status >= 300 &&
+      res.status < 400 &&
+      res.headers.has("location")
+    ) {
+      await res.body?.cancel();
+      throw new Error("Redirect not permitted");
+    }
     return readBounded(res, currentUrl.toString(), maxBytes);
   }
 }
 
-/**
- * Pre-flight SSRF guard for callers that must issue their OWN fetch — e.g.
- * streaming AI inference, where `safeFetch` can't be used because it buffers
- * the whole body. Runs the same gates `safeFetch` does, minus the fetch:
- * the syntactic `validateExternalUrl` check AND (in non-test environments)
- * the resolve-time rebinding check via `assertResolvedHostAllowed`. Returns
- * the validated URL; throws a descriptive Error when the target is disallowed.
- *
- * Await it immediately before the raw fetch so a hostname that resolves to a
- * private/metadata IP is rejected *before* any request leaves the process
- * (and, crucially, before any API key in the headers is transmitted).
- *
- * `allowPrivateHosts` mirrors `safeFetch`: when set, loopback / RFC-1918 are
- * permitted (local Ollama / LAN inference) but a host that *resolves* to a
- * cloud-metadata IP is still rejected.
- *
- * Note: like `safeFetch`, this does not pin the resolved IP, so a narrow
- * TOCTOU window remains between this check and the caller's own DNS lookup.
- * It defeats static-record and slow-rebind attacks; eliminating the window
- * entirely would require connect-to-IP pinning across both code paths.
- */
+/** URL/DNS preflight only. Network callers must use safeFetch or safeFetchStream. */
 export async function assertUrlSafeToFetch(
   rawUrl: string,
   options: {
@@ -589,7 +467,8 @@ export async function assertUrlSafeToFetch(
       `Blocked URL: ${validation.error ?? "invalid_url"} — ${validation.detail ?? rawUrl}`
     );
   }
-  const resolveAndCheck = options.resolveAndCheck ?? defaultResolveAndCheck();
+  const resolveAndCheck =
+    options.resolveAndCheck === true || defaultResolveAndCheck();
   if (resolveAndCheck) {
     await assertResolvedHostAllowed(
       validation.url.hostname,
@@ -597,6 +476,64 @@ export async function assertUrlSafeToFetch(
     );
   }
   return validation.url;
+}
+
+/**
+ * Streaming fetch with the same URL policy and a policy-specific dispatcher.
+ * The socket lookup validates the actual addresses supplied to Node's connector,
+ * so a DNS change after preflight cannot redirect traffic into the LAN/metadata.
+ * Keeps the original hostname for HTTP Host and TLS SNI/certificate validation.
+ * The caller must consume or cancel the response body. Automatic redirects are
+ * forbidden here; safeFetch validates and bounds each redirect itself.
+ */
+export async function safeFetchStream(
+  rawUrl: string,
+  options: SafeFetchOptions = {}
+): Promise<Response> {
+  if (options.redirect === "follow") {
+    throw new Error("Streaming fetch cannot follow redirects");
+  }
+  const signal = withTimeoutSignal(options.timeoutMs ?? 15_000, options.signal);
+  const url = await abortable(
+    assertUrlSafeToFetch(rawUrl, {
+      allowedHosts: options.allowedHosts,
+      allowPrivateHosts: options.allowPrivateHosts,
+      maxLength: options.maxUrlLength,
+      resolveAndCheck: options.resolveAndCheck,
+    }),
+    signal
+  );
+  const checkDns = options.resolveAndCheck === true || defaultResolveAndCheck();
+  const init = {
+    method: options.method ?? "GET",
+    headers: options.headers,
+    body: options.body,
+    redirect: options.redirect ?? "manual",
+    signal,
+    ...(checkDns
+      ? { dispatcher: outboundDispatcher(options.allowPrivateHosts === true) }
+      : {}),
+  };
+  return fetch(url, init);
+}
+
+async function abortable<T>(
+  pending: Promise<T>,
+  signal: AbortSignal
+): Promise<T> {
+  signal.throwIfAborted();
+  let onAbort = () => {};
+  try {
+    return await Promise.race([
+      pending,
+      new Promise<never>((_, reject) => {
+        onAbort = () => reject(signal.reason);
+        signal.addEventListener("abort", onAbort, { once: true });
+      }),
+    ]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }
 
 function withTimeoutSignal(
@@ -615,6 +552,7 @@ async function readBounded(
   // Content-Length fast-path — lets us fail without actually reading a huge body.
   const declared = Number(res.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > maxBytes) {
+    await res.body?.cancel();
     throw new Error(
       `safeFetch: declared content-length ${declared} exceeds cap ${maxBytes}`
     );
@@ -829,21 +767,7 @@ export function _resetLoginBruteForce(): void {
  * - Server-to-server callers (curl, scripts) have no Origin and are only
  *   allowed through when they carry the admin token.
  */
-export function isSameOriginRequest(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (!(origin && host)) {
-    return false;
-  }
-  try {
-    const originUrl = new URL(origin);
-    // Match on host:port equality — http vs https is acceptable because this
-    // runs behind a user-managed proxy.
-    return originUrl.host.toLowerCase() === host.toLowerCase();
-  } catch {
-    return false;
-  }
-}
+export { isSameOriginRequest } from "./deployment-trust";
 
 /**
  * Admin-token gate: the user can set AUDITOR_ADMIN_TOKEN in the environment
@@ -876,59 +800,11 @@ export function adminTokenRequiredForRequest(_request?: Request): boolean {
   return adminTokenConfigured() || isNetworkExposed();
 }
 
-/**
- * Name of the HttpOnly cookie that carries the admin token for browser
- * callers. The corresponding `x-auditor-admin-token` header path remains
- * for scripted callers (curl, the audit-bundle test harness, etc.).
- */
-export const ADMIN_TOKEN_COOKIE = "pt_admin_token";
-
-function readAdminTokenCookie(request: Request): string | null {
-  const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) {
-    return null;
-  }
-  for (const part of cookieHeader.split(";")) {
-    const eq = part.indexOf("=");
-    if (eq < 0) {
-      continue;
-    }
-    const name = part.slice(0, eq).trim();
-    if (name === ADMIN_TOKEN_COOKIE) {
-      return decodeURIComponent(part.slice(eq + 1).trim());
-    }
-  }
-  return null;
-}
-
-function constantTimeMatch(provided: string, expected: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) {
-    return false;
-  }
-  return crypto.timingSafeEqual(a, b);
-}
-
-export function requestHasValidAdminToken(request: Request): boolean {
-  const expected = process.env.AUDITOR_ADMIN_TOKEN;
-  if (!expected) {
-    return false;
-  }
-  // Prefer the cookie path (HttpOnly, set via /api/auth/admin-token/login).
-  // Fall back to the explicit header for scripted callers that don't run
-  // through a cookie jar. Either source has to match the env var via a
-  // constant-time compare.
-  const cookieVal = readAdminTokenCookie(request);
-  if (cookieVal && constantTimeMatch(cookieVal, expected)) {
-    return true;
-  }
-  const provided = request.headers.get("x-auditor-admin-token");
-  if (provided && constantTimeMatch(provided, expected)) {
-    return true;
-  }
-  return false;
-}
+export {
+  ADMIN_TOKEN_COOKIE,
+  requestHasValidAdminHeader,
+  requestHasValidAdminToken,
+} from "./admin-auth";
 
 // ─────────────────────────────────────────────
 // Audit log
@@ -976,66 +852,12 @@ export function requestActorIp(request: Request): string {
 // JSON body size guard
 // ─────────────────────────────────────────────
 
-/**
- * Safely read the request body with a byte cap. Throws with a clear message
- * if the body is too large. Typical cap: 256 KiB — our API takes app-name
- * lists + short URLs; nothing legitimately larger than that.
- */
-export async function readBoundedJson<T = unknown>(
-  request: Request,
-  maxBytes = 256 * 1024
-): Promise<T> {
-  const declared = Number(request.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new Error(`Request body too large (${declared} > ${maxBytes} bytes)`);
-  }
-
-  const buf = Buffer.from(await request.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new Error(
-      `Request body too large (${buf.byteLength} > ${maxBytes} bytes)`
-    );
-  }
-  if (buf.byteLength === 0) {
-    throw new Error("Request body is empty");
-  }
-  try {
-    return JSON.parse(buf.toString("utf8")) as T;
-  } catch {
-    throw new Error("Invalid JSON body");
-  }
-}
-
-/**
- * Variant for endpoints where an empty body is valid. The same byte cap is
- * enforced before parsing, but `''` / whitespace returns the supplied fallback.
- */
-export async function readOptionalBoundedJson<T = unknown>(
-  request: Request,
-  maxBytes: number,
-  fallback: T
-): Promise<T> {
-  const declared = Number(request.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new Error(`Request body too large (${declared} > ${maxBytes} bytes)`);
-  }
-
-  const buf = Buffer.from(await request.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new Error(
-      `Request body too large (${buf.byteLength} > ${maxBytes} bytes)`
-    );
-  }
-  const text = buf.toString("utf8");
-  if (!text.trim()) {
-    return fallback;
-  }
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error("Invalid JSON body");
-  }
-}
+export {
+  readBoundedBody,
+  readBoundedJson,
+  readOptionalBoundedJson,
+  requestBodyErrorResponse,
+} from "./request-body";
 
 // ─────────────────────────────────────────────
 // App Store URL allowlist + policy URL sanitiser

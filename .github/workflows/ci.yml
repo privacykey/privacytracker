@@ -96,6 +96,8 @@ jobs:
         run: pnpm audit --prod
 
       - name: Validate Docker Compose files
+        env:
+          AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
         run: |
           docker compose -f docker-compose.yml config >/dev/null
           docker compose -f deploy/caddy/compose.yaml config >/dev/null
@@ -233,6 +235,9 @@ jobs:
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
 
   container-smoke:
+    # Compose also interpolates required variables during cleanup.
+    env:
+      AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
@@ -245,6 +250,26 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t privacytracker-smoke .
+
+      - name: Scan final runtime image
+        # Export the image so the scanner never needs the Docker socket.
+        run: |
+          mkdir -p "$RUNNER_TEMP/runtime-scan"
+          docker save privacytracker-smoke -o "$RUNNER_TEMP/runtime-scan/image.tar"
+          docker run --rm \
+            -v "$RUNNER_TEMP/runtime-scan:/scan" \
+            ghcr.io/aquasecurity/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --input /scan/image.tar --cache-dir /scan/cache \
+            --scanners vuln --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output /scan/results.json
+
+      - name: Upload runtime vulnerability report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: runtime-vulnerability-report
+          path: ${{ runner.temp }}/runtime-scan/results.json
+          if-no-files-found: ignore
 
       - name: Run Docker container
         run: |
@@ -318,6 +343,8 @@ jobs:
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
   compose-smoke:
+    env:
+      AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
     # Exercises the *documented* `docker compose up --build -d` path that
     # container-smoke (plain `docker run`, no volume) never touches. This is the
     # only leg that would have caught:
@@ -361,6 +388,16 @@ jobs:
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+
+      - name: Assert private data requires authentication inside Docker
+        run: |
+          docker compose exec -T web node --input-type=module -e '
+            const url = "http://127.0.0.1:3000/api/apps";
+            const anonymous = await fetch(url, {headers: {Host: "localhost:3000"}});
+            if (anonymous.status !== 401) throw new Error("Unauthenticated private read allowed");
+            const signedIn = await fetch(url, {headers: {"x-auditor-admin-token": process.env.AUDITOR_ADMIN_TOKEN}});
+            if (signedIn.status !== 200) throw new Error("Authenticated private read failed");
+          '
 
       - name: Stop root compose (named volume)
         if: always()

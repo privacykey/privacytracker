@@ -5632,5 +5632,16 @@
     "from_archive_suffix": " · 由网络存档重建",
     "show_details": "查看变化详情",
     "hide_details": "隐藏详情"
+  },
+  "admin_login": {
+    "title": "登录",
+    "description": "输入访问令牌以打开您的私人工作区。",
+    "token_label": "访问令牌",
+    "sign_in": "登录",
+    "signing_in": "正在登录…",
+    "invalid": "无法登录。请检查访问令牌后重试。",
+    "too_many": "尝试次数过多。请等待一分钟后重试。",
+    "unavailable": "无法连接服务器。请重新加载此页面后重试。",
+    "not_configured": "访问已锁定。请让服务器管理员配置访问令牌。"
   }
 }

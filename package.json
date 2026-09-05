@@ -9,13 +9,13 @@
     "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
     "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
     "build-storybook": "storybook build",
-    "dev": "next dev",
+    "dev": "node scripts/start-next.mjs dev",
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
     "lint:i18n": "node scripts/check-i18n-parity.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "smoke:release": "node --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/release-smoke.test.ts",
-    "start": "next start",
+    "start": "node scripts/start-next.mjs start",
     "storybook": "storybook dev -p 6006",
     "tauri": "tauri",
     "tauri:build": "tauri build",
@@ -44,7 +44,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "server-only": "^0.0.1",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "undici": "^7.29.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

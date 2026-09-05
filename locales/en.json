@@ -5632,5 +5632,16 @@
     "from_archive_suffix": " · reconstructed from the web archive",
     "show_details": "Show what changed",
     "hide_details": "Hide details"
+  },
+  "admin_login": {
+    "title": "Sign in",
+    "description": "Enter your access token to open your private workspace.",
+    "token_label": "Access token",
+    "sign_in": "Sign in",
+    "signing_in": "Signing in…",
+    "invalid": "Unable to sign in. Check your access token and try again.",
+    "too_many": "Too many attempts. Please wait a minute before trying again.",
+    "unavailable": "Unable to reach the server. Reload this page to try again.",
+    "not_configured": "Access is locked. Ask the server administrator to configure an access token."
   }
 }

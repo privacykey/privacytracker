@@ -134,3 +134,5 @@ process with weak points marked.
 ## Licence
 
 Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Docker installations now require an access token, including with loopback port publishing. See the [secure deployment and upgrade guide](docs/SECURE_DEPLOYMENT.md) before starting or upgrading.

@@ -60,6 +60,22 @@ export default async function RootLayout({
   // getTranslations() directly.
   const locale = await getLocale();
   const messages = await getMessages();
+  // The proxy overwrites this header; anonymous login must not render the
+  // private dashboard providers or serialize their state into the page.
+  if ((await headers()).get("x-privacytracker-login") === "1") {
+    return (
+      <html lang={locale}>
+        <body>
+          <NextIntlClientProvider
+            locale={locale}
+            messages={{ admin_login: messages.admin_login }}
+          >
+            {children}
+          </NextIntlClientProvider>
+        </body>
+      </html>
+    );
+  }
   const tFooter = await getTranslations("footer");
   const tNojs = await getTranslations("nojs");
   const tRegions = await getTranslations("layout_regions");

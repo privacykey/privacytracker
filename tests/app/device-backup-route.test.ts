@@ -3,7 +3,10 @@ import { realpathSync, statSync, utimesSync } from "node:fs";
 import test from "node:test";
 import { NextRequest } from "next/server";
 import { POST as recordBackupRoute } from "../../app/api/device-actions/backup/route";
-import { GET as getUninstallGate } from "../../app/api/device-actions/uninstall/route";
+import {
+  GET as getUninstallGate,
+  POST as recordUninstallRoute,
+} from "../../app/api/device-actions/uninstall/route";
 import { setActiveFocus, setOverride } from "../../lib/feature-flag-storage";
 import { resetTestDb } from "../helpers/test-db";
 import { createVerifiedTestBackup } from "../helpers/test-device-backup";
@@ -19,6 +22,21 @@ function setSelfFocus(): void {
     accessibility: false,
   });
 }
+
+test("device action routes preserve upload-limit responses", async () => {
+  resetTestDb();
+  setSelfFocus();
+  for (const handler of [recordBackupRoute, recordUninstallRoute]) {
+    const response = await handler(
+      new NextRequest("http://127.0.0.1/api/device-actions/test", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ecid: ECID, path: "x".repeat(8 * 1024) }),
+      })
+    );
+    assert.equal(response.status, 413);
+  }
+});
 
 test("backup route verifies the artifact and owns the completion time", async () => {
   resetTestDb();

@@ -1,3 +1,4 @@
+import { readBoundedBody, requestBodyErrorResponse } from "@/lib/request-body";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
@@ -24,6 +25,11 @@ export async function POST(request: Request) {
     const preview = previewRestore(payload);
     return NextResponse.json(preview);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     if (error instanceof BackupFormatError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
@@ -40,16 +46,7 @@ async function readJsonBody(
   request: Request,
   maxBytes: number
 ): Promise<unknown> {
-  const declared = Number(request.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new Error(`Backup too large (${declared} > ${maxBytes} bytes).`);
-  }
-  const buf = Buffer.from(await request.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new Error(
-      `Backup too large (${buf.byteLength} > ${maxBytes} bytes).`
-    );
-  }
+  const buf = await readBoundedBody(request, maxBytes);
   if (buf.byteLength === 0) {
     throw new Error("Empty upload.");
   }

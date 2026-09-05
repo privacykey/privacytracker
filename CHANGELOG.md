@@ -57,6 +57,23 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Outbound requests now validate the DNS addresses used by the actual connection,
+  including streaming AI calls and redirects. IPv4-mapped IPv6 can no longer
+  bypass private-network or metadata checks. Local AI endpoints remain supported.
+
+- Docker and network deployments now require an access token for private pages
+  and all private API reads as well as writes. A sign-in page provides access;
+  missing configuration stays locked. Local launchers explicitly bind loopback.
+  Cookie-authenticated mutations also require the full matching browser origin.
+- JSON and file-upload limits now apply while reading the request, with a
+  deadline and early cancellation. Oversized uploads return 413 and timed-out
+  uploads return 408; backup and audit-bundle imports use the same bounded reader.
+
+- CSV exports prefix formula-looking cells for spreadsheet viewing, including
+  imported app and developer names. JSON exports retain the original values.
+
+- CSV exports now keep column headings readable (`App Name`, `Last Synced`,
+  `Privacy Type`) instead of replacing their spaces with `%20`.
 - The activity log's type filter works for every event type again. It
   validated the requested type against a list that had fallen eight
   entries behind — so filtering by newer events (privacy-profile preset
@@ -103,6 +120,7 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- Refresh the Docker and desktop Node runtime to 24.20.0, require patched Alpine TLS libraries, remove unused package managers from the runtime image, and apply compatible JavaScript/Rust dependency patches. Scan the final image in CI and track desktop runtime/scanner pins with Renovate.
 - Documented in the README that a configured AI provider key is stored in
   plaintext in the local database. Moving desktop keys into the OS keychain is
   planned.
