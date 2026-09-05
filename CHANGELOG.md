@@ -125,6 +125,8 @@ Going forward, changes are recorded here as they land.
   plaintext in the local database. Moving desktop keys into the OS keychain is
   planned.
 
+- Verify desktop backup artifacts before recording them and before uninstall pre-flight. Match native discovery to the selected device, use file-based freshness, reject invalid timestamps and symlinks, show the server's backup state throughout confirmation and retry flows, and stop Configurator process groups on timeout or excessive output.
+
 ## [0.1.2] — 2026-06-12
 
 ### Added
