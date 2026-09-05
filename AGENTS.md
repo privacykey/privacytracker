@@ -342,6 +342,16 @@ Both pages are server components sharing the `.legal-layout` / `.legal-sidebar` 
 
 ## Translations
 
+Translation regression checks have three distinct scopes: `pnpm lint:i18n`
+checks locale-key parity, `tests/app/i18n-attr-literals.test.ts` checks
+assistive attributes, and `tests/app/i18n-text-literals.test.ts` ratchets visible
+JSX copy against its checked-in baseline. The visible-copy scanner lives in
+`tests/helpers/i18n-text-scanner.ts` and uses Babel's TypeScript/JSX parser,
+independently of the TypeScript compiler API. Keep scanner behavior covered by
+`tests/app/i18n-text-scanner.test.ts`; parser failures must fail the check.
+Do not regenerate the baseline merely to accommodate parser changes — compare
+findings, including duplicate counts and source snippets, and review differences.
+
 Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://docs.privacytracker.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
 
 ICU placeholders (`{count, plural, one {# app} other {# apps}}`, `{name}`, etc.) are validated by Crowdin on upload and by `next-intl` at render. Don't strip braces or rename placeholders without coordinating across both bundles. Brand names (privacytracker, App Store, Apple Configurator, ToS;DR, PrivacySpy) stay in English in every locale; they're proper nouns. Module-level English fallback maps in components (e.g. `RISK_LABEL` in HomeView, `CATEGORY_META` in lib/privacy-meta) are intentionally kept after the JSX swapped to translator lookups — they document what the keys mean for future contributors and serve as the safety net when a translator key is missing.
