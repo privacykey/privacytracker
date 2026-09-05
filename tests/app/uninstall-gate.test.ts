@@ -28,6 +28,7 @@ import {
 import { setActiveFocus, setOverride } from "../../lib/feature-flag-storage";
 import { setSetting } from "../../lib/scheduler";
 import { resetTestDb, seedTrackedApp } from "../helpers/test-db";
+import { createVerifiedTestBackup } from "../helpers/test-device-backup";
 
 const ECID = "ABCDEF1234567890";
 
@@ -92,7 +93,7 @@ test("a fresh backup lets the gate pass without acknowledgeNoBackup", () => {
     `cfgutil_last_backup_${ECID}`,
     JSON.stringify({
       finishedAt: Date.now() - 60_000, // 1 minute ago
-      path: "/tmp/backup",
+      path: createVerifiedTestBackup("fresh"),
     })
   );
   const gate = checkUninstallGate(ECID);
@@ -105,7 +106,7 @@ test("a stale backup (>24h) is denied unless acknowledgeNoBackup overrides", () 
     `cfgutil_last_backup_${ECID}`,
     JSON.stringify({
       finishedAt: Date.now() - 48 * 60 * 60 * 1000, // 2 days ago
-      path: "/tmp/backup",
+      path: createVerifiedTestBackup("stale"),
     })
   );
   const deniedGate = checkUninstallGate(ECID);
@@ -116,6 +117,19 @@ test("a stale backup (>24h) is denied unless acknowledgeNoBackup overrides", () 
 
   const overrideGate = checkUninstallGate(ECID, { acknowledgeNoBackup: true });
   assert.equal(overrideGate.allowed, true);
+});
+
+test("a missing on-disk backup is denied even when its stamp is fresh", () => {
+  beforeEach();
+  setSetting(
+    `cfgutil_last_backup_${ECID}`,
+    JSON.stringify({
+      finishedAt: Date.now() - 60_000,
+      path: "/tmp/privacytracker-backup-that-does-not-exist",
+    })
+  );
+  const gate = checkUninstallGate(ECID);
+  assert.deepEqual(gate, { allowed: false, reason: "backup_unverified" });
 });
 
 // ─── ECID normalisation ───────────────────────────────────────────
@@ -130,7 +144,7 @@ test("recordBackup + gate accept cfgutil's 0x-prefixed ECIDs", () => {
   beforeEach();
   recordBackup({
     ecid: RAW_CFGUTIL_ECID,
-    path: "/tmp/backup",
+    path: createVerifiedTestBackup("raw-ecid"),
     finishedAt: Date.now() - 60_000,
     deviceName: "Test iPhone",
   });
@@ -142,7 +156,7 @@ test("a stamp reads back regardless of 0x prefix or hex case", () => {
   beforeEach();
   recordBackup({
     ecid: "0x9118908bb6027",
-    path: "/tmp/backup",
+    path: createVerifiedTestBackup("case-ecid"),
     finishedAt: Date.now() - 60_000,
     deviceName: null,
   });
@@ -167,7 +181,7 @@ test("recordBackup throws on a malformed ECID", () => {
   assert.throws(() =>
     recordBackup({
       ecid: "not-an-ecid",
-      path: "/tmp/backup",
+      path: createVerifiedTestBackup("invalid-ecid"),
       finishedAt: Date.now(),
       deviceName: null,
     })
@@ -208,4 +222,26 @@ test("getDeviceEcidsForApps returns an empty map for an empty input", () => {
   resetTestDb();
   const map = getDeviceEcidsForApps([]);
   assert.equal(map.size, 0);
+});
+
+test("future, non-finite and negative backup stamps fail closed", () => {
+  beforeEach();
+  const path = createVerifiedTestBackup("invalid-time");
+  for (const finishedAt of [
+    Date.now() + 86400000,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    -1,
+    0,
+  ]) {
+    setSetting(
+      `cfgutil_last_backup_${ECID}`,
+      JSON.stringify({ path, finishedAt })
+    );
+    assert.equal(getLastBackup(ECID), null);
+    assert.equal(checkUninstallGate(ECID).allowed, false);
+    assert.throws(() =>
+      recordBackup({ ecid: ECID, path, finishedAt, deviceName: null })
+    );
+  }
 });

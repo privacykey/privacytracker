@@ -7648,6 +7648,50 @@ body.review-rec-print-active .review-rec-print a {
   border-radius: 6px;
 }
 
+.review-rec-backup-explainer,
+.review-rec-act-explainer {
+  padding: 14px 16px;
+  margin: 14px 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--blue) 6%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--blue) 24%, var(--border));
+  border-radius: 10px;
+}
+.review-rec-backup-explainer strong,
+.review-rec-act-explainer strong {
+  color: var(--text-1);
+}
+.review-rec-backup-explainer ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+.review-rec-backup-explainer li {
+  margin: 4px 0;
+}
+.review-rec-backup-explainer p,
+.review-rec-act-explainer p {
+  margin: 8px 0 0;
+}
+
+.review-rec-backup-progress {
+  padding: 12px 14px;
+  margin: 12px 0;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--blue) 32%, var(--border));
+  border-radius: 10px;
+}
+.review-rec-backup-progress strong {
+  color: var(--text-1);
+}
+.review-rec-backup-progress p {
+  margin: 4px 0 0;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
 .review-rec-device-list {
   display: flex;
   flex-direction: column;

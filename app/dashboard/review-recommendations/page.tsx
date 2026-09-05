@@ -28,20 +28,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * /dashboard/review-recommendations — three-step wizard:
- *   1. Review — set/refine per-app verdict; imported recommendations from
- *      audit bundles render as advisory pills.
- *   2. Backup — connect device, run cfgutil backup. Uninstall stays
- *      disabled until a backup landed within the freshness window.
- *   3. Act — for apps marked "uninstall", walk through them with
- *      type-DELETE confirmation.
+ * /dashboard/review-recommendations — universal Review / Compare / Save
+ * wizard, with an optional desktop-only Backup / Act extension.
  *
- * Server gates (render an info panel instead of 404):
- *   - audience must be 'self'.
- *   - `flag.devopts.cfgutil_uninstall` must be 'on'.
+ * The extension requires audience=self, the cfgutil feature flag, and the
+ * Tauri desktop runtime. It records a backup only after both native discovery
+ * and server-side Manifest.db verification; Act then re-checks that durable
+ * stamp immediately before the first removal.
  *
- * Tauri-only checks live in the wizard itself so users on the web build
- * can still review verdicts; only the Backup/Act steps are blocked there.
+ * Web users and people outside the extension gates still get the complete
+ * non-destructive recommendation flow without disabled desktop controls.
  */
 export default function ReviewRecommendationsPage() {
   const focus = getActiveFocus();
@@ -169,12 +165,18 @@ export default function ReviewRecommendationsPage() {
     console.warn("[review] getDeviceEcidsForApps failed:", e);
   }
 
+  // Format once on the server and pass the finished label through. Calling
+  // toLocaleString during both SSR and hydration can use different locale
+  // defaults and force React to rebuild the entire wizard on first load.
+  const generatedAtLabel = new Date().toLocaleString();
+
   return (
     <>
       <Nav appCount={apps.length} />
       <ReviewRecommendationsView
         audience={focus.audience}
         flagOn={flagOn}
+        generatedAtLabel={generatedAtLabel}
         rows={rows}
         sourceDeviceEcids={sourceDeviceEcids}
       />
