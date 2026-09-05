@@ -12,10 +12,6 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
-### Security
-
-- Refresh the Docker and desktop Node runtime to 24.20.0, require patched Alpine TLS libraries, remove unused package managers from the runtime image, and apply compatible JavaScript/Rust dependency patches. Scan the final image in CI and track desktop runtime/scanner pins with Renovate.
-
 ### Added
 
 - Canned sample data now populates every app-detail surface: each demo app
@@ -107,6 +103,7 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- Refresh the Docker and desktop Node runtime to 24.20.0, require patched Alpine TLS libraries, remove unused package managers from the runtime image, and apply compatible JavaScript/Rust dependency patches. Scan the final image in CI and track desktop runtime/scanner pins with Renovate.
 - Documented in the README that a configured AI provider key is stored in
   plaintext in the local database. Moving desktop keys into the OS keychain is
   planned.
