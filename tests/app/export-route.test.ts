@@ -91,3 +91,41 @@ test("JSON export keeps its structured payload", async () => {
   assert.equal(body.apps[0].name, 'Maps, "Local"');
   assert.deepEqual(body.apps[0].privacyTypes, []);
 });
+
+for (const value of [
+  "=1+2",
+  "+1",
+  "-1",
+  "@SUM(1)",
+  "＝1+2",
+  "＋1",
+  "－1",
+  "＠SUM(1)",
+  " \t=1+2",
+  "\u0000=1+2",
+  "\r=1+2",
+  "\n=1+2",
+  "\ttext",
+  '=HYPERLINK("https://example.invalid/","label")',
+]) {
+  test(`CSV treats formula-looking values as text: ${JSON.stringify(value)}`, async () => {
+    seedTrackedApp({ id: "1000", name: value, developer: value });
+    seedPrivacyCategory({
+      appId: "1000",
+      typeIdentifier: "DATA_USED_TO_TRACK_YOU",
+      typeTitle: value,
+      categoryIdentifier: "LOCATION",
+      categoryTitle: value,
+    });
+    db.prepare("UPDATE apps SET url = ? WHERE id = ?").run(value, "1000");
+    const response = await getExport("?format=csv");
+    const csv = await response.text();
+    const quoted = `"\t${value.replace(/"/g, '""')}"`;
+    assert.equal(csv.split(quoted).length - 1, 5);
+    assert.ok(csv.startsWith(`${CSV_HEADER}\n`));
+    const json = await (await getExport("?format=json")).json();
+    assert.equal(json.apps[0].name, value);
+    assert.equal(json.apps[0].developer, value);
+    assert.equal(json.apps[0].url, value);
+  });
+}

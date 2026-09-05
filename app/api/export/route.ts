@@ -22,6 +22,20 @@ function getExportRows() {
     .all() as any[];
 }
 
+function needsTextPrefix(text: string): boolean {
+  if (/^[\t\r\n]/.test(text)) {
+    return true;
+  }
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    if (!character.trim() || code < 32 || code === 127) {
+      continue;
+    }
+    return "=+-@＝＋－＠".includes(character);
+  }
+  return false;
+}
+
 function toCsv(rows: any[]): string {
   const headers = [
     "App Name",
@@ -31,7 +45,14 @@ function toCsv(rows: any[]): string {
     "Privacy Type",
     "Category",
   ];
-  const escapeField = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const escapeField = (value: unknown) => {
+    const text = String(value ?? "");
+    // CSV is intended for spreadsheet viewing. Keep formula-looking cells as
+    // text with a tab inside the quoted field (OWASP CSV Injection guidance).
+    // Structured JSON exports retain the original values for machine imports.
+    const safe = needsTextPrefix(text) ? `\t${text}` : text;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
   const fmtDate = (ts: number) =>
     ts ? new Date(ts).toISOString().split("T")[0] : "";
 

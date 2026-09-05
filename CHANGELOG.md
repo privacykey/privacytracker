@@ -57,6 +57,9 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- CSV exports prefix formula-looking cells for spreadsheet viewing, including
+  imported app and developer names. JSON exports retain the original values.
+
 - CSV exports now keep column headings readable (`App Name`, `Last Synced`,
   `Privacy Type`) instead of replacing their spaces with `%20`.
 - The activity log's type filter works for every event type again. It
