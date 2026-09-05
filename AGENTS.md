@@ -17,6 +17,13 @@ pnpm test:e2e          # Playwright browser suite
 pnpm lint:i18n         # check locales/*.json key parity against en.json
 ```
 
+TypeScript 7 uses a native compiler and no longer exposes the JavaScript
+compiler API. `next.config.js` enables `experimental.useTypeScriptCli` so
+Next.js builds (including Storybook and the desktop standalone build) use
+the installed compiler CLI. Keep this enabled and keep build-time type
+checking on. Source-analysis tools should use a separate parser, as the
+translation scanner does, instead of importing the `typescript` API.
+
 A `justfile` wraps these plus the workflows that are otherwise multi-step
 or easy to get wrong — `just tauri-dev`, `just docker`, `just visual`,
 `just test-all`. Run `just --list` for the set; `just` is optional, every
