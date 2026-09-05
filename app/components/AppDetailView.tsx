@@ -193,8 +193,18 @@ export default function AppDetailView({
   trackAccessibility = true,
   childAgeBand = null,
   detailFlags,
+  onRefresh,
 }: {
   app: App;
+  /**
+   * Re-fetch the page's data after a mutation (re-sync, review action,
+   * policy regenerate). The client shell that now renders this page
+   * passes its refetch here; without it `router.refresh()` is the
+   * fallback, which only re-runs SERVER components — i.e. nothing, once
+   * the page is a shell — so the four call sites below would silently
+   * stop updating the timeline.
+   */
+  onRefresh?: () => void;
   changelog: ChangelogRow[];
   unacknowledged: UnacknowledgedChanges;
   aiProvider: string;
@@ -391,9 +401,13 @@ export default function AppDetailView({
     };
   }, [app.id]);
   const taskCenter = useTaskCenter();
-  // `router.refresh()` re-runs the parent server component so a freshly-recorded
-  // review action shows up in the Change History tab without a full page reload.
+  // Re-read the page's data so a freshly-recorded review action / sync /
+  // policy run shows up in the Change History tab without a full reload.
+  // `onRefresh` is the loader's refetch (Rust-core Phase 0); the
+  // `router.refresh()` fallback only re-runs server components and is
+  // kept for any remaining server-rendered mount.
   const router = useRouter();
+  const refresh = onRefresh ?? (() => router.refresh());
 
   // i18n translation handles for the AppDetailView surfaces. Captured at
   // the top of the component so all the inner JSX blocks below can use
@@ -717,7 +731,7 @@ export default function AppDetailView({
       // expanded accordions, scroll position). The previous
       // `window.location.reload()` was jarring because it always reset the
       // view to the 'privacy' default tab.
-      setTimeout(() => router.refresh(), 1500);
+      setTimeout(() => refresh(), 1500);
     } catch (err) {
       if ((err as Error)?.name === "AbortError") {
         showToast(tDetail("toasts.sync_cancelled"));
@@ -1246,7 +1260,7 @@ export default function AppDetailView({
                 snoozedUntil: 0,
               })
             }
-            onRefreshHistory={() => router.refresh()}
+            onRefreshHistory={refresh}
             onShowToast={showToast}
             onSnoozed={(until) =>
               setReviewState((prev) => ({ ...prev, snoozedUntil: until }))
@@ -1538,6 +1552,7 @@ export default function AppDetailView({
               previewToggle: f.policyPreviewToggle,
             }}
             formatDate={formatDate}
+            onRefresh={refresh}
             onViewDiff={() => setTab("changelog")}
             policyDiffAlertDays={policyDiffAlertDays ?? 90}
             recentPolicyChange={recentPolicyChange ?? null}

@@ -10,10 +10,10 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import {
-  countAppsWithAnnotations,
   type AnnotationSource,
   type AnnotationTag,
   type AnnotationVisibility,
+  countAppsWithAnnotations,
   createAnnotation,
   listAnnotations,
 } from "@/lib/annotations";

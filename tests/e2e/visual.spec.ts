@@ -227,6 +227,14 @@ function shotOptions(page: Page) {
       page.locator(".task-center"),
       page.locator(".task-list-card"),
       page.locator(".task-list-icon-wrap"),
+      // The change-history chart is ECharts on a CANVAS: its week-bucket
+      // axis labels ("Jun 1", "Jun 8", …) are painted pixels, not text
+      // nodes, so settle()'s freezer can never reach them — and the
+      // buckets are relative to now, so the labels move every week. The
+      // earlier no-year date pattern only "fixed" this because both runs
+      // fell on the same day. Mask the chart; its bars and legend are
+      // covered by the app-detail e2e spec, not by pixels.
+      page.locator(".app-change-timeline-chart"),
     ],
   };
 }

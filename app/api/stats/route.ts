@@ -1,10 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import {
-  checkRateLimit,
-  rateLimitKeyForRequest,
-} from "../../../lib/security";
+import { checkRateLimit, rateLimitKeyForRequest } from "../../../lib/security";
 import { getStats } from "../../../lib/stats";
 
 /**
