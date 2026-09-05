@@ -19,7 +19,7 @@
  *   is trivial string work, so there is no cache — which means tests can mutate
  *   `process.env` and see the effect immediately with no reset hook.
  *
- * Env vars (all optional; the default posture is loopback-only):
+ * Env vars (unknown binds fail closed; the launcher binds loopback explicitly):
  * - PRIVACYTRACKER_ALLOWED_HOSTS  — comma list, APPENDED to the always-allowed
  *   loopback set. A non-loopback entry also flips the instance to
  *   "network-exposed" (so the admin token becomes mandatory).
@@ -27,11 +27,9 @@
  *   cannot verify the socket peer without a custom server, so this is an
  *   explicit operator assertion that a trusted reverse proxy sits in front.
  * - PRIVACYTRACKER_NETWORK_EXPOSED — boolean. Force the token-mandatory posture.
- * - PRIVACYTRACKER_BIND_HOST      — optional explicit bind interface. A specific
- *   non-loopback IP ⇒ network-exposed. (We deliberately do NOT trust HOSTNAME
- *   as a bind signal unless it parses as an IP, because Docker sets HOSTNAME to
- *   the container id — a random hostname that must not be mistaken for a bind
- *   address.)
+ * - PRIVACYTRACKER_BIND_HOST      — the actual bind interface, supplied by the
+ *   launcher. Anything except verified loopback requires authentication.
+
  */
 
 export type BindClassification =
@@ -109,15 +107,13 @@ function isLoopbackNormalized(h: string): boolean {
     h === "localhost" ||
     h.endsWith(".localhost") ||
     h === "::1" ||
-    h === "0.0.0.0" ||
-    h === "::" ||
     /^127(?:\.\d{1,3}){3}$/.test(h)
   );
 }
 
 /**
  * Canonical loopback classification. Treats all of 127.0.0.0/8, ::1, the
- * unspecified addresses 0.0.0.0 / ::, localhost and *.localhost as loopback.
+ * localhost and *.localhost as loopback. Unspecified addresses are not local.
  * (Fixes the old diagnostics check that only matched the literal "127.0.0.1".)
  */
 export function isLoopbackHost(raw: string | null | undefined): boolean {
@@ -235,15 +231,8 @@ function bindHostRaw(): string | null {
   if (explicit) {
     return explicit;
   }
-  // HOSTNAME is the *container id* under Docker (not a bind address), so only
-  // honour it when it parses as an IP / known bind token — never a hostname.
-  const hn = process.env.HOSTNAME?.trim();
-  if (hn) {
-    const n = normalizeHost(hn);
-    if (n && (ipLiteralFamily(n) || isLoopbackNormalized(n))) {
-      return hn;
-    }
-  }
+  // HOSTNAME does not prove where Next listens (Docker sets it automatically).
+
   return null;
 }
 
@@ -273,10 +262,9 @@ function allowlistHasNonLoopback(): boolean {
 /**
  * Is this instance declared reachable beyond loopback? True when the operator
  * sets PRIVACYTRACKER_NETWORK_EXPOSED, lists a non-loopback host in the
- * allowlist, or binds to a specific non-loopback IP. A wildcard (0.0.0.0/::)
- * or unknown bind is deliberately NOT treated as exposed — inside Docker we
- * cannot observe the host-side port map, so we fail to the safe default and
- * rely on the startup warning + the Host allowlist to surface real exposure.
+ * allowlist, or binds anywhere except verified loopback. Docker's host-side
+ * port mapping is not observable here, so wildcard and unknown binds require
+ * authentication too.
  */
 export function isNetworkExposed(): boolean {
   if (envFlag("PRIVACYTRACKER_NETWORK_EXPOSED")) {
@@ -285,7 +273,48 @@ export function isNetworkExposed(): boolean {
   if (allowlistHasNonLoopback()) {
     return true;
   }
-  return bindClassification() === "specific";
+  return bindClassification() !== "loopback";
+}
+
+/** Full browser origin, honouring forwarding headers only by operator opt-in. */
+export function requestOrigin(request: Request): string | null {
+  const host = effectiveHostFromHeaders(request.headers);
+  if (!host) {
+    return null;
+  }
+  try {
+    let protocol = new URL(request.url).protocol;
+    if (trustProxy()) {
+      const forwarded = firstHeaderValue(request.headers, "x-forwarded-proto");
+      if (forwarded) {
+        protocol = `${forwarded}:`;
+      }
+    }
+    if (protocol !== "http:" && protocol !== "https:") {
+      return null;
+    }
+    const url = new URL(`${protocol}//${host}`);
+    if (url.username || url.password || url.pathname !== "/") {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+export function isSameOriginRequest(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  const expected = requestOrigin(request);
+  if (!(origin && expected)) {
+    return false;
+  }
+  try {
+    const parsed = new URL(origin);
+    return parsed.origin === expected && origin === parsed.origin;
+  } catch {
+    return false;
+  }
 }
 
 /**

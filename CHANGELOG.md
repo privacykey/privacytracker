@@ -61,6 +61,16 @@ Going forward, changes are recorded here as they land.
   including streaming AI calls and redirects. IPv4-mapped IPv6 can no longer
   bypass private-network or metadata checks. Local AI endpoints remain supported.
 
+- Docker and network deployments now require an access token for private pages
+  and all private API reads as well as writes. A sign-in page provides access;
+  missing configuration stays locked. Local launchers explicitly bind loopback.
+  Cookie-authenticated mutations also require the full matching browser origin.
+
+- CSV exports prefix formula-looking cells for spreadsheet viewing, including
+  imported app and developer names. JSON exports retain the original values.
+
+- CSV exports now keep column headings readable (`App Name`, `Last Synced`,
+  `Privacy Type`) instead of replacing their spaces with `%20`.
 - The activity log's type filter works for every event type again. It
   validated the requested type against a list that had fallen eight
   entries behind — so filtering by newer events (privacy-profile preset
