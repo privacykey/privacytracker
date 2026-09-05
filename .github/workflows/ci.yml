@@ -251,6 +251,26 @@ jobs:
       - name: Build Docker image
         run: docker build -t privacytracker-smoke .
 
+      - name: Scan final runtime image
+        # Export the image so the scanner never needs the Docker socket.
+        run: |
+          mkdir -p "$RUNNER_TEMP/runtime-scan"
+          docker save privacytracker-smoke -o "$RUNNER_TEMP/runtime-scan/image.tar"
+          docker run --rm \
+            -v "$RUNNER_TEMP/runtime-scan:/scan" \
+            ghcr.io/aquasecurity/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --input /scan/image.tar --cache-dir /scan/cache \
+            --scanners vuln --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output /scan/results.json
+
+      - name: Upload runtime vulnerability report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: runtime-vulnerability-report
+          path: ${{ runner.temp }}/runtime-scan/results.json
+          if-no-files-found: ignore
+
       - name: Run Docker container
         run: |
           docker run -d --rm \

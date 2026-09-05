@@ -44,7 +44,7 @@ env:
   # Node 24 LTS ("Krypton"), active-LTS channel through Apr 2028.
   # Must match the sidecar Node version packaged into src-tauri/binaries/
   # so better-sqlite3's native ABI lines up — see comments further down.
-  NODE_VERSION: '24.15.0'
+  NODE_VERSION: '24.20.0'
 
 permissions:
   # Needed so tauri-action can upload artifacts to the draft release.
