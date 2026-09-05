@@ -29,6 +29,14 @@ export default function ReviewQueueLoader() {
   const [data, setData] = useState<{
     appCount: number;
     audience: Audience;
+    /**
+     * "Generated <date>" label for the printable checklist. The server
+     * page formatted this once per request so SSR and hydration couldn't
+     * disagree on locale defaults and force a wizard rebuild; the same
+     * property holds here by formatting it once, when the data lands,
+     * and never on re-render.
+     */
+    generatedAtLabel: string;
     rows: Parameters<typeof ReviewRecommendationsView>[0]["rows"];
     sourceDeviceEcids: Record<string, string[]>;
   } | null>(null);
@@ -57,6 +65,7 @@ export default function ReviewQueueLoader() {
         sourceDeviceEcids: queue.sourceDeviceEcids ?? {},
         appCount: queue.total,
         audience: (focus?.audience ?? "self") as Audience,
+        generatedAtLabel: new Date().toLocaleString(),
       });
     });
     return () => {
@@ -71,6 +80,7 @@ export default function ReviewQueueLoader() {
         <ReviewRecommendationsView
           audience={data.audience}
           flagOn={flags["flag.devopts.cfgutil_uninstall"]}
+          generatedAtLabel={data.generatedAtLabel}
           rows={data.rows}
           sourceDeviceEcids={data.sourceDeviceEcids}
         />

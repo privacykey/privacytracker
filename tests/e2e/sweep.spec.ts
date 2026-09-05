@@ -62,6 +62,7 @@ const STATIC_ROUTES = [
   "/help/focus",
   "/help/parental-controls",
   "/legal",
+  "/login",
   "/onboard",
   "/onboard/goals",
   "/onboard/profile",
