@@ -134,10 +134,17 @@ export function useDeployment({
 
   const clearSessionAdminToken = async () => {
     try {
-      await fetch("/api/auth/admin-token/logout", { method: "POST" });
+      const res = await fetch("/api/auth/admin-token/logout", {
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error("Sign out failed");
+      }
+      window.location.assign("/login");
       window.dispatchEvent(new Event(ADMIN_TOKEN_CHANGED_EVENT));
     } catch {
-      /* no-op */
+      showToast(tDeploy("admin_unlock_failed"));
+      return;
     }
     setAdminTokenUnlocked(false);
     setAdminTokenInput("");

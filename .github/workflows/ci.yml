@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Test-only token for Compose validation and isolated container smoke tests.
+  AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -361,6 +365,16 @@ jobs:
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+
+      - name: Assert private data requires authentication inside Docker
+        run: |
+          docker compose exec -T web node --input-type=module -e '
+            const url = "http://127.0.0.1:3000/api/apps";
+            const anonymous = await fetch(url, {headers: {Host: "localhost:3000"}});
+            if (anonymous.status !== 401) throw new Error("Unauthenticated private read allowed");
+            const signedIn = await fetch(url, {headers: {"x-auditor-admin-token": process.env.AUDITOR_ADMIN_TOKEN}});
+            if (signedIn.status !== 200) throw new Error("Authenticated private read failed");
+          '
 
       - name: Stop root compose (named volume)
         if: always()

@@ -61,6 +61,8 @@ FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PRIVACYTRACKER_BIND_HOST=0.0.0.0
+ENV PRIVACYTRACKER_NETWORK_EXPOSED=1
 # Next.js telemetry is off-by-design for a local-first privacy tool.
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -99,4 +101,4 @@ USER audit
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/ready || exit 1
 
-CMD ["node_modules/.bin/next", "start"]
+CMD ["node_modules/.bin/next", "start", "--hostname", "0.0.0.0"]
