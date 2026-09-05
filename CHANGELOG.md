@@ -37,6 +37,10 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- Translation regression checks parse JSX independently of the TypeScript
+  compiler API, preserving the existing untranslated-text baseline while
+  allowing the checks to run with TypeScript 7.
+
 - **Settings is now four pages instead of one.** Your preferences, sync,
   policies and admin each get their own address
   (`/dashboard/settings/you`, `/sync`, `/policies`, `/admin`), so a page

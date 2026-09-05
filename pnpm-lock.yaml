@@ -72,6 +72,15 @@ importers:
       '@axe-core/playwright':
         specifier: ^4.12.1
         version: 4.12.1(playwright-core@1.62.1)
+      '@babel/parser':
+        specifier: ^8.0.4
+        version: 8.0.4
+      '@babel/traverse':
+        specifier: ^8.0.4
+        version: 8.0.4
+      '@babel/types':
+        specifier: ^8.0.4
+        version: 8.0.4
       '@biomejs/biome':
         specifier: 2.5.6
         version: 2.5.6
