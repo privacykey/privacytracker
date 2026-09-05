@@ -54,6 +54,12 @@ RUN pnpm build
 # retained, so no recompile happens at runtime.
 RUN pnpm prune --prod
 
+# pnpm leaves TypeScript 7's optional native compiler packages in its virtual
+# store after removing the dev-only `typescript` entry point. These Go binaries
+# are build tools, never needed by `next start`; remove every platform variant
+# so the runtime image does not carry their compiler-toolchain vulnerabilities.
+RUN rm -rf node_modules/.pnpm/typescript@* node_modules/.pnpm/@typescript+typescript-*
+
 # Stage 2 — Runtime (no build tools needed). Stays on the same major
 # as the builder so the better-sqlite3 binding compiled above keeps
 # its NODE_MODULE_VERSION compatible at runtime.
