@@ -1,31 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
-import Script from "next/script";
 import "./globals.css";
-import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages, getTranslations } from "next-intl/server";
-import { resolveFlagFromDb } from "@/lib/feature-flags-server";
-import AboutModal from "./components/AboutModal";
-import AccessibilityQuickToggles from "./components/AccessibilityQuickToggles";
-import AdminTokenBridge from "./components/AdminTokenBridge";
-import ClientDiagnosticsBoot from "./components/ClientDiagnosticsBoot";
-import DevMenu from "./components/DevMenu";
-import FlagHighlightHandler from "./components/FlagHighlightHandler";
-import FocusPreviewBanner from "./components/FocusPreviewBanner";
-import { ImportQueueProvider } from "./components/ImportQueueProvider";
-import KeyboardHint from "./components/KeyboardHint";
-import KeyboardShortcuts from "./components/KeyboardShortcuts";
-import MenuActionsBridge from "./components/MenuActionsBridge";
-import NavigationHistoryTracker from "./components/NavigationHistoryTracker";
-import NextDevIndicatorRepositioner from "./components/NextDevIndicatorRepositioner";
-import NonLocalReadOnlyBanner from "./components/NonLocalReadOnlyBanner";
-import { QueuedSearchProvider } from "./components/QueuedSearchProvider";
-import SiteInfoHint from "./components/SiteInfoHint";
-import { TaskCenterProvider } from "./components/TaskCenter";
-import UpdateBanner from "./components/UpdateBanner";
-import { UserTasksProvider } from "./components/UserTasksProvider";
-
-export const dynamic = "force-dynamic";
+import { getTranslations } from "next-intl/server";
+import AppChrome from "./components/AppChrome";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
@@ -50,58 +26,27 @@ export const viewport: Viewport = {
   ],
 };
 
+/**
+ * Root layout — STATIC (Rust-core Phase 0, layout batch).
+ *
+ * No headers(), no cookies(), no DB reads, no force-dynamic. Everything
+ * per-user moved into the client AppChrome: locale (LocaleProvider),
+ * the login-page split (usePathname), the seven global-surface flags
+ * (flag bundle), and titles (RouteTitle). What stays server-rendered is
+ * build-time English by design: the <noscript> fallback (a JS-required
+ * app explaining itself to a browser without JS) and generateMetadata's
+ * <title>, which RouteTitle then localises.
+ *
+ * The a11y pre-hydration script carries no nonce any more — proxy.ts
+ * emits a hash-based CSP generated from the prerendered HTML by
+ * scripts/generate-csp-hashes.mjs, which covers it.
+ */
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // next-intl bootstrap. Locale fixed at 'en' in i18n.ts; this primes
-  // useTranslations() in client components. Server components call
-  // getTranslations() directly.
-  const locale = await getLocale();
-  const messages = await getMessages();
-  // The proxy overwrites this header; anonymous login must not render the
-  // private dashboard providers or serialize their state into the page.
-  if ((await headers()).get("x-privacytracker-login") === "1") {
-    return (
-      <html lang={locale}>
-        <body>
-          <NextIntlClientProvider
-            locale={locale}
-            messages={{ admin_login: messages.admin_login }}
-          >
-            {children}
-          </NextIntlClientProvider>
-        </body>
-      </html>
-    );
-  }
-  const tFooter = await getTranslations("footer");
   const tNojs = await getTranslations("nojs");
-  const tRegions = await getTranslations("layout_regions");
-
-  // Per-request CSP nonce, minted by proxy.ts and forwarded via the
-  // `x-nonce` request header. Read here and threaded into every inline
-  // <Script> we render so the nonce is identical between server-rendered
-  // HTML and client hydration — otherwise React 19's hydration check
-  // sees `nonce=""` vs `nonce={undefined}` and warns.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-
-  // Resolve global-surface flags once per request. Each is wrapped in
-  // try/catch so a fresh-install DB or resolver mishap doesn't take down
-  // the layout — defaults to 'on' to preserve pre-flag UX on failure.
-  const flags = {
-    keyboardShortcuts: safeResolve("flag.global.keyboard_shortcuts", "on"),
-    siteInfoHint: safeResolve("flag.global.site_info_hint", "on"),
-    aboutModal: safeResolve("flag.global.about_modal", "on"),
-    accessibilityToggles: safeResolve(
-      "flag.global.accessibility_toggles",
-      "on"
-    ),
-    taskCenterPolling: safeResolve("flag.taskcenter.polling", "on"),
-    taskCenterAutoDismiss: safeResolve("flag.taskcenter.auto_dismiss", "on"),
-    taskCenterResumeCards: safeResolve("flag.taskcenter.resume_cards", "on"),
-  };
 
   return (
     // suppressHydrationWarning is essential here: the head script writes
@@ -114,7 +59,7 @@ export default async function RootLayout({
     // data-scroll-behavior="smooth" is Next 16's opt-in for CSS-driven
     // smooth scrolling. Without it Next logs a dev warning and the
     // smooth-scroll animation can fight route-transition scroll-to-top.
-    <html data-scroll-behavior="smooth" lang={locale} suppressHydrationWarning>
+    <html data-scroll-behavior="smooth" lang="en" suppressHydrationWarning>
       <head suppressHydrationWarning>
         {/* Self-hosted Inter (v4.1, SIL OFL-1.1) — see /public/fonts/ +
             @font-face in app/globals.css. Italic loads lazily. */}
@@ -126,27 +71,26 @@ export default async function RootLayout({
           type="font/woff2"
         />
         {/* Pre-hydration bootstrapper for accessibility quick-toggles.
-            MUST run synchronously before any stylesheet to apply persisted
-            prefs before first paint, otherwise users see a flash from
-            default styles to their chosen theme.
+            Runs synchronously during HTML parsing so persisted prefs land
+            as data-* attributes on <html> before first paint.
 
-            Uses <Script strategy="beforeInteractive"> because it's the only
-            App Router mechanism that lands as the first child of <head>
-            (raw <script> rendered through React ends up AFTER Next's CSS
-            link, and CSSOM-blocking would defer it past first paint).
+            A PLAIN inline script element on purpose (Rust-core Phase 0,
+            layout batch): the beforeInteractive strategy of Next's Script
+            component is not emitted in App Router HTML — Next ships it in
+            the RSC payload and inserts it at runtime — so the build-time
+            CSP hasher (scripts/generate-csp-hashes.mjs, which hashes the
+            prerendered HTML) could never allowlist it and the policy
+            blocked it on every page. As a real head script it is in the
+            HTML, hashed, and allowed.
 
             Mirrors keys in AccessibilityQuickToggles.tsx (A11Y_STORAGE_KEYS).
             try/catch is for Safari private-mode windows where localStorage
-            throws. Fires a dev-mode "Encountered a script tag while
-            rendering React" warning that's a false positive — it runs once
-            during HTML parsing as intended. */}
-        <Script
+            throws. */}
+        <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var h=document.documentElement;var f=localStorage.getItem('a11y-quick-font');if(f==='dyslexic')h.setAttribute('data-a11y-font','dyslexic');var s=localStorage.getItem('a11y-quick-scale');if(s==='large'||s==='x-large')h.setAttribute('data-a11y-scale',s);var t=localStorage.getItem('a11y-quick-theme');if(t==='light'||t==='dark'||t==='high-contrast')h.setAttribute('data-theme-override',t);var sh=localStorage.getItem('a11y-quick-shapes');if(sh==='on')h.setAttribute('data-a11y-shapes','on');var sd=localStorage.getItem('a11y-quick-solid');if(sd==='on')h.setAttribute('data-a11y-solid','on');}catch(e){}})();`,
           }}
           id="a11y-prefs-bootstrap"
-          nonce={nonce}
-          strategy="beforeInteractive"
         />
       </head>
       <body>
@@ -374,99 +318,8 @@ export default async function RootLayout({
             </main>
           </div>
         </noscript>
-        {/* Banner landmark wraps the skip-link so no content sits outside
-            a landmark region (axe "region" rule). */}
-        <header aria-label={tFooter("skip_landmark")} className="app-banner">
-          <a className="skip-link" href="#main-content">
-            {tFooter("skip_to_content")}
-          </a>
-        </header>
-        {/* next-intl client provider — primes useTranslations() beneath. */}
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <TaskCenterProvider
-            autoDismissEnabled={flags.taskCenterAutoDismiss}
-            pollingEnabled={flags.taskCenterPolling}
-            resumeCardsEnabled={flags.taskCenterResumeCards}
-          >
-            <UserTasksProvider>
-              <QueuedSearchProvider>
-                <ImportQueueProvider>
-                  {/* Boots the client diagnostics module (long-task observer,
-                  fetch wrapper, import-event ring). Renders nothing —
-                  surface is read from the Diagnostics page. */}
-                  <ClientDiagnosticsBoot />
-                  {/* Path tracker. Writes pathname+search to sessionStorage on
-                  every navigation so downstream pages can render a "← Back
-                  to X" link (document.referrer alone is unreliable —
-                  Next's soft navigations don't update it). */}
-                  <NavigationHistoryTracker />
-                  <AdminTokenBridge />
-                  {/* Listens for menu-bar-driven events (Cmd+F search focus,
-                  Help → Copy Diagnostics). The actual menu items live
-                  in src-tauri/src/app_menu.rs; this component is the
-                  webview-side counterpart. */}
-                  <MenuActionsBridge />
-                  {/* Read-only notice — only renders when served from a
-                  non-local host without the admin-token cookie, i.e. when
-                  proxy.ts will 401 every write. */}
-                  <NonLocalReadOnlyBanner />
-                  {/* Focus preview banner — only renders when a preview is staged. */}
-                  <FocusPreviewBanner />
-                  {/* Update banner — polls /api/update-status; self-gated on
-                  cache state + user-dismissed flag. */}
-                  <UpdateBanner />
-                  {/* Cross-page flag-highlight handler — reads
-                  `?flag-highlight=<key>` and rings the gated element. */}
-                  <FlagHighlightHandler />
-                  <main className="app-main" id="main-content" tabIndex={-1}>
-                    {children}
-                  </main>
-                  {/* Footer landmark (role="contentinfo") groups the bottom-
-                  right cluster (About, shortcuts, a11y) under one region.
-                  Widgets are flag-gated; the landmark always renders. */}
-                  <footer className="app-footer-landmark">
-                    {/* Dev menu — gated on flag.devopts.visible + the
-                    `dev-menu-on` localStorage opt-in. Renders null when
-                    either gate is off. */}
-                    <DevMenu />
-                    {/* Reposition the Next.js dev indicator above our cluster.
-                    Renders null in production. */}
-                    <NextDevIndicatorRepositioner />
-                    {flags.accessibilityToggles && (
-                      <AccessibilityQuickToggles />
-                    )}
-                    {flags.keyboardShortcuts && <KeyboardHint />}
-                    {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
-                    {flags.siteInfoHint && <SiteInfoHint />}
-                  </footer>
-                </ImportQueueProvider>
-              </QueuedSearchProvider>
-            </UserTasksProvider>
-          </TaskCenterProvider>
-          {/* Global overlay portals — dialogs that render outside the main
-            landmark when open. The region wrapper keeps axe happy even
-            when both overlays are flag-off. */}
-          <section aria-label={tRegions("global_overlays")}>
-            {flags.keyboardShortcuts && <KeyboardShortcuts />}
-            {flags.aboutModal && <AboutModal />}
-          </section>
-        </NextIntlClientProvider>
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );
-}
-
-/**
- * Wrapper around resolveFlagFromDb that swallows resolver errors so a
- * fresh-install DB or mid-migration state can't take down the layout.
- */
-function safeResolve(
-  key: Parameters<typeof resolveFlagFromDb>[0],
-  fallbackOn: "on" | "off"
-): boolean {
-  try {
-    return resolveFlagFromDb(key) === "on";
-  } catch {
-    return fallbackOn === "on";
-  }
 }

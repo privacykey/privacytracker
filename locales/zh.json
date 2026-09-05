@@ -5433,6 +5433,16 @@
       "duration_ms": "{value} ms",
       "duration_s": "{value} 秒",
       "duration_min": "{value} 分钟"
+    },
+    "card_csp": {
+      "title": "内容安全策略",
+      "help": "浏览器针对本应用自身安全策略上报的违规记录。这些数据不会离开您的设备。设置 PRIVACYTRACKER_CSP=report-only 可在强制执行前先观察策略效果。",
+      "empty": "暂无违规上报。",
+      "directive": "指令",
+      "blocked": "被拦截",
+      "page": "页面",
+      "when": "时间",
+      "inline": "（内联）"
     }
   },
   "background_mode_callout": {

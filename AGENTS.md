@@ -228,6 +228,14 @@ Pragmas set on open: `journal_mode = WAL`, `busy_timeout = 5000`, `foreign_keys 
 
 All DB calls are **synchronous**. Multi-step writes use `db.transaction(() => { … })()` (see `saveToDb` in `lib/scraper.ts`) — follow that pattern for any new write path that touches more than one table.
 
+### Static routes + hash-based CSP (Rust-core Phase 0)
+
+Every page is a client-fetching shell and **every route prerenders statically** — the root layout makes no per-request reads (no `headers()`, `cookies()`, DB calls or `force-dynamic`; the ledger test `tests/app/phase0-page-shells.test.ts` pins this), and the two per-id detail pages are served from static `view` shells behind `next.config.js` rewrites (`/apps/:id` → `/apps/view`), so the browser URLs are unchanged while the HTML is fixed per build. Chrome that used to be decided per request (login-page split, global-surface flags) lives in the client `app/components/AppChrome.tsx`.
+
+That is what makes the CSP hash-based: `pnpm build` runs `scripts/generate-csp-hashes.mjs`, which hashes each prerendered page's inline scripts into `.next/csp-hashes.json` and **fails the build** if any page stopped prerendering (the static-routes guard). `proxy.ts` reads the map and emits `script-src 'self' 'sha256-…'` per route; `PRIVACYTRACKER_CSP=enforce|report-only|off` controls the mode, violations post to `/api/csp-report` (public POST, in-memory ring, shown on Diagnostics). Dev keeps `'unsafe-inline' 'unsafe-eval'`. There is no nonce any more — a nonce needs per-request rendering, which is the thing removed.
+
+Two things that break the hash model silently, both learned the hard way: (1) **never call `revalidatePath`/`revalidateTag` for a page** — it marks the static route stale, Next re-renders it on the next request and overwrites the prerendered HTML with flight scripts no hash covers, and the page goes blank behind the CSP (nothing server-rendered depends on data any more, so there is nothing to revalidate; `tests/e2e/zz-csp-integrity.spec.ts` runs last and asserts served HTML still matches the map after every other spec's mutations); (2) **inline scripts must be real `<script>` elements in the HTML** — `next/script` with `beforeInteractive` is shipped in the RSC payload and injected at runtime in the App Router, so the build-time hasher never sees it (the a11y pre-hydration bootstrap in `app/layout.tsx` is a plain element for this reason).
+
 ### API surface (`app/api/*/route.ts`)
 
 Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://docs.privacytracker.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing.
@@ -351,6 +359,8 @@ independently of the TypeScript compiler API. Keep scanner behavior covered by
 `tests/app/i18n-text-scanner.test.ts`; parser failures must fail the check.
 Do not regenerate the baseline merely to accommodate parser changes — compare
 findings, including duplicate counts and source snippets, and review differences.
+
+**Locale is resolved on the client.** `i18n.ts` fixes the server side to the default locale (no `cookies()` read — that read used to make every route dynamic); `app/components/LocaleProvider.tsx` reads the `NEXT_LOCALE` cookie in the browser and dynamically imports the matching `locales/<code>.json`. Server-rendered copy is therefore build-time English by design and limited to `generateMetadata` titles (localised after mount by `app/components/RouteTitle.tsx`, whose map is cross-checked by the ledger test) and the `<noscript>` fallback. Translated page bodies live in client components under `app/components/content/`.
 
 Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://docs.privacytracker.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
 

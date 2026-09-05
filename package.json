@@ -5,9 +5,9 @@
   "license": "Apache-2.0",
   "scripts": {
     "audit:repo-settings": "node scripts/audit-github-settings.mjs",
-    "build": "next build",
-    "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
-    "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node ./scripts/stage-standalone.mjs",
+    "build": "next build && node scripts/generate-csp-hashes.mjs",
+    "build:standalone": "cross-env BUILD_STANDALONE=1 next build --webpack && node scripts/generate-csp-hashes.mjs && node ./scripts/stage-standalone.mjs",
+    "build:standalone:dev": "cross-env BUILD_STANDALONE=1 next build --webpack && node scripts/generate-csp-hashes.mjs && node ./scripts/stage-standalone.mjs",
     "build-storybook": "storybook build",
     "dev": "node scripts/start-next.mjs dev",
     "lint": "ultracite check",

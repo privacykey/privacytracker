@@ -1,6 +1,6 @@
 "use client";
 
-import { notFound, useParams } from "next/navigation";
+import { notFound, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { useFlagBundleStatus, useFlagValues } from "@/lib/use-flag-bundle";
@@ -165,8 +165,11 @@ const ALL_ON_FLAGS: DetailFlagState = {
 export default function AppDetailLoader() {
   const tMeta = useTranslations("page_metadata");
   const tError = useTranslations("loader_error");
-  const params = useParams<{ id: string }>();
-  const id = params?.id;
+  // The route is rewritten from /apps/<id> to the static /apps/view
+  // shell, so the params hook is empty here — the id lives in the browser
+  // URL, which usePathname() still reports untouched.
+  const pathname = usePathname();
+  const id = pathname.split("/")[2] ?? "";
   const [data, setData] = useState<Payload | null>(null);
   const [status, setStatus] = useState<
     "loading" | "ready" | "missing" | "error"

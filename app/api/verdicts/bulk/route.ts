@@ -14,7 +14,6 @@
  * a backstop.
  */
 
-import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
@@ -86,11 +85,8 @@ export async function POST(request: NextRequest) {
     const verdicts = setVerdicts(body.appIds, body.verdict, {
       rationale: body.rationale ?? null,
     });
-    try {
-      revalidatePath("/dashboard", "layout");
-    } catch (e) {
-      console.warn("[/api/verdicts/bulk] revalidatePath failed:", e);
-    }
+    // No revalidatePath — see app/api/verdicts/route.ts: static HTML must
+    // never be regenerated at runtime under the hash-based CSP.
     return NextResponse.json(
       { count: verdicts.length, verdicts },
       { status: 201 }

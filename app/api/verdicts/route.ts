@@ -13,7 +13,6 @@
  * own) requires no extra params.
  */
 
-import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
@@ -29,40 +28,16 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Bust the Next full-route cache for every server-rendered surface
- * that reads verdict data. Without this, the user sets Safe/Replace/
- * Uninstall on /apps/[id], hits browser back, and lands on a cached
- * /dashboard/apps render that still shows the old (or no) verdict
- * pill on the card. Surfaces that read verdicts:
- *
- *   - /dashboard                       — pending-decision callouts
- *   - /dashboard/apps                  — verdict pill on each card
- *   - /dashboard/review-recommendations — explicit verdict list
- *   - /dashboard/shortlist             — verdict-aware sort/filter
- *   - /apps/[id]                       — the detail page itself
- *
- * `revalidatePath('/dashboard', 'layout')` invalidates the entire
- * /dashboard segment in one call, which covers the first four;
- * `/apps/[id]` is invalidated separately via its own path because
- * it sits outside the /dashboard layout. The client also fires
- * `router.refresh()` after a successful save (see VerdictPicker)
- * to clear its Router Cache for currently-rendered routes.
+ * No server-side cache revalidation here — deliberately (Rust-core
+ * Phase 0). Every page is a client shell that refetches its own data, so
+ * nothing server-rendered depends on verdicts; and the prerendered HTML
+ * must NEVER be regenerated at runtime, because the Content-Security-
+ * Policy allowlists each page's inline scripts by build-time hash. The
+ * old revalidatePath("/dashboard", "layout") marked the whole layout
+ * stale, Next re-rendered those pages on the next request and overwrote
+ * their HTML with flight payloads no hash covered, and they went blank
+ * behind the CSP. The client's refetch is the only cache step now.
  */
-function invalidateVerdictCaches(appId?: string): void {
-  try {
-    revalidatePath("/dashboard", "layout");
-    if (appId) {
-      revalidatePath(`/apps/${appId}`);
-    }
-  } catch (e) {
-    // revalidatePath throws synchronously when called outside of a
-    // route handler / server action, but that should never happen
-    // here. Log and continue — the client-side router.refresh() is
-    // a second safety net.
-    console.warn("[/api/verdicts] revalidatePath failed:", e);
-  }
-}
-
 export async function GET(request: NextRequest) {
   const appId = request.nextUrl.searchParams.get("appId");
   if (!appId) {
@@ -126,7 +101,6 @@ export async function POST(request: NextRequest) {
       rationale: body.rationale ?? null,
       source: "user",
     });
-    invalidateVerdictCaches(body.appId);
     return NextResponse.json({ verdict }, { status: 201 });
   } catch (e) {
     console.error("[/api/verdicts POST] failed:", e);
@@ -162,7 +136,6 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const removed = clearVerdict(appId, source, sourceName);
-    invalidateVerdictCaches(appId);
     return NextResponse.json({ removed });
   } catch (e) {
     console.error("[/api/verdicts DELETE] failed:", e);

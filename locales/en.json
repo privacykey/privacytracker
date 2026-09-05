@@ -5433,6 +5433,16 @@
       "duration_ms": "{value} ms",
       "duration_s": "{value} s",
       "duration_min": "{value} min"
+    },
+    "card_csp": {
+      "title": "Content Security Policy",
+      "help": "Violations the browser reported to this app for its own security policy. Nothing here leaves your machine. Set PRIVACYTRACKER_CSP=report-only to observe a policy before enforcing it.",
+      "empty": "No violations reported.",
+      "directive": "Directive",
+      "blocked": "Blocked",
+      "page": "Page",
+      "when": "When",
+      "inline": "(inline)"
     }
   },
   "background_mode_callout": {

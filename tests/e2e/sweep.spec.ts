@@ -73,12 +73,17 @@ const STATIC_ROUTES = [
 /** Console text that indicates a broken translation lookup. */
 const I18N_ERROR_RE =
   /MISSING_MESSAGE|INVALID_MESSAGE|INSUFFICIENT_PATH|INVALID_KEY/;
+/** Console text Chromium emits when the hash-based CSP blocks something —
+ *  a missed hash or a stray inline handler shows up here, on every route. */
+const CSP_ERROR_RE =
+  /Content Security Policy|Refused to (execute|load|apply|connect)/;
 
 /** A known zh string per surface family, to prove the bundle really
  *  switched (nav renders on most dashboard pages). */
 const ZH_PROOF = "隐私地图"; // nav.links.privacy_map
 
 interface RouteIssues {
+  consoleCsp: string[];
   consoleI18n: string[];
   pageErrors: string[];
   serverErrors: string[];
@@ -86,6 +91,7 @@ interface RouteIssues {
 
 function watch(page: Page): RouteIssues {
   const issues: RouteIssues = {
+    consoleCsp: [],
     consoleI18n: [],
     pageErrors: [],
     serverErrors: [],
@@ -93,6 +99,9 @@ function watch(page: Page): RouteIssues {
   page.on("console", (msg) => {
     if (msg.type() === "error" && I18N_ERROR_RE.test(msg.text())) {
       issues.consoleI18n.push(msg.text().slice(0, 200));
+    }
+    if (msg.type() === "error" && CSP_ERROR_RE.test(msg.text())) {
+      issues.consoleCsp.push(msg.text().slice(0, 200));
     }
   });
   page.on("pageerror", (error) => {
@@ -182,6 +191,7 @@ for (const locale of ["en", "zh"] as const) {
       ];
       for (const route of routes) {
         const before = {
+          csp: issues.consoleCsp.length,
           i18n: issues.consoleI18n.length,
           errs: issues.pageErrors.length,
           srv: issues.serverErrors.length,
@@ -192,13 +202,29 @@ for (const locale of ["en", "zh"] as const) {
         // the router to land.
         await page.waitForTimeout(1200);
 
-        const bodyText = (await page.locator("body").innerText()).trim();
-        if (bodyText.length === 0) {
-          failures.push(`${route}: rendered an empty page`);
+        // The client tree must have mounted: `main` (or the bare login form)
+        // with real text. The old body-text check passed on the noscript /
+        // skip-link copy alone, which let a page whose JavaScript never
+        // booted (a CSP block, a hash drift) slide through as "rendered".
+        const mounted = await page.evaluate(() => {
+          const root =
+            document.querySelector("main") ?? document.querySelector("form");
+          return (
+            (root?.textContent ?? "").trim().length > 0 ||
+            Boolean(document.querySelector("form"))
+          );
+        });
+        if (!mounted) {
+          failures.push(`${route}: client tree never mounted (blank page)`);
         }
         if (issues.consoleI18n.length > before.i18n) {
           failures.push(
             `${route}: i18n errors — ${issues.consoleI18n.slice(before.i18n).join(" | ")}`
+          );
+        }
+        if (issues.consoleCsp.length > before.csp) {
+          failures.push(
+            `${route}: CSP violations — ${issues.consoleCsp.slice(before.csp).join(" | ")}`
           );
         }
         if (issues.pageErrors.length > before.errs) {

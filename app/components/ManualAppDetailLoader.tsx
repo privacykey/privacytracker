@@ -1,6 +1,6 @@
 "use client";
 
-import { notFound, useParams } from "next/navigation";
+import { notFound, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import ManualAppDetailView from "./ManualAppDetailView";
@@ -25,8 +25,11 @@ type Payload = Omit<Parameters<typeof ManualAppDetailView>[0], never>;
 
 export default function ManualAppDetailLoader() {
   const tMeta = useTranslations("page_metadata");
-  const params = useParams<{ id: string }>();
-  const id = params?.id;
+  // The route is rewritten from /manual-apps/<id> to the static /manual-apps/view
+  // shell, so the params hook is empty here — the id lives in the browser
+  // URL, which usePathname() still reports untouched.
+  const pathname = usePathname();
+  const id = pathname.split("/")[2] ?? "";
   const [data, setData] = useState<Payload | null>(null);
   const [missing, setMissing] = useState(false);
 
