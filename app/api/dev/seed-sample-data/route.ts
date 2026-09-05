@@ -24,6 +24,7 @@
 
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { CANONICAL_ACCESSIBILITY_FEATURES } from "@/lib/accessibility-types";
 import { recordActivity } from "@/lib/activity";
 import {
   type MutationGuardContext,
@@ -43,6 +44,8 @@ import {
   type SampleApp,
   type SampleAppPrivacyType,
   type SampleHistoryStep,
+  samplePolicySourceText,
+  sampleSummaryToPolicySummary,
 } from "@/lib/sample-apps";
 import { getSetting } from "@/lib/scheduler";
 import { AppleRateLimitError, fetchAndParseApp } from "@/lib/scraper";
@@ -240,6 +243,116 @@ function sampleStepToSnapshot(
   }));
 }
 
+/**
+ * Persist the fixture's hand-written AI summary as a real
+ * `privacy_policy_analyses` row (status 'ready'), so the AI Policy tab
+ * renders fully populated — lens grid, highlights, source preview —
+ * without any AI provider configured. For apps that also carry
+ * `aiSummaryPrevious`, two `privacy_policy_versions` rows are written
+ * (distinct content hashes, current one fresh enough to sit inside the
+ * default 90-day alert window) so the rating-shift strip and the
+ * recent-change banner render too.
+ *
+ * These rows go through the same read path as live scrapes
+ * (`getPolicyAnalysis` → `normalizePolicySummary`), which fills any
+ * lens the fixture doesn't rate with its standard "not addressed"
+ * entry — exactly what a short real policy produces.
+ */
+function seedCannedPolicyAnalysis(
+  sample: SampleApp,
+  appId: string,
+  policyUrl: string,
+  now: number
+) {
+  const sourceText = samplePolicySourceText(sample);
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(sourceText)
+    .digest("hex");
+  const summaryJson = JSON.stringify(
+    sampleSummaryToPolicySummary(sample.aiSummary)
+  );
+  const wordCount = sourceText.split(/\s+/).filter(Boolean).length;
+  const previous = sample.aiSummaryPrevious;
+  // "9 days ago" keeps the change inside the default 90-day
+  // policy-diff alert window however the user has it configured short.
+  const changedAt = now - 9 * 24 * 60 * 60 * 1000;
+
+  db.prepare(
+    `INSERT INTO privacy_policy_analyses (
+       app_id, policy_url, status,
+       source_title, source_content_type, source_text, source_word_count,
+       source_origin, source_final_url, content_hash,
+       analysis_mode, summary_json,
+       previous_summary_json, previous_summary_at,
+       model, updated_at, source_fetched_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    appId,
+    policyUrl,
+    "ready",
+    `${sample.name} Privacy Policy (sample)`,
+    "text/html",
+    sourceText,
+    wordCount,
+    "direct",
+    policyUrl,
+    contentHash,
+    "direct",
+    summaryJson,
+    previous ? JSON.stringify(sampleSummaryToPolicySummary(previous)) : null,
+    previous ? changedAt : null,
+    "sample-fixture",
+    previous ? changedAt : now - 14 * 24 * 60 * 60 * 1000,
+    previous ? changedAt : now - 14 * 24 * 60 * 60 * 1000
+  );
+
+  if (!previous) {
+    return;
+  }
+  const previousText = samplePolicySourceText(sample, previous);
+  const previousHash = crypto
+    .createHash("sha256")
+    .update(previousText)
+    .digest("hex");
+  const versions = [
+    {
+      hash: previousHash,
+      text: previousText,
+      firstFetched: now - 100 * 24 * 60 * 60 * 1000,
+      lastFetched: now - 10 * 24 * 60 * 60 * 1000,
+    },
+    {
+      hash: contentHash,
+      text: sourceText,
+      firstFetched: changedAt,
+      lastFetched: now,
+    },
+  ];
+  for (const version of versions) {
+    db.prepare(
+      `INSERT INTO privacy_policy_versions (
+         id, app_id, content_hash, first_fetched_at, last_fetched_at,
+         policy_url, source_final_url, source_title, source_content_type,
+         source_origin, source_word_count, source_text
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      crypto.randomUUID(),
+      appId,
+      version.hash,
+      version.firstFetched,
+      version.lastFetched,
+      policyUrl,
+      policyUrl,
+      `${sample.name} Privacy Policy (sample)`,
+      "text/html",
+      "direct",
+      version.text.split(/\s+/).filter(Boolean).length,
+      version.text
+    );
+  }
+}
+
 function seedFromCanned(): SeedAppResult[] {
   const results: SeedAppResult[] = [];
   const seedTx = db.transaction(() => {
@@ -257,13 +370,16 @@ function seedFromCanned(): SeedAppResult[] {
         continue;
       }
       const now = Date.now();
+      // Reserved-for-documentation domain, so the "Privacy Policy" hero
+      // link and the AI Policy tab's source pill are visibly synthetic.
+      const policyUrl = `https://example.com/privacy/${sample.id.replace(/^sample-/, "")}`;
       db.prepare(
         `INSERT INTO apps (
-           id, name, url, iconUrl, bundleId, developer,
+           id, name, url, iconUrl, bundleId, developer, privacyPolicyUrl,
            firstSeen, lastSynced, changeCount,
            changes_acknowledged_at, changes_snoozed_until,
            hasPrivacyDetails, hasAccessibilityLabels
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         appId,
         sample.name,
@@ -271,6 +387,7 @@ function seedFromCanned(): SeedAppResult[] {
         "",
         `com.sample.${sample.id.replace(/^sample-/, "")}`,
         sample.developer,
+        policyUrl,
         now - 14 * 24 * 60 * 60 * 1000,
         now,
         0,
@@ -279,6 +396,33 @@ function seedFromCanned(): SeedAppResult[] {
         sample.hasPrivacyDetails ? 1 : 0,
         sample.hasAccessibilityLabels ? 1 : 0
       );
+      // Declared accessibility features — resolved against the canonical
+      // catalogue so titles/descriptions/icons match what the live
+      // scraper would store. Unknown identifiers are skipped (typo guard)
+      // rather than crashing the whole seed.
+      if (sample.hasAccessibilityLabels && sample.accessibilityFeatures) {
+        for (const identifier of sample.accessibilityFeatures) {
+          const canonical = CANONICAL_ACCESSIBILITY_FEATURES.find(
+            (c) => c.identifier === identifier
+          );
+          if (!canonical) {
+            continue;
+          }
+          db.prepare(
+            `INSERT INTO accessibility_features
+               (id, app_id, identifier, title, description, icon_template)
+             VALUES (?, ?, ?, ?, ?, ?)`
+          ).run(
+            crypto.randomUUID(),
+            appId,
+            canonical.identifier,
+            canonical.title,
+            canonical.fallbackDescription,
+            canonical.iconTemplate
+          );
+        }
+      }
+      seedCannedPolicyAnalysis(sample, appId, policyUrl, now);
       for (const type of sample.privacyTypes) {
         const typeRowId = crypto.randomUUID();
         db.prepare(

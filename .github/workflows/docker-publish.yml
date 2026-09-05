@@ -22,20 +22,21 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
-        with:
-          version: 11.17.0
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -60,6 +61,8 @@ jobs:
         run: pnpm audit --prod
 
       - name: Validate Docker Compose files
+        env:
+          AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
         run: |
           docker compose -f docker-compose.yml config >/dev/null
           docker compose -f deploy/caddy/compose.yaml config >/dev/null
@@ -72,12 +75,18 @@ jobs:
         run: pnpm smoke:release
 
   container-smoke:
+    # Compose also interpolates required variables during cleanup.
+    env:
+      AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: quality
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Build Docker image
         run: docker build -t privacytracker-smoke .
@@ -111,7 +120,6 @@ jobs:
         env:
           PRIVACYTRACKER_IMAGE: privacytracker-smoke
           PRIVACYTRACKER_HOST: privacytracker.localhost
-          AUDITOR_ADMIN_TOKEN: ci-smoke-token
         run: |
           docker compose -f deploy/caddy/compose.yaml up -d
           for attempt in {1..40}; do
@@ -134,7 +142,6 @@ jobs:
         env:
           PRIVACYTRACKER_IMAGE: privacytracker-smoke
           PRIVACYTRACKER_HOST: privacytracker.localhost
-          AUDITOR_ADMIN_TOKEN: ci-smoke-token
         run: |
           docker compose -f deploy/traefik/compose.yaml up -d
           for attempt in {1..40}; do
@@ -172,12 +179,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7  # v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -241,12 +250,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c  # v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7  # v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

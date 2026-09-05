@@ -3,8 +3,6 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { PARENTAL_RESOURCES } from "@/lib/parental-resources";
 
-export const dynamic = "force-dynamic";
-
 /*
  * Deliberately NOT gated on `flag.guardian.age_rating`: the onboarding band
  * picker links here while the guardian focus is still unsaved (the flag

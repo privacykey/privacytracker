@@ -19,7 +19,7 @@
 #     from forks can't see them — GitHub strips environment secrets for
 #     untrusted PRs at the platform level.
 #
-# See https://privacytracker-docs.privacykey.org/develop/build-from-source for the one-time setup of certificates, the App
+# See https://docs.privacytracker.privacykey.org/develop/build-from-source for the one-time setup of certificates, the App
 # Store Connect API key, and the Tauri updater key.
 
 name: macOS desktop release
@@ -44,7 +44,7 @@ env:
   # Node 24 LTS ("Krypton"), active-LTS channel through Apr 2028.
   # Must match the sidecar Node version packaged into src-tauri/binaries/
   # so better-sqlite3's native ABI lines up — see comments further down.
-  NODE_VERSION: '24.15.0'
+  NODE_VERSION: '24.20.0'
 
 permissions:
   # Needed so tauri-action can upload artifacts to the draft release.
@@ -54,6 +54,10 @@ jobs:
   build-and-sign:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    # Generous ceiling — notarization waits are outside our control — but
+    # still far below the 6h default, so a hung run can't eat the runner
+    # budget all day.
+    timeout-minutes: 120
     # Environment-scoped secrets + required reviewer gate. Runs won't start
     # the signing step until you approve in the Actions UI.
     environment: macos-signing
@@ -82,15 +86,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
+        # No explicit version: the action reads `packageManager` from
+        # package.json, the single source of truth.
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
-        with:
-          version: 11.17.0
 
       - name: Install Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
+          # Deliberately NOT `node-version-file: .nvmrc` (major-only): the
+          # build Node must be the exact sidecar version pinned in
+          # NODE_VERSION at the top of this file so better-sqlite3's
+          # native ABI lines up with the bundled runtime.
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
 
@@ -518,6 +528,7 @@ jobs:
     name: Assemble + publish latest.json
     needs: build-and-sign
     runs-on: macos-26
+    timeout-minutes: 30
     # Skip on dry-runs — the .sig files won't have hit the draft release
     # yet, and there's no point computing a manifest you're not going to
     # publish.
@@ -529,6 +540,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Resolve release context
         id: ctx

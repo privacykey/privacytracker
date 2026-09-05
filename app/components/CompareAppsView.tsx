@@ -3454,7 +3454,7 @@ function AccessibilityComparisonTable({
           </div>
           <div className="a11y-profile-key-hint">
             Rows you marked are outlined in teal —{" "}
-            <Link href="/dashboard/settings#accessibility-profile">
+            <Link href="/dashboard/settings/you#accessibility-profile">
               edit your profile in Settings
             </Link>
             .

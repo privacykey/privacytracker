@@ -35,11 +35,12 @@
  *
  *   - Imported recommendations alone never trigger an uninstall —
  *     only the user's own user-source verdict does.
- *   - The Act step refuses to mount unless audience='self', the
- *     flag is on, the platform is desktop, AND a fresh backup
- *     landed within the freshness window.
- *   - Each per-row uninstall is a separate click + type-DELETE
- *     confirmation. There is no batch path.
+ *   - The Act step uses the durable server stamp + on-disk Manifest.db,
+ *     never session-local UI state, when it says a backup is verified.
+ *   - A single list review + type-DELETE gate starts the run. Apps are
+ *     removed sequentially, with a native Touch ID/password prompt per app.
+ *   - The explicit no-backup path relaxes only the backup gate; audience,
+ *     feature-flag, final confirmation, and native authorization remain.
  */
 
 import Link from "next/link";
@@ -54,6 +55,11 @@ import {
   listConnectedDevices,
   removeAppViaCfgutil,
 } from "../../lib/desktop";
+import {
+  deriveServerBackupState,
+  type ServerBackupState,
+  type UninstallGateResponse,
+} from "../../lib/device-actions-shared";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import { isSafeExternalHref } from "../../lib/safe-href";
 import type { ShortlistEntry } from "../../lib/shortlist-types";
@@ -97,6 +103,8 @@ interface Row {
 interface Props {
   audience: "self" | "loved_one" | "guardian";
   flagOn: boolean;
+  /** Server-formatted once so the hidden print view hydrates deterministically. */
+  generatedAtLabel: string;
   rows: Row[];
   /**
    * `appId → ECID[]` for apps in the uninstall queue. Used to warn the
@@ -131,6 +139,7 @@ const GATE_DENIAL_KEYS: Record<string, string> = {
   audience: "gate_denied_audience",
   backup_missing: "gate_denied_backup",
   backup_stale: "gate_denied_backup",
+  backup_unverified: "gate_denied_unverified",
   flag: "gate_denied_flag",
 };
 
@@ -139,18 +148,38 @@ interface BackupState {
   error: string | null;
   finishedAt: number | null;
   path: string | null;
-  status: "idle" | "running" | "done" | "error";
+  status: "idle" | "running" | "recording" | "done" | "unrecorded" | "error";
 }
+
+type BackupCheckState = ServerBackupState | { kind: "checking" };
 
 interface UninstallState {
   error: string | null;
   status: "idle" | "running" | "done" | "error";
 }
 
+async function loadServerBackupState(ecid: string): Promise<ServerBackupState> {
+  try {
+    const response = await fetch(
+      `/api/device-actions/uninstall?ecid=${encodeURIComponent(ecid)}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) {
+      return deriveServerBackupState(null);
+    }
+    return deriveServerBackupState(
+      (await response.json()) as UninstallGateResponse
+    );
+  } catch {
+    return deriveServerBackupState(null);
+  }
+}
+
 export default function ReviewRecommendationsView({
   rows: initialRows,
   audience,
   flagOn,
+  generatedAtLabel,
   sourceDeviceEcids = {},
 }: Props) {
   // i18n — every visible string in the wizard reads from
@@ -210,13 +239,14 @@ export default function ReviewRecommendationsView({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [router]);
   const initialStep: Step = (() => {
-    const raw = searchParams?.get("step");
+    const requested = searchParams?.get("step");
+    // A reopened session must choose/verify its device before the Act step.
+    const raw = requested === "act" ? "backup" : requested;
     if (
       raw === "review" ||
       raw === "compare" ||
       raw === "action" ||
-      raw === "backup" ||
-      raw === "act"
+      raw === "backup"
     ) {
       return raw;
     }
@@ -233,17 +263,12 @@ export default function ReviewRecommendationsView({
     path: null,
     error: null,
   });
+  const [serverBackupState, setServerBackupState] = useState<BackupCheckState>({
+    kind: "checking",
+  });
   const [uninstallStates, setUninstallStates] = useState<
     Record<string, UninstallState>
   >({});
-  /**
-   * True when the backup itself succeeded but persisting its stamp
-   * (POST /api/device-actions/backup) failed. The act step's pre-flight
-   * gate reads the server-side stamp, so an unrecorded backup will be
-   * treated as missing — this flag surfaces that mismatch on the
-   * backup step instead of letting the act step refuse "mysteriously".
-   */
-  const [backupRecordFailed, setBackupRecordFailed] = useState(false);
   /**
    * Per-row free-text "replacing with" memo — captured during the
    * Compare step. Stored in component state only (not persisted) so
@@ -646,12 +671,135 @@ export default function ReviewRecommendationsView({
     };
   }, [step, selectedEcid, desktop]);
 
+  // The durable server stamp — revalidated against Manifest.db on every
+  // request — is the only state allowed to reassure the user that a backup
+  // exists. Refresh it whenever the selected device is shown on either
+  // destructive-flow step. This also restores the correct state after the
+  // wizard is closed and reopened.
+  useEffect(() => {
+    if (!(selectedEcid && (step === "backup" || step === "act"))) {
+      return;
+    }
+    let cancelled = false;
+    setServerBackupState({ kind: "checking" });
+    void loadServerBackupState(selectedEcid).then((state) => {
+      if (!cancelled) {
+        setServerBackupState(state);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEcid, step]);
+
+  const selectedEcidRef = useRef(selectedEcid);
+
+  // Local progress belongs to one selected device. A server-backed fresh
+  // stamp for the newly selected phone will still appear through the effect
+  // above, but transient progress from the previous phone must not carry.
+  useEffect(() => {
+    selectedEcidRef.current = selectedEcid;
+    setBackup({
+      status: "idle",
+      device: null,
+      finishedAt: null,
+      path: null,
+      error: null,
+    });
+  }, [selectedEcid]);
+
+  const recordBackupForDeletion = useCallback(
+    async (input: {
+      device: ConnectedDevice | null;
+      ecid: string;
+      nativeFinishedAt: number | null;
+      path: string;
+    }) => {
+      setBackup({
+        status: "recording",
+        device: input.device,
+        finishedAt: input.nativeFinishedAt,
+        path: input.path,
+        error: null,
+      });
+      try {
+        const response = await fetch("/api/device-actions/backup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ecid: input.ecid,
+            path: input.path,
+            deviceName: input.device?.name ?? null,
+          }),
+        });
+        if (selectedEcidRef.current !== input.ecid) {
+          return;
+        }
+        if (!response.ok) {
+          console.warn(
+            "[review] verified backup record refused:",
+            response.status
+          );
+          setBackup({
+            status: "unrecorded",
+            device: input.device,
+            finishedAt: input.nativeFinishedAt,
+            path: input.path,
+            error: tBackup("record_failed"),
+          });
+          setServerBackupState({ kind: "not_fresh", reason: "unverified" });
+          return;
+        }
+
+        const authoritative = await loadServerBackupState(input.ecid);
+        if (selectedEcidRef.current !== input.ecid) {
+          return;
+        }
+        if (authoritative.kind !== "fresh") {
+          setBackup({
+            status: "unrecorded",
+            device: input.device,
+            finishedAt: input.nativeFinishedAt,
+            path: input.path,
+            error: tBackup("record_failed"),
+          });
+          setServerBackupState({ kind: "not_fresh", reason: "unverified" });
+          return;
+        }
+
+        setServerBackupState(authoritative);
+        setBackup({
+          status: "done",
+          device: input.device,
+          finishedAt: authoritative.backup.finishedAt,
+          path: authoritative.backup.path,
+          error: null,
+        });
+      } catch (error) {
+        if (selectedEcidRef.current !== input.ecid) {
+          return;
+        }
+        console.warn("[review] failed to record verified backup:", error);
+        setBackup({
+          status: "unrecorded",
+          device: input.device,
+          finishedAt: input.nativeFinishedAt,
+          path: input.path,
+          error: tBackup("record_failed"),
+        });
+        setServerBackupState({ kind: "not_fresh", reason: "unreachable" });
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator
+    []
+  );
+
   const runBackup = useCallback(async () => {
     if (!selectedEcid) {
       return;
     }
-    const device = devices.find((d) => d.ecid === selectedEcid) ?? null;
-    setBackupRecordFailed(false);
+    const ecid = selectedEcid;
+    const device = devices.find((candidate) => candidate.ecid === ecid) ?? null;
     setBackup({
       status: "running",
       device,
@@ -659,9 +807,11 @@ export default function ReviewRecommendationsView({
       path: null,
       error: null,
     });
-    const destDir = `~/Documents/privacytracker-Backups/${selectedEcid}`;
-    const result = await backupDeviceViaCfgutil(selectedEcid, destDir);
-    if (!result.ok) {
+    const result = await backupDeviceViaCfgutil(ecid);
+    if (selectedEcidRef.current !== ecid) {
+      return;
+    }
+    if (!(result.ok && result.backupPath)) {
       setBackup({
         status: "error",
         device,
@@ -671,38 +821,29 @@ export default function ReviewRecommendationsView({
       });
       return;
     }
-    let recorded = false;
-    try {
-      const res = await fetch("/api/device-actions/backup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ecid: selectedEcid,
-          path: result.backupPath ?? destDir,
-          finishedAt: result.finishedAt ?? Date.now(),
-          deviceName: device?.name ?? null,
-        }),
-      });
-      recorded = res.ok;
-      if (!res.ok) {
-        console.warn("[review] backup record refused:", res.status);
-      }
-    } catch (e) {
-      console.warn("[review] failed to record backup:", e);
-    }
-    // The backup itself succeeded — a failed recording downgrades to a
-    // warning, not a failed step. Without the stamp the act step's
-    // pre-flight will refuse the backed-up path, so tell the user now.
-    setBackupRecordFailed(!recorded);
-    setBackup({
-      status: "done",
+    await recordBackupForDeletion({
       device,
-      finishedAt: result.finishedAt ?? Date.now(),
+      ecid,
+      nativeFinishedAt: result.finishedAt,
       path: result.backupPath,
-      error: null,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
-  }, [selectedEcid, devices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator
+  }, [selectedEcid, devices, recordBackupForDeletion]);
+
+  const retryBackupRecord = useCallback(async () => {
+    if (
+      !(selectedEcid && backup.path) ||
+      backup.device?.ecid !== selectedEcid
+    ) {
+      return;
+    }
+    await recordBackupForDeletion({
+      device: backup.device,
+      ecid: selectedEcid,
+      nativeFinishedAt: backup.finishedAt,
+      path: backup.path,
+    });
+  }, [backup, selectedEcid, recordBackupForDeletion]);
 
   const runUninstall = useCallback(
     async (row: Row, acknowledgeNoBackup: boolean) => {
@@ -786,7 +927,7 @@ export default function ReviewRecommendationsView({
           cache: "no-store",
         });
         const gate = res.ok
-          ? ((await res.json()) as { allowed?: boolean; reason?: string })
+          ? ((await res.json()) as UninstallGateResponse)
           : null;
         if (gate?.allowed !== true) {
           const key = gate
@@ -1023,7 +1164,7 @@ export default function ReviewRecommendationsView({
     visibleSteps.push({
       id: "act",
       label: tSteps("act"),
-      enabled: backup.status === "done",
+      enabled: serverBackupState.kind === "fresh",
     });
   }
 
@@ -1049,7 +1190,9 @@ export default function ReviewRecommendationsView({
             {tGate("body_after_audience")}
           </p>
           <p>
-            <Link href="/dashboard/settings#focus">{tGate("switch_link")}</Link>{" "}
+            <Link href="/dashboard/settings/you#focus">
+              {tGate("switch_link")}
+            </Link>{" "}
             {tGate("switch_suffix")}
           </p>
         </div>
@@ -1689,6 +1832,16 @@ export default function ReviewRecommendationsView({
           <h2>{tBackup("heading")}</h2>
           <p className="review-rec-step-sub">{tBackup("subtitle")}</p>
 
+          <div className="review-rec-backup-explainer">
+            <strong>{tBackup("what_happens_heading")}</strong>
+            <ol>
+              <li>{tBackup("what_happens_configurator")}</li>
+              <li>{tBackup("what_happens_verify")}</li>
+              <li>{tBackup("what_happens_unlock")}</li>
+            </ol>
+            <p>{tBackup("nothing_deleted_here")}</p>
+          </div>
+
           <div className="review-rec-device-list">
             {devices.length === 0 ? (
               <p className="review-rec-step-sub">
@@ -1702,6 +1855,10 @@ export default function ReviewRecommendationsView({
                 >
                   <input
                     checked={selectedEcid === d.ecid}
+                    disabled={
+                      backup.status === "running" ||
+                      backup.status === "recording"
+                    }
                     name="device"
                     onChange={() => setSelectedEcid(d.ecid)}
                     type="radio"
@@ -1764,20 +1921,80 @@ export default function ReviewRecommendationsView({
             </div>
           )}
 
+          {selectedEcid && (
+            <div
+              aria-live="polite"
+              className={`review-rec-backup-status${
+                serverBackupState.kind === "fresh"
+                  ? " review-rec-backup-status-ok"
+                  : " review-rec-backup-status-warn"
+              }`}
+              role="status"
+            >
+              {serverBackupState.kind === "checking" ? (
+                <span>{tBackup("checking_existing")}</span>
+              ) : serverBackupState.kind === "fresh" ? (
+                <span>
+                  ✓{" "}
+                  {tBackup.rich("existing_verified", {
+                    time: new Date(
+                      serverBackupState.backup.finishedAt
+                    ).toLocaleString(),
+                    path: serverBackupState.backup.path,
+                    code: (chunks) => <code>{chunks}</code>,
+                  })}
+                </span>
+              ) : (
+                <span>
+                  ⚠ {tBackup(`not_fresh_${serverBackupState.reason}`)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {(backup.status === "running" || backup.status === "recording") && (
+            <div
+              aria-live="polite"
+              className="review-rec-backup-progress"
+              role="status"
+            >
+              <strong>
+                {backup.status === "running"
+                  ? tBackup("running_heading")
+                  : tBackup("recording_heading")}
+              </strong>
+              <p>
+                {backup.status === "running"
+                  ? tBackup("running_detail")
+                  : tBackup("recording_detail")}
+              </p>
+            </div>
+          )}
+
           <div className="review-rec-step-actions">
             <button
               className="btn btn-primary"
-              disabled={!selectedEcid || backup.status === "running"}
-              onClick={runBackup}
+              disabled={
+                !selectedEcid ||
+                backup.status === "running" ||
+                backup.status === "recording"
+              }
+              onClick={
+                backup.status === "unrecorded" ? retryBackupRecord : runBackup
+              }
               type="button"
             >
               {backup.status === "running"
                 ? tBackup("running")
-                : backup.status === "done"
-                  ? tBackup("running_again")
-                  : tBackup("run_backup")}
+                : backup.status === "recording"
+                  ? tBackup("recording")
+                  : backup.status === "unrecorded"
+                    ? tBackup("retry_verification")
+                    : backup.status === "done"
+                      ? tBackup("running_again")
+                      : tBackup("run_backup")}
             </button>
-            {backup.status === "done" && (
+            {serverBackupState.kind === "fresh" && (
               <button
                 className="btn btn-secondary"
                 onClick={() => setStep("act")}
@@ -1786,17 +2003,19 @@ export default function ReviewRecommendationsView({
                 {tBackup("continue_to_uninstall")}
               </button>
             )}
-            {backup.status !== "done" && backup.status !== "running" && (
-              <button
-                className="btn btn-ghost btn-sm"
-                disabled={!selectedEcid}
-                onClick={() => setStep("act")}
-                title={tBackup("skip_backup_title")}
-                type="button"
-              >
-                {tBackup("skip_backup")}
-              </button>
-            )}
+            {serverBackupState.kind === "not_fresh" &&
+              backup.status !== "running" &&
+              backup.status !== "recording" && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  disabled={!selectedEcid}
+                  onClick={() => setStep("act")}
+                  title={tBackup("skip_backup_title")}
+                  type="button"
+                >
+                  {tBackup("skip_backup")}
+                </button>
+              )}
           </div>
 
           {backup.status === "done" && backup.path && (
@@ -1804,7 +2023,7 @@ export default function ReviewRecommendationsView({
               {backup.finishedAt
                 ? tBackup.rich("saved_at", {
                     path: backup.path,
-                    time: new Date(backup.finishedAt).toLocaleTimeString(),
+                    time: new Date(backup.finishedAt).toLocaleString(),
                     code: (chunks) => <code>{chunks}</code>,
                   })
                 : tBackup.rich("saved_no_time", {
@@ -1813,9 +2032,9 @@ export default function ReviewRecommendationsView({
                   })}
             </p>
           )}
-          {backup.status === "done" && backupRecordFailed && (
+          {backup.status === "unrecorded" && (
             <p className="review-rec-error" role="alert">
-              ⚠ {tBackup("record_failed")}
+              ⚠ {backup.error ?? tBackup("record_failed")}
             </p>
           )}
           {backup.status === "error" && (
@@ -1833,33 +2052,39 @@ export default function ReviewRecommendationsView({
             {tAct("subtitle_lead")} <strong>{tAct("subtitle_keyword")}</strong>{" "}
             {tAct("subtitle_after")}
           </p>
+          <div className="review-rec-act-explainer">
+            <strong>{tAct("what_happens_heading")}</strong>
+            <p>{tAct("what_happens_body")}</p>
+          </div>
 
-          {/* Backup status banner — surfaces whether a recent backup is
-              on file so the user understands which Modal 2 variant
-              they'll see. Fresh ✓ → reassuring; missing / stale ⚠ →
-              warning. Drives no other behaviour here; the actual gate
-              decision is the server-side pre-flight at the top of
-              runBulkUninstall, before any removal fires. */}
+          {/* Backup status banner reflects the durable server stamp that
+              controls the confirmation variant and disables removal while
+              it is being checked. The uninstall route independently repeats
+              the same pre-flight before any native removal fires. */}
           {uninstallQueue.length > 0 && (
             <div
               className={`review-rec-backup-status${
-                backup.status === "done"
+                serverBackupState.kind === "fresh"
                   ? " review-rec-backup-status-ok"
                   : " review-rec-backup-status-warn"
               }`}
               role="status"
             >
-              {backup.status === "done" && backup.finishedAt ? (
+              {serverBackupState.kind === "checking" ? (
+                <span>{tAct("backup_checking")}</span>
+              ) : serverBackupState.kind === "fresh" ? (
                 <span>
                   ✓{" "}
                   {tAct("backup_ok", {
                     device: backup.device?.name ?? tAct("default_device_name"),
-                    time: new Date(backup.finishedAt).toLocaleTimeString(),
+                    time: new Date(
+                      serverBackupState.backup.finishedAt
+                    ).toLocaleString(),
                   })}
                 </span>
               ) : (
                 <span>
-                  ⚠ {tAct("backup_missing_warn")}{" "}
+                  ⚠ {tAct(`backup_${serverBackupState.reason}_warn`)}{" "}
                   <button
                     className="review-rec-inline-link"
                     onClick={() => setStep("backup")}
@@ -1986,7 +2211,10 @@ export default function ReviewRecommendationsView({
                   <div className="review-rec-step-actions">
                     <button
                       className="btn btn-danger"
-                      disabled={bulkModal === "executing"}
+                      disabled={
+                        bulkModal === "executing" ||
+                        serverBackupState.kind === "checking"
+                      }
                       onClick={() => {
                         setBulkConfirmText("");
                         setBulkGateError(null);
@@ -1994,15 +2222,17 @@ export default function ReviewRecommendationsView({
                       }}
                       type="button"
                     >
-                      {bulkModal === "executing"
-                        ? tAct("deleting_bulk")
-                        : tAct("delete_apps_button", {
-                            count: uninstallQueue.filter(
-                              (row) =>
-                                (uninstallStates[row.id]?.status ?? "idle") !==
-                                "done"
-                            ).length,
-                          })}
+                      {serverBackupState.kind === "checking"
+                        ? tAct("checking_safety")
+                        : bulkModal === "executing"
+                          ? tAct("deleting_bulk")
+                          : tAct("delete_apps_button", {
+                              count: uninstallQueue.filter(
+                                (row) =>
+                                  (uninstallStates[row.id]?.status ??
+                                    "idle") !== "done"
+                              ).length,
+                            })}
                     </button>
                   </div>
                 );
@@ -2172,14 +2402,16 @@ export default function ReviewRecommendationsView({
             ref={bulkFinalCardRef}
             tabIndex={-1}
           >
-            {backup.status === "done" && backup.finishedAt ? (
+            {serverBackupState.kind === "fresh" ? (
               <>
                 <h3 id="bulk-final-title">{tConfirm("final_heading")}</h3>
                 <p>
                   {tConfirm("final_body", {
                     device:
                       backup.device?.name ?? tConfirm("fallback_device_name"),
-                    time: new Date(backup.finishedAt).toLocaleTimeString(),
+                    time: new Date(
+                      serverBackupState.backup.finishedAt
+                    ).toLocaleString(),
                   })}
                 </p>
               </>
@@ -2224,12 +2456,13 @@ export default function ReviewRecommendationsView({
                 className="btn btn-danger"
                 disabled={bulkConfirmText !== "DELETE"}
                 onClick={() => {
-                  const acknowledgeNoBackup = backup.status !== "done";
+                  const acknowledgeNoBackup =
+                    serverBackupState.kind !== "fresh";
                   void runBulkUninstall(acknowledgeNoBackup);
                 }}
                 type="button"
               >
-                {backup.status === "done"
+                {serverBackupState.kind === "fresh"
                   ? tConfirm("final_confirm")
                   : tConfirm("final_confirm_no_backup")}
               </button>
@@ -2246,7 +2479,7 @@ export default function ReviewRecommendationsView({
       <div aria-hidden="true" className="review-rec-print">
         <h1>{tPrint("title")}</h1>
         <p className="review-rec-print-meta">
-          {tPrint("generated", { date: new Date().toLocaleString() })}
+          {tPrint("generated", { date: generatedAtLabel })}
         </p>
 
         {uninstallQueue.length > 0 && (

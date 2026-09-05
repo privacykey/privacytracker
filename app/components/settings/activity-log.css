@@ -1,0 +1,341 @@
+/*
+ * Activity-log panel styles (Settings -> Developer Options). Moved
+ * verbatim from globals.css — docs/CSS.md is the ownership contract.
+ */
+/* ==========================================================================
+   Activity log (Developer Options → Activity log accordion)
+   -------------------------------------------------------------------------- */
+
+.activity-log-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.activity-log-filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.activity-log-filter > span {
+  font-weight: 500;
+}
+
+/* Live-polling indicator on the activity log toolbar. Pulsing green dot when
+   polling is active, muted grey when the user has paused it, and a brief
+   brighter flash immediately after a new row is prepended. */
+.activity-log-live-toggle {
+  all: unset;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-2);
+  cursor: pointer;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  /* Fence for the dot's z-index:-1 halo pseudo — see .change-dot-group. */
+  isolation: isolate;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.activity-log-live-toggle:hover {
+  background: var(--surface-2);
+}
+
+.activity-log-live-toggle:focus-visible {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+
+.activity-log-live-toggle.is-paused {
+  color: var(--text-3);
+}
+
+.activity-log-live-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+}
+
+/* Compositor-only halo — shares halo-breathe / halo-burst with
+   .change-dot. 8px dot + 5px spread → scale (8 + 10) / 8 = 2.25;
+   the strong burst's old 10px spread → (8 + 20) / 8 = 3.5. */
+.activity-log-live-dot::after {
+  --halo-scale: 2.25;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  content: "";
+  background: rgba(34, 197, 94, 0.45);
+  border-radius: 50%;
+  animation: halo-breathe 2s infinite;
+}
+
+.activity-log-live-toggle.is-paused .activity-log-live-dot {
+  background: var(--text-3, #9ca3af);
+}
+
+.activity-log-live-toggle.is-paused .activity-log-live-dot::after {
+  display: none;
+}
+
+.activity-log-live-toggle.just-pulsed {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
+.activity-log-live-toggle.just-pulsed .activity-log-live-dot::after {
+  background: rgba(34, 197, 94, 0.75);
+  animation: halo-burst 1.2s ease-out 1;
+}
+
+.activity-log-empty {
+  padding: 12px 2px;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
+.activity-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.activity-log-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.activity-log-header {
+  all: unset;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+}
+
+.activity-log-icon {
+  flex-shrink: 0;
+  width: 18px;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+}
+
+.activity-log-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.activity-log-type {
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.activity-log-appname {
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.activity-log-meta {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.activity-log-summary {
+  padding-left: 26px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-2);
+  word-break: break-word;
+}
+
+.activity-log-detail {
+  max-height: 280px;
+  padding: 10px;
+  margin: 6px 0 0 26px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+  white-space: pre-wrap;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Structured troubleshoot panel — shown above the raw JSON when an activity
+   row carries `status === 'error'` and a `detail.fetchDiagnostics` block.
+   The goal is to give the user a direct line between "this scrape failed"
+   and "here's the URL that 403'd and a couple of things to try", without
+   making them parse JSON. */
+.activity-log-detail-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 0 26px;
+}
+
+.activity-log-troubleshoot {
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-1);
+  background: var(--severity-red-bg, rgba(220, 38, 38, 0.05));
+  border: 1px solid var(--severity-red, rgba(220, 38, 38, 0.35));
+  border-radius: 8px;
+}
+
+.activity-log-troubleshoot-title {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--severity-red-fg, #b91c1c);
+  letter-spacing: 0.01em;
+}
+
+.activity-log-troubleshoot-subtitle {
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.activity-log-troubleshoot-message {
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.activity-log-troubleshoot-facts {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  row-gap: 4px;
+  column-gap: 14px;
+  padding: 0;
+  margin: 0;
+}
+
+.activity-log-troubleshoot-fact {
+  display: contents;
+}
+
+.activity-log-troubleshoot-fact dt {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.activity-log-troubleshoot-fact dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-1);
+  word-break: break-word;
+}
+
+.activity-log-troubleshoot-fact dd a {
+  color: var(--accent, #2563eb);
+  text-decoration: none;
+}
+
+.activity-log-troubleshoot-fact dd a:hover {
+  text-decoration: underline;
+}
+
+.activity-log-troubleshoot-hints {
+  padding-left: 18px;
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-1);
+}
+
+.activity-log-troubleshoot-hints li {
+  margin-bottom: 3px;
+}
+
+.activity-log-detail-raw > summary {
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--text-3);
+  cursor: pointer;
+  user-select: none;
+}
+
+.activity-log-detail-raw[open] > summary {
+  margin-bottom: 6px;
+}
+
+.activity-log-detail-raw .activity-log-detail {
+  margin-left: 0;
+}
+
+.activity-log-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.activity-log-count {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+@media (max-width: 520px) {
+  .activity-log-header {
+    gap: 6px;
+  }
+  .activity-log-meta {
+    width: 100%;
+    margin-left: 0;
+  }
+  .activity-log-summary,
+  .activity-log-detail,
+  .activity-log-detail-wrap {
+    padding-left: 0;
+    margin-left: 0;
+  }
+}

@@ -3,8 +3,11 @@ import { expect, type Page, test } from "@playwright/test";
 /**
  * Structural regression net for the settings surface.
  *
- * `SettingsView.tsx` is ~11.6k lines rendering 18 sections from a single
- * component, and it is about to be split into per-section components. The
+ * Written when `SettingsView.tsx` was ~11.6k lines rendering every section
+ * from a single component, ahead of splitting it apart. That split is done
+ * — ~20 section components plus four group routes — and this net caught
+ * two real regressions during it (a sidebar that vanished from the group
+ * routes, and a link card pinned to the old landing view). The
  * logic *behind* settings is well covered by the unit suite (notification
  * prefs, policy throttle, diagnostics, backup, profiles, wayback…), but
  * before this file existed almost nothing exercised the component's own
@@ -24,6 +27,12 @@ import { expect, type Page, test } from "@playwright/test";
  * The section list is NOT hardcoded — it is read from the rendered
  * sidebar. Add or flag-gate a section and this spec follows along, which
  * also means it can't drift out of date.
+ *
+ * Settings is now four routes (you / sync / policies / admin), so the
+ * sweep visits each of them: a section only renders on the route that
+ * owns it. The sidebar shows every entry from every route, linking within
+ * the page for the current group and across routes for the others, which
+ * is what lets the sweep discover the full set from any one page.
  */
 
 const sameOriginHeaders = {
@@ -62,46 +71,68 @@ test.beforeEach(async ({ request }) => {
   await expect(seed).toBeOK();
 });
 
-/** Collect the section ids the sidebar advertises, from its own links. */
-async function sidebarSectionIds(page: Page): Promise<string[]> {
+/** The four group routes, in sidebar order. */
+const GROUPS = ["you", "sync", "policies", "admin"] as const;
+
+/**
+ * Section ids the sidebar advertises for the page we are on.
+ *
+ * Sidebar entries take two shapes now — a bare `#id` for a section on this
+ * route, and `/dashboard/settings/<group>#id` for one on another. Reading
+ * both means a single page still reveals the whole advertised set, and
+ * passing `onlyThisPage` narrows it to what should actually be in this
+ * DOM.
+ */
+async function sidebarSectionIds(
+  page: Page,
+  { onlyThisPage = false }: { onlyThisPage?: boolean } = {}
+): Promise<string[]> {
   const links = page.locator(".settings-sidebar-link");
   await expect(links.first()).toBeVisible();
   const hrefs = await links.evaluateAll((els) =>
     els.map((el) => (el as HTMLAnchorElement).getAttribute("href") ?? "")
   );
   return hrefs
-    .filter((h) => h.startsWith("#") && h.length > 1)
-    .map((h) => h.slice(1));
+    .filter((h) => (onlyThisPage ? h.startsWith("#") : h.includes("#")))
+    .map((h) => h.slice(h.indexOf("#") + 1))
+    .filter((id) => id.length > 0);
 }
 
 browserFlow(
   "settings: every section the sidebar advertises renders with content",
   async ({ page }) => {
-    await page.goto("/dashboard/settings");
-    await expect(page.locator(".settings-sidebar")).toBeVisible();
-
-    const ids = await sidebarSectionIds(page);
-    expect(
-      ids.length,
-      `sidebar advertised only ${ids.length} sections — expected at least ${MIN_SECTIONS}`
-    ).toBeGreaterThanOrEqual(MIN_SECTIONS);
-
     const missing: string[] = [];
     const empty: string[] = [];
-    for (const id of ids) {
-      const section = page.locator(`#${id}`);
-      if ((await section.count()) === 0) {
-        missing.push(id);
-        continue;
-      }
-      // A section that renders as an empty shell is just as broken as one
-      // that vanished, and an extraction bug can easily produce it.
-      const text = ((await section.first().innerText()) ?? "").trim();
-      if (text.length < 10) {
-        empty.push(id);
+    let advertised = 0;
+
+    for (const group of GROUPS) {
+      await page.goto(`/dashboard/settings/${group}`);
+      await expect(page.locator(".settings-sidebar")).toBeVisible();
+
+      // Only this route's own sections should be in this DOM; the rest are
+      // cross-route links and are checked when we visit their group.
+      const ids = await sidebarSectionIds(page, { onlyThisPage: true });
+      advertised += ids.length;
+
+      for (const id of ids) {
+        const section = page.locator(`#${id}`);
+        if ((await section.count()) === 0) {
+          missing.push(id);
+          continue;
+        }
+        // A section that renders as an empty shell is just as broken as
+        // one that vanished, and an extraction bug can easily produce it.
+        const text = ((await section.first().innerText()) ?? "").trim();
+        if (text.length < 10) {
+          empty.push(id);
+        }
       }
     }
 
+    expect(
+      advertised,
+      `the four group routes advertised only ${advertised} sections between them — expected at least ${MIN_SECTIONS}`
+    ).toBeGreaterThanOrEqual(MIN_SECTIONS);
     expect(
       missing,
       `sidebar links to sections that do not exist in the DOM: ${missing.join(", ")}`
@@ -116,21 +147,22 @@ browserFlow(
 browserFlow(
   "settings: each section carries a visible heading",
   async ({ page }) => {
-    await page.goto("/dashboard/settings");
-    await expect(page.locator(".settings-sidebar")).toBeVisible();
-
-    const ids = await sidebarSectionIds(page);
     const headless: string[] = [];
-    for (const id of ids) {
-      const section = page.locator(`#${id}`).first();
-      if ((await section.count()) === 0) {
-        continue; // covered by the spec above
-      }
-      const headings = section.locator(
-        "h1, h2, h3, h4, .settings-section-title, .settings-card-title"
-      );
-      if ((await headings.count()) === 0) {
-        headless.push(id);
+    for (const group of GROUPS) {
+      await page.goto(`/dashboard/settings/${group}`);
+      await expect(page.locator(".settings-sidebar")).toBeVisible();
+
+      for (const id of await sidebarSectionIds(page, { onlyThisPage: true })) {
+        const section = page.locator(`#${id}`).first();
+        if ((await section.count()) === 0) {
+          continue; // covered by the spec above
+        }
+        const headings = section.locator(
+          "h1, h2, h3, h4, .settings-section-title, .settings-card-title"
+        );
+        if ((await headings.count()) === 0) {
+          headless.push(id);
+        }
       }
     }
 
@@ -163,10 +195,12 @@ browserFlow(
       }
     });
 
-    await page.goto("/dashboard/settings");
-    await expect(page.locator(".settings-sidebar")).toBeVisible();
-    // Let the section effects settle — several fetch their own state.
-    await page.waitForTimeout(2500);
+    for (const group of GROUPS) {
+      await page.goto(`/dashboard/settings/${group}`);
+      await expect(page.locator(".settings-sidebar")).toBeVisible();
+      // Let the section effects settle — several fetch their own state.
+      await page.waitForTimeout(2000);
+    }
 
     expect(
       failedRequests,
@@ -180,35 +214,55 @@ browserFlow(
 );
 
 browserFlow(
-  "settings: documented hash deep-links resolve and move the page",
+  "settings: legacy hash deep-links redirect to the owning route",
   async ({ page }) => {
-    // `/privacy-policy` links to `#ai-summaries`, and the AI timeout copy
-    // links to `#ai-timeouts`; SettingsView pulses the target on arrival.
-    // Both are a cross-page contract, so pin them explicitly rather than
-    // relying on the generic sidebar sweep.
+    // `/privacy-policy` links to `#ai-summaries` and the bell links to
+    // `#ai-timeouts`. Those anchors were published against the old
+    // single-page settings URL, so the landing page has to forward them to
+    // whichever group route now owns the section — including the anchor,
+    // which is the part a server redirect could never do (fragments are
+    // never sent to the server).
     //
-    // NOT asserted: that the target ends up in the viewport. The sidebar
-    // scrolls to the hash at 120/320/700ms and then stops
-    // (SettingsSidebar's `retries`), while several sections fetch their
-    // own state — so content landing above the target after 700ms can
-    // push it back off-screen with nothing left to re-scroll. That's a
-    // genuine (pre-existing, cosmetic) race in the app, not a test
-    // artifact, and asserting final pixel position makes this spec flaky
-    // rather than making the app correct. The route split planned for
-    // this surface removes the race by turning these anchors into real
-    // routes; until then, pin the part that is deterministic — the
-    // section resolves, and the deep-link handler demonstrably ran.
-    for (const id of ["ai-summaries", "ai-timeouts"]) {
+    // This replaces a weaker assertion. The old spec could only check that
+    // the page had scrolled somewhere, because the anchor sat far down a
+    // 23-section page and the sidebar's scroll retries gave up at 700ms
+    // while later sections were still loading and shifting it. On a
+    // per-group route the section is one of five, so "did we land on the
+    // right section" is answerable directly.
+    const expected: Record<string, string> = {
+      "ai-summaries": "policies",
+      "ai-timeouts": "admin",
+      notifications: "you",
+      "sync-status": "sync",
+    };
+
+    for (const [id, group] of Object.entries(expected)) {
       await page.goto(`/dashboard/settings#${id}`);
+
+      await expect
+        .poll(() => new URL(page.url()).pathname, { timeout: 10_000 })
+        .toBe(`/dashboard/settings/${group}`);
+      expect(
+        new URL(page.url()).hash,
+        `redirect dropped the anchor for #${id}`
+      ).toBe(`#${id}`);
+
       const target = page.locator(`#${id}`);
       await expect(target).toHaveCount(1);
       await expect(target).toBeVisible();
-
-      // The handler fired if the page left the top. Polled rather than
-      // sampled once, because the last scheduled scroll lands at 700ms.
-      await expect
-        .poll(() => page.evaluate(() => window.scrollY), { timeout: 10_000 })
-        .toBeGreaterThan(0);
     }
+  }
+);
+
+browserFlow(
+  "settings: the landing page forwards to the first group",
+  async ({ page }) => {
+    // No anchor to go on, so it should still land somewhere real rather
+    // than rendering an empty shell. Nav links here.
+    await page.goto("/dashboard/settings");
+    await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 10_000 })
+      .toBe("/dashboard/settings/you");
+    await expect(page.locator(".settings-sidebar")).toBeVisible();
   }
 );

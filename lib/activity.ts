@@ -32,72 +32,83 @@ import db from "./db";
  */
 const ACTIVITY_RETENTION = 2000;
 
-export type ActivityType =
-  | "scrape"
-  | "resync"
-  | "policy_summary"
-  | "scheduled_sync"
-  | "manual_sync"
-  | "import"
-  | "wayback_import"
-  | "backup_export"
-  | "backup_restore"
-  | "reset"
+/**
+ * Every activity row type. Declared as a runtime array, with the union
+ * DERIVED from it, so the two can never drift — `/api/activity` filters
+ * incoming `?type=` against this exact list. It previously kept its own
+ * hand-maintained copy that had fallen eight types behind, which made
+ * the filter silently no-op (returning UNFILTERED rows) for anything
+ * newer than `reset`.
+ */
+export const ACTIVITY_TYPES = [
+  "scrape",
+  "resync",
+  "policy_summary",
+  "scheduled_sync",
+  "manual_sync",
+  "import",
+  "wayback_import",
+  "backup_export",
+  "backup_restore",
+  "reset",
   // Round 3 PR 1: migration step events. Per-step + summary rows so the
   // Dev Options activity-log accordion can show "what the migration did" at
   // boot-time. Annotation events use this type too — create/edit/delete of
   // user annotations on App Detail surfaces here for the same audit-log reasons.
-  | "migration"
-  | "annotation_created"
-  | "annotation_edited"
-  | "annotation_deleted"
+  "migration",
+  "annotation_created",
+  "annotation_edited",
+  "annotation_deleted",
   // Per-app verdict events. Verdicts ('safe' | 'replace' | 'uninstall')
   // are categorical decisions distinct from freeform annotations — they
   // surface here so the dashboard activity feed and the Dev Options
   // audit log can show "marked X as uninstall on Y" alongside note
   // edits and syncs.
-  | "verdict_set"
-  | "verdict_cleared"
+  "verdict_set",
+  "verdict_cleared",
   // Bulk verdict apply (Select mode in AppGrid). One row per bulk apply,
   // with `detail.count` + `detail.verdict` + `detail.appIds`. Per-app
   // `verdict_set` rows are *not* written for bulk applies — the single
   // summary row covers the audit trail without flooding the feed.
-  | "bulk_verdict_set"
+  "bulk_verdict_set",
   // Queue session completion. One row at session end with totals
   // (kept/replace/uninstall/notes) and the preflight choices used.
-  | "queue_session_completed"
+  "queue_session_completed",
   // Phase 3 device-action events. Backups + uninstalls land here so
   // the Dev Options activity log retains a forensic trail of every
   // destructive cfgutil call. `cfgutil_uninstall` rows include the
   // bundle ID + ecid + per-row outcome in the detail blob; the
   // dashboard activity feed just shows the summary string.
-  | "cfgutil_backup"
-  | "cfgutil_uninstall"
-  | "flag_quarantined_purged"
+  "cfgutil_backup",
+  "cfgutil_uninstall",
+  "flag_quarantined_purged",
   // Round 3 v1 final: audit-bundle imports — counterpart to backup_export
   // but for the recommender → loved-one workflow. One row per accepted
   // import; the detail blob carries the summary numbers + recommender
   // name for the dashboard provenance banner.
-  | "bundle_imported"
+  "bundle_imported",
   // Privacy-profile preset boundary transitions — rows surface when the
   // user picks a preset, switches between presets, or clears a profile.
   // Custom-to-custom edits inside a non-preset state don't fire (the
   // activity log is for noteworthy transitions, not keystroke-level
   // edits). The describePresetTransition helper in lib/privacy-profile.ts
   // is the single source of truth for when to write one of these.
-  | "profile_preset_applied"
+  "profile_preset_applied",
   // Dashboard layout preset boundary transitions — mirrors
   // `profile_preset_applied`. Surfaces only when the change crosses a
   // named preset (default/minimal/caretaker/watchdog/at_a_glance). The
   // editor saves at every keystroke, so custom-to-custom edits never
   // fire — `describeLayoutTransition` in lib/dashboard-layout.ts is the
   // gate.
-  | "dashboard_layout_applied"
+  "dashboard_layout_applied",
   // Periodic (24h) server health check + non-destructive self-heal. One row
   // per run (status ok/partial/error); the detail blob is the full
   // HealthCheckResult. Written by lib/health-check.ts — the activity log is
   // the sole surface for this job (no bell/webhook).
-  | "health_check";
+  "health_check",
+] as const;
+
+export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 export type ActivityStatus = "ok" | "error" | "partial" | "cancelled";
 

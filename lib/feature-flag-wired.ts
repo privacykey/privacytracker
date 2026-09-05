@@ -6,7 +6,7 @@
  * on flags that are toggleable but inert, so testers can see at a glance
  * whether their override should produce a visible change.
  *
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags.
  */
 
 import type { FlagKey } from "./feature-flag-rules";
@@ -68,7 +68,6 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.about.ai_disclosure",
   "flag.help.label_definitions",
   "flag.help.export_guide",
-  "flag.help.focus",
 
   // Quiet hours — wired in lib/notifications.ts (create-time stamp + filter).
   "flag.notifications.quiet_hours",
@@ -298,6 +297,24 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.shortlist.live_badge_prefetch",
   "flag.shortlist.profile_mismatch_pill",
   "flag.shortlist.installed_grouping",
+
+  // Added by the wired-flag audit: each of these is read by a literal
+  // call in app/ or lib/, so Dev Options should not badge them
+  // "(no effect yet)". Pinned by tests/app/feature-flag-wired.test.ts.
+  "flag.appgrid.card.verdict_pill",
+  "flag.appgrid.filter.device",
+  "flag.appgrid.review_queue.bulk_select",
+  "flag.appgrid.review_queue.cfgutil_uninstall",
+  "flag.appgrid.review_queue.enabled",
+  "flag.dashboard.background_mode_wizard",
+  "flag.dashboard.callout.age_rating",
+  "flag.dashboard.layout_editor.visible",
+  "flag.dashboard.task_journey",
+  "flag.dashboard.task_list",
+  "flag.devopts.cfgutil_uninstall",
+  "flag.guardian.age_rating",
+  "flag.nav.task_list_icon",
+  "flag.settings.devices_page",
 ]);
 
 export function isWired(key: FlagKey): boolean {

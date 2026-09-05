@@ -16,6 +16,7 @@
 
 import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 import { isValidVerdict, setVerdicts, type VerdictValue } from "@/lib/verdicts";
 
@@ -33,7 +34,12 @@ export async function POST(request: NextRequest) {
   let body: PostBody;
   try {
     body = await readBoundedJson<PostBody>(request, 64 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 

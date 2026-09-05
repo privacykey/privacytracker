@@ -1,3 +1,8 @@
+import {
+  type DateFormatMode,
+  formatDate as formatDateWithMode,
+} from "@/lib/date-format";
+
 /**
  * Formatting helpers shared by settings sections.
  *
@@ -108,4 +113,15 @@ export function fmtDuration(ms: number): string {
   const mins = Math.floor(ms / 60_000);
   const secs = Math.round((ms % 60_000) / 1000);
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
+export function fmtShortDate(ts: number, mode: DateFormatMode) {
+  if (!ts) {
+    return "—";
+  }
+  // Delegates to the shared formatter so the import-history rows, the
+  // backup-restore "exported on" line, and the delete-confirmation
+  // dialog all honour Settings → Appearance → Date format. Was a
+  // hard-coded `'en-AU'` Intl.DateTimeFormat before.
+  return formatDateWithMode(ts, mode);
 }

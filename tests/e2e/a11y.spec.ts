@@ -202,7 +202,9 @@ browserFlow(
     await seedCannedApps(request);
 
     await page.goto("/dashboard");
-    await expect(page.locator("main").first()).toBeVisible();
+    // Client shell (Rust-core Phase 0): wait for HomeView's root so axe
+    // scans real cards, not an empty wrapper.
+    await expect(page.locator(".home-page").first()).toBeVisible();
 
     // The coachmark tour (when it auto-opens) pops in with a ~220ms
     // entrance animation, and axe measures mid-animation colours as
@@ -223,10 +225,55 @@ browserFlow(
     await setDefaultFocus(request);
     const instagramId = await seedCannedApps(request);
 
+    // Saved accessibility profile → the Accessibility tab renders its
+    // preference key + per-row chips (incl. voice_control as
+    // required-but-not-declared), so that markup is in the scanned DOM.
+    const a11yProfile = await request.put("/api/accessibility-profile", {
+      headers: sameOriginHeaders,
+      data: {
+        profile: {
+          voiceover: "required",
+          voice_control: "required",
+          captions: "nice",
+        },
+      },
+    });
+    await expect(a11yProfile).toBeOK();
+
     await page.goto(`/apps/${instagramId}`);
     await expect(page.locator("h1.detail-hero-name")).toHaveText("Instagram");
 
     await expectNoBlockingViolations(page, "app-detail");
+
+    // The other tabs each become their own component file in the
+    // AppDetailView split — scan them activated and populated (the
+    // canned seed provides declared accessibility features, a ready
+    // policy summary, and timeline history). Tab clicks are polled —
+    // same hydration caveat as the wizard's method click; re-clicking a
+    // selected tab is a no-op so the poll is safe.
+    await expect(async () => {
+      await page.locator("#tab-accessibility").click();
+      await expect(page.locator(".a11y-feature-row").first()).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expectNoBlockingViolations(page, "app-detail-accessibility");
+
+    await expect(async () => {
+      await page.locator("#tab-policy").click();
+      await expect(page.locator(".policy-lens-card").first()).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expectNoBlockingViolations(page, "app-detail-policy");
+
+    await expect(async () => {
+      await page.locator("#tab-changelog").click();
+      await expect(page.locator(".timeline-item").first()).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expectNoBlockingViolations(page, "app-detail-changelog");
   }
 );
 
@@ -242,7 +289,9 @@ browserFlow(
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/dashboard");
-    await expect(page.locator("main").first()).toBeVisible();
+    // Client shell (Rust-core Phase 0): wait for HomeView's root so axe
+    // scans real cards, not an empty wrapper.
+    await expect(page.locator(".home-page").first()).toBeVisible();
 
     // Open the drawer so its links are in the scanned DOM alongside the
     // compact top bar (where the icon-only Add Apps link lives).

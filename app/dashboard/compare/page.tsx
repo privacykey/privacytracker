@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { resolveFlagFromDb } from "@/lib/feature-flags-server";
-import { setSettingIfUnset } from "@/lib/scheduler";
+import RecordTaskVisit from "@/app/components/RecordTaskVisit";
+import RequireFlagGate from "@/app/components/RequireFlagGate";
 import CompareAppsView from "../../components/CompareAppsView";
 import Nav from "../../components/Nav";
-
-export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
@@ -89,23 +86,6 @@ function readSingle(value: string | string[] | undefined): string | undefined {
 }
 
 export default async function ComparePage({ searchParams }: ComparePageProps) {
-  // Round 3: gated by `flag.page.compare`. Default on; off for guardian +
-  // minimal per the rule engine. Returning notFound() rather than redirecting
-  // because users hitting this URL deliberately should see "this isn't here"
-  // rather than a silent bounce to the dashboard.
-  if (resolveFlagFromDb("flag.page.compare") !== "on") {
-    notFound();
-  }
-
-  // First-visit marker for the user-tasks `compare_two_apps` completion
-  // check. Idempotent: once set, every subsequent render is a single
-  // SELECT no-op.
-  try {
-    setSettingIfUnset("task_visit.compare_at", String(Date.now()));
-  } catch (e) {
-    console.warn("[compare] task visit marker failed:", e);
-  }
-
   const params = (await searchParams) ?? {};
   const specA = sanitizeSpec(params.a);
   const specB = sanitizeSpec(params.b);
@@ -133,46 +113,51 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
   return (
     <>
       <Nav />
-      <div className="page-container">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{tCompare("page_title")}</h1>
-            <p className="page-subtitle">
-              {fromReview ? (
-                tCompare("page_subtitle_from_review")
-              ) : (
-                <>
-                  {tCompare("page_subtitle_default_lead")}{" "}
-                  <Link
-                    className="definitions-inline-link"
-                    href="/dashboard/apps"
-                  >
-                    {tCompare("page_subtitle_default_link")}
-                  </Link>
-                  {tCompare("page_subtitle_default_after")}{" "}
-                  <kbd className="kbd kbd-inline">
-                    {tCompare("page_subtitle_default_kbd")}
-                  </kbd>{" "}
-                  {tCompare("page_subtitle_default_close")}
-                </>
-              )}
-            </p>
+      <RequireFlagGate flag="flag.page.compare">
+        {/* First-visit marker for the `compare_two_apps` checklist item;
+            same first-write-wins semantics as the server version. */}
+        <RecordTaskVisit surface="compare" />
+        <div className="page-container">
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">{tCompare("page_title")}</h1>
+              <p className="page-subtitle">
+                {fromReview ? (
+                  tCompare("page_subtitle_from_review")
+                ) : (
+                  <>
+                    {tCompare("page_subtitle_default_lead")}{" "}
+                    <Link
+                      className="definitions-inline-link"
+                      href="/dashboard/apps"
+                    >
+                      {tCompare("page_subtitle_default_link")}
+                    </Link>
+                    {tCompare("page_subtitle_default_after")}{" "}
+                    <kbd className="kbd kbd-inline">
+                      {tCompare("page_subtitle_default_kbd")}
+                    </kbd>{" "}
+                    {tCompare("page_subtitle_default_close")}
+                  </>
+                )}
+              </p>
+            </div>
+            <Link className="btn btn-secondary" href={backHref}>
+              {backLabel}
+            </Link>
           </div>
-          <Link className="btn btn-secondary" href={backHref}>
-            {backLabel}
-          </Link>
-        </div>
 
-        {/* Seed either/both slots from the URL. CompareAppsView handles the
+          {/* Seed either/both slots from the URL. CompareAppsView handles the
             empty case itself (empty-state copy + two pickers). */}
-        <CompareAppsView
-          fromReview={fromReview}
-          initialSpec={specA}
-          initialSpecOther={specB}
-          lockPinned={false}
-          pinnedSlot="A"
-        />
-      </div>
+          <CompareAppsView
+            fromReview={fromReview}
+            initialSpec={specA}
+            initialSpecOther={specB}
+            lockPinned={false}
+            pinnedSlot="A"
+          />
+        </div>
+      </RequireFlagGate>
     </>
   );
 }

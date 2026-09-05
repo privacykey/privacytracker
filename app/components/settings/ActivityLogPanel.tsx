@@ -14,6 +14,7 @@
  * accordion is lazy: nothing is fetched until it is first opened.
  */
 
+import "./activity-log.css";
 import { useTranslations } from "next-intl";
 import { useFlag } from "@/lib/feature-flags-hooks";
 import { useActivityLog } from "@/lib/use-activity-log";
@@ -62,35 +63,29 @@ export default function ActivityLogPanel({
   const tDevActivityTypes = useTranslations(
     "settings.dev_options.activity_types"
   );
-
-  // The `activity*` prefixes are redundant now that this has its own file —
-  // they existed to disambiguate inside SettingsView's ~90-state scope. They
-  // are kept for this commit so the markup below is a verbatim copy of what
-  // SettingsView rendered, which is what makes the before/after HTML diff
-  // meaningful. Dropping them is a mechanical follow-up.
   const {
-    log: activityLog,
-    loading: activityLoading,
-    hasMore: activityHasMore,
-    total: activityTotal,
-    typeFilter: activityTypeFilter,
-    setTypeFilter: setActivityTypeFilter,
-    statusFilter: activityStatusFilter,
-    setStatusFilter: setActivityStatusFilter,
-    timeWindow: activityTimeWindow,
-    setTimeWindow: setActivityTimeWindow,
-    sortBy: activitySortBy,
-    setSortBy: setActivitySortBy,
-    sortDir: activitySortDir,
-    setSortDir: setActivitySortDir,
-    expandedId: activityExpandedId,
-    setExpandedId: setActivityExpandedId,
-    open: activityOpen,
-    setOpen: setActivityOpen,
-    livePaused: activityLivePaused,
-    setLivePaused: setActivityLivePaused,
-    flashing: activityFlashing,
-    load: loadActivityLog,
+    log,
+    loading,
+    hasMore,
+    total,
+    typeFilter,
+    setTypeFilter,
+    statusFilter,
+    setStatusFilter,
+    timeWindow,
+    setTimeWindow,
+    sortBy,
+    setSortBy,
+    sortDir,
+    setSortDir,
+    expandedId,
+    setExpandedId,
+    open,
+    setOpen,
+    livePaused,
+    setLivePaused,
+    flashing,
+    load,
   } = useActivityLog({
     onLoadError: () => showToast(tToast("activity_log_load_failed")),
   });
@@ -122,12 +117,12 @@ export default function ActivityLogPanel({
           id="activity-log"
           onToggle={(event) => {
             const isOpen = (event.target as HTMLDetailsElement).open;
-            setActivityOpen(isOpen);
-            if (isOpen && activityLog === null) {
-              void loadActivityLog(false);
+            setOpen(isOpen);
+            if (isOpen && log === null) {
+              void load(false);
             }
           }}
-          open={activityOpen}
+          open={open}
           style={{
             marginTop: 24,
             borderTop: "1px solid var(--border)",
@@ -156,8 +151,8 @@ export default function ActivityLogPanel({
               <span>{tDevActivity("filter_activity")}</span>
               <select
                 className="settings-input"
-                onChange={(event) => setActivityTypeFilter(event.target.value)}
-                value={activityTypeFilter}
+                onChange={(event) => setTypeFilter(event.target.value)}
+                value={typeFilter}
               >
                 <option value="">{tDevActivity("all_activity")}</option>
                 <option value="scrape">{tDevActivityTypes("scrape")}</option>
@@ -185,10 +180,8 @@ export default function ActivityLogPanel({
               <span>{tDevActivity("filter_status")}</span>
               <select
                 className="settings-input"
-                onChange={(event) =>
-                  setActivityStatusFilter(event.target.value)
-                }
-                value={activityStatusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                value={statusFilter}
               >
                 <option value="">{tDevActivity("all_statuses")}</option>
                 <option value="ok">{tDevActivity("status_ok")}</option>
@@ -205,8 +198,8 @@ export default function ActivityLogPanel({
               <span>{tDevActivity("filter_since")}</span>
               <select
                 className="settings-input"
-                onChange={(event) => setActivityTimeWindow(event.target.value)}
-                value={activityTimeWindow}
+                onChange={(event) => setTimeWindow(event.target.value)}
+                value={timeWindow}
               >
                 <option value="">{tDevActivity("any_time")}</option>
                 <option value="5m">{tDevActivity("last_5m")}</option>
@@ -226,10 +219,10 @@ export default function ActivityLogPanel({
                     "started_at" | "ended_at" | "duration_ms",
                     "asc" | "desc",
                   ];
-                  setActivitySortBy(field);
-                  setActivitySortDir(dir);
+                  setSortBy(field);
+                  setSortDir(dir);
                 }}
-                value={`${activitySortBy}:${activitySortDir}`}
+                value={`${sortBy}:${sortDir}`}
               >
                 <option value="started_at:desc">
                   {tDevActivity("sort_started_desc")}
@@ -253,15 +246,15 @@ export default function ActivityLogPanel({
             </label>
             <button
               className="btn btn-secondary"
-              disabled={activityLoading}
-              onClick={() => void loadActivityLog(false)}
+              disabled={loading}
+              onClick={() => void load(false)}
               type="button"
             >
-              {activityLoading && activityLog === null ? (
+              {loading && log === null ? (
                 <>
                   <span className="spinner-sm" /> {tDevActivity("loading")}
                 </>
-              ) : activityLog === null ? (
+              ) : log === null ? (
                 tDevActivity("load")
               ) : (
                 tDevActivity("refresh")
@@ -271,43 +264,41 @@ export default function ActivityLogPanel({
                 loaded at least once — before that the toolbar just shows the
                 "Load activity" button. Clicking toggles the pause state; the
                 dot pulses while live and goes grey when paused. */}
-            {activityLog !== null && (
+            {log !== null && (
               <button
-                aria-pressed={!activityLivePaused}
+                aria-pressed={!livePaused}
                 className={
                   // Brief flash when a new row was just prepended — purely
                   // cosmetic, auto-cleared ~1.2s later by the flashing effect.
-                  `activity-log-live-toggle${activityLivePaused ? "is-paused" : ""}${
-                    !activityLivePaused && activityFlashing ? "just-pulsed" : ""
+                  `activity-log-live-toggle${livePaused ? "is-paused" : ""}${
+                    !livePaused && flashing ? "just-pulsed" : ""
                   }`
                 }
-                onClick={() => setActivityLivePaused((prev) => !prev)}
+                onClick={() => setLivePaused((prev) => !prev)}
                 title={
-                  activityLivePaused
+                  livePaused
                     ? tDevActivity("live_title_paused")
                     : tDevActivity("live_title_active")
                 }
                 type="button"
               >
                 <span aria-hidden className="activity-log-live-dot" />
-                {activityLivePaused
-                  ? tDevActivity("paused")
-                  : tDevActivity("live")}
+                {livePaused ? tDevActivity("paused") : tDevActivity("live")}
               </button>
             )}
           </div>
 
-          {activityLog !== null && (
+          {log !== null && (
             <div style={{ marginTop: 12 }}>
-              {activityLog.length === 0 ? (
+              {log.length === 0 ? (
                 <div className="activity-log-empty">
                   {(() => {
                     const parts: string[] = [];
-                    if (activityStatusFilter) {
-                      parts.push(`${activityStatusFilter}`);
+                    if (statusFilter) {
+                      parts.push(`${statusFilter}`);
                     }
-                    if (activityTypeFilter) {
-                      parts.push(activityTypeFilter.replace(/_/g, " "));
+                    if (typeFilter) {
+                      parts.push(typeFilter.replace(/_/g, " "));
                     }
                     if (parts.length > 0) {
                       return tDevActivity("empty_filter", {
@@ -320,8 +311,8 @@ export default function ActivityLogPanel({
               ) : (
                 <>
                   <ul className="activity-log-list">
-                    {activityLog.map((row) => {
-                      const isExpanded = activityExpandedId === row.id;
+                    {log.map((row) => {
+                      const isExpanded = expandedId === row.id;
                       const typeLabel = ACTIVITY_TYPE_LABELS[row.type]
                         ? tDevActivityTypes(
                             row.type as Parameters<typeof tDevActivityTypes>[0]
@@ -338,7 +329,7 @@ export default function ActivityLogPanel({
                             aria-expanded={isExpanded}
                             className="activity-log-header"
                             onClick={() =>
-                              setActivityExpandedId((prev) =>
+                              setExpandedId((prev) =>
                                 prev === row.id ? null : row.id
                               )
                             }
@@ -382,18 +373,18 @@ export default function ActivityLogPanel({
                   <div className="activity-log-footer">
                     <span className="activity-log-count">
                       {tDevActivity("showing", {
-                        current: activityLog.length,
-                        total: activityTotal,
+                        current: log.length,
+                        total,
                       })}
                     </span>
-                    {activityHasMore && (
+                    {hasMore && (
                       <button
                         className="btn btn-secondary"
-                        disabled={activityLoading}
-                        onClick={() => void loadActivityLog(true)}
+                        disabled={loading}
+                        onClick={() => void load(true)}
                         type="button"
                       >
-                        {activityLoading ? (
+                        {loading ? (
                           <>
                             <span className="spinner-sm" />{" "}
                             {tDevActivity("loading")}

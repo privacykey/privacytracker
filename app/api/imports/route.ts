@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { withApiTiming } from "../../../lib/api-timing";
 import {
   createImport,
@@ -30,6 +31,11 @@ async function createImportRoute(request: Request) {
   try {
     body = await readBoundedJson<Record<string, unknown>>(request, 8 * 1024);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid JSON body" },
       { status: 400 }

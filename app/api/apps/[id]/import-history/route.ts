@@ -1,3 +1,7 @@
+import {
+  readOptionalBoundedJson,
+  requestBodyErrorResponse,
+} from "@/lib/request-body";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
@@ -76,9 +80,20 @@ export async function POST(
   // default quarterly reconstruction (1 = monthly). Anything missing or out
   // of range falls back to the default — the button has no body at all.
   let intervalMonths: number | undefined;
-  const body = (await request.json().catch(() => null)) as {
-    intervalMonths?: unknown;
-  } | null;
+  let body: { intervalMonths?: unknown } | null;
+  try {
+    body = await readOptionalBoundedJson<{ intervalMonths?: unknown } | null>(
+      request,
+      4 * 1024,
+      null
+    );
+  } catch (error) {
+    const limited = requestBodyErrorResponse(error);
+    if (limited) {
+      return limited;
+    }
+    body = null;
+  }
   const rawInterval = body?.intervalMonths;
   if (
     typeof rawInterval === "number" &&

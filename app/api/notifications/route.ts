@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   getNotifications,
   getUnreadCount,
@@ -23,7 +24,12 @@ export async function POST(request: Request) {
   let body: { action?: unknown; ids?: unknown };
   try {
     body = await readOptionalBoundedJson(request, 32 * 1024, {});
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     body = {};
   }
 

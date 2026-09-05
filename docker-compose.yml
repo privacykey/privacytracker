@@ -3,16 +3,8 @@ name: privacytracker
 services:
   web:
     build: .
-    # Bind to loopback only — the auditor is a single-user local-first tool.
-    # Anyone who wants to expose it to their LAN can put a reverse proxy
-    # (with TLS and auth) in front of 127.0.0.1:3000.
-    #
-    # ⚠ SECURITY: if you change this to "3000:3000" (exposing the app on your
-    # LAN), you MUST also set AUDITOR_ADMIN_TOKEN *and* PRIVACYTRACKER_ALLOWED_HOSTS
-    # below. The app rejects any request whose Host isn't allowlisted (default:
-    # loopback only), so a LAN browser won't even load until you list its host —
-    # and once a non-loopback host is allowlisted, destructive API actions are
-    # refused until a token is set. Leaving the port on 127.0.0.1 needs neither.
+    # Keep host access local. Other containers can still reach the app on the
+    # Docker network, so an access token is required even with this mapping.
     ports:
       - "127.0.0.1:3000:3000"
     # SQLite lives in a Docker-managed named volume by default. The container
@@ -27,11 +19,8 @@ services:
       - privacytracker-data:/app/data
     environment:
       - NODE_ENV=production
-      # Shared secret required on destructive/guarded routes (cookie via the
-      # in-app login, or the x-auditor-admin-token header for scripts). Optional
-      # for the loopback-only default; MANDATORY once the app is network-exposed
-      # (see PRIVACYTRACKER_NETWORK_EXPOSED / PRIVACYTRACKER_ALLOWED_HOSTS).
-      - AUDITOR_ADMIN_TOKEN=${AUDITOR_ADMIN_TOKEN:-}
+      # Generate a random token and store it in .env (see docs/SECURE_DEPLOYMENT.md).
+      - AUDITOR_ADMIN_TOKEN=${AUDITOR_ADMIN_TOKEN:?Set AUDITOR_ADMIN_TOKEN in .env}
       # Comma-separated extra Host values the app will answer to, ADDED to the
       # always-allowed loopback set (localhost, 127.x, ::1). Set this to your
       # LAN hostname/IP (e.g. "nas.lan" or "192.168.1.50") when exposing the
@@ -40,7 +29,7 @@ services:
       - PRIVACYTRACKER_ALLOWED_HOSTS=${PRIVACYTRACKER_ALLOWED_HOSTS:-}
       # Set to 1 to force the network-exposed posture (admin token mandatory)
       # without listing a host — e.g. behind a reverse proxy that rewrites Host.
-      - PRIVACYTRACKER_NETWORK_EXPOSED=${PRIVACYTRACKER_NETWORK_EXPOSED:-}
+      - PRIVACYTRACKER_NETWORK_EXPOSED=1
       # Set to 1 only when a trusted reverse proxy sits in front. It makes the
       # app honour X-Forwarded-Host / X-Forwarded-For (for the Host allowlist,
       # rate-limit keys, and audit IPs). Leave unset for a direct bind, where

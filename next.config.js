@@ -42,6 +42,14 @@ const nextConfig = {
   ...(process.env.BUILD_STANDALONE ? { output: "standalone" } : {}),
   // better-sqlite3 is a native binding; Next must not bundle it.
   serverExternalPackages: ["better-sqlite3"],
+  // The raw HTTP guard bounds each endpoint before Proxy buffers its body.
+  // Allow legitimate backup uploads beyond Next's default 10 MiB clone limit.
+  experimental: {
+    proxyClientMaxBodySize: "100mb",
+    // TypeScript 7 is a native compiler without the old JavaScript API.
+    // Keep build-time type checking enabled through Next's CLI backend.
+    useTypeScriptCli: true,
+  },
   // Dev-only indicator — bottom-right anchor matches the CSS stacking rule
   // in app/globals.css. Production builds don't render this.
   devIndicators: {

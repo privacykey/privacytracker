@@ -394,7 +394,7 @@ export default function NotificationBell({
                     {t("empty_hidden_prefix")}
                     <br />
                     <Link
-                      href="/dashboard/settings#notifications"
+                      href="/dashboard/settings/you#notifications"
                       onClick={() => setOpen(false)}
                       style={{
                         fontSize: 12,
@@ -456,7 +456,7 @@ export default function NotificationBell({
                     )?.status
                   : undefined;
                 const href = isTimeout
-                  ? "/dashboard/settings#ai-timeouts"
+                  ? "/dashboard/settings/admin#ai-timeouts"
                   : isManualAppsPrompt
                     ? // "Unmatched apps to review" lands on Import History with
                       // an auto-applied `?filter=unmatched` so the user sees
@@ -481,11 +481,11 @@ export default function NotificationBell({
                         // section `id`s in SettingsView.tsx — without this,
                         // the default `/apps/<synthetic-id>` path 404s.
                         isWaybackResume
-                        ? "/dashboard/settings#wayback-import"
+                        ? "/dashboard/settings/admin#wayback-import"
                         : isSyncResume
-                          ? "/dashboard/settings#sync-status"
+                          ? "/dashboard/settings/sync#sync-status"
                           : isPolicyResume
-                            ? "/dashboard/settings#privacy-policies-bulk"
+                            ? "/dashboard/settings/policies#privacy-policies-bulk"
                             : // Profile-mismatch entries land on the
                               // privacy-types section of the app detail
                               // page (the section that visualises which
@@ -880,7 +880,7 @@ export default function NotificationBell({
             <div className="notif-dropdown-footer">
               {hiddenUnread} unread hidden by your preferences &middot;{" "}
               <Link
-                href="/dashboard/settings#notifications"
+                href="/dashboard/settings/you#notifications"
                 onClick={() => setOpen(false)}
               >
                 Adjust

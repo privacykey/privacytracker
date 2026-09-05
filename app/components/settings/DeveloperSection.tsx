@@ -23,7 +23,6 @@ import TasksResetRow from "../TasksResetRow";
 import ActivityLogPanel from "./ActivityLogPanel";
 import AiDebugLogPanel from "./AiDebugLogPanel";
 import AiTimeoutsPanel from "./AiTimeoutsPanel";
-import type { AiDebugLogRow } from "./types";
 
 type TimeoutAutoSave = ReturnType<typeof useSettingsAutoSave<string>>;
 
@@ -32,12 +31,6 @@ export default function DeveloperSection({
   debugLogging,
   setDebugLogging,
   saveAiSettings,
-  debugLog,
-  debugLoading,
-  loadDebugLog,
-  clearDebugLog,
-  debugExpandedId,
-  setDebugExpandedId,
   aiProvider,
   advancedAiOpen,
   setAdvancedAiOpen,
@@ -55,12 +48,6 @@ export default function DeveloperSection({
   debugLogging: boolean;
   setDebugLogging: (next: boolean) => void;
   saveAiSettings: (overrides: { debugLogging: boolean }) => void;
-  debugLog: AiDebugLogRow[] | null;
-  debugLoading: boolean;
-  loadDebugLog: () => Promise<void>;
-  clearDebugLog: () => Promise<void>;
-  debugExpandedId: string | null;
-  setDebugExpandedId: (next: (prev: string | null) => string | null) => void;
   aiProvider: string;
   advancedAiOpen: boolean;
   setAdvancedAiOpen: (next: boolean) => void;
@@ -89,15 +76,10 @@ export default function DeveloperSection({
 
       <TasksResetRow />
       <AiDebugLogPanel
-        clearDebugLog={clearDebugLog}
-        debugExpandedId={debugExpandedId}
-        debugLoading={debugLoading}
-        debugLog={debugLog}
         debugLogging={debugLogging}
-        loadDebugLog={loadDebugLog}
         saveAiSettings={saveAiSettings}
-        setDebugExpandedId={setDebugExpandedId}
         setDebugLogging={setDebugLogging}
+        showToast={showToast}
       />
 
       <ActivityLogPanel showToast={showToast} />

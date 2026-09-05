@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   type AIProvider,
   normalizeAiProvider,
@@ -72,7 +73,12 @@ export async function POST(request: Request) {
   let body: ModelsBody;
   try {
     body = await readBoundedJson<ModelsBody>(request, 16 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { ok: false, message: "Invalid JSON body." },
       { status: 400 }

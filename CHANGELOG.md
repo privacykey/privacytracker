@@ -14,6 +14,16 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Canned sample data now populates every app-detail surface: each demo app
+  gets its hand-written AI policy summary stored as a real, ready analysis
+  (lens grid, highlights, and source preview render without any AI provider),
+  declared accessibility features on the Accessibility tab, and — for
+  Instagram — a policy-change history that lights up the recent-change banner
+  and the rating-shift strip.
+- The app-detail axe gate now also scans the Accessibility, AI Policy, and
+  Change History tabs (activated and populated), and the app-detail E2E spec
+  covers the change-review panel, the privacy-label accordion toggle, and all
+  three tabs.
 - Blocking accessibility gate in CI: axe-core scans of the welcome screen,
   onboarding import flow, dashboard, app detail, and mobile navigation, plus
   keyboard-only coverage of the onboarding path.
@@ -21,8 +31,25 @@ Going forward, changes are recorded here as they land.
   support guide, pull-request template, and code owners.
 - `pnpm screenshots` — captures a consistent set of UI screenshots from
   the built-in demo fixture, for docs and release notes.
+- A `justfile` collecting the common workflows — `just --list` shows the
+  set, covering the dev loop, the desktop (Tauri) build, Docker, and the
+  verification suites.
 
 ### Changed
+
+- Upgraded to TypeScript 7.0.2 and enabled Next.js's compiler CLI integration
+  for web, Docker, desktop and Storybook builds, retaining build-time type
+  checks with the native compiler.
+- Translation regression checks parse JSX independently of the TypeScript
+  compiler API, preserving the existing untranslated-text baseline while
+  allowing the checks to run with TypeScript 7.
+
+- **Settings is now four pages instead of one.** Your preferences, sync,
+  policies and admin each get their own address
+  (`/dashboard/settings/you`, `/sync`, `/policies`, `/admin`), so a page
+  loads only what it needs and you can link someone straight to the part
+  you mean. Existing links and bookmarks — including the ones in
+  notifications — still land in the right place.
 
 - **First-run experience.** Per-feature toggles moved behind an "Advanced"
   disclosure, illustrated goal cards shrunk on phones, and the primary action
@@ -37,6 +64,44 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Outbound requests now validate the DNS addresses used by the actual connection,
+  including streaming AI calls and redirects. IPv4-mapped IPv6 can no longer
+  bypass private-network or metadata checks. Local AI endpoints remain supported.
+
+- Docker and network deployments now require an access token for private pages
+  and all private API reads as well as writes. A sign-in page provides access;
+  missing configuration stays locked. Local launchers explicitly bind loopback.
+  Cookie-authenticated mutations also require the full matching browser origin.
+- JSON and file-upload limits now apply while reading the request, with a
+  deadline and early cancellation. Oversized uploads return 413 and timed-out
+  uploads return 408; backup and audit-bundle imports use the same bounded reader.
+
+- CSV exports prefix formula-looking cells for spreadsheet viewing, including
+  imported app and developer names. JSON exports retain the original values.
+
+- CSV exports now keep column headings readable (`App Name`, `Last Synced`,
+  `Privacy Type`) instead of replacing their spaces with `%20`.
+- The activity log's type filter works for every event type again. It
+  validated the requested type against a list that had fallen eight
+  entries behind — so filtering by newer events (privacy-profile preset
+  changes, verdicts, migrations, health checks) silently returned the
+  *unfiltered* feed instead.
+- The Stats page's policy radar no longer reshuffles which six apps it
+  shows between visits: when several apps share the same last-synced
+  time (which every bulk sync produces), the selection previously fell
+  back to database scan order.
+- Light-theme colour contrast on the app-detail page now meets WCAG AA:
+  not-declared accessibility rows no longer dim their text below the
+  threshold, the "Declared by developer" tag and the preference-key legend
+  use theme-aware colours, the AI-policy note boxes no longer render dark
+  navy in light mode, and the change-history chart's +N/−N counters use the
+  theme palette instead of fixed chart-band colours.
+- **Failed update checks now back off** instead of retrying forever. An
+  installation with no internet access used to attempt a connection to
+  GitHub — and wait out its timeout — every time anything asked whether an
+  update was available. Consecutive failures now widen the gap between
+  attempts (15 minutes, doubling, up to a day). Checking manually still
+  makes a real attempt straight away.
 - **The SQLite database is now private by default** — `0700` on the data
   directory, `0600` on the database and its write-ahead-log files. Existing
   installations are tightened automatically on their next start. The file
@@ -51,12 +116,23 @@ Going forward, changes are recorded here as they land.
 - Colour contrast now meets WCAG AA across the interface: link and secondary
   text colours, the accent blue in light mode, and the navigation drawer were
   all below the 4.5:1 threshold in places.
+- Nested panels — activity-log rows, the developer tools cards, and
+  import-history banners — now have visible backgrounds. They were styled
+  against `--surface-1/2/3` and `--border-1/2` design tokens that were never
+  actually defined, so they rendered transparent. Defining those tokens for
+  light, dark, high-contrast and reduce-transparency modes also clears the
+  last dark-only boxes on the app-detail policy blocks (the scrollable source
+  and trace wells) and in the Live Text illustration, which drew a dark phone
+  frame in the light theme.
 
 ### Security
 
+- Refresh the Docker and desktop Node runtime to 24.20.0, require patched Alpine TLS libraries, remove unused package managers from the runtime image, and apply compatible JavaScript/Rust dependency patches. Scan the final image in CI and track desktop runtime/scanner pins with Renovate.
 - Documented in the README that a configured AI provider key is stored in
   plaintext in the local database. Moving desktop keys into the OS keychain is
   planned.
+
+- Verify desktop backup artifacts before recording them and before uninstall pre-flight. Match native discovery to the selected device, use file-based freshness, reject invalid timestamps and symlinks, show the server's backup state throughout confirmation and retry flows, and stop Configurator process groups on timeout or excessive output.
 
 ## [0.1.2] — 2026-06-12
 

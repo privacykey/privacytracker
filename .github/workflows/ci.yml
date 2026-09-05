@@ -13,23 +13,26 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # pnpm needs to be installed before setup-node so that the latter's
-      # cache: 'pnpm' resolver can locate the pnpm binary on PATH. Pinned
-      # to an exact patch so CI and Docker use the same resolver behavior.
+      # cache: 'pnpm' resolver can locate the pnpm binary on PATH. No
+      # explicit version here: the action reads `packageManager` from
+      # package.json, the single source of truth (the Dockerfile's ARG
+      # PNPM_VERSION mirrors it via Renovate).
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
-        with:
-          version: 11.17.0
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -93,6 +96,8 @@ jobs:
         run: pnpm audit --prod
 
       - name: Validate Docker Compose files
+        env:
+          AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
         run: |
           docker compose -f docker-compose.yml config >/dev/null
           docker compose -f deploy/caddy/compose.yaml config >/dev/null
@@ -129,21 +134,22 @@ jobs:
     # regressions without holding up unrelated PRs. Promote to a hard
     # gate (`continue-on-error: false`) once the story set stabilises.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     continue-on-error: true
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
-        with:
-          version: 11.17.0
 
       - name: Setup Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -171,9 +177,12 @@ jobs:
     # and catches the common regressions: missing imports, type-error
     # changes after a tauri version bump, mismatched crate features.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Tauri Linux build dependencies
         # Tauri's webview backend on Linux links against gtk + webkit2gtk;
@@ -193,7 +202,7 @@ jobs:
         # script below. Doesn't need pnpm or a node_modules install.
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
 
       # See the matching note in the `quality` job — tauri-build needs
       # `resources/standalone.tar` to exist before `cargo check` will
@@ -226,15 +235,41 @@ jobs:
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
 
   container-smoke:
+    # Compose also interpolates required variables during cleanup.
+    env:
+      AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: quality
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Build Docker image
         run: docker build -t privacytracker-smoke .
+
+      - name: Scan final runtime image
+        # Export the image so the scanner never needs the Docker socket.
+        run: |
+          mkdir -p "$RUNNER_TEMP/runtime-scan"
+          docker save privacytracker-smoke -o "$RUNNER_TEMP/runtime-scan/image.tar"
+          docker run --rm \
+            -v "$RUNNER_TEMP/runtime-scan:/scan" \
+            ghcr.io/aquasecurity/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --input /scan/image.tar --cache-dir /scan/cache \
+            --scanners vuln --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output /scan/results.json
+
+      - name: Upload runtime vulnerability report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: runtime-vulnerability-report
+          path: ${{ runner.temp }}/runtime-scan/results.json
+          if-no-files-found: ignore
 
       - name: Run Docker container
         run: |
@@ -308,6 +343,8 @@ jobs:
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
   compose-smoke:
+    env:
+      AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
     # Exercises the *documented* `docker compose up --build -d` path that
     # container-smoke (plain `docker run`, no volume) never touches. This is the
     # only leg that would have caught:
@@ -316,11 +353,14 @@ jobs:
     #     fresh Linux host (root-owned auto-created bind source) → /api/ready never
     #     goes green. macOS Docker Desktop hides this by uid-mapping bind mounts.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: quality
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # --- Leg A: the documented default (named volume) ---
       - name: Start root compose (named volume)
@@ -348,6 +388,16 @@ jobs:
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+
+      - name: Assert private data requires authentication inside Docker
+        run: |
+          docker compose exec -T web node --input-type=module -e '
+            const url = "http://127.0.0.1:3000/api/apps";
+            const anonymous = await fetch(url, {headers: {Host: "localhost:3000"}});
+            if (anonymous.status !== 401) throw new Error("Unauthenticated private read allowed");
+            const signedIn = await fetch(url, {headers: {"x-auditor-admin-token": process.env.AUDITOR_ADMIN_TOKEN}});
+            if (signedIn.status !== 200) throw new Error("Authenticated private read failed");
+          '
 
       - name: Stop root compose (named volume)
         if: always()

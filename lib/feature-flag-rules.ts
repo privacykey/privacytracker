@@ -2,7 +2,7 @@
  * Feature flag rules — v1
  *
  * Hand-authored rule tables that drive the feature-flag system described at
- * https://privacytracker-docs.privacykey.org/develop/feature-flags. Each flag has a hard default; some have
+ * https://docs.privacytracker.privacykey.org/develop/feature-flags. Each flag has a hard default; some have
  * additional rules that activate based on the user's audience, goals, or
  * accessibility modifier.
  *
@@ -45,7 +45,11 @@ export interface FocusState {
 }
 
 // ============================================================================
-// FlagKey — every registered flag in v1 (~204 keys)
+// FlagKey — every registered flag. Deliberately no count here: the last
+// one ("~204") sat stale for 20 keys. HARD_DEFAULTS is typed
+// Record<FlagKey, FlagValue>, so union and defaults cannot drift from
+// each other, and tests/app/feature-flag-wired.test.ts pins the set
+// against actual consumers.
 // ============================================================================
 
 export type FlagKey =
@@ -107,10 +111,6 @@ export type FlagKey =
   // VISUAL only; `flag.dashboard.task_list` still controls whether the
   // panel exists at all.
   | "flag.dashboard.task_journey"
-  // Device-aware re-sync CTAs. Off hides the "Re-sync from this device"
-  // button on the Review wizard's Action step and the Tasks-panel chip;
-  // the Devices settings page has its own flag.
-  | "flag.dashboard.device_resync_cta"
   // Editable home-dashboard layout. Flipping off hides the "Customise
   // dashboard…" footer link AND short-circuits the editor route. The
   // dashboard still renders whatever layout the user saved last — the
@@ -210,7 +210,6 @@ export type FlagKey =
   | "flag.detail.actions.resync_button"
   | "flag.detail.actions.delete_button"
   | "flag.detail.header.freshness_badge"
-  | "flag.detail.header.tracked_on_chips"
   | "flag.detail.header.change_count_badge"
   | "flag.detail.footer.import_provenance"
   | "flag.detail.tabs.compare"
@@ -235,7 +234,6 @@ export type FlagKey =
   | "flag.onboarding.accessibility_profile_setup"
   | "flag.onboarding.sample_data_button"
   | "flag.onboarding.coachmark_tour"
-  | "flag.onboarding.device_name_step"
 
   // ----- Onboarding — wizard steps + methods
   | "flag.onboarding.step.choose_method"
@@ -356,7 +354,6 @@ export type FlagKey =
   | "flag.page.shortlist"
   | "flag.help.label_definitions"
   | "flag.help.export_guide"
-  | "flag.help.focus"
   | "flag.about.ai_disclosure"
   | "flag.legal.privacy_policy_page"
   | "flag.legal.terms_page"
@@ -412,7 +409,6 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.dashboard.background_mode_wizard": "on", // Tauri-only callout — runtime-gated on isDesktop()
   "flag.dashboard.task_list": "on", // audience-aware tasks panel at the top of HomeView
   "flag.dashboard.task_journey": "on", // journey-strip rendering of the tasks panel (off = legacy flat list)
-  "flag.dashboard.device_resync_cta": "on", // "Re-sync from this device" CTAs on Review wizard + Tasks chip
   "flag.dashboard.layout_editor.visible": "on", // "Customise dashboard…" footer link + editor route gate
 
   // App Grid
@@ -500,7 +496,6 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.detail.actions.resync_button": "on", // rescrape live labels
   "flag.detail.actions.delete_button": "on", // stop tracking app
   "flag.detail.header.freshness_badge": "on", // 'last synced N days ago'
-  "flag.detail.header.tracked_on_chips": "on", // "Tracked on: iPhone · iPad" chip strip
   "flag.detail.header.change_count_badge": "on", // red 'N changes'
   "flag.detail.footer.import_provenance": "on", // 'imported via … on DATE'
   "flag.detail.tabs.compare": "on", // compare tab visibility
@@ -531,7 +526,6 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
      same moment. Users who want the tour can switch it on (it stays a
      user-overridable flag); the checklist remains always-on. */
   "flag.onboarding.coachmark_tour": "off",
-  "flag.onboarding.device_name_step": "on", // "Name your device" gating in OnboardWizard
 
   // Onboarding — wizard steps + methods
   "flag.onboarding.step.choose_method": "on", // method picker step
@@ -636,7 +630,6 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.page.shortlist": "on", // /dashboard/shortlist
   "flag.help.label_definitions": "on", // /help/definitions
   "flag.help.export_guide": "on", // /help/export-app-list
-  "flag.help.focus": "on", // /help/focus (new)
   "flag.about.ai_disclosure": "on", // /dashboard/about/ai-disclosure
   "flag.legal.privacy_policy_page": "on", // /privacy-policy
   "flag.legal.terms_page": "on", // /legal
@@ -958,7 +951,7 @@ export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
 //
 // Tour pulls from this pool on launch and includes only steps whose
 // `includedWhen` predicate returns true for the user's current state. See
-// https://privacytracker-docs.privacykey.org/develop/feature-flags.
+// https://docs.privacytracker.privacykey.org/develop/feature-flags.
 //
 // `i18nKey` resolves through next-intl with `{possessive}` interpolation so
 // audience copy adapts ('your apps' / 'their apps' / 'your child's apps').

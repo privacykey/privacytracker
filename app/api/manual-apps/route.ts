@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   isManualAppSource,
   MANUAL_APP_SOURCE_META,
@@ -88,6 +89,11 @@ export async function POST(request: Request) {
     // let someone stash a novel in the DB either.
     body = await readBoundedJson<Record<string, unknown>>(request, 8 * 1024);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid body" },
       { status: 400 }

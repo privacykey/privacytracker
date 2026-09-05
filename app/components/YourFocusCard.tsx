@@ -1,36 +1,41 @@
+"use client";
+
 /**
  * YourFocusCard — top-of-Settings card showing the user's current focus
  * (audience + goals + accessibility modifier) as chips, with an Adjust
- * button. Server component (synchronous DB read).
+ * button.
  *
- * Renders one of two states: an "audience unset" setup CTA linking to
- * /onboard/welcome, or a chip strip + Adjust + (?) help link. For
- * `loved_one` it also surfaces an annotation count when notes exist.
- * See https://privacytracker-docs.privacykey.org/develop/feature-flags
+ * Rust-core Phase 0: this was the last server component rendered by a
+ * converted page (settings/you passed it as a slot), and the one escape
+ * the shell ledger couldn't see — it read the DB directly for the
+ * focus, seven flags, the annotation count and the date-format
+ * preference. All four now come from the APIs: `GET /api/focus` (which
+ * grew `updatedAt` for the footnote), `useFlagValues` (the tri-state
+ * accessor — two of the "enables" flags are on/off/collapsed and
+ * `collapsed` must count as on), `GET /api/annotations?countApps=1`
+ * (gated exactly as before: loved_one audience AND the banner flag),
+ * and `GET /api/date-format`.
+ *
+ * Renders nothing until focus, flags and the date mode have all
+ * settled; each read degrades independently (flags → all-off enables,
+ * date mode → default, count → 0), matching the server version's
+ * per-read try/catch fallbacks.
+ * See https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
-import { formatDate } from "@/lib/date-format";
-import { getDateFormatPreference } from "@/lib/date-format-server";
-import db from "@/lib/db";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import {
-  getActiveFocus,
-  getActiveFocusWorkflow,
-  getFocusUpdatedAt,
-} from "@/lib/feature-flag-storage";
-import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+  DATE_FORMAT_DEFAULT,
+  type DateFormatMode,
+  formatDate,
+} from "@/lib/date-format";
+import type { Audience } from "@/lib/feature-flag-rules";
 import { describePurpose } from "@/lib/onboarding-purpose";
+import { useFlagValues } from "@/lib/use-flag-bundle";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 
-interface AnnotationCountRow {
-  count: number;
-}
-
-/**
- * Audience + goal icons. Inlined (not imported from FocusEditForm, which is
- * a client component) so this server component stays server-side.
- */
 const AUDIENCE_ICONS: Record<"self" | "loved_one" | "guardian", string> = {
   self: "👤",
   loved_one: "🤝",
@@ -51,30 +56,132 @@ const PURPOSE_ICONS: Record<string, string> = {
   help: "🧭",
 };
 
-function getActiveAnnotationCount(): number {
-  // Apps with at least one non-deleted annotation — drives the loved_one
-  // "{N} apps with notes" subtext.
-  const row = db
-    .prepare(`
-    SELECT COUNT(DISTINCT app_id) AS count
-    FROM annotations
-    WHERE deleted_at IS NULL
-  `)
-    .get() as AnnotationCountRow | undefined;
-  return row?.count ?? 0;
+const CARD_FLAG_KEYS = [
+  "flag.dashboard.annotation_banner",
+  "flag.page.privacy_map",
+  "flag.page.stats",
+  "flag.page.compare",
+  "flag.page.shortlist",
+  "flag.page.manual_apps",
+  "flag.detail.annotations_sidebar",
+  "flag.detail.a11y.panel",
+] as const;
+
+interface FocusPayload {
+  accessibility: boolean;
+  audience: Audience;
+  audienceSet: boolean;
+  cleanup: boolean;
+  minimal: boolean;
+  monitor: boolean;
+  updatedAt: number | null;
+  workflow:
+    | "self_monitor"
+    | "self_cleanup"
+    | "other_handoff"
+    | "other_monitor"
+    | "custom";
 }
 
-export default async function YourFocusCard() {
+export default function YourFocusCard() {
   // Four translation namespaces: `your_focus_card` (card chrome),
   // `audience` (audience chip label), `focus_purpose` (the /welcome purpose
   // chip + accessibility label), `goal` (custom-focus fallback chips).
-  const t = await getTranslations("your_focus_card");
-  const tAudience = await getTranslations("audience");
-  const tGoal = await getTranslations("goal");
-  const tPurpose = await getTranslations("focus_purpose");
+  const t = useTranslations("your_focus_card");
+  const tAudience = useTranslations("audience");
+  const tGoal = useTranslations("goal");
+  const tPurpose = useTranslations("focus_purpose");
 
-  const focus = getActiveFocus();
-  const audienceSet = focus.audience !== undefined && Boolean(focus.audience);
+  const flagValues = useFlagValues(CARD_FLAG_KEYS);
+  const [focusData, setFocusData] = useState<FocusPayload | null>(null);
+  const [focusFailed, setFocusFailed] = useState(false);
+  const [dateMode, setDateMode] = useState<DateFormatMode | null>(null);
+  const [annotationCount, setAnnotationCount] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    fetch("/api/focus")
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      )
+      .then((json: FocusPayload) => {
+        if (live) {
+          setFocusData(json);
+        }
+      })
+      .catch((error) => {
+        console.warn("[your-focus-card] focus load failed:", error);
+        if (live) {
+          setFocusFailed(true);
+        }
+      });
+    fetch("/api/date-format")
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null)
+      .then((json: { mode?: DateFormatMode } | null) => {
+        if (live) {
+          setDateMode(json?.mode ?? DATE_FORMAT_DEFAULT);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const isLovedOne = focusData?.audience === "loved_one";
+  const annotationBannerOn =
+    flagValues?.["flag.dashboard.annotation_banner"] === "on";
+
+  // Same gate the server component applied before its COUNT query:
+  // loved_one audience AND the banner flag. The count arriving after
+  // first paint only ever ADDS the notes subtext, matching how the
+  // card's data was already per-request fresh.
+  useEffect(() => {
+    if (!(isLovedOne && annotationBannerOn)) {
+      return;
+    }
+    let live = true;
+    fetch("/api/annotations?countApps=1")
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null)
+      .then((json: { appsWithNotes?: number } | null) => {
+        if (live && typeof json?.appsWithNotes === "number") {
+          setAnnotationCount(json.appsWithNotes);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [isLovedOne, annotationBannerOn]);
+
+  // Hold until every held-for input settles. A failed flag load still
+  // resolves flagValues (empty map → all enables read as off, the same
+  // fallback the server version's per-flag catch produced); a failed
+  // focus load renders nothing — the card has no meaningful degraded
+  // state without a focus, and Settings is fully usable without it.
+  if (focusFailed) {
+    return null;
+  }
+  if (!(focusData && flagValues && dateMode)) {
+    return null;
+  }
+
+  const focus = {
+    audience: focusData.audience,
+    goals: new Set<string>(
+      (
+        [
+          ["monitor", focusData.monitor],
+          ["cleanup", focusData.cleanup],
+          ["minimal", focusData.minimal],
+          ["accessibility", focusData.accessibility],
+        ] as const
+      )
+        .filter(([, on]) => on)
+        .map(([goal]) => goal)
+    ),
+  };
+  const audienceSet = focusData.audienceSet;
 
   // First-run / unset state — surface a setup CTA so users who land on
   // Settings without completing onboarding can self-recover.
@@ -100,7 +207,7 @@ export default async function YourFocusCard() {
   // Set state — chip strip in audience · goals · modifier order.
   const audienceChip = tAudience(`${focus.audience}.label`);
   const goalChips = describeGoals(focus.goals, tGoal);
-  const workflow = getActiveFocusWorkflow(focus);
+  const workflow = focusData.workflow;
   const accessibilityActive = focus.goals.has("accessibility");
   // Lead with the /welcome purpose (Monitor / Clean up / Help); fall back
   // to the goal chips for advanced combinations with no single purpose card.
@@ -112,18 +219,6 @@ export default async function YourFocusCard() {
     accessibility: accessibilityActive,
     workflow,
   });
-  const isLovedOne = focus.audience === "loved_one";
-  // Gate the annotation count behind `flag.dashboard.annotation_banner`
-  // so non-loved_one audiences skip the DB hit.
-  const annotationBannerOn = (() => {
-    try {
-      return resolveFlagFromDb("flag.dashboard.annotation_banner") === "on";
-    } catch {
-      return false;
-    }
-  })();
-  const annotationCount =
-    isLovedOne && annotationBannerOn ? getActiveAnnotationCount() : 0;
 
   // Plain-English summary combining audience + active goals. Subkeys live
   // under `your_focus_card.summary.*` for localiser-only edits.
@@ -146,14 +241,16 @@ export default async function YourFocusCard() {
   const summary = summarySentences.join(" ");
 
   // "What this turns on" — render a pill list of focus-controlled page
-  // flags. Each `flag` is typed as a FlagKey via Parameters<…>[0] so
-  // typos fail at tsc. For tri-state surfaces (collapsed/on/off) we
-  // treat non-'off' as "on" because a collapsed panel is still mounted.
-  // Errors fall through to "off".
-  type FlagName = Parameters<typeof resolveFlagFromDb>[0];
+  // flags. For tri-state surfaces (collapsed/on/off) we treat non-'off'
+  // as "on" because a collapsed panel is still mounted — which is why
+  // these read through useFlagValues (raw values), not the boolean
+  // bundle: `=== "on"` would misread the annotations sidebar's
+  // "collapsed" hard-default as off. A key missing from the map (load
+  // failure) reads as off, the same fallback the server version's
+  // per-flag catch produced.
   const enables: ReadonlyArray<{
     key: string;
-    flag: FlagName;
+    flag: (typeof CARD_FLAG_KEYS)[number];
     treatCollapsedAsOn?: true;
   }> = [
     { key: "privacy_map", flag: "flag.page.privacy_map" },
@@ -173,21 +270,19 @@ export default async function YourFocusCard() {
     },
   ];
   const enableRows = enables.map(({ key, flag, treatCollapsedAsOn }) => {
-    const on = (() => {
-      try {
-        const value = resolveFlagFromDb(flag);
-        return treatCollapsedAsOn ? value !== "off" : value === "on";
-      } catch {
-        return false;
-      }
-    })();
+    const value = flagValues[flag];
+    const on =
+      value === undefined
+        ? false
+        : treatCollapsedAsOn
+          ? value !== "off"
+          : value === "on";
     return { key, on };
   });
 
   // "Focus updated {date}" footnote — suppressed when the user has never
   // called setActiveFocus (e.g. DB-seeded installs).
-  const updatedAt = getFocusUpdatedAt();
-  const dateMode = getDateFormatPreference();
+  const updatedAt = focusData.updatedAt;
 
   return (
     <section
@@ -309,10 +404,6 @@ export default async function YourFocusCard() {
     </section>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Locals
-// ---------------------------------------------------------------------------
 
 /**
  * Render active goals as `{ key, label }` entries in display order:

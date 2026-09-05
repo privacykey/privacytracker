@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFlag } from "../../lib/feature-flags-hooks";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
+import { groupForSection, isSettingsGroup } from "./settings/section-groups";
 
 /**
  * Sticky left-column navigation for the Settings page. Renders a list of
@@ -294,6 +297,15 @@ export default function SettingsSidebar() {
     };
   }, [flatLinks]);
 
+  // Which group route we are on, or null on the landing redirect. Drives
+  // whether a sidebar entry scrolls within this page or navigates to
+  // another one.
+  const pathname = usePathname();
+  const currentGroup = (() => {
+    const last = pathname.split("/").filter(Boolean).pop() ?? "";
+    return isSettingsGroup(last) ? last : null;
+  })();
+
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
       event.preventDefault();
@@ -367,12 +379,12 @@ export default function SettingsSidebar() {
                   : group.label}
               </div>
               {group.links.map((link) => (
-                <a
-                  aria-current={activeId === link.id ? "true" : undefined}
-                  className={`settings-sidebar-link${link.dangerZone ? " settings-sidebar-link-danger" : ""}${activeId === link.id ? " is-active" : ""}`}
-                  href={`#${link.id}`}
+                <SidebarLink
+                  activeId={activeId}
+                  currentGroup={currentGroup}
                   key={link.id}
-                  onClick={(event) => handleClick(event, link.id)}
+                  link={link}
+                  onSameGroupClick={handleClick}
                 >
                   {/* The accessibility-profile entry renders the
                       figure-in-circle SVG instead of the wheelchair
@@ -391,12 +403,64 @@ export default function SettingsSidebar() {
                   <span className="settings-sidebar-label">
                     {link.i18nKey ? tSections(link.i18nKey) : link.label}
                   </span>
-                </a>
+                </SidebarLink>
               ))}
             </div>
           ))}
         </nav>
       </div>
     </aside>
+  );
+}
+
+/**
+ * One sidebar entry.
+ *
+ * Sections now live on four different routes, so an entry is either an
+ * in-page jump or a navigation depending on where you currently are.
+ * Same-group entries keep the original behaviour — preventDefault plus a
+ * smooth scroll, which the scroll-spy relies on to hold its highlight —
+ * while cross-group entries are real links so they prefetch, middle-click
+ * and open-in-new-tab like any other.
+ */
+function SidebarLink({
+  link,
+  activeId,
+  currentGroup,
+  onSameGroupClick,
+  children,
+}: {
+  link: SectionLink;
+  activeId: string | null;
+  currentGroup: string | null;
+  onSameGroupClick: (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    id: string
+  ) => void;
+  children: React.ReactNode;
+}) {
+  const className = `settings-sidebar-link${link.dangerZone ? " settings-sidebar-link-danger" : ""}${activeId === link.id ? " is-active" : ""}`;
+  const group = groupForSection(link.id);
+
+  if (group && group !== currentGroup) {
+    return (
+      <Link
+        className={className}
+        href={`/dashboard/settings/${group}#${link.id}`}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <a
+      aria-current={activeId === link.id ? "true" : undefined}
+      className={className}
+      href={`#${link.id}`}
+      onClick={(event) => onSameGroupClick(event, link.id)}
+    >
+      {children}
+    </a>
   );
 }

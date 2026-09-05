@@ -1,0 +1,250 @@
+/*
+ * Import History styles: the review-and-retry list, its per-item rows and
+ * badges. Moved verbatim from globals.css — see docs/CSS.md.
+ */
+.import-history-empty {
+  padding: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+}
+
+.import-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.import-history-row {
+  background: var(--surface-active);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.import-history-row.is-open {
+  background: var(--bg-2);
+  border-color: var(--border-strong);
+}
+
+.import-history-summary {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+}
+
+.import-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.import-history-date {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.import-history-sep {
+  color: var(--text-3);
+}
+
+.import-history-count {
+  color: var(--text);
+}
+
+.import-history-source {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.import-history-source-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.import-history-stats {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.import-history-stat {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  background-clip: padding-box;
+  /* Stat pills double as filter toggles. When rendered as <button>s they
+     need button-reset styling so they visually match the span variant but
+     gain a pointer cursor + hover/active affordance. */
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  transition:
+    filter 120ms ease,
+    transform 80ms ease,
+    box-shadow 120ms ease;
+}
+
+button.import-history-stat:hover {
+  filter: brightness(1.08);
+}
+
+button.import-history-stat:active {
+  transform: translateY(1px);
+}
+
+button.import-history-stat:focus-visible {
+  outline: 2px solid var(--accent, #0a84ff);
+  outline-offset: 2px;
+}
+
+/* Active filter — matches the currently-applied itemStatusFilter. Thicker
+   border + inner ring gives a pressed look without fighting the tone colour. */
+button.import-history-stat.is-active {
+  border-color: currentColor;
+  box-shadow: inset 0 0 0 1px currentColor;
+  filter: brightness(1.12);
+}
+
+.import-history-stat-ok {
+  color: var(--green, #30d158);
+  background: var(--green-dim, rgba(48, 209, 88, 0.18));
+}
+
+.import-history-stat-warn {
+  color: #ff9f0a;
+  background: rgba(255, 159, 10, 0.18);
+}
+
+.import-history-stat-mute {
+  color: var(--text-3);
+  background: rgba(120, 120, 128, 0.2);
+}
+
+/* Stronger tone for hard scrape errors — distinct from `-warn` (unmatched /
+   queued / retryable) so the user can scan a list of imports and spot the
+   ones that actually failed. */
+.import-history-stat-bad {
+  color: var(--red, #ff453a);
+  background: rgba(255, 69, 58, 0.18);
+}
+
+/* Empty-state card shown inside an expanded import row when the item list
+   is empty (either a legacy import without per-app rows, or a fetch that
+   unexpectedly came back empty). Slightly boxed so it reads as intentional
+   UI rather than "data is missing, something broke". */
+.import-history-items-empty {
+  padding: 14px;
+  margin: 10px 2px 4px;
+  line-height: 1.5;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+}
+
+.import-history-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Filter banner — shown at the top of Import History when the user has
+   clicked one of the stat pills (or landed from a notification deep link).
+   Visual language mirrors `.import-queue-banner` so the two banners don't
+   fight on the rare occasion they stack, but we tint on tone so "problems"
+   and "removed" banners read at a glance. */
+.import-history-filter-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.import-history-filter-banner-warn {
+  background: color-mix(in srgb, var(--orange) 6%, var(--surface));
+  border-color: color-mix(in srgb, var(--orange) 45%, var(--border));
+}
+
+.import-history-filter-banner-bad {
+  background: color-mix(in srgb, var(--red, #ff453a) 6%, var(--surface));
+  border-color: color-mix(in srgb, var(--red, #ff453a) 45%, var(--border));
+}
+
+.import-history-filter-banner-mute {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.import-history-filter-banner-body {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.import-history-filter-banner-icon {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.import-history-filter-banner-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.import-history-filter-banner-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* Action group on the right of the filter banner. Holds "Retry all"
+   (when applicable) + "Clear filter". Right-aligned, tight gap so the
+   two buttons read as a single cluster. */
+.import-history-filter-banner-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.import-history-detail {
+  padding: 10px 16px 16px;
+  border-top: 1px solid var(--border);
+}

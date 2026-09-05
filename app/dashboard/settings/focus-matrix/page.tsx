@@ -2,11 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import FocusFlagMatrix from "@/app/components/FocusFlagMatrix";
 import Nav from "@/app/components/Nav";
-import {
-  type FlagKey,
-  type FlagValue,
-  HARD_DEFAULTS,
-} from "@/lib/feature-flag-rules";
 
 /**
  * /dashboard/settings/focus-matrix — author the desired flag matrix
@@ -23,46 +18,22 @@ import {
  * toggling cells re-renders without hitting the API.
  */
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Focus × Flags matrix — privacytracker",
   description:
     "Author the desired enabled/disabled state of every feature flag for each audience and goal combination.",
 };
 
-interface SeedRow {
-  hardDefault: FlagValue;
-  key: FlagKey;
-  surface: string;
-}
-
-function surfaceOf(key: FlagKey): string {
-  const parts = key.split(".");
-  return parts.length >= 2 ? parts[1] : "misc";
-}
-
 export default function FocusMatrixPage() {
-  // Build the seed list from HARD_DEFAULTS so order is deterministic and
-  // independent of /api/feature-flags' live override state.
-  const rows: SeedRow[] = (Object.keys(HARD_DEFAULTS) as FlagKey[])
-    .map((key) => ({
-      key,
-      surface: surfaceOf(key),
-      hardDefault: HARD_DEFAULTS[key],
-    }))
-    .sort((a, b) =>
-      a.surface === b.surface
-        ? a.key.localeCompare(b.key)
-        : a.surface.localeCompare(b.surface)
-    );
-
   return (
     <>
       <Nav />
       <div className="legal-page">
         <header className="legal-page-hero">
-          <Link className="priv-back-link" href="/dashboard/settings#developer">
+          <Link
+            className="priv-back-link"
+            href="/dashboard/settings/admin#developer"
+          >
             ← Back to Developer Options
           </Link>
           <p className="priv-eyebrow">Developer · Authoring</p>
@@ -77,7 +48,7 @@ export default function FocusMatrixPage() {
           </p>
         </header>
 
-        <FocusFlagMatrix rows={rows} />
+        <FocusFlagMatrix />
       </div>
     </>
   );

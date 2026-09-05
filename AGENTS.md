@@ -13,8 +13,23 @@ pnpm lint              # Ultracite (Biome) — lint + format check
 pnpm lint:fix          # Ultracite auto-fix (safe rules only)
 pnpm typecheck         # TypeScript without emitting files
 pnpm test              # focused node:test suite
+pnpm test:e2e          # Playwright browser suite
 pnpm lint:i18n         # check locales/*.json key parity against en.json
 ```
+
+TypeScript 7 uses a native compiler and no longer exposes the JavaScript
+compiler API. `next.config.js` enables `experimental.useTypeScriptCli` so
+Next.js builds (including Storybook and the desktop standalone build) use
+the installed compiler CLI. Keep this enabled and keep build-time type
+checking on. Source-analysis tools should use a separate parser, as the
+translation scanner does, instead of importing the `typescript` API.
+
+A `justfile` wraps these plus the workflows that are otherwise multi-step
+or easy to get wrong — `just tauri-dev`, `just docker`, `just visual`,
+`just test-all`. Run `just --list` for the set; `just` is optional, every
+recipe is a thin shell over the same pnpm scripts. Note `just lint` runs
+lint + typecheck + `lint:i18n` (what CI's `quality` job runs), which is
+one command more than `pnpm lint`.
 
 The repo enforces pnpm via `"packageManager": "pnpm@11.1.2"` in
 `package.json` and ships a `pnpm-lock.yaml` / `pnpm-workspace.yaml`.
@@ -22,7 +37,7 @@ Every workflow that installs dependencies (six of the ten) runs
 `pnpm install --frozen-lockfile`. Using `npm` locally will mostly work
 against the pnpm lockfile but is unsupported and risks drift.
 
-Docker (production): `docker compose up --build -d`. By default the SQLite DB lives in a Docker-managed **named volume** (`privacytracker-data`), so data survives rebuilds and the container's non-root `audit` user (uid 100 / gid 101) can write it on any host with no setup. Back it up with `docker compose cp web:/app/data ./data-backup`. This is a change from the old `./data` bind mount, which broke on a fresh Linux host: Docker auto-creates the bind source as `root:root`, uid 100 can't create `privacy.db`, and `lib/db.ts` throws `SQLITE_CANTOPEN` (macOS Docker Desktop hid this by uid-mapping bind mounts). If you'd rather keep the DB on the host at `./data/privacy.db`, layer on `docker-compose.bind-mount.yml` after the one-time `mkdir -p data && sudo chown 100:101 data`: `docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml up --build -d`. The `compose-smoke` CI job exercises both paths (and asserts `/fonts/InterVariable.woff2` + `/brand-icon.png` actually serve — the runtime image must copy `public/`).
+Docker (production): first configure `AUDITOR_ADMIN_TOKEN` in `.env` (see [secure deployment](docs/SECURE_DEPLOYMENT.md)), then `docker compose up --build -d`. Docker requires authentication for private pages and APIs even when host port publishing is loopback-only. By default the SQLite DB lives in a Docker-managed **named volume** (`privacytracker-data`), so data survives rebuilds and the container's non-root `audit` user (uid 100 / gid 101) can write it on any host with no setup. Back it up with `docker compose cp web:/app/data ./data-backup`. This is a change from the old `./data` bind mount, which broke on a fresh Linux host: Docker auto-creates the bind source as `root:root`, uid 100 can't create `privacy.db`, and `lib/db.ts` throws `SQLITE_CANTOPEN` (macOS Docker Desktop hid this by uid-mapping bind mounts). If you'd rather keep the DB on the host at `./data/privacy.db`, layer on `docker-compose.bind-mount.yml` after the one-time `mkdir -p data && sudo chown 100:101 data`: `docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml up --build -d`. The `compose-smoke` CI job exercises both paths (and asserts `/fonts/InterVariable.woff2` + `/brand-icon.png` actually serve — the runtime image must copy `public/`).
 
 The test suite is intentionally small and focused (`pnpm test`). Container healthchecks hit `GET /api/ready` (DB reachable + data directory writable). `GET /api/health` stays as the simpler liveness probe for uptime checks.
 
@@ -32,7 +47,7 @@ Separate Python companion script in `scripts/ios-app-import/` (stdlib-only, Pyth
 
 Dependency bumps are driven by **Renovate**, not Dependabot — `.github/dependabot.yml` was removed because its pnpm support left `pnpm-lock.yaml` stale (needing a manual regen) and it fanned each ecosystem out into separate, mutually-conflicting PRs. Renovate regenerates the lockfile natively and, per `renovate.json`, bundles every **non-major** update across all four ecosystems (npm, cargo, docker, github-actions) into a **single** PR on a stable branch. A `customManagers` regex additionally treats the Dockerfile's `ARG PNPM_VERSION` as the npm `pnpm` package, so the Docker pnpm pin rides in that same PR instead of drifting from `packageManager` (which is what happened in PR #125). **Major** upgrades are held on the Dependency Dashboard issue (`dependencyDashboardApproval`) for one-at-a-time review — tick one there to let Renovate raise its PR. Do NOT reintroduce a `dependabot.yml`; that would duplicate Renovate's PRs.
 
-Activation is one of two mutually-exclusive paths (pick one): the self-hosted `.github/workflows/renovate.yml` (weekly cron + a `workflow_dispatch` **dry-run** button that previews the PR without opening it — needs a `RENOVATE_TOKEN` secret for live-run PRs to trigger CI, since GITHUB_TOKEN-authored PRs don't), **or** the hosted Mend Renovate GitHub App (its PRs trigger CI automatically; delete the workflow if you install the app). Both read the same `renovate.json`. See the header comment in the workflow for the token rationale.
+Activation is via the hosted **Mend Renovate GitHub App**, which reads `renovate.json` (it extends the shared org preset [`github>privacykey/renovate-config`](https://github.com/privacykey/renovate-config), where the schedule, grouping, and major-approval rules now live); the app's PRs trigger CI automatically. The old self-hosted `.github/workflows/renovate.yml` workflow was removed when the app path was adopted — do not reintroduce it.
 
 ## Repo settings drift check
 
@@ -134,8 +149,9 @@ settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
   starts at `"disabled"` and a stored `"disabled"` is honoured on load
   (there used to be a remap back to `"openai"`, which made the opt-out
   unrepresentable). "Save & generate" is disabled until the provider's
-  fields validate — `aiSettingsComplete` in `OnboardWizard.tsx` is the
-  single source of truth, shared with the "Test connection" button.
+  fields validate — `aiSettingsComplete` in `lib/use-onboard-wizard.ts` is
+  the single source of truth, shared with the "Test connection" button
+  (consumed by `onboard/Step5AiSummaries.tsx`).
 - First-run acceptance across the five audiences (monitor / cleanup /
   loved_one / guardian+age-band / no-goals) plus the disclosure and
   sticky-CTA contracts is pinned by `tests/e2e/onboarding-personas.spec.ts`.
@@ -163,7 +179,7 @@ persisted focus + follow-up task opt-ins.
 
 **Kill-switch:** `flag.devopts.feature_flag_system.enabled = off` collapses every flag to its hard default. Use this if a release misbehaves; flipping it back on re-engages the rule engine without a code rollback.
 
-Inventory + rule design: see [Feature flags](https://privacytracker-docs.privacykey.org/develop/feature-flags).
+Inventory + rule design: see [Feature flags](https://docs.privacytracker.privacykey.org/develop/feature-flags).
 
 ### Editable home-dashboard layout
 
@@ -176,7 +192,7 @@ A card paints iff `flag === 'on'` AND `!layout.hidden.includes(id)` AND (for cal
 
 `lib/dashboard-layout.ts` mirrors `lib/privacy-profile.ts` exactly — preset key list, `_META` records, `_PRESETS` records, plus `matchDashboardPreset(layout)` / `reconcileLayout(stored)` / `describeLayoutTransition(prev, next)`. Five presets ship out of the box (`default`, `minimal`, `caretaker`, `watchdog`, `at_a_glance`). `reconcileLayout` strips unknown ids, dedupes, drops callouts from `hidden[]` (callouts are reorder-only), and slots any newly-added canonical card next to its previous neighbour with hidden=false — so users on older saved layouts pick up new cards automatically rather than silently missing them. Server-only helpers live in `lib/dashboard-layout-server.ts`; `saveDashboardLayoutWithLog` records a `dashboard_layout_applied` activity row whenever a save crosses a named-preset boundary (custom-to-custom edits don't fire to keep the activity log readable).
 
-Render path: `app/dashboard/page.tsx` reads the layout server-side and passes it to `HomeView`, which iterates `layout.order` and looks up each id in a `CARD_RENDERERS` map. Each renderer returns null when its predicate fails — so reordering a callout above a section that doesn't exist for this user is a no-op. API surface lives at `app/api/dashboard/layout/{route.ts, preset/route.ts}` (GET/PUT/DELETE + POST preset). The editor surface is gated by `flag.dashboard.layout_editor.visible` (default `on`); flipping it off hides the "Customise dashboard…" footer link AND 404s the settings route, but the dashboard still consumes whatever the user saved.
+Render path: `app/components/HomeLoader.tsx` (the client shell behind `app/dashboard/page.tsx`) fetches the layout from `GET /api/dashboard/layout` and passes it to `HomeView`, which iterates `layout.order` and looks up each id in a `CARD_RENDERERS` map. Each renderer returns null when its predicate fails — so reordering a callout above a section that doesn't exist for this user is a no-op. API surface lives at `app/api/dashboard/layout/{route.ts, preset/route.ts}` (GET/PUT/DELETE + POST preset). The editor surface is gated by `flag.dashboard.layout_editor.visible` (default `on`); flipping it off hides the "Customise dashboard…" footer link AND 404s the settings route, but the dashboard still consumes whatever the user saved.
 
 **Two editor surfaces, one shared state hook.** Both surfaces consume `useDashboardLayoutSaver(initialLayout)` from `lib/use-dashboard-layout-saver.ts` — debounced PUT, preset POST with confirm-on-overwrite, DELETE reset, stale-response handling, and ARIA live-region message generation all live there. UI is per-surface:
 
@@ -197,11 +213,11 @@ Entry points:
 
 - `POST /api/apps/[id]/import-history` — single-app backfill. `DELETE` on the same route purges that app's wayback rows.
 - `POST /api/wayback/import-all[?stream=1]` — bulk backfill across every app with a URL. Stream mode emits NDJSON events (`batch-start`, `app-start`, `target`, `app-done`, `summary`). `DELETE` wipes every wayback row in the DB. The HTTP layer is a thin wrapper over `lib/wayback-bulk-runner.ts`; state persistence + mutex live there so an auto-resume path can share the same loop.
-- `GET /api/wayback/import-all` — polled by `SettingsView` to rehydrate the progress card on mount and tick it while a run (including an auto-resumed one) is in flight. Returns `{ running, mutexHeld, stale, currentAppName, summary, state }` via `describeCurrentRun()`.
+- `GET /api/wayback/import-all` — polled by `lib/use-wayback.ts` to rehydrate the progress card on mount and tick it while a run (including an auto-resumed one) is in flight. Returns `{ running, mutexHeld, stale, currentAppName, summary, state }` via `describeCurrentRun()`.
 - `GET /api/apps/[id]/history-stats` — returns `{ categoryTrend, quarterly }` aggregates (calendar-quarter buckets aligned to `APP_STORE_HISTORICAL_FLOOR` = Q1 2021) for the widgets under the timeline. `computeCategoryTrend` returns added/removed per bucket; `computeQuarterlyChanges` returns change-event counts for the sparkline.
 - `GET /api/apps/[id]/since-install` — returns `{ sinceInstall }` (a `SinceInstallDiff` or `null`). `getSinceInstallDiff` (`lib/changelog.ts`) picks the newest snapshot at-or-before `apps.firstSeen` as the baseline (falling back to the earliest snapshot, flagged `baselineIsApprox`, when nothing predates install) and diffs it against the latest snapshot via the existing `diffSnapshots`. Pure read over the full `snapshot_json` blobs — no re-scrape, no schema change. Powers the self-hiding **"Since you added this app"** card (`app/components/SinceInstallCard.tsx`) rendered above the timeline on the History tab — the cumulative net change since install, distinct from the timeline's per-sync incremental diffs. i18n under the `since_install` namespace.
 
-**Crash-safe resume (wayback-specific).** Bulk wayback runs persist two keys in `app_settings`: `wayback_import_running` (boolean mutex string) and `wayback_bulk_state` (JSON blob — run id, queue with per-app `QueueEntryStatus`, running totals, `initiator: 'manual' | 'resume'`). The runner rewrites the blob at every app boundary, so a server kill mid-run loses at most one app's worth of work. `importAppHistory` is safe to re-run — its per-target dedup (`alreadyCovered` + `wayback_snapshot_url` row check) prevents duplicate snapshots, and Wayback's Save Page Now is idempotent. On startup, `instrumentation.ts` checks the state blob: if it has pending work, it fires `createWaybackResumeNotification`, writes a "Sync resumed" activity row, and spawns `runBulkWaybackImport({ initiator: 'resume', resumeState })` in the background. If the mutex is held but the state blob is absent (stale lock), the mutex is cleared and a "stuck lock cleared" notification is raised instead. The SettingsView status card renders a purple "↻ Resumed after restart" pill above the live tally when `state.initiator === 'resume'` so users understand the run they didn't click is being finished for them. Only clean completion (or an explicit outer-catch) clears the state blob + mutex; a process kill leaves them in place for the next boot. The same pattern now covers the bulk App Store sync (`lib/sync-bulk-runner.ts`) and the bulk privacy-policy sync (`lib/policy-bulk-runner.ts`) — see the "Crash-safe resume (all three jobs)" section below.
+**Crash-safe resume (wayback-specific).** Bulk wayback runs persist two keys in `app_settings`: `wayback_import_running` (boolean mutex string) and `wayback_bulk_state` (JSON blob — run id, queue with per-app `QueueEntryStatus`, running totals, `initiator: 'manual' | 'resume'`). The runner rewrites the blob at every app boundary, so a server kill mid-run loses at most one app's worth of work. `importAppHistory` is safe to re-run — its per-target dedup (`alreadyCovered` + `wayback_snapshot_url` row check) prevents duplicate snapshots, and Wayback's Save Page Now is idempotent. On startup, `instrumentation.ts` checks the state blob: if it has pending work, it fires `createWaybackResumeNotification`, writes a "Sync resumed" activity row, and spawns `runBulkWaybackImport({ initiator: 'resume', resumeState })` in the background. If the mutex is held but the state blob is absent (stale lock), the mutex is cleared and a "stuck lock cleared" notification is raised instead. `settings/WaybackImportSection.tsx` renders a purple "↻ Resumed after restart" pill above the live tally when `state.initiator === 'resume'` so users understand the run they didn't click is being finished for them. Only clean completion (or an explicit outer-catch) clears the state blob + mutex; a process kill leaves them in place for the next boot. The same pattern now covers the bulk App Store sync (`lib/sync-bulk-runner.ts`) and the bulk privacy-policy sync (`lib/policy-bulk-runner.ts`) — see the "Crash-safe resume (all three jobs)" section below.
 
 Relevant settings in `app_settings`: `wayback_show_imported` (`'true'`/`'false'`, controls whether the per-app timeline renders imported rows by default — the detail page still has a local toggle), `wayback_import_running` (cross-request mutex), `wayback_bulk_state` (resume state blob), and the shared `policy_scrape_throttle_*` keys.
 
@@ -221,7 +237,7 @@ All DB calls are **synchronous**. Multi-step writes use `db.transaction(() => { 
 
 ### API surface (`app/api/*/route.ts`)
 
-Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://privacytracker-docs.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing.
+Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://docs.privacytracker.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing.
 
 ### Apps grid pagination (large fleets)
 
@@ -267,7 +283,7 @@ On startup, `instrumentation.ts` schedules three staggered resume checks (8s / 1
 
 **Safety contract (don't weaken these):** (1) WAL checkpoint is **PASSIVE, not TRUNCATE**, and skipped when any bulk job is active — the db-worker (`lib/db-worker.cjs`) holds a separate writer connection on the same WAL, so TRUNCATE could block/throw `SQLITE_BUSY`. (2) A bulk lock is cleared **only when provably dead**: `mutex held AND (no state blob OR no pending work OR no progress in > stale margin [default 6h]) AND not paused AND not cancel-requested`. The runners rewrite their state blob (bumping `updatedAt`) at every app boundary, so a slow-but-live run always looks recent and is never cleared. Predicate-eval and lock release run in one synchronous slice (no `await` between) so check-and-act is atomic; a backwards clock (`now - updatedAt < 0`) conservatively does NOT clear. (3) All write-heals are additionally gated on "no bulk job active" so they never contend with the worker; read-checks always run. Each heal is its own `db.transaction`.
 
-Surface: `GET /api/diagnostics/health` returns the last `HealthCheckResult` (or `{neverRun:true}`); `POST` runs one on demand (admin-token gated + rate-limited, mirroring `app/api/diagnostics/database/route.ts`). The activity feed renders `health_check` rows via the existing fallback-tolerant `ACTIVITY_TYPE_LABELS`/`ICONS` maps in `SettingsView.tsx`. Contract pinned by `tests/app/health-check.test.ts` (notably the "live run is NOT cleared" case).
+Surface: `GET /api/diagnostics/health` returns the last `HealthCheckResult` (or `{neverRun:true}`); `POST` runs one on demand (admin-token gated + rate-limited, mirroring `app/api/diagnostics/database/route.ts`). The activity feed renders `health_check` rows via the existing fallback-tolerant `ACTIVITY_TYPE_LABELS`/`ACTIVITY_TYPE_ICONS` maps in `app/components/settings/ActivityLogPanel.tsx`. Contract pinned by `tests/app/health-check.test.ts` (notably the "live run is NOT cleared" case).
 
 ### Privacy-profile presets
 
@@ -285,7 +301,17 @@ The editor takes an optional `confirmOnPresetApply` prop (default `true`). When 
 
 ### UI
 
-Server components under `app/dashboard/**` hand off to client components in `app/components/*View.tsx` / `*Wizard.tsx` (these are the large interactive surfaces — `OnboardWizard`, `SettingsView`, `AppDetailView`, `AppGrid`). Global tokens and severity/category styling live in `app/globals.css` and `lib/privacy-meta.ts` (`SEVERITY_CONFIG`, `CATEGORY_META`). The `@/*` TS path alias maps to the repo root.
+Server components under `app/dashboard/**` hand off to client components in `app/components/`. Global tokens and severity/category styling live in `app/globals.css` and `lib/privacy-meta.ts` (`SEVERITY_CONFIG`, `CATEGORY_META`). The `@/*` TS path alias maps to the repo root.
+
+**Settings and onboarding are split; the other big surfaces are not (yet).** Two of the four large `*View.tsx` / `*Wizard.tsx` components were dismantled over a long refactor campaign, and the shape that produced them is documented — read the contract before adding to either area:
+
+- **Settings** — `app/components/settings/` (30 components, its own `README.md`). `SettingsView.tsx` is down to ~2.1k lines of genuinely shared state, the loader, composition and modal wiring. Sections are explicit-prop components; four subsystems (`use-wayback`, `use-profiles`, `use-backup`, `use-deployment`, plus `use-activity-log`, `use-import-history`, `use-ai-settings`) live in `lib/use-*.ts`.
+- **Onboarding** — `app/components/onboard/` (12 components, its own `README.md`). `OnboardWizard.tsx` is a ~230-line shell over `lib/use-onboard-wizard.ts`; the wizard is one state machine, so the steps take a single object prop rather than explicit props. That difference from settings is deliberate and the READMEs explain when each shape applies.
+- **Not split:** `AppDetailView.tsx` (~4.7k), `CompareAppsView.tsx` (~4.0k), `AppGrid.tsx` (~3.0k). Treat the two READMEs as the playbook if you take one on.
+
+**Settings is served from four group routes**, derived from `GROUP_SECTIONS` in `app/components/settings/section-groups.ts`: `/dashboard/settings/{you,sync,policies,admin}`. `/dashboard/settings` itself is a *landing that forwards* — it cannot forward on the server, because what decides the destination is the URL fragment and fragments are never sent to the server, so `SettingsLandingRedirect` (client) does it. Every previously-published anchor still resolves; that is a contract, not an accident (`/privacy-policy`, the notification bell and `TaskCenter` all deep-link into settings). When adding a section, add its id to `GROUP_SECTIONS` — the sidebar, the scroll-spy and the anchor routing all read from there.
+
+**CSS ownership is documented in [docs/CSS.md](docs/CSS.md).** Co-located plain CSS next to its component (matching the repo's existing precedent), with an explicit list of what stays global — tokens, severity/category styling, the `data-a11y-shapes` clip-paths, and cross-surface primitives (`.modal-overlay`, `.btn*`, `.settings-section*`). Class names are load-bearing (e2e selectors, `data-flag-target`, the a11y clip-paths), which is why CSS Modules were rejected. `tests/e2e/visual.spec.ts` is the screenshot net for CSS moves — deliberately local-only (`VISUAL=1`, gitignored baselines), because baselines are platform-specific and app screenshots stay out of the public repo.
 
 **Colour is never the sole semantic signal.** Two parallel mechanisms enforce this:
 
@@ -317,13 +343,23 @@ Both pages are server components sharing the `.legal-layout` / `.legal-sidebar` 
 
 **Legal page versions are read from `package.json` at build time.** `app/legal/page.tsx` imports `../../package.json` and every dependency entry calls `pkgVersion('pkg-name')` instead of hard-coding a string. The helper pulls from either `dependencies` or `devDependencies`, strips the `^`/`~`/`>=`/etc. range prefix, and throws if the name isn't present — better a failed build than rendering `undefined` on a legal disclosure. So bumping a dep (`pnpm add next@latest`, etc.) is a one-file change and `/legal` picks up the new version on the next build automatically; **do not** re-edit `app/legal/page.tsx` to change a version string unless you're adding / removing / renaming the entry itself. The one exception is the `'Inter typeface'` entry — Inter isn't an npm dep so its version is still hard-coded; bump it when you refresh the woff2s.
 
-**Cross-page deep-link pulse.** `/privacy-policy` links to `/dashboard/settings#ai-summaries` to send users to the AI provider card. `SettingsView`'s hash `useEffect` listens for `#ai-summaries` (alongside the existing `#ai-timeouts` handler) and toggles `.settings-section-pulse` on the target for 1.6 s — reusing the `pmap-card-target-pulse` keyframes so the flash matches Privacy Map and timeline deep-links. If you add another pulse-worthy settings target, extend that single `useEffect` (don't add a parallel one) and add the id to the scroll-margin rule.
+**Cross-page deep-link pulse.** `/privacy-policy` links to `/dashboard/settings/policies#ai-summaries` to send users to the AI provider card (it links straight to the group route, so no client-side forward is involved; a bare `/dashboard/settings#ai-summaries` still works, via the landing redirect). `SettingsView`'s hash `useEffect` listens for `#ai-summaries` (alongside the existing `#ai-timeouts` handler) and toggles `.settings-section-pulse` on the target for 1.6 s — reusing the `pmap-card-target-pulse` keyframes so the flash matches Privacy Map and timeline deep-links. If you add another pulse-worthy settings target, extend that single `useEffect` (don't add a parallel one) and add the id to the scroll-margin rule.
 
 **Pre-filled GitHub issue link.** The "Questions or corrections" section on `/privacy-policy` links to `issues/new?template=bug_report.yml&report-type=Privacy%20policy%20concern%20or%20correction&source-page=/privacy-policy`. The old standalone `privacy-policy.yml` template was folded into `.github/ISSUE_TEMPLATE/bug_report.yml`; keep the URL structural (template + field-id prefills) and let the YAML template own the content and placeholders. The repo URL lives in a `GITHUB_REPO` constant at the top of `app/privacy-policy/page.tsx` — keep it in sync with `README.md`, `.github/SECURITY.md`, and the Homebrew tap if the repo is ever renamed. **Do not** revert to stuffing `title=` / `body=` query params with HTML-shaped strings like `<!-- comment -->` — browser XSS heuristics and some corporate proxies flag `<!--` in URL query strings and block the click before the request ever reaches GitHub.
 
 ## Translations
 
-Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://privacytracker-docs.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
+Translation regression checks have three distinct scopes: `pnpm lint:i18n`
+checks locale-key parity, `tests/app/i18n-attr-literals.test.ts` checks
+assistive attributes, and `tests/app/i18n-text-literals.test.ts` ratchets visible
+JSX copy against its checked-in baseline. The visible-copy scanner lives in
+`tests/helpers/i18n-text-scanner.ts` and uses Babel's TypeScript/JSX parser,
+independently of the TypeScript compiler API. Keep scanner behavior covered by
+`tests/app/i18n-text-scanner.test.ts`; parser failures must fail the check.
+Do not regenerate the baseline merely to accommodate parser changes — compare
+findings, including duplicate counts and source snippets, and review differences.
+
+Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://docs.privacytracker.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
 
 ICU placeholders (`{count, plural, one {# app} other {# apps}}`, `{name}`, etc.) are validated by Crowdin on upload and by `next-intl` at render. Don't strip braces or rename placeholders without coordinating across both bundles. Brand names (privacytracker, App Store, Apple Configurator, ToS;DR, PrivacySpy) stay in English in every locale; they're proper nouns. Module-level English fallback maps in components (e.g. `RISK_LABEL` in HomeView, `CATEGORY_META` in lib/privacy-meta) are intentionally kept after the JSX swapped to translator lookups — they document what the keys mean for future contributors and serve as the safety net when a translator key is missing.
 

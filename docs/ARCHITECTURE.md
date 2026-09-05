@@ -3,13 +3,13 @@
 Every process the app runs — from typing an app name to deleting one off a plugged-in
 iPhone — drawn as flow diagrams across the runtimes, with known weak points marked where
 they live. Companion to the prose in [AGENTS.md](../AGENTS.md) and the hosted docs at
-[privacytracker-docs.privacykey.org](https://privacytracker-docs.privacykey.org/develop/architecture).
+[docs.privacytracker.privacykey.org](https://docs.privacytracker.privacykey.org/develop/architecture).
 
 **How to read the markers.** `⚠ §N·M` = open finding, `✅ §N·M` = fixed. Every marker is a
 row in the [improvement backlog](#7--improvement-backlog) at the bottom. When you fix one,
 update its row and the diagram label in the same PR.
 
-*Findings audited against source on 2026-07-06 (branch `feat/eager-shannon-b87c90`).*
+*Device backup flow reviewed against source on 2026-09-05; other flows retain their earlier review notes.*
 
 ---
 
@@ -144,13 +144,13 @@ sequenceDiagram
   Note over WIZ: ◆ entry gate — audience=self ∧ flag on ∧ desktop build
   WIZ->>WIZ: steps 1–3 — own "uninstall" verdicts only ·<br/>imported recommendations never execute
   WIZ->>WIZ: step 4 — pick device · warn when ECID ≠ app's source device
-  WIZ->>SH: invoke run_cfgutil_backup(ecid, destDir)
-  Note over SH: ⚠ §3·1 --backup-output unverified on real cfgutil<br/>⚠ §3·2 success = exit code only, no on-disk check<br/>⚠ §3·4 dest allowlist is lexical (symlinks not resolved)
+  WIZ->>SH: invoke run_cfgutil_backup(ecid)
+  Note over SH: ✅ §3·1 supported cfgutil backup → Apple's MobileSync root<br/>✅ §3·2 success requires a new/updated non-empty Manifest.db<br/>✅ §3·4 no caller-controlled destination or fallback path
   SH->>PH: cfgutil backup (300s ceiling)
   WIZ->>API: POST /api/device-actions/backup
   Note over API: ✅ §3·6 normalizeEcid (0x-prefixed ECIDs) → stamp + activity row
   WIZ->>WIZ: step 5 — "Delete N apps" → modal 1 (list) → modal 2 (type DELETE)
-  Note over WIZ: ⚠ §3·5 modal variant keys off session-local backup state
+  Note over WIZ: ✅ §3·5 modal + audit use the revalidated server stamp
   WIZ->>API: GET gate pre-flight — audience ∧ flag ∧ backup ≤24h (or acknowledged)
   Note over API: ✅ §3·7 pre-flight BEFORE first removal, fail closed
   loop one app at a time
@@ -266,11 +266,11 @@ flip rows as they land, and update the diagram label in the same PR.
 
 | Ref | Area | Status | Finding → candidate improvement | Effort |
 | --- | --- | --- | --- | --- |
-| §3·1 | Device backup | **open · high** | `cfgutil backup --backup-output` appears in no public cfgutil docs (canonical: `backup` takes no options, writes to MobileSync). Verify `cfgutil help backup` on a Mac with Configurator; if rejected, run plain `backup` and resolve the real path via `list-backups`. | S–M |
-| §3·2 | Device backup | **open · high** | Backup success is exit-code only. Verify on disk (dir non-empty / `Manifest.db`) before stamping; never record a fallback path that wasn't observed. | S |
-| §3·3 | Device delete | open | `run_with_timeout` orphans the cfgutil child on timeout — "failed" can silently become "succeeded later". Kill the process group, or re-check installed state after timeout and correct the audit row. | S |
-| §3·4 | Device backup | open | `resolve_backup_dest` claims symlink protection but checks lexically. Canonicalise the existing ancestor, or fix the comment. | S |
-| §3·5 | Delete UX / audit | open | Final modal's backup variant + acknowledge flag key off session-local state. Drive both from the server stamp (GET gate) so audit rows stop over-reporting "no backup acknowledged". Spec ready: [docs/specs/3-5-server-stamp-backup-variant.md](specs/3-5-server-stamp-backup-variant.md). | S |
+| §3·1 | Device backup | ✅ fixed | Verified against cfgutil 2.20: `backup` has no destination option and writes to `~/Library/Application Support/MobileSync/Backup`. The native bridge now runs the supported command and queries the selected ECID’s UDID and verifies only that device’s changed directory there. | — |
+| §3·2 | Device backup | ✅ fixed | Native success requires a new/updated, non-empty, regular `Manifest.db`; the sidecar independently canonicalises and rechecks the artifact before stamping and at every uninstall pre-flight. Freshness cannot exceed the manifest timestamp, and future timestamps fail closed. Exit code alone cannot unlock deletion. | — |
+| §3·3 | Device delete | ✅ fixed | `run_with_timeout` owns a separate subprocess group, kills it and reaps the direct child before returning on timeout or excessive output. Harmless subprocess tests cover descendants and output limits. Device state still needs checking after an interrupted operation. | — |
+| §3·4 | Device backup | ✅ fixed | Removed the caller-controlled destination entirely. Native and sidecar checks canonicalise Apple's fixed MobileSync root, require a direct child directory, and reject symlink escapes. | — |
+| §3·5 | Delete UX / audit | ✅ fixed | Backup-step status, Act banner, final modal, and `acknowledgeNoBackup` now derive from the durable server stamp returned by the GET gate. Reopening the wizard preserves truth; moved/deleted manifests downgrade immediately. | — |
 | §3·6 | Device actions | ✅ fixed | ECID normalisation (`0x`-prefixed) across stamp store, gate, and routes; pinned by tests with real-format ECIDs. | — |
 | §3·7 | Device actions | ✅ fixed | Server gate pre-flights before the first removal (fail closed); recording failures surface in the UI. | — |
 | §1·1 | Scraper | open | No parser canary. Add fixture tests against recorded App Store HTML + an alert/activity row when a scrape parses zero privacy types for an app that previously had them. | M |
@@ -280,9 +280,8 @@ flip rows as they land, and update the diagram label in the same PR.
 | §4·2 | Polling | idea | Three pollers (TaskCenter 4s, notification watcher, per-job GETs) → one SSE stream from the sidecar. | L |
 | §5·1 | Wayback | idea | Track quarters skipped for lack of captures and offer "retry skipped" once Save-Page-Now requests have had time to land. | S–M |
 
-Suggested order: §3·1 and §3·2 first (they decide whether "we back up before deleting" is
-true at all), then §1·1 (protects the core product), then §3·3/§3·4/§3·5 as one small
-hardening PR, then the rate-limit resume (§2·1/§4·1).
+Suggested order: §1·1 next (protect the core scraper), then the rate-limit
+resume (§2·1/§4·1).
 
 ---
 

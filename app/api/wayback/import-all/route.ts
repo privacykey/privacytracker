@@ -1,3 +1,7 @@
+import {
+  readOptionalBoundedJson,
+  requestBodyErrorResponse,
+} from "@/lib/request-body";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
@@ -280,9 +284,20 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const body = (await request.json().catch(() => null)) as {
-    action?: unknown;
-  } | null;
+  let body: { action?: unknown } | null;
+  try {
+    body = await readOptionalBoundedJson<{ action?: unknown } | null>(
+      request,
+      4 * 1024,
+      null
+    );
+  } catch (error) {
+    const limited = requestBodyErrorResponse(error);
+    if (limited) {
+      return limited;
+    }
+    body = null;
+  }
   const action = typeof body?.action === "string" ? body.action : "";
 
   if (action === "pause") {

@@ -8,18 +8,17 @@
  * passed) so it renders the same stacked-bar visualisation as the
  * stats page hero, but for the whole library.
  *
- * Server boundary: read the tracked-app list once for the filter
- * dropdown, then hand off to the client component which owns the
- * filter state + paginated fetches.
+ * Rust-core Phase 0: this page used to query the apps table directly
+ * for the filter dropdown. That list now loads client-side from
+ * `GET /api/apps` inside UniversalChangelogView, which already owned
+ * the filter state and its paginated feed fetches — so the page is a
+ * shell.
  */
 
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import db from "../../lib/db";
 import Nav from "../components/Nav";
 import UniversalChangelogView from "../components/UniversalChangelogView";
-
-export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
@@ -29,26 +28,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-interface AppForFilter {
-  id: string;
-  name: string;
-}
-
 export default async function ChangelogPage() {
   const t = await getTranslations("changelog_page");
-
-  // Apps list for the filter dropdown. Pulled server-side so the
-  // initial render doesn't have to wait for a fetch — and so search-
-  // engine indexers (which won't run client JS) still see a sane
-  // empty page rather than a blank shell.
-  let apps: AppForFilter[] = [];
-  try {
-    apps = db
-      .prepare("SELECT id, name FROM apps ORDER BY name COLLATE NOCASE")
-      .all() as AppForFilter[];
-  } catch (e) {
-    console.warn("[/changelog] apps list query failed:", e);
-  }
 
   return (
     <>
@@ -61,7 +42,7 @@ export default async function ChangelogPage() {
           </div>
         </div>
 
-        <UniversalChangelogView apps={apps} />
+        <UniversalChangelogView />
       </div>
     </>
   );

@@ -1063,7 +1063,7 @@ function FocusStrip({ purpose }: { purpose: PrimaryPurpose }) {
           {tPurpose(`primary.${purpose}.title`)}
         </div>
       </div>
-      <Link className="focus-strip-change" href="/dashboard/settings#focus">
+      <Link className="focus-strip-change" href="/dashboard/settings/you#focus">
         {t("change")}
       </Link>
     </div>

@@ -1,5 +1,10 @@
 # Spec §3·5 — Drive the delete-confirm modal's backup state from the server stamp
 
+> **Implemented and reviewed 2026-09-05.** The delivered change also closed §3·1, §3·2,
+> and §3·4: cfgutil now uses Apple's supported MobileSync destination, native
+> and server checks require a non-empty `Manifest.db`, and every destructive
+> UX surface derives its reassurance from the revalidated server stamp.
+
 **Backlog ref:** §3·5 in [docs/ARCHITECTURE.md](../ARCHITECTURE.md#7--improvement-backlog) ·
 **Size:** S (~150–250 LOC including tests) · **Area:** device actions (TypeScript only — no Rust)
 · **Good first issue:** yes — single component + one new pure helper + tests, no hardware needed.
@@ -166,3 +171,22 @@ Backup verification on disk (§3·2), the `--backup-output` question (§3·1), R
   new display state; they answer different questions ("may I run?" vs "should I reassure?").
 - `matches` in tests: use a real-format ECID (`0x9118908BB6027`) at least once — the
   normalisation path is load-bearing (see tests already pinning it).
+
+## Verification scope
+
+The native bridge resolves the selected ECID to its UDID using the installed
+`cfgutil get UDID` command, then checks only that device's changed MobileSync
+directory. The server rejects missing, symlinked, empty, or future-dated
+manifest files and caps the recorded completion time at the manifest's actual
+modification time. Recording an old backup again does not refresh it.
+
+These checks establish artifact presence and freshness, not complete
+restorability. Automated tests use synthetic files and a simulated native
+bridge. A real device backup and restore remain part of the desktop release
+acceptance check; no device deletion or restore is performed by these tests.
+
+Configurator subprocesses now run in their own process group. Timeout and
+output-limit errors stop that group and reap the child before returning;
+stdout and stderr are capped at 8 MiB each. A device operation that was
+already accepted may still have changed device state before interruption,
+so verify the device's actual state before retrying.

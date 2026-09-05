@@ -1,40 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":dependencyDashboard",
-    ":semanticCommits",
-    "helpers:pinGitHubActionDigests"
-  ],
-  "timezone": "Australia/Melbourne",
-  "schedule": ["before 9am on monday"],
-  "labels": ["dependencies"],
+  "extends": ["github>privacykey/renovate-config"],
   "postUpdateOptions": ["pnpmDedupe"],
-  "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["before 9am on monday"]
-  },
-  "vulnerabilityAlerts": {
-    "labels": ["dependencies", "security"]
-  },
   "packageRules": [
-    {
-      "description": "Bundle every non-major update (all four ecosystems: npm, cargo, docker, github-actions), plus digest bumps and weekly lockfile maintenance, into ONE reviewable PR on a stable branch. pnpm-lock.yaml is regenerated natively by Renovate as part of the same PR.",
-      "matchUpdateTypes": [
-        "minor",
-        "patch",
-        "pin",
-        "digest",
-        "lockFileMaintenance"
-      ],
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-non-major"
-    },
-    {
-      "description": "Hold major upgrades (e.g. Next 16 to 17, Tauri 2 to 3, caddy:2 to :3) back as individually reviewable entries on the Dependency Dashboard rather than auto-opening PRs. Tick one there to let Renovate raise its own PR when you're ready to take the breaking change.",
-      "matchUpdateTypes": ["major"],
-      "dependencyDashboardApproval": true
-    },
     {
       "description": "Never try to bump privacytracker's own published image referenced in the deploy compose files.",
       "matchDatasources": ["docker"],
@@ -44,13 +12,32 @@
   ],
   "customManagers": [
     {
-      "description": "The Dockerfile bootstraps pnpm from ARG PNPM_VERSION, which must stay in lockstep with `packageManager` in package.json and the pnpm/action-setup pins in the workflows. Treat it as the npm `pnpm` package so the same bump lands in the same grouped non-major PR — without this it drifts (PR #125 moved everything to 11.12.0 while the ARG stayed 11.1.2).",
+      "description": "The Dockerfile bootstraps pnpm from ARG PNPM_VERSION, which must stay in lockstep with `packageManager` in package.json and the pnpm/action-setup pins in the workflows. Treat it as the npm `pnpm` package so the same bump lands in the same grouped non-major PR \u2014 without this it drifts (PR #125 moved everything to 11.12.0 while the ARG stayed 11.1.2).",
       "customType": "regex",
       "managerFilePatterns": ["/^Dockerfile$/"],
       "matchStrings": ["ARG PNPM_VERSION=(?<currentValue>.*)"],
       "datasourceTemplate": "npm",
       "packageNameTemplate": "pnpm",
       "versioningTemplate": "npm"
+    },
+    {
+      "description": "Track the exact Node runtime bundled into the desktop app.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/macos-release\\.yml$/"],
+      "matchStrings": ["NODE_VERSION: '(?<currentValue>[^']+)'"],
+      "datasourceTemplate": "node-version",
+      "packageNameTemplate": "node",
+      "versioningTemplate": "node"
+    },
+    {
+      "description": "Keep the pinned runtime vulnerability scanner current.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "ghcr.io/aquasecurity/trivy:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "packageNameTemplate": "ghcr.io/aquasecurity/trivy"
     }
   ]
 }
