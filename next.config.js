@@ -32,6 +32,16 @@ const nextConfig = {
     "172.31.*.*",
     "*.local",
   ],
+  // Pin the file-tracing / Turbopack root to this directory. Without it Next
+  // walks up looking for lockfiles and, inside a git worktree nested under
+  // the main clone's `.claude/worktrees/<name>/`, picks the PARENT clone's
+  // pnpm-workspace.yaml instead. That warns on every build and breaks
+  // `pnpm build:standalone`: server.js lands at
+  // `.next/standalone/.claude/worktrees/<name>/server.js`, where
+  // scripts/stage-standalone.mjs can't find it. In the main clone, CI and
+  // Docker (`/app`) this resolves to exactly the root Next would infer.
+  // biome-ignore lint/correctness/noGlobalDirnameFilename: this file is CommonJS (require/module.exports), so import.meta.dirname is unavailable.
+  outputFileTracingRoot: __dirname,
   // Allow redirecting the build output dir for sandboxed / FUSE-mounted envs
   // where the default `.next` can't be unlinked.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),

@@ -7,7 +7,13 @@
   ],
   "files": {
     "includes": [
-      "!!**/.claude",
+      // Root-anchored on purpose (no `**/` prefix). `!!**/.claude` matched
+      // the checkout's own path when running from a git worktree nested
+      // under the main clone's `.claude/worktrees/<name>/`, so `pnpm lint`
+      // reported "Checked 0 files" and exited green there. Anchoring it
+      // still keeps the main clone's `.claude/` (state JSON, screenshots,
+      // every nested worktree) out of repo-wide sweeps.
+      "!!.claude",
       "!!**/.next-test",
       "!!**/.next-build-check",
       // Secondary NEXT_DIST_DIR outputs written by preview / audit / E2E
