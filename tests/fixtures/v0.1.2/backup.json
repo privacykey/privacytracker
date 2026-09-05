@@ -60,13 +60,7 @@
       ]
     },
     "privacy_types": {
-      "columns": [
-        "id",
-        "app_id",
-        "identifier",
-        "title",
-        "detail"
-      ],
+      "columns": ["id", "app_id", "identifier", "title", "detail"],
       "rows": [
         {
           "id": "type",
@@ -78,22 +72,11 @@
       ]
     },
     "privacy_purposes": {
-      "columns": [
-        "id",
-        "type_id",
-        "identifier",
-        "title"
-      ],
+      "columns": ["id", "type_id", "identifier", "title"],
       "rows": []
     },
     "privacy_categories": {
-      "columns": [
-        "id",
-        "purpose_id",
-        "type_id",
-        "identifier",
-        "title"
-      ],
+      "columns": ["id", "purpose_id", "type_id", "identifier", "title"],
       "rows": [
         {
           "id": "category",
@@ -105,11 +88,7 @@
       ]
     },
     "privacy_data_types": {
-      "columns": [
-        "id",
-        "category_id",
-        "title"
-      ],
+      "columns": ["id", "category_id", "title"],
       "rows": []
     },
     "accessibility_features": {
@@ -256,13 +235,7 @@
       "rows": []
     },
     "manual_app_events": {
-      "columns": [
-        "id",
-        "manual_app_id",
-        "event_type",
-        "occurred_at",
-        "detail"
-      ],
+      "columns": ["id", "manual_app_id", "event_type", "occurred_at", "detail"],
       "rows": []
     },
     "manual_app_policy_versions": {
@@ -362,10 +335,7 @@
       "rows": []
     },
     "app_settings": {
-      "columns": [
-        "key",
-        "value"
-      ],
+      "columns": ["key", "value"],
       "rows": [
         {
           "key": "flag.focus.audience",
