@@ -12,13 +12,32 @@
   ],
   "customManagers": [
     {
-      "description": "The Dockerfile bootstraps pnpm from ARG PNPM_VERSION, which must stay in lockstep with `packageManager` in package.json and the pnpm/action-setup pins in the workflows. Treat it as the npm `pnpm` package so the same bump lands in the same grouped non-major PR — without this it drifts (PR #125 moved everything to 11.12.0 while the ARG stayed 11.1.2).",
+      "description": "The Dockerfile bootstraps pnpm from ARG PNPM_VERSION, which must stay in lockstep with `packageManager` in package.json and the pnpm/action-setup pins in the workflows. Treat it as the npm `pnpm` package so the same bump lands in the same grouped non-major PR \u2014 without this it drifts (PR #125 moved everything to 11.12.0 while the ARG stayed 11.1.2).",
       "customType": "regex",
       "managerFilePatterns": ["/^Dockerfile$/"],
       "matchStrings": ["ARG PNPM_VERSION=(?<currentValue>.*)"],
       "datasourceTemplate": "npm",
       "packageNameTemplate": "pnpm",
       "versioningTemplate": "npm"
+    },
+    {
+      "description": "Track the exact Node runtime bundled into the desktop app.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/macos-release\\.yml$/"],
+      "matchStrings": ["NODE_VERSION: '(?<currentValue>[^']+)'"],
+      "datasourceTemplate": "node-version",
+      "packageNameTemplate": "node",
+      "versioningTemplate": "node"
+    },
+    {
+      "description": "Keep the pinned runtime vulnerability scanner current.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "ghcr.io/aquasecurity/trivy:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "packageNameTemplate": "ghcr.io/aquasecurity/trivy"
     }
   ]
 }
