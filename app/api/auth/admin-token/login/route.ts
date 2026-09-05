@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const provided = typeof body.token === "string" ? body.token.trim() : "";
+  const provided = typeof body?.token === "string" ? body.token.trim() : "";
   if (!provided) {
     return NextResponse.json({ error: "Token is required" }, { status: 400 });
   }

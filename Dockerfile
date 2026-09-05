@@ -78,6 +78,9 @@ COPY --from=builder --chown=audit:audit /app/node_modules     ./node_modules
 COPY --from=builder --chown=audit:audit /app/package.json     ./package.json
 COPY --from=builder --chown=audit:audit /app/next.config.js   ./next.config.js
 COPY --from=builder --chown=audit:audit /app/lib/db-worker.cjs ./lib/db-worker.cjs
+COPY --from=builder --chown=audit:audit /app/lib/request-limits.cjs ./lib/request-limits.cjs
+COPY --from=builder --chown=audit:audit /app/lib/admin-auth.cjs ./lib/admin-auth.cjs
+COPY --from=builder --chown=audit:audit /app/lib/request-origin.cjs ./lib/request-origin.cjs
 # Static assets served straight from disk by a non-standalone `next start`:
 # self-hosted Inter + OpenDyslexic fonts and brand-icon.png. These live under
 # <cwd>/public at runtime and are NOT baked into .next, so without this copy
@@ -101,4 +104,4 @@ USER audit
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/ready || exit 1
 
-CMD ["node_modules/.bin/next", "start", "--hostname", "0.0.0.0"]
+CMD ["node", "--require", "./lib/request-limits.cjs", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]

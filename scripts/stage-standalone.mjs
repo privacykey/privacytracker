@@ -14,6 +14,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -99,6 +100,26 @@ if (existsSync(workerSource)) {
   console.warn(
     "stage-standalone: lib/db-worker.cjs missing — main thread will block on bulk writes"
   );
+}
+
+// Load the raw HTTP guard before Next creates its server in the desktop bundle.
+// This copy is mandatory: do not silently ship a bundle without request limits.
+const requestGuardDest = path.join(nextStandalone, "lib", "request-limits.cjs");
+mkdirSync(path.dirname(requestGuardDest), { recursive: true });
+copyFileSync(path.join(repo, "lib", "request-limits.cjs"), requestGuardDest);
+copyFileSync(
+  path.join(repo, "lib", "admin-auth.cjs"),
+  path.join(nextStandalone, "lib", "admin-auth.cjs")
+);
+copyFileSync(
+  path.join(repo, "lib", "request-origin.cjs"),
+  path.join(nextStandalone, "lib", "request-origin.cjs")
+);
+const standaloneEntry = path.join(nextStandalone, "server.js");
+const guardRequire = "require('./lib/request-limits.cjs');";
+const standaloneSource = readFileSync(standaloneEntry, "utf8");
+if (!standaloneSource.startsWith(guardRequire)) {
+  writeFileSync(standaloneEntry, `${guardRequire}\n${standaloneSource}`);
 }
 
 // Stage the whole thing into the tauri resources tree. The symlinks
