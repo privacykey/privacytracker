@@ -115,8 +115,11 @@ note(
     "status unavailable; an administrator must verify"
 );
 
-const protection = endpoint(`repos/${repo}/branches/main/protection`);
 const rules = endpoint(`repos/${repo}/rules/branches/main`);
+const protection =
+  rules.ok && rules.data.length > 0
+    ? null
+    : endpoint(`repos/${repo}/branches/main/protection`);
 if (rules.ok && rules.data.length > 0) {
   const has = (type) => rules.data.some((rule) => rule.type === type);
   const pr = rules.data.find((rule) => rule.type === "pull_request");
@@ -138,7 +141,7 @@ if (rules.ok && rules.data.length > 0) {
     "Expected required CI checks configured",
     missing.length ? `missing: ${missing.join(", ")}` : contexts.join(", ")
   );
-} else if (protection.ok) {
+} else if (protection?.ok) {
   const data = protection.data;
   const contexts = data.required_status_checks?.contexts ?? [];
   const missingChecks = expectedChecks.filter(

@@ -65,14 +65,16 @@ that an ordinary branch cannot enter the signing environment.
    only after checking the tag and commit.
 4. Desktop jobs build natively on Intel and Apple Silicon. They check bundle
    version, OS minimum, architecture, native-addon loading, code signatures,
-   notarization and Gatekeeper. The assembler requires both platforms and
+   notarization and Gatekeeper. The extracted server must also pass an isolated
+   v0.1.2 upgrade, authenticated restore and restart rehearsal. The assembler requires both platforms and
    verifies updater signatures with the same verifier used by Tauri. Missing,
    altered or wrongly signed archives stop manifest creation.
 5. Docker jobs scan the **exact immutable image digest** for each architecture,
    including OS and application packages. HIGH/CRITICAL findings prevent named
    manifest promotion; an untagged candidate digest may already exist in GHCR.
    Provenance and SBOM generation remain enabled. Inspect both scan reports and
-   the final attestation verification. Docker tags are produced by this workflow;
+   the final cryptographic attestation verification against the repository,
+   publishing workflow and source commit. Docker tags are produced by this workflow;
    GitHub desktop assets remain draft until the manual publication step.
 
 For a signing-only rehearsal, run **macOS desktop release** on an existing

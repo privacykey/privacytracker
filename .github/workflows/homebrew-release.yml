@@ -38,6 +38,12 @@ jobs:
         run: |
           set -euo pipefail
           TAG="$RELEASE_TAG"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Expected a stable version tag"; exit 1; }
+          MINIMUM_MACOS=$(gh api -H 'Accept: application/vnd.github.raw+json' \
+            "repos/${GITHUB_REPOSITORY}/contents/src-tauri/tauri.conf.json?ref=${TAG}" \
+            --jq '.bundle.macOS.minimumSystemVersion')
+          [[ "$MINIMUM_MACOS" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::Invalid macOS minimum"; exit 1; }
+          echo "minimum_macos=$MINIMUM_MACOS" >> "$GITHUB_OUTPUT"
           # Strip the leading 'v' for the cask `version` field. Homebrew
           # versions don't carry a v-prefix; the URL template adds it back.
           VERSION="${TAG#v}"
@@ -79,6 +85,7 @@ jobs:
           VERSION: ${{ steps.ctx.outputs.version }}
           SHA_ARM: ${{ steps.hashes.outputs.sha_arm }}
           SHA_X64: ${{ steps.hashes.outputs.sha_x64 }}
+          MINIMUM_MACOS: ${{ steps.ctx.outputs.minimum_macos }}
         run: |
           mkdir -p tap/Casks
           cat > tap/Casks/privacytracker.rb <<EOF
@@ -103,7 +110,7 @@ jobs:
             end
 
             auto_updates true
-            depends_on macos: ">= 13.5"
+            depends_on macos: ">= ${MINIMUM_MACOS}"
 
             app "privacytracker.app"
 

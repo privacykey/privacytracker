@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { minimumMacOSVersions } from "../../scripts/macos-binary-checks.mjs";
 import {
   readReleaseMetadata,
   validateReleaseTag,
@@ -260,4 +261,28 @@ test("draft preparation refuses an already published release before any mutation
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("Mach-O minimum OS parsing ignores SDK and linker tool versions", () => {
+  assert.deepEqual(
+    minimumMacOSVersions(`Load command 8
+      cmd LC_BUILD_VERSION
+  cmdsize 32
+ platform 1
+    minos 13.5
+      sdk 26.2
+   ntools 1
+     tool 3
+  version 1267.0
+Load command 9
+      cmd LC_LOAD_DYLIB
+  current version 1600.0.0
+Load command 10
+      cmd LC_VERSION_MIN_MACOSX
+  cmdsize 16
+  version 11.0
+      sdk 12.3
+`),
+    ["13.5", "11.0"]
+  );
 });

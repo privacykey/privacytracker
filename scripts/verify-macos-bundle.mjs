@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { minimumMacOSVersions } from "./macos-binary-checks.mjs";
 import { readReleaseMetadata } from "./release-metadata.mjs";
 
 const [appArg, arch] = process.argv.slice(2);
@@ -46,14 +47,7 @@ const verifyNative = (file) => {
     }
     return 0;
   };
-  // Only inspect OS load commands, not dylib compatibility/current versions.
-  const osCommands = commands
-    .split(/Load command \d+/)
-    .filter((section) => /LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX/.test(section))
-    .join("\n");
-  const minimums = [
-    ...osCommands.matchAll(/(?:minos|\bversion) (\d+\.\d+(?:\.\d+)?)/g),
-  ].map((match) => match[1]);
+  const minimums = minimumMacOSVersions(commands);
   assert.ok(minimums.length > 0, `Missing macOS deployment target: ${file}`);
   for (const minimum of minimums) {
     assert.ok(
@@ -101,6 +95,11 @@ try {
   };
   walk(unpacked);
   assert.ok(nativeFiles > 0, "No native addons in shipped archive");
+  execFileSync(
+    process.execPath,
+    ["scripts/smoke-packaged-server.mjs", node, unpacked],
+    { stdio: "inherit", timeout: 90_000 }
+  );
   console.log(
     `Verified ${arch} bundle ${metadata.version}, bundled Node/SQLite and ${nativeFiles} signed native files.`
   );

@@ -41,9 +41,9 @@ recipe is a thin shell over the same pnpm scripts. Note `just lint` runs
 lint + typecheck + `lint:i18n` (what CI's `quality` job runs), which is
 one command more than `pnpm lint`.
 
-The repo enforces pnpm via `"packageManager": "pnpm@11.1.2"` in
-`package.json` and ships a `pnpm-lock.yaml` / `pnpm-workspace.yaml`.
-Every workflow that installs dependencies (six of the ten) runs
+The repo enforces the pnpm version in `package.json`'s `packageManager` field
+and ships a `pnpm-lock.yaml` / `pnpm-workspace.yaml`.
+Every workflow that installs dependencies runs
 `pnpm install --frozen-lockfile`. Using `npm` locally will mostly work
 against the pnpm lockfile but is unsupported and risks drift.
 
@@ -63,8 +63,8 @@ Activation is via the hosted **Mend Renovate GitHub App**, which reads `renovate
 
 `scripts/audit-github-settings.mjs` (`pnpm audit:repo-settings`) is a
 **read-only** check that the repo's GitHub settings still match intent —
-branch protection on `main`, required checks (`quality`, `container-smoke`),
-secret scanning, Dependabot alerts, CodeQL. `.github/workflows/repo-settings-audit.yml`
+branch protection on `main`, required checks (`quality`, `rust-check`, `container-smoke`),
+macOS signing reviewers/tag restrictions, secret scanning, Dependabot alerts, CodeQL. `.github/workflows/repo-settings-audit.yml`
 runs it weekly and writes the report to the job summary.
 
 Two things to know before trusting a green run: the cron leg is **advisory**

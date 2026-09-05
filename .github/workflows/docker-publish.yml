@@ -326,13 +326,14 @@ jobs:
 
           shopt -s nullglob
           digest_files=(*)
-          if [ "${#digest_files[@]}" -eq 0 ]; then
-            echo "No image digest artifacts were downloaded" >&2
+          if [ "${#digest_files[@]}" -ne 2 ]; then
+            echo "Both architecture digest artifacts are required" >&2
             exit 1
           fi
 
           DIGEST_ARGS=()
           for digest_file in "${digest_files[@]}"; do
+            [[ "$digest_file" =~ ^[a-f0-9]{64}$ ]] || { echo "Invalid image digest artifact" >&2; exit 1; }
             DIGEST_ARGS+=("ghcr.io/${{ github.repository }}@sha256:${digest_file}")
           done
 
@@ -383,4 +384,13 @@ jobs:
 
       - name: Verify Docker provenance and SBOM attestations
         run: |
-          node scripts/verify-docker-attestations.mjs "${{ steps.manifest.outputs.image-ref }}"
+          node scripts/verify-docker-attestations.mjs "ghcr.io/${{ github.repository }}@${{ steps.manifest.outputs.digest }}"
+
+      - name: Cryptographically verify published provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.manifest.outputs.digest }}
+        run: |
+          gh attestation verify "oci://$IMAGE" --repo "$GITHUB_REPOSITORY" \
+            --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/docker-publish.yml" \
+            --source-digest "$GITHUB_SHA"
