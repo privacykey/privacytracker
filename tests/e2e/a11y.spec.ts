@@ -202,7 +202,9 @@ browserFlow(
     await seedCannedApps(request);
 
     await page.goto("/dashboard");
-    await expect(page.locator("main").first()).toBeVisible();
+    // Client shell (Rust-core Phase 0): wait for HomeView's root so axe
+    // scans real cards, not an empty wrapper.
+    await expect(page.locator(".home-page").first()).toBeVisible();
 
     // The coachmark tour (when it auto-opens) pops in with a ~220ms
     // entrance animation, and axe measures mid-animation colours as
@@ -287,7 +289,9 @@ browserFlow(
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/dashboard");
-    await expect(page.locator("main").first()).toBeVisible();
+    // Client shell (Rust-core Phase 0): wait for HomeView's root so axe
+    // scans real cards, not an empty wrapper.
+    await expect(page.locator(".home-page").first()).toBeVisible();
 
     // Open the drawer so its links are in the scanned DOM alongside the
     // compact top bar (where the icon-only Add Apps link lives).

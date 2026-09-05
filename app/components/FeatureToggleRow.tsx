@@ -28,10 +28,10 @@
  */
 
 import { useRouter } from "next/navigation";
-import { clearFlagBundleCache } from "@/lib/use-flag-bundle";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { FlagKey, FlagValue } from "@/lib/feature-flag-rules";
+import { clearFlagBundleCache } from "@/lib/use-flag-bundle";
 
 interface ToggleDef {
   /** i18n key under `feature_toggle.features.*`. */

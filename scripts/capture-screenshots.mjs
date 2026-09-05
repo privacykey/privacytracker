@@ -140,7 +140,9 @@ const DESKTOP_SHOTS = [
   {
     path: "/dashboard",
     file: "dashboard.png",
-    waitFor: "main",
+    // Client shell (Rust-core Phase 0): wait for HomeView's root, not
+    // the layout wrapper, so the shot isn't an empty page.
+    waitFor: ".home-page",
     scrollY: 455,
   },
   {

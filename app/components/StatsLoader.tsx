@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
 import RequireAppsGate from "./RequireAppsGate";
 import StatsView, { type StatsFlagState } from "./StatsView";

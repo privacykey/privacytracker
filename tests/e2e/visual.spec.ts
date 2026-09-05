@@ -283,7 +283,9 @@ visual("onboarding: step 2, manual entry", async ({ page }) => {
 
 visual("dashboard", async ({ page }) => {
   await page.goto("/dashboard");
-  await expect(page.locator("main")).toBeVisible();
+  // The dashboard is a client shell now — `main` is the layout wrapper
+  // and exists before any card; gate on HomeView's own root.
+  await expect(page.locator(".home-page")).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("dashboard.png", shotOptions(page));
 });
