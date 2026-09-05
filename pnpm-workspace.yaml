@@ -28,6 +28,11 @@ allowBuilds:
   tesseract.js: true
   unrs-resolver: true
 
+# Undici 7.29.1 is the upstream security release from 2026-09-04.
+# Narrow exception permits the security patch during the normal age window.
+minimumReleaseAgeExclude:
+  - undici@7.29.1
+
 # Force-resolve `postcss` to a patched release. pnpm reads the `overrides`
 # block from this file in preference to package.json's `pnpm.overrides` —
 # keeping it in package.json AND here would cause

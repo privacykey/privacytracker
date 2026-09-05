@@ -57,6 +57,10 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Outbound requests now validate the DNS addresses used by the actual connection,
+  including streaming AI calls and redirects. IPv4-mapped IPv6 can no longer
+  bypass private-network or metadata checks. Local AI endpoints remain supported.
+
 - Docker and network deployments now require an access token for private pages
   and all private API reads as well as writes. A sign-in page provides access;
   missing configuration stays locked. Local launchers explicitly bind loopback.
