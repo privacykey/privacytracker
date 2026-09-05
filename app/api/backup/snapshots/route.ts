@@ -9,6 +9,7 @@ import {
   listBackupSnapshots,
   saveBackupSnapshotSettings,
 } from "@/lib/backup-snapshots";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 function snapshotPayload() {
@@ -40,6 +41,11 @@ export async function PUT(request: Request) {
   try {
     body = await readBoundedJson<Record<string, unknown>>(request, 4 * 1024);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     const message =
       error instanceof Error ? error.message : "Invalid JSON body";
     return NextResponse.json({ error: message }, { status: 400 });

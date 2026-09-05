@@ -10,23 +10,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * /dashboard/review-recommendations — three-step wizard:
- *   1. Review — set/refine per-app verdict; imported recommendations from
- *      audit bundles render as advisory pills.
- *   2. Backup — connect device, run cfgutil backup. Uninstall stays
- *      disabled until a backup landed within the freshness window.
- *   3. Act — for apps marked "uninstall", walk through them with
- *      type-DELETE confirmation.
+ * /dashboard/review-recommendations — universal Review / Compare / Save
+ * wizard, with an optional desktop-only Backup / Act extension.
  *
- * Gates (the view renders the same apps either way and only hides the
- * destructive steps): audience must be 'self', and
- * `flag.devopts.cfgutil_uninstall` must be on. Tauri-only checks live in
- * the wizard itself so web-build users can still review verdicts.
+ * The extension requires audience=self, the cfgutil feature flag, and the
+ * Tauri desktop runtime. It records a backup only after both native
+ * discovery and server-side Manifest.db verification; Act then re-checks
+ * that durable stamp immediately before the first removal.
+ *
+ * Web users and people outside the extension gates still get the complete
+ * non-destructive recommendation flow without disabled desktop controls.
  *
  * Rust-core Phase 0: the row assembly — six DB reads plus a per-row
  * listAnnotations() — moved verbatim into GET /api/review-queue, and the
  * gate inputs come from /api/focus + /api/feature-flags. See
- * ReviewQueueLoader.
+ * ReviewQueueLoader, which also owns the `generatedAtLabel` main added
+ * for the printable checklist.
  */
 export default function ReviewRecommendationsPage() {
   return <ReviewQueueLoader />;

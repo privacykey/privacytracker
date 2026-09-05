@@ -1,0 +1,43 @@
+.admin-login {
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+  padding: 24px;
+}
+
+.admin-login-card {
+  width: min(100%, 440px);
+  padding: 32px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+}
+
+.admin-login-card h1 {
+  margin: 16px 0;
+}
+.admin-login-card p {
+  margin: 12px 0;
+}
+.admin-login-brand {
+  font-weight: 700;
+}
+.admin-login-card form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+.admin-login-card input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+}
+.admin-login-card input:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 3px;
+}

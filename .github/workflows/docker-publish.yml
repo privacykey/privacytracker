@@ -61,6 +61,8 @@ jobs:
         run: pnpm audit --prod
 
       - name: Validate Docker Compose files
+        env:
+          AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
         run: |
           docker compose -f docker-compose.yml config >/dev/null
           docker compose -f deploy/caddy/compose.yaml config >/dev/null
@@ -73,6 +75,9 @@ jobs:
         run: pnpm smoke:release
 
   container-smoke:
+    # Compose also interpolates required variables during cleanup.
+    env:
+      AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
@@ -115,7 +120,6 @@ jobs:
         env:
           PRIVACYTRACKER_IMAGE: privacytracker-smoke
           PRIVACYTRACKER_HOST: privacytracker.localhost
-          AUDITOR_ADMIN_TOKEN: ci-smoke-token
         run: |
           docker compose -f deploy/caddy/compose.yaml up -d
           for attempt in {1..40}; do
@@ -138,7 +142,6 @@ jobs:
         env:
           PRIVACYTRACKER_IMAGE: privacytracker-smoke
           PRIVACYTRACKER_HOST: privacytracker.localhost
-          AUDITOR_ADMIN_TOKEN: ci-smoke-token
         run: |
           docker compose -f deploy/traefik/compose.yaml up -d
           for attempt in {1..40}; do

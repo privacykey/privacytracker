@@ -1,13 +1,9 @@
 # Stage 1 — Build
 #
-# Node version is pinned to the same exact image digest as `engines.node` in
-# package.json (`>=24.0.0 <26.0.0`) allows. Two reasons not to drift:
-#   1. Bumping past 25 means losing the bundled corepack (deprecated in
-#      Node 25, removed in Node 26).
-#   2. Node/pnpm/native-addon installs are intentionally built on native
-#      runners per architecture in CI. Keeping the runtime pinned still avoids
-#      surprise native ABI churn between the amd64 and arm64 image legs.
-ARG NODE_IMAGE=node:24.18.1-alpine@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3
+# Keep the builder and runner on the same supported Node LTS release so
+# native addon ABIs match. Pin the multi-architecture image digest; Renovate
+# tracks both the version and digest.
+ARG NODE_IMAGE=node:24.20.0-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
 # Keep this in lockstep with `packageManager` in package.json — the
 # workflows' pnpm/action-setup steps read `packageManager` directly, so
 # package.json and this ARG are the only two places the pnpm version
@@ -18,7 +14,12 @@ ARG NODE_IMAGE=node:24.18.1-alpine@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d
 # unless you're changing all of them together.
 ARG PNPM_VERSION=11.18.0
 
-FROM ${NODE_IMAGE} AS builder
+# The pinned Node image can predate an Alpine security release. Require the
+# patched TLS libraries in both stages; fail the build if unavailable.
+FROM ${NODE_IMAGE} AS base
+RUN apk add --no-cache 'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0'
+
+FROM base AS builder
 
 ARG PNPM_VERSION
 
@@ -56,11 +57,19 @@ RUN pnpm prune --prod
 # Stage 2 — Runtime (no build tools needed). Stays on the same major
 # as the builder so the better-sqlite3 binding compiled above keeps
 # its NODE_MODULE_VERSION compatible at runtime.
-FROM ${NODE_IMAGE} AS runner
+FROM base AS runner
+
+# Package managers are build tools; none are needed to serve the app. Remove
+# their dependency trees and launchers from the final image only.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /opt/yarn* /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+      /usr/local/bin/yarn /usr/local/bin/yarnpkg /usr/local/bin/pnpm /usr/local/bin/pnpx
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PRIVACYTRACKER_BIND_HOST=0.0.0.0
+ENV PRIVACYTRACKER_NETWORK_EXPOSED=1
 # Next.js telemetry is off-by-design for a local-first privacy tool.
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -76,6 +85,9 @@ COPY --from=builder --chown=audit:audit /app/node_modules     ./node_modules
 COPY --from=builder --chown=audit:audit /app/package.json     ./package.json
 COPY --from=builder --chown=audit:audit /app/next.config.js   ./next.config.js
 COPY --from=builder --chown=audit:audit /app/lib/db-worker.cjs ./lib/db-worker.cjs
+COPY --from=builder --chown=audit:audit /app/lib/request-limits.cjs ./lib/request-limits.cjs
+COPY --from=builder --chown=audit:audit /app/lib/admin-auth.cjs ./lib/admin-auth.cjs
+COPY --from=builder --chown=audit:audit /app/lib/request-origin.cjs ./lib/request-origin.cjs
 # Static assets served straight from disk by a non-standalone `next start`:
 # self-hosted Inter + OpenDyslexic fonts and brand-icon.png. These live under
 # <cwd>/public at runtime and are NOT baked into .next, so without this copy
@@ -99,4 +111,4 @@ USER audit
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/ready || exit 1
 
-CMD ["node_modules/.bin/next", "start"]
+CMD ["node", "--require", "./lib/request-limits.cjs", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]

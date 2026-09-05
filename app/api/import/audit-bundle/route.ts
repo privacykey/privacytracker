@@ -34,7 +34,8 @@ import {
   importAuditBundle,
   validateBundle,
 } from "@/lib/audit-bundle-import";
-import { readBoundedJson } from "@/lib/security";
+import { requestBodyErrorResponse } from "@/lib/request-body";
+import { readBoundedBody, readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 // Bumped from the default 1 mb body cap — bundles can carry the per-app
@@ -54,19 +55,12 @@ export async function POST(request: NextRequest) {
   // and application/json (testing / programmatic clients).
   let parsed: unknown;
   try {
-    const declared = Number(request.headers.get("content-length") ?? "");
-    if (Number.isFinite(declared) && declared > MAX_AUDIT_BUNDLE_BYTES) {
-      return NextResponse.json(
-        {
-          error: `Audit bundle is too large (${declared} > ${MAX_AUDIT_BUNDLE_BYTES} bytes).`,
-        },
-        { status: 413 }
-      );
-    }
-
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.startsWith("multipart/form-data")) {
-      const form = await request.formData();
+      const body = await readBoundedBody(request, MAX_AUDIT_BUNDLE_BYTES);
+      const form = await new Response(new Uint8Array(body), {
+        headers: { "Content-Type": contentType },
+      }).formData();
       const file = form.get("file");
       if (!(file instanceof File)) {
         return NextResponse.json(
@@ -101,7 +95,12 @@ export async function POST(request: NextRequest) {
       // application/json — body is the parsed bundle directly.
       try {
         parsed = await readBoundedJson(request, MAX_AUDIT_BUNDLE_BYTES);
-      } catch {
+      } catch (error) {
+        const bodyLimitResponse = requestBodyErrorResponse(error);
+        if (bodyLimitResponse) {
+          return bodyLimitResponse;
+        }
+
         return NextResponse.json(
           {
             error:
@@ -112,6 +111,11 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (err) {
+    const bodyLimitResponse = requestBodyErrorResponse(err);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     console.error("[/api/import/audit-bundle POST] body read failed:", err);
     return NextResponse.json(
       { error: "Could not read the uploaded file." },

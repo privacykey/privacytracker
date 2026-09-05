@@ -19,8 +19,7 @@ import {
 /**
  * `lib/deployment-trust` is read directly from `process.env` on every call
  * (no cache), so these tests just set/restore the relevant vars around each
- * assertion. The trust vars are NOT set by the test env, so the baseline is
- * the loopback-only default.
+ * assertion. Each case clears the trust vars so unknown binds fail closed.
  */
 const TRUST_VARS = [
   "PRIVACYTRACKER_ALLOWED_HOSTS",
@@ -75,7 +74,7 @@ test("normalizeHost strips port, brackets, zone id and trailing dot", () => {
   assert.equal(normalizeHost(null), null);
 });
 
-test("isLoopbackHost covers all of 127/8, ::1, ::, 0.0.0.0 and localhost", () => {
+test("isLoopbackHost covers loopback addresses but excludes wildcard binds", () => {
   for (const h of [
     "127.0.0.1",
     "127.0.0.5",
@@ -83,12 +82,17 @@ test("isLoopbackHost covers all of 127/8, ::1, ::, 0.0.0.0 and localhost", () =>
     "localhost",
     "app.localhost",
     "[::1]:3000",
-    "::",
-    "0.0.0.0",
   ]) {
     assert.equal(isLoopbackHost(h), true, `${h} should be loopback`);
   }
-  for (const h of ["10.0.0.1", "192.168.1.5", "nas.lan", "evil.example"]) {
+  for (const h of [
+    "::",
+    "0.0.0.0",
+    "10.0.0.1",
+    "192.168.1.5",
+    "nas.lan",
+    "evil.example",
+  ]) {
     assert.equal(isLoopbackHost(h), false, `${h} should NOT be loopback`);
   }
 });
@@ -152,20 +156,20 @@ test("clientIpFromHeaders: null without a trusted proxy, rightmost hop with one"
 });
 
 test("isNetworkExposed truth table", () => {
-  withEnv({}, () => assert.equal(isNetworkExposed(), false));
+  withEnv({}, () => assert.equal(isNetworkExposed(), true));
   withEnv({ PRIVACYTRACKER_NETWORK_EXPOSED: "1" }, () =>
     assert.equal(isNetworkExposed(), true)
   );
   withEnv({ PRIVACYTRACKER_ALLOWED_HOSTS: "nas.lan" }, () =>
     assert.equal(isNetworkExposed(), true)
   );
-  // A loopback-only allowlist does NOT count as exposure.
+  // An allowlist does not prove the listener is loopback-only.
   withEnv({ PRIVACYTRACKER_ALLOWED_HOSTS: "127.0.0.1, localhost" }, () =>
-    assert.equal(isNetworkExposed(), false)
+    assert.equal(isNetworkExposed(), true)
   );
-  // A wildcard bind (Docker's 0.0.0.0) is ambiguous, NOT exposed.
+  // Wildcard binds must authenticate regardless of host port publishing.
   withEnv({ PRIVACYTRACKER_BIND_HOST: "0.0.0.0" }, () =>
-    assert.equal(isNetworkExposed(), false)
+    assert.equal(isNetworkExposed(), true)
   );
   // A specific non-loopback bind IS exposure.
   withEnv({ PRIVACYTRACKER_BIND_HOST: "192.168.1.5" }, () =>
@@ -180,8 +184,8 @@ test("bindIsAmbiguous: wildcard or unknown bind, but not a classified one", () =
   // A Docker-style HOSTNAME (random container id, not an IP) is unclassifiable.
   withEnv({ HOSTNAME: "a1b2c3d4e5f6" }, () => {
     assert.equal(bindIsAmbiguous(), true);
-    // ...and crucially is NOT mistaken for exposure.
-    assert.equal(isNetworkExposed(), false);
+    // Unknown bind information must not disable authentication.
+    assert.equal(isNetworkExposed(), true);
   });
   withEnv({ PRIVACYTRACKER_BIND_HOST: "0.0.0.0" }, () =>
     assert.equal(bindIsAmbiguous(), true)

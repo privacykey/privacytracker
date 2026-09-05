@@ -30,7 +30,7 @@ Every workflow that installs dependencies (six of the ten) runs
 `pnpm install --frozen-lockfile`. Using `npm` locally will mostly work
 against the pnpm lockfile but is unsupported and risks drift.
 
-Docker (production): `docker compose up --build -d`. By default the SQLite DB lives in a Docker-managed **named volume** (`privacytracker-data`), so data survives rebuilds and the container's non-root `audit` user (uid 100 / gid 101) can write it on any host with no setup. Back it up with `docker compose cp web:/app/data ./data-backup`. This is a change from the old `./data` bind mount, which broke on a fresh Linux host: Docker auto-creates the bind source as `root:root`, uid 100 can't create `privacy.db`, and `lib/db.ts` throws `SQLITE_CANTOPEN` (macOS Docker Desktop hid this by uid-mapping bind mounts). If you'd rather keep the DB on the host at `./data/privacy.db`, layer on `docker-compose.bind-mount.yml` after the one-time `mkdir -p data && sudo chown 100:101 data`: `docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml up --build -d`. The `compose-smoke` CI job exercises both paths (and asserts `/fonts/InterVariable.woff2` + `/brand-icon.png` actually serve — the runtime image must copy `public/`).
+Docker (production): first configure `AUDITOR_ADMIN_TOKEN` in `.env` (see [secure deployment](docs/SECURE_DEPLOYMENT.md)), then `docker compose up --build -d`. Docker requires authentication for private pages and APIs even when host port publishing is loopback-only. By default the SQLite DB lives in a Docker-managed **named volume** (`privacytracker-data`), so data survives rebuilds and the container's non-root `audit` user (uid 100 / gid 101) can write it on any host with no setup. Back it up with `docker compose cp web:/app/data ./data-backup`. This is a change from the old `./data` bind mount, which broke on a fresh Linux host: Docker auto-creates the bind source as `root:root`, uid 100 can't create `privacy.db`, and `lib/db.ts` throws `SQLITE_CANTOPEN` (macOS Docker Desktop hid this by uid-mapping bind mounts). If you'd rather keep the DB on the host at `./data/privacy.db`, layer on `docker-compose.bind-mount.yml` after the one-time `mkdir -p data && sudo chown 100:101 data`: `docker compose -f docker-compose.yml -f docker-compose.bind-mount.yml up --build -d`. The `compose-smoke` CI job exercises both paths (and asserts `/fonts/InterVariable.woff2` + `/brand-icon.png` actually serve — the runtime image must copy `public/`).
 
 The test suite is intentionally small and focused (`pnpm test`). Container healthchecks hit `GET /api/ready` (DB reachable + data directory writable). `GET /api/health` stays as the simpler liveness probe for uptime checks.
 
@@ -341,6 +341,16 @@ Both pages are server components sharing the `.legal-layout` / `.legal-sidebar` 
 **Pre-filled GitHub issue link.** The "Questions or corrections" section on `/privacy-policy` links to `issues/new?template=bug_report.yml&report-type=Privacy%20policy%20concern%20or%20correction&source-page=/privacy-policy`. The old standalone `privacy-policy.yml` template was folded into `.github/ISSUE_TEMPLATE/bug_report.yml`; keep the URL structural (template + field-id prefills) and let the YAML template own the content and placeholders. The repo URL lives in a `GITHUB_REPO` constant at the top of `app/privacy-policy/page.tsx` — keep it in sync with `README.md`, `.github/SECURITY.md`, and the Homebrew tap if the repo is ever renamed. **Do not** revert to stuffing `title=` / `body=` query params with HTML-shaped strings like `<!-- comment -->` — browser XSS heuristics and some corporate proxies flag `<!--` in URL query strings and block the click before the request ever reaches GitHub.
 
 ## Translations
+
+Translation regression checks have three distinct scopes: `pnpm lint:i18n`
+checks locale-key parity, `tests/app/i18n-attr-literals.test.ts` checks
+assistive attributes, and `tests/app/i18n-text-literals.test.ts` ratchets visible
+JSX copy against its checked-in baseline. The visible-copy scanner lives in
+`tests/helpers/i18n-text-scanner.ts` and uses Babel's TypeScript/JSX parser,
+independently of the TypeScript compiler API. Keep scanner behavior covered by
+`tests/app/i18n-text-scanner.test.ts`; parser failures must fail the check.
+Do not regenerate the baseline merely to accommodate parser changes — compare
+findings, including duplicate counts and source snippets, and review differences.
 
 Localised UI ships through next-intl. `locales/en.json` is the source of truth; every other `locales/<lang>.json` is round-tripped through Crowdin (free OSS plan) so non-developer reviewers can edit copy in a friendly UI without touching JSON. The full workflow — Crowdin project setup, repo secrets, the weekly pull-request cycle, and how to add a new locale — lives at [Translations](https://docs.privacytracker.privacykey.org/develop/translations). The short version for daily work is: edit `locales/en.json`, run `pnpm lint:i18n` to catch parity drift, push to main, and the GitHub Action handles the rest.
 

@@ -18,6 +18,7 @@ import {
 } from "@/lib/feature-flag-storage";
 import { resolveFlagFromDb } from "@/lib/feature-flags-server";
 import { workflowAllowsAuditBundle } from "@/lib/focus-workflow";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { setSetting } from "@/lib/scheduler";
 import { readOptionalBoundedJson } from "@/lib/security";
 
@@ -59,6 +60,11 @@ export async function POST(request: NextRequest) {
   try {
     body = await readOptionalBoundedJson<ExportBody>(request, 4 * 1024, {});
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid JSON body" },
       { status: 400 }

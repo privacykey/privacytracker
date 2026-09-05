@@ -9,10 +9,10 @@
  * strings shipped to non-English locales despite the attribute guard
  * (pre-launch audit follow-up, 2026-06).
  *
- * Unlike the attribute test's regex scan, this uses the TypeScript AST
- * (already a devDependency) because "text node" has no reliable lexical
- * shape — `>`…`<` regexes trip over generics and comparisons, while
- * ts.JsxText is exact and gives us parents for the context checks.
+ * Unlike the attribute test's regex scan, this uses a Babel AST because
+ * "text node" has no reliable lexical shape: `>`…`<` regexes trip over
+ * generics and comparisons. The helper walks JSX nodes and their parents
+ * without depending on the TypeScript compiler API (absent in TS 7).
  *
  * Trigger: text containing 2+ consecutive ASCII English words (after
  * brand-token and HTML-entity removal). Single-word literals ("Cancel")
@@ -58,10 +58,13 @@
  */
 
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import ts from "typescript";
+import {
+  type Finding,
+  scanForHardcodedTextLiterals,
+} from "../helpers/i18n-text-scanner";
 
 const SCAN_ROOT = path.join(process.cwd(), "app");
 const BASELINE_PATH = path.join(
@@ -70,218 +73,6 @@ const BASELINE_PATH = path.join(
   "app",
   "i18n-text-literals.baseline.json"
 );
-
-/** Mirrors BRAND_TOKENS in i18n-attr-literals.test.ts. */
-const BRAND_TOKENS = [
-  "privacytracker",
-  "App Store",
-  "Apple Configurator",
-  "Wayback",
-  "Wayback Machine",
-  "GitHub",
-  "Crowdin",
-  "ToS",
-  "DR",
-  "PrivacySpy",
-  "Ollama",
-  "OpenAI",
-  "Anthropic",
-  "SQLite",
-  "Tauri",
-];
-
-const EXEMPT_MARKER = "i18n-exempt";
-
-/** Two or more consecutive ASCII words of 2+ letters each. Apostrophes
- *  inside words count as word characters so contractions ("doesn't
- *  match") don't split into unflaggable singles. */
-const TWO_WORDS = /[A-Za-z][A-Za-z'’]+[ \t]+[A-Za-z][A-Za-z'’]+/;
-
-/** Tags whose text children are code/sample/CSS, not UI copy. */
-const NON_COPY_TAGS = new Set([
-  "code",
-  "pre",
-  "kbd",
-  "samp",
-  "style",
-  "script",
-]);
-
-/** Directories whose JSX text is illustration artwork, not copy. */
-const EXCLUDED_DIRS = new Set(["vignettes"]);
-
-interface Finding {
-  file: string;
-  line: number;
-  snippet: string;
-}
-
-function walk(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    const full = path.join(dir, entry);
-    if (statSync(full).isDirectory()) {
-      if (!EXCLUDED_DIRS.has(entry)) {
-        walk(full, out);
-      }
-    } else if (full.endsWith(".tsx") && !full.endsWith(".stories.tsx")) {
-      out.push(full);
-    }
-  }
-  return out;
-}
-
-/** Strip brand tokens and HTML entities, then test the two-word rule. */
-function hasEnglishPhrase(text: string): boolean {
-  let cleaned = text.replace(/&[#a-zA-Z0-9]+;/g, " ");
-  for (const brand of BRAND_TOKENS) {
-    cleaned = cleaned.split(brand).join(" ");
-  }
-  return TWO_WORDS.test(cleaned);
-}
-
-/** True when `node` sits under a non-copy tag or an aria-hidden
- *  element — both render text we never localise. */
-function inSkippedJsxContext(node: ts.Node): boolean {
-  let cur: ts.Node | undefined = node.parent;
-  while (cur) {
-    if (ts.isJsxElement(cur)) {
-      const open = cur.openingElement;
-      if (NON_COPY_TAGS.has(open.tagName.getText())) {
-        return true;
-      }
-      for (const attr of open.attributes.properties) {
-        if (
-          ts.isJsxAttribute(attr) &&
-          attr.name.getText() === "aria-hidden" &&
-          attr.initializer?.getText() !== '"false"'
-        ) {
-          return true;
-        }
-      }
-    }
-    cur = cur.parent;
-  }
-  return false;
-}
-
-const TRANSPARENT_BINARY_OPS = new Set<ts.SyntaxKind>([
-  ts.SyntaxKind.AmpersandAmpersandToken,
-  ts.SyntaxKind.BarBarToken,
-  ts.SyntaxKind.QuestionQuestionToken,
-  ts.SyntaxKind.PlusToken,
-]);
-
-/**
- * Walk from a literal up to its nearest JsxExpression. Returns true
- * only when (a) every node in between is a display-transparent wrapper
- * — so the literal itself is what gets rendered — and (b) that
- * JsxExpression is an element/fragment CHILD, not an attribute value
- * (attributes are i18n-attr-literals.test.ts territory).
- *
- * Anything else consuming the string on the way up (variable
- * declaration, call argument — translator keys included —, comparison,
- * object property, switch case) means it's data, not copy: not ours.
- */
-function rendersAsJsxChild(node: ts.Node): boolean {
-  let cur: ts.Node = node;
-  let parent: ts.Node | undefined = cur.parent;
-  while (parent) {
-    if (ts.isJsxExpression(parent)) {
-      const host = parent.parent;
-      return ts.isJsxElement(host) || ts.isJsxFragment(host);
-    }
-    const transparent =
-      (ts.isConditionalExpression(parent) &&
-        (parent.whenTrue === cur || parent.whenFalse === cur)) ||
-      (ts.isBinaryExpression(parent) &&
-        TRANSPARENT_BINARY_OPS.has(parent.operatorToken.kind)) ||
-      ts.isParenthesizedExpression(parent) ||
-      ts.isTemplateExpression(parent) ||
-      ts.isTemplateSpan(parent);
-    if (!transparent) {
-      return false;
-    }
-    cur = parent;
-    parent = cur.parent;
-  }
-  return false;
-}
-
-function isExempt(lines: string[], lineNo: number): boolean {
-  const here = lines[lineNo - 1] ?? "";
-  const above = lines[lineNo - 2] ?? "";
-  return here.includes(EXEMPT_MARKER) || above.includes(EXEMPT_MARKER);
-}
-
-export function scanForHardcodedTextLiterals(root: string): Finding[] {
-  const findings: Finding[] = [];
-  for (const file of walk(root)) {
-    const sourceText = readFileSync(file, "utf8");
-    const rawLines = sourceText.split("\n");
-    const sf = ts.createSourceFile(
-      file,
-      sourceText,
-      ts.ScriptTarget.Latest,
-      true,
-      ts.ScriptKind.TSX
-    );
-
-    const record = (node: ts.Node, text: string) => {
-      // Line of the first English letter, not of the node start —
-      // JsxText nodes often begin with the previous line's newline.
-      const offset =
-        node.getStart() + Math.max(0, node.getText().search(/[A-Za-z]/));
-      const lineNo = sf.getLineAndCharacterOfPosition(offset).line + 1;
-      if (isExempt(rawLines, lineNo)) {
-        return;
-      }
-      findings.push({
-        file: path.relative(process.cwd(), file),
-        line: lineNo,
-        snippet: text.replace(/\s+/g, " ").trim().slice(0, 100),
-      });
-    };
-
-    const visit = (node: ts.Node) => {
-      if (ts.isJsxText(node)) {
-        if (hasEnglishPhrase(node.text) && !inSkippedJsxContext(node)) {
-          record(node, node.text);
-        }
-        return;
-      }
-      if (
-        (ts.isStringLiteral(node) ||
-          ts.isNoSubstitutionTemplateLiteral(node)) &&
-        hasEnglishPhrase(node.text) &&
-        rendersAsJsxChild(node) &&
-        !inSkippedJsxContext(node)
-      ) {
-        record(node, node.text);
-        return;
-      }
-      if (ts.isTemplateExpression(node)) {
-        // Check each literal span of `…${x}…` individually so an
-        // interpolated value can't bridge two single words into a
-        // false phrase.
-        const spans = [
-          node.head.text,
-          ...node.templateSpans.map((s) => s.literal.text),
-        ];
-        if (
-          spans.some((t) => hasEnglishPhrase(t)) &&
-          rendersAsJsxChild(node) &&
-          !inSkippedJsxContext(node)
-        ) {
-          record(node, spans.join(" … "));
-        }
-        // fall through: still visit ${…} for nested JSX
-      }
-      ts.forEachChild(node, visit);
-    };
-    visit(sf);
-  }
-  return findings;
-}
 
 /** Baseline key — line numbers excluded on purpose so unrelated edits
  *  shifting a file don't invalidate entries. */

@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   getManualAppsBannerDismissed,
   setManualAppsBannerDismissed,
@@ -30,7 +31,12 @@ export async function PUT(request: Request) {
   let body: any;
   try {
     body = await readBoundedJson(request, 4 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 

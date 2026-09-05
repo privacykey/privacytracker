@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { recordActivity } from "../../../lib/activity";
 import {
   describePresetTransition,
@@ -58,7 +59,12 @@ export async function PUT(request: Request) {
   let body: unknown;
   try {
     body = await readBoundedJson(request, 16 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 

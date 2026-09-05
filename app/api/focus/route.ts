@@ -21,6 +21,7 @@ import {
   inferFocusWorkflow,
   isFocusWorkflow,
 } from "@/lib/focus-workflow";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { getSetting, setSetting } from "@/lib/scheduler";
 import { readBoundedJson } from "@/lib/security";
 
@@ -85,7 +86,12 @@ export async function POST(request: NextRequest) {
   let body: Partial<FocusBody>;
   try {
     body = await readBoundedJson<Partial<FocusBody>>(request, 4 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 

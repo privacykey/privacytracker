@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   type ReviewAction,
   recordReviewAction,
@@ -47,7 +48,12 @@ export async function POST(
   let body: { action?: unknown; snoozeDays?: unknown } = {};
   try {
     body = await readOptionalBoundedJson(request, 2 * 1024, {});
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 

@@ -4,9 +4,9 @@
  *
  *   1. Audience + flag gating — the hard "is this allowed?" check
  *      that the API endpoints run before logging any device action.
- *   2. Backup-freshness tracking — stamps the last successful backup
- *      timestamp per device into `app_settings` and answers "is the
- *      most recent backup younger than the freshness window?".
+ *   2. Backup-freshness tracking — stamps the last independently verified
+ *      MobileSync backup per device into `app_settings` and answers "does
+ *      its Manifest.db still exist, and is it younger than the window?".
  *   3. Activity logging — writes `cfgutil_backup` and
  *      `cfgutil_uninstall` rows so the Dev Options audit log has a
  *      forensic record of every destructive action.
@@ -20,6 +20,8 @@
 import "server-only";
 
 import { recordActivity } from "./activity";
+import type { BackupStamp } from "./device-actions-shared";
+import { verifyBackupArtifact } from "./device-backup-verification";
 import { getActiveFocus } from "./feature-flag-storage";
 import { resolveFlagFromDb } from "./feature-flags-server";
 import { getSetting, setSetting } from "./scheduler";
@@ -55,13 +57,6 @@ export function normalizeEcid(value: string): string | null {
   return body.toUpperCase();
 }
 
-interface BackupStamp {
-  /** Epoch ms when the backup completed. */
-  finishedAt: number;
-  /** Filesystem path the backup landed at. */
-  path: string;
-}
-
 /**
  * Reasons the uninstall path can be denied. Returned in a structured
  * shape so the API can render distinct copy per case rather than
@@ -72,7 +67,8 @@ export type DeviceActionGate =
   | { allowed: false; reason: "audience"; activeAudience: string }
   | { allowed: false; reason: "flag" }
   | { allowed: false; reason: "backup_missing" }
-  | { allowed: false; reason: "backup_stale"; agedMs: number };
+  | { allowed: false; reason: "backup_stale"; agedMs: number }
+  | { allowed: false; reason: "backup_unverified" };
 
 /**
  * Resolve whether the user can currently invoke the uninstall path.
@@ -123,7 +119,12 @@ export function checkUninstallGate(
   if (!stamp) {
     return { allowed: false, reason: "backup_missing" };
   }
-  const aged = Date.now() - stamp.finishedAt;
+  const artifact = verifyBackupArtifact(stamp.path);
+  if (!artifact.ok) {
+    return { allowed: false, reason: "backup_unverified" };
+  }
+  const aged =
+    Date.now() - Math.min(stamp.finishedAt, artifact.manifestModifiedAt);
   if (aged > BACKUP_FRESHNESS_WINDOW_MS) {
     return { allowed: false, reason: "backup_stale", agedMs: aged };
   }
@@ -144,11 +145,20 @@ export function getLastBackup(ecid: string): BackupStamp | null {
   }
   try {
     const parsed = JSON.parse(raw) as Partial<BackupStamp>;
-    if (typeof parsed.finishedAt !== "number") {
+    if (
+      typeof parsed.finishedAt !== "number" ||
+      !Number.isFinite(parsed.finishedAt) ||
+      parsed.finishedAt <= 0 ||
+      parsed.finishedAt > Date.now()
+    ) {
       return null;
     }
     return {
       finishedAt: parsed.finishedAt,
+      manifestBytes:
+        typeof parsed.manifestBytes === "number"
+          ? parsed.manifestBytes
+          : undefined,
       path: typeof parsed.path === "string" ? parsed.path : "",
     };
   } catch {
@@ -156,7 +166,7 @@ export function getLastBackup(ecid: string): BackupStamp | null {
   }
 }
 
-/** Record a successful backup. Overwrites any previous stamp for this device. */
+/** Verify and record a successful backup, replacing the prior device stamp. */
 export function recordBackup(opts: {
   ecid: string;
   path: string;
@@ -167,10 +177,26 @@ export function recordBackup(opts: {
   if (!normalized) {
     throw new Error(`recordBackup: invalid ECID ${opts.ecid}`);
   }
+  if (
+    !Number.isFinite(opts.finishedAt) ||
+    opts.finishedAt <= 0 ||
+    opts.finishedAt > Date.now()
+  ) {
+    throw new Error("recordBackup: invalid completion time");
+  }
+  const verification = verifyBackupArtifact(opts.path);
+  if (!verification.ok) {
+    throw new Error(
+      `recordBackup: backup artifact is not verified (${verification.reason})`
+    );
+  }
+  // Recording an old artifact must never make it appear freshly backed up.
+  const finishedAt = Math.min(opts.finishedAt, verification.manifestModifiedAt);
   const key = SETTINGS_BACKUP_PREFIX + normalized;
   const stamp: BackupStamp = {
-    finishedAt: opts.finishedAt,
-    path: opts.path,
+    finishedAt,
+    manifestBytes: verification.manifestBytes,
+    path: verification.path,
   };
   setSetting(key, JSON.stringify(stamp));
 
@@ -184,11 +210,13 @@ export function recordBackup(opts: {
         : "Device backup completed",
       detail: {
         ecid: opts.ecid,
-        path: opts.path,
+        path: verification.path,
+        manifestBytes: verification.manifestBytes,
+        verified: true,
         deviceName: opts.deviceName,
-        finishedAt: opts.finishedAt,
+        finishedAt,
       },
-      startedAt: opts.finishedAt,
+      startedAt: finishedAt,
     });
   } catch (e) {
     console.warn("[device-actions] activity log failed:", e);
