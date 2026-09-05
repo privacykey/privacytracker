@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import type { FlagKey } from "../../../lib/feature-flag-rules";
 import { clearOverride, setOverride } from "../../../lib/feature-flag-storage";
 import { resolveFlagFromDb } from "../../../lib/feature-flags-server";
@@ -108,7 +109,12 @@ export async function PUT(request: Request) {
   let body: unknown;
   try {
     body = await readBoundedJson(request, 8 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 

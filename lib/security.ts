@@ -852,66 +852,12 @@ export function requestActorIp(request: Request): string {
 // JSON body size guard
 // ─────────────────────────────────────────────
 
-/**
- * Safely read the request body with a byte cap. Throws with a clear message
- * if the body is too large. Typical cap: 256 KiB — our API takes app-name
- * lists + short URLs; nothing legitimately larger than that.
- */
-export async function readBoundedJson<T = unknown>(
-  request: Request,
-  maxBytes = 256 * 1024
-): Promise<T> {
-  const declared = Number(request.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new Error(`Request body too large (${declared} > ${maxBytes} bytes)`);
-  }
-
-  const buf = Buffer.from(await request.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new Error(
-      `Request body too large (${buf.byteLength} > ${maxBytes} bytes)`
-    );
-  }
-  if (buf.byteLength === 0) {
-    throw new Error("Request body is empty");
-  }
-  try {
-    return JSON.parse(buf.toString("utf8")) as T;
-  } catch {
-    throw new Error("Invalid JSON body");
-  }
-}
-
-/**
- * Variant for endpoints where an empty body is valid. The same byte cap is
- * enforced before parsing, but `''` / whitespace returns the supplied fallback.
- */
-export async function readOptionalBoundedJson<T = unknown>(
-  request: Request,
-  maxBytes: number,
-  fallback: T
-): Promise<T> {
-  const declared = Number(request.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    throw new Error(`Request body too large (${declared} > ${maxBytes} bytes)`);
-  }
-
-  const buf = Buffer.from(await request.arrayBuffer());
-  if (buf.byteLength > maxBytes) {
-    throw new Error(
-      `Request body too large (${buf.byteLength} > ${maxBytes} bytes)`
-    );
-  }
-  const text = buf.toString("utf8");
-  if (!text.trim()) {
-    return fallback;
-  }
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error("Invalid JSON body");
-  }
-}
+export {
+  readBoundedBody,
+  readBoundedJson,
+  readOptionalBoundedJson,
+  requestBodyErrorResponse,
+} from "./request-body";
 
 // ─────────────────────────────────────────────
 // App Store URL allowlist + policy URL sanitiser

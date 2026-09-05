@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 // Always give Next an explicit bind and report that SAME bind to the guards.
 // The last hostname option wins, including when an operator overrides -H.
@@ -22,6 +23,8 @@ const require = createRequire(import.meta.url);
 const child = spawn(
   process.execPath,
   [
+    "--require",
+    fileURLToPath(new URL("../lib/request-limits.cjs", import.meta.url)),
     require.resolve("next/dist/bin/next"),
     command,
     ...args,

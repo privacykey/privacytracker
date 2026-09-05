@@ -17,6 +17,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
 import { requestOrigin } from "@/lib/deployment-trust";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   ADMIN_TOKEN_COOKIE,
   adminTokenConfigured,
@@ -116,10 +117,15 @@ export async function POST(request: NextRequest) {
   let body: Body;
   try {
     body = await readBoundedJson<Body>(request, 4 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const provided = typeof body.token === "string" ? body.token.trim() : "";
+  const provided = typeof body?.token === "string" ? body.token.trim() : "";
   if (!provided) {
     return NextResponse.json({ error: "Token is required" }, { status: 400 });
   }

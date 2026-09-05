@@ -65,6 +65,9 @@ Going forward, changes are recorded here as they land.
   and all private API reads as well as writes. A sign-in page provides access;
   missing configuration stays locked. Local launchers explicitly bind loopback.
   Cookie-authenticated mutations also require the full matching browser origin.
+- JSON and file-upload limits now apply while reading the request, with a
+  deadline and early cancellation. Oversized uploads return 413 and timed-out
+  uploads return 408; backup and audit-bundle imports use the same bounded reader.
 
 - CSV exports prefix formula-looking cells for spreadsheet viewing, including
   imported app and developer names. JSON exports retain the original values.

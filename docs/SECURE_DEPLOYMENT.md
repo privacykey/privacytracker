@@ -61,3 +61,15 @@ The launcher passes the actual bind to the security checks. Custom launchers mus
 keep `PRIVACYTRACKER_BIND_HOST` consistent with the real listener. An unknown or
 wildcard bind requires authentication. `HOSTNAME` alone is not a trusted bind
 signal. Never claim a loopback bind for a listener reachable on other interfaces.
+
+## Custom Node launchers
+
+Load `lib/request-limits.cjs` before starting Next. The supplied `pnpm start`,
+`pnpm dev`, Docker command and staged desktop entry point do this automatically.
+It limits raw HTTP uploads before Next Proxy clones their bodies: 4 KiB for
+sign-in, 512 KiB for ordinary requests, 8 MiB for audit bundles and 100 MiB for
+backup preview/restore, with a 30-second upload deadline. The larger import limits
+require authentication or an explicitly local default deployment; anonymous network
+requests retain the ordinary cap. Routes apply their
+own smaller limits too. Bare `next start` bypasses this entry-point protection.
+Reverse proxies should set matching or smaller upload limits and deadlines.

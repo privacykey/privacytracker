@@ -2,7 +2,7 @@
  * Deployment-trust config — the single source of truth for "what hostname
  * do we answer to" and "is this instance reachable beyond loopback".
  *
- * WHY THIS MODULE EXISTS (and why it imports nothing): the trust decisions
+ * WHY THIS MODULE EXISTS (and why it has no database imports): the trust decisions
  * here are consumed in two runtimes — the Next.js middleware/proxy sandbox
  * (`proxy.ts`) and ordinary Node route handlers (via `lib/security.ts`). The
  * proxy sandbox cannot load native modules, so it must NOT transitively import
@@ -29,8 +29,16 @@
  * - PRIVACYTRACKER_NETWORK_EXPOSED — boolean. Force the token-mandatory posture.
  * - PRIVACYTRACKER_BIND_HOST      — the actual bind interface, supplied by the
  *   launcher. Anything except verified loopback requires authentication.
-
  */
+
+import { trustProxy } from "./request-origin.cjs";
+
+export {
+  effectiveHostFromHeaders,
+  isSameOriginRequest,
+  requestOrigin,
+  trustProxy,
+} from "./request-origin.cjs";
 
 export type BindClassification =
   | "loopback"
@@ -54,15 +62,6 @@ function envFlag(name: string): boolean {
   }
   const v = raw.trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
-}
-
-function firstHeaderValue(headers: Headers, name: string): string | null {
-  const raw = headers.get(name);
-  if (!raw) {
-    return null;
-  }
-  const first = raw.split(",")[0]?.trim();
-  return first || null;
 }
 
 /**
@@ -170,27 +169,6 @@ export function isHostAllowed(raw: string | null | undefined): boolean {
   return getAllowedHostPatterns().some((p) => hostMatchesPattern(h, p));
 }
 
-/** Operator has asserted a trusted reverse proxy sits in front. */
-export function trustProxy(): boolean {
-  return envFlag("PRIVACYTRACKER_TRUST_PROXY");
-}
-
-/**
- * The host the *client* used, as best we can trust it: X-Forwarded-Host when a
- * trusted proxy is configured, otherwise the literal Host header. Untrusted
- * X-Forwarded-Host is ignored entirely — checking it against the allowlist
- * would be pointless since an attacker can set it to "localhost".
- */
-export function effectiveHostFromHeaders(headers: Headers): string | null {
-  if (trustProxy()) {
-    const fwd = firstHeaderValue(headers, "x-forwarded-host");
-    if (fwd) {
-      return fwd;
-    }
-  }
-  return headers.get("host");
-}
-
 /**
  * The client IP, or null when we cannot attribute one. Returns null unless a
  * trusted proxy is configured — without one, X-Forwarded-For / X-Real-IP are
@@ -274,47 +252,6 @@ export function isNetworkExposed(): boolean {
     return true;
   }
   return bindClassification() !== "loopback";
-}
-
-/** Full browser origin, honouring forwarding headers only by operator opt-in. */
-export function requestOrigin(request: Request): string | null {
-  const host = effectiveHostFromHeaders(request.headers);
-  if (!host) {
-    return null;
-  }
-  try {
-    let protocol = new URL(request.url).protocol;
-    if (trustProxy()) {
-      const forwarded = firstHeaderValue(request.headers, "x-forwarded-proto");
-      if (forwarded) {
-        protocol = `${forwarded}:`;
-      }
-    }
-    if (protocol !== "http:" && protocol !== "https:") {
-      return null;
-    }
-    const url = new URL(`${protocol}//${host}`);
-    if (url.username || url.password || url.pathname !== "/") {
-      return null;
-    }
-    return url.origin;
-  } catch {
-    return null;
-  }
-}
-
-export function isSameOriginRequest(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  const expected = requestOrigin(request);
-  if (!(origin && expected)) {
-    return false;
-  }
-  try {
-    const parsed = new URL(origin);
-    return parsed.origin === expected && origin === parsed.origin;
-  } catch {
-    return false;
-  }
 }
 
 /**
