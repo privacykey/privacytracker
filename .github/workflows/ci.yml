@@ -235,6 +235,9 @@ jobs:
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
 
   container-smoke:
+    # Compose also interpolates required variables during cleanup.
+    env:
+      AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
