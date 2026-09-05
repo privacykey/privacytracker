@@ -37,6 +37,13 @@ Going forward, changes are recorded here as they land.
   set, covering the dev loop, the desktop (Tauri) build, Docker, and the
   verification suites.
 
+- A Content Security Policy mode switch for operators: `PRIVACYTRACKER_CSP`
+  is `enforce` (default), `report-only` (send the policy as report-only to
+  see what it *would* block), or `off` (debugging only). Violations the
+  browser reports are listed on the Diagnostics page; nothing leaves the
+  machine. The policy itself is now hash-based rather than nonce-based,
+  which is what lets every page be served as a fixed, prebuilt file.
+
 ### Changed
 
 - **v0.2 upgrade requirements:** Docker deployments require
@@ -78,6 +85,11 @@ Going forward, changes are recorded here as they land.
   pointing at it.
 - Import candidate selection is now a native radio group: keyboard-operable
   with arrow keys, and announced correctly by screen readers.
+
+- The interface language is now applied in the browser from your saved
+  choice rather than on the server, so pages load as prebuilt files. The
+  first paint waits for the language bundle (a brief blank rather than an
+  English flash), and the no-JavaScript fallback message is English only.
 
 ### Fixed
 
