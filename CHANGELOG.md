@@ -125,6 +125,12 @@ Going forward, changes are recorded here as they land.
   last dark-only boxes on the app-detail policy blocks (the scrollable source
   and trace wells) and in the Live Text illustration, which drew a dark phone
   frame in the light theme.
+- Builds and lint now work from a git worktree nested under the main
+  clone's `.claude/worktrees/`: `next.config.js` pins
+  `outputFileTracingRoot` so `pnpm build:standalone` no longer emits
+  `server.js` under a nested path, and `biome.jsonc` anchors its
+  `.claude` exclusion at the repo root so `pnpm lint` stops reporting
+  "Checked 0 files" there.
 
 ### Security
 
