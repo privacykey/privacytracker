@@ -39,7 +39,8 @@ Going forward, changes are recorded here as they land.
 
 - Upgraded to TypeScript 7.0.2 and enabled Next.js's compiler CLI integration
   for web, Docker, desktop and Storybook builds, retaining build-time type
-  checks with the native compiler.
+  checks with the native compiler. Docker explicitly removes native compiler
+  packages left behind by dependency pruning from the shipped image.
 - Translation regression checks parse JSX independently of the TypeScript
   compiler API, preserving the existing untranslated-text baseline while
   allowing the checks to run with TypeScript 7.
