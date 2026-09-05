@@ -829,21 +829,7 @@ export function _resetLoginBruteForce(): void {
  * - Server-to-server callers (curl, scripts) have no Origin and are only
  *   allowed through when they carry the admin token.
  */
-export function isSameOriginRequest(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (!(origin && host)) {
-    return false;
-  }
-  try {
-    const originUrl = new URL(origin);
-    // Match on host:port equality — http vs https is acceptable because this
-    // runs behind a user-managed proxy.
-    return originUrl.host.toLowerCase() === host.toLowerCase();
-  } catch {
-    return false;
-  }
-}
+export { isSameOriginRequest } from "./deployment-trust";
 
 /**
  * Admin-token gate: the user can set AUDITOR_ADMIN_TOKEN in the environment
@@ -876,59 +862,11 @@ export function adminTokenRequiredForRequest(_request?: Request): boolean {
   return adminTokenConfigured() || isNetworkExposed();
 }
 
-/**
- * Name of the HttpOnly cookie that carries the admin token for browser
- * callers. The corresponding `x-auditor-admin-token` header path remains
- * for scripted callers (curl, the audit-bundle test harness, etc.).
- */
-export const ADMIN_TOKEN_COOKIE = "pt_admin_token";
-
-function readAdminTokenCookie(request: Request): string | null {
-  const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) {
-    return null;
-  }
-  for (const part of cookieHeader.split(";")) {
-    const eq = part.indexOf("=");
-    if (eq < 0) {
-      continue;
-    }
-    const name = part.slice(0, eq).trim();
-    if (name === ADMIN_TOKEN_COOKIE) {
-      return decodeURIComponent(part.slice(eq + 1).trim());
-    }
-  }
-  return null;
-}
-
-function constantTimeMatch(provided: string, expected: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) {
-    return false;
-  }
-  return crypto.timingSafeEqual(a, b);
-}
-
-export function requestHasValidAdminToken(request: Request): boolean {
-  const expected = process.env.AUDITOR_ADMIN_TOKEN;
-  if (!expected) {
-    return false;
-  }
-  // Prefer the cookie path (HttpOnly, set via /api/auth/admin-token/login).
-  // Fall back to the explicit header for scripted callers that don't run
-  // through a cookie jar. Either source has to match the env var via a
-  // constant-time compare.
-  const cookieVal = readAdminTokenCookie(request);
-  if (cookieVal && constantTimeMatch(cookieVal, expected)) {
-    return true;
-  }
-  const provided = request.headers.get("x-auditor-admin-token");
-  if (provided && constantTimeMatch(provided, expected)) {
-    return true;
-  }
-  return false;
-}
+export {
+  ADMIN_TOKEN_COOKIE,
+  requestHasValidAdminHeader,
+  requestHasValidAdminToken,
+} from "./admin-auth";
 
 // ─────────────────────────────────────────────
 // Audit log

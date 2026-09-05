@@ -13,8 +13,10 @@
  * the non-local admin gate for this path. Constant-time compare against
  * AUDITOR_ADMIN_TOKEN.
  */
+
 import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/deployment-trust";
 import {
   ADMIN_TOKEN_COOKIE,
   adminTokenConfigured,
@@ -149,12 +151,7 @@ export async function POST(request: NextRequest) {
   // Secure flag set only over HTTPS — the cookie spec says browsers
   // drop Secure cookies on http://, so always-true would break local
   // installs. We mirror the request's perceived protocol.
-  const forwardedProto = request.headers
-    .get("x-forwarded-proto")
-    ?.split(",")[0]
-    ?.trim();
-  const isHttps =
-    forwardedProto === "https" || request.nextUrl.protocol === "https:";
+  const isHttps = requestOrigin(request)?.startsWith("https:") === true;
   res.cookies.set({
     name: ADMIN_TOKEN_COOKIE,
     value: provided,

@@ -96,6 +96,8 @@ jobs:
         run: pnpm audit --prod
 
       - name: Validate Docker Compose files
+        env:
+          AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
         run: |
           docker compose -f docker-compose.yml config >/dev/null
           docker compose -f deploy/caddy/compose.yaml config >/dev/null
@@ -233,6 +235,9 @@ jobs:
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
 
   container-smoke:
+    # Compose also interpolates required variables during cleanup.
+    env:
+      AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
@@ -318,6 +323,8 @@ jobs:
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
   compose-smoke:
+    env:
+      AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
     # Exercises the *documented* `docker compose up --build -d` path that
     # container-smoke (plain `docker run`, no volume) never touches. This is the
     # only leg that would have caught:
@@ -361,6 +368,16 @@ jobs:
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+
+      - name: Assert private data requires authentication inside Docker
+        run: |
+          docker compose exec -T web node --input-type=module -e '
+            const url = "http://127.0.0.1:3000/api/apps";
+            const anonymous = await fetch(url, {headers: {Host: "localhost:3000"}});
+            if (anonymous.status !== 401) throw new Error("Unauthenticated private read allowed");
+            const signedIn = await fetch(url, {headers: {"x-auditor-admin-token": process.env.AUDITOR_ADMIN_TOKEN}});
+            if (signedIn.status !== 200) throw new Error("Authenticated private read failed");
+          '
 
       - name: Stop root compose (named volume)
         if: always()
