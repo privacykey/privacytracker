@@ -14,6 +14,7 @@
 
 import { NextResponse } from "next/server";
 import { runIntegrityCheck, snapshotDatabaseHealth } from "@/lib/db-health";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -72,6 +73,11 @@ export async function POST(request: Request) {
       1024
     );
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid body" },
       { status: 400 }

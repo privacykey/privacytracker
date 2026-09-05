@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { withApiTiming } from "../../../lib/api-timing";
 import { schedulePostAppUpdatePolicyFetch } from "../../../lib/post-app-update-policy-fetch";
 import { scrapeInitialUrls } from "../../../lib/scraper";
@@ -45,6 +46,11 @@ export const POST = withApiTiming("/api/scrape", async (request: Request) => {
   try {
     body = await readBoundedJson(request);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     const message =
       error instanceof Error ? error.message : "Invalid request body";
     return NextResponse.json({ error: message }, { status: 400 });

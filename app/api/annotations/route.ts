@@ -16,6 +16,7 @@ import {
   createAnnotation,
   listAnnotations,
 } from "@/lib/annotations";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,12 @@ export async function POST(request: NextRequest) {
   let body: CreateBody;
   try {
     body = await readBoundedJson<CreateBody>(request, 8 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 

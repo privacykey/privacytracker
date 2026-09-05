@@ -27,6 +27,7 @@ import {
   clearSurfaceOverrides,
   setOverride as storeOverride,
 } from "@/lib/feature-flag-storage";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +72,12 @@ export async function POST(request: NextRequest) {
   let body: PostBody;
   try {
     body = await readBoundedJson<PostBody>(request, 64 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
