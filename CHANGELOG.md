@@ -12,6 +12,8 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-05
+
 ### Added
 
 - Canned sample data now populates every app-detail surface: each demo app
@@ -36,6 +38,20 @@ Going forward, changes are recorded here as they land.
   verification suites.
 
 ### Changed
+
+- **v0.2 upgrade requirements:** Docker deployments require
+  `AUDITOR_ADMIN_TOKEN`, including containers published only on localhost.
+  macOS desktop builds require macOS 13.5 or later. v0.1.2 users make a one-time
+  manual DMG/Homebrew upgrade; the legacy update feed remains pinned to v0.1.2
+  to protect older Macs. See [release and recovery guidance](docs/RELEASING.md).
+- Release versions are prepared through reviewed PRs. Tag builds stay in a
+  draft, validate signing approvals, build each Mac architecture natively,
+  verify both updater signatures, and scan exact Docker image digests before
+  promoting image tags. Signing-only rehearsals cannot upload release assets.
+- Full backups now include devices, app/device links, review history, activity
+  and related-app observations. Restore clears those tables consistently,
+  preventing stale links to apps absent from a backup. Keep a stopped data-folder
+  copy before upgrading; older JSON backups never contained these records.
 
 - Upgraded to TypeScript 7.0.2 and enabled Next.js's compiler CLI integration
   for web, Docker, desktop and Storybook builds, retaining build-time type
@@ -191,7 +207,8 @@ Next.js app.
 - Background sync with a notifications bell, and crash-safe resume across the
   live, Wayback, and privacy-policy jobs.
 
-[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/privacykey/privacytracker/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/privacykey/privacytracker/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/privacykey/privacytracker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/privacykey/privacytracker/releases/tag/v0.1.0

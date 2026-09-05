@@ -34,10 +34,15 @@ build:
 run:
     pnpm run dev
 
-# Run the release workflow (bumps version, tags, publishes)
+# Prepare a version change for review in a PR (no tag or publication)
 [group("ship")]
-release bump="patch":
-    gh workflow run release.yml -f bump={{bump}}
+release-prepare version:
+    pnpm release:prepare {{version}}
+
+# Build a draft from an existing reviewed tag; see docs/RELEASING.md
+[group("ship")]
+release tag:
+    gh workflow run release.yml --ref {{tag}}
 
 # E2E stays separate — it builds and serves the whole app.
 # Run every non-E2E suite: unit, Tauri (cargo), iOS import helper (python)

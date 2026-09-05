@@ -50,6 +50,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+      - name: Build updater signature verifier
+        run: cargo build --locked --manifest-path scripts/verify-updater/Cargo.toml
+      - name: Test release safety checks
+        run: pnpm test:release
+
       - name: Coverage snapshot
         run: pnpm test:coverage
 

@@ -72,6 +72,10 @@ bundle, and webhook notifications.
 
 ### macOS — Homebrew
 
+v0.2 requires macOS **13.5 or later**. Upgrading from v0.1.2 requires one
+manual DMG or Homebrew upgrade; later in-app updates use the new update feed.
+See [upgrade and recovery guidance](docs/RELEASING.md).
+
 ```bash
 brew tap privacykey/tap
 brew install --cask privacytracker
@@ -87,8 +91,10 @@ background.
 
 ### Linux, Windows & self-host
 
-Available as a Docker image — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-for how the pieces fit together.
+Available as a Docker image. Set `AUDITOR_ADMIN_TOKEN` before starting or
+upgrading, even when publishing the port only on localhost. See
+[secure deployment](docs/SECURE_DEPLOYMENT.md) and
+[upgrade and recovery guidance](docs/RELEASING.md).
 
 ## Where your data lives
 
