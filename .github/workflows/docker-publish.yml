@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
+  workflow_call:
 
 permissions:
   contents: read
@@ -47,6 +46,12 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+      - name: Build updater signature verifier
+        run: cargo build --locked --manifest-path scripts/verify-updater/Cargo.toml
+      - name: Test release safety checks
+        run: pnpm test:release
 
       - name: Typecheck
         run: pnpm typecheck
@@ -226,6 +231,29 @@ jobs:
           # an OIDC-signed SLSA attestation after the digest merge job.
           provenance: true
           sbom: true
+
+      # Scan the immutable registry bytes before allowing either architecture
+      # into a named manifest. No release tag is promoted on scan failure.
+      - name: Scan the exact candidate digest
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.build-and-push.outputs.digest }}
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p scan
+          docker run --rm -v "$PWD/scan:/reports" -e TRIVY_USERNAME -e TRIVY_PASSWORD \
+            ghcr.io/aquasecurity/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
+            image --image-src remote --platform "${{ matrix.platform }}" \
+            --scanners vuln --severity HIGH,CRITICAL --exit-code 1 \
+            --format json --output /reports/trivy.json "$IMAGE"
+      - name: Keep exact-image scan evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: image-scan-${{ matrix.arch }}
+          path: scan/trivy.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Export image digest
         run: |

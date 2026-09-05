@@ -2,6 +2,16 @@
 
 This file provides guidance to AI coding agents (Claude Code, Codex, and similar tools) when working with code in this repository. It is the single canonical agent guide — `CLAUDE.md` is just an `@AGENTS.md` import so Claude Code picks it up; edit this file, not that one.
 
+## Release preparation
+
+See [docs/RELEASING.md](docs/RELEASING.md). Use `pnpm release:prepare <version>`
+on a reviewed PR branch; keep package.json, Cargo.toml and Cargo.lock aligned.
+The release workflow consumes an existing tag on main and leaves desktop
+assets in a draft. macOS requires 13.5+; v0.1.2 uses the frozen legacy feed,
+while v0.2+ uses latest-v2.json. Do not auto-publish releases or bypass the
+macos-signing reviewer gate. `pnpm test:release` requires first building the
+small locked verifier in scripts/verify-updater.
+
 ## Commands
 
 ```bash

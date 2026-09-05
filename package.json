@@ -1,6 +1,6 @@
 {
   "name": "privacytracker",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
@@ -13,6 +13,8 @@
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
     "lint:i18n": "node scripts/check-i18n-parity.mjs",
+    "release:check": "node scripts/check-release.mjs",
+    "release:prepare": "node scripts/prepare-release.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "smoke:release": "node --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/release-smoke.test.ts",
     "start": "node scripts/start-next.mjs start",
@@ -24,6 +26,7 @@
     "test:coverage": "rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --conditions=react-server --experimental-test-coverage --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/**/*.test.ts",
     "test:e2e": "playwright test",
     "test:ios-import-helper": "python3 -m unittest discover -s tests/ios-app-import -p '*_test.py'",
+    "test:release": "node --test tests/release/*.test.mjs",
     "test:tauri": "cargo test --manifest-path src-tauri/Cargo.toml",
     "pretypecheck": "next typegen",
     "typecheck": "tsc --noEmit"

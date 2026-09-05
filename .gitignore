@@ -114,3 +114,9 @@ storybook-static
 # checked in so anyone can produce a consistent set; the images themselves
 # are for docs, issues, and release notes rather than repo weight.
 /docs/screenshots/
+
+/scripts/verify-updater/target/
+/updater/
+/latest.json
+/latest-v2.json
+/release-evidence.json
