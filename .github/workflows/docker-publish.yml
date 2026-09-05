@@ -178,7 +178,16 @@ jobs:
             platform: linux/amd64
             runner: ubuntu-latest
           - arch: arm64
-            platform: linux/arm64/v8
+            # `linux/arm64`, not `linux/arm64/v8`: buildx builds the same
+            # image either way (arm64 implies v8) but records the manifest
+            # platform WITHOUT the variant, and the per-digest push is an OCI
+            # index (provenance + SBOM attestations). The exact-digest scan
+            # passes this value to Trivy's --platform, whose index child
+            # lookup requires the variant to match when one is requested —
+            # so `linux/arm64/v8` found "no child with platform" and failed
+            # the arm64 job on every push since the scan was added. amd64 has
+            # no variant and was never affected.
+            platform: linux/arm64
             runner: ubuntu-24.04-arm
 
     steps:
