@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
 import RequireAppsGate from "./RequireAppsGate";
@@ -38,6 +39,8 @@ export default function StatsLoader() {
   >(null);
   const [trackAccessibility, setTrackAccessibility] = useState(true);
   const flagValues = useFlagBundle(STATS_FLAG_KEYS);
+  const [failed, setFailed] = useState(false);
+  const tError = useTranslations("loader_error");
 
   useEffect(() => {
     let live = true;
@@ -65,11 +68,36 @@ export default function StatsLoader() {
       })
       .catch((error) => {
         console.warn("[stats] load failed:", error);
+        if (live) {
+          setFailed(true);
+        }
       });
     return () => {
       live = false;
     };
   }, []);
+
+  // A failed /api/stats used to leave this page blank forever (the old
+  // server page bounced to /onboard, which was hardly better for an
+  // install WITH apps whose stats read hiccuped). Offer a retry instead.
+  if (failed) {
+    return (
+      <div className="page-container">
+        <div className="empty-state">
+          <div className="empty-state-title">{tError("title")}</div>
+          <p className="empty-state-text">
+            <button
+              className="btn btn-secondary"
+              onClick={() => window.location.reload()}
+              type="button"
+            >
+              {tError("retry")}
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!(stats && flagValues)) {
     return null;

@@ -128,7 +128,9 @@ const DESKTOP_SHOTS = [
   {
     path: "/dashboard/apps",
     file: "apps-grid.png",
-    waitFor: "main",
+    // `main` is the layout wrapper and exists before the grid loads
+    // client-side — wait for an actual card.
+    waitFor: ".app-card",
   },
   {
     path: `/apps/${detailApp.id}`,
@@ -138,7 +140,9 @@ const DESKTOP_SHOTS = [
   {
     path: "/dashboard",
     file: "dashboard.png",
-    waitFor: "main",
+    // Client shell (Rust-core Phase 0): wait for HomeView's root, not
+    // the layout wrapper, so the shot isn't an empty page.
+    waitFor: ".home-page",
     scrollY: 455,
   },
   {
@@ -178,7 +182,7 @@ const mob = await browser.newContext({
 await shot(await mob.newPage(), {
   path: "/dashboard/apps",
   file: "apps-grid-mobile.png",
-  waitFor: "main",
+  waitFor: ".app-card",
 });
 await mob.close();
 

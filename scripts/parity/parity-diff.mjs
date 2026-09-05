@@ -132,7 +132,6 @@ const EPOCH_MS_MIN = 1_400_000_000_000; // 2014 — anything above is a timestam
 const EPOCH_MS_MAX = 4_100_000_000_000; // 2099
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
 // Keys whose numeric values are wall-clock durations (how long the
 // seed/scrape itself took) — legitimately different between two runs.
@@ -163,17 +162,21 @@ function normalize(value, key = "") {
     if (UUID_RE.test(value)) {
       return "~uuid";
     }
-    if (ISO_RE.test(value)) {
-      return "~iso";
-    }
-    // Embedded uuids (hrefs) and embedded durations ("took 3ms") inside
-    // longer strings — e.g. migration-step activity summaries.
+    // Embedded uuids (hrefs), durations ("took 3ms"), and ISO datetimes
+    // inside longer strings — e.g. migration-step activity summaries.
+    // The ISO handling REPLACES the matched datetime rather than
+    // collapsing the whole string: a value like "2026-08-25T09:00 ·
+    // manual" must still differ from "…09:00 · scheduled", or the
+    // differ masks a real backend difference in the suffix — exactly
+    // the class of bug it exists to catch. A pure timestamp string
+    // normalizes to exactly "~iso" either way.
     return value
       .replace(
         /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
         "~uuid"
       )
-      .replace(/\b\d+\s*ms\b/g, "~ms");
+      .replace(/\b\d+\s*ms\b/g, "~ms")
+      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}[0-9:.]*Z?/g, "~iso");
   }
   return value;
 }

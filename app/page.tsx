@@ -24,23 +24,33 @@ export default function RootPage() {
 
   useEffect(() => {
     let live = true;
-    Promise.all([
-      fetch("/api/apps?limit=1").then((res) =>
+    // The two fetches are deliberately NOT joined: a user with apps goes
+    // to /dashboard on the apps answer alone, so a hiccup on /api/focus
+    // must not be able to reroute them. (An earlier Promise.all here
+    // rejected as a pair, sending an established install to /welcome
+    // whenever the focus read failed — the old server page never did
+    // that: once its apps read succeeded, the settings read was moot.)
+    // /api/focus is consulted only for the zero-apps fork.
+    fetch("/api/apps?limit=1")
+      .then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
-      ),
-      fetch("/api/focus").then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
-      ),
-    ])
-      .then(([apps, focus]: [{ total: number }, { audienceSet?: boolean }]) => {
+      )
+      .then((apps: { total: number }) => {
         if (!live) {
           return;
         }
         if (apps.total > 0) {
           router.replace("/dashboard");
-        } else {
-          router.replace(focus.audienceSet ? "/onboard" : "/welcome");
+          return;
         }
+        fetch("/api/focus")
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null)
+          .then((focus: { audienceSet?: boolean } | null) => {
+            if (live) {
+              router.replace(focus?.audienceSet ? "/onboard" : "/welcome");
+            }
+          });
       })
       .catch(() => {
         if (live) {

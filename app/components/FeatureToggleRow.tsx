@@ -31,6 +31,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type { FlagKey, FlagValue } from "@/lib/feature-flag-rules";
+import { clearFlagBundleCache } from "@/lib/use-flag-bundle";
 
 interface ToggleDef {
   /** i18n key under `feature_toggle.features.*`. */
@@ -202,8 +203,13 @@ export default function FeatureToggleRow() {
       );
     } else {
       retryRef.current.delete(key);
-      // Optimistic state already reflects the new value; repaint the
-      // server-rendered surfaces that gate on this flag.
+      // Drop the client flag-bundle cache FIRST, then repaint: the
+      // converted pages read flags through useFlagBundle's module cache,
+      // which router.refresh() alone cannot touch (it only re-renders
+      // server components). Without the clear, a toggled flag had no
+      // visible effect on those pages until the 30s TTL lapsed or a hard
+      // reload.
+      clearFlagBundleCache();
       router.refresh();
     }
     setBusyKey(null);

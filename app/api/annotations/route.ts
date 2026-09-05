@@ -13,6 +13,7 @@ import {
   type AnnotationSource,
   type AnnotationTag,
   type AnnotationVisibility,
+  countAppsWithAnnotations,
   createAnnotation,
   listAnnotations,
 } from "@/lib/annotations";
@@ -31,6 +32,17 @@ const VALID_VISIBILITIES = new Set<AnnotationVisibility>(["export", "private"]);
 const MAX_ANNOTATION_CONTENT_CHARS = 8000;
 
 export async function GET(request: NextRequest) {
+  // ?countApps=1 — the one aggregate consumer (YourFocusCard's
+  // "{N} apps with notes" subtext); everything else lists per app.
+  if (request.nextUrl.searchParams.get("countApps") === "1") {
+    try {
+      return NextResponse.json({ appsWithNotes: countAppsWithAnnotations() });
+    } catch (e) {
+      console.error("[/api/annotations GET countApps] failed:", e);
+      return NextResponse.json({ appsWithNotes: 0 });
+    }
+  }
+
   const appId = request.nextUrl.searchParams.get("appId");
   if (!appId) {
     return NextResponse.json({ error: "appId is required" }, { status: 400 });

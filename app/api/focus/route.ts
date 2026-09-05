@@ -13,6 +13,7 @@ import type { Audience } from "@/lib/feature-flag-rules";
 import {
   getActiveFocus,
   getActiveFocusWorkflow,
+  getFocusUpdatedAt,
   setActiveFocus,
 } from "@/lib/feature-flag-storage";
 import {
@@ -49,8 +50,23 @@ export async function GET() {
     accessibility: focus.goals.has("accessibility"),
     aiConfigured: focus.aiConfigured,
     workflow,
-    childAgeBand: getSetting("guardian_child_age_band", "") || null,
+    childAgeBand: readValidChildAgeBand(),
+    // Additive: "Focus updated {date}" footnote data for YourFocusCard
+    // (null = never set, footnote suppressed).
+    updatedAt: getFocusUpdatedAt(),
   });
+}
+
+/**
+ * Stored guardian age band, validated. The GET used to return the raw
+ * setting while `getChildAgeBand()` (lib/age-rating-server.ts) applied
+ * `isValidAgeBand` — so a stale or hand-edited value reached clients
+ * that the server helper would have dropped, and three Phase 0 loaders
+ * each had to re-validate it. Validate once, here.
+ */
+function readValidChildAgeBand(): string | null {
+  const stored = getSetting("guardian_child_age_band", "");
+  return isValidAgeBand(stored) ? stored : null;
 }
 
 interface FocusBody {
