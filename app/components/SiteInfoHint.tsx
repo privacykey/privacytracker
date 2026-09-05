@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 
 /**
  * Bottom-LEFT mirror of {@link KeyboardHint}. Holds the two "site info"
@@ -22,8 +24,8 @@ import { getTranslations } from "next-intl/server";
  * server-side counterpart of `useTranslations` so the component stays
  * server-rendered.
  */
-export default async function SiteInfoHint() {
-  const t = await getTranslations("footer");
+export default function SiteInfoHint() {
+  const t = useTranslations("footer");
   return (
     // The parent <footer> in app/layout.tsx already supplies the
     // contentinfo landmark, so this wrapper is just a styled

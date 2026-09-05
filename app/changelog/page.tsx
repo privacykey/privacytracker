@@ -1,24 +1,6 @@
-/**
- * /changelog — universal changelog page.
- *
- * Aggregates every change (privacy-label adds/removes/modifications,
- * accessibility shelf events, privacy-policy events, archive imports)
- * across every tracked app into a single newest-first feed. The
- * AppChangeTimeline chart at the top runs in global mode (no appId
- * passed) so it renders the same stacked-bar visualisation as the
- * stats page hero, but for the whole library.
- *
- * Rust-core Phase 0: this page used to query the apps table directly
- * for the filter dropdown. That list now loads client-side from
- * `GET /api/apps` inside UniversalChangelogView, which already owned
- * the filter state and its paginated feed fetches — so the page is a
- * shell.
- */
-
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import Nav from "../components/Nav";
-import UniversalChangelogView from "../components/UniversalChangelogView";
+import ChangelogContent from "@/app/components/content/ChangelogContent";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
@@ -28,22 +10,12 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function ChangelogPage() {
-  const t = await getTranslations("changelog_page");
-
-  return (
-    <>
-      <Nav />
-      <div className="page-container">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{t("title")}</h1>
-            <p className="page-subtitle">{t("subtitle")}</p>
-          </div>
-        </div>
-
-        <UniversalChangelogView />
-      </div>
-    </>
-  );
+/**
+ * Rust-core Phase 0 (layout batch): the translated body moved into the
+ * client component ChangelogContent so this route prerenders statically and the
+ * copy follows the client-resolved locale; the metadata title is
+ * build-time English that RouteTitle localises on the client.
+ */
+export default function ChangelogPage() {
+  return <ChangelogContent />;
 }

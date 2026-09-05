@@ -97,6 +97,22 @@ const nextConfig = {
   // proxy.ts's matcher excludes (`_next/static`, `_next/image`, fonts).
   // The CSP itself stays in proxy.ts because it needs a per-request
   // nonce; the headers below are static and safe to apply universally.
+  // Rust-core Phase 0 (layout batch): the two per-id detail pages are
+  // client shells that read their id from the URL, so they render from
+  // ONE static HTML each. `/apps/<id>` is rewritten internally to the
+  // static `/apps/view` shell (browser URL unchanged; deep links from
+  // notifications/bookmarks keep working). With every route static, the
+  // build can hash each page's inline scripts for the CSP — a dynamic
+  // [id] segment would have had per-request flight payloads no hash can
+  // cover. The Rust server will do the same as an SPA-style fallback.
+  async rewrites() {
+    return {
+      afterFiles: [
+        { source: "/apps/:id", destination: "/apps/view" },
+        { source: "/manual-apps/:id", destination: "/manual-apps/view" },
+      ],
+    };
+  },
   async headers() {
     return [
       {

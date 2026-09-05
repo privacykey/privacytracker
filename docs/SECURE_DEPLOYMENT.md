@@ -73,3 +73,22 @@ require authentication or an explicitly local default deployment; anonymous netw
 requests retain the ordinary cap. Routes apply their
 own smaller limits too. Bare `next start` bypasses this entry-point protection.
 Reverse proxies should set matching or smaller upload limits and deadlines.
+
+## Content Security Policy
+
+The app emits its own strict CSP on every response — in the Docker image and
+in the desktop sidecar alike — so it does **not** depend on a reverse proxy
+for it. The policy is hash-based: `pnpm build` runs
+`scripts/generate-csp-hashes.mjs`, which hashes each prerendered page's inline
+scripts into `.next/csp-hashes.json` and fails the build if any page stopped
+prerendering. `proxy.ts` serves the matching hashes per route.
+
+`PRIVACYTRACKER_CSP` controls the mode: `enforce` (default), `report-only`
+(sends `Content-Security-Policy-Report-Only` so you can watch what *would* be
+blocked), or `off` (no CSP — debugging only). Violations the browser reports
+land at `POST /api/csp-report` (public, rate limited, in-memory only) and are
+listed on the Diagnostics page; nothing leaves the machine.
+
+If you front the app with a reverse proxy, **do not strip or replace** its
+`Content-Security-Policy` header — add TLS/HSTS at the proxy and let the app
+keep its own policy.

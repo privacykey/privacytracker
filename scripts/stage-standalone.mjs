@@ -69,6 +69,16 @@ if (process.env.STANDALONE_PRE_BUILT === "1" && existsSync(tauriTarballPath)) {
   process.exit(0);
 }
 
+// The CSP hash map (scripts/generate-csp-hashes.mjs) must sit where the
+// standalone server.js will look for it: <standalone>/.next/csp-hashes.json.
+const hashesSrc = path.join(repo, ".next", "csp-hashes.json");
+if (existsSync(hashesSrc)) {
+  copyFileSync(
+    hashesSrc,
+    path.join(nextStandalone, ".next", "csp-hashes.json")
+  );
+}
+
 // Copy static + public next to server.js.
 if (existsSync(nextStatic)) {
   rmSync(stagedStatic, { recursive: true, force: true });

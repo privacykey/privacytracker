@@ -55,7 +55,7 @@ const CONVERTED_PAGES = [
   "app/dashboard/privacy/page.tsx",
   "app/dashboard/shortlist/page.tsx",
   "app/dashboard/settings/layout/page.tsx",
-  "app/manual-apps/[id]/page.tsx",
+  "app/manual-apps/view/page.tsx",
   "app/dashboard/compare/page.tsx",
   "app/legal/page.tsx",
   "app/privacy-policy/page.tsx",
@@ -66,7 +66,7 @@ const CONVERTED_PAGES = [
   "app/help/parental-controls/page.tsx",
   "app/dashboard/apps/page.tsx",
   "app/dashboard/review-recommendations/page.tsx",
-  "app/apps/[id]/page.tsx",
+  "app/apps/view/page.tsx",
   "app/dashboard/page.tsx",
 ];
 
@@ -234,4 +234,49 @@ test("phase0 shell: no converted page renders a server child with server-side re
     [],
     `server-component children of converted pages still reach server lib modules:\n  ${offences.join("\n  ")}`
   );
+});
+
+// ---------------------------------------------------------------------------
+// Root layout stays static
+// ---------------------------------------------------------------------------
+//
+// The layout batch removed every per-request read from app/layout.tsx.
+// One headers()/cookies() call or a force-dynamic there makes EVERY route
+// dynamic again — and scripts/generate-csp-hashes.mjs would then fail the
+// build. This is the faster, named failure.
+test("phase0 shell: app/layout.tsx makes no per-request reads", () => {
+  const src = readFileSync(join(REPO_ROOT, "app/layout.tsx"), "utf8");
+  // Code forms only — comments may legitimately mention these by name.
+  for (const forbidden of [
+    'from "next/headers"',
+    "export const dynamic",
+    "resolveFlagFromDb(",
+    'from "@/lib/feature-flags-server"',
+  ]) {
+    assert.ok(!src.includes(forbidden), `app/layout.tsx contains ${forbidden}`);
+  }
+});
+
+// RouteTitle's map must agree with each page's generateMetadata — it is
+// what localises the <title> that static prerender bakes in English.
+test("phase0 shell: RouteTitle covers every static page title", () => {
+  const map = readFileSync(
+    join(REPO_ROOT, "app/components/RouteTitle.tsx"),
+    "utf8"
+  );
+  for (const page of CONVERTED_PAGES) {
+    const src = readFileSync(join(REPO_ROOT, page), "utf8");
+    const meta = src.match(
+      /export async function generateMetadata\([\s\S]*?\n}\n/
+    );
+    const key = meta?.[0].match(/title:\s*t\("([^"]+)"\s*\)/)?.[1];
+    if (!key) {
+      continue; // dynamic-name titles are set by their loaders
+    }
+    const route = page === "app/page.tsx" ? "/" : `/${page.slice(4, -9)}`;
+    assert.ok(
+      map.includes(`"${route}": "`) && map.includes(`.${key}"`),
+      `RouteTitle has no entry for ${route} (${key})`
+    );
+  }
 });
