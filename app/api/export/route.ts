@@ -36,7 +36,7 @@ function toCsv(rows: any[]): string {
     ts ? new Date(ts).toISOString().split("T")[0] : "";
 
   return [
-    headers.map(escape).join(","),
+    headers.map(escapeField).join(","),
     ...rows.map((r) =>
       [
         r.app_name,
