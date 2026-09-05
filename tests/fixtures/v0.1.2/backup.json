@@ -1,0 +1,436 @@
+{
+  "version": 1,
+  "exportedAt": 1788614193783,
+  "appName": "privacytracker",
+  "tables": {
+    "apps": {
+      "columns": [
+        "id",
+        "name",
+        "url",
+        "iconUrl",
+        "bundleId",
+        "developer",
+        "firstSeen",
+        "lastSynced",
+        "changeCount",
+        "changes_acknowledged_at",
+        "changes_snoozed_until",
+        "currentVersion",
+        "versionUpdatedAt",
+        "whatsNew",
+        "hasPrivacyDetails",
+        "hasAccessibilityLabels",
+        "priceAmount",
+        "priceCurrency",
+        "priceFormatted",
+        "hasIap",
+        "genreId",
+        "genreName",
+        "ageRating",
+        "privacyPolicyUrl"
+      ],
+      "rows": [
+        {
+          "id": "123456",
+          "name": "Legacy fixture",
+          "url": "https://apps.apple.com/us/app/fixture/id123456",
+          "iconUrl": null,
+          "bundleId": null,
+          "developer": null,
+          "firstSeen": 1781222400000,
+          "lastSynced": 1781222400000,
+          "changeCount": 2,
+          "changes_acknowledged_at": 0,
+          "changes_snoozed_until": 0,
+          "currentVersion": null,
+          "versionUpdatedAt": null,
+          "whatsNew": null,
+          "hasPrivacyDetails": null,
+          "hasAccessibilityLabels": null,
+          "priceAmount": null,
+          "priceCurrency": null,
+          "priceFormatted": null,
+          "hasIap": null,
+          "genreId": null,
+          "genreName": null,
+          "ageRating": null,
+          "privacyPolicyUrl": null
+        }
+      ]
+    },
+    "privacy_types": {
+      "columns": [
+        "id",
+        "app_id",
+        "identifier",
+        "title",
+        "detail"
+      ],
+      "rows": [
+        {
+          "id": "type",
+          "app_id": "123456",
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "detail": null
+        }
+      ]
+    },
+    "privacy_purposes": {
+      "columns": [
+        "id",
+        "type_id",
+        "identifier",
+        "title"
+      ],
+      "rows": []
+    },
+    "privacy_categories": {
+      "columns": [
+        "id",
+        "purpose_id",
+        "type_id",
+        "identifier",
+        "title"
+      ],
+      "rows": [
+        {
+          "id": "category",
+          "purpose_id": null,
+          "type_id": "type",
+          "identifier": "DIAGNOSTICS",
+          "title": "Diagnostics"
+        }
+      ]
+    },
+    "privacy_data_types": {
+      "columns": [
+        "id",
+        "category_id",
+        "title"
+      ],
+      "rows": []
+    },
+    "accessibility_features": {
+      "columns": [
+        "id",
+        "app_id",
+        "identifier",
+        "title",
+        "description",
+        "icon_template"
+      ],
+      "rows": []
+    },
+    "privacy_snapshots": {
+      "columns": [
+        "id",
+        "app_id",
+        "scraped_at",
+        "snapshot_json",
+        "changes_detected",
+        "changes_summary",
+        "source",
+        "wayback_snapshot_url",
+        "triggered_by",
+        "app_version",
+        "app_version_updated_at"
+      ],
+      "rows": [
+        {
+          "id": "snapshot",
+          "app_id": "123456",
+          "scraped_at": 1781222400000,
+          "snapshot_json": "[{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]",
+          "changes_detected": 0,
+          "changes_summary": null,
+          "source": "live",
+          "wayback_snapshot_url": null,
+          "triggered_by": "manual",
+          "app_version": null,
+          "app_version_updated_at": null
+        }
+      ]
+    },
+    "privacy_policy_analyses": {
+      "columns": [
+        "app_id",
+        "policy_url",
+        "status",
+        "source_title",
+        "source_content_type",
+        "source_text",
+        "source_word_count",
+        "source_origin",
+        "source_final_url",
+        "content_hash",
+        "analysis_mode",
+        "summary_json",
+        "previous_summary_json",
+        "previous_summary_at",
+        "model",
+        "error",
+        "updated_at",
+        "last_run_log",
+        "source_fetched_at",
+        "chunk_notes_json",
+        "chunk_notes_hash",
+        "run_status",
+        "run_started_at"
+      ],
+      "rows": []
+    },
+    "privacy_policy_versions": {
+      "columns": [
+        "id",
+        "app_id",
+        "content_hash",
+        "first_fetched_at",
+        "last_fetched_at",
+        "policy_url",
+        "source_final_url",
+        "source_title",
+        "source_content_type",
+        "source_origin",
+        "source_word_count",
+        "source_text",
+        "archive_url",
+        "archive_submitted_at"
+      ],
+      "rows": []
+    },
+    "annotations": {
+      "columns": [
+        "id",
+        "app_id",
+        "content",
+        "source",
+        "source_name",
+        "visibility",
+        "tag",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "rows": [
+        {
+          "id": "note",
+          "app_id": "123456",
+          "content": "Synthetic private note",
+          "source": "user",
+          "source_name": null,
+          "visibility": "private",
+          "tag": null,
+          "created_at": 1781222400000,
+          "updated_at": 1781222400000,
+          "deleted_at": null
+        }
+      ]
+    },
+    "app_verdicts": {
+      "columns": [
+        "id",
+        "app_id",
+        "verdict",
+        "rationale",
+        "source",
+        "source_name",
+        "set_at",
+        "updated_at"
+      ],
+      "rows": []
+    },
+    "manual_apps": {
+      "columns": [
+        "id",
+        "name",
+        "source",
+        "developer",
+        "privacy_policy_url",
+        "source_url",
+        "notes",
+        "first_seen",
+        "updated_at"
+      ],
+      "rows": []
+    },
+    "manual_app_events": {
+      "columns": [
+        "id",
+        "manual_app_id",
+        "event_type",
+        "occurred_at",
+        "detail"
+      ],
+      "rows": []
+    },
+    "manual_app_policy_versions": {
+      "columns": [
+        "id",
+        "manual_app_id",
+        "content_hash",
+        "first_fetched_at",
+        "last_fetched_at",
+        "policy_url",
+        "source_final_url",
+        "source_title",
+        "source_content_type",
+        "source_origin",
+        "source_word_count",
+        "source_text"
+      ],
+      "rows": []
+    },
+    "shortlist_entries": {
+      "columns": [
+        "id",
+        "source_app_id",
+        "candidate_apple_id",
+        "candidate_name",
+        "candidate_developer",
+        "candidate_icon_url",
+        "candidate_store_url",
+        "candidate_bundle_id",
+        "note",
+        "added_at",
+        "mode"
+      ],
+      "rows": []
+    },
+    "notifications": {
+      "columns": [
+        "id",
+        "app_id",
+        "app_name",
+        "change_summary",
+        "created_at",
+        "read",
+        "stale",
+        "not_before"
+      ],
+      "rows": []
+    },
+    "imports": {
+      "columns": [
+        "id",
+        "created_at",
+        "completed_at",
+        "source",
+        "source_label",
+        "total",
+        "matched",
+        "unmatched",
+        "imported",
+        "device_id"
+      ],
+      "rows": []
+    },
+    "import_items": {
+      "columns": [
+        "id",
+        "import_id",
+        "query",
+        "edited_query",
+        "status",
+        "app_id",
+        "app_name",
+        "developer",
+        "url",
+        "icon_url",
+        "country",
+        "scrape_error",
+        "next_attempt_at",
+        "attempt_count",
+        "removed_app_id"
+      ],
+      "rows": []
+    },
+    "audit_bundle_imports": {
+      "columns": [
+        "id",
+        "exported_at",
+        "imported_at",
+        "recommender_name",
+        "bundle_app_version",
+        "apps_total",
+        "apps_added",
+        "apps_updated",
+        "apps_skipped",
+        "annotations_added"
+      ],
+      "rows": []
+    },
+    "app_settings": {
+      "columns": [
+        "key",
+        "value"
+      ],
+      "rows": [
+        {
+          "key": "flag.focus.audience",
+          "value": "self"
+        },
+        {
+          "key": "flag.focus.goal.understand",
+          "value": "true"
+        },
+        {
+          "key": "ai_api_key",
+          "value": ""
+        },
+        {
+          "key": "flag.devopts.cfgutil_uninstall",
+          "value": "on"
+        },
+        {
+          "key": "sync_bulk_state",
+          "value": "{\"fixture\":\"pending-sync\"}"
+        }
+      ]
+    },
+    "feature_flag_overrides": {
+      "columns": [
+        "flag_key",
+        "override_value",
+        "set_at",
+        "set_by",
+        "previous_focus",
+        "quarantined"
+      ],
+      "rows": []
+    },
+    "ai_debug_log": {
+      "columns": [
+        "id",
+        "created_at",
+        "app_id",
+        "app_name",
+        "provider",
+        "model",
+        "phase",
+        "prompt",
+        "response",
+        "duration_ms",
+        "error"
+      ],
+      "rows": []
+    },
+    "audit_log": {
+      "columns": [
+        "id",
+        "created_at",
+        "action",
+        "actor_ip",
+        "user_agent",
+        "detail",
+        "success"
+      ],
+      "rows": []
+    }
+  },
+  "signature": {
+    "alg": "HMAC-SHA256",
+    "mac": "NfdU9RzFnS1lhIZlLddXw+t/sXLuwPxwXA+xthVv0ME="
+  }
+}
