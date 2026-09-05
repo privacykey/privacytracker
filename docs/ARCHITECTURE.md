@@ -268,7 +268,7 @@ flip rows as they land, and update the diagram label in the same PR.
 | --- | --- | --- | --- | --- |
 | §3·1 | Device backup | ✅ fixed | Verified against cfgutil 2.20: `backup` has no destination option and writes to `~/Library/Application Support/MobileSync/Backup`. The native bridge now runs the supported command and queries the selected ECID’s UDID and verifies only that device’s changed directory there. | — |
 | §3·2 | Device backup | ✅ fixed | Native success requires a new/updated, non-empty, regular `Manifest.db`; the sidecar independently canonicalises and rechecks the artifact before stamping and at every uninstall pre-flight. Freshness cannot exceed the manifest timestamp, and future timestamps fail closed. Exit code alone cannot unlock deletion. | — |
-| §3·3 | Device delete | open | `run_with_timeout` orphans the cfgutil child on timeout — "failed" can silently become "succeeded later". Kill the process group, or re-check installed state after timeout and correct the audit row. | S |
+| §3·3 | Device delete | ✅ fixed | `run_with_timeout` owns a separate subprocess group, kills it and reaps the direct child before returning on timeout or excessive output. Harmless subprocess tests cover descendants and output limits. Device state still needs checking after an interrupted operation. | — |
 | §3·4 | Device backup | ✅ fixed | Removed the caller-controlled destination entirely. Native and sidecar checks canonicalise Apple's fixed MobileSync root, require a direct child directory, and reject symlink escapes. | — |
 | §3·5 | Delete UX / audit | ✅ fixed | Backup-step status, Act banner, final modal, and `acknowledgeNoBackup` now derive from the durable server stamp returned by the GET gate. Reopening the wizard preserves truth; moved/deleted manifests downgrade immediately. | — |
 | §3·6 | Device actions | ✅ fixed | ECID normalisation (`0x`-prefixed) across stamp store, gate, and routes; pinned by tests with real-format ECIDs. | — |
@@ -280,8 +280,7 @@ flip rows as they land, and update the diagram label in the same PR.
 | §4·2 | Polling | idea | Three pollers (TaskCenter 4s, notification watcher, per-job GETs) → one SSE stream from the sidecar. | L |
 | §5·1 | Wayback | idea | Track quarters skipped for lack of captures and offer "retry skipped" once Save-Page-Now requests have had time to land. | S–M |
 
-Suggested order: §1·1 next (protect the core scraper), then §3·3 (ensure a timed-out
-cfgutil removal cannot complete after privacytracker reports failure), then the rate-limit
+Suggested order: §1·1 next (protect the core scraper), then the rate-limit
 resume (§2·1/§4·1).
 
 ---

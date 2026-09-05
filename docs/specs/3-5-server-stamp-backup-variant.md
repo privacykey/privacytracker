@@ -184,3 +184,9 @@ These checks establish artifact presence and freshness, not complete
 restorability. Automated tests use synthetic files and a simulated native
 bridge. A real device backup and restore remain part of the desktop release
 acceptance check; no device deletion or restore is performed by these tests.
+
+Configurator subprocesses now run in their own process group. Timeout and
+output-limit errors stop that group and reap the child before returning;
+stdout and stderr are capped at 8 MiB each. A device operation that was
+already accepted may still have changed device state before interruption,
+so verify the device's actual state before retrying.

@@ -1399,46 +1399,100 @@ fn first_non_empty_string(entry: &Value, keys: &[&str]) -> Option<String> {
 /// Tauri worker indefinitely.
 #[cfg(target_os = "macos")]
 fn run_with_timeout(cmd: &mut Command, timeout: Duration) -> std::io::Result<std::process::Output> {
+    use std::io::{Error, ErrorKind, Read};
+    use std::os::unix::process::CommandExt;
+    use std::process::Stdio;
     use std::sync::mpsc;
     use std::thread;
 
-    // Re-root the binary path through `PathBuf` so error messages are
-    // easier to follow when the caller passed a relative name.
-    let program = PathBuf::from(cmd.get_program());
-    let (tx, rx) = mpsc::channel();
-
-    // Note: `Command` isn't Send, so we have to own it on the spawned
-    // thread. Easiest is to re-build it here with the same args. We only
-    // do this path for cfgutil; the extra work is trivial compared to the
-    // subprocess cost.
-    let args: Vec<String> = cmd
-        .get_args()
-        .map(|a| a.to_string_lossy().to_string())
-        .collect();
-
-    // Hand the spawned thread its own owned copy of the program path so
-    // the outer scope still has `program` available to format the
-    // timeout error message below. Cloning a `PathBuf` is cheap and the
-    // alternative — wrapping in `Arc<Path>` or borrowing through a
-    // scoped thread — would be more ceremony than this short-lived
-    // helper warrants.
-    let program_for_thread = program.clone();
-    thread::spawn(move || {
-        let result = Command::new(&program_for_thread).args(&args).output();
-        let _ = tx.send(result);
-    });
-
-    match rx.recv_timeout(timeout) {
-        Ok(result) => result,
-        Err(_) => Err(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            format!(
-                "{} did not finish within {}s",
-                program.display(),
-                timeout.as_secs()
-            ),
-        )),
+    const MAX_OUTPUT_BYTES: usize = 8 * 1024 * 1024;
+    fn read_output(mut pipe: impl Read) -> std::io::Result<Vec<u8>> {
+        let mut output = Vec::new();
+        let mut buffer = [0_u8; 8192];
+        loop {
+            let count = pipe.read(&mut buffer)?;
+            if count == 0 {
+                return Ok(output);
+            }
+            if output.len() + count > MAX_OUTPUT_BYTES {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "cfgutil output exceeded 8 MiB",
+                ));
+            }
+            output.extend_from_slice(&buffer[..count]);
+        }
     }
+
+    // Give this invocation its own process group. Killing only cfgutil can
+    // leave a helper running after the UI has reported a failed operation.
+    cmd.process_group(0)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn()?;
+    let group_id = child.id() as i32;
+    let stdout = child.stdout.take().expect("stdout was piped");
+    let stderr = child.stderr.take().expect("stderr was piped");
+    let (tx, rx) = mpsc::channel();
+    let stderr_tx = tx.clone();
+    thread::spawn(move || {
+        let _ = tx.send((true, read_output(stdout)));
+    });
+    thread::spawn(move || {
+        let _ = stderr_tx.send((false, read_output(stderr)));
+    });
+    let started = Instant::now();
+    let mut captured_stdout = None;
+    let mut captured_stderr = None;
+
+    let result = loop {
+        let status = match child.try_wait() {
+            Ok(status) => status,
+            Err(error) => break Err(error),
+        };
+        if let Some(status) = status {
+            if captured_stdout.is_some() && captured_stderr.is_some() {
+                break Ok(std::process::Output {
+                    status,
+                    stdout: captured_stdout.take().unwrap(),
+                    stderr: captured_stderr.take().unwrap(),
+                });
+            }
+        }
+        let remaining = timeout.saturating_sub(started.elapsed());
+        if remaining.is_zero() {
+            break Err(Error::new(
+                ErrorKind::TimedOut,
+                "cfgutil operation timed out; its process group was stopped",
+            ));
+        }
+        match rx.recv_timeout(remaining.min(Duration::from_millis(20))) {
+            Ok((is_stdout, Ok(bytes))) => {
+                if is_stdout {
+                    captured_stdout = Some(bytes);
+                } else {
+                    captured_stderr = Some(bytes);
+                }
+            }
+            Ok((_, Err(error))) => break Err(error),
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                // Both readers can finish just before the process exits.
+                thread::sleep(remaining.min(Duration::from_millis(10)));
+            }
+        }
+    };
+    if result.is_err() {
+        // SAFETY: this is the process group created for our own child, never
+        // the caller's group. Reap the direct child before returning failure.
+        unsafe {
+            libc::kill(-group_id, libc::SIGKILL);
+        }
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    result
 }
 
 #[cfg(test)]
@@ -1632,6 +1686,46 @@ mod tests {
         assert!(
             find_changed_verified_backup(&HashMap::new(), &after, now, "selected-device").is_none()
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn command_timeout_stops_descendants_before_they_can_write() {
+        let root = TestBackupRoot::new();
+        let marker = root.0.join("late-output");
+        let result = run_with_timeout(
+            Command::new("/bin/sh")
+                .args(["-c", "(sleep 0.3; printf late > \"$1\") & wait", "test"])
+                .arg(&marker),
+            Duration::from_millis(40),
+        );
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::TimedOut);
+        std::thread::sleep(Duration::from_millis(400));
+        assert!(!marker.exists(), "a timed-out command's child still ran");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn command_capture_preserves_exit_status_and_both_streams() {
+        let output = run_with_timeout(
+            Command::new("/bin/sh").args(["-c", "printf output; printf error >&2; exit 7"]),
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(output.status.code(), Some(7));
+        assert_eq!(output.stdout, b"output");
+        assert_eq!(output.stderr, b"error");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn command_capture_rejects_unbounded_output() {
+        let error = run_with_timeout(
+            Command::new("/bin/sh").args(["-c", "yes x"]),
+            Duration::from_secs(3),
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
     }
 
     #[cfg(not(target_os = "macos"))]
