@@ -57,6 +57,10 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Outbound requests now validate the DNS addresses used by the actual connection,
+  including streaming AI calls and redirects. IPv4-mapped IPv6 can no longer
+  bypass private-network or metadata checks. Local AI endpoints remain supported.
+
 - The activity log's type filter works for every event type again. It
   validated the requested type against a list that had fallen eight
   entries behind — so filtering by newer events (privacy-profile preset

@@ -15,11 +15,7 @@ import {
 import db from "./db";
 import { createAiTimeoutNotification } from "./notifications";
 import { getSetting } from "./scheduler";
-import {
-  assertUrlSafeToFetch,
-  safeFetch,
-  validateExternalUrl,
-} from "./security";
+import { safeFetch, safeFetchStream, validateExternalUrl } from "./security";
 
 // Hard caps for anything we pull over the network. Privacy policies are
 // HTML/text; 6 MiB is already generous. LLM chat-completion responses are
@@ -3697,23 +3693,8 @@ async function callChatCompletionsJson<T>({
       ? `${prompt}\n\nRespond with a single JSON object shaped exactly like:\n${JSON.stringify(jsonSkeletonForSchema(schema), null, 2)}`
       : prompt;
 
-  // SSRF defence-in-depth — the persisted baseUrl was already validated in
-  // the settings write path, but we revalidate AND resolve at call time so a
-  // poisoned settings row (or a hostname that DNS-rebinds to an internal IP)
-  // can't bounce this request — with the user's API key in the headers — to a
-  // cloud-metadata endpoint. Loopback / RFC-1918 is permitted because
-  // legitimate `custom` providers (Ollama on localhost, LAN boxes) live on
-  // private addresses; metadata endpoints stay blocked even after the hostname
-  // resolves. `safeFetch` can't be used here because the inference response
-  // streams; this is the pre-flight equivalent of its resolve-time gate.
-  try {
-    await assertUrlSafeToFetch(`${aiConfig.baseUrl}/chat/completions`, {
-      allowPrivateHosts: true,
-      maxLength: 1024,
-    });
-  } catch (error) {
-    throw new Error(`Invalid AI endpoint: ${getErrorMessage(error)}`);
-  }
+  // safeFetchStream checks both the configured URL and the actual socket's
+  // DNS result. Local AI services are allowed; metadata is always blocked.
 
   const debugPayloadText = [
     `System: ${POLICY_SYSTEM_PROMPT}`,
@@ -3758,7 +3739,10 @@ async function callChatCompletionsJson<T>({
 
   let res: Response;
   try {
-    res = await fetch(`${aiConfig.baseUrl}/chat/completions`, {
+    res = await safeFetchStream(`${aiConfig.baseUrl}/chat/completions`, {
+      allowPrivateHosts: true,
+      maxUrlLength: 1024,
+      timeoutMs,
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
@@ -3901,14 +3885,6 @@ async function callAnthropicJson<T>({
   // resolved and metadata IPs are rejected before the API key is sent — closing
   // the DNS-rebinding gap a syntactic check can't see.
   const endpointBaseUrl = anthropicApiRoot(aiConfig.baseUrl);
-  try {
-    await assertUrlSafeToFetch(`${endpointBaseUrl}/v1/messages`, {
-      allowPrivateHosts: true,
-      maxLength: 1024,
-    });
-  } catch (error) {
-    throw new Error(`Invalid AI endpoint: ${getErrorMessage(error)}`);
-  }
 
   const debugPayloadText = [
     `System: ${POLICY_SYSTEM_PROMPT}`,
@@ -3929,7 +3905,10 @@ async function callAnthropicJson<T>({
   const timeoutMs = resolveTimeoutForPhase(aiConfig, phaseKind);
   let res: Response;
   try {
-    res = await fetch(`${endpointBaseUrl}/v1/messages`, {
+    res = await safeFetchStream(`${endpointBaseUrl}/v1/messages`, {
+      allowPrivateHosts: true,
+      maxUrlLength: 1024,
+      timeoutMs,
       method: "POST",
       headers: {
         "Content-Type": "application/json",
