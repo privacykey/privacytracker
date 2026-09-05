@@ -10,10 +10,6 @@ on:
 permissions:
   contents: read
 
-env:
-  # Test-only token for Compose validation and isolated container smoke tests.
-  AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
-
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -100,6 +96,8 @@ jobs:
         run: pnpm audit --prod
 
       - name: Validate Docker Compose files
+        env:
+          AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
         run: |
           docker compose -f docker-compose.yml config >/dev/null
           docker compose -f deploy/caddy/compose.yaml config >/dev/null
@@ -322,6 +320,8 @@ jobs:
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
   compose-smoke:
+    env:
+      AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
     # Exercises the *documented* `docker compose up --build -d` path that
     # container-smoke (plain `docker run`, no volume) never touches. This is the
     # only leg that would have caught:
