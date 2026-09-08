@@ -3710,6 +3710,20 @@
       "origin_wayback": "From Wayback Machine",
       "origin_wayback_hint": "The live policy page blocked us, so this summary uses the most recent archived copy."
     },
+    "history_import": {
+      "title": "Reconstruct this app's history",
+      "body": "Ask the Internet Archive for this app's App Store page as it looked each quarter back to 2021, and add what it finds to the timeline below. Safe to run again later — the archive gains captures over time, and nothing already imported is duplicated.",
+      "button": "Check the archive",
+      "button_busy": "Checking the archive…",
+      "button_title": "Re-check every quarter back to 2021, including ones a previous run skipped.",
+      "result_imported": "{count, plural, one {Added # snapshot to the timeline} other {Added # snapshots to the timeline}}",
+      "result_nothing_new": "Nothing new — the archive has no captures beyond what's already here.",
+      "note_failed": "{count, plural, one {# capture could not be read} other {# captures could not be read}}. See Settings → Developer Options → Activity log.",
+      "note_snapshot_requested": "Asked the archive to capture the page as it is today, so a later check has a recent baseline.",
+      "failed_status": "Import failed ({status})",
+      "failed_archive_busy": "The Internet Archive is rate-limiting requests right now. Wait a few minutes and try again — nothing was lost.",
+      "failed_generic": "Import failed"
+    },
     "task_titles": {
       "labels_subtitle": "App Store labels only — policy stays on the AI Policy tab",
       "resync_running": "Re-syncing {name}",

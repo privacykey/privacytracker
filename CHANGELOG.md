@@ -14,6 +14,17 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- **Per-app historical import.** The App Detail → Change History tab now
+  has a "Check the archive" card that reconstructs just that app's history,
+  the single-app counterpart to Settings → Historical Import. It posts the
+  new `force` option on `POST /api/apps/[id]/import-history`, which
+  re-probes every quarter instead of skipping the ones a nearby row already
+  covers — so a second run picks up captures the archive has gained since,
+  or ones an older parser could not read. Forcing never duplicates a
+  snapshot. When archive.org is rate-limiting, the route answers 503 with
+  `code: "archive_unavailable"` (not a 500) and the card says to wait and
+  retry rather than showing a raw error. Gated by
+  `flag.detail.timeline.wayback_import`.
 - **History tab pages backwards.** The detail payload now carries the newest
   50 changelog rows plus `changelogHasMore`; a "Show older entries" control
   fetches the rest from the new `GET /api/apps/[id]/changelog?before=…`

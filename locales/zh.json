@@ -3710,6 +3710,20 @@
       "origin_wayback": "来自 Wayback Machine",
       "origin_wayback_hint": "在线政策页面拦截了我们，因此此摘要使用最近的存档副本。"
     },
+    "history_import": {
+      "title": "回溯这个应用的历史",
+      "body": "向互联网档案馆索取这个应用自 2021 年以来每个季度的 App Store 页面存档，并把找到的内容加入下方时间线。之后可以再次运行——档案馆会不断新增存档，且已导入的内容不会重复。",
+      "button": "检查存档",
+      "button_busy": "正在检查存档…",
+      "button_title": "重新检查 2021 年以来的每个季度，包括上次跳过的。",
+      "result_imported": "{count, plural, other {已向时间线添加 # 条快照}}",
+      "result_nothing_new": "没有新内容——除了已有的记录，档案馆没有其他存档。",
+      "note_failed": "{count, plural, other {有 # 条存档无法读取}}。详见 设置 → 开发者选项 → 活动日志。",
+      "note_snapshot_requested": "已请求档案馆抓取当前页面，以便下次检查时有一份较新的基线。",
+      "failed_status": "导入失败（{status}）",
+      "failed_archive_busy": "互联网档案馆正在限制请求。请等几分钟后重试——没有任何内容丢失。",
+      "failed_generic": "导入失败"
+    },
     "task_titles": {
       "labels_subtitle": "仅 App Store 标签 — 政策保留在「AI 政策」标签页",
       "resync_running": "正在重新同步 {name}",

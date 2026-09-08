@@ -755,3 +755,170 @@ test("a product page with no privacy section is skipped, not failed", async () =
   assert.equal(again.failed, 2);
   assert.ok(again.targets.some((t) => t.outcome === "skipped_parse_failure"));
 });
+
+test("force re-probes a target a neighbouring row already covers", async () => {
+  resetTestDb();
+  seedTrackedApp({ id: APP_ID, url: APP_URL });
+  saveSnapshot(APP_ID, snap(["LOCATION"]), [], {
+    scrapedAt: TODAY.getTime(),
+  });
+
+  // Run 1: the only capture is 1 Jun, which lands on the 15 Jun target.
+  mockArchive({ captures: { [JUN_1]: ["LOCATION"] } });
+  await importAppHistory(APP, { today: TODAY });
+  assert.equal(waybackRows().length, 1);
+  assert.equal(waybackRows()[0].scraped_at, Date.UTC(2021, 5, 1));
+
+  // The archive has since gained a 20 Jun capture — closer to the 15 Jun
+  // target, and showing a label the 1 Jun one didn't. A plain re-run never
+  // asks: the 1 Jun row is inside the target's 45-day dedupe window.
+  const later = "20210620000000";
+  const captures = {
+    [JUN_1]: ["LOCATION"],
+    [later]: ["LOCATION", "CONTACTS"],
+  };
+  const plain = mockArchive({ captures });
+  const unforced = await importAppHistory(APP, { today: TODAY });
+  assert.equal(plain.replay, 0, "no capture fetched");
+  assert.equal(unforced.imported, 0);
+  assert.ok(
+    unforced.targets.some((t) => t.outcome === "skipped_existing"),
+    "the covered target is skipped without asking the archive"
+  );
+  assert.equal(waybackRows().length, 1);
+
+  // Forcing probes it anyway, picks the closer capture, and stores it.
+  const forced = mockArchive({ captures });
+  const result = await importAppHistory(APP, { today: TODAY, force: true });
+  assert.equal(result.imported, 1);
+  assert.equal(forced.replay, 1, "only the capture we don't have is fetched");
+  const rows = waybackRows();
+  assert.equal(rows.length, 2);
+  assert.equal(rows[1].scraped_at, Date.UTC(2021, 5, 20));
+  assert.equal(rows[1].changes_detected, 1);
+  assert.match(
+    (JSON.parse(rows[1].changes_summary) as ChangeEntry[])[0].description,
+    /now collects: CONTACTS/
+  );
+
+  // Forcing again is idempotent — both captures are already stored.
+  mockArchive({ captures });
+  const again = await importAppHistory(APP, { today: TODAY, force: true });
+  assert.equal(again.imported, 0);
+  assert.equal(waybackRows().length, 2);
+});
+
+test("the per-app route accepts force and records it", async () => {
+  resetTestDb();
+  seedTrackedApp({ id: APP_ID, name: "Fixture", url: APP_URL });
+  mockArchive({ captures: { [JUN_1]: ["LOCATION"] } });
+
+  const { POST } = await import("../../app/api/apps/[id]/import-history/route");
+  const params = Promise.resolve({ id: APP_ID });
+  const res = await POST(
+    new Request(`http://localhost/api/apps/${APP_ID}/import-history`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ force: true }),
+    }),
+    { params }
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { result: { imported: number } };
+  assert.equal(body.result.imported, 1);
+
+  const activity = db
+    .prepare(
+      "SELECT summary, detail FROM activity_log WHERE type = 'wayback_import' ORDER BY started_at DESC LIMIT 1"
+    )
+    .get() as { summary: string; detail: string };
+  assert.match(activity.summary, /^Forced Wayback import for Fixture/);
+  assert.equal(JSON.parse(activity.detail).force, true);
+
+  const audit = db
+    .prepare(
+      "SELECT detail FROM audit_log WHERE action = 'wayback.import.app.success' ORDER BY created_at DESC LIMIT 1"
+    )
+    .get() as { detail: string } | undefined;
+  assert.ok(audit?.detail.includes("force=1"));
+});
+
+test("a bodyless per-app POST still runs an unforced import", async () => {
+  resetTestDb();
+  seedTrackedApp({ id: APP_ID, name: "Fixture", url: APP_URL });
+  mockArchive({ captures: { [JUN_1]: ["LOCATION"] } });
+
+  const { POST } = await import("../../app/api/apps/[id]/import-history/route");
+  const res = await POST(
+    new Request(`http://localhost/api/apps/${APP_ID}/import-history`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ id: APP_ID }) }
+  );
+  assert.equal(res.status, 200);
+  const activity = db
+    .prepare(
+      "SELECT summary, detail FROM activity_log WHERE type = 'wayback_import' ORDER BY started_at DESC LIMIT 1"
+    )
+    .get() as { summary: string; detail: string };
+  assert.match(activity.summary, /^Wayback import for Fixture/);
+  assert.equal(JSON.parse(activity.detail).force, false);
+});
+
+test("the per-app route answers 503 with a code when archive.org throttles", async () => {
+  resetTestDb();
+  seedTrackedApp({ id: APP_ID, name: "Fixture", url: APP_URL });
+  mockArchive({ captures: {}, cdxStatus: 429, retryAfter: "9" });
+
+  const { POST } = await import("../../app/api/apps/[id]/import-history/route");
+  const res = await POST(
+    new Request(`http://localhost/api/apps/${APP_ID}/import-history`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ force: true }),
+    }),
+    { params: Promise.resolve({ id: APP_ID }) }
+  );
+  // Not a 500: our server is fine, the archive is busy. The code lets the
+  // UI say "wait and retry" instead of showing the raw error.
+  assert.equal(res.status, 503);
+  assert.equal(res.headers.get("retry-after"), "9");
+  const body = (await res.json()) as { code: string; retryAfterMs: number };
+  assert.equal(body.code, "archive_unavailable");
+  assert.equal(body.retryAfterMs, 9000);
+
+  const activity = db
+    .prepare(
+      "SELECT status, summary, detail FROM activity_log WHERE type = 'wayback_import' ORDER BY started_at DESC LIMIT 1"
+    )
+    .get() as { status: string; summary: string; detail: string };
+  assert.equal(activity.status, "partial", "not an app-level failure");
+  assert.match(activity.summary, /rate-limiting/);
+  assert.equal(JSON.parse(activity.detail).archiveUnavailable, true);
+});
+
+test("rows written = imported + unchanged, so `imported` alone understates a reconstruction", async () => {
+  resetTestDb();
+  seedTrackedApp({ id: APP_ID, url: APP_URL });
+  // Three quarters, same labels throughout — a stable app, the common case.
+  mockArchive({
+    captures: {
+      [MAR_1]: ["LOCATION"],
+      [JUN_1]: ["LOCATION"],
+      "20210901000000": ["LOCATION"],
+    },
+  });
+
+  const result = await importAppHistory(APP, { today: TODAY });
+  const written = waybackRows().length;
+  // Two rows: the 1 Feb and 15 Mar targets both resolve to the 1 Mar
+  // capture (stored once), and the 15 Jun target takes the 1 Jun one.
+  assert.equal(written, 2);
+  // Only the oldest row counts as `imported` (it is the baseline); one that
+  // matches its predecessor is `unchanged`. Any UI reporting "added N" must
+  // sum both — AppHistoryImportCard does, and said "Added 1 snapshot" after
+  // adding 21 when it didn't.
+  assert.equal(result.imported, 1);
+  assert.equal(result.unchanged, 1);
+  assert.equal(result.imported + result.unchanged, written);
+});

@@ -216,6 +216,17 @@ export interface ImportAppHistoryOptions {
    */
   dedupeWindowMs?: number;
   /**
+   * Re-probe every target even when a nearby wayback row already covers
+   * it. Without this, a target whose neighbour is already on file is
+   * reported `skipped_existing` without ever asking the archive — which
+   * is what you want on a routine re-run, and exactly what you don't want
+   * after a parser fix or when the archive has since gained captures the
+   * first run couldn't use. The safety net that stops two rows describing
+   * the *same* capture still applies, so forcing can add rows but never
+   * duplicate one.
+   */
+  force?: boolean;
+  /**
    * Months between reconstructed snapshots. Defaults to quarterly
    * (`QUARTER_MONTHS` = 3). Pass `1` for a denser monthly reconstruction.
    * Threaded straight into {@link computeHistoricalTargets}.
@@ -397,10 +408,14 @@ export async function importAppHistory(
     const targetMs = target.getTime();
     const isNewestTarget = targetMs === newestTargetMs;
 
-    // Skip targets we've already covered within the dedupe window.
-    const alreadyCovered = existing.some(
-      (row) => Math.abs(row.scraped_at - targetMs) <= dedupeWindowMs
-    );
+    // Skip targets we've already covered within the dedupe window. A forced
+    // run probes every target instead, and relies on the capture-URL check
+    // below to avoid writing the same capture twice.
+    const alreadyCovered =
+      !options.force &&
+      existing.some(
+        (row) => Math.abs(row.scraped_at - targetMs) <= dedupeWindowMs
+      );
     if (alreadyCovered) {
       if (isNewestTarget) {
         newestTargetCovered = true;

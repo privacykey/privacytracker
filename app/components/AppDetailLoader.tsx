@@ -85,6 +85,7 @@ const DETAIL_FLAG_KEYS = [
   "flag.detail.timeline.live_rows",
   "flag.detail.timeline.wayback_rows",
   "flag.detail.timeline.wayback_toggle",
+  "flag.detail.timeline.wayback_import",
   "flag.detail.timeline.trigger_pills",
   "flag.detail.timeline.version_chip",
   "flag.detail.timeline.matches_live_sync_badge",
@@ -150,6 +151,7 @@ const ALL_ON_FLAGS: DetailFlagState = {
   timelineLiveRows: true,
   timelineWaybackRows: true,
   timelineWaybackToggle: true,
+  timelineWaybackImport: true,
   timelineTriggerPills: true,
   timelineVersionChip: true,
   timelineMatchesLiveSyncBadge: true,
@@ -311,6 +313,8 @@ export default function AppDetailLoader() {
         timelineWaybackRows: v["flag.detail.timeline.wayback_rows"] === "on",
         timelineWaybackToggle:
           v["flag.detail.timeline.wayback_toggle"] === "on",
+        timelineWaybackImport:
+          v["flag.detail.timeline.wayback_import"] === "on",
         timelineTriggerPills: v["flag.detail.timeline.trigger_pills"] === "on",
         timelineVersionChip: v["flag.detail.timeline.version_chip"] === "on",
         timelineMatchesLiveSyncBadge:
