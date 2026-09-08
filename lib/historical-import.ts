@@ -6,24 +6,31 @@
  * Flow per app:
  *   1. computeHistoricalTargets() → chronological list of target dates
  *      (quarterly by default, plus an install-date anchor).
- *   2. Ask Wayback for the closest capture of the App Store product page
- *      via archive.org/wayback/available.
+ *   2. List every capture of the App Store product page in one CDX index
+ *      request and pick the closest capture per target locally; fall back
+ *      to per-target archive.org/wayback/available probes if the index is
+ *      unreachable. A throttled archive (429 / 5xx) throws
+ *      `WaybackUnavailableError` rather than reading as "no capture".
  *   3. Fetch archived HTML via the `id_` replay variant (strips toolbar)
  *      and parse either the modern serialized-server-data blob or the
  *      historical shoebox shape.
  *   4. Build a `PrivacyTypeSnapshot[]`, diff against the immediately
  *      preceding snapshot in the DB, and write via `saveSnapshot` with
- *      source='wayback', scrapedAt = capture timestamp, waybackUrl = replay URL.
+ *      source='wayback', scrapedAt = capture timestamp, waybackUrl = replay
+ *      URL — in a transaction that also re-diffs the wayback row that now
+ *      follows it, so the chain of diffs stays consistent as rows land out
+ *      of order. The oldest row is a baseline and carries no changes.
+ *   5. If the archive has no capture within tolerance of *today*, ask Save
+ *      Page Now to archive the live page once so the next import has a
+ *      recent capture to work from.
  *
  * Wayback rows never bump `apps.changeCount` — they are history, not a new
  * change to review. Self-contained on purpose: the live path also writes
  * to apps / privacy_types tables which must stay pinned to current state.
  */
 
-import crypto from "node:crypto";
 import {
   appendWaybackAttemptEntry,
-  buildSnapshot,
   diffSnapshots,
   saveSnapshot,
 } from "./changelog";
@@ -40,10 +47,15 @@ import { extractFromShoebox } from "./scraper";
 import { safeFetch } from "./security";
 import {
   isAbortError,
+  isWaybackUnavailableError,
+  listWaybackCaptures,
   lookupWaybackSnapshotNear,
+  parseRetryAfterMs,
   parseWaybackTimestampMs,
   submitToWaybackSaveNow,
+  type WaybackCapture,
   type WaybackSnapshot,
+  WaybackUnavailableError,
 } from "./wayback";
 
 /**
@@ -77,6 +89,22 @@ const CAPTURE_DRIFT_TOLERANCE_MS = 45 * 24 * 60 * 60 * 1000; // 45 days
  */
 const WAYBACK_FALLBACK_OFFSET_DAYS = [0, -14, 14, -28, 28, -42, 42];
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const THIRTY_DAYS_MS = 30 * ONE_DAY_MS;
+
+/**
+ * How close an existing wayback row may sit to a target before the target
+ * is treated as already covered. Half the cadence, capped at the drift
+ * tolerance: 45 days for the quarterly default, 15 days for a monthly
+ * reconstruction. A fixed 45-day window used to make monthly imports skip
+ * every other month as "already covered".
+ */
+export function dedupeWindowForInterval(intervalMonths: number): number {
+  const months = Math.max(1, Math.floor(intervalMonths));
+  return Math.min(
+    CAPTURE_DRIFT_TOLERANCE_MS,
+    Math.round((months * THIRTY_DAYS_MS) / 2)
+  );
+}
 
 /** Cap on how much archived HTML we'll pull per page. Matches the live scraper. */
 const ARCHIVE_HTML_MAX_BYTES = 4 * 1024 * 1024;
@@ -182,8 +210,9 @@ export function computeQuarterlyTargets(
 export interface ImportAppHistoryOptions {
   /**
    * Skip targets that already have a wayback snapshot within this many
-   * milliseconds. Defaults to 45 days so rerunning the import after adding
-   * a new app doesn't double-insert quarters you've already pulled.
+   * milliseconds. Defaults to {@link dedupeWindowForInterval} of the
+   * cadence (45 days quarterly, 15 days monthly) so rerunning the import
+   * doesn't double-insert quarters you've already pulled.
    */
   dedupeWindowMs?: number;
   /**
@@ -267,26 +296,36 @@ export async function importAppHistory(
   options: ImportAppHistoryOptions = {}
 ): Promise<ImportAppHistoryResult> {
   const today = options.today ?? new Date();
-  const dedupeWindowMs = options.dedupeWindowMs ?? 45 * 24 * 60 * 60 * 1000;
+  const todayMs = today.getTime();
+  const intervalMonths = Math.max(
+    1,
+    Math.floor(options.intervalMonths ?? QUARTER_MONTHS)
+  );
+  const dedupeWindowMs =
+    options.dedupeWindowMs ?? dedupeWindowForInterval(intervalMonths);
   const onProgress = options.onProgress;
   const signal = options.signal;
 
   // Anchor a target on the user's install date (apps.firstSeen) so the
   // reconstruction always tries to capture the privacy state from when they
   // started tracking the app — that install-era snapshot is exactly the
-  // baseline the "Since you added this app" view diffs against. Falls back to
-  // the plain interval grid when firstSeen is unknown (legacy 0 rows).
+  // baseline the "Since you added this app" view diffs against. Skipped when
+  // the install is recent enough that the first live scrape already covers
+  // it: a fresh install would otherwise probe "today", find nothing, and
+  // request a Save Page Now for a moment the live sync already has on
+  // record. Falls back to the plain interval grid when firstSeen is unknown
+  // (legacy 0 rows).
   const anchorDates: Date[] = [];
   const firstSeenRow = db
     .prepare("SELECT firstSeen FROM apps WHERE id = ?")
     .get(app.id) as { firstSeen: number } | undefined;
   const firstSeenMs = Number(firstSeenRow?.firstSeen) || 0;
-  if (firstSeenMs > 0) {
+  if (firstSeenMs > 0 && todayMs - firstSeenMs > dedupeWindowMs) {
     anchorDates.push(new Date(firstSeenMs));
   }
 
   const targets = computeHistoricalTargets(today, APP_STORE_WEB_LAUNCH, {
-    intervalMonths: options.intervalMonths,
+    intervalMonths,
     anchorDates,
   });
 
@@ -300,6 +339,16 @@ export async function importAppHistory(
     scraped_at: number;
     wayback_snapshot_url: string | null;
   }>;
+  // Capture URLs already on file, scheme-normalised: the availability API
+  // hands back `http://web.archive.org/…` while the CDX path builds
+  // `https://…`, and both must dedupe against each other.
+  const existingUrls = new Set<string>();
+  for (const row of existing) {
+    const key = normaliseWaybackUrl(row.wayback_snapshot_url);
+    if (key) {
+      existingUrls.add(key);
+    }
+  }
 
   const result: ImportAppHistoryResult = {
     appId: app.id,
@@ -312,21 +361,37 @@ export async function importAppHistory(
     targets: [],
   };
 
-  // Save Page Now archives the current page, not the historical target date.
-  // One request per app per run is enough; retrying for every empty quarter
-  // only amplifies transient archive.org failures.
-  const saveNowAttempted = new Set<string>();
+  // One CDX request lists every capture of the page, so each target's
+  // closest capture is then a local pick. `null` means the index was
+  // unreachable or malformed — fall back to the per-target availability
+  // walk. A throttled archive throws instead: every later probe for this
+  // app would be throttled too, and the bulk runner knows how to back off
+  // from `WaybackUnavailableError`.
+  throwIfAborted(signal);
+  const captures = await listWaybackCaptures(app.url, {
+    from: APP_STORE_WEB_LAUNCH,
+    signal,
+  });
+
+  // Fallback-path proxy for "the archive has nothing recent": whether the
+  // newest target ended up covered (imported now or already on file).
+  let newestTargetCovered = false;
+  const newestTargetMs = targets[targets.length - 1]?.getTime();
 
   for (const target of targets) {
     throwIfAborted(signal);
     result.attempted++;
     const targetMs = target.getTime();
+    const isNewestTarget = targetMs === newestTargetMs;
 
-    // Skip quarters we've already covered within the dedupe window.
+    // Skip targets we've already covered within the dedupe window.
     const alreadyCovered = existing.some(
       (row) => Math.abs(row.scraped_at - targetMs) <= dedupeWindowMs
     );
     if (alreadyCovered) {
+      if (isNewestTarget) {
+        newestTargetCovered = true;
+      }
       const info: ImportTargetResult = {
         targetDate: targetMs,
         outcome: "skipped_existing",
@@ -339,14 +404,16 @@ export async function importAppHistory(
 
     let walk: WaybackProbeResult;
     try {
-      walk = await findCaptureWithinTolerance(
-        app.url,
-        target,
-        CAPTURE_DRIFT_TOLERANCE_MS,
-        signal
-      );
+      walk = captures
+        ? pickCaptureFromIndex(captures, targetMs, CAPTURE_DRIFT_TOLERANCE_MS)
+        : await findCaptureWithinTolerance(
+            app.url,
+            target,
+            CAPTURE_DRIFT_TOLERANCE_MS,
+            signal
+          );
     } catch (error) {
-      if (isAbortError(error)) {
+      if (isAbortError(error) || isWaybackUnavailableError(error)) {
         throw error;
       }
       const info: ImportTargetResult = {
@@ -361,71 +428,16 @@ export async function importAppHistory(
     }
 
     if (walk.kind === "none") {
-      // No archive.org capture near this quarter. Fire Save Page Now to
-      // archive the live page for the next import run; submit at most
-      // once per app per run.
-      let info: ImportTargetResult = {
+      // No archive.org capture near this target. Save Page Now is decided
+      // once per app after the loop — archiving today's page can't fill a
+      // 2021 gap, so it is only worth requesting when the archive has
+      // nothing *recent*.
+      const info: ImportTargetResult = {
         targetDate: targetMs,
         outcome: "skipped_no_capture",
       };
-      if (!saveNowAttempted.has(app.url)) {
-        saveNowAttempted.add(app.url);
-        try {
-          const saved = await submitToWaybackSaveNow(app.url, { signal });
-          if (saved.ok) {
-            info = {
-              targetDate: targetMs,
-              outcome: "requested_snapshot",
-              saveNowUrl: saved.snapshot.url,
-              captureDate:
-                parseWaybackTimestampMs(saved.snapshot.timestamp) ?? undefined,
-            };
-            result.snapshotsRequested++;
-          } else {
-            // Capture the failure reason so the UI shows why the request
-            // didn't land instead of collapsing to "no capture".
-            info = {
-              targetDate: targetMs,
-              outcome: "skipped_save_now_failed",
-              errorMessage: saved.error,
-            };
-          }
-        } catch (error) {
-          if (isAbortError(error)) {
-            throw error;
-          }
-          // submitToWaybackSaveNow returns a discriminated union and
-          // shouldn't throw, but guard so a future refactor can't break us.
-          info = {
-            targetDate: targetMs,
-            outcome: "skipped_save_now_failed",
-            errorMessage:
-              error instanceof Error ? error.message : "save now failed",
-          };
-        }
-      }
-      // Only surface successful Save Page Now requests on the per-app
-      // Change History timeline. Earlier versions also wrote rows for
-      // `save_now_failed` and `no_capture` outcomes, but those turned
-      // routine quarters-with-no-archive into a noisy stream of
-      // "⚠ Wayback snapshot request failed" entries on every run.
-      // Failures still surface in the bulk-import activity log and on
-      // `ImportTargetResult.errorMessage` for the API caller.
-      if (info.outcome === "requested_snapshot") {
-        appendWaybackAttemptEntry(app.id, {
-          event: "requested_snapshot",
-          description: describeWaybackAttempt(info),
-          details: info.errorMessage ? [info.errorMessage] : undefined,
-          saveNowUrl: info.saveNowUrl,
-          targetDate: info.targetDate,
-        });
-      }
       result.targets.push(info);
-      if (info.outcome === "skipped_no_capture") {
-        result.skipped++;
-      } else if (info.outcome === "skipped_save_now_failed") {
-        result.skipped++;
-      }
+      result.skipped++;
       onProgress?.({ appId: app.id, ...info });
       continue;
     }
@@ -445,10 +457,14 @@ export async function importAppHistory(
 
     const lookup = walk.snapshot;
     const captureMs = walk.captureMs;
+    const lookupKey = normaliseWaybackUrl(lookup.url);
 
-    // Safety net: skip if this exact Wayback URL is already stored (two
+    // Safety net: skip if this exact Wayback capture is already stored (two
     // targets can resolve to the same capture in sparsely-covered quarters).
-    if (existing.some((row) => row.wayback_snapshot_url === lookup.url)) {
+    if (lookupKey && existingUrls.has(lookupKey)) {
+      if (isNewestTarget) {
+        newestTargetCovered = true;
+      }
       const info: ImportTargetResult = {
         targetDate: targetMs,
         outcome: "skipped_existing",
@@ -467,7 +483,7 @@ export async function importAppHistory(
     try {
       html = await fetchArchivedHtml(replayUrl, signal);
     } catch (error) {
-      if (isAbortError(error)) {
+      if (isAbortError(error) || isWaybackUnavailableError(error)) {
         throw error;
       }
       const info: ImportTargetResult = {
@@ -497,23 +513,24 @@ export async function importAppHistory(
       continue;
     }
 
-    // Diff against the immediately-preceding snapshot (live or wayback).
-    // If older than every existing snapshot (common on first wayback
-    // import), treat as a first-seen row with no changes.
-    const prev = getSnapshotBefore(app.id, captureMs);
-    const changes: ChangeEntry[] = prev ? diffSnapshots(prev, snapshot) : [];
-
-    saveSnapshot(app.id, snapshot, changes, {
-      source: "wayback",
-      scrapedAt: captureMs,
-      waybackUrl: lookup.url,
-    });
+    const { changes, isBaseline } = writeWaybackSnapshot(
+      app.id,
+      snapshot,
+      captureMs,
+      lookup.url
+    );
 
     // Keep `existing` current so later targets dedupe against rows we just wrote.
     existing.push({ scraped_at: captureMs, wayback_snapshot_url: lookup.url });
+    if (lookupKey) {
+      existingUrls.add(lookupKey);
+    }
+    if (isNewestTarget) {
+      newestTargetCovered = true;
+    }
 
     const outcome: ImportTargetOutcome =
-      changes.length > 0 || !prev ? "imported" : "unchanged";
+      changes.length > 0 || isBaseline ? "imported" : "unchanged";
     if (outcome === "imported") {
       result.imported++;
     } else {
@@ -531,19 +548,209 @@ export async function importAppHistory(
     onProgress?.({ appId: app.id, ...info });
   }
 
+  // Save Page Now archives the *current* page, so it only helps when the
+  // archive has no recent capture of it — then the next import (and anyone
+  // else looking) gets a third-party record of today's labels. One request
+  // per app per run; the outcome rides on `result.targets` as an extra
+  // entry dated today so callers can show it alongside the real targets.
+  const hasRecentCapture = captures
+    ? captures.some(
+        (capture) =>
+          Math.abs(todayMs - capture.ms) <= CAPTURE_DRIFT_TOLERANCE_MS
+      )
+    : newestTargetCovered;
+  if (!hasRecentCapture) {
+    throwIfAborted(signal);
+    const info = await requestFreshCapture(app, todayMs, signal);
+    result.targets.push(info);
+    if (info.outcome === "requested_snapshot") {
+      result.snapshotsRequested++;
+    } else {
+      result.skipped++;
+    }
+    onProgress?.({ appId: app.id, ...info });
+  }
+
   return result;
+}
+
+/**
+ * Insert a back-dated wayback row and keep the diff chain consistent around
+ * it, in one transaction:
+ *
+ *   - The new row is diffed against the snapshot immediately before it. When
+ *     nothing older exists it is the *baseline* and carries no changes —
+ *     diffing it against today's labels (the old behaviour) produced a
+ *     change list pointing the wrong way through time.
+ *   - The wayback row immediately after it, if any, is re-diffed against
+ *     the new row. Its stored diff was computed against whatever preceded it
+ *     at insert time, which the new row has just displaced; without the
+ *     repair, a denser re-import double-counts every change. Live rows are
+ *     never rewritten — they belong to the scraper and feed the review
+ *     queue — so the last archive→live hop is bridged at read time in
+ *     `getChangelog` instead.
+ */
+function writeWaybackSnapshot(
+  appId: string,
+  snapshot: PrivacyTypeSnapshot[],
+  captureMs: number,
+  waybackUrl: string
+): { changes: ChangeEntry[]; isBaseline: boolean } {
+  return db.transaction(() => {
+    const prev = getSnapshotBefore(appId, captureMs);
+    const changes: ChangeEntry[] = prev ? diffSnapshots(prev, snapshot) : [];
+    saveSnapshot(appId, snapshot, changes, {
+      source: "wayback",
+      scrapedAt: captureMs,
+      waybackUrl,
+    });
+    repairSuccessorWaybackDiff(appId, captureMs, snapshot);
+    return { changes, isBaseline: prev === null };
+  })();
+}
+
+/**
+ * Re-diff the wayback row that now directly follows `insertedAtMs` against
+ * the freshly inserted snapshot. No-op when the successor is a live row (or
+ * there is none).
+ */
+function repairSuccessorWaybackDiff(
+  appId: string,
+  insertedAtMs: number,
+  inserted: PrivacyTypeSnapshot[]
+): void {
+  const next = db
+    .prepare(
+      `SELECT id, source, snapshot_json
+         FROM privacy_snapshots
+        WHERE app_id = ? AND scraped_at > ?
+        ORDER BY scraped_at ASC
+        LIMIT 1`
+    )
+    .get(appId, insertedAtMs) as
+    | { id: string; source: string | null; snapshot_json: string | null }
+    | undefined;
+  if (next?.source !== "wayback" || !next.snapshot_json) {
+    return;
+  }
+  let nextSnapshot: PrivacyTypeSnapshot[];
+  try {
+    nextSnapshot = JSON.parse(next.snapshot_json) as PrivacyTypeSnapshot[];
+  } catch {
+    return;
+  }
+  const changes = diffSnapshots(inserted, nextSnapshot);
+  db.prepare(
+    `UPDATE privacy_snapshots
+        SET changes_summary = ?, changes_detected = ?
+      WHERE id = ?`
+  ).run(JSON.stringify(changes), changes.length > 0 ? 1 : 0, next.id);
+}
+
+/** Ask Save Page Now to archive the live page; never throws except on abort. */
+async function requestFreshCapture(
+  app: ArchiveAppRow,
+  todayMs: number,
+  signal?: AbortSignal
+): Promise<ImportTargetResult> {
+  try {
+    const saved = await submitToWaybackSaveNow(app.url, { signal });
+    if (!saved.ok) {
+      // Keep the reason so the UI can say why the request didn't land
+      // instead of collapsing to "no capture".
+      return {
+        targetDate: todayMs,
+        outcome: "skipped_save_now_failed",
+        errorMessage: saved.error,
+      };
+    }
+    const info: ImportTargetResult = {
+      targetDate: todayMs,
+      outcome: "requested_snapshot",
+      saveNowUrl: saved.snapshot.url,
+      captureDate:
+        parseWaybackTimestampMs(saved.snapshot.timestamp) ?? undefined,
+    };
+    // Only successful requests get a timeline note. Failures used to write
+    // one too, which turned routine "archive is busy" runs into a wall of
+    // "⚠ Wayback snapshot request failed" cards; they still surface in the
+    // activity log and on `ImportTargetResult.errorMessage`.
+    appendWaybackAttemptEntry(app.id, {
+      event: "requested_snapshot",
+      description: describeWaybackAttempt(info),
+      saveNowUrl: info.saveNowUrl,
+      targetDate: info.targetDate,
+    });
+    return info;
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw error;
+    }
+    // submitToWaybackSaveNow returns a discriminated union and shouldn't
+    // throw, but guard so a future refactor can't break the import.
+    return {
+      targetDate: todayMs,
+      outcome: "skipped_save_now_failed",
+      errorMessage: error instanceof Error ? error.message : "save now failed",
+    };
+  }
+}
+
+/**
+ * Pick the capture closest to `targetMs` from a CDX listing. Mirrors the
+ * outcome shape of the availability walk so the import loop is agnostic
+ * about which probe produced it.
+ */
+function pickCaptureFromIndex(
+  captures: WaybackCapture[],
+  targetMs: number,
+  toleranceMs: number
+): WaybackProbeResult {
+  if (captures.length === 0) {
+    return { kind: "none" };
+  }
+  let best = captures[0];
+  let bestDrift = Math.abs(best.ms - targetMs);
+  for (const capture of captures) {
+    const drift = Math.abs(capture.ms - targetMs);
+    if (drift < bestDrift) {
+      best = capture;
+      bestDrift = drift;
+    }
+  }
+  const snapshot: WaybackSnapshot = {
+    url: best.url,
+    timestamp: best.timestamp,
+  };
+  return bestDrift <= toleranceMs
+    ? { kind: "in_tolerance", snapshot, captureMs: best.ms }
+    : { kind: "drift", snapshot, captureMs: best.ms };
+}
+
+/** `http://web.archive.org/…` and `https://…` name the same capture. */
+function normaliseWaybackUrl(url: string | null | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+  return url.replace(/^http:\/\//i, "https://");
 }
 
 /**
  * Remove imported history rows. Pass an `appId` to scope to a single app
  * or omit for a global purge. Returns the number of rows deleted.
+ *
+ * Covers the back-dated `source = 'wayback'` snapshots *and* the synthetic
+ * "requested a fresh capture" notes the importer writes (`source = 'live'`,
+ * `triggered_by = 'wayback'`). A real scrape never carries that trigger, so
+ * the predicate is exact — and without it "Remove all imported history"
+ * left a purple note dated today on every app it had touched.
  */
 export function removeImportedHistory(appId?: string): number {
+  const where =
+    "(source = 'wayback' OR (source = 'live' AND triggered_by = 'wayback'))";
   const stmt = appId
-    ? db.prepare(
-        "DELETE FROM privacy_snapshots WHERE source = 'wayback' AND app_id = ?"
-      )
-    : db.prepare("DELETE FROM privacy_snapshots WHERE source = 'wayback'");
+    ? db.prepare(`DELETE FROM privacy_snapshots WHERE ${where} AND app_id = ?`)
+    : db.prepare(`DELETE FROM privacy_snapshots WHERE ${where}`);
   const info = appId ? stmt.run(appId) : stmt.run();
   return Number(info.changes ?? 0);
 }
@@ -607,6 +814,9 @@ export function computeCategoryTrend(
         parsed = [];
       }
       for (const change of parsed) {
+        if (!isPrivacyLabelEntry(change)) {
+          continue;
+        }
         if (change.type === "added") {
           added++;
         } else if (change.type === "removed") {
@@ -636,7 +846,9 @@ export function computeCategoryTrend(
 /**
  * Count *events* per quarter — one point per bucket for a sparkline.
  * Distinct from `computeCategoryTrend` (which counts entries) because the
- * sparkline reads better with a rows-with-changes y-axis.
+ * sparkline reads better with a rows-with-changes y-axis. Only rows with at
+ * least one privacy-label entry count: policy rescrapes and accessibility
+ * updates share the table but are not label changes.
  */
 export function computeQuarterlyChanges(
   appId: string,
@@ -649,17 +861,19 @@ export function computeQuarterlyChanges(
     let changeEvents = 0;
     let changeEntries = 0;
     for (const row of bucket.rows) {
-      if (row.changes_detected !== 1) {
+      if (row.changes_detected !== 1 || !row.changes_summary) {
         continue;
       }
-      changeEvents++;
-      if (row.changes_summary) {
-        try {
-          const parsed = JSON.parse(row.changes_summary) as ChangeEntry[];
-          changeEntries += parsed.length;
-        } catch {
-          /* malformed JSON — skip entry-count contribution */
-        }
+      let labelEntries = 0;
+      try {
+        const parsed = JSON.parse(row.changes_summary) as ChangeEntry[];
+        labelEntries = parsed.filter(isPrivacyLabelEntry).length;
+      } catch {
+        /* malformed JSON — not a countable event */
+      }
+      if (labelEntries > 0) {
+        changeEvents++;
+        changeEntries += labelEntries;
       }
     }
     return {
@@ -675,6 +889,15 @@ export function computeQuarterlyChanges(
 // ─────────────────────────────────────────────
 // Internals
 // ─────────────────────────────────────────────
+
+/**
+ * Privacy-label diffs are the untagged default; every other entry kind
+ * (`privacy-policy`, `accessibility`, `age-rating`, `wayback-attempt`)
+ * carries an explicit category and must not feed the label aggregates.
+ */
+function isPrivacyLabelEntry(change: ChangeEntry): boolean {
+  return (change.category ?? "privacy-label") === "privacy-label";
+}
 
 function loadAggregationRows(appId: string): AggregatedSnapshotRow[] {
   return db
@@ -705,7 +928,7 @@ function bucketByQuarter(
 ): QuarterBucket[] {
   const launch = APP_STORE_WEB_LAUNCH;
   const startYear = launch.getUTCFullYear();
-  const startQuarter = Math.floor(launch.getUTCMonth() / 3); // 3 = Q4 for Nov
+  const startQuarter = Math.floor(launch.getUTCMonth() / 3); // 0 = Q1 for Feb
   const endYear = today.getUTCFullYear();
   const endQuarter = Math.floor(today.getUTCMonth() / 3);
 
@@ -759,7 +982,9 @@ type WaybackProbeResult =
  * in-window hit or returning the nearest-miss for diagnostics.
  *
  * Per-probe exceptions are swallowed — one timeout shouldn't abandon
- * the whole quarter.
+ * the whole quarter — except a throttled archive, which is re-thrown so
+ * the caller stops probing instead of recording seven more 429s as an
+ * empty quarter.
  */
 async function findCaptureWithinTolerance(
   targetUrl: string,
@@ -785,7 +1010,7 @@ async function findCaptureWithinTolerance(
         signal,
       });
     } catch (error) {
-      if (isAbortError(error)) {
+      if (isAbortError(error) || isWaybackUnavailableError(error)) {
         throw error;
       }
       continue;
@@ -800,8 +1025,12 @@ async function findCaptureWithinTolerance(
     }
     seen.add(lookup.url);
 
+    // Prefer the payload's timestamp, then the one embedded in the URL;
+    // only a URL with neither falls back to the probe date.
     const captureMs =
-      parseWaybackTimestampMs(lookup.timestamp) ?? probeDate.getTime();
+      parseWaybackTimestampMs(
+        lookup.timestamp ?? timestampFromWaybackUrl(lookup.url)
+      ) ?? probeDate.getTime();
     const drift = Math.abs(captureMs - targetMs);
     if (drift <= toleranceMs) {
       return { kind: "in_tolerance", snapshot: lookup, captureMs };
@@ -822,10 +1051,13 @@ async function findCaptureWithinTolerance(
 }
 
 /**
- * Most-recent snapshot strictly older than `beforeMs`, falling back to
- * `buildSnapshot(appId)` when no earlier row exists. The fallback prevents
- * "every category is new" noise on first-import for apps that only have
- * current privacy_types rows in the DB.
+ * Most-recent snapshot strictly older than `beforeMs`, or null when the
+ * capture predates everything on file. Null means "this is the baseline":
+ * the caller stores it with no changes. It deliberately does *not* fall
+ * back to today's `privacy_types` — that produced a diff from the present
+ * back to the past on the oldest imported row, which then surfaced as
+ * inverted "now collects / no longer collects" entries in the universal
+ * changelog and the first bucket of the history chart.
  */
 function getSnapshotBefore(
   appId: string,
@@ -839,19 +1071,21 @@ function getSnapshotBefore(
         ORDER BY scraped_at DESC
         LIMIT 1`
     )
-    .get(appId, beforeMs) as { snapshot_json: string } | undefined;
+    .get(appId, beforeMs) as { snapshot_json: string | null } | undefined;
 
-  if (row) {
-    try {
-      return JSON.parse(row.snapshot_json) as PrivacyTypeSnapshot[];
-    } catch {
-      return null;
-    }
+  if (!row?.snapshot_json) {
+    return null;
   }
+  try {
+    return JSON.parse(row.snapshot_json) as PrivacyTypeSnapshot[];
+  } catch {
+    return null;
+  }
+}
 
-  // No older row — fall back to today's state if any privacy_types rows exist.
-  const current = buildSnapshot(appId);
-  return current.length > 0 ? current : null;
+/** `YYYYMMDDhhmmss` (or a left-anchored prefix) out of a `/web/<ts>/` URL. */
+function timestampFromWaybackUrl(waybackUrl: string): string | undefined {
+  return waybackUrl.match(/\/web\/(\d{4,14})(?:[a-z_]+)?\//i)?.[1];
 }
 
 /**
@@ -865,8 +1099,7 @@ function buildReplayUrl(
   timestamp: string | undefined,
   originalUrl: string
 ): string {
-  const tsFromUrl = waybackUrl.match(/\/web\/(\d{4,14})\//)?.[1];
-  const ts = timestamp ?? tsFromUrl;
+  const ts = timestamp ?? timestampFromWaybackUrl(waybackUrl);
   if (!ts) {
     return waybackUrl; // unusual; let safeFetch handle the plain URL
   }
@@ -877,7 +1110,7 @@ async function fetchArchivedHtml(
   replayUrl: string,
   signal?: AbortSignal
 ): Promise<string> {
-  const { body } = await safeFetch(replayUrl, {
+  const { body, response } = await safeFetch(replayUrl, {
     allowedHosts: WAYBACK_HOSTS,
     maxBytes: ARCHIVE_HTML_MAX_BYTES,
     timeoutMs: ARCHIVE_HTML_TIMEOUT_MS,
@@ -890,6 +1123,19 @@ async function fetchArchivedHtml(
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
+  // A throttled replay is the same signal as a throttled index; anything
+  // else non-200 (a 404 for a capture the index listed, say) is a fetch
+  // failure for this target, not a parse failure of an error page.
+  if (response.status === 429 || response.status >= 500) {
+    throw new WaybackUnavailableError(
+      response.status,
+      parseRetryAfterMs(response.headers.get("retry-after")),
+      "replay"
+    );
+  }
+  if (response.status !== 200) {
+    throw new Error(`archive replay returned HTTP ${response.status}`);
+  }
   return body.toString("utf8");
 }
 
@@ -1040,37 +1286,6 @@ export function parsePrivacyItemsFromArchivedHtml(
 }
 
 /**
- * Load every app and run `importAppHistory` sequentially. Sequential
- * because archive.org's availability endpoint is rate-sensitive and the
- * progress stream is easier to reason about. Callers needing streaming
- * progress should build their own loop with `importAppHistory`'s
- * `onProgress` hook.
- */
-export async function importAllAppsHistory(
-  options: ImportAppHistoryOptions = {}
-): Promise<ImportAppHistoryResult[]> {
-  const apps = db
-    .prepare(
-      `SELECT id, url, name
-         FROM apps
-        WHERE url IS NOT NULL AND TRIM(url) != ''
-        ORDER BY name COLLATE NOCASE ASC`
-    )
-    .all() as ArchiveAppRow[];
-
-  const results: ImportAppHistoryResult[] = [];
-  for (const app of apps) {
-    results.push(await importAppHistory(app, options));
-  }
-  return results;
-}
-
-/** Stable run id helper used by the route layer. */
-export function makeImportRunId(): string {
-  return `wayback-import-${Date.now().toString(36)}-${crypto.randomBytes(4).toString("hex")}`;
-}
-
-/**
  * Short human-readable line for the synthetic timeline entry written on
  * no-capture branches.
  */
@@ -1078,7 +1293,7 @@ function describeWaybackAttempt(info: ImportTargetResult): string {
   const quarter = formatQuarterLabel(info.targetDate);
   switch (info.outcome) {
     case "requested_snapshot":
-      return `Requested a fresh Wayback snapshot (aimed at ${quarter}).`;
+      return "Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.";
     case "skipped_save_now_failed":
       return `Could not request a Wayback snapshot for ${quarter}: ${info.errorMessage ?? "Save Page Now failed"}.`;
     default:

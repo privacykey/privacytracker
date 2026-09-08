@@ -14,6 +14,20 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- **History tab pages backwards.** The detail payload now carries the newest
+  50 changelog rows plus `changelogHasMore`; a "Show older entries" control
+  fetches the rest from the new `GET /api/apps/[id]/changelog?before=…`
+  route. Every sync writes a row even when nothing changed, so on a daily
+  schedule the reconstructed Wayback history used to fall off the bottom of
+  the timeline after about seven weeks with no way to reach it.
+- **First-run checklist task "Reconstruct your apps' label history"** for
+  the self + monitor focus, linking to Settings → Admin → Historical Import.
+  The import still only runs on an explicit click, as the privacy policy
+  promises; the task completes once any archive row exists.
+- The Wayback importer bridges the last archive → first-live-scrape hop at
+  read time: the first scrape's card shows what changed since the newest
+  archive capture ("Compared with the archive capture from …"), without
+  rewriting the stored row or raising anything in the review queue.
 - `just fetch-node-sidecar` (`scripts/fetch-node-sidecar.sh`) — downloads
   and GPG-verifies the Node binary the desktop app bundles as its sidecar,
   into `src-tauri/binaries/`. The binary is ~139MB and gitignored, so a
@@ -30,6 +44,21 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- **Wayback import probes the CDX index once per app** instead of up to
+  seven availability calls per target, and picks each quarter's closest
+  capture locally; the availability walk remains as a fallback. Save Page
+  Now now runs only when the archive has no capture within 45 days of
+  today (it used to fire on the first empty quarter — usually Q1 2021,
+  which archiving today's page cannot fill — for nearly every app on every
+  run), and "Remove all imported history" also removes the notes it leaves.
+- A throttled archive (HTTP 429 / 5xx) is now an error the bulk runner
+  backs off from — it waits out `Retry-After`, retries the app once, then
+  pauses the queue with a "paused by rate limiting" explanation and a
+  Resume button — rather than being recorded as "no capture" and triggering
+  Save Page Now.
+- The monthly reconstruction cadence (`intervalMonths: 1`) now lands every
+  month: the dedupe window follows the cadence (15 days monthly, 45 days
+  quarterly) instead of a fixed 45 days that skipped every other month.
 - `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
   carrying its own ~40 lines of inline download-and-verify shell. The
   Node release-key fingerprints had been duplicated between the workflow
@@ -38,6 +67,24 @@ Going forward, changes are recorded here as they land.
   same GPG-then-hash verification, same output paths — with the build
   matrix's target passed through `TAURI_BUILD_TARGET`, the variable
   `stage-standalone.mjs` already reads when choosing which binary to wrap.
+
+### Fixed
+
+- The oldest imported Wayback row was diffed against *today's* labels, so
+  the 2021 baseline card claimed "now collects" for labels the app had
+  since dropped (and vice versa), the universal changelog carried the
+  inverted entries, and the history chart's first bucket counted them. The
+  oldest row is now a baseline with no changes, and a wayback row that
+  lands *before* an existing one re-diffs the row that follows it.
+- `history-stats` counted accessibility and privacy-policy entries as
+  privacy-label changes.
+- Settings copy for the Historical Import still said "since the App Store
+  web launch on 5 November 2025" and that the closest capture is used;
+  the floor is Q1 2021 and captures beyond 45 days are skipped. The Task
+  Center deep link for a running Wayback job pointed at the device-import
+  section instead of `#wayback-import`.
+- A fresh install no longer probes its own install date (which equals
+  "today" and is already covered by the first live scrape).
 
 ## [0.2.0] — 2026-09-05
 

@@ -212,23 +212,28 @@ Apple 429 handling is deliberate: an expected, recoverable condition clears stat
 ## 5 · Wayback: back-filling label history to 2021
 
 Reconstructs an app's privacy-label history from archive.org — one target per quarter back
-to Q1 2021 plus an "install anchor" at `apps.firstSeen`, so the since-install diff has a
-real baseline. Read-only against the archive except one Save-Page-Now request per app when
-a quarter has no usable capture. Files: `lib/historical-import.ts`, `lib/wayback-bulk-runner.ts`.
+to Q1 2021 plus an "install anchor" at `apps.firstSeen` (skipped when the install is recent
+enough that the first live scrape already covers it). One CDX index request per app lists
+every capture; each target's closest capture is picked locally, with the per-target
+availability walk kept as a fallback. Read-only against the archive except one
+Save-Page-Now request per app when it has no capture within 45 days of today. A throttled
+archive (429 / 5xx) is `WaybackUnavailableError`, never "no capture": the bulk runner waits
+out `Retry-After` once, then pauses the queue with `pauseCause: 'rate_limited'`. Files:
+`lib/historical-import.ts`, `lib/wayback.ts`, `lib/wayback-bulk-runner.ts`.
 
 ```mermaid
 flowchart TD
   entry["per-app or bulk entry<br/>POST import-history · import-all (NDJSON stream)"]
   targets["computeHistoricalTargets<br/>quarters to 2021-Q1 + anchor at firstSeen"]
-  avail["archive.org availability API<br/>closest capture per target"]
-  walk{"◆ tolerance walk<br/>±14/28/42d probes<br/>drop if >45d drift"}
-  spn["⚠ §5·1 no capture anywhere →<br/>Save-Page-Now for the live page<br/>once per app per run"]
+  cdx["CDX index (one request per app)<br/>every capture · closest per target locally<br/>fallback: availability walk ±14/28/42d"]
+  walk{"◆ drift check<br/>drop if >45d from target<br/>429/5xx → WaybackUnavailableError"}
+  spn["⚠ §5·1 no capture within 45d of today →<br/>Save-Page-Now for the live page<br/>once per app per run"]
   fetch["fetch replay (id_ URL)<br/>clean original HTML"]
   parse["parse — shoebox extractor for old<br/>Ember pages · modern chain for 2025+"]
-  pipe["same §1 pipeline<br/>source='wayback' · backdated scrapedAt<br/>no changeCount bump"]
-  tl["timeline: purple wayback rows<br/>'Matches live sync' badge · since-install baseline"]
+  pipe["saveSnapshot in one transaction<br/>source='wayback' · backdated scrapedAt<br/>oldest row = baseline (no diff)<br/>re-diff the wayback row that now follows"]
+  tl["timeline: purple wayback rows · read-time bridge<br/>archive → first live scrape · 'Show older' pages"]
 
-  entry --> targets --> avail --> walk
+  entry --> targets --> cdx --> walk
   walk -->|miss| spn
   walk -->|hit| fetch --> parse --> pipe --> tl
 ```

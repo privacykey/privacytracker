@@ -1418,6 +1418,10 @@
       "title": "并排对比两个应用",
       "body": "在考虑替代品？看看哪一个更少收集你在意的数据。"
     },
+    "import_label_history": {
+      "title": "回溯应用的隐私标签历史",
+      "body": "从互联网档案馆导入 2021 年以来的存档快照，看看每个应用的标签是如何变化的。"
+    },
     "setup_background_mode": {
       "title": "让它在后台盯着",
       "body": "开启自动同步，应用标签一有变化就会被发现，无需你主动检查。"
@@ -1893,7 +1897,7 @@
   "changelog_timeline": {
     "wayback_capture_fallback": "Wayback 抓取",
     "view_requested_capture": "查看请求的快照 ↗",
-    "wayback_attempt_requested": "已请求新的 Wayback 快照（目标：{quarter}）。",
+    "wayback_attempt_requested": "已请求 Wayback 抓取当前的 App Store 页面，以便下次导入有一份最近的基线。",
     "wayback_attempt_save_now_failed": "无法为 {quarter} 请求 Wayback 快照：{error}。",
     "wayback_attempt_save_now_failed_default": "Save Page Now 调用失败",
     "wayback_attempt_no_capture": "在 {quarter} 附近未找到 Wayback 快照。",
@@ -1942,6 +1946,7 @@
     "card_no_changes": "✓ 未检测到变化",
     "card_wayback_no_diff": "🕰 Wayback 快照 — 与上一条无差异",
     "card_wayback_reconstruction": "🕰 Wayback 重建 · {count, plural, one {# 处变化} other {# 处变化}}",
+    "archive_bridge_caption": "与 {date} 的存档快照相比",
     "card_changes_detected": "⚡ 检测到 {count, plural, one {# 处变化} other {# 处变化}}",
     "version_released": "发布于 {date}",
     "ack_covered_count": "覆盖 {count, plural, one {# 处待处理变化} other {# 处待处理变化}}",
@@ -3383,7 +3388,10 @@
     "hide_preview_button": "隐藏预览",
     "version_updated_no_label_changes": "📱 新版本已发布：v{version}；标签未变化",
     "show_wayback_imports": "显示 Wayback 导入",
-    "wayback_import_count": "此时间线中有 {count, plural, one {# 条 Wayback 导入} other {# 条 Wayback 导入}}"
+    "wayback_import_count": "此时间线中有 {count, plural, one {# 条 Wayback 导入} other {# 条 Wayback 导入}}",
+    "show_older": "显示更早的记录",
+    "show_older_busy": "正在加载更早的记录…",
+    "show_older_failed": "无法加载更早的记录：{message}"
   },
   "onboard_status": {
     "fetch_ready": "已是最新",
@@ -4538,7 +4546,7 @@
     },
     "wayback": {
       "title": "历史导入（Wayback Machine）",
-      "subtitle": "从 archive.org 回溯隐私标签历史，自 2025 年 11 月 5 日 App Store 网页版上线起，每个日历季度抓取一个快照。若某个月份的快照不可用，将使用最接近的那一个。除 archive.org 以外，不会联系任何其他外部服务。",
+      "subtitle": "从 archive.org 回填隐私标签历史：自 2021 年第一季度起每个季度一份快照（Apple 自那时起在网页版 App Store 上发布隐私标签）。若某个季度目标日期前后 45 天内没有存档，则跳过而不是近似。除 archive.org 外不会联系任何其他站点。",
       "import_busy": "正在导入历史…",
       "import_button": "🕰 为所有应用导入历史",
       "import_title": "通过 Wayback Machine 抓取每个应用归档的 App Store 页面，并把隐私标签快照按当时的日期回填到变更日志。",
@@ -4556,13 +4564,15 @@
       "force_title": "丢弃已暂停的队列，并为所有应用重新开始一次 Wayback 导入。",
       "remove_busy": "正在移除…",
       "remove_button": "🗑 移除所有已导入的历史",
-      "remove_title": "删除所有由 Wayback 导入的快照。现场抓取的快照不会被删除。",
+      "remove_title": "删除所有从 Wayback 导入的快照以及导入器留下的说明。实时快照将保留。",
       "show_imported_label": "在时间轴中显示导入的历史",
       "show_imported_help": "开启时，回溯的条目会带着时钟图标和紫色「Wayback」徽标出现在每个应用的「变更日志」里。关闭后这些条目仍保留在数据库中，但不会显示在时间轴上 — 适合快速对比仅现场抓取与重建后的视图差异。",
       "resume_label": "重启后已恢复。",
       "resume_body": "上一次的批量导入被中断，正在后台自动继续。",
       "paused_label": "已暂停。",
       "paused_body": "已保存的队列会保留在这里，直到你继续、取消或从头重新开始。",
+      "paused_rate_limited_label": "已因限流暂停。",
+      "paused_rate_limited_body": "archive.org 正在限制请求。队列已保存——请等几分钟后点击“恢复队列”，导入会从中断处继续。",
       "starting": "正在开始导入…",
       "progress_lead": "正在导入 {current} / {total}",
       "pause_requested": "当前应用完成后将暂停…",
@@ -4588,7 +4598,7 @@
       "remove_modal": {
         "badge": "破坏性操作",
         "title": "移除所有已导入的历史？",
-        "body": "这会移除所有应用中由 Wayback 导入的历史条目。现场抓取的隐私快照不会受影响 — 仅删除回溯的归档导入。之后可重新运行「为所有应用导入历史」恢复。",
+        "body": "这将删除所有应用中每一条从 Wayback 导入的历史记录，以及导入器写入的“已请求新的 Wayback 快照”说明。实时隐私快照将保留——只删除回填的存档导入。之后可以再次运行“为所有应用导入历史”来恢复。",
         "cancel": "取消",
         "removing": "正在移除…",
         "confirm": "移除导入的历史"
@@ -4597,6 +4607,7 @@
       "task_preparing": "正在准备…",
       "task_finished": "已完成",
       "bulk_paused": "{total, plural, one {Wayback 导入已暂停 — 还剩 {remaining} / # 个应用} other {Wayback 导入已暂停 — 还剩 {remaining} / # 个应用}}",
+      "bulk_paused_rate_limited": "{total, plural, other {Wayback 导入已暂停——archive.org 正在限流；尚余 {remaining}/# 个应用}}",
       "bulk_cancelled": "{total, plural, one {Wayback 导入已取消 — {remaining} / # 个应用未处理} other {Wayback 导入已取消 — {remaining} / # 个应用未处理}}",
       "bulk_summary": "{count, plural, one {Wayback 导入覆盖 # 个应用：{parts}} other {Wayback 导入覆盖 # 个应用：{parts}}}",
       "bulk_part_imported": "已导入 {count} 个",

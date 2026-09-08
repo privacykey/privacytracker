@@ -19,7 +19,10 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import type { WaybackRunStatus } from "@/app/components/settings/types";
+import type {
+  WaybackPauseCause,
+  WaybackRunStatus,
+} from "@/app/components/settings/types";
 import type { useTaskCenter } from "@/app/components/TaskCenter";
 import { useModalFocus } from "@/lib/use-modal-focus";
 import { useSettingsAutoSave } from "@/lib/use-settings-auto-save";
@@ -95,6 +98,8 @@ export function useWayback({
   const [waybackInitiator, setWaybackInitiator] = useState<
     "manual" | "resume" | null
   >(null);
+  const [waybackPauseCause, setWaybackPauseCause] =
+    useState<WaybackPauseCause>(null);
   // Snapshot of the most recent bulk import's summary row, hydrated from
   // /api/activity on mount so reloading the Settings page still shows
   // "last run: 3 imported, 1 failed". Cleared after a fresh run completes
@@ -129,6 +134,7 @@ export function useWayback({
     running: boolean;
     status: WaybackRunStatus;
     initiator: "manual" | "resume" | null;
+    pauseCause: WaybackPauseCause;
     progress: {
       index: number;
       total: number;
@@ -165,6 +171,15 @@ export function useWayback({
       const initiator: "manual" | "resume" | null =
         rawInitiator === "manual" || rawInitiator === "resume"
           ? rawInitiator
+          : null;
+      // Why a paused queue stopped — the runner records `rate_limited`
+      // when it backed off from a throttling archive, so the card can say
+      // "wait, then resume" instead of implying the user paused it.
+      const rawPauseCause = (data?.state as { pauseCause?: unknown } | null)
+        ?.pauseCause;
+      const pauseCause: WaybackPauseCause =
+        rawPauseCause === "user" || rawPauseCause === "rate_limited"
+          ? rawPauseCause
           : null;
       let progress: {
         index: number;
@@ -203,7 +218,7 @@ export function useWayback({
           failed: Number(totals.failed ?? 0),
         };
       }
-      return { running, status, initiator, progress };
+      return { running, status, initiator, pauseCause, progress };
     } catch (error) {
       console.warn("[settings] loadWaybackProgress failed:", error);
       return null;
@@ -292,6 +307,7 @@ export function useWayback({
         return;
       }
       setWaybackRunStatus(snap.status);
+      setWaybackPauseCause(snap.pauseCause);
       if (snap.running) {
         setWaybackInitiator(snap.initiator);
         if (snap.progress) {
@@ -512,7 +528,11 @@ export function useWayback({
             terminalStatus = "paused";
             const remaining = Number(event.summary?.remaining ?? 0);
             const total = Number(event.summary?.total ?? 0);
-            const line = tWayback("bulk_paused", { remaining, total });
+            const rateLimited = event.cause === "rate_limited";
+            setWaybackPauseCause(rateLimited ? "rate_limited" : "user");
+            const line = rateLimited
+              ? tWayback("bulk_paused_rate_limited", { remaining, total })
+              : tWayback("bulk_paused", { remaining, total });
             setWaybackSummary(line);
             handle.complete("cancelled", line);
             showToast(line);
@@ -623,6 +643,7 @@ export function useWayback({
       } else if (action === "resume") {
         setWaybackRunning(true);
         setWaybackRunStatus("running");
+        setWaybackPauseCause(null);
         setWaybackInitiator("manual");
         showToast(tWayback("toast_resumed"));
         const snap = await loadWaybackProgress();
@@ -762,6 +783,7 @@ export function useWayback({
         return;
       }
       setWaybackRunStatus(snap.status);
+      setWaybackPauseCause(snap.pauseCause);
       setWaybackRunning(snap.running);
       setWaybackInitiator(snap.initiator);
       if (snap.progress) {
@@ -808,6 +830,7 @@ export function useWayback({
     setWaybackProgress,
     waybackInitiator,
     setWaybackInitiator,
+    waybackPauseCause,
     waybackLastRun,
     setWaybackLastRun,
     loadWaybackProgress,

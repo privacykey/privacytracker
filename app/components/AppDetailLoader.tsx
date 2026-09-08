@@ -336,6 +336,7 @@ export default function AppDetailLoader() {
         aiProvider={data.aiProvider}
         app={data.app}
         changelog={data.changelog}
+        changelogHasMore={data.changelogHasMore}
         childAgeBand={data.childAgeBand}
         detailFlags={detailFlags}
         importProvenance={data.importProvenance}

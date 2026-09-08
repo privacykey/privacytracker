@@ -182,6 +182,7 @@ export interface DetailFlagState {
 export default function AppDetailView({
   app,
   changelog,
+  changelogHasMore = false,
   unacknowledged,
   aiProvider,
   recentPolicyChange,
@@ -206,6 +207,9 @@ export default function AppDetailView({
    */
   onRefresh?: () => void;
   changelog: ChangelogRow[];
+  /** Whether rows older than `changelog` exist — the timeline offers
+   *  "Show older entries" and fetches them on demand. */
+  changelogHasMore?: boolean;
   unacknowledged: UnacknowledgedChanges;
   aiProvider: string;
   /** Banner hint from the server; null when no recent change / banner disabled. */
@@ -1590,6 +1594,7 @@ export default function AppDetailView({
               chartsTrendPresets: f.chartsTrendPresets,
               chartsTrendLegend: f.chartsTrendLegend,
             }}
+            hasMore={changelogHasMore}
             rows={changelog}
           />
         </div>
