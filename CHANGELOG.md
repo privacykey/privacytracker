@@ -14,17 +14,22 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
-- The AI disclosure page (`/dashboard/about/ai-disclosure`) now breaks
-  "How this app was built" down per model. Each model is a collapsible row
-  naming the areas of the app it worked on, and the list has been brought
-  up to date: Claude Opus 4.8, Opus 5, Fable 5 and Fable 5.1 join the
-  Opus 4.7, Gemini and GPT entries that were already there. The rows are
-  native `<details>` elements, so they expand without JavaScript and the
-  page keeps prerendering statically. The breakdowns are derived by hand
-  from the `Co-Authored-By` trailers in the git history — the page says so,
-  and says the list is a maintained snapshot rather than generated at build
-  time. Gemini and GPT sessions left no trailers, so those two entries
-  carry summary copy only and say why.
+- The AI disclosure page (`/dashboard/about/ai-disclosure`) now tells the
+  whole story of how the app was built, in three parts. **Where it started**
+  credits the groundwork to iOSauditor, the separate April 2026 project this
+  app grew out of, built largely on the free tiers of Antigravity and Codex
+  — and is honest that part of that period was never under version control,
+  that the repository is private, and that neither tool recorded a commit
+  co-author, so that era is almost invisible to the breakdown that follows.
+  **Models used** is the breakdown: eight models, each a collapsible row
+  naming the areas it worked on, derived by hand from the `Co-Authored-By`
+  trailers in this repository's history. Claude Sonnet 4.6, Opus 4.8, Opus 5,
+  Fable 5 and Fable 5.1 join the Opus 4.7, Gemini and GPT entries that were
+  already there. **What the model list leaves out** says the part the git
+  history cannot: hundreds of hours of real-device testing, user testing and
+  product decisions, all of it human. The rows are native `<details>`
+  elements, so they expand without JavaScript and the page keeps
+  prerendering statically.
 
 - `just fetch-node-sidecar` (`scripts/fetch-node-sidecar.sh`) — downloads
   and GPG-verifies the Node binary the desktop app bundles as its sidecar,

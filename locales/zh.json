@@ -1249,8 +1249,38 @@
     "section_accuracy_p1": "AI 生成的摘要只是一种便利。它们可能产生幻觉、遗漏关键条款或错误描述范围。请将其视为起点，并在用于合规、法律或发布场景之前，始终查阅原始政策 — privacytracker 会在每个应用的详情页提供链接。",
     "section_accuracy_p2": "应用详情页上显示的隐私「标签」数据是直接从 App Store 抓取的，并非由 AI 生成。通知中提到的标签变化是通过对抓取的标签进行确定性比对来检测的。",
     "section_built_title": "本应用的构建方式",
-    "section_built_p1": "privacytracker 本身是在大型语言模型的大量协助下构建的。在规划、实现、重构和审查过程中，混合使用了多款前沿模型。展开下方任一模型，可查看它参与构建的部分。",
+    "section_built_p1": "privacytracker 是在大型语言模型的大量协助下构建的，历时约五个月，跨越两个代码仓库。本节说明用到了哪些模型、它们各自参与了什么，以及同样重要的 —— 这份模型清单遗漏了什么。",
+    "section_built_origins_title": "一切的起点",
+    "section_built_origins_p1": "privacytracker 起源于 2026 年 4 月一个名为 iOSauditor 的独立项目。大部分基础工作都在那里完成，主要借助 Google Antigravity 与 OpenAI Codex 的免费额度，当时尚未使用任何付费订阅：",
+    "origins_feature_1": "App Store 隐私标签抓取器，以及整个工具赖以构建的单应用详情页。",
+    "origins_feature_2": "AI 隐私政策摘要 —— 包括将其设为可选、且默认关闭的决定。",
+    "origins_feature_3": "仪表盘、应用与分类之间的导航，以及键盘快捷键。",
+    "origins_feature_4": "隐私画像与候选清单。",
+    "origins_feature_5": "用于重建标签历史的 Wayback 存档导入。",
+    "origins_feature_6": "功能开关系统、开发者选项，以及第一轮本地化。",
+    "origins_feature_7": "Tauri 桌面端构建、Docker 镜像，以及最初的无障碍工作。",
+    "section_built_origins_p2": "那段历史只能部分还原。其中一部分时期完全没有纳入版本控制，保留下来的仓库是私有的，而 Antigravity 与 Codex 都不会在提交中记录共同作者。privacytracker 随后于 2026 年 5 月全新开始 —— 它是重新起步，而非派生，因此与 iOSauditor 不共享任何历史。下方内容全部来自本仓库的 git 历史，这也意味着它完全看不到更早期的那些工作。",
+    "section_built_models_title": "使用的模型",
+    "section_built_models_intro": "展开任一模型，可查看它参与构建的部分。",
     "built_models": {
+      "gemini": {
+        "name": "Google Gemini 3.1 Pro 与 Gemini 3 Flash",
+        "role": "通过 Antigravity 完成的最初构建",
+        "summary": "通过 Google Antigravity 使用，主要依靠其免费额度，完成了上文所述 iOSauditor 早期工作的很大一部分。Antigravity 不会记录提交的共同作者，因此早期功能中哪些出自 Gemini、哪些出自 Codex 已无从还原 —— 在那几个月里，两者覆盖的是同一片领域。"
+      },
+      "gpt": {
+        "name": "OpenAI GPT-5.4",
+        "role": "通过 Codex 完成的最初构建",
+        "summary": "通过 OpenAI Codex 使用，时间段与工作范围与上者相同，同样主要依靠付费订阅之前的免费额度。与 Gemini 一样，两者之间的分工从未被记录，因此此处不将具体功能归于其中任何一方。"
+      },
+      "sonnet_4_6": {
+        "name": "Anthropic Claude Sonnet 4.6",
+        "role": "iOSauditor 的构建与容器化工作",
+        "summary": "在最初的仓库中唯一留下署名提交的模型 —— 共四次，且全部属于基础设施，而非产品功能。",
+        "area_1": "构建并发布 Docker 镜像的 GitHub Actions 工作流。",
+        "area_2": "面向 amd64 与 arm64 的多架构容器构建。",
+        "area_3": "拆分变更日志类型，以解除客户端打包构建的阻塞。"
+      },
       "opus_4_7": {
         "name": "Anthropic Claude Opus 4.7",
         "role": "桌面端打包与组件工作台",
@@ -1274,7 +1304,7 @@
       "fable_5": {
         "name": "Anthropic Claude Fable 5",
         "role": "无障碍、本地化与规模化",
-        "summary": "按提交数计算贡献最多的模型。应用中大部分无障碍与本地化工作都出自它。",
+        "summary": "在本仓库中按提交数计算贡献最多的模型。应用中大部分无障碍与本地化工作都出自它。",
         "area_1": "无障碍专项：色彩对比度、点击目标尺寸、按钮式单选组的方向键导航、高缩放下的重排，以及焦点指示环。",
         "area_2": "通过 next-intl 本地化每一条可见文案与辅助技术属性，并加入阻止新硬编码文案落地的扫描器。",
         "area_3": "静态路由重构，以及由此得以实现的基于哈希的内容安全策略。",
@@ -1298,20 +1328,12 @@
         "summary": "针对在嵌套 git worktree 中悄然失效的工具链，做了一次简短而集中的修复。",
         "area_1": "锚定构建的文件追踪根目录，使生产构建可以在仓库内嵌套的 worktree 中正常运行。",
         "area_2": "修复在同样的 worktree 中悄悄「检查了 0 个文件」的 lint 配置。"
-      },
-      "gemini": {
-        "name": "Google Gemini 3.1 Pro 与 Gemini 3 Flash",
-        "role": "规划与审查",
-        "summary": "用于规划、设计审查，以及对实现方案提供第二意见。这些会话未记录为提交的共同作者，因此此处无法按功能列出明细。"
-      },
-      "gpt": {
-        "name": "OpenAI GPT-5.4",
-        "role": "规划与审查",
-        "summary": "用于规划、设计审查，以及对实现方案提供第二意见。这些会话未记录为提交的共同作者，因此此处无法按功能列出明细。"
       }
     },
-    "section_built_attribution": "以上明细来自本仓库 git 历史中的共同作者标记，因此它反映的是某次改动提交时由哪个模型参与会话，而非正式的分工。工作常常在模型之间交叉进行，这份清单也只是一个快照 —— 它由人工维护，并非构建时自动生成。",
-    "section_built_p2": "组合使用多款模型有助于交叉验证设计决策、捕捉单一模型遗漏的 bug，并在 Next.js、SQLite 与抓取各层保持代码风格一致。每一处改动都由人工作者审查并整合 — 模型只是协助，不会无人监管地直接发布代码。",
+    "section_built_attribution": "以上明细来自本仓库 git 历史中的共同作者标记，因此它反映的是某次改动提交时由哪个模型参与会话，而非正式的分工。工作在模型之间自由交叉，更早的 iOSauditor 时期几乎完全不在这些记录之中，而这份清单也只是一个由人工维护的快照，并非构建时自动生成。",
+    "section_built_human_title": "这份模型清单遗漏了什么",
+    "section_built_human_p1": "上面的清单记录的只是「谁在敲键盘」，而这恰恰是本应用构建过程中最不重要的部分。我们投入了数百小时，在真实设备与真实 App Store 数据上使用 privacytracker，并把结果反馈回产品：确定产品应该成为什么样子、请从未见过它的人测试流程、发现那些在代码审查中看似正确、实际使用中却是错的行为、重写测试效果不佳的文案，以及舍弃经不起推敲的模型输出。每一个界面上的每一个设计决策，都由人做出。",
+    "section_built_p2": "组合使用多款模型有助于交叉验证设计决策、捕捉单一模型遗漏的 bug，并在 Next.js、SQLite 与抓取各层保持代码风格一致。但模型只是协助 —— 它们不会无人监管地直接发布代码，也不决定这个应用应该做什么。",
     "section_built_p3": "此处披露此信息是出于透明的考虑：如果你正在审查 privacytracker 自身的行为，应当知道其源代码是与 AI 工具共同编写的，尽管运行时的隐私标签抓取与比对逻辑完全是确定性的。",
     "section_off_title": "关闭 AI",
     "section_off_pre": "前往 ",

@@ -1249,8 +1249,38 @@
     "section_accuracy_p1": "AI-generated summaries are a convenience. They can hallucinate, omit material clauses, or mischaracterise scope. Treat them as a starting point and always consult the original policy — which privacytracker links to from every app's detail page — before relying on a claim in a compliance, legal, or publishing context.",
     "section_accuracy_p2": "The privacy label data shown on app detail pages is scraped directly from the App Store and is not AI-generated. Label changes in the notification feed are detected by deterministic diffing of those scraped labels.",
     "section_built_title": "How this app was built",
-    "section_built_p1": "privacytracker itself was built with substantial help from large language models. A mixture of frontier models was used across planning, implementation, refactoring, and review. Expand any model below to see the parts of the app it worked on.",
+    "section_built_p1": "privacytracker was built with substantial help from large language models, over two repositories and about five months. This section says which models, what they worked on, and — just as importantly — what the model list leaves out.",
+    "section_built_origins_title": "Where it started",
+    "section_built_origins_p1": "privacytracker began as a separate project called iOSauditor in April 2026. Most of the groundwork was laid there, largely through the free tiers of Google's Antigravity and OpenAI's Codex, before any paid subscription was involved:",
+    "origins_feature_1": "The App Store privacy-label scraper and the per-app detail view the whole tool is built around.",
+    "origins_feature_2": "AI privacy-policy summaries — including the decision to make them optional and off by default.",
+    "origins_feature_3": "The dashboard, the navigation between apps and categories, and keyboard shortcuts.",
+    "origins_feature_4": "Privacy profiles and shortlisting.",
+    "origins_feature_5": "The Wayback archive import for reconstructing label history.",
+    "origins_feature_6": "The feature-flag system, developer options, and the first localisation pass.",
+    "origins_feature_7": "The Tauri desktop build, the Docker image, and the first accessibility work.",
+    "section_built_origins_p2": "That history is only partly recoverable. Part of the period was not under version control at all, the repository that was kept is private, and neither Antigravity nor Codex recorded a co-author on a commit. privacytracker was then started fresh in May 2026 — it is a restart, not a fork, so it shares no history with iOSauditor. Everything below is drawn from this repository's git history, which means it cannot see the earlier work at all.",
+    "section_built_models_title": "Models used",
+    "section_built_models_intro": "Expand any model to see the parts of the app it worked on.",
     "built_models": {
+      "gemini": {
+        "name": "Google Gemini 3.1 Pro and Gemini 3 Flash",
+        "role": "The original build, through Antigravity",
+        "summary": "Used through Google's Antigravity, largely on its free tier, for much of the original iOSauditor work described above. Antigravity recorded no commit co-authors, so which of those early features came from Gemini rather than Codex is not recoverable — the two covered the same ground over the same months."
+      },
+      "gpt": {
+        "name": "OpenAI GPT-5.4",
+        "role": "The original build, through Codex",
+        "summary": "Used through OpenAI's Codex over the same period and the same ground, also largely on a free tier before any paid subscription. As with Gemini, the split between the two was never recorded, so neither is credited with specific features here."
+      },
+      "sonnet_4_6": {
+        "name": "Anthropic Claude Sonnet 4.6",
+        "role": "Build and container plumbing on iOSauditor",
+        "summary": "The only model with commits recorded under its name in the original repository — four of them, all infrastructure rather than product.",
+        "area_1": "The GitHub Actions workflow that built and published the Docker image.",
+        "area_2": "Multi-architecture container builds for amd64 and arm64.",
+        "area_3": "Splitting the changelog types to unblock the client bundle build."
+      },
       "opus_4_7": {
         "name": "Anthropic Claude Opus 4.7",
         "role": "Desktop packaging and the component workbench",
@@ -1274,7 +1304,7 @@
       "fable_5": {
         "name": "Anthropic Claude Fable 5",
         "role": "Accessibility, translation and scale",
-        "summary": "The largest contributor by commit count. Most of the accessibility and localisation work in the app came from this model.",
+        "summary": "The largest contributor by commit count in this repository. Most of the accessibility and localisation work in the app came from this model.",
         "area_1": "The accessibility campaign: colour contrast, target sizes, arrow-key navigation in button-styled radio groups, reflow at high zoom, and focus rings.",
         "area_2": "Localising every visible string and assistive attribute through next-intl, plus the scanners that stop new hard-coded copy landing.",
         "area_3": "The static-route rewrite, and the hash-based Content Security Policy it made possible.",
@@ -1298,20 +1328,12 @@
         "summary": "A short, focused pass on tooling that had been silently misbehaving inside nested git worktrees.",
         "area_1": "Anchoring the build's file-tracing root so production builds work from a worktree nested inside the repository.",
         "area_2": "Fixing the lint configuration that had been quietly checking zero files in those same worktrees."
-      },
-      "gemini": {
-        "name": "Google Gemini 3.1 Pro and Gemini 3 Flash",
-        "role": "Planning and review",
-        "summary": "Used for planning, design review, and second opinions on implementation approaches. These sessions were not recorded as commit co-authors, so there is no per-feature breakdown to show here."
-      },
-      "gpt": {
-        "name": "OpenAI GPT-5.4",
-        "role": "Planning and review",
-        "summary": "Used for planning, design review, and second opinions on implementation approaches. These sessions were not recorded as commit co-authors, so there is no per-feature breakdown to show here."
       }
     },
-    "section_built_attribution": "The breakdowns above are derived from the co-author trailers in this repository's git history, so they show which model was in the session when a change was committed rather than a formal division of labour. Work often crossed between models, and the list is a snapshot — it is updated by hand, not generated at build time.",
-    "section_built_p2": "Using several models in combination helped cross-check design decisions, catch bugs that any single model missed, and keep the code idiomatic across the Next.js, SQLite, and scraping layers. A human author reviewed and integrated every change — the models assisted, they did not ship code unsupervised.",
+    "section_built_attribution": "The breakdowns above come from the co-author trailers in this repository's git history, so they show which model was in the session when a change was committed rather than a formal division of labour. Work crossed freely between models, the earlier iOSauditor period is almost entirely absent from them, and the list is a hand-maintained snapshot rather than something generated at build time.",
+    "section_built_human_title": "What the model list leaves out",
+    "section_built_human_p1": "The list above is a record of who typed, and it is the least interesting part of how this app was built. Hundreds of hours went into using privacytracker against real devices and real App Store data, and feeding the results back: deciding what the product should be, testing flows on people who had never seen it, catching behaviour that read as correct in review and was wrong in practice, rewriting copy that tested badly, and discarding model output that did not hold up. Every design decision on every screen was made by a person.",
+    "section_built_p2": "Using several models in combination helped cross-check design decisions, catch bugs that any single model missed, and keep the code idiomatic across the Next.js, SQLite, and scraping layers. But the models assisted — they did not ship code unsupervised, and they did not decide what the app should do.",
     "section_built_p3": "This is disclosed here in the interest of transparency: if you are auditing privacytracker's own behaviour, you should know that its source code was co-authored with AI tooling, even though the runtime privacy-label scraping and diffing logic is fully deterministic.",
     "section_off_title": "Turning AI off",
     "section_off_pre": "Go to ",
