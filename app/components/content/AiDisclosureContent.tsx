@@ -22,11 +22,13 @@ import RequireFlagGate from "@/app/components/RequireFlagGate";
  * adding its keys to every locale bundle too.
  */
 const BUILT_MODELS: ReadonlyArray<{ id: string; areas: number }> = [
-  // The iOSauditor era. Antigravity and Codex wrote no co-author trailers and
-  // part of that period was never committed at all, so these two carry summary
-  // copy only — see the "Where it started" block above them on the page.
+  // Ordered by first appearance, not by span: Codex bookends the project, but
+  // its earliest phase is where it enters the story. Gemini has no per-feature
+  // list because Antigravity wrote no co-author trailers and part of that
+  // period was never committed at all — the "Before this repository" block
+  // above these rows carries that era's features instead.
   { id: "gemini", areas: 0 },
-  { id: "gpt", areas: 0 },
+  { id: "codex", areas: 7 },
   { id: "sonnet_4_6", areas: 3 },
   // This repository, which starts fresh in May 2026.
   { id: "opus_4_7", areas: 5 },
@@ -36,7 +38,7 @@ const BUILT_MODELS: ReadonlyArray<{ id: string; areas: number }> = [
   { id: "fable_5_1", areas: 2 },
 ];
 
-/** Groundwork carried over from iOSauditor, credited to the era not a model. */
+/** Groundwork from before this repository, credited to the era not a model. */
 const ORIGIN_FEATURE_KEYS = [
   "origins_feature_1",
   "origins_feature_2",
