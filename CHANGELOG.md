@@ -30,6 +30,22 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The Rust-core parity harness now classifies **all 120** API routes, up
+  from 17. `scripts/parity/manifest.mjs` splits them into reads (57),
+  reads with a volatility transform (8), mutations (56), destructive
+  teardown (4) and quarantine (35, each with a written reason), and
+  `parity-diff.mjs` enforces a **coverage gate**: it walks `app/api` at
+  startup and fails if any `route.ts` is unlisted. The manifest had gone
+  stale while the surface grew from 110 to 120 routes with nothing
+  noticing; that can no longer happen silently. The differ also gained
+  write support — mutations replay against both servers with identical
+  bodies and then re-read the affected collection, so a write that
+  returns a plausible 200 but persists differently is caught. Writes are
+  opt-in (`--mutate` / `--teardown`) because the manifest contains
+  `/api/reset`; a bare invocation stays read-only. Node-vs-Node
+  self-test: 130 checks, 0 differences, and `--no-normalize` still fails,
+  which is what proves the differ can detect one.
+
 - `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
   carrying its own ~40 lines of inline download-and-verify shell. The
   Node release-key fingerprints had been duplicated between the workflow
