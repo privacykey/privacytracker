@@ -235,6 +235,13 @@ export type ImportTargetOutcome =
   | "skipped_existing"
   | "skipped_no_capture"
   | "skipped_drift"
+  /**
+   * The capture is a recognisable App Store product page that carries no
+   * privacy section — typical of the first weeks of Feb 2021, before Apple
+   * had rolled label data into the web pages. Counted as skipped, not
+   * failed: there is nothing to parse, and nothing a retry would change.
+   */
+  | "skipped_no_labels"
   | "skipped_parse_failure"
   | "skipped_fetch_failure"
   /** Save Page Now was triggered to archive the live page for a future import. */
@@ -373,6 +380,12 @@ export async function importAppHistory(
     signal,
   });
 
+  // Captures that yielded nothing this run (fetch/parse failure, or a page
+  // with no privacy section), by URL. In sparsely-archived stretches the
+  // same capture is the closest one for two or three targets; re-fetching
+  // it can't change the answer, so later targets reuse the outcome.
+  const unusableCaptures = new Map<string, ImportTargetOutcome>();
+
   // Fallback-path proxy for "the archive has nothing recent": whether the
   // newest target ended up covered (imported now or already on file).
   let newestTargetCovered = false;
@@ -477,6 +490,24 @@ export async function importAppHistory(
       continue;
     }
 
+    const priorOutcome = lookupKey ? unusableCaptures.get(lookupKey) : null;
+    if (priorOutcome) {
+      const info: ImportTargetResult = {
+        targetDate: targetMs,
+        outcome: priorOutcome,
+        captureDate: captureMs,
+        waybackUrl: lookup.url,
+      };
+      result.targets.push(info);
+      if (priorOutcome === "skipped_no_labels") {
+        result.skipped++;
+      } else {
+        result.failed++;
+      }
+      onProgress?.({ appId: app.id, ...info });
+      continue;
+    }
+
     const replayUrl = buildReplayUrl(lookup.url, lookup.timestamp, app.url);
 
     let html: string;
@@ -485,6 +516,9 @@ export async function importAppHistory(
     } catch (error) {
       if (isAbortError(error) || isWaybackUnavailableError(error)) {
         throw error;
+      }
+      if (lookupKey) {
+        unusableCaptures.set(lookupKey, "skipped_fetch_failure");
       }
       const info: ImportTargetResult = {
         targetDate: targetMs,
@@ -501,14 +535,28 @@ export async function importAppHistory(
 
     const snapshot = parsePrivacyItemsFromArchivedHtml(html);
     if (!snapshot) {
+      // A product page we recognise but that has no privacy section is a
+      // gap in Apple's data, not in our parser — report it as a skip so a
+      // run over early-2021 captures isn't flagged "partial" forever.
+      const noLabels = looksLikeAppStoreProductPage(html);
+      const outcome: ImportTargetOutcome = noLabels
+        ? "skipped_no_labels"
+        : "skipped_parse_failure";
+      if (lookupKey) {
+        unusableCaptures.set(lookupKey, outcome);
+      }
       const info: ImportTargetResult = {
         targetDate: targetMs,
-        outcome: "skipped_parse_failure",
+        outcome,
         captureDate: captureMs,
         waybackUrl: lookup.url,
       };
       result.targets.push(info);
-      result.failed++;
+      if (noLabels) {
+        result.skipped++;
+      } else {
+        result.failed++;
+      }
       onProgress?.({ appId: app.id, ...info });
       continue;
     }
@@ -1137,6 +1185,18 @@ async function fetchArchivedHtml(
     throw new Error(`archive replay returned HTTP ${response.status}`);
   }
   return body.toString("utf8");
+}
+
+/**
+ * Does this HTML carry one of the payloads an App Store product page has
+ * shipped its data in — the modern `serialized-server-data` blob or one of
+ * the Ember/FastBoot shoeboxes? Used to tell "page has no privacy section"
+ * apart from "we could not parse this page at all".
+ */
+function looksLikeAppStoreProductPage(html: string): boolean {
+  return /<script[^>]*\bid="(?:serialized-server-data|shoebox-(?:ember-data-store|media-api-cache-apps|uts-api-cache-apps))"/i.test(
+    html
+  );
 }
 
 function throwIfAborted(signal?: AbortSignal): void {

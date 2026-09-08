@@ -70,6 +70,15 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- **Wayback imports never actually reached 2021.** Captures from Feb–Oct
+  2021 keep the app record in `shoebox-ember-data-store` (keyed by app id,
+  `data.attributes.privacy`), which the shoebox extractor skipped by id and
+  never probed, so every 2021 target failed as `skipped_parse_failure`
+  while the Settings copy promised history "back to Q1 2021". Both shoebox
+  shapes are parsed now; in a live run Instagram's history extends from
+  March 2021 instead of March 2022. Captures from the first weeks of Feb
+  2021 that carry no privacy section at all are reported as skipped
+  (`skipped_no_labels`) rather than failed.
 - The oldest imported Wayback row was diffed against *today's* labels, so
   the 2021 baseline card claimed "now collects" for labels the app had
   since dropped (and vice versa), the universal changelog carried the

@@ -632,3 +632,126 @@ test("getChangelogPage pages backwards so imported history is never out of reach
   );
   assert.equal(missing.status, 404);
 });
+
+test("parses the early-2021 ember-data-store shoebox (the first pages with privacy labels)", async () => {
+  const { parsePrivacyItemsFromArchivedHtml } = await import(
+    "../../lib/historical-import"
+  );
+  // Shape observed on web.archive.org captures from Feb–Oct 2021: keyed by
+  // app id, single `data` record, `privacyType` / `dataCategory` field names.
+  const store = {
+    "389801252": {
+      data: {
+        id: "389801252",
+        type: "media/app",
+        attributes: {
+          name: "Instagram",
+          privacy: {
+            privacyTypes: [
+              {
+                privacyType: "Data Used to Track You",
+                identifier: "DATA_USED_TO_TRACK_YOU",
+                dataCategories: [
+                  { dataCategory: "Identifiers", identifier: "IDENTIFIERS" },
+                ],
+              },
+              {
+                privacyType: "Data Linked to You",
+                identifier: "DATA_LINKED_TO_YOU",
+                dataCategories: [
+                  { dataCategory: "Location", identifier: "LOCATION" },
+                  { dataCategory: "Contacts", identifier: "CONTACTS" },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    },
+  };
+  const html = `<html><head>
+    <script type="fastboot/shoebox" id="shoebox-ember-localizer">{"x":1}</script>
+    <script type="fastboot/shoebox" id="shoebox-ember-data-store">${JSON.stringify(store)}</script>
+  </head><body></body></html>`;
+
+  const parsed = parsePrivacyItemsFromArchivedHtml(html);
+  assert.ok(parsed);
+  assert.deepEqual(
+    parsed.map((t) => [
+      t.identifier,
+      t.title,
+      t.categories.map((c) => c.identifier),
+    ]),
+    [
+      ["DATA_USED_TO_TRACK_YOU", "Data Used to Track You", ["IDENTIFIERS"]],
+      ["DATA_LINKED_TO_YOU", "Data Linked to You", ["LOCATION", "CONTACTS"]],
+    ]
+  );
+});
+
+test("a product page with no privacy section is skipped, not failed", async () => {
+  resetTestDb();
+  seedTrackedApp({ id: APP_ID, url: APP_URL });
+  const feb2021 = "20210210083535";
+  const pageWithoutLabels = `<html><head>
+    <script type="fastboot/shoebox" id="shoebox-ember-data-store">${JSON.stringify(
+      {
+        [APP_ID]: {
+          data: {
+            id: APP_ID,
+            type: "media/app",
+            attributes: { name: "Fixture" },
+          },
+        },
+      }
+    )}</script>
+  </head><body>App Privacy</body></html>`;
+  let replays = 0;
+  global.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.startsWith("https://web.archive.org/cdx/search/cdx")) {
+      return new Response(cdxBody([feb2021]), { status: 200 });
+    }
+    if (/^https:\/\/web\.archive\.org\/web\/\d{14}id_\//.test(url)) {
+      replays += 1;
+      return new Response(pageWithoutLabels, { status: 200 });
+    }
+    if (url.startsWith("https://web.archive.org/save/")) {
+      return new Response("busy", { status: 503 });
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  }) as typeof fetch;
+
+  const result = await importAppHistory(APP, { today: TODAY });
+  const noLabels = result.targets.filter(
+    (t) => t.outcome === "skipped_no_labels"
+  );
+  // The capture is the closest one for two targets (1 Feb and 15 Mar) —
+  // both report it, but the page is fetched once.
+  assert.equal(noLabels.length, 2);
+  assert.equal(replays, 1);
+  assert.equal(result.failed, 0);
+  // 2 × no-labels + the June target's drift skip + the failed SPN attempt.
+  assert.equal(result.skipped, 4);
+  assert.equal(waybackRows().length, 0);
+
+  // Unrecognisable HTML is still a parse failure.
+  global.fetch = (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.startsWith("https://web.archive.org/cdx/search/cdx")) {
+      return new Response(cdxBody([feb2021]), { status: 200 });
+    }
+    if (/^https:\/\/web\.archive\.org\/web\/\d{14}id_\//.test(url)) {
+      return new Response("<html><body>Wayback error shell</body></html>", {
+        status: 200,
+      });
+    }
+    if (url.startsWith("https://web.archive.org/save/")) {
+      return new Response("busy", { status: 503 });
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  }) as typeof fetch;
+  const again = await importAppHistory(APP, { today: TODAY });
+  assert.equal(again.failed, 2);
+  assert.ok(again.targets.some((t) => t.outcome === "skipped_parse_failure"));
+});
