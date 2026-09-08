@@ -70,6 +70,13 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Desktop app: the hash-based Content Security Policy introduced in 0.2.0
+  blocked Tauri's IPC channel, so every call into the desktop app's native
+  side — the notification permission check that runs on each page load, the
+  updater, and the app's own commands — was rejected and silently retried
+  over a slower fallback, filling the log with `connect-src` violations. The
+  policy now allows Tauri's IPC origins when running inside the desktop app;
+  the browser and Docker deployments keep the unchanged, narrower policy.
 - **Wayback imports never actually reached 2021.** Captures from Feb–Oct
   2021 keep the app record in `shoebox-ember-data-store` (keyed by app id,
   `data.attributes.privacy`), which the shoebox extractor skipped by id and

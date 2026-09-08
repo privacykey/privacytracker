@@ -64,6 +64,46 @@ const APPLE_IMG_HOSTS =
   "https://is1-ssl.mzstatic.com https://is2-ssl.mzstatic.com https://is3-ssl.mzstatic.com https://is4-ssl.mzstatic.com https://is5-ssl.mzstatic.com";
 
 /**
+ * Tauri v2 routes every `invoke()` over a custom protocol whose origin is
+ * platform-dependent: `ipc://localhost` on macOS/Linux, `http://ipc.localhost`
+ * on Windows/Android (see `convertFileSrc` in tauri's injected core.js).
+ * Neither is covered by `'self'` when the page is served by the Node sidecar
+ * at `http://127.0.0.1:<port>`, so under a hash-based CSP every invoke trips
+ * `connect-src` — including tauri-plugin-notification's `js_init_script`,
+ * which probes `plugin:notification|is_permission_granted` on every page load.
+ *
+ * The app keeps working because tauri's ipc-protocol.js catches the blocked
+ * fetch and silently falls back to `window.ipc.postMessage`, but each call
+ * still costs a blocked request, a console warning and a CSP report.
+ *
+ * Deliberately NOT the updater's release feed: `plugin:updater|check` only
+ * crosses the IPC boundary, and the HTTPS fetch to GitHub happens in Rust
+ * (reqwest), never in the webview. Same for plugin-process. So the IPC
+ * origins are the whole of what the desktop build needs.
+ *
+ * Mirrors the `connect-src` in src-tauri/tauri.conf.json — keep the two in
+ * sync. A window opting into `useHttpsScheme: true` would additionally need
+ * `https://ipc.localhost` in both places.
+ */
+const TAURI_IPC_SOURCES = "ipc: http://ipc.localhost";
+
+/**
+ * True only inside the Tauri desktop app: src-tauri/src/sidecar.rs sets
+ * PRIVACYTRACKER_RUNTIME=desktop on the Node child it spawns. Read per
+ * request (not cached at module load) so tests can flip it.
+ *
+ * Browser and Docker deployments never see this, so their `connect-src`
+ * stays exactly `'self'`.
+ */
+function isDesktopRuntime(): boolean {
+  return process.env.PRIVACYTRACKER_RUNTIME === "desktop";
+}
+
+function connectSrc(): string {
+  return isDesktopRuntime() ? `'self' ${TAURI_IPC_SOURCES}` : "'self'";
+}
+
+/**
  * CSP mode. `enforce` (default) sends Content-Security-Policy;
  * `report-only` sends Content-Security-Policy-Report-Only so an operator
  * can watch /api/csp-report for violations before enforcing; `off`
@@ -148,7 +188,7 @@ function buildCsp(pathname: string): string {
     "font-src 'self' data:",
     `script-src ${scriptSrc(pathname)}`,
     "style-src 'self' 'unsafe-inline'",
-    "connect-src 'self'",
+    `connect-src ${connectSrc()}`,
     "object-src 'none'",
     "report-uri /api/csp-report",
   ].join("; ");
