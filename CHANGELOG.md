@@ -12,6 +12,33 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Added
+
+- `just fetch-node-sidecar` (`scripts/fetch-node-sidecar.sh`) — downloads
+  and GPG-verifies the Node binary the desktop app bundles as its sidecar,
+  into `src-tauri/binaries/`. The binary is ~139MB and gitignored, so a
+  fresh clone previously had no way to build the desktop app: both
+  `just tauri-dev` and `just tauri-build` died several minutes in with
+  `stage-standalone: cannot find Node binary at …`, after a Next build and
+  a full cargo build that had both looked healthy. Both recipes now depend
+  on the fetch, which is a no-op once the binary is present. The new
+  `src-tauri/binaries/README.md` documents the verification chain and, more
+  importantly, why the version must match the Node that ran `pnpm install`
+  — better-sqlite3's prebuild is resolved against that ABI, so a mismatched
+  bundle builds cleanly and then kills the sidecar with
+  `NODE_MODULE_VERSION`.
+
+### Changed
+
+- `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
+  carrying its own ~40 lines of inline download-and-verify shell. The
+  Node release-key fingerprints had been duplicated between the workflow
+  and (until now) nothing else; they have exactly one home now and cannot
+  drift between CI and a developer's machine. Behaviour is unchanged —
+  same GPG-then-hash verification, same output paths — with the build
+  matrix's target passed through `TAURI_BUILD_TARGET`, the variable
+  `stage-standalone.mjs` already reads when choosing which binary to wrap.
+
 ## [0.2.0] — 2026-09-05
 
 ### Added
