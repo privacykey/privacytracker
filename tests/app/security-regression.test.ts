@@ -325,3 +325,78 @@ test("policy URL sanitiser keeps metadata endpoints blocked even for localhost-f
     ""
   );
 });
+
+// --- Tauri IPC in connect-src (desktop only) -------------------------------
+// PR #212's hash-based CSP shipped `connect-src 'self'`, which blocks Tauri
+// v2's custom IPC protocol: the page origin inside the desktop app is the
+// Node sidecar's `http://127.0.0.1:<port>`, and `invoke()` fetches
+// `ipc://localhost/...` (macOS/Linux) or `http://ipc.localhost/...`
+// (Windows). tauri-plugin-notification's injected boot script tripped this
+// on every page load. The allowance is gated on the desktop runtime so the
+// browser/Docker policy stays untouched.
+
+function cspFor(runtime: string | undefined): string {
+  const previous = process.env.PRIVACYTRACKER_RUNTIME;
+  if (runtime === undefined) {
+    delete process.env.PRIVACYTRACKER_RUNTIME;
+  } else {
+    process.env.PRIVACYTRACKER_RUNTIME = runtime;
+  }
+  try {
+    const res = proxy(
+      new NextRequest("http://127.0.0.1:3000/dashboard", {
+        headers: { host: "127.0.0.1:3000" },
+      })
+    );
+    return res.headers.get("Content-Security-Policy") ?? "";
+  } finally {
+    if (previous === undefined) {
+      delete process.env.PRIVACYTRACKER_RUNTIME;
+    } else {
+      process.env.PRIVACYTRACKER_RUNTIME = previous;
+    }
+  }
+}
+
+function connectSrcOf(csp: string): string {
+  const directive = csp
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("connect-src "));
+  assert.ok(directive, `no connect-src in CSP: ${csp}`);
+  return directive;
+}
+
+test("desktop runtime grants Tauri's IPC origins in connect-src", () => {
+  const connect = connectSrcOf(cspFor("desktop"));
+  // macOS + Linux route invoke() over `ipc://localhost`; the scheme-source
+  // `ipc:` covers it. Windows/Android use `http://ipc.localhost`.
+  assert.match(connect, /(^|\s)ipc:(\s|$)/);
+  assert.match(connect, /(^|\s)http:\/\/ipc\.localhost(\s|$)/);
+  // 'self' must survive — same-origin /api/* calls are the app's hot path.
+  assert.match(connect, /'self'/);
+});
+
+test("browser and Docker deployments keep connect-src 'self' only", () => {
+  for (const runtime of [undefined, "", "docker", "web"]) {
+    assert.equal(
+      connectSrcOf(cspFor(runtime)),
+      "connect-src 'self'",
+      `runtime=${String(runtime)} must not widen connect-src`
+    );
+  }
+});
+
+test("the desktop CSP allowance stays scoped to IPC, not the updater feed", () => {
+  const csp = cspFor("desktop");
+  // `plugin:updater|check` crosses the IPC boundary only; the HTTPS fetch to
+  // the GitHub release feed runs in Rust (reqwest), never in the webview.
+  // If someone adds github.com here, it is almost certainly a misdiagnosis.
+  assert.doesNotMatch(csp, /github\.com/);
+  // Every other directive must be byte-identical to the non-desktop policy.
+  const desktopRest = csp.split(";").filter((d) => !d.includes("connect-src"));
+  const webRest = cspFor(undefined)
+    .split(";")
+    .filter((d) => !d.includes("connect-src"));
+  assert.deepEqual(desktopRest, webRest);
+});

@@ -39,6 +39,16 @@ Going forward, changes are recorded here as they land.
   matrix's target passed through `TAURI_BUILD_TARGET`, the variable
   `stage-standalone.mjs` already reads when choosing which binary to wrap.
 
+### Fixed
+
+- Desktop app: the hash-based Content Security Policy introduced in 0.2.0
+  blocked Tauri's IPC channel, so every call into the desktop app's native
+  side — the notification permission check that runs on each page load, the
+  updater, and the app's own commands — was rejected and silently retried
+  over a slower fallback, filling the log with `connect-src` violations. The
+  policy now allows Tauri's IPC origins when running inside the desktop app;
+  the browser and Docker deployments keep the unchanged, narrower policy.
+
 ## [0.2.0] — 2026-09-05
 
 ### Added
