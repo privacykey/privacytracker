@@ -14,6 +14,18 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- The AI disclosure page (`/dashboard/about/ai-disclosure`) now breaks
+  "How this app was built" down per model. Each model is a collapsible row
+  naming the areas of the app it worked on, and the list has been brought
+  up to date: Claude Opus 4.8, Opus 5, Fable 5 and Fable 5.1 join the
+  Opus 4.7, Gemini and GPT entries that were already there. The rows are
+  native `<details>` elements, so they expand without JavaScript and the
+  page keeps prerendering statically. The breakdowns are derived by hand
+  from the `Co-Authored-By` trailers in the git history — the page says so,
+  and says the list is a maintained snapshot rather than generated at build
+  time. Gemini and GPT sessions left no trailers, so those two entries
+  carry summary copy only and say why.
+
 - `just fetch-node-sidecar` (`scripts/fetch-node-sidecar.sh`) — downloads
   and GPG-verifies the Node binary the desktop app bundles as its sidecar,
   into `src-tauri/binaries/`. The binary is ~139MB and gitignored, so a

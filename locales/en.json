@@ -1249,10 +1249,68 @@
     "section_accuracy_p1": "AI-generated summaries are a convenience. They can hallucinate, omit material clauses, or mischaracterise scope. Treat them as a starting point and always consult the original policy — which privacytracker links to from every app's detail page — before relying on a claim in a compliance, legal, or publishing context.",
     "section_accuracy_p2": "The privacy label data shown on app detail pages is scraped directly from the App Store and is not AI-generated. Label changes in the notification feed are detected by deterministic diffing of those scraped labels.",
     "section_built_title": "How this app was built",
-    "section_built_p1": "privacytracker itself was built with substantial help from large language models. A mixture of frontier models was used across planning, implementation, refactoring, and review, including:",
-    "model_claude": "Anthropic Claude Opus 4.7",
-    "model_gemini": "Google Gemini 3.1 Pro and Gemini 3 Flash",
-    "model_gpt": "OpenAI GPT-5.4",
+    "section_built_p1": "privacytracker itself was built with substantial help from large language models. A mixture of frontier models was used across planning, implementation, refactoring, and review. Expand any model below to see the parts of the app it worked on.",
+    "built_models": {
+      "opus_4_7": {
+        "name": "Anthropic Claude Opus 4.7",
+        "role": "Desktop packaging and the component workbench",
+        "summary": "Worked mostly below the user interface — the macOS desktop release chain, and the Storybook workbench the components are developed in.",
+        "area_1": "The Storybook component workbench: decorator stack, fixtures, MDX foundation docs, and roughly forty component stories.",
+        "area_2": "The macOS release pipeline — code signing, notarisation, standalone tarball staging, and the automatic pull request to the Homebrew tap.",
+        "area_3": "Tauri desktop fixes, including the stale-sidecar-tarball race in the development bootstrap.",
+        "area_4": "Onboarding friction fixes on the app-entry and match-confirmation steps, plus the end-to-end specs covering them.",
+        "area_5": "Privacy-profile presets, audit-bundle export, and the session-continuity protocol contributors use to resume long pieces of work."
+      },
+      "opus_4_8": {
+        "name": "Anthropic Claude Opus 4.8",
+        "role": "The focus system and background jobs",
+        "summary": "Rebuilt how the app decides which surfaces to show you, and added the long-running maintenance work that keeps an always-on install healthy.",
+        "area_1": "The focus redesign, in four phases: re-keying the goal taxonomy, the multi-select goal form, the display surfaces that speak it, and the tests that pin it.",
+        "area_2": "The periodic health check and its non-destructive self-heal job, which runs every 24 hours.",
+        "area_3": "The “Since you added this app” cumulative diff card on each app's history tab.",
+        "area_4": "Shared focus trapping for modal dialogs, and making the onboarding import dropzones keyboard-operable.",
+        "area_5": "Packaging and supply chain: the Docker Compose fix for fresh Linux hosts, a slimmer runtime image, and the move from Dependabot to Renovate."
+      },
+      "fable_5": {
+        "name": "Anthropic Claude Fable 5",
+        "role": "Accessibility, translation and scale",
+        "summary": "The largest contributor by commit count. Most of the accessibility and localisation work in the app came from this model.",
+        "area_1": "The accessibility campaign: colour contrast, target sizes, arrow-key navigation in button-styled radio groups, reflow at high zoom, and focus rings.",
+        "area_2": "Localising every visible string and assistive attribute through next-intl, plus the scanners that stop new hard-coded copy landing.",
+        "area_3": "The static-route rewrite, and the hash-based Content Security Policy it made possible.",
+        "area_4": "Pagination for the apps grid and its API, so large app fleets stay responsive — and the stress harness that measured where the limits were.",
+        "area_5": "Repository toolchain: the task runner, single-sourced Node and pnpm version pins, and the shared dependency-update preset."
+      },
+      "opus_5": {
+        "name": "Anthropic Claude Opus 5",
+        "role": "Refactoring and project hygiene",
+        "summary": "Took apart the two largest components in the codebase, and tidied the project scaffolding around them.",
+        "area_1": "Splitting the settings screen into section components, subsystem hooks, and four separate group routes.",
+        "area_2": "Extracting the onboarding wizard into per-step components, dialogs, and a single state-machine hook.",
+        "area_3": "Adopting Biome and Ultracite for linting and formatting, and setting the project's policy for their rules.",
+        "area_4": "The README, the community-health files, and the scheduled repository-settings audit.",
+        "area_5": "Desktop fixes: allowing Tauri's IPC origins through the Content Security Policy, and making the desktop development command work on a fresh clone.",
+        "area_6": "This page's per-model breakdown."
+      },
+      "fable_5_1": {
+        "name": "Anthropic Claude Fable 5.1",
+        "role": "Developer environment fixes",
+        "summary": "A short, focused pass on tooling that had been silently misbehaving inside nested git worktrees.",
+        "area_1": "Anchoring the build's file-tracing root so production builds work from a worktree nested inside the repository.",
+        "area_2": "Fixing the lint configuration that had been quietly checking zero files in those same worktrees."
+      },
+      "gemini": {
+        "name": "Google Gemini 3.1 Pro and Gemini 3 Flash",
+        "role": "Planning and review",
+        "summary": "Used for planning, design review, and second opinions on implementation approaches. These sessions were not recorded as commit co-authors, so there is no per-feature breakdown to show here."
+      },
+      "gpt": {
+        "name": "OpenAI GPT-5.4",
+        "role": "Planning and review",
+        "summary": "Used for planning, design review, and second opinions on implementation approaches. These sessions were not recorded as commit co-authors, so there is no per-feature breakdown to show here."
+      }
+    },
+    "section_built_attribution": "The breakdowns above are derived from the co-author trailers in this repository's git history, so they show which model was in the session when a change was committed rather than a formal division of labour. Work often crossed between models, and the list is a snapshot — it is updated by hand, not generated at build time.",
     "section_built_p2": "Using several models in combination helped cross-check design decisions, catch bugs that any single model missed, and keep the code idiomatic across the Next.js, SQLite, and scraping layers. A human author reviewed and integrated every change — the models assisted, they did not ship code unsupervised.",
     "section_built_p3": "This is disclosed here in the interest of transparency: if you are auditing privacytracker's own behaviour, you should know that its source code was co-authored with AI tooling, even though the runtime privacy-label scraping and diffing logic is fully deterministic.",
     "section_off_title": "Turning AI off",
