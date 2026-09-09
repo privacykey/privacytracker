@@ -14,6 +14,23 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration **Phase 1**: a standalone `core/` crate that
+  reproduces the `lib/db.ts` SQLite schema + migration contract exactly.
+  `pt-core migrate <path>` opens a `privacy.db` and brings its schema up to
+  date — the pragma set, the 0700/0600 permission tightening, the full
+  CREATE/index block, every guarded `ALTER TABLE ADD COLUMN`, and the data
+  backfills db.ts runs on open (unknown-device placeholder, the
+  `pending_search` heal, the stuck-`running` reset, the
+  `privacy_policy_versions` seed). The CREATE block is lifted verbatim from
+  db.ts by a generator so it cannot drift. A new gate,
+  `scripts/parity/schema-parity.mjs` (`just parity-schema`), proves the Rust
+  migrator leaves any starting database in the same schema state db.ts would
+  — one Node dumper reads both sides, the logical schema is compared
+  authoritatively, and data backfills are checked by aggregate counts.
+  Fresh, legacy-upgrade and current+state fixtures all pass byte-identical,
+  and the gate is self-tested to fail when a single migration is dropped.
+  This is developer-facing only; nothing in the shipped app changes yet.
+
 - The AI disclosure page (`/dashboard/about/ai-disclosure`) now tells the
   whole story of how the app was built, in three parts. **Before this
   repository** credits the April 2026 groundwork — the scraper, the first

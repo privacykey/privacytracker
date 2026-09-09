@@ -86,3 +86,48 @@ artifacts.
 - While the port is in flight, `lib/` server logic on `main` is treated
   as feature-frozen wherever practical; anything that must change there
   is mirrored here in the same week, or the parity gate will say so.
+
+## Status — Phase 1 (this crate)
+
+`core/` is a **standalone crate** (its own `[workspace]`, not tied to
+`src-tauri/`). It builds a `pt-core` binary and, so far, does exactly one
+thing: open a `privacy.db` and bring its schema up to the current contract,
+a faithful port of `lib/db.ts`.
+
+```
+just parity-schema      # Rust-vs-Node schema diff (the gate)
+just test-core          # in-crate unit tests
+cargo run -p privacytracker-core --bin pt-core -- migrate <path>
+```
+
+**What is ported:** the pragma set (`journal_mode=WAL`, `busy_timeout=5000`,
+`foreign_keys=ON`), the 0700/0600 permission tightening, the full
+CREATE/INDEX block, every guarded `ALTER TABLE ADD COLUMN` migration, and the
+data backfills db.ts runs on open (unknown-device placeholder, the
+`pending_search` heal, the stuck-`running` reset, the `privacy_policy_versions`
+seed). The big CREATE block is lifted verbatim from `db.ts` by
+`core/scripts/extract-schema.mjs` into `core/src/schema_sql.rs` (generated,
+checked in) so it cannot drift; the orchestration and short ALTER lists are
+hand-ported in `core/src/db.rs` in db.ts's exact order.
+
+**What is deliberately NOT ported yet:** the feature-flag data migration
+(`lib/migrations/v1_feature_flags.ts`). It is instrumentation-driven and
+depends on feature-flag resolver semantics — a later phase. The parity gate
+compares a db.ts-opened database against a pt-core-opened one, neither having
+run the feature-flag migration, so the comparison stays apples-to-apples.
+
+**The gate — `scripts/parity/schema-parity.mjs`.** The Phase 1 contract is:
+*for any starting database X, the Rust migrator leaves X in the same schema
+state db.ts would.* Not "fresh == upgraded" — `ALTER ADD COLUMN` makes those
+differ in stored SQL text while being identical tables — but Rust(X) == TS(X).
+One Node dumper reads both sides (so only the migrator differs), the
+authoritative comparison is the logical schema (columns, indexes, foreign
+keys), and the data backfills are checked by aggregate counts so the random
+ids they mint never cause a spurious diff. Cases: an empty DB (fresh path), a
+deliberately old-shaped DB (upgrade path), and a current-schema DB with
+live-ish state (re-open path). All three pass byte-identical today, and the
+gate is self-tested to fail when a single ALTER is dropped.
+
+**When `lib/db.ts` changes:** re-run `node core/scripts/extract-schema.mjs`,
+port any new ALTER/backfill into `core/src/db.rs`, and run `just parity-schema`
+— it will name exactly what diverged.

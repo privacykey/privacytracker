@@ -240,6 +240,57 @@ jobs:
         # which we don't ship in release.
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
 
+  core-parity:
+    # Rust-core Phase 1 gate. Compiles the standalone core/ crate, runs its
+    # unit tests, and — the real check — proves the Rust migrator reproduces
+    # lib/db.ts's schema + migrations byte-for-byte via a Node-vs-Rust
+    # schema-dump diff (scripts/parity/schema-parity.mjs). Unlike rust-check,
+    # core/ has no Tauri/webkit deps, so no apt webview packages and no
+    # standalone stub are needed — just Rust + Node (the harness drives
+    # better-sqlite3 + tsx to run the TypeScript side).
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable as of 2026-05
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: ${{ runner.os }}-cargo-core-${{ hashFiles('core/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-core-
+
+      - name: Core crate tests
+        run: cargo test --locked --manifest-path core/Cargo.toml
+
+      - name: Schema parity vs lib/db.ts
+        # Builds pt-core (via the parity:schema script) then diffs a
+        # Rust-migrated database against a TypeScript-migrated one on fresh,
+        # legacy and current+state fixtures. Fails on any schema divergence.
+        run: pnpm parity:schema
+
   container-smoke:
     # Compose also interpolates required variables during cleanup.
     env:
