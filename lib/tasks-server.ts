@@ -168,6 +168,20 @@ export function buildTaskCompletionContext(
   })();
   const lastResyncAt = numericSetting("device_resync.last_committed_at") ?? 0;
 
+  // Any imported archive row means the user has run a historical import.
+  const hasWaybackHistory = (() => {
+    try {
+      const row = db
+        .prepare(
+          "SELECT 1 FROM privacy_snapshots WHERE source = 'wayback' LIMIT 1"
+        )
+        .get();
+      return Boolean(row);
+    } catch {
+      return false;
+    }
+  })();
+
   return {
     focus,
     workflow,
@@ -183,6 +197,7 @@ export function buildTaskCompletionContext(
     ),
     syncSchedule,
     hasDeviceWithApps,
+    hasWaybackHistory,
     lastResyncAt,
   };
 }

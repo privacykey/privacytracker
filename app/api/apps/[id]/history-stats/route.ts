@@ -17,8 +17,10 @@ import {
  *                       with per-quarter added/removed counts.
  *
  * Both series share the same bucket boundaries (calendar quarters anchored
- * to the App Store web launch in Q4 2025) so the UI can index into them in
- * lockstep without re-computing alignment.
+ * to `APP_STORE_HISTORICAL_FLOOR`, Q1 2021) so the UI can index into them
+ * in lockstep without re-computing alignment. Only privacy-label entries
+ * count — policy, accessibility and age-rating events share the snapshot
+ * table but are not label changes.
  */
 export async function GET(
   _request: Request,

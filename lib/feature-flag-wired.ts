@@ -166,6 +166,7 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.detail.timeline.live_rows",
   "flag.detail.timeline.wayback_rows",
   "flag.detail.timeline.wayback_toggle",
+  "flag.detail.timeline.wayback_import",
   "flag.detail.timeline.trigger_pills",
   "flag.detail.timeline.version_chip",
   "flag.detail.timeline.matches_live_sync_badge",

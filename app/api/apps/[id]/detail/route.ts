@@ -5,7 +5,7 @@ import { getAccessibilityProfile } from "@/lib/accessibility-profile-server";
 import { isValidAgeBand } from "@/lib/age-rating";
 import { normalizeAiProvider } from "@/lib/ai-config";
 import {
-  getChangelog,
+  getChangelogPage,
   getUnacknowledgedChanges,
   type UnacknowledgedChanges,
 } from "@/lib/changelog";
@@ -109,9 +109,19 @@ export async function GET(
     "child age band"
   );
 
+  const changelogPage = safe(
+    () => getChangelogPage(id),
+    { rows: [], hasMore: false },
+    "getChangelogPage"
+  );
+
   return NextResponse.json({
     app,
-    changelog: safe(() => getChangelog(id), [], "getChangelog"),
+    changelog: changelogPage.rows,
+    // Older pages come from /api/apps/[id]/changelog?before=… on demand, so
+    // the reconstructed 2021 history is never pushed out of the timeline
+    // by a long run of no-change syncs.
+    changelogHasMore: changelogPage.hasMore,
     unacknowledged: safe(
       () => getUnacknowledgedChanges(id),
       EMPTY_UNACKNOWLEDGED,

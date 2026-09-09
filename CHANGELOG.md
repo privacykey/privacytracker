@@ -40,6 +40,31 @@ Going forward, changes are recorded here as they land.
   `<details>` elements, so they expand without JavaScript and the page keeps
   prerendering statically.
 
+- **Per-app historical import.** The App Detail → Change History tab now
+  has a "Check the archive" card that reconstructs just that app's history,
+  the single-app counterpart to Settings → Historical Import. It posts the
+  new `force` option on `POST /api/apps/[id]/import-history`, which
+  re-probes every quarter instead of skipping the ones a nearby row already
+  covers — so a second run picks up captures the archive has gained since,
+  or ones an older parser could not read. Forcing never duplicates a
+  snapshot. When archive.org is rate-limiting, the route answers 503 with
+  `code: "archive_unavailable"` (not a 500) and the card says to wait and
+  retry rather than showing a raw error. Gated by
+  `flag.detail.timeline.wayback_import`.
+- **History tab pages backwards.** The detail payload now carries the newest
+  50 changelog rows plus `changelogHasMore`; a "Show older entries" control
+  fetches the rest from the new `GET /api/apps/[id]/changelog?before=…`
+  route. Every sync writes a row even when nothing changed, so on a daily
+  schedule the reconstructed Wayback history used to fall off the bottom of
+  the timeline after about seven weeks with no way to reach it.
+- **First-run checklist task "Reconstruct your apps' label history"** for
+  the self + monitor focus, linking to Settings → Admin → Historical Import.
+  The import still only runs on an explicit click, as the privacy policy
+  promises; the task completes once any archive row exists.
+- The Wayback importer bridges the last archive → first-live-scrape hop at
+  read time: the first scrape's card shows what changed since the newest
+  archive capture ("Compared with the archive capture from …"), without
+  rewriting the stored row or raising anything in the review queue.
 - `just fetch-node-sidecar` (`scripts/fetch-node-sidecar.sh`) — downloads
   and GPG-verifies the Node binary the desktop app bundles as its sidecar,
   into `src-tauri/binaries/`. The binary is ~139MB and gitignored, so a
@@ -56,6 +81,37 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The Rust-core parity harness now classifies **all 120** API routes, up
+  from 17. `scripts/parity/manifest.mjs` splits them into reads (57),
+  reads with a volatility transform (8), mutations (56), destructive
+  teardown (4) and quarantine (35, each with a written reason), and
+  `parity-diff.mjs` enforces a **coverage gate**: it walks `app/api` at
+  startup and fails if any `route.ts` is unlisted. The manifest had gone
+  stale while the surface grew from 110 to 120 routes with nothing
+  noticing; that can no longer happen silently. The differ also gained
+  write support — mutations replay against both servers with identical
+  bodies and then re-read the affected collection, so a write that
+  returns a plausible 200 but persists differently is caught. Writes are
+  opt-in (`--mutate` / `--teardown`) because the manifest contains
+  `/api/reset`; a bare invocation stays read-only. Node-vs-Node
+  self-test: 130 checks, 0 differences, and `--no-normalize` still fails,
+  which is what proves the differ can detect one.
+
+- **Wayback import probes the CDX index once per app** instead of up to
+  seven availability calls per target, and picks each quarter's closest
+  capture locally; the availability walk remains as a fallback. Save Page
+  Now now runs only when the archive has no capture within 45 days of
+  today (it used to fire on the first empty quarter — usually Q1 2021,
+  which archiving today's page cannot fill — for nearly every app on every
+  run), and "Remove all imported history" also removes the notes it leaves.
+- A throttled archive (HTTP 429 / 5xx) is now an error the bulk runner
+  backs off from — it waits out `Retry-After`, retries the app once, then
+  pauses the queue with a "paused by rate limiting" explanation and a
+  Resume button — rather than being recorded as "no capture" and triggering
+  Save Page Now.
+- The monthly reconstruction cadence (`intervalMonths: 1`) now lands every
+  month: the dedupe window follows the cadence (15 days monthly, 45 days
+  quarterly) instead of a fixed 45 days that skipped every other month.
 - `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
   carrying its own ~40 lines of inline download-and-verify shell. The
   Node release-key fingerprints had been duplicated between the workflow
@@ -74,6 +130,30 @@ Going forward, changes are recorded here as they land.
   over a slower fallback, filling the log with `connect-src` violations. The
   policy now allows Tauri's IPC origins when running inside the desktop app;
   the browser and Docker deployments keep the unchanged, narrower policy.
+- **Wayback imports never actually reached 2021.** Captures from Feb–Oct
+  2021 keep the app record in `shoebox-ember-data-store` (keyed by app id,
+  `data.attributes.privacy`), which the shoebox extractor skipped by id and
+  never probed, so every 2021 target failed as `skipped_parse_failure`
+  while the Settings copy promised history "back to Q1 2021". Both shoebox
+  shapes are parsed now; in a live run Instagram's history extends from
+  March 2021 instead of March 2022. Captures from the first weeks of Feb
+  2021 that carry no privacy section at all are reported as skipped
+  (`skipped_no_labels`) rather than failed.
+- The oldest imported Wayback row was diffed against *today's* labels, so
+  the 2021 baseline card claimed "now collects" for labels the app had
+  since dropped (and vice versa), the universal changelog carried the
+  inverted entries, and the history chart's first bucket counted them. The
+  oldest row is now a baseline with no changes, and a wayback row that
+  lands *before* an existing one re-diffs the row that follows it.
+- `history-stats` counted accessibility and privacy-policy entries as
+  privacy-label changes.
+- Settings copy for the Historical Import still said "since the App Store
+  web launch on 5 November 2025" and that the closest capture is used;
+  the floor is Q1 2021 and captures beyond 45 days are skipped. The Task
+  Center deep link for a running Wayback job pointed at the device-import
+  section instead of `#wayback-import`.
+- A fresh install no longer probes its own install date (which equals
+  "today" and is already covered by the first live scrape).
 
 ## [0.2.0] — 2026-09-05
 

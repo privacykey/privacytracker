@@ -123,6 +123,10 @@ export type WaybackRunStatus =
   | "cancel_requested"
   | "stale";
 
+/** Why a paused Wayback queue stopped: the user, or the runner backing off
+ *  from a rate-limiting archive. Null when not paused / unknown. */
+export type WaybackPauseCause = "user" | "rate_limited" | null;
+
 /** Live tally while a bulk Wayback import runs; null when idle. */
 export interface WaybackProgress {
   currentAppName: string | null;

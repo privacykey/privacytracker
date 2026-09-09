@@ -160,6 +160,7 @@ export type FlagKey =
   | "flag.detail.timeline.live_rows"
   | "flag.detail.timeline.wayback_rows"
   | "flag.detail.timeline.wayback_toggle"
+  | "flag.detail.timeline.wayback_import"
   | "flag.detail.timeline.policy_preview_toggle"
   | "flag.detail.timeline.policy_diff_toggle"
   | "flag.detail.timeline.trigger_pills"
@@ -446,6 +447,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.detail.timeline.live_rows": "on", // live-sync rows
   "flag.detail.timeline.wayback_rows": "on", // wayback-imported rows
   "flag.detail.timeline.wayback_toggle": "on", // 'show wayback imports' checkbox
+  "flag.detail.timeline.wayback_import": "on", // per-app 'reconstruct history' control
   "flag.detail.timeline.policy_preview_toggle": "on", // per-row policy text preview
   "flag.detail.timeline.policy_diff_toggle": "on", // per-row diff toggle
   "flag.detail.timeline.trigger_pills": "on", // 'manual sync' / 'scheduled' badges
@@ -679,6 +681,7 @@ export const AUDIENCE_RULES: Record<
     "flag.devopts.ai.debug_logging": "off", // diagnostic noise
     "flag.settings.ai.debug_logging": "off", // diagnostic noise (settings copy)
     "flag.settings.policies.wayback_import": "off", // archive deep-dive isn't a carer concern
+    "flag.detail.timeline.wayback_import": "off", // ditto, on the per-app timeline
     "flag.desktop.app_section": "off", // hide desktop config even on Tauri
     "flag.devopts.visible": "off", // hide dev opts entirely (search still finds it — §5.8)
     "flag.page.compare": "off", // recipe/research feature not for daily safety check
@@ -783,6 +786,7 @@ export const GOAL_RULES: Record<
     "flag.notifications.bell.polling": "off", // manual refresh only
     "flag.detail.timeline.wayback_rows": "off", // hide wayback by default
     "flag.detail.timeline.wayback_toggle": "off", // toggle hidden too
+    "flag.detail.timeline.wayback_import": "off", // and the per-app import control
     "flag.detail.a11y.preference_highlights": "off", // teal borders considered chrome
     "flag.appgrid.card.profile_badge": "off", // hide mismatch visualisation
     "flag.appgrid.card.change_dot": "off", // no pulsing indicators
@@ -842,6 +846,7 @@ export const ACCESSIBILITY_RULES: Partial<Record<FlagKey, FlagValue>> = {
 export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
   // Timeline sub-flags depend on parent rows
   "flag.detail.timeline.wayback_toggle": "flag.detail.timeline.wayback_rows",
+  "flag.detail.timeline.wayback_import": "flag.detail.timeline.wayback_rows",
   "flag.detail.timeline.matches_live_sync_badge":
     "flag.detail.timeline.wayback_rows",
   "flag.detail.timeline.policy_diff_toggle": "flag.detail.timeline.live_rows",

@@ -35,7 +35,7 @@ import {
   importAppHistory,
 } from "./historical-import";
 import { recordAudit } from "./security";
-import { isAbortError } from "./wayback";
+import { isAbortError, isWaybackUnavailableError } from "./wayback";
 import {
   acquireBulkMutex,
   clearBulkState,
@@ -93,6 +93,45 @@ export interface RunBulkResult {
 }
 
 const activeRunAbortControllers = new Map<string, AbortController>();
+
+/**
+ * archive.org throttling (429 / 5xx from the index, availability, or replay
+ * endpoints). The first strike waits out `Retry-After` (bounded) and retries
+ * the same app; a second consecutive strike pauses the queue — the state
+ * blob keeps every unprocessed app as `pending`, so "Resume queue" later
+ * picks up exactly where the archive cut us off. Without this a throttled
+ * bulk run used to march through the whole fleet recording silent misses.
+ */
+const MAX_RATE_LIMIT_RETRIES = 1;
+const RATE_LIMIT_MIN_BACKOFF_MS = 1_000;
+const RATE_LIMIT_DEFAULT_BACKOFF_MS = 30_000;
+const RATE_LIMIT_MAX_BACKOFF_MS = 120_000;
+
+export function rateLimitBackoffMs(retryAfterMs: number | null): number {
+  const requested = retryAfterMs ?? RATE_LIMIT_DEFAULT_BACKOFF_MS;
+  return Math.min(
+    RATE_LIMIT_MAX_BACKOFF_MS,
+    Math.max(RATE_LIMIT_MIN_BACKOFF_MS, requested)
+  );
+}
+
+function sleepAbortable(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("Wayback import cancelled", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Wayback import cancelled", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 export function requestActiveBulkWaybackCancel(runId?: string | null): boolean {
   if (runId) {
@@ -196,6 +235,7 @@ export async function runBulkWaybackImport(
   // is harmless.
   state.status = "running";
   state.pausedAt = undefined;
+  state.pauseCause = undefined;
   state.pauseRequestedAt = undefined;
   state.cancelRequestedAt = undefined;
   acquireBulkMutex();
@@ -204,6 +244,7 @@ export async function runBulkWaybackImport(
   activeRunAbortControllers.set(state.runId, abortController);
 
   const runStartedAt = Date.now();
+  let rateLimitRetries = 0;
 
   writer({
     type: "batch-start",
@@ -278,6 +319,7 @@ export async function runBulkWaybackImport(
           onProgress: (event: ImportProgressEvent) =>
             writer({ type: "target", ...event }),
         });
+        rateLimitRetries = 0;
         accumulateTotals(state.totals, result);
         entry.status = "done";
         entry.finishedAt = Date.now();
@@ -324,6 +366,74 @@ export async function runBulkWaybackImport(
             return cancelled;
           }
           throw error;
+        }
+        if (isWaybackUnavailableError(error)) {
+          // Nothing is wrong with the app — the archive refused us. Put it
+          // back to pending (and un-count the attempt) so a retry or a
+          // later resume processes it from scratch.
+          entry.status = "pending";
+          entry.finishedAt = undefined;
+          entry.error = error.message.slice(0, 200);
+          state.currentAppId = null;
+          state.totals.appsAttempted = Math.max(
+            0,
+            state.totals.appsAttempted - 1
+          );
+          writeBulkState(state);
+
+          if (rateLimitRetries < MAX_RATE_LIMIT_RETRIES) {
+            rateLimitRetries++;
+            const delayMs = rateLimitBackoffMs(error.retryAfterMs);
+            writer({
+              type: "backoff",
+              appId: entry.appId,
+              name: entry.appName,
+              delayMs,
+              reason: error.message,
+            });
+            recordActivity({
+              type: "wayback_import",
+              status: "partial",
+              appId: app.id,
+              appName: app.name,
+              summary:
+                `archive.org throttled the Wayback import — waiting ${Math.ceil(
+                  delayMs / 1000
+                )}s before retrying ${app.name}`.slice(0, 200),
+              detail: {
+                mode: "bulk-backoff",
+                delayMs,
+                errorMessage: error.message,
+                resumedRun: state.initiator === "resume",
+              },
+              startedAt: entry.startedAt ?? Date.now(),
+            });
+            try {
+              await sleepAbortable(delayMs, abortController.signal);
+            } catch (sleepError) {
+              if (isAbortError(sleepError)) {
+                const cancelled = finishIfControlRequested(
+                  state,
+                  writer,
+                  runStartedAt,
+                  options
+                );
+                if (cancelled) {
+                  return cancelled;
+                }
+              }
+              throw sleepError;
+            }
+            // Re-run this app: the loop's pre-app control check still
+            // fires, so a pause/cancel requested during the wait is honoured.
+            i -= 1;
+            continue;
+          }
+
+          return pauseRun(state, writer, runStartedAt, options, {
+            cause: "rate_limited",
+            message: error.message,
+          });
         }
         const message =
           error instanceof Error ? error.message : "import failed";
@@ -468,43 +578,7 @@ function finishIfControlRequested(
   syncControlStatusFromDisk(state);
 
   if (state.status === "pause_requested") {
-    const durationMs = Date.now() - runStartedAt;
-    state.status = "paused";
-    state.pausedAt = Date.now();
-    state.currentAppId = null;
-    writeBulkState(state);
-    releaseBulkMutex();
-
-    const summary = summariseState(state);
-    const message = `Wayback import paused — ${summary.remaining} of ${summary.total} app${
-      summary.total === 1 ? "" : "s"
-    } remaining`;
-
-    writer({
-      type: "paused",
-      totals: state.totals,
-      durationMs,
-      summary,
-    });
-    recordActivity({
-      type: "wayback_import",
-      status: "cancelled",
-      summary: message,
-      detail: {
-        mode: "bulk-paused",
-        totals: state.totals,
-        runId: state.runId,
-      },
-      startedAt: state.startedAt,
-    });
-    recordAudit({
-      action: "wayback.import.bulk.paused",
-      actorIp: options.actorIp ?? null,
-      userAgent: options.userAgent ?? null,
-      success: true,
-      detail: `remaining=${summary.remaining} total=${summary.total}`,
-    });
-    return { totals: state.totals, durationMs };
+    return pauseRun(state, writer, runStartedAt, options, { cause: "user" });
   }
 
   if (state.status === "cancel_requested") {
@@ -547,6 +621,66 @@ function finishIfControlRequested(
   }
 
   return null;
+}
+
+/**
+ * Park the queue at an app boundary. `cause: 'user'` is the Settings
+ * "Pause queue" button; `cause: 'rate_limited'` is the runner protecting
+ * itself from a throttled archive. Both leave the state blob (with the
+ * cause) so Settings can explain why the queue stopped and offer Resume.
+ */
+function pauseRun(
+  state: WaybackBulkState,
+  writer: StreamWriter,
+  runStartedAt: number,
+  options: RunBulkOptions,
+  pause: { cause: "user" | "rate_limited"; message?: string }
+): RunBulkResult {
+  const durationMs = Date.now() - runStartedAt;
+  state.status = "paused";
+  state.pausedAt = Date.now();
+  state.pauseCause = pause.cause;
+  state.currentAppId = null;
+  writeBulkState(state);
+  releaseBulkMutex();
+
+  const summary = summariseState(state);
+  const apps = `${summary.remaining} of ${summary.total} app${
+    summary.total === 1 ? "" : "s"
+  }`;
+  const message =
+    pause.cause === "rate_limited"
+      ? `Wayback import paused — archive.org is rate-limiting requests; ${apps} remaining. Resume from Settings once it clears.`
+      : `Wayback import paused — ${apps} remaining`;
+
+  writer({
+    type: "paused",
+    cause: pause.cause,
+    totals: state.totals,
+    durationMs,
+    summary,
+  });
+  recordActivity({
+    type: "wayback_import",
+    status: "cancelled",
+    summary: message.slice(0, 200),
+    detail: {
+      mode: "bulk-paused",
+      cause: pause.cause,
+      errorMessage: pause.message,
+      totals: state.totals,
+      runId: state.runId,
+    },
+    startedAt: state.startedAt,
+  });
+  recordAudit({
+    action: "wayback.import.bulk.paused",
+    actorIp: options.actorIp ?? null,
+    userAgent: options.userAgent ?? null,
+    success: true,
+    detail: `cause=${pause.cause} remaining=${summary.remaining} total=${summary.total}`,
+  });
+  return { totals: state.totals, durationMs };
 }
 
 function lookupAppRow(appId: string): AppRow | null {
