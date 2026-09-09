@@ -14,6 +14,32 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- The AI disclosure page (`/dashboard/about/ai-disclosure`) now tells the
+  whole story of how the app was built, in three parts. **Before this
+  repository** credits the April 2026 groundwork — the scraper, the first
+  dashboard and onboarding, privacy profiles, the Wayback import, feature
+  flags, localisation, the desktop build — to the era it came from, and is
+  honest that the project was restarted here in May so none of that history
+  carried over, that some of it was never version-controlled, and that
+  neither Antigravity nor Codex records a commit co-author. **Models used**
+  is the breakdown: eight models, each a collapsible row naming the areas it
+  worked on, ordered by first appearance. Claude Sonnet 4.6, Opus 4.8,
+  Opus 5, Fable 5 and Fable 5.1 join the entries that were already there,
+  and the OpenAI entry is now *Codex* — the tool rather than a model
+  version, because the version changed across the project and was never
+  recorded. Its list is substantial: the September security round
+  (network-deployment sign-in, outbound destination validation, bounded
+  request bodies, runtime scanning, desktop backup verification), backup and
+  restore data preservation, the v0.2 release gates, CSV export safety, and
+  the TypeScript 7 translation-scanner work. **What the model list leaves
+  out** says the part no git history records: hundreds of hours of
+  real-device testing, user testing and product decisions, all of it human.
+  The attribution note states plainly that the trailers are incomplete —
+  they miss the pre-repository era, they miss Codex entirely, and a portion
+  of this repository's own commits carry none either. The rows are native
+  `<details>` elements, so they expand without JavaScript and the page keeps
+  prerendering statically.
+
 - **Per-app historical import.** The App Detail → Change History tab now
   has a "Check the archive" card that reconstructs just that app's history,
   the single-app counterpart to Settings → Historical Import. It posts the
