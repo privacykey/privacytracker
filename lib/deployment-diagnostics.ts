@@ -298,20 +298,20 @@ function buildChecks(
           ? "The request arrived through HTTPS."
           : network.localOnlyHost
             ? "Localhost access is fine over HTTP."
-            : "Plain HTTP is acceptable only on a trusted LAN; use HTTPS before exposing this more widely.",
+            : "Use HTTPS for LAN access to protect your access token and private data.",
     },
     {
       id: "admin-token",
-      label: "Destructive API guard",
+      label: "Private data access",
       status: security.adminTokenConfigured
         ? "ok"
         : security.adminTokenRequired
           ? "bad"
           : "info",
       detail: security.adminTokenConfigured
-        ? "AUDITOR_ADMIN_TOKEN is configured for guarded API calls."
+        ? "AUDITOR_ADMIN_TOKEN is configured for private pages and API calls."
         : security.adminTokenRequired
-          ? "This deployment is declared network-exposed, so guarded API actions are refused until AUDITOR_ADMIN_TOKEN is set."
+          ? "This deployment is declared network-exposed, so private pages and API calls are refused until AUDITOR_ADMIN_TOKEN is set."
           : security.bindAmbiguous
             ? "AUDITOR_ADMIN_TOKEN is optional for localhost-only access. This instance may bind a non-loopback interface (e.g. inside Docker) — if it is reachable beyond localhost, set AUDITOR_ADMIN_TOKEN and PRIVACYTRACKER_ALLOWED_HOSTS."
             : "AUDITOR_ADMIN_TOKEN is optional for localhost-only access.",

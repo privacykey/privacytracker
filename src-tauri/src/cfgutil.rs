@@ -24,13 +24,15 @@
 // sensible Linux/Windows path to wire up.
 
 #[cfg(target_os = "macos")]
-use std::path::PathBuf;
+use std::collections::HashMap;
+#[cfg(target_os = "macos")]
+use std::path::{Path, PathBuf};
 #[cfg(target_os = "macos")]
 use std::process::Command;
 #[cfg(target_os = "macos")]
 use std::sync::Mutex;
 #[cfg(target_os = "macos")]
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use serde::Serialize;
 #[cfg(target_os = "macos")]
@@ -281,7 +283,10 @@ fn detect_cfgutil_impl() -> CfgutilCheck {
     // that reject `--version` with "Unknown option '--version'".
     let path_candidate = which_cfgutil().unwrap_or_default();
     let probe_paths: Vec<String> = if path_candidate.is_empty() {
-        FALLBACK_CFGUTIL_PATHS.iter().map(|p| (*p).to_string()).collect()
+        FALLBACK_CFGUTIL_PATHS
+            .iter()
+            .map(|p| (*p).to_string())
+            .collect()
     } else {
         let mut v = vec![path_candidate];
         for fallback in FALLBACK_CFGUTIL_PATHS {
@@ -308,8 +313,12 @@ fn detect_cfgutil_impl() -> CfgutilCheck {
                 return out;
             }
             Ok(list_output) => {
-                let stdout = String::from_utf8_lossy(&list_output.stdout).trim().to_string();
-                let stderr = String::from_utf8_lossy(&list_output.stderr).trim().to_string();
+                let stdout = String::from_utf8_lossy(&list_output.stdout)
+                    .trim()
+                    .to_string();
+                let stderr = String::from_utf8_lossy(&list_output.stderr)
+                    .trim()
+                    .to_string();
                 let detail = if stderr.is_empty() { stdout } else { stderr };
                 let detail_lower = detail.to_lowercase();
                 if detail_lower.contains("no devices")
@@ -323,9 +332,7 @@ fn detect_cfgutil_impl() -> CfgutilCheck {
                 }
                 out.error = Some(format!(
                     "cfgutil at {} did not pass the device-list check ({}): {}",
-                    candidate,
-                    list_output.status,
-                    detail
+                    candidate, list_output.status, detail
                 ));
                 continue;
             }
@@ -375,19 +382,23 @@ fn fetch_supported_property_names(candidate: &str) -> Option<Vec<String>> {
     let names: Vec<String> = stdout
         .split(|c: char| c.is_whitespace() || c == ',')
         .map(str::trim)
-        .filter(|tok| {
-            !tok.is_empty() && tok.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
-        })
+        .filter(|tok| !tok.is_empty() && tok.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'))
         .map(str::to_string)
         .collect();
-    if names.is_empty() { None } else { Some(names) }
+    if names.is_empty() {
+        None
+    } else {
+        Some(names)
+    }
 }
 
 #[cfg(target_os = "macos")]
 fn detect_cfgutil_version(candidate: &str) -> Option<String> {
     let probes: &[&[&str]] = &[&["version"], &["--version"], &["-v"]];
     for args in probes {
-        let Ok(output) = run_with_timeout(Command::new(candidate).args(*args), Duration::from_secs(3)) else {
+        let Ok(output) =
+            run_with_timeout(Command::new(candidate).args(*args), Duration::from_secs(3))
+        else {
             continue;
         };
         if !output.status.success() {
@@ -429,7 +440,11 @@ fn which_cfgutil() -> Option<String> {
         .output()
         .ok()?;
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if path.is_empty() { None } else { Some(path) }
+    if path.is_empty() {
+        None
+    } else {
+        Some(path)
+    }
 }
 
 /// Public export command. Runs cfgutil twice — first to list devices, then
@@ -495,16 +510,15 @@ fn run_cfgutil_export_impl(ecid: Option<String>) -> Result<CfgutilExport, String
     //    setup doesn't import apps from the wrong phone. The argv is
     //    built up in a Vec so the conditional `--ecid <id>` prefix
     //    sits cleanly without a duplicated invocation.
-    let mut apps_args: Vec<String> = vec![
-        "--format".to_string(),
-        "JSON".to_string(),
-    ];
+    let mut apps_args: Vec<String> = vec!["--format".to_string(), "JSON".to_string()];
     if let Some(ref e) = ecid {
         // Defence in depth — refuse anything that doesn't look like a
         // hex-style ECID. cfgutil treats `--ecid foo` permissively; we
         // don't.
         if e.chars().any(|c| !c.is_ascii_alphanumeric()) {
-            return Err(format!("Refusing to scope export — ECID has unexpected characters: {e}"));
+            return Err(format!(
+                "Refusing to scope export — ECID has unexpected characters: {e}"
+            ));
         }
         apps_args.push("--ecid".to_string());
         apps_args.push(e.clone());
@@ -527,7 +541,11 @@ fn run_cfgutil_export_impl(ecid: Option<String>) -> Result<CfgutilExport, String
         return Err(format!(
             "cfgutil get installedApps exited non-zero ({}): {}",
             apps_output.status,
-            if apps_stderr.is_empty() { &apps_stdout } else { &apps_stderr }
+            if apps_stderr.is_empty() {
+                &apps_stdout
+            } else {
+                &apps_stderr
+            }
         ));
     }
 
@@ -701,19 +719,18 @@ fn list_connected_devices_impl() -> ConnectedDeviceList {
 /// at HH:MM" toast without parsing free-form stderr.
 #[derive(Debug, Serialize, Default)]
 pub struct CfgutilBackupResult {
-    /// True iff cfgutil exited 0. Backup files are large and Configurator
-    /// occasionally fails mid-stream (low disk space, device rebooted,
-    /// passcode required) — the webview shows different copy per state.
+    /// True iff cfgutil exited 0 AND privacytracker found a new or updated,
+    /// non-empty Manifest.db under Apple's MobileSync backup root. An exit
+    /// code by itself is never enough to unlock the uninstall flow.
     pub ok: bool,
 
     /// ECID the backup ran against. Echoed back so the caller can
     /// match the response to the request without holding state.
     pub ecid: String,
 
-    /// Filesystem path the backup landed at when ok=true. NULL on
-    /// failure or when cfgutil's stdout didn't surface a path (older
-    /// builds wrote it elsewhere; we fall back to the requested
-    /// `dest_dir` in that case).
+    /// Canonical filesystem path to the verified UDID backup directory.
+    /// NULL on every failure; there is deliberately no requested-path
+    /// fallback because cfgutil chooses the MobileSync destination.
     pub backup_path: Option<String>,
 
     /// Epoch ms when cfgutil reported success. NULL on failure.
@@ -728,54 +745,156 @@ pub struct CfgutilBackupResult {
     pub error: Option<String>,
 }
 
-/// Canonicalise and validate the destination directory for a cfgutil
-/// backup. The webview is only ever supposed to ask for paths under
-/// `~/Documents/privacytracker-Backups/`; this function enforces that
-/// at the Rust boundary so a compromised webview can't pre-stage
-/// directories in security-sensitive locations like `~/Library/
-/// LaunchAgents`. Expands a leading `~/`, rejects relative paths and
-/// any path containing `..` components, and verifies the result still
-/// sits inside the allowed base.
+/// Minimal on-disk signature for a backup directory. Incremental iOS
+/// backups reuse the same UDID directory, so discovery cannot rely only on
+/// seeing a new folder: a changed Manifest.db (or directory mtime) is the
+/// proof that this invocation wrote or refreshed a backup.
 #[cfg(target_os = "macos")]
-fn resolve_backup_dest(dest_dir: &str) -> Result<PathBuf, String> {
-    if dest_dir.is_empty() {
-        return Err("dest_dir is empty".to_string());
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BackupSignature {
+    directory_modified: Option<SystemTime>,
+    manifest_bytes: u64,
+    manifest_modified: Option<SystemTime>,
+}
 
+/// Apple Configurator's documented destination for `cfgutil backup`.
+/// cfgutil 2.20 exposes no per-command destination option; it stores one
+/// direct child directory per device UDID beneath this root.
+#[cfg(target_os = "macos")]
+fn mobile_sync_backup_root() -> Result<PathBuf, String> {
     let home = dirs::home_dir().ok_or_else(|| "could not resolve user home dir".to_string())?;
-    let allowed_base = home.join("Documents").join("privacytracker-Backups");
+    Ok(home
+        .join("Library")
+        .join("Application Support")
+        .join("MobileSync")
+        .join("Backup"))
+}
 
-    // Expand a leading `~/`. We deliberately do NOT support `~user/`
-    // (other-user expansion) — only the running user's home is allowed.
-    let candidate: PathBuf = if let Some(rest) = dest_dir.strip_prefix("~/") {
-        home.join(rest)
-    } else if dest_dir == "~" {
-        home.clone()
-    } else {
-        PathBuf::from(dest_dir)
+/// Return every complete-looking direct child backup beneath `root`.
+/// Symlinks are rejected at both the directory and Manifest.db boundary,
+/// and canonical paths must remain inside the canonical MobileSync root.
+/// A zero-byte Manifest.db is incomplete and therefore not evidence that a
+/// restorable backup exists.
+#[cfg(target_os = "macos")]
+fn scan_verified_backups(root: &Path) -> std::io::Result<HashMap<PathBuf, BackupSignature>> {
+    use std::io::ErrorKind;
+
+    let entries = match std::fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(HashMap::new()),
+        Err(error) => return Err(error),
     };
+    let canonical_root = root.canonicalize()?;
+    let mut backups = HashMap::new();
 
-    if !candidate.is_absolute() {
-        return Err("dest_dir must be absolute (or start with ~/)".to_string());
-    }
-
-    // Reject any traversal sequences before we touch the filesystem.
-    use std::path::Component;
-    for c in candidate.components() {
-        if matches!(c, Component::ParentDir) {
-            return Err("dest_dir contains `..` components".to_string());
+    for entry in entries.flatten() {
+        let entry_path = entry.path();
+        let Ok(entry_type) = entry.file_type() else {
+            continue;
+        };
+        if !entry_type.is_dir() || entry_type.is_symlink() {
+            continue;
         }
+        let Ok(canonical_path) = entry_path.canonicalize() else {
+            continue;
+        };
+        if canonical_path.parent() != Some(canonical_root.as_path()) {
+            continue;
+        }
+
+        let manifest_path = canonical_path.join("Manifest.db");
+        let Ok(manifest_metadata) = std::fs::symlink_metadata(&manifest_path) else {
+            continue;
+        };
+        if !manifest_metadata.file_type().is_file()
+            || manifest_metadata.file_type().is_symlink()
+            || manifest_metadata.len() == 0
+        {
+            continue;
+        }
+        let Ok(canonical_manifest) = manifest_path.canonicalize() else {
+            continue;
+        };
+        if canonical_manifest.parent() != Some(canonical_path.as_path()) {
+            continue;
+        }
+
+        let directory_modified = std::fs::metadata(&canonical_path)
+            .ok()
+            .and_then(|metadata| metadata.modified().ok());
+        backups.insert(
+            canonical_path,
+            BackupSignature {
+                directory_modified,
+                manifest_bytes: manifest_metadata.len(),
+                manifest_modified: manifest_metadata.modified().ok(),
+            },
+        );
     }
 
-    if !candidate.starts_with(&allowed_base) {
-        return Err(format!(
-            "dest_dir must be under {} (got {})",
-            allowed_base.display(),
-            candidate.display()
-        ));
-    }
+    Ok(backups)
+}
 
-    Ok(candidate)
+#[cfg(target_os = "macos")]
+fn signature_recency(signature: &BackupSignature) -> SystemTime {
+    signature
+        .manifest_modified
+        .or(signature.directory_modified)
+        .unwrap_or(SystemTime::UNIX_EPOCH)
+}
+
+/// Match only the selected device's UDID directory. Other devices may be
+/// backing up concurrently, so global "most recent" discovery is unsafe.
+#[cfg(target_os = "macos")]
+fn find_changed_verified_backup(
+    before: &HashMap<PathBuf, BackupSignature>,
+    after: &HashMap<PathBuf, BackupSignature>,
+    started_at: SystemTime,
+    expected_udid: &str,
+) -> Option<PathBuf> {
+    let earliest_expected_write = started_at
+        .checked_sub(Duration::from_secs(5))
+        .unwrap_or(started_at);
+    let now = SystemTime::now();
+    let mut matches = after.iter().filter(|(path, signature)| {
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.eq_ignore_ascii_case(expected_udid))
+            && before.get(*path) != Some(*signature)
+            && signature_recency(signature) >= earliest_expected_write
+            && signature_recency(signature) <= now
+    });
+    let (path, _) = matches.next()?;
+    if matches.next().is_some() {
+        return None;
+    }
+    Some(path.clone())
+}
+
+/// Extract the selected ECID's UDID from cfgutil's JSON response. Never
+/// accept path syntax from a subprocess result as a backup directory name.
+#[cfg(target_os = "macos")]
+fn parse_backup_udid(stdout: &str, ecid: &str) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_str(stdout).ok()?;
+    let output = value.get("Output")?.as_object()?;
+    let normalize = |value: &str| {
+        value
+            .trim_start_matches("0x")
+            .trim_start_matches("0X")
+            .to_ascii_uppercase()
+    };
+    let expected = normalize(ecid);
+    let mut devices = output.iter().filter(|(key, _)| normalize(key) == expected);
+    let (_, device) = devices.next()?;
+    if devices.next().is_some() {
+        return None;
+    }
+    let udid = device.get("UDID")?.as_str()?;
+    if !(16..=64).contains(&udid.len()) || !udid.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
+    {
+        return None;
+    }
+    Some(udid.to_string())
 }
 
 /// Result of `run_cfgutil_remove_app`. Bundles command output so the
@@ -790,10 +909,10 @@ pub struct CfgutilRemoveResult {
     pub error: Option<String>,
 }
 
-/// Run `cfgutil --device-id <ecid> backup --backup-output <dest>`. The
-/// caller passes a destination directory the backup should land in;
-/// the Rust side adds nothing extra — the path stays exactly where
-/// the user (or sidecar) tells it to.
+/// Run the supported `cfgutil --ecid <ecid> backup` command. Apple
+/// Configurator owns the destination under MobileSync; privacytracker takes
+/// before/after snapshots of that root and returns success only after it
+/// verifies a new or changed non-empty Manifest.db.
 ///
 /// Designed to be invoked synchronously from the webview's review-
 /// and-act wizard. Long backups can take 5+ minutes on devices with a
@@ -805,9 +924,9 @@ pub struct CfgutilRemoveResult {
 /// flipped `flag.devopts.cfgutil_uninstall` on. The Rust command
 /// trusts its caller.
 #[tauri::command]
-pub async fn run_cfgutil_backup(ecid: String, dest_dir: String) -> CfgutilBackupResult {
+pub async fn run_cfgutil_backup(ecid: String) -> CfgutilBackupResult {
     let ecid_for_err = ecid.clone();
-    tauri::async_runtime::spawn_blocking(move || run_cfgutil_backup_impl(ecid, dest_dir))
+    tauri::async_runtime::spawn_blocking(move || run_cfgutil_backup_impl(ecid))
         .await
         .unwrap_or_else(|e| CfgutilBackupResult {
             ok: false,
@@ -818,7 +937,7 @@ pub async fn run_cfgutil_backup(ecid: String, dest_dir: String) -> CfgutilBackup
 }
 
 #[cfg(target_os = "macos")]
-fn run_cfgutil_backup_impl(ecid: String, dest_dir: String) -> CfgutilBackupResult {
+fn run_cfgutil_backup_impl(ecid: String) -> CfgutilBackupResult {
     let mut out = CfgutilBackupResult {
         ecid: ecid.clone(),
         ..Default::default()
@@ -834,48 +953,63 @@ fn run_cfgutil_backup_impl(ecid: String, dest_dir: String) -> CfgutilBackupResul
         return out;
     }
 
-    // Constrain dest_dir to ~/Documents/privacytracker-Backups/<...>.
-    // Canonicalise the parent (the leaf typically doesn't exist yet) and
-    // confirm the result still sits under the allowed base, so symlink
-    // games or "../" components can't escape.
-    let resolved_dest = match resolve_backup_dest(&dest_dir) {
-        Ok(p) => p,
+    let backup_root = match mobile_sync_backup_root() {
+        Ok(path) => path,
         Err(e) => {
-            out.error = Some(format!("Refusing to back up — bad dest_dir: {e}"));
+            out.error = Some(format!("Could not locate Apple's backup folder: {e}"));
+            return out;
+        }
+    };
+    let before = match scan_verified_backups(&backup_root) {
+        Ok(backups) => backups,
+        Err(error) => {
+            out.error = Some(format!(
+                "Could not inspect existing device backups before starting: {error}"
+            ));
             return out;
         }
     };
 
     let check = cached_detect_cfgutil();
     if !check.available {
-        out.error = Some(check.error.unwrap_or_else(|| "cfgutil not available".to_string()));
+        out.error = Some(
+            check
+                .error
+                .unwrap_or_else(|| "cfgutil not available".to_string()),
+        );
         return out;
     }
     let cfgutil_path = check.path.unwrap_or_else(|| "cfgutil".to_string());
 
-    let dest_dir = resolved_dest.to_string_lossy().into_owned();
-
-    // Make sure dest_dir exists — cfgutil's behaviour is undefined if
-    // the parent doesn't exist. Best-effort create; permission errors
-    // surface through cfgutil itself rather than confusing the caller
-    // with two layers of "couldn't make dir".
-    let _ = std::fs::create_dir_all(&dest_dir);
+    let identity_output = match run_with_timeout(
+        Command::new(&cfgutil_path).args(["--ecid", &ecid, "--format", "JSON", "get", "UDID"]),
+        Duration::from_secs(8),
+    ) {
+        Ok(output) if output.status.success() => output,
+        _ => {
+            out.error =
+                Some("Could not verify the selected device identity before backup.".to_string());
+            return out;
+        }
+    };
+    let Some(expected_udid) =
+        parse_backup_udid(&String::from_utf8_lossy(&identity_output.stdout), &ecid)
+    else {
+        out.error = Some(
+            "Apple Configurator did not return a valid identity for the selected device."
+                .to_string(),
+        );
+        return out;
+    };
 
     // 5-minute ceiling. Real-world iCloud-light backups land in 30-90s;
     // a media-heavy phone can stretch to 4-5 minutes on USB-2 hardware.
     // Anything past 5 minutes is almost certainly a stuck pairing prompt
     // (the device is asking for a passcode the user hasn't typed) — we
     // surface that as a timeout rather than letting the wizard hang.
+    let started_at = SystemTime::now();
     let result = run_with_timeout(
-        Command::new(&cfgutil_path).args([
-            "--ecid",
-            &ecid,
-            "--format",
-            "JSON",
-            "backup",
-            "--backup-output",
-            &dest_dir,
-        ]),
+        Command::new(&cfgutil_path).args(["--ecid", &ecid, "--format", "JSON", "backup"]),
         Duration::from_secs(300),
     );
 
@@ -889,7 +1023,11 @@ fn run_cfgutil_backup_impl(ecid: String, dest_dir: String) -> CfgutilBackupResul
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    out.log = if !stdout.is_empty() { stdout.clone() } else { stderr.clone() };
+    out.log = if !stdout.is_empty() {
+        stdout.clone()
+    } else {
+        stderr.clone()
+    };
 
     if !output.status.success() {
         out.error = Some(format!(
@@ -900,23 +1038,27 @@ fn run_cfgutil_backup_impl(ecid: String, dest_dir: String) -> CfgutilBackupResul
         return out;
     }
 
-    // Try to extract the backup path from cfgutil's JSON output. The
-    // shape varies between cfgutil versions; we look in a few places
-    // before falling back to "the dest_dir we asked for".
-    let backup_path = serde_json::from_str::<Value>(&stdout)
-        .ok()
-        .and_then(|v| {
-            v.pointer("/Output")
-                .and_then(|out| out.as_object())
-                .and_then(|map| map.values().next().cloned())
-                .and_then(|device_value| {
-                    first_non_empty_string(&device_value, &["backupPath", "path", "destination"])
-                })
-        })
-        .unwrap_or(dest_dir);
+    let after = match scan_verified_backups(&backup_root) {
+        Ok(backups) => backups,
+        Err(error) => {
+            out.error = Some(format!(
+                "Apple Configurator finished, but privacytracker could not inspect the backup files: {error}. Nothing has been removed."
+            ));
+            return out;
+        }
+    };
+    let Some(backup_path) =
+        find_changed_verified_backup(&before, &after, started_at, &expected_udid)
+    else {
+        out.error = Some(format!(
+            "Apple Configurator finished, but privacytracker could not verify a new or updated Manifest.db in {}. Nothing has been removed. Keep the device connected and unlocked, then try again.",
+            backup_root.display()
+        ));
+        return out;
+    };
 
     out.ok = true;
-    out.backup_path = Some(backup_path);
+    out.backup_path = Some(backup_path.to_string_lossy().into_owned());
     out.finished_at = Some(
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -927,7 +1069,7 @@ fn run_cfgutil_backup_impl(ecid: String, dest_dir: String) -> CfgutilBackupResul
 }
 
 #[cfg(not(target_os = "macos"))]
-fn run_cfgutil_backup_impl(ecid: String, _dest_dir: String) -> CfgutilBackupResult {
+fn run_cfgutil_backup_impl(ecid: String) -> CfgutilBackupResult {
     CfgutilBackupResult {
         ok: false,
         ecid,
@@ -1019,7 +1161,11 @@ fn run_cfgutil_remove_app_impl(ecid: String, bundle_id: String) -> CfgutilRemove
 
     let check = cached_detect_cfgutil();
     if !check.available {
-        out.error = Some(check.error.unwrap_or_else(|| "cfgutil not available".to_string()));
+        out.error = Some(
+            check
+                .error
+                .unwrap_or_else(|| "cfgutil not available".to_string()),
+        );
         return out;
     }
     let cfgutil_path = check.path.unwrap_or_else(|| "cfgutil".to_string());
@@ -1046,7 +1192,11 @@ fn run_cfgutil_remove_app_impl(ecid: String, bundle_id: String) -> CfgutilRemove
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    out.log = if !stdout.is_empty() { stdout.clone() } else { stderr.clone() };
+    out.log = if !stdout.is_empty() {
+        stdout.clone()
+    } else {
+        stderr.clone()
+    };
 
     if !output.status.success() {
         out.error = Some(format!(
@@ -1091,12 +1241,10 @@ fn parse_device_info(stdout: &str, ecids: &[String]) -> Vec<ConnectedDevice> {
             let entry = output.and_then(|o| o.get(ecid));
             let name = entry.and_then(|e| first_non_empty_string(e, &["name"]));
             let model = entry.and_then(|e| first_non_empty_string(e, &["model"]));
-            let ios_version = entry.and_then(|e| {
-                first_non_empty_string(e, &["OSVersion", "osVersion"])
-            });
-            let device_class = entry.and_then(|e| {
-                first_non_empty_string(e, &["deviceClass", "deviceType"])
-            });
+            let ios_version =
+                entry.and_then(|e| first_non_empty_string(e, &["OSVersion", "osVersion"]));
+            let device_class =
+                entry.and_then(|e| first_non_empty_string(e, &["deviceClass", "deviceType"]));
             ConnectedDevice {
                 ecid: ecid.clone(),
                 name,
@@ -1209,10 +1357,19 @@ fn extract_app_row(entry: &Value) -> CfgutilApp {
     )
     .unwrap_or_default();
     let developer = first_non_empty_string(entry, &["vendor", "developer", "seller", "artistName"]);
-    let bundle_id = first_non_empty_string(entry, &["bundleIdentifier", "bundleId", "CFBundleIdentifier"]);
+    let bundle_id = first_non_empty_string(
+        entry,
+        &["bundleIdentifier", "bundleId", "CFBundleIdentifier"],
+    );
     let version = first_non_empty_string(
         entry,
-        &["bundleShortVersion", "shortVersion", "version", "bundleVersion", "CFBundleShortVersionString"],
+        &[
+            "bundleShortVersion",
+            "shortVersion",
+            "version",
+            "bundleVersion",
+            "CFBundleShortVersionString",
+        ],
     );
 
     CfgutilApp {
@@ -1242,48 +1399,131 @@ fn first_non_empty_string(entry: &Value, keys: &[&str]) -> Option<String> {
 /// Tauri worker indefinitely.
 #[cfg(target_os = "macos")]
 fn run_with_timeout(cmd: &mut Command, timeout: Duration) -> std::io::Result<std::process::Output> {
+    use std::io::{Error, ErrorKind, Read};
+    use std::os::unix::process::CommandExt;
+    use std::process::Stdio;
     use std::sync::mpsc;
     use std::thread;
 
-    // Re-root the binary path through `PathBuf` so error messages are
-    // easier to follow when the caller passed a relative name.
-    let program = PathBuf::from(cmd.get_program());
-    let (tx, rx) = mpsc::channel();
-
-    // Note: `Command` isn't Send, so we have to own it on the spawned
-    // thread. Easiest is to re-build it here with the same args. We only
-    // do this path for cfgutil; the extra work is trivial compared to the
-    // subprocess cost.
-    let args: Vec<String> = cmd.get_args().map(|a| a.to_string_lossy().to_string()).collect();
-
-    // Hand the spawned thread its own owned copy of the program path so
-    // the outer scope still has `program` available to format the
-    // timeout error message below. Cloning a `PathBuf` is cheap and the
-    // alternative — wrapping in `Arc<Path>` or borrowing through a
-    // scoped thread — would be more ceremony than this short-lived
-    // helper warrants.
-    let program_for_thread = program.clone();
-    thread::spawn(move || {
-        let result = Command::new(&program_for_thread).args(&args).output();
-        let _ = tx.send(result);
-    });
-
-    match rx.recv_timeout(timeout) {
-        Ok(result) => result,
-        Err(_) => Err(std::io::Error::new(
-            std::io::ErrorKind::TimedOut,
-            format!(
-                "{} did not finish within {}s",
-                program.display(),
-                timeout.as_secs()
-            ),
-        )),
+    const MAX_OUTPUT_BYTES: usize = 8 * 1024 * 1024;
+    fn read_output(mut pipe: impl Read) -> std::io::Result<Vec<u8>> {
+        let mut output = Vec::new();
+        let mut buffer = [0_u8; 8192];
+        loop {
+            let count = pipe.read(&mut buffer)?;
+            if count == 0 {
+                return Ok(output);
+            }
+            if output.len() + count > MAX_OUTPUT_BYTES {
+                return Err(Error::new(
+                    ErrorKind::InvalidData,
+                    "cfgutil output exceeded 8 MiB",
+                ));
+            }
+            output.extend_from_slice(&buffer[..count]);
+        }
     }
+
+    // Give this invocation its own process group. Killing only cfgutil can
+    // leave a helper running after the UI has reported a failed operation.
+    cmd.process_group(0)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = cmd.spawn()?;
+    let group_id = child.id() as i32;
+    let stdout = child.stdout.take().expect("stdout was piped");
+    let stderr = child.stderr.take().expect("stderr was piped");
+    let (tx, rx) = mpsc::channel();
+    let stderr_tx = tx.clone();
+    thread::spawn(move || {
+        let _ = tx.send((true, read_output(stdout)));
+    });
+    thread::spawn(move || {
+        let _ = stderr_tx.send((false, read_output(stderr)));
+    });
+    let started = Instant::now();
+    let mut captured_stdout = None;
+    let mut captured_stderr = None;
+
+    let result = loop {
+        let status = match child.try_wait() {
+            Ok(status) => status,
+            Err(error) => break Err(error),
+        };
+        if let Some(status) = status {
+            if captured_stdout.is_some() && captured_stderr.is_some() {
+                break Ok(std::process::Output {
+                    status,
+                    stdout: captured_stdout.take().unwrap(),
+                    stderr: captured_stderr.take().unwrap(),
+                });
+            }
+        }
+        let remaining = timeout.saturating_sub(started.elapsed());
+        if remaining.is_zero() {
+            break Err(Error::new(
+                ErrorKind::TimedOut,
+                "cfgutil operation timed out; its process group was stopped",
+            ));
+        }
+        match rx.recv_timeout(remaining.min(Duration::from_millis(20))) {
+            Ok((is_stdout, Ok(bytes))) => {
+                if is_stdout {
+                    captured_stdout = Some(bytes);
+                } else {
+                    captured_stderr = Some(bytes);
+                }
+            }
+            Ok((_, Err(error))) => break Err(error),
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                // Both readers can finish just before the process exits.
+                thread::sleep(remaining.min(Duration::from_millis(10)));
+            }
+        }
+    };
+    if result.is_err() {
+        // SAFETY: this is the process group created for our own child, never
+        // the caller's group. Reap the direct child before returning failure.
+        unsafe {
+            libc::kill(-group_id, libc::SIGKILL);
+        }
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+    result
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "macos")]
+    struct TestBackupRoot(PathBuf);
+
+    #[cfg(target_os = "macos")]
+    impl TestBackupRoot {
+        fn new() -> Self {
+            let nonce = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("test clock must be after epoch")
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!(
+                "privacytracker-cfgutil-test-{}-{nonce}",
+                std::process::id()
+            ));
+            std::fs::create_dir_all(&path).expect("create test backup root");
+            Self(path)
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    impl Drop for TestBackupRoot {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
 
     #[cfg(target_os = "macos")]
     #[test]
@@ -1348,6 +1588,146 @@ mod tests {
         assert!(rows[1].name.is_none());
     }
 
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn backup_scan_requires_a_non_empty_regular_manifest() {
+        let root = TestBackupRoot::new();
+        let complete = root.0.join("complete-udid");
+        let empty = root.0.join("empty-udid");
+        let missing = root.0.join("missing-udid");
+        std::fs::create_dir_all(&complete).unwrap();
+        std::fs::create_dir_all(&empty).unwrap();
+        std::fs::create_dir_all(&missing).unwrap();
+        std::fs::write(complete.join("Manifest.db"), b"sqlite fixture").unwrap();
+        std::fs::write(empty.join("Manifest.db"), b"").unwrap();
+
+        let scanned = scan_verified_backups(&root.0).unwrap();
+        assert_eq!(scanned.len(), 1);
+        assert!(scanned.contains_key(&complete.canonicalize().unwrap()));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn changed_backup_discovery_rejects_unchanged_and_old_candidates() {
+        let started_at = SystemTime::now();
+        let recent_path = PathBuf::from("/tmp/recent-backup");
+        let old_path = PathBuf::from("/tmp/old-backup");
+        let recent_before = BackupSignature {
+            directory_modified: Some(started_at),
+            manifest_bytes: 10,
+            manifest_modified: Some(started_at),
+        };
+        let recent_after = BackupSignature {
+            directory_modified: Some(started_at),
+            manifest_bytes: 20,
+            manifest_modified: Some(started_at),
+        };
+        let old_time = started_at
+            .checked_sub(Duration::from_secs(60))
+            .expect("test clock supports subtraction");
+        let old_after = BackupSignature {
+            directory_modified: Some(old_time),
+            manifest_bytes: 20,
+            manifest_modified: Some(old_time),
+        };
+
+        let before = HashMap::from([(recent_path.clone(), recent_before.clone())]);
+        let after = HashMap::from([(recent_path.clone(), recent_after), (old_path, old_after)]);
+        assert_eq!(
+            find_changed_verified_backup(&before, &after, started_at, "recent-backup"),
+            Some(recent_path.clone())
+        );
+        assert_eq!(
+            find_changed_verified_backup(
+                &HashMap::from([(recent_path.clone(), recent_before.clone())]),
+                &HashMap::from([(recent_path, recent_before)]),
+                started_at,
+                "recent-backup"
+            ),
+            None
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn backup_identity_requires_the_selected_ecid_and_a_safe_udid() {
+        let json = r#"{"Output":{"0xABCDEF123456":{"UDID":"00008110-001234567890ABCD"}}}"#;
+        assert_eq!(
+            parse_backup_udid(json, "abcdef123456").as_deref(),
+            Some("00008110-001234567890ABCD")
+        );
+        assert!(parse_backup_udid(json, "111122223333").is_none());
+        assert!(parse_backup_udid(
+            r#"{"Output":{"0xABCDEF123456":{"UDID":"../../another-device"}}}"#,
+            "ABCDEF123456"
+        )
+        .is_none());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn backup_discovery_rejects_other_devices_and_future_files() {
+        let now = SystemTime::now();
+        let path = PathBuf::from("/tmp/selected-device");
+        let signature = BackupSignature {
+            directory_modified: Some(now),
+            manifest_bytes: 20,
+            manifest_modified: Some(now),
+        };
+        let after = HashMap::from([(path.clone(), signature.clone())]);
+        assert!(
+            find_changed_verified_backup(&HashMap::new(), &after, now, "other-device").is_none()
+        );
+        let future = BackupSignature {
+            manifest_modified: Some(now + Duration::from_secs(3600)),
+            ..signature
+        };
+        let after = HashMap::from([(path, future)]);
+        assert!(
+            find_changed_verified_backup(&HashMap::new(), &after, now, "selected-device").is_none()
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn command_timeout_stops_descendants_before_they_can_write() {
+        let root = TestBackupRoot::new();
+        let marker = root.0.join("late-output");
+        let result = run_with_timeout(
+            Command::new("/bin/sh")
+                .args(["-c", "(sleep 0.3; printf late > \"$1\") & wait", "test"])
+                .arg(&marker),
+            Duration::from_millis(40),
+        );
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::TimedOut);
+        std::thread::sleep(Duration::from_millis(400));
+        assert!(!marker.exists(), "a timed-out command's child still ran");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn command_capture_preserves_exit_status_and_both_streams() {
+        let output = run_with_timeout(
+            Command::new("/bin/sh").args(["-c", "printf output; printf error >&2; exit 7"]),
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(output.status.code(), Some(7));
+        assert_eq!(output.stdout, b"output");
+        assert_eq!(output.stderr, b"error");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn command_capture_rejects_unbounded_output() {
+        let error = run_with_timeout(
+            Command::new("/bin/sh").args(["-c", "yes x"]),
+            Duration::from_secs(3),
+        )
+        .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidData);
+    }
+
     #[cfg(not(target_os = "macos"))]
     #[test]
     fn non_macos_cfgutil_commands_return_structured_unavailable_results() {
@@ -1355,7 +1735,9 @@ mod tests {
 
         assert!(!check.available);
         assert!(check.error.unwrap().contains("macOS-only"));
-        assert!(run_cfgutil_export_impl(None).unwrap_err().contains("macOS-only"));
+        assert!(run_cfgutil_export_impl(None)
+            .unwrap_err()
+            .contains("macOS-only"));
         assert!(list_connected_devices_impl().cfgutil_unavailable);
     }
 }

@@ -19,8 +19,15 @@ import {
 import Favicon from "./Favicon";
 
 interface Props {
-  initialApps: ManualApp[];
-  sources: ManualAppSourceMeta[];
+  /**
+   * Seed rows + source metadata. The app passes neither — Rust-core
+   * Phase 0 made the page a shell, so both load on mount from
+   * `GET /api/manual-apps`, which returns exactly this `{ apps, sources }`
+   * pair. Storybook still seeds fixtures through these props; there the
+   * mount fetch simply fails and the seeded state stands.
+   */
+  initialApps?: ManualApp[];
+  sources?: ManualAppSourceMeta[];
 }
 
 // Shape matches ManualAppInput but all fields are strings (including source)
@@ -81,7 +88,10 @@ function formatDate(ms: number): string {
   }
 }
 
-export default function ManualAppsView({ initialApps, sources }: Props) {
+export default function ManualAppsView({
+  initialApps = [],
+  sources: initialSources = [],
+}: Props) {
   // i18n — page chrome, form titles, field labels + hints, empty state,
   // per-row chrome, and the delete-confirm modal.
   const tManual = useTranslations("manual_apps");
@@ -91,6 +101,7 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
   const tSource = useTranslations("manual_app_source");
   const searchParams = useSearchParams();
   const [apps, setApps] = useState<ManualApp[]>(initialApps);
+  const [sources, setSources] = useState<ManualAppSourceMeta[]>(initialSources);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>(() =>
@@ -137,6 +148,34 @@ export default function ManualAppsView({ initialApps, sources }: Props) {
   }, [sources]);
 
   const currentSourceMeta = sourceMeta.get(form.source);
+
+  // Rust-core Phase 0: the page above is a shell, so the list and the
+  // source-type metadata load here. `GET /api/manual-apps` returns the
+  // same `{ apps, sources }` pair the server page used to assemble.
+  // A failure leaves the seeded/empty state alone — same tolerance the
+  // server page had when `listManualApps()` threw.
+  useEffect(() => {
+    let live = true;
+    fetch("/api/manual-apps")
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      )
+      .then((json: { apps?: ManualApp[]; sources?: ManualAppSourceMeta[] }) => {
+        if (!live) {
+          return;
+        }
+        setApps(json.apps ?? []);
+        if (json.sources?.length) {
+          setSources(json.sources);
+        }
+      })
+      .catch((error) => {
+        console.warn("[manual-apps] initial load failed:", error);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const openCreate = useCallback(() => {
     setEditingId(null);

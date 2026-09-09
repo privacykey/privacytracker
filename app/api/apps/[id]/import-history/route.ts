@@ -1,3 +1,7 @@
+import {
+  readOptionalBoundedJson,
+  requestBodyErrorResponse,
+} from "@/lib/request-body";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
@@ -14,14 +18,19 @@ import {
   recordAudit,
   requestActorIp,
 } from "../../../../../lib/security";
+import { isWaybackUnavailableError } from "../../../../../lib/wayback";
 
 /**
  * Per-app historical import from the Wayback Machine.
  *
  *   POST   /api/apps/[id]/import-history
  *          Runs a quarterly backfill for a single app. Returns the
- *          per-target outcome list so the Settings UI can show exactly
- *          which quarters landed and which were skipped.
+ *          per-target outcome list so the UI can show exactly which
+ *          quarters landed and which were skipped.
+ *          Body (all optional): `{ intervalMonths: 1..6, force: true }`.
+ *          `force` re-probes every target instead of skipping the ones a
+ *          nearby row already covers — the "check again for captures we
+ *          couldn't use last time" path behind the App Detail button.
  *
  *   DELETE /api/apps/[id]/import-history
  *          Removes every wayback-sourced snapshot for the app. Used by
@@ -74,11 +83,21 @@ export async function POST(
 
   // Optional denser cadence. Body `{ intervalMonths: 1..6 }` overrides the
   // default quarterly reconstruction (1 = monthly). Anything missing or out
-  // of range falls back to the default — the button has no body at all.
+  // of range falls back to the default — a bodyless POST is still valid.
   let intervalMonths: number | undefined;
-  const body = (await request.json().catch(() => null)) as {
-    intervalMonths?: unknown;
-  } | null;
+  let body: { intervalMonths?: unknown; force?: unknown } | null;
+  try {
+    body = await readOptionalBoundedJson<{
+      intervalMonths?: unknown;
+      force?: unknown;
+    } | null>(request, 4 * 1024, null);
+  } catch (error) {
+    const limited = requestBodyErrorResponse(error);
+    if (limited) {
+      return limited;
+    }
+    body = null;
+  }
   const rawInterval = body?.intervalMonths;
   if (
     typeof rawInterval === "number" &&
@@ -88,6 +107,7 @@ export async function POST(
   ) {
     intervalMonths = Math.floor(rawInterval);
   }
+  const force = body?.force === true;
 
   const actorIp = requestActorIp(request);
   const userAgent = request.headers.get("user-agent");
@@ -98,17 +118,58 @@ export async function POST(
     actorIp,
     userAgent,
     success: true,
-    detail: `app=${id}`,
+    detail: `app=${id} force=${force ? 1 : 0}`,
   });
 
   let result: ImportAppHistoryResult;
   try {
-    result = await importAppHistory(
-      app,
-      intervalMonths ? { intervalMonths } : {}
-    );
+    result = await importAppHistory(app, {
+      ...(intervalMonths ? { intervalMonths } : {}),
+      ...(force ? { force: true } : {}),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Import failed";
+    // archive.org throttling is not our server failing, and it is the most
+    // likely thing a person clicking this button will hit. Answer 503 with
+    // a machine-readable code so the UI can say "wait and retry" rather
+    // than showing a raw error, and don't file it as an app-level failure.
+    if (isWaybackUnavailableError(error)) {
+      recordAudit({
+        action: "wayback.import.app.rate_limited",
+        actorIp,
+        userAgent,
+        success: false,
+        detail: `app=${id} ${message.slice(0, 200)}`,
+      });
+      recordActivity({
+        type: "wayback_import",
+        status: "partial",
+        appId: id,
+        appName: app.name,
+        summary:
+          `Wayback import for ${app.name} stopped — archive.org is rate-limiting requests`.slice(
+            0,
+            200
+          ),
+        detail: {
+          mode: "app",
+          force,
+          archiveUnavailable: true,
+          errorMessage: message,
+        },
+        startedAt,
+      });
+      const retryAfterMs = error.retryAfterMs;
+      return NextResponse.json(
+        { error: message, code: "archive_unavailable", retryAfterMs },
+        {
+          status: 503,
+          headers: retryAfterMs
+            ? { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) }
+            : undefined,
+        }
+      );
+    }
     recordAudit({
       action: "wayback.import.app.failed",
       actorIp,
@@ -134,8 +195,8 @@ export async function POST(
     status,
     appId: id,
     appName: app.name,
-    summary: buildSummaryLine(app.name, result),
-    detail: { mode: "app", result },
+    summary: buildSummaryLine(app.name, result, force),
+    detail: { mode: "app", result, force },
     startedAt,
   });
 
@@ -145,8 +206,9 @@ export async function POST(
     userAgent,
     success: true,
     detail:
-      `app=${id} imported=${result.imported} unchanged=${result.unchanged} ` +
-      `skipped=${result.skipped} failed=${result.failed}`,
+      `app=${id} force=${force ? 1 : 0} imported=${result.imported} ` +
+      `unchanged=${result.unchanged} skipped=${result.skipped} ` +
+      `failed=${result.failed}`,
   });
 
   return NextResponse.json({ result });
@@ -211,7 +273,8 @@ function pickActivityStatus(result: ImportAppHistoryResult) {
 
 function buildSummaryLine(
   appName: string,
-  result: ImportAppHistoryResult
+  result: ImportAppHistoryResult,
+  force = false
 ): string {
   const parts: string[] = [];
   if (result.imported) {
@@ -232,5 +295,6 @@ function buildSummaryLine(
     );
   }
   const tail = parts.length ? parts.join(", ") : "nothing to do";
-  return `Wayback import for ${appName}: ${tail}`.slice(0, 200);
+  const label = force ? "Forced Wayback import" : "Wayback import";
+  return `${label} for ${appName}: ${tail}`.slice(0, 200);
 }

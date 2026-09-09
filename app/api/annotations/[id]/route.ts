@@ -18,6 +18,7 @@ import {
   softDeleteAnnotation,
   updateAnnotation,
 } from "@/lib/annotations";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   let body: PatchBody;
   try {
     body = await readBoundedJson<PatchBody>(request, 8 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 

@@ -272,7 +272,7 @@ test("search and backup preview reject unsafe request bodies before work starts"
       body: "{}",
     })
   );
-  assert.equal(searchRes.status, 400);
+  assert.equal(searchRes.status, 413);
 
   const previewRes = await preview.POST(
     new Request("http://127.0.0.1/api/backup/preview", {

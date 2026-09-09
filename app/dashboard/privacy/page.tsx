@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { resolveFlagFromDb } from "@/lib/feature-flags-server";
-import { setSettingIfUnset } from "@/lib/scheduler";
-import { getAllApps, getGroupedPrivacyView } from "../../../lib/scraper";
 import Nav from "../../components/Nav";
 import PrivacyGroupedView from "../../components/PrivacyGroupedView";
-
-export const dynamic = "force-dynamic";
+import RecordTaskVisit from "../../components/RecordTaskVisit";
+import RequireAppsGate from "../../components/RequireAppsGate";
+import RequireFlagGate from "../../components/RequireFlagGate";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("page_metadata");
@@ -16,38 +13,28 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/**
+ * Privacy Map.
+ *
+ * Rust-core Phase 0: the page flag gate, the grouped-view query, the
+ * empty-install bounce and the first-visit checklist marker were all
+ * server-side. They map to RequireFlagGate, PrivacyGroupedView's own
+ * fetch of `/api/apps?view=grouped` (the endpoint that already served
+ * `getGroupedPrivacyView()`), RequireAppsGate, and RecordTaskVisit —
+ * which posts the same `task_visit.privacy_map_at` marker
+ * `lib/tasks-server.ts` reads, with the same first-write-wins
+ * semantics.
+ */
 export default function PrivacyPage() {
-  if (resolveFlagFromDb("flag.page.privacy_map") !== "on") {
-    notFound();
-  }
-
-  let apps: any[] = [];
-  let grouped: any[] = [];
-  try {
-    apps = getAllApps() as any[];
-    grouped = getGroupedPrivacyView() as any[];
-  } catch (error) {
-    // DB not ready
-    console.warn("[privacy] getAllApps/getGroupedPrivacyView failed:", error);
-  }
-
-  if (apps.length === 0) {
-    redirect("/onboard");
-  }
-
-  // First-visit marker for the user-tasks `view_privacy_map` completion
-  // check. Idempotent: once set, every subsequent render is a single
-  // SELECT no-op. Swallows DB errors — the page must render.
-  try {
-    setSettingIfUnset("task_visit.privacy_map_at", String(Date.now()));
-  } catch (e) {
-    console.warn("[privacy] task visit marker failed:", e);
-  }
-
   return (
     <>
       <Nav />
-      <PrivacyGroupedView initialData={grouped} />
+      <RequireFlagGate flag="flag.page.privacy_map">
+        <RequireAppsGate>
+          <RecordTaskVisit surface="privacy_map" />
+          <PrivacyGroupedView />
+        </RequireAppsGate>
+      </RequireFlagGate>
     </>
   );
 }

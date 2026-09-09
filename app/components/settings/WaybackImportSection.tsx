@@ -19,6 +19,7 @@ import type { useSettingsAutoSave } from "@/lib/use-settings-auto-save";
 import { fmtRelativeTime } from "./format";
 import type {
   WaybackLastRun,
+  WaybackPauseCause,
   WaybackProgress,
   WaybackRunStatus,
 } from "./types";
@@ -29,6 +30,7 @@ export default function WaybackImportSection({
   waybackSummary,
   waybackRunStatus,
   waybackInitiator,
+  waybackPauseCause,
   waybackLastRun,
   waybackControlBusy,
   controlWaybackImport,
@@ -45,6 +47,9 @@ export default function WaybackImportSection({
   waybackRunStatus: WaybackRunStatus;
   /** 'resume' means the server restarted an interrupted run by itself. */
   waybackInitiator: "manual" | "resume" | null;
+  /** 'rate_limited' means the runner parked the queue itself because
+   *  archive.org was throttling; the card says so and suggests waiting. */
+  waybackPauseCause: WaybackPauseCause;
   waybackLastRun: WaybackLastRun | null;
   waybackControlBusy: null | "pause" | "resume" | "cancel" | "force";
   controlWaybackImport: (action: "pause" | "resume" | "cancel") => void;
@@ -302,9 +307,13 @@ export default function WaybackImportSection({
                   }}
                 >
                   <strong style={{ marginRight: 4 }}>
-                    {tWayback("paused_label")}
+                    {waybackPauseCause === "rate_limited"
+                      ? tWayback("paused_rate_limited_label")
+                      : tWayback("paused_label")}
                   </strong>
-                  {tWayback("paused_body")}
+                  {waybackPauseCause === "rate_limited"
+                    ? tWayback("paused_rate_limited_body")
+                    : tWayback("paused_body")}
                 </div>
               ) : null}
               <div

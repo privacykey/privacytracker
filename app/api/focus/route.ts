@@ -13,6 +13,7 @@ import type { Audience } from "@/lib/feature-flag-rules";
 import {
   getActiveFocus,
   getActiveFocusWorkflow,
+  getFocusUpdatedAt,
   setActiveFocus,
 } from "@/lib/feature-flag-storage";
 import {
@@ -20,6 +21,7 @@ import {
   inferFocusWorkflow,
   isFocusWorkflow,
 } from "@/lib/focus-workflow";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { getSetting, setSetting } from "@/lib/scheduler";
 import { readBoundedJson } from "@/lib/security";
 
@@ -29,20 +31,42 @@ export const dynamic = "force-dynamic";
  * GET — return the current focus + AI-configured derivation. Used by the
  * developer menu to seed its audience/goals toggles without forcing
  * every consumer to parse the full feature-flag list.
+ *
+ * `audienceSet` is the raw has-the-user-ever-chosen signal: the resolved
+ * focus always carries an audience (the resolver defaults it), so the
+ * root landing page's "send first-time visitors to /welcome" decision
+ * needs the unresolved setting. Added when that page became a client
+ * shell (Rust-core Phase 0).
  */
 export async function GET() {
   const focus = getActiveFocus();
   const workflow = getActiveFocusWorkflow(focus);
   return NextResponse.json({
     audience: focus.audience,
+    audienceSet: getSetting("flag.focus.audience", "") !== "",
     monitor: focus.goals.has("monitor"),
     cleanup: focus.goals.has("cleanup"),
     minimal: focus.goals.has("minimal"),
     accessibility: focus.goals.has("accessibility"),
     aiConfigured: focus.aiConfigured,
     workflow,
-    childAgeBand: getSetting("guardian_child_age_band", "") || null,
+    childAgeBand: readValidChildAgeBand(),
+    // Additive: "Focus updated {date}" footnote data for YourFocusCard
+    // (null = never set, footnote suppressed).
+    updatedAt: getFocusUpdatedAt(),
   });
+}
+
+/**
+ * Stored guardian age band, validated. The GET used to return the raw
+ * setting while `getChildAgeBand()` (lib/age-rating-server.ts) applied
+ * `isValidAgeBand` — so a stale or hand-edited value reached clients
+ * that the server helper would have dropped, and three Phase 0 loaders
+ * each had to re-validate it. Validate once, here.
+ */
+function readValidChildAgeBand(): string | null {
+  const stored = getSetting("guardian_child_age_band", "");
+  return isValidAgeBand(stored) ? stored : null;
 }
 
 interface FocusBody {
@@ -62,7 +86,12 @@ export async function POST(request: NextRequest) {
   let body: Partial<FocusBody>;
   try {
     body = await readBoundedJson<Partial<FocusBody>>(request, 4 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 

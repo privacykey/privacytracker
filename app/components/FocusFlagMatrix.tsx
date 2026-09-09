@@ -254,7 +254,13 @@ const SURFACE_LABELS: Record<string, string> = {
 // ── Component ────────────────────────────────────────────────────────
 
 export interface FocusFlagMatrixProps {
-  rows: Array<{ key: FlagKey; surface: string; hardDefault: FlagValue }>;
+  /**
+   * Seed rows. Optional — the page above is a shell (Rust-core Phase 0),
+   * so when omitted they're derived here from HARD_DEFAULTS, which this
+   * component already imports. `feature-flag-rules` is the client-safe
+   * pure-data half of lib/: no DB, no server-only module.
+   */
+  rows?: Array<{ key: FlagKey; surface: string; hardDefault: FlagValue }>;
 }
 
 // Modal-staged destructive actions. Mirrors the `.modal-overlay` /
@@ -266,7 +272,32 @@ type PendingConfirm =
   | { kind: "seed" }
   | { kind: "apply"; combo: ComboDef; cellCount: number };
 
-export default function FocusFlagMatrix({ rows }: FocusFlagMatrixProps) {
+function surfaceOf(key: FlagKey): string {
+  const parts = key.split(".");
+  return parts.length >= 2 ? parts[1] : "misc";
+}
+
+/** Deterministic seed order, independent of /api/feature-flags' live
+ *  override state — same ordering the server page produced. */
+const DEFAULT_ROWS: Array<{
+  hardDefault: FlagValue;
+  key: FlagKey;
+  surface: string;
+}> = (Object.keys(HARD_DEFAULTS) as FlagKey[])
+  .map((key) => ({
+    key,
+    surface: surfaceOf(key),
+    hardDefault: HARD_DEFAULTS[key],
+  }))
+  .sort((a, b) =>
+    a.surface === b.surface
+      ? a.key.localeCompare(b.key)
+      : a.surface.localeCompare(b.surface)
+  );
+
+export default function FocusFlagMatrix({
+  rows = DEFAULT_ROWS,
+}: FocusFlagMatrixProps) {
   const tMatrix = useTranslations("dev_options.focus_matrix");
   // Hydrate-once snapshot of the local spec. We deliberately don't
   // sync across tabs — this is a single-author drafting tool.
@@ -813,6 +844,12 @@ function FocusMatrixSurface({
   onSetCell,
 }: {
   surface: string;
+  /**
+   * Seed rows. Optional — the page above is a shell (Rust-core Phase 0),
+   * so when omitted they're derived here from HARD_DEFAULTS, which this
+   * component already imports. `feature-flag-rules` is the client-safe
+   * pure-data half of lib/: no DB, no server-only module.
+   */
   rows: Array<{ key: FlagKey; surface: string; hardDefault: FlagValue }>;
   spec: SpecBlob;
   onSetCell: (combo: ComboDef, key: FlagKey, value: FlagValue | null) => void;

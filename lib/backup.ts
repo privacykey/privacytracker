@@ -123,6 +123,8 @@ function computeEnvelopeMac(
  */
 export const TABLES_IN_INSERT_ORDER: readonly string[] = [
   "apps",
+  "devices",
+  "app_devices",
   "privacy_types",
   "privacy_purposes",
   "privacy_categories",
@@ -145,6 +147,9 @@ export const TABLES_IN_INSERT_ORDER: readonly string[] = [
   "feature_flag_overrides",
   "ai_debug_log",
   "audit_log",
+  "activity_log",
+  "change_review_actions",
+  "related_apps_observed",
 ];
 
 export interface BackupTable {
@@ -595,6 +600,19 @@ function sanitiseRowForRestore(
       privacyPolicyUrl:
         typeof row.privacyPolicyUrl === "string"
           ? sanitizePolicyUrl(row.privacyPolicyUrl) || null
+          : null,
+    };
+  }
+  if (table === "related_apps_observed") {
+    return {
+      ...row,
+      related_store_url:
+        typeof row.related_store_url === "string"
+          ? sanitizePolicyUrl(row.related_store_url) || ""
+          : "",
+      related_icon_url:
+        typeof row.related_icon_url === "string"
+          ? sanitizePolicyUrl(row.related_icon_url) || null
           : null,
     };
   }

@@ -18,13 +18,19 @@
  *      success — failures are as important to log as successes.
  *
  * The endpoint is GET-able too: `GET /api/device-actions/uninstall?ecid=…`
- * returns the gate result without committing anything. The wizard
- * calls this as a fail-closed pre-flight at the top of its bulk
- * uninstall loop, before the first removal fires.
+ * returns the gate result plus the durable `lastBackup` stamp without
+ * committing anything. The wizard uses the same response for honest backup
+ * UX and as a fail-closed pre-flight at the top of its bulk uninstall loop,
+ * before the first removal fires.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
-import { checkUninstallGate, recordUninstall } from "@/lib/device-actions";
+import {
+  checkUninstallGate,
+  getLastBackup,
+  recordUninstall,
+} from "@/lib/device-actions";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +46,10 @@ export async function GET(request: NextRequest) {
   // destructive action runs.
   const ackQuery = request.nextUrl.searchParams.get("acknowledgeNoBackup");
   const acknowledgeNoBackup = ackQuery === "1" || ackQuery === "true";
-  return NextResponse.json(checkUninstallGate(ecid, { acknowledgeNoBackup }));
+  return NextResponse.json({
+    ...checkUninstallGate(ecid, { acknowledgeNoBackup }),
+    lastBackup: getLastBackup(ecid),
+  });
 }
 
 interface Body {
@@ -64,7 +73,12 @@ export async function POST(request: NextRequest) {
   let body: Body;
   try {
     body = await readBoundedJson<Body>(request, 8 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 

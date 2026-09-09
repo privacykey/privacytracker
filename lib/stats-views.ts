@@ -424,7 +424,11 @@ export function getRadarData(appIds?: string[]): RadarData {
         FROM apps a
         LEFT JOIN privacy_policy_analyses p ON p.app_id = a.id
         WHERE p.summary_json IS NOT NULL
-        ORDER BY a.lastSynced DESC
+        /* Deterministic tie-break: bulk syncs stamp many apps with the
+           same lastSynced ms, and without it SQLite's scan order decides
+           WHICH six apps the radar shows — so the Stats page could
+           reshuffle between visits (caught by the parity harness). */
+        ORDER BY a.lastSynced DESC, a.id ASC
         LIMIT 6
       `)
         .all() as {

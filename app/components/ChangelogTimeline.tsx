@@ -440,6 +440,7 @@ export default function ChangelogTimeline({
   defaultShowImported = true,
   appId,
   flags,
+  hasMore = false,
 }: {
   rows: ChangelogRow[];
   /**
@@ -460,6 +461,12 @@ export default function ChangelogTimeline({
    * callers stay rendering as before.
    */
   flags?: Partial<ChangelogTimelineFlagState>;
+  /**
+   * Whether rows older than `rows` exist server-side. When true (and
+   * `appId` is set) a "Show older entries" control fetches the next page
+   * from `/api/apps/[id]/changelog?before=…`.
+   */
+  hasMore?: boolean;
 }) {
   // i18n — wayback badge / "Matches live sync" / preview/diff toggles /
   // wayback-toggle checkbox label all read from `timeline.*`. Per-row
@@ -527,11 +534,62 @@ export default function ChangelogTimeline({
     setShowImported(defaultShowImported);
   }, [defaultShowImported]);
 
+  // "Show older entries". The detail payload carries only the newest page,
+  // so a long run of no-change syncs can never push the reconstructed
+  // 2021 history out of reach — older pages are fetched on demand and
+  // appended. Reset whenever the parent hands over a fresh first page
+  // (post-sync refetch), which also drops any stale older rows.
+  const [olderRows, setOlderRows] = useState<ChangelogRow[]>([]);
+  const [olderHasMore, setOlderHasMore] = useState(hasMore);
+  const [olderLoading, setOlderLoading] = useState(false);
+  const [olderError, setOlderError] = useState<string | null>(null);
+  useEffect(() => {
+    setOlderRows([]);
+    setOlderHasMore(hasMore);
+    setOlderError(null);
+  }, [rows, hasMore]);
+  const allRows = useMemo(() => {
+    if (olderRows.length === 0) {
+      return rows;
+    }
+    const seen = new Set(rows.map((r) => r.id));
+    return [...rows, ...olderRows.filter((r) => !seen.has(r.id))];
+  }, [rows, olderRows]);
+  const loadOlder = async () => {
+    if (!appId || olderLoading || allRows.length === 0) {
+      return;
+    }
+    const oldest = allRows[allRows.length - 1].scraped_at;
+    setOlderLoading(true);
+    setOlderError(null);
+    try {
+      const res = await fetch(
+        `/api/apps/${encodeURIComponent(appId)}/changelog?before=${oldest}&limit=50`
+      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(data?.error ?? `Request failed (${res.status})`);
+      }
+      const data = (await res.json()) as {
+        rows: ChangelogRow[];
+        hasMore: boolean;
+      };
+      setOlderRows((prev) => [...prev, ...data.rows]);
+      setOlderHasMore(data.hasMore);
+    } catch (error) {
+      setOlderError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setOlderLoading(false);
+    }
+  };
+
   const waybackCount = useMemo(
     () =>
-      rows.filter((r) => r.kind === "snapshot" && r.source === "wayback")
+      allRows.filter((r) => r.kind === "snapshot" && r.source === "wayback")
         .length,
-    [rows]
+    [allRows]
   );
   const visibleRows = useMemo(() => {
     // Wave I — apply per-row flags before everything else. Each row is
@@ -541,7 +599,7 @@ export default function ChangelogTimeline({
     //   reviewRows       — review-action rows (mark reviewed / dismissed / snoozed)
     // The `showImported` toggle still gates wayback rows on top of the
     // flag — flipping the toggle off hides them regardless of the flag.
-    const filtered = rows.filter((r) => {
+    const filtered = allRows.filter((r) => {
       if (r.kind === "review") {
         return tf.reviewRows;
       }
@@ -558,7 +616,7 @@ export default function ChangelogTimeline({
       : filtered.filter(
           (r) => !(r.kind === "snapshot" && r.source === "wayback")
         );
-  }, [rows, showImported, tf.liveRows, tf.waybackRows, tf.reviewRows]);
+  }, [allRows, showImported, tf.liveRows, tf.waybackRows, tf.reviewRows]);
 
   const togglePreview = (key: string, versionId: string) => {
     setExpandedPreview((prev) => (prev === key ? null : key));
@@ -645,7 +703,7 @@ export default function ChangelogTimeline({
       });
   };
 
-  if (rows.length === 0) {
+  if (allRows.length === 0) {
     return (
       <div className="empty-state" style={{ padding: "40px 0" }}>
         <div className="empty-state-icon">📜</div>
@@ -752,7 +810,9 @@ export default function ChangelogTimeline({
             );
           }
 
-          const isFirst = i === lastSnapshotIndex;
+          // The oldest *loaded* row is only the first scan when nothing
+          // older is left to fetch.
+          const isFirst = i === lastSnapshotIndex && !olderHasMore;
           const snapshotPosition = i === firstSnapshotIndex ? 0 : 1;
           const previousLiveSnapshot = visibleRows
             .slice(i + 1)
@@ -786,6 +846,41 @@ export default function ChangelogTimeline({
           );
         })}
       </div>
+      {appId && (olderHasMore || olderError) ? (
+        <div
+          className="timeline-load-older"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 6,
+            padding: "12px 0 4px",
+          }}
+        >
+          {olderError ? (
+            <div
+              role="alert"
+              style={{ fontSize: 12, color: "var(--danger, #b91c1c)" }}
+            >
+              {tTimeline("show_older_failed", { message: olderError })}
+            </div>
+          ) : null}
+          <button
+            className="btn btn-secondary"
+            disabled={olderLoading}
+            onClick={() => void loadOlder()}
+            type="button"
+          >
+            {olderLoading ? (
+              <>
+                <span className="spinner" /> {tTimeline("show_older_busy")}
+              </>
+            ) : (
+              tTimeline("show_older")
+            )}
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -1030,6 +1125,42 @@ function TimelineSnapshotItem({
                         count: changes.length,
                       })}
             </div>
+            {/* Derived at read time by getChangelog: the first live scrape
+                compared with the newest imported archive capture before
+                it. Say so, and link the capture, so the row is never
+                mistaken for a change the scraper observed itself. */}
+            {snapshot.archive_bridge ? (
+              <div
+                className="timeline-card-caption"
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-3)",
+                  marginBottom: 6,
+                }}
+              >
+                <span aria-hidden="true" style={{ marginRight: 4 }}>
+                  🕰
+                </span>
+                {tCt("archive_bridge_caption", {
+                  date: formatShortDate(
+                    snapshot.archive_bridge.from_scraped_at,
+                    dateMode
+                  ),
+                })}
+                {snapshot.archive_bridge.wayback_snapshot_url ? (
+                  <>
+                    {" · "}
+                    <a
+                      href={snapshot.archive_bridge.wayback_snapshot_url}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      {tTimeline("wayback_link")}
+                    </a>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
             {changes.map((c, ci) => {
               const isPolicyEntry = c.category === "privacy-policy";
               const isWaybackAttempt = c.category === "wayback-attempt";

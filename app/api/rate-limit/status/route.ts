@@ -5,6 +5,7 @@ import {
   getAllRateLimits,
   type RateLimitCategory,
 } from "@/lib/rate-limit";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 /**
@@ -43,7 +44,12 @@ export async function DELETE(req: NextRequest) {
   let body: unknown = null;
   try {
     body = await readBoundedJson<unknown>(req, 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
   if (!body || typeof body !== "object") {

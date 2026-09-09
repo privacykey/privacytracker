@@ -13,8 +13,11 @@
  * the non-local admin gate for this path. Constant-time compare against
  * AUDITOR_ADMIN_TOKEN.
  */
+
 import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/deployment-trust";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   ADMIN_TOKEN_COOKIE,
   adminTokenConfigured,
@@ -114,10 +117,15 @@ export async function POST(request: NextRequest) {
   let body: Body;
   try {
     body = await readBoundedJson<Body>(request, 4 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const provided = typeof body.token === "string" ? body.token.trim() : "";
+  const provided = typeof body?.token === "string" ? body.token.trim() : "";
   if (!provided) {
     return NextResponse.json({ error: "Token is required" }, { status: 400 });
   }
@@ -149,12 +157,7 @@ export async function POST(request: NextRequest) {
   // Secure flag set only over HTTPS — the cookie spec says browsers
   // drop Secure cookies on http://, so always-true would break local
   // installs. We mirror the request's perceived protocol.
-  const forwardedProto = request.headers
-    .get("x-forwarded-proto")
-    ?.split(",")[0]
-    ?.trim();
-  const isHttps =
-    forwardedProto === "https" || request.nextUrl.protocol === "https:";
+  const isHttps = requestOrigin(request)?.startsWith("https:") === true;
   res.cookies.set({
     name: ADMIN_TOKEN_COOKIE,
     value: provided,

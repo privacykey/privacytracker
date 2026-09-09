@@ -47,9 +47,9 @@
     "category": "DeveloperTool",
     "shortDescription": "Apple App Store privacy-label tracker",
     "longDescription": "privacytracker watches the privacy labels Apple publishes for the apps you install on your iPhone, diffs each one over time, summarises developer privacy policies with a local or cloud LLM, and back-fills history from the Internet Archive.",
-    "copyright": "© 2026 privacykey",
+    "copyright": "\u00a9 2026 privacykey",
     "macOS": {
-      "minimumSystemVersion": "11.0",
+      "minimumSystemVersion": "13.5",
       "exceptionDomain": "",
       "signingIdentity": null,
       "providerShortName": null,
@@ -76,7 +76,7 @@
       "active": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJGM0QyMDVBMDJGMzIwRTcKUldUbklQTUNXaUE5TCtjYzFFbmp5V0cvcm1tN1Y2QlNoeXFrcms4VThaMUI3WEQ2SExnOTNUV1EK",
       "endpoints": [
-        "https://github.com/privacykey/privacytracker/releases/latest/download/latest.json"
+        "https://github.com/privacykey/privacytracker/releases/latest/download/latest-v2.json"
       ]
     },
     "deep-link": {

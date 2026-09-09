@@ -34,10 +34,15 @@ build:
 run:
     pnpm run dev
 
-# Run the release workflow (bumps version, tags, publishes)
+# Prepare a version change for review in a PR (no tag or publication)
 [group("ship")]
-release bump="patch":
-    gh workflow run release.yml -f bump={{bump}}
+release-prepare version:
+    pnpm release:prepare {{version}}
+
+# Build a draft from an existing reviewed tag; see docs/RELEASING.md
+[group("ship")]
+release tag:
+    gh workflow run release.yml --ref {{tag}}
 
 # E2E stays separate — it builds and serves the whole app.
 # Run every non-E2E suite: unit, Tauri (cargo), iOS import helper (python)
@@ -51,15 +56,24 @@ test-all: test
 storybook:
     pnpm run storybook
 
-# Needs the Rust toolchain + tauri-cli (cargo install tauri-cli).
+# Both tauri recipes below hard-fail without this; it's a no-op once the
+# binary is present. src-tauri/binaries/README.md covers why the binary
+# isn't committed and why the version must match your `pnpm install` Node.
+# One-time per clone: fetch + GPG-verify the bundled Node sidecar
+[group("desktop")]
+fetch-node-sidecar:
+    bash scripts/fetch-node-sidecar.sh
+
+# Needs the Rust toolchain + tauri-cli (cargo install tauri-cli) and a
+# one-time `just fetch-node-sidecar`.
 # Run the desktop app: standalone stub, then `tauri dev` with devtools
 [group("desktop")]
-tauri-dev:
+tauri-dev: fetch-node-sidecar
     pnpm run tauri:dev
 
 # Production desktop build (.app/.dmg via tauri-bundler)
 [group("desktop")]
-tauri-build:
+tauri-build: fetch-node-sidecar
     pnpm run tauri:build
 
 # Rust-side unit tests only

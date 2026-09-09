@@ -14,6 +14,151 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- The AI disclosure page (`/dashboard/about/ai-disclosure`) now tells the
+  whole story of how the app was built, in three parts. **Before this
+  repository** credits the April 2026 groundwork — the scraper, the first
+  dashboard and onboarding, privacy profiles, the Wayback import, feature
+  flags, localisation, the desktop build — to the era it came from, and is
+  honest that the project was restarted here in May so none of that history
+  carried over, that some of it was never version-controlled, and that
+  neither Antigravity nor Codex records a commit co-author. **Models used**
+  is the breakdown: eight models, each a collapsible row naming the areas it
+  worked on, ordered by first appearance. Claude Sonnet 4.6, Opus 4.8,
+  Opus 5, Fable 5 and Fable 5.1 join the entries that were already there,
+  and the OpenAI entry is now *Codex* — the tool rather than a model
+  version, because the version changed across the project and was never
+  recorded. Its list is substantial: the September security round
+  (network-deployment sign-in, outbound destination validation, bounded
+  request bodies, runtime scanning, desktop backup verification), backup and
+  restore data preservation, the v0.2 release gates, CSV export safety, and
+  the TypeScript 7 translation-scanner work. **What the model list leaves
+  out** says the part no git history records: hundreds of hours of
+  real-device testing, user testing and product decisions, all of it human.
+  The attribution note states plainly that the trailers are incomplete —
+  they miss the pre-repository era, they miss Codex entirely, and a portion
+  of this repository's own commits carry none either. The rows are native
+  `<details>` elements, so they expand without JavaScript and the page keeps
+  prerendering statically.
+
+- **Per-app historical import.** The App Detail → Change History tab now
+  has a "Check the archive" card that reconstructs just that app's history,
+  the single-app counterpart to Settings → Historical Import. It posts the
+  new `force` option on `POST /api/apps/[id]/import-history`, which
+  re-probes every quarter instead of skipping the ones a nearby row already
+  covers — so a second run picks up captures the archive has gained since,
+  or ones an older parser could not read. Forcing never duplicates a
+  snapshot. When archive.org is rate-limiting, the route answers 503 with
+  `code: "archive_unavailable"` (not a 500) and the card says to wait and
+  retry rather than showing a raw error. Gated by
+  `flag.detail.timeline.wayback_import`.
+- **History tab pages backwards.** The detail payload now carries the newest
+  50 changelog rows plus `changelogHasMore`; a "Show older entries" control
+  fetches the rest from the new `GET /api/apps/[id]/changelog?before=…`
+  route. Every sync writes a row even when nothing changed, so on a daily
+  schedule the reconstructed Wayback history used to fall off the bottom of
+  the timeline after about seven weeks with no way to reach it.
+- **First-run checklist task "Reconstruct your apps' label history"** for
+  the self + monitor focus, linking to Settings → Admin → Historical Import.
+  The import still only runs on an explicit click, as the privacy policy
+  promises; the task completes once any archive row exists.
+- The Wayback importer bridges the last archive → first-live-scrape hop at
+  read time: the first scrape's card shows what changed since the newest
+  archive capture ("Compared with the archive capture from …"), without
+  rewriting the stored row or raising anything in the review queue.
+- `just fetch-node-sidecar` (`scripts/fetch-node-sidecar.sh`) — downloads
+  and GPG-verifies the Node binary the desktop app bundles as its sidecar,
+  into `src-tauri/binaries/`. The binary is ~139MB and gitignored, so a
+  fresh clone previously had no way to build the desktop app: both
+  `just tauri-dev` and `just tauri-build` died several minutes in with
+  `stage-standalone: cannot find Node binary at …`, after a Next build and
+  a full cargo build that had both looked healthy. Both recipes now depend
+  on the fetch, which is a no-op once the binary is present. The new
+  `src-tauri/binaries/README.md` documents the verification chain and, more
+  importantly, why the version must match the Node that ran `pnpm install`
+  — better-sqlite3's prebuild is resolved against that ABI, so a mismatched
+  bundle builds cleanly and then kills the sidecar with
+  `NODE_MODULE_VERSION`.
+
+### Changed
+
+- The Rust-core parity harness now classifies **all 120** API routes, up
+  from 17. `scripts/parity/manifest.mjs` splits them into reads (57),
+  reads with a volatility transform (8), mutations (56), destructive
+  teardown (4) and quarantine (35, each with a written reason), and
+  `parity-diff.mjs` enforces a **coverage gate**: it walks `app/api` at
+  startup and fails if any `route.ts` is unlisted. The manifest had gone
+  stale while the surface grew from 110 to 120 routes with nothing
+  noticing; that can no longer happen silently. The differ also gained
+  write support — mutations replay against both servers with identical
+  bodies and then re-read the affected collection, so a write that
+  returns a plausible 200 but persists differently is caught. Writes are
+  opt-in (`--mutate` / `--teardown`) because the manifest contains
+  `/api/reset`; a bare invocation stays read-only. Node-vs-Node
+  self-test: 130 checks, 0 differences, and `--no-normalize` still fails,
+  which is what proves the differ can detect one.
+
+- **Wayback import probes the CDX index once per app** instead of up to
+  seven availability calls per target, and picks each quarter's closest
+  capture locally; the availability walk remains as a fallback. Save Page
+  Now now runs only when the archive has no capture within 45 days of
+  today (it used to fire on the first empty quarter — usually Q1 2021,
+  which archiving today's page cannot fill — for nearly every app on every
+  run), and "Remove all imported history" also removes the notes it leaves.
+- A throttled archive (HTTP 429 / 5xx) is now an error the bulk runner
+  backs off from — it waits out `Retry-After`, retries the app once, then
+  pauses the queue with a "paused by rate limiting" explanation and a
+  Resume button — rather than being recorded as "no capture" and triggering
+  Save Page Now.
+- The monthly reconstruction cadence (`intervalMonths: 1`) now lands every
+  month: the dedupe window follows the cadence (15 days monthly, 45 days
+  quarterly) instead of a fixed 45 days that skipped every other month.
+- `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
+  carrying its own ~40 lines of inline download-and-verify shell. The
+  Node release-key fingerprints had been duplicated between the workflow
+  and (until now) nothing else; they have exactly one home now and cannot
+  drift between CI and a developer's machine. Behaviour is unchanged —
+  same GPG-then-hash verification, same output paths — with the build
+  matrix's target passed through `TAURI_BUILD_TARGET`, the variable
+  `stage-standalone.mjs` already reads when choosing which binary to wrap.
+
+### Fixed
+
+- Desktop app: the hash-based Content Security Policy introduced in 0.2.0
+  blocked Tauri's IPC channel, so every call into the desktop app's native
+  side — the notification permission check that runs on each page load, the
+  updater, and the app's own commands — was rejected and silently retried
+  over a slower fallback, filling the log with `connect-src` violations. The
+  policy now allows Tauri's IPC origins when running inside the desktop app;
+  the browser and Docker deployments keep the unchanged, narrower policy.
+- **Wayback imports never actually reached 2021.** Captures from Feb–Oct
+  2021 keep the app record in `shoebox-ember-data-store` (keyed by app id,
+  `data.attributes.privacy`), which the shoebox extractor skipped by id and
+  never probed, so every 2021 target failed as `skipped_parse_failure`
+  while the Settings copy promised history "back to Q1 2021". Both shoebox
+  shapes are parsed now; in a live run Instagram's history extends from
+  March 2021 instead of March 2022. Captures from the first weeks of Feb
+  2021 that carry no privacy section at all are reported as skipped
+  (`skipped_no_labels`) rather than failed.
+- The oldest imported Wayback row was diffed against *today's* labels, so
+  the 2021 baseline card claimed "now collects" for labels the app had
+  since dropped (and vice versa), the universal changelog carried the
+  inverted entries, and the history chart's first bucket counted them. The
+  oldest row is now a baseline with no changes, and a wayback row that
+  lands *before* an existing one re-diffs the row that follows it.
+- `history-stats` counted accessibility and privacy-policy entries as
+  privacy-label changes.
+- Settings copy for the Historical Import still said "since the App Store
+  web launch on 5 November 2025" and that the closest capture is used;
+  the floor is Q1 2021 and captures beyond 45 days are skipped. The Task
+  Center deep link for a running Wayback job pointed at the device-import
+  section instead of `#wayback-import`.
+- A fresh install no longer probes its own install date (which equals
+  "today" and is already covered by the first live scrape).
+
+## [0.2.0] — 2026-09-05
+
+### Added
+
 - Canned sample data now populates every app-detail surface: each demo app
   gets its hand-written AI policy summary stored as a real, ready analysis
   (lens grid, highlights, and source preview render without any AI provider),
@@ -35,7 +180,36 @@ Going forward, changes are recorded here as they land.
   set, covering the dev loop, the desktop (Tauri) build, Docker, and the
   verification suites.
 
+- A Content Security Policy mode switch for operators: `PRIVACYTRACKER_CSP`
+  is `enforce` (default), `report-only` (send the policy as report-only to
+  see what it *would* block), or `off` (debugging only). Violations the
+  browser reports are listed on the Diagnostics page; nothing leaves the
+  machine. The policy itself is now hash-based rather than nonce-based,
+  which is what lets every page be served as a fixed, prebuilt file.
+
 ### Changed
+
+- **v0.2 upgrade requirements:** Docker deployments require
+  `AUDITOR_ADMIN_TOKEN`, including containers published only on localhost.
+  macOS desktop builds require macOS 13.5 or later. v0.1.2 users make a one-time
+  manual DMG/Homebrew upgrade; the legacy update feed remains pinned to v0.1.2
+  to protect older Macs. See [release and recovery guidance](docs/RELEASING.md).
+- Release versions are prepared through reviewed PRs. Tag builds stay in a
+  draft, validate signing approvals, build each Mac architecture natively,
+  verify both updater signatures, and scan exact Docker image digests before
+  promoting image tags. Signing-only rehearsals cannot upload release assets.
+- Full backups now include devices, app/device links, review history, activity
+  and related-app observations. Restore clears those tables consistently,
+  preventing stale links to apps absent from a backup. Keep a stopped data-folder
+  copy before upgrading; older JSON backups never contained these records.
+
+- Upgraded to TypeScript 7.0.2 and enabled Next.js's compiler CLI integration
+  for web, Docker, desktop and Storybook builds, retaining build-time type
+  checks with the native compiler. Docker explicitly removes native compiler
+  packages left behind by dependency pruning from the shipped image.
+- Translation regression checks parse JSX independently of the TypeScript
+  compiler API, preserving the existing untranslated-text baseline while
+  allowing the checks to run with TypeScript 7.
 
 - **Settings is now four pages instead of one.** Your preferences, sync,
   policies and admin each get their own address
@@ -55,8 +229,39 @@ Going forward, changes are recorded here as they land.
 - Import candidate selection is now a native radio group: keyboard-operable
   with arrow keys, and announced correctly by screen readers.
 
+- The interface language is now applied in the browser from your saved
+  choice rather than on the server, so pages load as prebuilt files. The
+  first paint waits for the language bundle (a brief blank rather than an
+  English flash), and the no-JavaScript fallback message is English only.
+
 ### Fixed
 
+- Outbound requests now validate the DNS addresses used by the actual connection,
+  including streaming AI calls and redirects. IPv4-mapped IPv6 can no longer
+  bypass private-network or metadata checks. Local AI endpoints remain supported.
+
+- Docker and network deployments now require an access token for private pages
+  and all private API reads as well as writes. A sign-in page provides access;
+  missing configuration stays locked. Local launchers explicitly bind loopback.
+  Cookie-authenticated mutations also require the full matching browser origin.
+- JSON and file-upload limits now apply while reading the request, with a
+  deadline and early cancellation. Oversized uploads return 413 and timed-out
+  uploads return 408; backup and audit-bundle imports use the same bounded reader.
+
+- CSV exports prefix formula-looking cells for spreadsheet viewing, including
+  imported app and developer names. JSON exports retain the original values.
+
+- CSV exports now keep column headings readable (`App Name`, `Last Synced`,
+  `Privacy Type`) instead of replacing their spaces with `%20`.
+- The activity log's type filter works for every event type again. It
+  validated the requested type against a list that had fallen eight
+  entries behind — so filtering by newer events (privacy-profile preset
+  changes, verdicts, migrations, health checks) silently returned the
+  *unfiltered* feed instead.
+- The Stats page's policy radar no longer reshuffles which six apps it
+  shows between visits: when several apps share the same last-synced
+  time (which every bulk sync produces), the selection previously fell
+  back to database scan order.
 - Light-theme colour contrast on the app-detail page now meets WCAG AA:
   not-declared accessibility rows no longer dim their text below the
   threshold, the "Declared by developer" tag and the preference-key legend
@@ -91,12 +296,21 @@ Going forward, changes are recorded here as they land.
   last dark-only boxes on the app-detail policy blocks (the scrollable source
   and trace wells) and in the Live Text illustration, which drew a dark phone
   frame in the light theme.
+- Builds and lint now work from a git worktree nested under the main
+  clone's `.claude/worktrees/`: `next.config.js` pins
+  `outputFileTracingRoot` so `pnpm build:standalone` no longer emits
+  `server.js` under a nested path, and `biome.jsonc` anchors its
+  `.claude` exclusion at the repo root so `pnpm lint` stops reporting
+  "Checked 0 files" there.
 
 ### Security
 
+- Refresh the Docker and desktop Node runtime to 24.20.0, require patched Alpine TLS libraries, remove unused package managers from the runtime image, and apply compatible JavaScript/Rust dependency patches. Scan the final image in CI and track desktop runtime/scanner pins with Renovate.
 - Documented in the README that a configured AI provider key is stored in
   plaintext in the local database. Moving desktop keys into the OS keychain is
   planned.
+
+- Verify desktop backup artifacts before recording them and before uninstall pre-flight. Match native discovery to the selected device, use file-based freshness, reject invalid timestamps and symlinks, show the server's backup state throughout confirmation and retry flows, and stop Configurator process groups on timeout or excessive output.
 
 ## [0.1.2] — 2026-06-12
 
@@ -148,7 +362,8 @@ Next.js app.
 - Background sync with a notifications bell, and crash-safe resume across the
   live, Wayback, and privacy-policy jobs.
 
-[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/privacykey/privacytracker/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/privacykey/privacytracker/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/privacykey/privacytracker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/privacykey/privacytracker/releases/tag/v0.1.0

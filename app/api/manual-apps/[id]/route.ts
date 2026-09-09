@@ -1,8 +1,14 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
+import {
+  getCurrentManualAppPolicyVersion,
+  listManualAppEvents,
+} from "../../../../lib/manual-app-history";
 import {
   isManualAppSource,
+  MANUAL_APP_SOURCE_META,
   MANUAL_APP_SOURCES,
   type ManualAppInput,
 } from "../../../../lib/manual-apps";
@@ -63,7 +69,16 @@ export async function GET(request: Request, context: Ctx) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ app });
+  // `events`, `currentVersion` and `meta` join the payload for Rust-core
+  // Phase 0: the detail page used to read all four server-side and pass
+  // them into ManualAppDetailView. Additive — existing callers that only
+  // read `app` are unaffected.
+  return NextResponse.json({
+    app,
+    events: listManualAppEvents(id),
+    currentVersion: getCurrentManualAppPolicyVersion(id),
+    meta: MANUAL_APP_SOURCE_META[app.source],
+  });
 }
 
 /**
@@ -108,6 +123,11 @@ export async function PUT(request: Request, context: Ctx) {
   try {
     body = await readBoundedJson<Record<string, unknown>>(request, 8 * 1024);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid body" },
       { status: 400 }

@@ -1,3 +1,7 @@
+import {
+  readOptionalBoundedJson,
+  requestBodyErrorResponse,
+} from "@/lib/request-body";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
@@ -81,6 +85,7 @@ export async function GET() {
           initiator: info.state.initiator,
           status: info.state.status,
           pausedAt: info.state.pausedAt ?? null,
+          pauseCause: info.state.pauseCause ?? null,
           pauseRequestedAt: info.state.pauseRequestedAt ?? null,
           cancelRequestedAt: info.state.cancelRequestedAt ?? null,
           currentAppId: info.state.currentAppId,
@@ -280,9 +285,20 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const body = (await request.json().catch(() => null)) as {
-    action?: unknown;
-  } | null;
+  let body: { action?: unknown } | null;
+  try {
+    body = await readOptionalBoundedJson<{ action?: unknown } | null>(
+      request,
+      4 * 1024,
+      null
+    );
+  } catch (error) {
+    const limited = requestBodyErrorResponse(error);
+    if (limited) {
+      return limited;
+    }
+    body = null;
+  }
   const action = typeof body?.action === "string" ? body.action : "";
 
   if (action === "pause") {
@@ -411,6 +427,7 @@ export async function PATCH(request: Request) {
       ...state,
       status: "running" as const,
       pausedAt: undefined,
+      pauseCause: undefined,
       pauseRequestedAt: undefined,
       cancelRequestedAt: undefined,
     };

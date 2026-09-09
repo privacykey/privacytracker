@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import {
+  ACTIVITY_TYPES,
   type ActivitySortDir,
   type ActivitySortField,
   type ActivityStatus,
@@ -10,18 +11,15 @@ import {
   getRecentActivity,
 } from "../../../lib/activity";
 
-const KNOWN_TYPES: readonly ActivityType[] = [
-  "scrape",
-  "resync",
-  "policy_summary",
-  "scheduled_sync",
-  "manual_sync",
-  "import",
-  "wayback_import",
-  "backup_export",
-  "backup_restore",
-  "reset",
-];
+/**
+ * Filter allowlist — now the single source of truth from lib/activity.ts
+ * rather than a hand-maintained copy. The copy had drifted eight types
+ * behind the union (profile_preset_applied, verdict_set, migration, …),
+ * and because parseType() returns undefined for an unknown value, the
+ * filter was silently DROPPED for those: `?type=profile_preset_applied`
+ * returned the unfiltered feed instead of an empty or filtered one.
+ */
+const KNOWN_TYPES: readonly ActivityType[] = ACTIVITY_TYPES;
 
 const KNOWN_STATUSES: readonly ActivityStatus[] = [
   "ok",

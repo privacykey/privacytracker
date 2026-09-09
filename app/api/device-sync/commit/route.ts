@@ -13,6 +13,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireMutationGuard } from "@/lib/api-guards";
 import { applyDeviceSyncDiff } from "@/lib/device-sync";
 import { getDeviceById } from "@/lib/devices";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { setSetting } from "@/lib/scheduler";
 import { readBoundedJson, recordAudit, requestActorIp } from "@/lib/security";
 
@@ -31,7 +32,12 @@ export async function POST(req: NextRequest) {
   let body: unknown;
   try {
     body = await readBoundedJson<unknown>(req, 256 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
   if (!body || typeof body !== "object") {

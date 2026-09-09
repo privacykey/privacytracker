@@ -10,7 +10,10 @@ services:
       - privacytracker-data:/app/data
     environment:
       NODE_ENV: production
-      AUDITOR_ADMIN_TOKEN: ${AUDITOR_ADMIN_TOKEN:-}
+      AUDITOR_ADMIN_TOKEN: ${AUDITOR_ADMIN_TOKEN:?Set AUDITOR_ADMIN_TOKEN in .env}
+      PRIVACYTRACKER_ALLOWED_HOSTS: ${PRIVACYTRACKER_HOST:-privacytracker.localhost}
+      PRIVACYTRACKER_NETWORK_EXPOSED: "1"
+      PRIVACYTRACKER_TRUST_PROXY: "1"
     cap_drop:
       - ALL
     security_opt:

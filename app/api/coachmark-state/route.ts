@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireMutationGuard } from "@/lib/api-guards";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { getSetting, setSetting } from "@/lib/scheduler";
 import { readBoundedJson } from "@/lib/security";
 
@@ -40,7 +41,12 @@ export async function POST(req: NextRequest) {
   let body: unknown = null;
   try {
     body = await readBoundedJson<unknown>(req, 4 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
   if (!body || typeof body !== "object") {

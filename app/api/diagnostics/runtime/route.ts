@@ -13,6 +13,7 @@
  * piece of debug context into a single payload meant for GitHub issues;
  * this route is the live, polled, repeated read for the dashboard.
  */
+
 import { NextResponse } from "next/server";
 import { clearApiTimings, snapshotApiTimings } from "@/lib/api-timing";
 import db from "@/lib/db";
@@ -20,6 +21,7 @@ import {
   clearDbWorkerTimings,
   snapshotDbWorkerTimings,
 } from "@/lib/db-worker-client";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   clearSlowQueryRing,
   installRuntimeDiagnostics,
@@ -154,6 +156,11 @@ export async function POST(request: Request) {
   try {
     body = await readBoundedJson<{ profilingEnabled?: unknown }>(request, 1024);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid body" },
       { status: 400 }

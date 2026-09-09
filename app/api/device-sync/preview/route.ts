@@ -12,6 +12,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireMutationGuard } from "@/lib/api-guards";
 import db from "@/lib/db";
 import { computeDeviceSyncDiff, type ImportedAppRef } from "@/lib/device-sync";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,12 @@ export async function POST(req: NextRequest) {
   let body: unknown;
   try {
     body = await readBoundedJson<unknown>(req, 512 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
   if (!body || typeof body !== "object") {

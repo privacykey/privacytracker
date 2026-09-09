@@ -24,6 +24,7 @@ import { NextResponse } from "next/server";
 import { requireMutationGuard } from "@/lib/api-guards";
 import type { ChangeEntry } from "@/lib/changelog";
 import { createNotification } from "@/lib/notifications";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson, recordAudit } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,11 @@ export async function POST(request: Request) {
   try {
     body = await readBoundedJson<SeedNotificationBody>(request, 16 * 1024);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid JSON body" },
       { status: 400 }

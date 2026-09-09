@@ -2,7 +2,9 @@
 
 import { execFileSync, spawnSync } from "node:child_process";
 
-const expectedChecks = ["quality", "container-smoke"];
+import { validateSigningEnvironment } from "./signing-environment.mjs";
+
+const expectedChecks = ["quality", "rust-check", "container-smoke"];
 
 function fail(message) {
   console.error(message);
@@ -99,18 +101,47 @@ note(
   "Issues enabled",
   "needed for security and live-check triage"
 );
+// Renovate owns dependency update PRs; Dependabot alerts are checked below.
 note(
-  security.dependabot_security_updates?.status === "enabled",
-  "Dependabot security updates enabled"
+  security.secret_scanning?.status === "enabled",
+  "Secret scanning enabled",
+  security.secret_scanning?.status ??
+    "status unavailable; an administrator must verify"
 );
-note(security.secret_scanning?.status === "enabled", "Secret scanning enabled");
 note(
   security.secret_scanning_push_protection?.status === "enabled",
-  "Secret scanning push protection enabled"
+  "Secret scanning push protection enabled",
+  security.secret_scanning_push_protection?.status ??
+    "status unavailable; an administrator must verify"
 );
 
-const protection = endpoint(`repos/${repo}/branches/main/protection`);
-if (protection.ok) {
+const rules = endpoint(`repos/${repo}/rules/branches/main`);
+const protection =
+  rules.ok && rules.data.length > 0
+    ? null
+    : endpoint(`repos/${repo}/branches/main/protection`);
+if (rules.ok && rules.data.length > 0) {
+  const has = (type) => rules.data.some((rule) => rule.type === type);
+  const pr = rules.data.find((rule) => rule.type === "pull_request");
+  const contexts = rules.data
+    .filter((rule) => rule.type === "required_status_checks")
+    .flatMap((rule) =>
+      rule.parameters.required_status_checks.map((check) => check.context)
+    );
+  note(
+    (pr?.parameters.required_approving_review_count ?? 0) >= 1,
+    "Pull request approval required on main"
+  );
+  note(has("non_fast_forward"), "Force pushes disabled on main");
+  note(has("deletion"), "Branch deletion disabled on main");
+  note(has("required_signatures"), "Signed commits required on main");
+  const missing = expectedChecks.filter((check) => !contexts.includes(check));
+  note(
+    missing.length === 0,
+    "Expected required CI checks configured",
+    missing.length ? `missing: ${missing.join(", ")}` : contexts.join(", ")
+  );
+} else if (protection?.ok) {
   const data = protection.data;
   const contexts = data.required_status_checks?.contexts ?? [];
   const missingChecks = expectedChecks.filter(
@@ -145,6 +176,20 @@ if (protection.ok) {
     "main branch protection readable/enabled",
     "enable branch protection for main"
   );
+}
+
+const signing = endpoint(`repos/${repo}/environments/macos-signing`);
+const signingTags = endpoint(
+  `repos/${repo}/environments/macos-signing/deployment-branch-policies`
+);
+try {
+  if (!(signing.ok && signingTags.ok)) {
+    throw new Error("Cannot read signing environment protections");
+  }
+  validateSigningEnvironment(signing.data, signingTags.data.branch_policies);
+  note(true, "Signing requires reviewer approval and v* tags");
+} catch (error) {
+  note(false, "Signing approval gate", error.message);
 }
 
 const codeScanning = endpoint(`repos/${repo}/code-scanning/alerts?per_page=1`);

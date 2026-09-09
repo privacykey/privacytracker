@@ -18,6 +18,7 @@ import {
   SUPPORTED_LOCALES,
   type SupportedLocale,
 } from "@/i18n";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,12 @@ export async function POST(request: NextRequest) {
   let body: Partial<LocaleBody>;
   try {
     body = await readBoundedJson<Partial<LocaleBody>>(request, 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 

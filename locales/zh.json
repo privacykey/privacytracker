@@ -166,28 +166,47 @@
     },
     "backup": {
       "heading": "请先备份你的设备",
-      "subtitle": "强烈建议先备份设备再删除应用。从备份中恢复被误删的应用很简单；完全没有备份就卸载则几乎无法恢复。",
+      "subtitle": "移除任何应用前，请先创建并验证一份本地 Apple 设备备份。备份会保留在此 Mac 的 Apple MobileSync 文件夹中。",
+      "what_happens_heading": "此步骤会做什么",
+      "what_happens_configurator": "Apple Configurator 会把所选 iPhone 或 iPad 备份到此 Mac。请保持设备连接、解锁并已信任这台电脑。",
+      "what_happens_verify": "privacytracker 会检查 Configurator 是否创建或更新了真实且非空的 Manifest.db。",
+      "what_happens_unlock": "只有经过验证且在 24 小时内创建的备份，才会在删除步骤显示绿色安全检查。",
+      "nothing_deleted_here": "此备份步骤不会从设备移除任何内容。",
       "device_list_empty": "用 USB 数据线把 iPhone 或 iPad 接到此 Mac。在设备的锁屏上「信任」这台电脑，列表会自动刷新。",
       "ios_device_fallback": "iOS 设备",
       "run_backup": "开始备份",
       "running": "备份中… 可能需要几分钟",
+      "running_heading": "Apple Configurator 正在备份设备",
+      "running_detail": "请保持数据线连接和设备解锁。privacytracker 会先检查备份文件，再报告成功。",
+      "recording": "正在确认安全检查…",
+      "recording_heading": "已找到备份 — 正在确认安全检查",
+      "recording_detail": "原生备份已完成。本地 privacytracker 服务正在独立检查路径和 Manifest.db，确认后才会启用删除。",
+      "retry_verification": "重试安全检查",
       "running_again": "再备份一次",
       "continue_to_uninstall": "继续到卸载",
-      "saved_at": "备份已保存到 <code>{path}</code>，时间 {time}。",
-      "saved_no_time": "备份已保存到 <code>{path}</code>。",
+      "saved_at": "已验证备份：<code>{path}</code>，时间 {time}。",
+      "saved_no_time": "已验证备份：<code>{path}</code>。",
+      "checking_existing": "正在检查此 Mac 上是否有最近验证过的备份…",
+      "existing_verified": "已有一份来自 {time} 的已验证备份，位置为 <code>{path}</code>。你可以继续，也可以创建更新的备份。",
+      "not_fresh_missing": "没有此设备的已验证备份记录。",
+      "not_fresh_stale": "上次验证的备份已超过 24 小时。删除应用前请创建新备份。",
+      "not_fresh_unverified": "存在备份记录，但此 Mac 上已无法验证对应文件或 Manifest.db。",
+      "not_fresh_unreachable": "privacytracker 无法检查本地备份记录。删除步骤不会把备份视为存在。",
       "default_error": "备份失败。",
       "skip_backup": "跳过备份（自担风险）",
       "skip_backup_title": "不备份直接继续。在任何应用被移除之前，我们仍会要求你再次输入 DELETE。",
       "mismatch_heading": "提示 — 这可能不是正确的设备",
       "mismatch_body": "{count, plural, one {你即将删除的应用中有 # 个不是从该设备导入的。cfgutil 不会移除未安装的应用。} other {你即将删除的应用中有 # 个不是从该设备导入的。cfgutil 不会移除未安装的应用。}}",
       "mismatch_more": "…还有 {count} 个",
-      "record_failed": "备份已完成，但保存备份记录失败。删除步骤将看不到此备份，可能会拒绝执行或要求进行\"无备份\"确认。"
+      "record_failed": "Apple Configurator 已完成备份，但 privacytracker 无法确认其安全记录。尚未删除任何内容。请先重试安全检查再继续。"
     },
     "act": {
       "heading": "从手机移除应用",
       "subtitle_lead": "请检查下方列表，然后点击",
       "subtitle_keyword": "删除应用",
       "subtitle_after": "。我们会展示即将发生的操作，然后要求你输入 DELETE 才会真正移除。",
+      "what_happens_heading": "确认后会发生什么",
+      "what_happens_body": "privacytracker 会重新检查备份，然后让 Apple Configurator 逐个移除应用。macOS 会为每个应用要求 Touch ID 或你的密码。每项结果都会显示在下方；某项失败不会掩盖已成功移除的应用。",
       "empty": "此列表中没有标记为卸载的应用。如需标记，请返回第一步。",
       "removing": "正在移除…",
       "removed": "✓ 已移除",
@@ -202,14 +221,20 @@
       "pending": "待处理",
       "failed": "失败",
       "backup_ok": "已于 {time} 备份 {device}",
+      "backup_checking": "正在检查备份安全门槛…",
       "backup_missing_warn": "该设备没有最近的备份。",
+      "backup_stale_warn": "已验证的备份已超过 24 小时。",
+      "backup_unverified_warn": "此 Mac 上记录的备份已丢失或不完整。",
+      "backup_unreachable_warn": "无法连接本地备份检查。",
       "backup_missing_action": "先备份",
       "default_device_name": "已连接的设备",
       "gate_denied_audience": "安全检查拒绝了本次操作，未删除任何应用：只有当你的关注对象设置为\"自己\"时才能移除应用。",
       "gate_denied_flag": "安全检查拒绝了本次操作，未删除任何应用：开发者选项中的\"从手机移除应用\"开关未开启。",
       "gate_denied_backup": "安全检查拒绝了本次操作，未删除任何应用：没有该设备 24 小时内的备份记录。请先运行备份，然后重试。",
+      "gate_denied_unverified": "安全检查拒绝了本次操作，未删除任何应用：记录的备份路径或 Manifest.db 缺失、不完整，或不在 Apple 的 MobileSync 文件夹中。请创建新备份后重试。",
       "gate_denied_generic": "安全检查拒绝了本次操作，未删除任何应用。",
       "gate_unreachable": "无法连接安全检查服务，因此未删除任何应用。请确认 privacytracker 本地服务正在运行，然后重试。",
+      "checking_safety": "正在检查安全状态…",
       "record_failures": "{count, plural, one {# 项移除操作} other {# 项移除操作}}未能写入活动日志 — 应用仍已处理，但本次运行的审计记录不完整。"
     },
     "saved_notes": {
@@ -234,11 +259,11 @@
       "type_placeholder": "DELETE",
       "no_backup_time": "—",
       "list_heading": "确定要删除 {count, plural, one {# 个应用} other {# 个应用}}？",
-      "list_body": "这些应用将通过 Apple Configurator 从你的手机移除。点击应用名称可返回并更改判断。",
+      "list_body": "Apple Configurator 会逐个从所选设备移除应用及其本地应用数据。Mac 上已验证的备份会保留。继续前请检查每个名称。",
       "list_no_bundle": "（无 bundle ID — 将被跳过）",
       "list_continue": "继续",
       "final_heading": "最后一步 — 请输入 DELETE",
-      "final_body": "即将从 {device} 移除这些应用。你于 {time} 进行了备份，重要内容应可恢复。",
+      "final_body": "此 Mac 上已有 {device} 于 {time} 创建的已验证备份。确认后，Apple Configurator 每移除一个应用前，macOS 都会要求 Touch ID 或你的密码。备份本身不会被更改。",
       "final_no_backup_heading": "在没有备份的情况下继续？",
       "final_no_backup_body": "该设备没有最近的备份。如果你删除了不该删的应用，将无法从任何地方恢复。你可以返回先备份 — 强烈建议这样做 — 或在下方输入 DELETE 自担风险继续。",
       "final_confirm": "删除应用",
@@ -1224,11 +1249,98 @@
     "section_accuracy_p1": "AI 生成的摘要只是一种便利。它们可能产生幻觉、遗漏关键条款或错误描述范围。请将其视为起点，并在用于合规、法律或发布场景之前，始终查阅原始政策 — privacytracker 会在每个应用的详情页提供链接。",
     "section_accuracy_p2": "应用详情页上显示的隐私「标签」数据是直接从 App Store 抓取的，并非由 AI 生成。通知中提到的标签变化是通过对抓取的标签进行确定性比对来检测的。",
     "section_built_title": "本应用的构建方式",
-    "section_built_p1": "privacytracker 本身是在大型语言模型的大量协助下构建的。在规划、实现、重构和审查过程中，混合使用了多款前沿模型，包括：",
-    "model_claude": "Anthropic Claude Opus 4.7",
-    "model_gemini": "Google Gemini 3.1 Pro 与 Gemini 3 Flash",
-    "model_gpt": "OpenAI GPT-5.4",
-    "section_built_p2": "组合使用多款模型有助于交叉验证设计决策、捕捉单一模型遗漏的 bug，并在 Next.js、SQLite 与抓取各层保持代码风格一致。每一处改动都由人工作者审查并整合 — 模型只是协助，不会无人监管地直接发布代码。",
+    "section_built_p1": "privacytracker 是在大型语言模型的大量协助下构建的，历时约五个月，跨越两个代码仓库。本节说明用到了哪些模型、它们各自参与了什么，以及同样重要的 —— 这份模型清单遗漏了什么。",
+    "section_built_origins_title": "在本仓库之前",
+    "section_built_origins_p1": "privacytracker 最初几周的历史并不在本仓库中。项目始于 2026 年 4 月，并在 5 月全新重启，因此那段历史没有被延续下来 —— 但大部分基础工作当时已经完成，主要借助 Google Antigravity 与 OpenAI Codex 的免费额度，当时尚未使用任何付费订阅：",
+    "origins_feature_1": "App Store 隐私标签抓取器，以及整个工具赖以构建的单应用详情页。",
+    "origins_feature_2": "AI 隐私政策摘要 —— 包括将其设为可选、且默认关闭的决定。",
+    "origins_feature_3": "仪表盘、应用与分类之间的导航，以及键盘快捷键。",
+    "origins_feature_4": "隐私画像与候选清单。",
+    "origins_feature_5": "用于重建标签历史的 Wayback 存档导入。",
+    "origins_feature_6": "功能开关系统、开发者选项，以及第一轮本地化。",
+    "origins_feature_7": "Tauri 桌面端构建、Docker 镜像，以及最初的无障碍工作。",
+    "section_built_origins_p2": "那段时期只能部分还原。其中一部分完全没有纳入版本控制，保留下来的仓库是私有的，而 Antigravity 与 Codex 都不会在提交中记录共同作者。下方内容全部来自本仓库的历史，而它始于 2026 年 5 月 —— 因此完全看不到上述那些工作。",
+    "section_built_models_title": "使用的模型",
+    "section_built_models_intro": "按各模型首次出现的时间排序。展开任一模型，可查看它参与构建的部分。",
+    "built_models": {
+      "gemini": {
+        "name": "Google Gemini 3.1 Pro 与 Gemini 3 Flash",
+        "role": "通过 Antigravity 完成的最早期构建",
+        "summary": "通过 Google Antigravity 使用，主要依靠其免费额度，完成了上文所述早期工作的很大一部分。Antigravity 不会记录提交的共同作者，因此早期功能中哪些出自 Gemini、哪些出自 Codex 已无从还原 —— 在那几周里，两者覆盖的是同一片领域。"
+      },
+      "codex": {
+        "name": "OpenAI Codex",
+        "role": "最早期的构建，以及后来的安全加固",
+        "summary": "分两个明显不同的阶段使用。早期它是最初构建背后的两个工具之一，主要依靠免费额度 —— 这一阶段与 Antigravity 的工作无法区分。很久之后它又回来完成了一轮安全与发布工作；那部分虽然同样没有共同作者标记，但可以通过分支名识别。这段时间内其底层模型版本发生过变化且未被记录；本页此前将其标注为 GPT-5.4。",
+        "area_1": "要求网络部署下必须登录，使应用在 localhost 之外可访问时不会暴露私有页面与 API。",
+        "area_2": "在建立连接时校验出站目标地址，并在框架缓冲之前限制请求体与上传的大小。",
+        "area_3": "刷新并扫描生产环境运行时。",
+        "area_4": "桌面端加固 —— 校验备份产物与确认状态，并终止超时的设备命令组。",
+        "area_5": "在备份与恢复过程中完整保留用户数据。",
+        "area_6": "准备 v0.2 发布：已验证的草稿版本、升级门槛、打包恢复流程，以及镜像签名溯源。",
+        "area_7": "CSV 导出 —— 可读的列标题，以及将疑似公式的单元格作为文本处理 —— 并让翻译文案检查不再依赖 TypeScript 编译器 API。"
+      },
+      "sonnet_4_6": {
+        "name": "Anthropic Claude Sonnet 4.6",
+        "role": "本仓库之前的构建与容器化工作",
+        "summary": "在更早的那个仓库中唯一留下署名提交的模型 —— 共四次，且全部属于基础设施，而非产品功能。",
+        "area_1": "构建并发布 Docker 镜像的 GitHub Actions 工作流。",
+        "area_2": "面向 amd64 与 arm64 的多架构容器构建。",
+        "area_3": "拆分变更日志类型，以解除客户端打包构建的阻塞。"
+      },
+      "opus_4_7": {
+        "name": "Anthropic Claude Opus 4.7",
+        "role": "桌面端打包与组件工作台",
+        "summary": "主要工作在界面层之下 —— macOS 桌面端发布链路，以及开发组件所用的 Storybook 工作台。",
+        "area_1": "Storybook 组件工作台：装饰器栈、测试夹具、MDX 基础文档，以及约四十个组件故事。",
+        "area_2": "macOS 发布流水线 —— 代码签名、公证、standalone 压缩包组装，以及自动向 Homebrew tap 提交拉取请求。",
+        "area_3": "Tauri 桌面端修复，包括开发引导流程中过期 sidecar 压缩包的竞态问题。",
+        "area_4": "应用录入与匹配确认步骤的引导流程体验修复，以及覆盖这些步骤的端到端测试。",
+        "area_5": "隐私画像预设、审计包导出，以及贡献者用来续接长期工作的会话连续性协议。"
+      },
+      "opus_4_8": {
+        "name": "Anthropic Claude Opus 4.8",
+        "role": "关注点系统与后台任务",
+        "summary": "重建了应用决定向你展示哪些界面的方式，并加入了让长期运行的安装保持健康的维护任务。",
+        "area_1": "分四个阶段完成的关注点重新设计：重命名目标分类、多选目标表单、与之对应的展示界面，以及固化这些行为的测试。",
+        "area_2": "每 24 小时运行一次的周期性健康检查及其非破坏性自愈任务。",
+        "area_3": "各应用历史标签页上的“自你添加此应用以来”累计差异卡片。",
+        "area_4": "模态对话框的共享焦点捕获，以及让引导流程的导入拖放区可用键盘操作。",
+        "area_5": "打包与供应链：针对全新 Linux 主机的 Docker Compose 修复、更精简的运行时镜像，以及从 Dependabot 迁移到 Renovate。"
+      },
+      "fable_5": {
+        "name": "Anthropic Claude Fable 5",
+        "role": "无障碍、本地化与规模化",
+        "summary": "在本仓库中按提交数计算贡献最多的模型。应用中大部分无障碍与本地化工作都出自它。",
+        "area_1": "无障碍专项：色彩对比度、点击目标尺寸、按钮式单选组的方向键导航、高缩放下的重排，以及焦点指示环。",
+        "area_2": "通过 next-intl 本地化每一条可见文案与辅助技术属性，并加入阻止新硬编码文案落地的扫描器。",
+        "area_3": "静态路由重构，以及由此得以实现的基于哈希的内容安全策略。",
+        "area_4": "应用网格及其 API 的分页，使大规模应用清单保持流畅 —— 以及测量性能上限的压力测试工具。",
+        "area_5": "仓库工具链：任务运行器、单一来源的 Node 与 pnpm 版本锁定，以及共享的依赖更新预设。"
+      },
+      "opus_5": {
+        "name": "Anthropic Claude Opus 5",
+        "role": "重构与项目维护",
+        "summary": "拆解了代码库中最大的两个组件，并整理了它们周边的项目脚手架。",
+        "area_1": "将设置界面拆分为分区组件、子系统 hook，以及四条独立的分组路由。",
+        "area_2": "将引导向导拆分为分步组件、对话框，以及单一的状态机 hook。",
+        "area_3": "引入 Biome 与 Ultracite 负责 lint 与格式化，并制定项目的规则策略。",
+        "area_4": "README、社区健康文件，以及定时运行的仓库设置审计。",
+        "area_5": "桌面端修复：在内容安全策略中放行 Tauri 的 IPC 来源，并让桌面开发命令在全新克隆上可用。",
+        "area_6": "本页面按模型划分的构建说明。"
+      },
+      "fable_5_1": {
+        "name": "Anthropic Claude Fable 5.1",
+        "role": "开发环境修复",
+        "summary": "针对在嵌套 git worktree 中悄然失效的工具链，做了一次简短而集中的修复。",
+        "area_1": "锚定构建的文件追踪根目录，使生产构建可以在仓库内嵌套的 worktree 中正常运行。",
+        "area_2": "修复在同样的 worktree 中悄悄「检查了 0 个文件」的 lint 配置。"
+      }
+    },
+    "section_built_attribution": "以上明细主要来自本仓库 git 历史中的共同作者标记，因此它反映的是某次改动提交时由哪个模型参与会话，而非正式的分工。这些标记并不完整：上文所述的更早时期完全不在其中，Codex 根本不会写入标记，本仓库自身也有一部分提交没有任何标记。工作在模型之间自由交叉，而这份清单也只是一个由人工维护的快照，并非构建时自动生成。",
+    "section_built_human_title": "这份模型清单遗漏了什么",
+    "section_built_human_p1": "上面的清单记录的只是「谁在敲键盘」，而这恰恰是本应用构建过程中最不重要的部分。我们投入了数百小时，在真实设备与真实 App Store 数据上使用 privacytracker，并把结果反馈回产品：确定产品应该成为什么样子、请从未见过它的人测试流程、发现那些在代码审查中看似正确、实际使用中却是错的行为、重写测试效果不佳的文案，以及舍弃经不起推敲的模型输出。每一个界面上的每一个设计决策，都由人做出。",
+    "section_built_p2": "组合使用多款模型有助于交叉验证设计决策、捕捉单一模型遗漏的 bug，并在 Next.js、SQLite 与抓取各层保持代码风格一致。但模型只是协助 —— 它们不会无人监管地直接发布代码，也不决定这个应用应该做什么。",
     "section_built_p3": "此处披露此信息是出于透明的考虑：如果你正在审查 privacytracker 自身的行为，应当知道其源代码是与 AI 工具共同编写的，尽管运行时的隐私标签抓取与比对逻辑完全是确定性的。",
     "section_off_title": "关闭 AI",
     "section_off_pre": "前往 ",
@@ -1392,6 +1504,10 @@
     "compare_two_apps": {
       "title": "并排对比两个应用",
       "body": "在考虑替代品？看看哪一个更少收集你在意的数据。"
+    },
+    "import_label_history": {
+      "title": "回溯应用的隐私标签历史",
+      "body": "从互联网档案馆导入 2021 年以来的存档快照，看看每个应用的标签是如何变化的。"
     },
     "setup_background_mode": {
       "title": "让它在后台盯着",
@@ -1868,7 +1984,7 @@
   "changelog_timeline": {
     "wayback_capture_fallback": "Wayback 抓取",
     "view_requested_capture": "查看请求的快照 ↗",
-    "wayback_attempt_requested": "已请求新的 Wayback 快照（目标：{quarter}）。",
+    "wayback_attempt_requested": "已请求 Wayback 抓取当前的 App Store 页面，以便下次导入有一份最近的基线。",
     "wayback_attempt_save_now_failed": "无法为 {quarter} 请求 Wayback 快照：{error}。",
     "wayback_attempt_save_now_failed_default": "Save Page Now 调用失败",
     "wayback_attempt_no_capture": "在 {quarter} 附近未找到 Wayback 快照。",
@@ -1917,6 +2033,7 @@
     "card_no_changes": "✓ 未检测到变化",
     "card_wayback_no_diff": "🕰 Wayback 快照 — 与上一条无差异",
     "card_wayback_reconstruction": "🕰 Wayback 重建 · {count, plural, one {# 处变化} other {# 处变化}}",
+    "archive_bridge_caption": "与 {date} 的存档快照相比",
     "card_changes_detected": "⚡ 检测到 {count, plural, one {# 处变化} other {# 处变化}}",
     "version_released": "发布于 {date}",
     "ack_covered_count": "覆盖 {count, plural, one {# 处待处理变化} other {# 处待处理变化}}",
@@ -3358,7 +3475,10 @@
     "hide_preview_button": "隐藏预览",
     "version_updated_no_label_changes": "📱 新版本已发布：v{version}；标签未变化",
     "show_wayback_imports": "显示 Wayback 导入",
-    "wayback_import_count": "此时间线中有 {count, plural, one {# 条 Wayback 导入} other {# 条 Wayback 导入}}"
+    "wayback_import_count": "此时间线中有 {count, plural, one {# 条 Wayback 导入} other {# 条 Wayback 导入}}",
+    "show_older": "显示更早的记录",
+    "show_older_busy": "正在加载更早的记录…",
+    "show_older_failed": "无法加载更早的记录：{message}"
   },
   "onboard_status": {
     "fetch_ready": "已是最新",
@@ -3676,6 +3796,20 @@
       "origin_browser_retry_hint": "首次抓取被拦截，因此我们改用桌面浏览器请求头重试。",
       "origin_wayback": "来自 Wayback Machine",
       "origin_wayback_hint": "在线政策页面拦截了我们，因此此摘要使用最近的存档副本。"
+    },
+    "history_import": {
+      "title": "回溯这个应用的历史",
+      "body": "向互联网档案馆索取这个应用自 2021 年以来每个季度的 App Store 页面存档，并把找到的内容加入下方时间线。之后可以再次运行——档案馆会不断新增存档，且已导入的内容不会重复。",
+      "button": "检查存档",
+      "button_busy": "正在检查存档…",
+      "button_title": "重新检查 2021 年以来的每个季度，包括上次跳过的。",
+      "result_imported": "{count, plural, other {已向时间线添加 # 条快照}}",
+      "result_nothing_new": "没有新内容——除了已有的记录，档案馆没有其他存档。",
+      "note_failed": "{count, plural, other {有 # 条存档无法读取}}。详见 设置 → 开发者选项 → 活动日志。",
+      "note_snapshot_requested": "已请求档案馆抓取当前页面，以便下次检查时有一份较新的基线。",
+      "failed_status": "导入失败（{status}）",
+      "failed_archive_busy": "互联网档案馆正在限制请求。请等几分钟后重试——没有任何内容丢失。",
+      "failed_generic": "导入失败"
     },
     "task_titles": {
       "labels_subtitle": "仅 App Store 标签 — 政策保留在「AI 政策」标签页",
@@ -4513,7 +4647,7 @@
     },
     "wayback": {
       "title": "历史导入（Wayback Machine）",
-      "subtitle": "从 archive.org 回溯隐私标签历史，自 2025 年 11 月 5 日 App Store 网页版上线起，每个日历季度抓取一个快照。若某个月份的快照不可用，将使用最接近的那一个。除 archive.org 以外，不会联系任何其他外部服务。",
+      "subtitle": "从 archive.org 回填隐私标签历史：自 2021 年第一季度起每个季度一份快照（Apple 自那时起在网页版 App Store 上发布隐私标签）。若某个季度目标日期前后 45 天内没有存档，则跳过而不是近似。除 archive.org 外不会联系任何其他站点。",
       "import_busy": "正在导入历史…",
       "import_button": "🕰 为所有应用导入历史",
       "import_title": "通过 Wayback Machine 抓取每个应用归档的 App Store 页面，并把隐私标签快照按当时的日期回填到变更日志。",
@@ -4531,13 +4665,15 @@
       "force_title": "丢弃已暂停的队列，并为所有应用重新开始一次 Wayback 导入。",
       "remove_busy": "正在移除…",
       "remove_button": "🗑 移除所有已导入的历史",
-      "remove_title": "删除所有由 Wayback 导入的快照。现场抓取的快照不会被删除。",
+      "remove_title": "删除所有从 Wayback 导入的快照以及导入器留下的说明。实时快照将保留。",
       "show_imported_label": "在时间轴中显示导入的历史",
       "show_imported_help": "开启时，回溯的条目会带着时钟图标和紫色「Wayback」徽标出现在每个应用的「变更日志」里。关闭后这些条目仍保留在数据库中，但不会显示在时间轴上 — 适合快速对比仅现场抓取与重建后的视图差异。",
       "resume_label": "重启后已恢复。",
       "resume_body": "上一次的批量导入被中断，正在后台自动继续。",
       "paused_label": "已暂停。",
       "paused_body": "已保存的队列会保留在这里，直到你继续、取消或从头重新开始。",
+      "paused_rate_limited_label": "已因限流暂停。",
+      "paused_rate_limited_body": "archive.org 正在限制请求。队列已保存——请等几分钟后点击“恢复队列”，导入会从中断处继续。",
       "starting": "正在开始导入…",
       "progress_lead": "正在导入 {current} / {total}",
       "pause_requested": "当前应用完成后将暂停…",
@@ -4563,7 +4699,7 @@
       "remove_modal": {
         "badge": "破坏性操作",
         "title": "移除所有已导入的历史？",
-        "body": "这会移除所有应用中由 Wayback 导入的历史条目。现场抓取的隐私快照不会受影响 — 仅删除回溯的归档导入。之后可重新运行「为所有应用导入历史」恢复。",
+        "body": "这将删除所有应用中每一条从 Wayback 导入的历史记录，以及导入器写入的“已请求新的 Wayback 快照”说明。实时隐私快照将保留——只删除回填的存档导入。之后可以再次运行“为所有应用导入历史”来恢复。",
         "cancel": "取消",
         "removing": "正在移除…",
         "confirm": "移除导入的历史"
@@ -4572,6 +4708,7 @@
       "task_preparing": "正在准备…",
       "task_finished": "已完成",
       "bulk_paused": "{total, plural, one {Wayback 导入已暂停 — 还剩 {remaining} / # 个应用} other {Wayback 导入已暂停 — 还剩 {remaining} / # 个应用}}",
+      "bulk_paused_rate_limited": "{total, plural, other {Wayback 导入已暂停——archive.org 正在限流；尚余 {remaining}/# 个应用}}",
       "bulk_cancelled": "{total, plural, one {Wayback 导入已取消 — {remaining} / # 个应用未处理} other {Wayback 导入已取消 — {remaining} / # 个应用未处理}}",
       "bulk_summary": "{count, plural, one {Wayback 导入覆盖 # 个应用：{parts}} other {Wayback 导入覆盖 # 个应用：{parts}}}",
       "bulk_part_imported": "已导入 {count} 个",
@@ -5408,6 +5545,16 @@
       "duration_ms": "{value} ms",
       "duration_s": "{value} 秒",
       "duration_min": "{value} 分钟"
+    },
+    "card_csp": {
+      "title": "内容安全策略",
+      "help": "浏览器针对本应用自身安全策略上报的违规记录。这些数据不会离开您的设备。设置 PRIVACYTRACKER_CSP=report-only 可在强制执行前先观察策略效果。",
+      "empty": "暂无违规上报。",
+      "directive": "指令",
+      "blocked": "被拦截",
+      "page": "页面",
+      "when": "时间",
+      "inline": "（内联）"
     }
   },
   "background_mode_callout": {
@@ -5607,5 +5754,20 @@
     "from_archive_suffix": " · 由网络存档重建",
     "show_details": "查看变化详情",
     "hide_details": "隐藏详情"
+  },
+  "admin_login": {
+    "title": "登录",
+    "description": "输入访问令牌以打开您的私人工作区。",
+    "token_label": "访问令牌",
+    "sign_in": "登录",
+    "signing_in": "正在登录…",
+    "invalid": "无法登录。请检查访问令牌后重试。",
+    "too_many": "尝试次数过多。请等待一分钟后重试。",
+    "unavailable": "无法连接服务器。请重新加载此页面后重试。",
+    "not_configured": "访问已锁定。请让服务器管理员配置访问令牌。"
+  },
+  "loader_error": {
+    "title": "此页面的数据加载失败。",
+    "retry": "重试"
   }
 }

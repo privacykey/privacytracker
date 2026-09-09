@@ -28,13 +28,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CALLOUT_CARDS,
   DASHBOARD_PRESET_KEYS,
   DASHBOARD_PRESET_META,
   type DashboardCardId,
   type DashboardLayout,
+  DEFAULT_LAYOUT,
 } from "../../lib/dashboard-layout";
 import { useDashboardLayoutSaver } from "../../lib/use-dashboard-layout-saver";
 import {
@@ -44,10 +45,57 @@ import {
 import { CardThumbnail } from "./DashboardCardThumbnail";
 
 interface Props {
-  initialLayout: DashboardLayout;
+  /**
+   * Seed layout. The page passes none — Rust-core Phase 0 made it a
+   * shell — so it loads from `GET /api/dashboard/layout`, which already
+   * served `readDashboardLayoutWithMatch()`. DEFAULT_LAYOUT stands in
+   * until it lands (and if it fails), matching the server page's
+   * try/catch fallback.
+   */
+  initialLayout?: DashboardLayout;
 }
 
 export default function DashboardLayoutEditor({ initialLayout }: Props) {
+  const [loaded, setLoaded] = useState<DashboardLayout | null>(
+    initialLayout ?? null
+  );
+
+  useEffect(() => {
+    if (initialLayout) {
+      return;
+    }
+    let live = true;
+    fetch("/api/dashboard/layout")
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      )
+      .then((json: { layout?: DashboardLayout }) => {
+        if (live && json.layout) {
+          setLoaded(json.layout);
+        }
+      })
+      .catch((error) => {
+        console.warn("[layout-editor] load failed:", error);
+        if (live) {
+          setLoaded(DEFAULT_LAYOUT);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [initialLayout]);
+
+  if (!loaded) {
+    return null;
+  }
+  return <DashboardLayoutEditorInner initialLayout={loaded} />;
+}
+
+function DashboardLayoutEditorInner({
+  initialLayout,
+}: {
+  initialLayout: DashboardLayout;
+}) {
   const t = useTranslations("dashboard.layout_editor");
   const tPresetLabel = useTranslations(
     "dashboard.layout_editor.presets.labels"

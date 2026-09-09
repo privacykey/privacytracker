@@ -18,6 +18,15 @@ non-trivial change; it will save you an afternoon.
   lockfile drift.
 - **Rust stable** — only if you're touching the Tauri desktop shell
   (`src-tauri/`).
+- **The bundled Node sidecar** — also desktop-only. Run
+  `just fetch-node-sidecar` (or `bash scripts/fetch-node-sidecar.sh`)
+  once per clone before `just tauri-dev` / `just tauri-build`; the
+  binary is ~139MB, gitignored, and GPG-verified on download. Without
+  it the build fails partway through with
+  `stage-standalone: cannot find Node binary at …`. See
+  [src-tauri/binaries/README.md](src-tauri/binaries/README.md) —
+  the version has to match the Node you ran `pnpm install` with, and
+  the README explains why. Needs `gpg` (`brew install gnupg`).
 
 ## Getting started
 

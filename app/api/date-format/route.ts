@@ -11,6 +11,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   type DateFormatMode,
   normaliseDateFormat,
@@ -33,7 +34,12 @@ export async function POST(request: Request) {
   let body: { mode?: unknown } = {};
   try {
     body = await readBoundedJson<{ mode?: unknown }>(request, 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
   const mode = normaliseDateFormat(

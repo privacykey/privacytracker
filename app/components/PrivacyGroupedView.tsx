@@ -37,12 +37,51 @@ interface PrivacyGroup {
 // ── Main component ────────────────────────────────────────────────────
 
 export default function PrivacyGroupedView({
-  initialData,
+  initialData = [],
 }: {
-  initialData: PrivacyGroup[];
+  /**
+   * Seed groups. The page passes none — Rust-core Phase 0 made it a
+   * shell — so the grouped view loads on mount from
+   * `GET /api/apps?view=grouped`, the endpoint that already served
+   * exactly `getGroupedPrivacyView()`.
+   */
+  initialData?: PrivacyGroup[];
 }) {
   const tMap = useTranslations("privacy_map");
+  const tError = useTranslations("loader_error");
   const [search, setSearch] = useState("");
+  const [data, setData] = useState<PrivacyGroup[]>(initialData);
+  // "loading" until the fetch settles (unless the caller seeded data —
+  // Storybook does). Without this the map painted the full "no privacy
+  // data" empty state — onboard link and all — on EVERY visit for the
+  // fetch's duration, and permanently if it failed. Every other Phase 0
+  // loader holds render until its data resolves; this one now does too.
+  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+    initialData.length > 0 ? "ready" : "loading"
+  );
+
+  useEffect(() => {
+    let live = true;
+    fetch("/api/apps?view=grouped")
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      )
+      .then((json: PrivacyGroup[]) => {
+        if (live && Array.isArray(json)) {
+          setData(json);
+          setStatus("ready");
+        }
+      })
+      .catch((error) => {
+        console.warn("[privacy-map] load failed:", error);
+        if (live) {
+          setStatus("error");
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // If the user landed here via a deep-link like
   // `/dashboard/privacy#cat-DATA_LINKED_TO_YOU-USER_CONTENT` we capture both
@@ -82,7 +121,7 @@ export default function PrivacyGroupedView({
   }, []);
 
   const filtered = sortPrivacyTypesForDisplay(
-    initialData
+    data
       .map((group) => ({
         ...group,
         categories: group.categories.filter(
@@ -97,7 +136,29 @@ export default function PrivacyGroupedView({
       .filter((group) => group.categories.length > 0)
   );
 
-  if (initialData.length === 0) {
+  if (status === "loading") {
+    return null;
+  }
+  if (status === "error") {
+    return (
+      <div className="page-container">
+        <div className="empty-state">
+          <div className="empty-state-icon">🗺</div>
+          <div className="empty-state-title">{tError("title")}</div>
+          <p className="empty-state-text">
+            <button
+              className="btn btn-secondary"
+              onClick={() => window.location.reload()}
+              type="button"
+            >
+              {tError("retry")}
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (data.length === 0) {
     return (
       <div className="page-container">
         <div className="empty-state">

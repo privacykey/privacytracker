@@ -84,10 +84,9 @@ export default function VerdictPicker({
   // Used to bust the Router Cache after a successful save/clear so
   // the dashboard / app-list views the user might back-navigate to
   // re-fetch their RSC payload instead of serving the cached one
-  // from before the verdict change. The /api/verdicts handler also
-  // calls revalidatePath('/dashboard', 'layout') server-side; the
-  // two together cover both the data cache and the client-side
-  // router cache.
+  // from before the verdict change. (The /api/verdicts handler does NOT
+  // revalidate server caches any more — pages are client shells and the
+  // prerendered HTML must stay byte-stable for the hash-based CSP.)
   const router = useRouter();
 
   const split = useMemo(

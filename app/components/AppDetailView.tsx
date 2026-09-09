@@ -33,6 +33,7 @@ import AppDevicesPanel from "./AppDevicesPanel";
 import ChangelogTimeline from "./ChangelogTimeline";
 import CompareAppsView from "./CompareAppsView";
 import AccessibilityPanel from "./detail/AccessibilityPanel";
+import AppHistoryImportCard from "./detail/AppHistoryImportCard";
 import ChangeReviewPanel from "./detail/ChangeReviewPanel";
 import PolicySummaryPanel from "./detail/PolicySummaryPanel";
 import PrivacyTypeSection from "./detail/PrivacyTypeSection";
@@ -175,6 +176,7 @@ export interface DetailFlagState {
   timelineReviewSnapshotChips: boolean;
   timelineTriggerPills: boolean;
   timelineVersionChip: boolean;
+  timelineWaybackImport: boolean;
   timelineWaybackRows: boolean;
   timelineWaybackToggle: boolean;
 }
@@ -182,6 +184,7 @@ export interface DetailFlagState {
 export default function AppDetailView({
   app,
   changelog,
+  changelogHasMore = false,
   unacknowledged,
   aiProvider,
   recentPolicyChange,
@@ -193,9 +196,22 @@ export default function AppDetailView({
   trackAccessibility = true,
   childAgeBand = null,
   detailFlags,
+  onRefresh,
 }: {
   app: App;
+  /**
+   * Re-fetch the page's data after a mutation (re-sync, review action,
+   * policy regenerate). The client shell that now renders this page
+   * passes its refetch here; without it `router.refresh()` is the
+   * fallback, which only re-runs SERVER components — i.e. nothing, once
+   * the page is a shell — so the four call sites below would silently
+   * stop updating the timeline.
+   */
+  onRefresh?: () => void;
   changelog: ChangelogRow[];
+  /** Whether rows older than `changelog` exist — the timeline offers
+   *  "Show older entries" and fetches them on demand. */
+  changelogHasMore?: boolean;
   unacknowledged: UnacknowledgedChanges;
   aiProvider: string;
   /** Banner hint from the server; null when no recent change / banner disabled. */
@@ -293,6 +309,7 @@ export default function AppDetailView({
     reviewSnoozeMenu: detailFlags?.reviewSnoozeMenu ?? true,
     reviewSnoozedPanel: detailFlags?.reviewSnoozedPanel ?? true,
     timelineLiveRows: detailFlags?.timelineLiveRows ?? true,
+    timelineWaybackImport: detailFlags?.timelineWaybackImport ?? true,
     timelineWaybackRows: detailFlags?.timelineWaybackRows ?? true,
     timelineWaybackToggle: detailFlags?.timelineWaybackToggle ?? true,
     timelineTriggerPills: detailFlags?.timelineTriggerPills ?? true,
@@ -391,9 +408,13 @@ export default function AppDetailView({
     };
   }, [app.id]);
   const taskCenter = useTaskCenter();
-  // `router.refresh()` re-runs the parent server component so a freshly-recorded
-  // review action shows up in the Change History tab without a full page reload.
+  // Re-read the page's data so a freshly-recorded review action / sync /
+  // policy run shows up in the Change History tab without a full reload.
+  // `onRefresh` is the loader's refetch (Rust-core Phase 0); the
+  // `router.refresh()` fallback only re-runs server components and is
+  // kept for any remaining server-rendered mount.
   const router = useRouter();
+  const refresh = onRefresh ?? (() => router.refresh());
 
   // i18n translation handles for the AppDetailView surfaces. Captured at
   // the top of the component so all the inner JSX blocks below can use
@@ -717,7 +738,7 @@ export default function AppDetailView({
       // expanded accordions, scroll position). The previous
       // `window.location.reload()` was jarring because it always reset the
       // view to the 'privacy' default tab.
-      setTimeout(() => router.refresh(), 1500);
+      setTimeout(() => refresh(), 1500);
     } catch (err) {
       if ((err as Error)?.name === "AbortError") {
         showToast(tDetail("toasts.sync_cancelled"));
@@ -1246,7 +1267,7 @@ export default function AppDetailView({
                 snoozedUntil: 0,
               })
             }
-            onRefreshHistory={() => router.refresh()}
+            onRefreshHistory={refresh}
             onShowToast={showToast}
             onSnoozed={(until) =>
               setReviewState((prev) => ({ ...prev, snoozedUntil: until }))
@@ -1538,6 +1559,7 @@ export default function AppDetailView({
               previewToggle: f.policyPreviewToggle,
             }}
             formatDate={formatDate}
+            onRefresh={refresh}
             onViewDiff={() => setTab("changelog")}
             policyDiffAlertDays={policyDiffAlertDays ?? 90}
             recentPolicyChange={recentPolicyChange ?? null}
@@ -1556,6 +1578,13 @@ export default function AppDetailView({
               the install-era baseline snapshot to today, above the
               change-by-change timeline below. Self-hides until there's a
               real multi-snapshot baseline to compare against. */}
+          {/* Reconstruct this app's history from the Internet Archive.
+              Above the timeline because that's where the absence of old
+              entries is noticed; the library-wide equivalent lives in
+              Settings → Historical Import. */}
+          {f.timelineWaybackImport && (
+            <AppHistoryImportCard appId={app.id} onImported={refresh} />
+          )}
           <SinceInstallCard appId={app.id} />
           <ChangelogTimeline
             appId={app.id}
@@ -1575,6 +1604,7 @@ export default function AppDetailView({
               chartsTrendPresets: f.chartsTrendPresets,
               chartsTrendLegend: f.chartsTrendLegend,
             }}
+            hasMore={changelogHasMore}
             rows={changelog}
           />
         </div>

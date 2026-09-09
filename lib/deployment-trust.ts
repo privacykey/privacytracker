@@ -2,7 +2,7 @@
  * Deployment-trust config — the single source of truth for "what hostname
  * do we answer to" and "is this instance reachable beyond loopback".
  *
- * WHY THIS MODULE EXISTS (and why it imports nothing): the trust decisions
+ * WHY THIS MODULE EXISTS (and why it has no database imports): the trust decisions
  * here are consumed in two runtimes — the Next.js middleware/proxy sandbox
  * (`proxy.ts`) and ordinary Node route handlers (via `lib/security.ts`). The
  * proxy sandbox cannot load native modules, so it must NOT transitively import
@@ -19,7 +19,7 @@
  *   is trivial string work, so there is no cache — which means tests can mutate
  *   `process.env` and see the effect immediately with no reset hook.
  *
- * Env vars (all optional; the default posture is loopback-only):
+ * Env vars (unknown binds fail closed; the launcher binds loopback explicitly):
  * - PRIVACYTRACKER_ALLOWED_HOSTS  — comma list, APPENDED to the always-allowed
  *   loopback set. A non-loopback entry also flips the instance to
  *   "network-exposed" (so the admin token becomes mandatory).
@@ -27,12 +27,18 @@
  *   cannot verify the socket peer without a custom server, so this is an
  *   explicit operator assertion that a trusted reverse proxy sits in front.
  * - PRIVACYTRACKER_NETWORK_EXPOSED — boolean. Force the token-mandatory posture.
- * - PRIVACYTRACKER_BIND_HOST      — optional explicit bind interface. A specific
- *   non-loopback IP ⇒ network-exposed. (We deliberately do NOT trust HOSTNAME
- *   as a bind signal unless it parses as an IP, because Docker sets HOSTNAME to
- *   the container id — a random hostname that must not be mistaken for a bind
- *   address.)
+ * - PRIVACYTRACKER_BIND_HOST      — the actual bind interface, supplied by the
+ *   launcher. Anything except verified loopback requires authentication.
  */
+
+import { trustProxy } from "./request-origin.cjs";
+
+export {
+  effectiveHostFromHeaders,
+  isSameOriginRequest,
+  requestOrigin,
+  trustProxy,
+} from "./request-origin.cjs";
 
 export type BindClassification =
   | "loopback"
@@ -56,15 +62,6 @@ function envFlag(name: string): boolean {
   }
   const v = raw.trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
-}
-
-function firstHeaderValue(headers: Headers, name: string): string | null {
-  const raw = headers.get(name);
-  if (!raw) {
-    return null;
-  }
-  const first = raw.split(",")[0]?.trim();
-  return first || null;
 }
 
 /**
@@ -109,15 +106,13 @@ function isLoopbackNormalized(h: string): boolean {
     h === "localhost" ||
     h.endsWith(".localhost") ||
     h === "::1" ||
-    h === "0.0.0.0" ||
-    h === "::" ||
     /^127(?:\.\d{1,3}){3}$/.test(h)
   );
 }
 
 /**
  * Canonical loopback classification. Treats all of 127.0.0.0/8, ::1, the
- * unspecified addresses 0.0.0.0 / ::, localhost and *.localhost as loopback.
+ * localhost and *.localhost as loopback. Unspecified addresses are not local.
  * (Fixes the old diagnostics check that only matched the literal "127.0.0.1".)
  */
 export function isLoopbackHost(raw: string | null | undefined): boolean {
@@ -174,27 +169,6 @@ export function isHostAllowed(raw: string | null | undefined): boolean {
   return getAllowedHostPatterns().some((p) => hostMatchesPattern(h, p));
 }
 
-/** Operator has asserted a trusted reverse proxy sits in front. */
-export function trustProxy(): boolean {
-  return envFlag("PRIVACYTRACKER_TRUST_PROXY");
-}
-
-/**
- * The host the *client* used, as best we can trust it: X-Forwarded-Host when a
- * trusted proxy is configured, otherwise the literal Host header. Untrusted
- * X-Forwarded-Host is ignored entirely — checking it against the allowlist
- * would be pointless since an attacker can set it to "localhost".
- */
-export function effectiveHostFromHeaders(headers: Headers): string | null {
-  if (trustProxy()) {
-    const fwd = firstHeaderValue(headers, "x-forwarded-host");
-    if (fwd) {
-      return fwd;
-    }
-  }
-  return headers.get("host");
-}
-
 /**
  * The client IP, or null when we cannot attribute one. Returns null unless a
  * trusted proxy is configured — without one, X-Forwarded-For / X-Real-IP are
@@ -235,15 +209,8 @@ function bindHostRaw(): string | null {
   if (explicit) {
     return explicit;
   }
-  // HOSTNAME is the *container id* under Docker (not a bind address), so only
-  // honour it when it parses as an IP / known bind token — never a hostname.
-  const hn = process.env.HOSTNAME?.trim();
-  if (hn) {
-    const n = normalizeHost(hn);
-    if (n && (ipLiteralFamily(n) || isLoopbackNormalized(n))) {
-      return hn;
-    }
-  }
+  // HOSTNAME does not prove where Next listens (Docker sets it automatically).
+
   return null;
 }
 
@@ -273,10 +240,9 @@ function allowlistHasNonLoopback(): boolean {
 /**
  * Is this instance declared reachable beyond loopback? True when the operator
  * sets PRIVACYTRACKER_NETWORK_EXPOSED, lists a non-loopback host in the
- * allowlist, or binds to a specific non-loopback IP. A wildcard (0.0.0.0/::)
- * or unknown bind is deliberately NOT treated as exposed — inside Docker we
- * cannot observe the host-side port map, so we fail to the safe default and
- * rely on the startup warning + the Host allowlist to surface real exposure.
+ * allowlist, or binds anywhere except verified loopback. Docker's host-side
+ * port mapping is not observable here, so wildcard and unknown binds require
+ * authentication too.
  */
 export function isNetworkExposed(): boolean {
   if (envFlag("PRIVACYTRACKER_NETWORK_EXPOSED")) {
@@ -285,7 +251,7 @@ export function isNetworkExposed(): boolean {
   if (allowlistHasNonLoopback()) {
     return true;
   }
-  return bindClassification() === "specific";
+  return bindClassification() !== "loopback";
 }
 
 /**

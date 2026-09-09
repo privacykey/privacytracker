@@ -50,7 +50,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: `rm -rf .playwright-data && mkdir -p .playwright-data && npm run build && npm start -- -H ${e2eServerHost} -p ${e2eServerPort}`,
+    command: `rm -rf .playwright-data && mkdir -p .playwright-data && pnpm build && pnpm start -H ${e2eServerHost} -p ${e2eServerPort}`,
     url: e2eReadyURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
@@ -58,6 +58,7 @@ export default defineConfig({
       PRIVACYTRACKER_DATA_DIR: e2eDataDir,
       NEXT_TELEMETRY_DISABLED: "1",
       AUDITOR_ADMIN_TOKEN: e2eAdminToken,
+      PRIVACYTRACKER_NETWORK_EXPOSED: "1",
     },
   },
   projects: [

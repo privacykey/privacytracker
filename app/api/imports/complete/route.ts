@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { completeImport } from "../../../../lib/imports";
 import { createManualAppsPromptNotification } from "../../../../lib/notifications";
 import { readBoundedJson } from "../../../../lib/security";
@@ -10,6 +11,11 @@ export async function POST(request: Request) {
   try {
     body = await readBoundedJson<Record<string, unknown>>(request, 4 * 1024);
   } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid JSON body" },
       { status: 400 }

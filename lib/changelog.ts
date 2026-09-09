@@ -527,13 +527,44 @@ export function getLatestSnapshot(appId: string): PrivacyTypeSnapshot[] | null {
   return row ? JSON.parse(row.snapshot_json) : null;
 }
 
+export interface ChangelogPageOptions {
+  /**
+   * Only rows strictly older than this epoch-ms. The History tab passes the
+   * oldest row it has when the user asks for older entries, so the whole
+   * history stays reachable however many no-change syncs sit on top of it.
+   */
+  beforeMs?: number;
+}
+
+/**
+ * Page of changelog rows plus whether an older page exists. Fetches one row
+ * past `limit` to answer `hasMore` without a second count query.
+ */
+export function getChangelogPage(
+  appId: string,
+  limit = 50,
+  options: ChangelogPageOptions = {}
+): { rows: ChangelogRow[]; hasMore: boolean } {
+  const rows = getChangelog(appId, limit + 1, options);
+  return { rows: rows.slice(0, limit), hasMore: rows.length > limit };
+}
+
 /**
  * Return paginated changelog entries for an app, newest first. Interleaves
  * privacy-snapshot rows with review-action rows so "Acknowledged on X" shows
  * up inline in the timeline. `limit` applies to the *merged* list, not each
  * source independently, so callers don't have to post-filter.
  */
-export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
+export function getChangelog(
+  appId: string,
+  limit = 50,
+  options: ChangelogPageOptions = {}
+): ChangelogRow[] {
+  const beforeMs =
+    typeof options.beforeMs === "number" && Number.isFinite(options.beforeMs)
+      ? options.beforeMs
+      : null;
+  const olderParams = beforeMs === null ? [] : [beforeMs];
   const snapshots = (
     db
       .prepare(`
@@ -541,11 +572,11 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
              source, wayback_snapshot_url, triggered_by,
              app_version, app_version_updated_at
       FROM privacy_snapshots
-      WHERE app_id = ?
+      WHERE app_id = ?${beforeMs === null ? "" : " AND scraped_at < ?"}
       ORDER BY scraped_at DESC
       LIMIT ?
     `)
-      .all(appId, limit) as Array<{
+      .all(appId, ...olderParams, limit) as Array<{
       id: string;
       scraped_at: number;
       snapshot_json: string | null;
@@ -574,6 +605,8 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
     app_version: row.app_version ?? null,
     app_version_updated_at: row.app_version_updated_at ?? null,
   }));
+
+  bridgeOldestLiveRow(appId, snapshots);
 
   // Mark wayback rows whose snapshot content is byte-identical to an adjacent
   // live row. The UI uses this to show "Matches live sync" so users can see
@@ -607,11 +640,11 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
       SELECT id, acted_at, action, covered_count, covered_snapshot_ids,
              snooze_until, note
       FROM change_review_actions
-      WHERE app_id = ?
+      WHERE app_id = ?${beforeMs === null ? "" : " AND acted_at < ?"}
       ORDER BY acted_at DESC
       LIMIT ?
     `)
-      .all(appId, limit) as Array<{
+      .all(appId, ...olderParams, limit) as Array<{
       id: string;
       acted_at: number;
       action: ReviewAction;
@@ -647,6 +680,79 @@ export function getChangelog(appId: string, limit = 50): ChangelogRow[] {
   });
 
   return merged.slice(0, limit);
+}
+
+/**
+ * Bridge the last archive → live hop at read time.
+ *
+ * The first live scrape of an app stores an empty diff (there was nothing
+ * to compare against). Once a Wayback import back-fills captures *before*
+ * it, the most recent change — between the newest capture and that first
+ * scrape — would be the one hop the timeline never shows. We derive it here
+ * rather than rewriting the live row: live rows belong to the scraper and
+ * feed the review queue, and imported history must never re-raise
+ * "changes to review".
+ *
+ * Only the oldest live snapshot qualifies, and only when the row directly
+ * below it in the (newest-first) list is a wayback row whose content
+ * differs. Mutates the row in place — `snapshots` is the freshly-mapped
+ * page, not a cached object.
+ */
+function bridgeOldestLiveRow(
+  appId: string,
+  snapshots: SnapshotChangelogRow[]
+): void {
+  const firstLive = db
+    .prepare(
+      `SELECT MIN(scraped_at) AS ms
+         FROM privacy_snapshots
+        WHERE app_id = ? AND COALESCE(source, 'live') = 'live'`
+    )
+    .get(appId) as { ms: number | null } | undefined;
+  const firstLiveMs = firstLive?.ms;
+  if (typeof firstLiveMs !== "number") {
+    return;
+  }
+  const idx = snapshots.findIndex(
+    (row) => row.source === "live" && row.scraped_at === firstLiveMs
+  );
+  if (idx < 0) {
+    return;
+  }
+  const row = snapshots[idx];
+  if (
+    row.changes_detected !== 0 ||
+    row.changes_summary.length !== 0 ||
+    !row.snapshot_json
+  ) {
+    return;
+  }
+  const older = snapshots[idx + 1];
+  if (
+    older?.source !== "wayback" ||
+    !older.snapshot_json ||
+    older.snapshot_json === row.snapshot_json
+  ) {
+    return;
+  }
+  let previous: PrivacyTypeSnapshot[];
+  let current: PrivacyTypeSnapshot[];
+  try {
+    previous = JSON.parse(older.snapshot_json) as PrivacyTypeSnapshot[];
+    current = JSON.parse(row.snapshot_json) as PrivacyTypeSnapshot[];
+  } catch {
+    return;
+  }
+  const changes = diffSnapshots(previous, current);
+  if (changes.length === 0) {
+    return;
+  }
+  row.changes_summary = changes;
+  row.changes_detected = 1;
+  row.archive_bridge = {
+    from_scraped_at: older.scraped_at,
+    wayback_snapshot_url: older.wayback_snapshot_url ?? null,
+  };
 }
 
 /**

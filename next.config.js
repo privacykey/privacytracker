@@ -32,6 +32,16 @@ const nextConfig = {
     "172.31.*.*",
     "*.local",
   ],
+  // Pin the file-tracing / Turbopack root to this directory. Without it Next
+  // walks up looking for lockfiles and, inside a git worktree nested under
+  // the main clone's `.claude/worktrees/<name>/`, picks the PARENT clone's
+  // pnpm-workspace.yaml instead. That warns on every build and breaks
+  // `pnpm build:standalone`: server.js lands at
+  // `.next/standalone/.claude/worktrees/<name>/server.js`, where
+  // scripts/stage-standalone.mjs can't find it. In the main clone, CI and
+  // Docker (`/app`) this resolves to exactly the root Next would infer.
+  // biome-ignore lint/correctness/noGlobalDirnameFilename: this file is CommonJS (require/module.exports), so import.meta.dirname is unavailable.
+  outputFileTracingRoot: __dirname,
   // Allow redirecting the build output dir for sandboxed / FUSE-mounted envs
   // where the default `.next` can't be unlinked.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
@@ -42,6 +52,14 @@ const nextConfig = {
   ...(process.env.BUILD_STANDALONE ? { output: "standalone" } : {}),
   // better-sqlite3 is a native binding; Next must not bundle it.
   serverExternalPackages: ["better-sqlite3"],
+  // The raw HTTP guard bounds each endpoint before Proxy buffers its body.
+  // Allow legitimate backup uploads beyond Next's default 10 MiB clone limit.
+  experimental: {
+    proxyClientMaxBodySize: "100mb",
+    // TypeScript 7 is a native compiler without the old JavaScript API.
+    // Keep build-time type checking enabled through Next's CLI backend.
+    useTypeScriptCli: true,
+  },
   // Dev-only indicator — bottom-right anchor matches the CSS stacking rule
   // in app/globals.css. Production builds don't render this.
   devIndicators: {
@@ -79,6 +97,22 @@ const nextConfig = {
   // proxy.ts's matcher excludes (`_next/static`, `_next/image`, fonts).
   // The CSP itself stays in proxy.ts because it needs a per-request
   // nonce; the headers below are static and safe to apply universally.
+  // Rust-core Phase 0 (layout batch): the two per-id detail pages are
+  // client shells that read their id from the URL, so they render from
+  // ONE static HTML each. `/apps/<id>` is rewritten internally to the
+  // static `/apps/view` shell (browser URL unchanged; deep links from
+  // notifications/bookmarks keep working). With every route static, the
+  // build can hash each page's inline scripts for the CSP — a dynamic
+  // [id] segment would have had per-request flight payloads no hash can
+  // cover. The Rust server will do the same as an SPA-style fallback.
+  async rewrites() {
+    return {
+      afterFiles: [
+        { source: "/apps/:id", destination: "/apps/view" },
+        { source: "/manual-apps/:id", destination: "/manual-apps/view" },
+      ],
+    };
+  },
   async headers() {
     return [
       {

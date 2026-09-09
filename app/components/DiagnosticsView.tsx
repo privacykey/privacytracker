@@ -977,6 +977,7 @@ export default function DiagnosticsView() {
             history={history.p99}
             uptimeSeconds={metrics.uptimeSeconds}
           />
+          <CspReportsCard />
           <MemoryCard
             historyHeap={history.heapPct}
             historyRss={history.rssMb}
@@ -1063,6 +1064,65 @@ function StatusBanner({ summary }: { summary: StatusSummary }) {
           <li key={i}>{t(note.key as never, note.params as never)}</li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function CspReportsCard() {
+  const t = useTranslations("diagnostics_page.card_csp");
+  const [reports, setReports] = useState<
+    | {
+        blockedUri: string;
+        directive: string;
+        documentUri: string;
+        receivedAt: number;
+      }[]
+    | null
+  >(null);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/csp-report")
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null)
+      .then((json) => {
+        if (live) {
+          setReports(json?.reports ?? []);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t("title")}</h2>
+        <p className="diagnostics-card-help">{t("help")}</p>
+      </header>
+      {reports && reports.length > 0 ? (
+        <table className="diagnostics-table">
+          <thead>
+            <tr>
+              <th>{t("when")}</th>
+              <th>{t("directive")}</th>
+              <th>{t("blocked")}</th>
+              <th>{t("page")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reports.map((r, idx) => (
+              <tr key={`${r.receivedAt}-${idx}`}>
+                <td>{new Date(r.receivedAt).toLocaleTimeString()}</td>
+                <td>{r.directive}</td>
+                <td>{r.blockedUri || t("inline")}</td>
+                <td>{r.documentUri.replace(/^https?:\/\/[^/]+/, "")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className="diagnostics-empty">{t("empty")}</div>
+      )}
     </section>
   );
 }

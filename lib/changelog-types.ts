@@ -64,6 +64,17 @@ export interface SnapshotChangelogRow {
   app_version?: string | null;
   /** Epoch ms of `currentVersionReleaseDate` at capture time. */
   app_version_updated_at?: number | null;
+  /**
+   * Read-time only, never persisted. Set on the oldest live scrape when an
+   * imported Wayback capture now precedes it: the scraper stored an empty
+   * first-sync diff before that history existed, so `getChangelog` derives
+   * `changes_summary` by diffing the archive capture against this scrape.
+   * Carries where the comparison came from so the card can say so.
+   */
+  archive_bridge?: {
+    from_scraped_at: number;
+    wayback_snapshot_url: string | null;
+  };
   changes_detected: number;
   changes_summary: ChangeEntry[];
   id: string;

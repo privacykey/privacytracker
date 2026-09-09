@@ -25,6 +25,7 @@ import {
   resetDashboardLayout,
   saveDashboardLayoutWithLog,
 } from "@/lib/dashboard-layout-server";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +56,12 @@ export async function PUT(request: NextRequest) {
   let body: unknown;
   try {
     body = await readBoundedJson(request, BODY_BYTES);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 

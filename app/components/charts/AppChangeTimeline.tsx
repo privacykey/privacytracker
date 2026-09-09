@@ -732,7 +732,11 @@ export default function AppChangeTimeline({
           {!error &&
             data &&
             (data.total > 0 || totals.syncs > 0 || totals.reviews > 0) && (
-              <EChart height={220} option={option} />
+              <EChart
+                className="app-change-timeline-chart"
+                height={220}
+                option={option}
+              />
             )}
         </div>
       )}

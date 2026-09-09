@@ -180,6 +180,7 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     cmd.arg(&server_js)
         .env("PORT", port.to_string())
         .env("HOSTNAME", "127.0.0.1")
+        .env("PRIVACYTRACKER_BIND_HOST", "127.0.0.1")
         .env("NODE_ENV", "production")
         .env("PRIVACYTRACKER_DATA_DIR", &data_dir)
         .env("PRIVACYTRACKER_RUNTIME", "desktop")

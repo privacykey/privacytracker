@@ -480,9 +480,11 @@ export interface CfgutilRemoveResult {
 }
 
 /**
- * Run `cfgutil backup --backup-output <dest_dir>` against the device
- * with the given ECID. Synchronous from the caller's perspective —
- * the webview shows a progress modal while this is in flight.
+ * Run Apple Configurator's supported `cfgutil --ecid <id> backup` command.
+ * Configurator stores the backup in its MobileSync directory; the native
+ * bridge returns success only after finding a new or updated non-empty
+ * Manifest.db there. Synchronous from the caller's perspective — the
+ * webview shows progress while this is in flight.
  *
  * The destructive surface (uninstall) gates on a recent successful
  * backup, so this function is the precondition for any
@@ -493,8 +495,7 @@ export interface CfgutilRemoveResult {
  * keeps the fallback behaviour symmetric with the wizard's error UI.
  */
 export async function backupDeviceViaCfgutil(
-  ecid: string,
-  destDir: string
+  ecid: string
 ): Promise<CfgutilBackupResult> {
   const invoke = getInvoke();
   if (!invoke) {
@@ -510,7 +511,6 @@ export async function backupDeviceViaCfgutil(
   try {
     const raw = (await invoke("run_cfgutil_backup", {
       ecid,
-      destDir,
     })) as Record<string, unknown>;
     return normalizeCfgutilBackup(raw, ecid);
   } catch (err) {

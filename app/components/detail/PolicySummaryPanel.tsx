@@ -148,9 +148,12 @@ export default function PolicySummaryPanel({
   policyDiffAlertDays,
   onViewDiff,
   flags,
+  onRefresh,
 }: {
   app: App;
   formatDate: (ts: number) => string;
+  /** Parent's data refetch — see AppDetailView's prop of the same name. */
+  onRefresh?: () => void;
   aiProvider: string;
   recentPolicyChange: RecentPolicyChangeHint | null;
   policyDiffAlertDays: number;
@@ -217,6 +220,7 @@ export default function PolicySummaryPanel({
   // privacy_snapshots row. Without this, the History tab only updates on a
   // full page reload, which made rescrape events look ephemeral.
   const router = useRouter();
+  const refresh = onRefresh ?? (() => router.refresh());
 
   // `regenerating` drives the UI "in-flight" styling (disabled buttons,
   // spinner chip, "Thinking…" strip). We treat a server-reported
@@ -371,7 +375,7 @@ export default function PolicySummaryPanel({
       // appends a privacy_snapshots row server-side. Re-render the parent
       // server component so the Change History tab shows the new point
       // without the user having to manually refresh the page.
-      router.refresh();
+      refresh();
     }
   };
 
@@ -423,7 +427,7 @@ export default function PolicySummaryPanel({
           // router.refresh() reruns the parent server component which
           // re-hydrates `app.policyAnalysis` through the normal path.
           cancelled = true;
-          router.refresh();
+          refresh();
           return;
         }
       } catch {

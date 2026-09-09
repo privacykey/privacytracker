@@ -16,6 +16,7 @@ import {
   postWebhookTestPayload,
   type WebhookFormat,
 } from "@/lib/notification-webhooks";
+import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,12 @@ export async function POST(request: NextRequest) {
   let body: Body;
   try {
     body = await readBoundedJson<Body>(request, 2 * 1024);
-  } catch {
+  } catch (error) {
+    const bodyLimitResponse = requestBodyErrorResponse(error);
+    if (bodyLimitResponse) {
+      return bodyLimitResponse;
+    }
+
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
