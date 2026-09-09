@@ -71,7 +71,7 @@ test("Save Page Now accepts Content-Location without following the archive page"
   }
 });
 
-test("historical import attempts Save Page Now once per app when multiple quarters are empty", async () => {
+test("historical import asks Save Page Now once per app when the archive has nothing recent", async () => {
   resetTestDb();
   seedTrackedApp({
     id: "835599320",
@@ -80,9 +80,15 @@ test("historical import attempts Save Page Now once per app when multiple quarte
   });
 
   let saveCalls = 0;
+  let availabilityCalls = 0;
   global.fetch = (async (input: string | URL | Request) => {
     const url = String(input);
+    // Unarchived URL: the CDX index answers with an empty body.
+    if (url.startsWith("https://web.archive.org/cdx/search/cdx")) {
+      return new Response("", { status: 200 });
+    }
     if (url.startsWith("https://archive.org/wayback/available")) {
+      availabilityCalls += 1;
       return new Response(JSON.stringify({ archived_snapshots: {} }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -106,11 +112,19 @@ test("historical import attempts Save Page Now once per app when multiple quarte
     }
   );
 
+  // Three real targets, all empty, plus one Save Page Now attempt reported
+  // as an extra entry dated "today". The index answered, so the per-target
+  // availability walk never ran.
   assert.equal(result.attempted, 3);
+  assert.equal(availabilityCalls, 0);
   assert.equal(saveCalls, 1);
-  assert.equal(result.targets[0].outcome, "skipped_save_now_failed");
+  assert.equal(result.targets.length, 4);
+  assert.equal(result.targets[0].outcome, "skipped_no_capture");
   assert.equal(result.targets[1].outcome, "skipped_no_capture");
   assert.equal(result.targets[2].outcome, "skipped_no_capture");
+  assert.equal(result.targets[3].outcome, "skipped_save_now_failed");
+  assert.equal(result.targets[3].targetDate, Date.UTC(2021, 7, 15));
+  assert.equal(result.snapshotsRequested, 0);
 
   // We deliberately suppress synthetic changelog rows for the
   // `save_now_failed` and `no_capture` outcomes — they were turning

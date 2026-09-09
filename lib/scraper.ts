@@ -1783,11 +1783,15 @@ export function extractFromShoebox(html: string): any[] {
     const candidates: string[] = [];
     let match: RegExpExecArray | null;
     while ((match = SHOEBOX_RE.exec(html)) !== null) {
-      // Only consider shoeboxes whose id mentions "media-api" or "apps"
-      // — the localizer / language-code / global-elements shoeboxes
-      // never carry app data and are noise to walk.
+      // Only consider shoeboxes that can carry app data — the localizer /
+      // language-code / global-elements shoeboxes never do and are noise
+      // to walk. Three ids have carried it over the years:
+      //   - `shoebox-media-api-cache-apps` (late 2021 – Nov 2025)
+      //   - `shoebox-uts-api-cache-apps` (briefly in 2023)
+      //   - `shoebox-ember-data-store` (Jan – ~Oct 2021, the first pages
+      //     with privacy labels; keyed by app id, single record)
       const id = match[1];
-      if (!/media-api|apps/i.test(id)) {
+      if (!/media-api|apps|ember-data/i.test(id)) {
         continue;
       }
       candidates.push(match[2]);
@@ -1815,9 +1819,11 @@ export function extractFromShoebox(html: string): any[] {
       } catch {
         continue;
       }
-      // Shoebox values are JSON-encoded strings keyed by Apple API
-      // request URLs. Decode each, then probe `d[0].attributes.privacy
-      // .privacyTypes` — that's the historical schema.
+      // Shoebox values are either JSON-encoded strings keyed by Apple API
+      // request URLs (media-api cache: `d[0].attributes.privacy`) or, on
+      // the early-2021 ember-data-store, plain objects keyed by app id
+      // (`data.attributes.privacy`). Both carry the same `privacyTypes`
+      // schema, so probe both paths and map once.
       for (const value of Object.values(outer)) {
         let entry: any = value;
         if (typeof entry === "string") {
@@ -1828,10 +1834,9 @@ export function extractFromShoebox(html: string): any[] {
           }
         }
         const d = entry?.d;
-        if (!Array.isArray(d) || d.length === 0) {
-          continue;
-        }
-        const attrs = d[0]?.attributes;
+        const record =
+          Array.isArray(d) && d.length > 0 ? d[0] : (entry?.data ?? null);
+        const attrs = record?.attributes;
         const privacyTypes = attrs?.privacy?.privacyTypes;
         if (!Array.isArray(privacyTypes) || privacyTypes.length === 0) {
           continue;

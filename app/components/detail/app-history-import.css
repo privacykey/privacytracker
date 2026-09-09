@@ -1,0 +1,83 @@
+/**
+ * Per-app historical-import card (AppHistoryImportCard), shown above the
+ * Change History timeline. Purple accent to match every other Wayback
+ * affordance — the timeline dots, the capture badge, the trigger pill.
+ */
+
+.app-history-import {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-wayback, #6d28d9);
+  border-radius: 8px;
+}
+
+.app-history-import-copy {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.app-history-import-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.app-history-import-body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.app-history-import-action {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.app-history-import-status {
+  max-width: 32ch;
+  font-size: 12px;
+  text-align: right;
+}
+
+.app-history-import-status.ok {
+  color: var(--text-2);
+}
+
+.app-history-import-status.error {
+  color: var(--danger, #b91c1c);
+}
+
+.app-history-import-note {
+  margin-top: 2px;
+  color: var(--text-3);
+}
+
+/* Phone: stack, and let the button and its status read left-aligned
+   rather than hugging the right edge of a full-width column. */
+@media (max-width: 560px) {
+  .app-history-import {
+    flex-direction: column;
+  }
+
+  .app-history-import-action {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .app-history-import-status {
+    max-width: none;
+    text-align: left;
+  }
+}

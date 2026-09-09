@@ -524,6 +524,7 @@ export default function SettingsView({
     setSavedTrackAccessibility,
     waybackProgress,
     waybackInitiator,
+    waybackPauseCause,
     waybackLastRun,
     runBulkWaybackImport,
     controlWaybackImport,
@@ -1988,6 +1989,7 @@ export default function SettingsView({
                   waybackControlBusy={waybackControlBusy}
                   waybackInitiator={waybackInitiator}
                   waybackLastRun={waybackLastRun}
+                  waybackPauseCause={waybackPauseCause}
                   waybackProgress={waybackProgress}
                   waybackRemoving={waybackRemoving}
                   waybackRunning={waybackRunning}
