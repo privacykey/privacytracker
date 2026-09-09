@@ -52,6 +52,7 @@ function emptyCtx(
     backgroundWizardCompletedAt: null,
     syncSchedule: null,
     hasDeviceWithApps: false,
+    hasWaybackHistory: false,
     lastResyncAt: 0,
     ...overrides,
   };
@@ -59,7 +60,7 @@ function emptyCtx(
 
 const NOW = 1_700_000_000_000; // arbitrary fixed epoch for deterministic tests
 
-test("TASK_DEFS has the nine expected task ids in order", () => {
+test("TASK_DEFS has the ten expected task ids in order", () => {
   const ids = TASK_DEFS.map((d) => d.id);
   assert.deepEqual(ids, [
     "view_privacy_map",
@@ -67,6 +68,7 @@ test("TASK_DEFS has the nine expected task ids in order", () => {
     "create_privacy_profile",
     "review_mismatches",
     "compare_two_apps",
+    "import_label_history",
     "setup_background_mode",
     "remove_apps_from_phone",
     "resync_apps_from_device",
@@ -187,6 +189,50 @@ test("completionCheck for create_privacy_profile flips on hasPrivacyProfile", ()
     done.find((r) => r.id === "create_privacy_profile")!.state,
     "completed"
   );
+});
+
+test("import_label_history surfaces for self+monitor only and completes once history is imported", () => {
+  const self = focus({ monitor: true });
+  const open = resolveTasks(
+    self,
+    emptyCtx({ focus: self }),
+    { tasks: {} },
+    { isDesktop: false },
+    NOW
+  );
+  assert.equal(
+    open.find((r) => r.id === "import_label_history")?.state,
+    "ready"
+  );
+  const done = resolveTasks(
+    self,
+    emptyCtx({ focus: self, hasWaybackHistory: true }),
+    { tasks: {} },
+    { isDesktop: false },
+    NOW
+  );
+  assert.equal(
+    done.find((r) => r.id === "import_label_history")?.state,
+    "completed"
+  );
+  // Mirrors flag.settings.policies.wayback_import: hidden for the
+  // loved_one / guardian audiences, and not a cleanup-only concern.
+  for (const f of [
+    focus({ cleanup: true }),
+    focus({ audience: "loved_one", monitor: true }),
+    focus({ audience: "guardian", monitor: true }),
+  ]) {
+    const ids = new Set(
+      resolveTasks(
+        f,
+        emptyCtx({ focus: f }),
+        { tasks: {} },
+        { isDesktop: false },
+        NOW
+      ).map((r) => r.id)
+    );
+    assert.ok(!ids.has("import_label_history"), JSON.stringify(f));
+  }
 });
 
 test("review_mismatches is blocked when create_privacy_profile is not done", () => {

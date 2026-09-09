@@ -85,6 +85,7 @@ export async function GET() {
           initiator: info.state.initiator,
           status: info.state.status,
           pausedAt: info.state.pausedAt ?? null,
+          pauseCause: info.state.pauseCause ?? null,
           pauseRequestedAt: info.state.pauseRequestedAt ?? null,
           cancelRequestedAt: info.state.cancelRequestedAt ?? null,
           currentAppId: info.state.currentAppId,
@@ -426,6 +427,7 @@ export async function PATCH(request: Request) {
       ...state,
       status: "running" as const,
       pausedAt: undefined,
+      pauseCause: undefined,
       pauseRequestedAt: undefined,
       cancelRequestedAt: undefined,
     };
