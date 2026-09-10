@@ -73,6 +73,10 @@ const BATCH_1 = [
   // batch 2
   "/api/focus",
   "/api/imports",
+  // batch 3
+  "/api/sync/status",
+  "/api/verdicts",
+  "/api/imports/queue",
 ];
 
 const onlyRe =
@@ -195,6 +199,11 @@ async function main() {
         "--skip-coverage",
         "--only",
         onlyRe,
+        // The Rust side runs on a COPY of Node's database, so ids are
+        // identical by construction — and it may not implement the route a
+        // resolver reads (e.g. /api/apps) until a later batch.
+        "--ids-from",
+        "a",
         "--token",
         TOKEN,
       ],

@@ -14,6 +14,15 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration **Phase 2, batch 3**: `/api/sync/status`,
+  `/api/verdicts` and `/api/imports/queue` join the Rust read API, taking it
+  to 14 of the 64 read routes. All byte-identical to Node, verified against a
+  server seeded with real verdict and queued-import rows rather than empty
+  tables. The parity differ gained `--ids-from`, for comparing a backend that
+  shares the other side's database rather than being independently seeded;
+  it is off by default, so the full Node-vs-Node run still proves the two
+  sides agree on their own. Developer-facing only.
+
 - Rust-core migration **Phase 2, batch 2**: `/api/focus` and `/api/imports`
   join the Rust read API, taking it to 11 routes. They add the two response
   shapes batch 1 lacked — a fully derived multi-key object, and a bare array
