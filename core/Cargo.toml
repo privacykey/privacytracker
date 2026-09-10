@@ -1,0 +1,32 @@
+[package]
+name = "privacytracker-core"
+version = "0.0.0"
+description = "privacytracker Rust core — Phase 1: the SQLite schema + migration contract, a faithful port of lib/db.ts."
+edition = "2021"
+rust-version = "1.77"
+publish = false
+
+# Deliberately NOT a workspace member and NOT a workspace root. src-tauri/
+# keeps its own independent Cargo build (see core/README.md → "core/ is a
+# standalone crate"). Keeping this crate standalone means `cargo` invoked
+# here never reaches up into src-tauri and vice versa.
+[workspace]
+
+[lib]
+name = "privacytracker_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pt-core"
+path = "src/main.rs"
+
+[dependencies]
+# rusqlite with the bundled SQLite amalgamation, so CI needs no system
+# libsqlite3 and every build compiles the same SQLite version. The Node
+# side (better-sqlite3) bundles its own SQLite too; the parity harness
+# records both versions and compares the resulting schema, not the engine.
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[profile.release]
+# Nothing perf-sensitive yet; keep debug builds fast and release small.
+opt-level = 2
