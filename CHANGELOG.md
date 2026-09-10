@@ -55,6 +55,22 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- **Device scope picker in the nav** — one control naming which device's
+  apps you are looking at, with an icon and the device's name, and a
+  multi-select popover to narrow to any subset ("show all", or just two
+  of three). It applies everywhere: the apps grid, the dashboard's
+  counts, Stats, the Privacy Map, the shortlist, and the review queue
+  that feeds "delete apps off a phone" all follow it. Previously the only
+  device control was a single-select dropdown inside the apps-grid
+  toolbar, so every other surface silently spoke for the whole fleet —
+  which meant someone helping a relative could be several screens into a
+  removal workflow with nothing on screen saying whose phone it applied
+  to. The choice persists across reloads and is gated by
+  `flag.nav.device_scope`; it hides itself on installs with fewer than
+  two devices. Apps with no device link (hand-added entries and CSV
+  imports) get their own "Not tied to a device" bucket rather than
+  vanishing silently.
+
 - Rust-core migration: the five deployment-facing reads join the Rust read
   API (30 of 64 read routes) — `GET /api/ready`, `/api/deployment/diagnostics`,
   `/api/diagnostics/database`, `/api/diagnostics/disk` and
@@ -261,6 +277,16 @@ Going forward, changes are recorded here as they land.
   `NODE_MODULE_VERSION`.
 
 ### Changed
+
+- **Fixed: the apps grid's device filter changed the counts but not the
+  cards.** The risk tabs and the "N of M" figure were computed from a
+  filtered list while the card list was built from a separate,
+  re-implemented filter chain that never applied the device filter at
+  all — so picking a device updated every number on the page and none of
+  the apps. The card list is now derived from the same filtered list the
+  counts use, so the two cannot disagree. Custom apps, which have no App
+  Store listing and never carry a device link, are now treated as
+  unattached and hidden when the scope excludes that bucket.
 
 - The Rust-core parity harness now classifies **all 120** API routes, up
   from 17. `scripts/parity/manifest.mjs` splits them into reads (57),

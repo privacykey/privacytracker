@@ -6,6 +6,7 @@ import { type AgeBandKey, isValidAgeBand } from "@/lib/age-rating";
 import type { Audience } from "@/lib/feature-flag-rules";
 import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
 import AppGrid, { type AppGridFlagState } from "./AppGrid";
+import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import Nav from "./Nav";
 
 /**
@@ -83,6 +84,18 @@ interface LoadedState {
   manualSources: GridProps["manualSources"];
   pendingChangeCategoriesByApp: GridProps["pendingChangeCategoriesByApp"];
   profileBadges: GridProps["profileBadges"];
+  /**
+   * The scope this payload was fetched under.
+   *
+   * The React key on <AppGrid> is taken from HERE, not from the live
+   * scope. Keying on the live scope remounts the moment the user picks a
+   * device — while `state` still holds the previous scope's apps — and
+   * because AppGrid seeds all of its state at mount and ignores later
+   * props, that stale payload is what it keeps for good. Keying on the
+   * scope the data actually belongs to means the remount happens when
+   * the matching data arrives, and exactly once.
+   */
+  scopeKey: string;
   showAccessibilityFilter: boolean;
   showQueueProgressBar: boolean;
   total: number;
@@ -99,11 +112,27 @@ export default function AppsGridLoader() {
   const [state, setState] = useState<LoadedState | null>(null);
   const flagValues = useFlagBundle(APPGRID_FLAG_KEYS);
   const { failedToLoad } = useFlagBundleStatus();
+  // The device scope decides which apps this page is even about, so the
+  // first page has to be fetched under it — not fetched unscoped and
+  // then narrowed, which would flash the whole fleet and make `total`
+  // (the number the hydration loop pages against) wrong.
+  const { ready: scopeReady, scopeKey, scopeParam } = useDeviceScope();
 
   useEffect(() => {
+    // Hold until the scope has landed. `ready` also goes true when the
+    // read FAILS, in which case the scope is the unrestricted default —
+    // so a broken scope endpoint costs the user nothing here.
+    if (!scopeReady) {
+      return;
+    }
     let live = true;
     Promise.all([
-      json(`/api/apps?limit=${GRID_INITIAL_PAGE_SIZE}&offset=0&meta=grid`),
+      json(
+        withScopeParam(
+          `/api/apps?limit=${GRID_INITIAL_PAGE_SIZE}&offset=0&meta=grid`,
+          scopeParam
+        )
+      ),
       json("/api/manual-apps"),
       json("/api/settings"),
       json("/api/focus"),
@@ -117,7 +146,13 @@ export default function AppsGridLoader() {
       const manualApps = manual?.apps ?? [];
 
       // The page's own guard: only bounce when BOTH lists are empty.
-      if (total === 0 && manualApps.length === 0) {
+      //
+      // `!scopeParam` is load-bearing. Scoped to a device that happens to
+      // have no App Store apps, `total` is legitimately 0 — bouncing
+      // would throw a user with a full library out to onboarding because
+      // they picked the wrong phone in the nav. Only an unscoped empty
+      // read means "this install has nothing in it".
+      if (total === 0 && manualApps.length === 0 && !scopeParam) {
         router.replace("/onboard");
         return;
       }
@@ -143,12 +178,13 @@ export default function AppsGridLoader() {
         // Key-count, not truthiness — the same expression the page used.
         hasProfile: Boolean(profile) && Object.keys(profile).length > 0,
         devices: devicesJson?.devices ?? [],
+        scopeKey,
       } as LoadedState);
     });
     return () => {
       live = false;
     };
-  }, [router]);
+  }, [router, scopeReady, scopeParam]);
 
   // Nav renders above the hold guard so the chrome (and its app-count
   // badge) is present while the grid loads, as it was server-side.
@@ -207,6 +243,14 @@ export default function AppsGridLoader() {
           initialApps={state.apps}
           initialManualApps={state.manualApps}
           initialTotal={state.total}
+          /* Remount when a new scope's data lands. AppGrid seeds every
+             piece of state from props via useState and its hydration
+             effect is mount-only, so the new page would otherwise be
+             ignored for the life of the page. Remounting also resets
+             filters, selection and the render window — all of which
+             describe a set of apps that no longer exists.
+             `state.scopeKey`, not the live scope: see LoadedState. */
+          key={state.scopeKey}
           manualSources={state.manualSources}
           pendingChangeCategoriesByApp={state.pendingChangeCategoriesByApp}
           profileBadges={state.profileBadges}

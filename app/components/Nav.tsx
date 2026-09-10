@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import BrandWordmark from "./BrandWordmark";
+import DeviceScopePicker from "./DeviceScopePicker";
 import NotificationBell from "./NotificationBell";
 import { TaskCenterTrigger } from "./TaskCenter";
 import TaskListIcon from "./TaskListIcon";
@@ -265,6 +266,16 @@ export default function Nav({ appCount, flags }: NavProps) {
       </div>
 
       <div className="nav-right" data-tour="notification-bell">
+        {/* Leftmost of the right cluster, so the answer to "whose device
+            am I looking at?" sits closest to the page content it
+            describes rather than being buried between the bell and the
+            CTA. It renders null on its own when the install has fewer
+            than two devices. `compact` drops the text label at the tier
+            where the full nav no longer fits; the drawer tier hides it
+            here and shows it inside the drawer instead. */}
+        {tier !== "drawer" && (
+          <DeviceScopePicker compact={tier === "compact"} />
+        )}
         {f.taskCenterTrigger && <TaskCenterTrigger />}
         {f.taskListIcon && <TaskListIcon />}
         {f.notificationBell && (
@@ -322,6 +333,9 @@ export default function Nav({ appCount, flags }: NavProps) {
           ref={drawerRef}
           role="menu"
         >
+          <div className="nav-drawer-device-scope">
+            <DeviceScopePicker />
+          </div>
           {visibleLinks.map((link) => {
             const active = isActive(link.href, link.exact);
             const showBadge =

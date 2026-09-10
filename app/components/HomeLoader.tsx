@@ -7,6 +7,7 @@ import { describePurpose } from "@/lib/onboarding-purpose";
 import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
 import BundleImportProvenanceBanner from "./BundleImportProvenanceBanner";
 import CoachmarkTour from "./CoachmarkTour";
+import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import HomeView, {
   type DashboardFlagState,
   type FocusSummary,
@@ -150,23 +151,35 @@ export default function HomeLoader() {
   const bundle = useFlagBundle(DASHBOARD_FLAG_KEYS);
   const { failedToLoad } = useFlagBundleStatus();
   const flagsSettled = bundle !== null || failedToLoad;
+  const { ready: scopeReady, scopeParam } = useDeviceScope();
 
   // Wave 1 — every read the page did before deciding whether to render.
   useEffect(() => {
     if (sampleMode) {
       return;
     }
+    // Hold for the scope, for the same reason the grid does: the
+    // empty-install redirect below reads `totalApps`, and firing it
+    // against an unscoped read that later narrows would bounce a user to
+    // onboarding on a scope change.
+    if (!scopeReady) {
+      return;
+    }
     let live = true;
     Promise.all([
-      json("/api/triage"),
+      // Three of these describe "your apps" and so follow the device
+      // scope: the triage blob (every dashboard count), the off-profile
+      // list, and the review CTA's number. The other six are install-wide
+      // settings and are deliberately left unscoped.
+      json(withScopeParam("/api/triage", scopeParam)),
       json("/api/focus"),
       json("/api/manual-apps"),
       json("/api/preferences"),
       json("/api/dashboard/layout"),
       json("/api/settings"),
-      json("/api/privacy-profile/mismatches"),
+      json(withScopeParam("/api/privacy-profile/mismatches", scopeParam)),
       json("/api/import/audit-bundle/recent"),
-      json("/api/review-queue?count=1"),
+      json(withScopeParam("/api/review-queue?count=1", scopeParam)),
     ]).then(
       async ([
         triage,
@@ -185,7 +198,11 @@ export default function HomeLoader() {
         // A failed triage read and a genuinely empty install are the
         // SAME branch, as on the server.
         const totalApps: number = triage?.totalApps ?? 0;
-        if (totalApps === 0) {
+        // `!scopeParam`: scoped to a device with nothing on it,
+        // totalApps is legitimately 0. Bouncing there would eject a user
+        // with a full library out to /onboard for picking a quiet phone
+        // in the nav. Only an unscoped zero means an empty install.
+        if (totalApps === 0 && !scopeParam) {
           router.replace(focus?.audienceSet ? "/onboard" : "/welcome");
           return;
         }
@@ -235,7 +252,7 @@ export default function HomeLoader() {
     return () => {
       live = false;
     };
-  }, [sampleMode, router]);
+  }, [sampleMode, router, scopeReady, scopeParam]);
 
   const ageRatingCalloutOn =
     !failedToLoad && bundle?.["flag.dashboard.callout.age_rating"] === true;

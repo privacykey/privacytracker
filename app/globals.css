@@ -14199,62 +14199,6 @@ body.review-rec-print-active .review-rec-print a {
    Apps page — "Profile mismatches" toolbar toggle
    ───────────────────────────────────────────────────────────── */
 
-/* Device-scope dropdown — sits in the toolbar between sort-tabs and the
-   mismatch toggle. Wears a faint accent tint + uppercase "DEVICE" label
-   so it doesn't read as just another sort-tab. Visible whenever the user
-   has at least one device row. */
-.device-filter-wrap {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  padding: 3px 10px 3px 12px;
-  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border-strong));
-  border-radius: var(--r-full);
-}
-
-.device-filter-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.device-filter-select {
-  padding: 4px 22px 4px 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-1);
-  -webkit-appearance: none;
-  appearance: none;
-  cursor: pointer;
-  background: transparent;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
-    linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
-  background-repeat: no-repeat;
-  background-position:
-    calc(100% - 10px) 50%,
-    calc(100% - 5px) 50%;
-  background-size:
-    5px 5px,
-    5px 5px;
-  border: 1px solid transparent;
-  border-radius: var(--r-full);
-  transition:
-    border-color 0.15s,
-    color 0.15s,
-    background-color 0.15s;
-}
-.device-filter-select:hover,
-.device-filter-select:focus-visible {
-  color: var(--text);
-  outline: none;
-  background-color: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-}
-
 /* Active-filter banner palette — picks up the same neutral accent the
    accessibility filter uses so device + a11y don't look like different
    "warning levels" of the same thing. */

@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { isScopeAll } from "../../../lib/device-scope";
+import { scopeFromRequest } from "../../../lib/device-scope-server";
 import { checkRateLimit, rateLimitKeyForRequest } from "../../../lib/security";
 import { getStats } from "../../../lib/stats";
 
@@ -29,7 +31,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    return NextResponse.json(getStats());
+    const scope = scopeFromRequest(request.url);
+    return NextResponse.json(getStats(isScopeAll(scope) ? undefined : scope));
   } catch (error) {
     console.error("/api/stats error", error);
     return NextResponse.json(

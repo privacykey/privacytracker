@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Audience } from "@/lib/feature-flag-rules";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
+import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import Nav from "./Nav";
 import ReviewRecommendationsView from "./ReviewRecommendationsView";
 
@@ -24,6 +25,7 @@ import ReviewRecommendationsView from "./ReviewRecommendationsView";
  * which is what useFlagBundle's fail-closed default already gives.
  */
 export default function ReviewQueueLoader() {
+  const { ready: scopeReady, scopeParam } = useDeviceScope();
   const router = useRouter();
   const flags = useFlagBundle(["flag.devopts.cfgutil_uninstall"]);
   const [data, setData] = useState<{
@@ -42,9 +44,15 @@ export default function ReviewQueueLoader() {
   } | null>(null);
 
   useEffect(() => {
+    // Held until the device scope lands, then re-fetched whenever it
+    // changes — this page describes a set of apps, and which apps it
+    // describes is exactly what the scope decides.
+    if (!scopeReady) {
+      return;
+    }
     let live = true;
     Promise.all([
-      fetch("/api/review-queue")
+      fetch(withScopeParam("/api/review-queue", scopeParam))
         .then((res) => (res.ok ? res.json() : null))
         .catch(() => null),
       fetch("/api/focus")
@@ -71,7 +79,7 @@ export default function ReviewQueueLoader() {
     return () => {
       live = false;
     };
-  }, [router]);
+  }, [router, scopeReady, scopeParam]);
 
   return (
     <>

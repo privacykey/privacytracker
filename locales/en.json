@@ -3145,11 +3145,6 @@
     "clear_a11y_aria": "Clear accessibility filter",
     "clear_device_title": "Clear device filter",
     "clear_device_aria": "Clear device filter",
-    "device_filter_aria": "Filter apps by device",
-    "device_filter_label": "Device",
-    "device_filter_all": "All devices · {count}",
-    "device_filter_unattached": "Unattached · {count}",
-    "device_filter_unattached_short": "unattached apps",
     "profile_mismatches_label": "Profile mismatches",
     "has_features_title": "Apps that declare at least one accessibility feature.",
     "has_features_label": "Has features",
@@ -3287,7 +3282,10 @@
     "change_dot_privacy_title": "{count, plural, one {# privacy label change detected} other {# privacy label changes detected}}",
     "change_dot_accessibility_title": "{count, plural, one {# accessibility label change detected} other {# accessibility label changes detected}}",
     "change_dot_both_title": "{count, plural, one {# privacy and accessibility label change detected} other {# privacy and accessibility label changes detected}}",
-    "change_dot_generic_title": "{count, plural, one {# permission change detected} other {# permission changes detected}}"
+    "change_dot_generic_title": "{count, plural, one {# permission change detected} other {# permission changes detected}}",
+    "sync_all_scoped": "Sync {scope}",
+    "task_sync_all_scoped_title": "Syncing apps on {scope}",
+    "sync_all_scoped_title": "Only apps on {scope} are loaded, so only those will sync."
   },
   "review_queue": {
     "mode_toggle": {
@@ -3534,6 +3532,21 @@
     "stats_updated": "{count} updated",
     "stats_separator": " · ",
     "dismiss_aria": "Dismiss"
+  },
+  "device_scope": {
+    "trigger_aria": "Showing apps from: {scope}. Change which devices you're viewing.",
+    "menu_aria": "Choose which devices to show",
+    "help": "Choose whose apps you're looking at. This applies everywhere — the dashboard, stats and the review list all follow it.",
+    "all_label": "All devices",
+    "all_sub": "{count, plural, =0 {Everything you've imported} one {# device, plus anything you add later} other {# devices, plus anything you add later}}",
+    "multi_label": "{count, plural, one {# selection} other {# selected}}",
+    "device_sub": "{model} · {count, plural, one {# app} other {# apps}}",
+    "device_sub_no_model": "{count, plural, one {# app} other {# apps}}",
+    "unattached_label": "Not tied to a device",
+    "unattached_sub": "Apps added by hand or from a CSV",
+    "banner_scoped": "You're viewing {scope}.",
+    "banner_show_all": "Show all devices",
+    "grid_filtering_by": "Showing"
   },
   "device_connect_toast": {
     "no_name": "iOS device",

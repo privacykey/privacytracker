@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { isScopeAll } from "@/lib/device-scope";
+import { scopeFromRequest } from "@/lib/device-scope-server";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   addShortlistEntry,
@@ -66,10 +68,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
+  const requested = scopeFromRequest(request.url);
+  const scope = isScopeAll(requested) ? undefined : requested;
+  const groups = listShortlistGroups(scope);
   return NextResponse.json({
-    groups: listShortlistGroups(),
+    groups,
     pairs: listShortlistPairs(),
-    total: countShortlistEntries(),
+    // Under a scope this counts the entries actually shown. The unscoped
+    // path keeps calling countShortlistEntries() so the documented
+    // response is unchanged for callers that never pass ?devices=.
+    total: scope
+      ? groups.reduce((n, g) => n + g.entries.length, 0)
+      : countShortlistEntries(),
   });
 }
 

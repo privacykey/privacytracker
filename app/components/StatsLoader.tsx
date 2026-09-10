@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
+import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import RequireAppsGate from "./RequireAppsGate";
 import StatsView, { type StatsFlagState } from "./StatsView";
 
@@ -34,6 +35,7 @@ const STATS_FLAG_KEYS = [
 ] as const;
 
 export default function StatsLoader() {
+  const { ready: scopeReady, scopeParam } = useDeviceScope();
   const [stats, setStats] = useState<
     Parameters<typeof StatsView>[0]["stats"] | null
   >(null);
@@ -43,9 +45,15 @@ export default function StatsLoader() {
   const tError = useTranslations("loader_error");
 
   useEffect(() => {
+    // Held until the device scope lands, then re-fetched whenever it
+    // changes — this page describes a set of apps, and which apps it
+    // describes is exactly what the scope decides.
+    if (!scopeReady) {
+      return;
+    }
     let live = true;
     Promise.all([
-      fetch("/api/stats").then((res) =>
+      fetch(withScopeParam("/api/stats", scopeParam)).then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
       ),
       fetch("/api/settings")
@@ -75,7 +83,7 @@ export default function StatsLoader() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [scopeReady, scopeParam]);
 
   // A failed /api/stats used to leave this page blank forever (the old
   // server page bounced to /onboard, which was hardly better for an

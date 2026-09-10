@@ -3145,11 +3145,6 @@
     "clear_a11y_aria": "清除无障碍筛选",
     "clear_device_title": "清除设备筛选",
     "clear_device_aria": "清除设备筛选",
-    "device_filter_aria": "按设备筛选应用",
-    "device_filter_label": "设备",
-    "device_filter_all": "全部设备 · {count}",
-    "device_filter_unattached": "未关联 · {count}",
-    "device_filter_unattached_short": "未关联应用",
     "profile_mismatches_label": "档案不一致",
     "has_features_title": "至少声明一项无障碍功能的应用。",
     "has_features_label": "有功能",
@@ -3287,7 +3282,10 @@
     "change_dot_privacy_title": "检测到 {count, plural, one {# 处隐私标签变化} other {# 处隐私标签变化}}",
     "change_dot_accessibility_title": "检测到 {count, plural, one {# 处无障碍标签变化} other {# 处无障碍标签变化}}",
     "change_dot_both_title": "检测到 {count, plural, one {# 处隐私与无障碍标签变化} other {# 处隐私与无障碍标签变化}}",
-    "change_dot_generic_title": "检测到 {count, plural, one {# 处权限变化} other {# 处权限变化}}"
+    "change_dot_generic_title": "检测到 {count, plural, one {# 处权限变化} other {# 处权限变化}}",
+    "sync_all_scoped": "同步{scope}",
+    "task_sync_all_scoped_title": "正在同步{scope}上的应用",
+    "sync_all_scoped_title": "当前仅载入{scope}上的应用，因此只会同步这些应用。"
   },
   "review_queue": {
     "mode_toggle": {
@@ -3534,6 +3532,21 @@
     "stats_updated": "更新 {count} 个",
     "stats_separator": " · ",
     "dismiss_aria": "忽略"
+  },
+  "device_scope": {
+    "trigger_aria": "正在显示以下设备的应用：{scope}。可更改查看的设备。",
+    "menu_aria": "选择要显示的设备",
+    "help": "选择你要查看谁的应用。此设置在全局生效 — 仪表板、统计和复查清单都会随之变化。",
+    "all_label": "全部设备",
+    "all_sub": "{count, plural, =0 {你导入的全部内容} one {# 台设备，以及之后新增的设备} other {# 台设备，以及之后新增的设备}}",
+    "multi_label": "{count, plural, one {已选 # 项} other {已选 # 项}}",
+    "device_sub": "{model} · {count, plural, one {# 个应用} other {# 个应用}}",
+    "device_sub_no_model": "{count, plural, one {# 个应用} other {# 个应用}}",
+    "unattached_label": "未关联设备",
+    "unattached_sub": "手动添加或从 CSV 导入的应用",
+    "banner_scoped": "你正在查看{scope}。",
+    "banner_show_all": "显示全部设备",
+    "grid_filtering_by": "正在显示"
   },
   "device_connect_toast": {
     "no_name": "iOS 设备",
