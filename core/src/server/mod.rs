@@ -17,6 +17,7 @@ mod json;
 mod routes;
 mod routes_focus;
 mod routes_imports;
+mod routes_status;
 mod settings;
 pub mod trust;
 
@@ -57,6 +58,11 @@ pub fn app(state: AppState) -> Router {
         // multi-key object, and a bare array with a 404 branch.
         .route("/api/focus", get(routes_focus::focus))
         .route("/api/imports", get(routes_imports::imports))
+        // Batch 3. Adds a query-scoped read with a 400 branch, a nested list
+        // inside an envelope, and interval arithmetic over stored epochs.
+        .route("/api/sync/status", get(routes_status::sync_status))
+        .route("/api/verdicts", get(routes_status::verdicts))
+        .route("/api/imports/queue", get(routes_status::imports_queue))
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))

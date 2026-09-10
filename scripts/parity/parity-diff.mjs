@@ -88,6 +88,13 @@ const { values: args } = parseArgs({
     // real signal. The full run remains the default and the coverage gate
     // is untouched — this narrows what is REQUESTED, never what is listed.
     only: { type: "string" },
+    // Resolve every {placeholder} from ONE side instead of each side
+    // independently. Correct only when the two servers share a database —
+    // read-parity.mjs copies Node's file for the Rust side, so the rows are
+    // identical by construction and side B may not even implement the route
+    // the resolver reads. Off by default: two independently seeded servers
+    // must still agree on their own, which is what the id cross-check proves.
+    "ids-from": { type: "string" },
     token: { type: "string" },
   },
 });
@@ -363,7 +370,14 @@ async function resolveFor(base, strings) {
   const needed = [...new Set(strings.flatMap(placeholdersIn))];
   const out = {};
   for (const p of needed) {
-    const v = await RESOLVERS[p](base);
+    // --ids-from pins resolution to one side; see the flag's note above.
+    const from =
+      args["ids-from"] === "a"
+        ? args.a
+        : args["ids-from"] === "b"
+          ? args.b
+          : base;
+    const v = await RESOLVERS[p](from);
     if (v === null) {
       return null;
     }
@@ -697,7 +711,11 @@ const main = async () => {
       /\{[a-zA-Z]+\}/.test(str ?? "")
     )
   );
-  if (needsPlaceholders) {
+  if (needsPlaceholders && args["ids-from"]) {
+    console.log(
+      `\n--ids-from ${args["ids-from"]}: placeholders resolved from one side only (the two servers share a database), so the id cross-check is skipped`
+    );
+  } else if (needsPlaceholders) {
     const ids = {
       a: await RESOLVERS["{app}"](args.a),
       b: await RESOLVERS["{app}"](args.b),

@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (9).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (14).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -243,6 +243,27 @@ public one must still 200), and `trust.rs` / `auth.rs` carry unit tests. Treat
 
 The `?id=<missing>` → 404 branch was ungated before; it now has a manifest
 entry, so both backends are held to the same error shape.
+
+### Batch 3 (+3 routes, 14 total)
+
+`/api/sync/status`, `/api/verdicts`, `/api/imports/queue`. Three more shapes:
+a query-parameter-scoped read with a 400 branch, a nested list inside an
+envelope, and interval arithmetic over stored epochs.
+
+Details worth not smoothing away: `sync/status`'s `isDue` is guarded by
+`interval > 0`, so a manual schedule is never due however old `lastRun` is;
+`/api/verdicts` 400s on an EMPTY `?appId=` exactly as on a missing one (JS
+truthiness again); and the queue's `pausedUntil` is null unless the stored
+fence is still in the FUTURE, while `lastRunAt` turns a stored 0 into null
+rather than 0.
+
+The harness gained `--ids-from <a|b>`. `/api/verdicts` needs the `{app}`
+placeholder, which the differ resolves by calling `/api/apps` on each side —
+a route the Rust core will not implement for several batches. In the
+read-parity flow the Rust server runs on a **byte copy** of Node's database,
+so the ids are identical by construction and resolving from one side is
+correct. It is off by default: two independently seeded servers must still
+agree on their own, and the full Node-vs-Node run still proves that.
 
 **Still deferred:** `/api/apps/[id]/since-install`. It needs `diffSnapshots`
 ported — real snapshot-diffing business logic, closer to Phase 3 than to a
