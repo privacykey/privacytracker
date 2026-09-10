@@ -24,27 +24,65 @@ crash-safe bulk runners, schedulers, the policy pipeline, and the HTTP API
 `core/` is a standalone crate, deliberately **not** a workspace root —
 `src-tauri/` keeps its own independent Cargo build.
 
-## Why the frontend work is NOT on this branch
+## What lands on `main`, and what lands here
 
-For the eventual A/B test (`main`-built Node app vs `rust-core`-built
-Rust app, Mac and Docker) to be a clean backend-only comparison, the
-frontend must be identical on both sides. So Phase 0 — converting the
-35 server-rendered pages to client-fetching shells, plus the parity and
-benchmark harnesses (`scripts/parity/`, `scripts/bench/`) — lands on
-`main` through normal PRs. This branch then differs from `main` by the
-backend only.
+**Revised.** This branch was originally the home of every phase, with
+`main` untouched until the Phase 6 cutover. That plan traded one risk for
+a worse one: a multi-month branch accumulating divergence, which the
+design study itself ranks as debt #4 ("two brains during the transition
+— keep the window short"). Three and a half weeks in, with no Rust
+written yet, this branch was already 87 commits behind `main`.
+
+So the rule is now:
+
+> **Anything INERT lands on `main`. Only the cutover lands here.**
+
+The `core/` crate is inert by construction — no shipped artifact builds,
+imports or runs it. The Docker image, the Tauri bundle and `pnpm build`
+never compile it; it declares its own empty `[workspace]` so it cannot
+disturb `src-tauri`'s cargo build; and it adds no npm dependency. Merging
+it into `main` therefore costs `main` nothing, while giving every phase
+continuous CI (`core-parity`) and small, reviewable PRs.
+
+That inertness is **enforced, not assumed**:
+`tests/app/rust-core-inert.test.ts` fails if any shipping path
+(`app/`, `lib/`, `proxy.ts`, `next.config.js`, `instrumentation.ts`,
+`src-tauri/src/`, the Dockerfile, the standalone staging script) starts
+referencing the core. It runs in `pnpm test`, inside the required
+`quality` job. `scripts/parity/**` is exempt — those harnesses exist to
+drive the core.
+
+**Phase 6 is the one PR allowed to break that guard**, because wiring
+axum into the desktop or Docker path is exactly what stops being inert.
+That PR belongs on this branch, with burn-in, and should delete the guard
+in the same commit that does the wiring so the removal is visible in
+review.
+
+This also *improves* the eventual A/B test rather than compromising it.
+The comparison wants `main`-built Node app vs `rust-core`-built Rust app
+differing by the backend only. With the crate already on `main` and
+inert, this branch's diff shrinks to the cutover wiring itself — a far
+cleaner isolation than "Node app vs Node app plus 30k lines of Rust".
+
+Phase 0 (page shells + the `scripts/parity/` and `scripts/bench/`
+harnesses) landed on `main` for the same reason and remains there.
 
 ## Phases
 
 0. *(on main)* Pages → client-fetching shells; parity + bench harnesses.
-1. `core/` crate: rusqlite + the exact `lib/db.ts` schema/migration
-   contract, proven against real upgraded `privacy.db` files.
-2. Read-only API in axum, gated by the parity harness.
-3. Scraper + diff + persist, gated by golden HTML fixtures.
-4. Writers, schedulers, the crash-safe runners, health check.
-5. The AI policy pipeline.
-6. Desktop cutover (embed axum, drop the Node sidecar), then Docker
-   after burn-in.
+1. *(on main, inert)* `core/` crate: rusqlite + the exact `lib/db.ts`
+   schema/migration contract, proven against real upgraded `privacy.db`
+   files.
+2. *(on main, inert)* Read-only API in axum, gated by the parity harness.
+3. *(on main, inert)* Scraper + diff + persist, gated by golden HTML
+   fixtures.
+4. *(on main, inert)* Writers, schedulers, the crash-safe runners, health
+   check.
+5. *(on main, inert)* The AI policy pipeline.
+6. **(this branch)** Desktop cutover (embed axum, drop the Node sidecar),
+   then Docker after burn-in. The first phase that is NOT inert, and the
+   one PR allowed to delete
+   `tests/app/rust-core-inert.test.ts`.
 
 ## The gates (how the two implementations are compared)
 
