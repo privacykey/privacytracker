@@ -1249,11 +1249,98 @@
     "section_accuracy_p1": "AI-generated summaries are a convenience. They can hallucinate, omit material clauses, or mischaracterise scope. Treat them as a starting point and always consult the original policy — which privacytracker links to from every app's detail page — before relying on a claim in a compliance, legal, or publishing context.",
     "section_accuracy_p2": "The privacy label data shown on app detail pages is scraped directly from the App Store and is not AI-generated. Label changes in the notification feed are detected by deterministic diffing of those scraped labels.",
     "section_built_title": "How this app was built",
-    "section_built_p1": "privacytracker itself was built with substantial help from large language models. A mixture of frontier models was used across planning, implementation, refactoring, and review, including:",
-    "model_claude": "Anthropic Claude Opus 4.7",
-    "model_gemini": "Google Gemini 3.1 Pro and Gemini 3 Flash",
-    "model_gpt": "OpenAI GPT-5.4",
-    "section_built_p2": "Using several models in combination helped cross-check design decisions, catch bugs that any single model missed, and keep the code idiomatic across the Next.js, SQLite, and scraping layers. A human author reviewed and integrated every change — the models assisted, they did not ship code unsupervised.",
+    "section_built_p1": "privacytracker was built with substantial help from large language models, over two repositories and about five months. This section says which models, what they worked on, and — just as importantly — what the model list leaves out.",
+    "section_built_origins_title": "Before this repository",
+    "section_built_origins_p1": "privacytracker's first few weeks are not in this repository. The project started in April 2026 and was restarted from a clean slate in May, so none of that history carried over — but most of the groundwork was already laid, largely through the free tiers of Google's Antigravity and OpenAI's Codex, before any paid subscription was involved:",
+    "origins_feature_1": "The App Store privacy-label scraper and the per-app detail view the whole tool is built around.",
+    "origins_feature_2": "AI privacy-policy summaries — including the decision to make them optional and off by default.",
+    "origins_feature_3": "The dashboard, the navigation between apps and categories, and keyboard shortcuts.",
+    "origins_feature_4": "Privacy profiles and shortlisting.",
+    "origins_feature_5": "The Wayback archive import for reconstructing label history.",
+    "origins_feature_6": "The feature-flag system, developer options, and the first localisation pass.",
+    "origins_feature_7": "The Tauri desktop build, the Docker image, and the first accessibility work.",
+    "section_built_origins_p2": "That period is only partly recoverable. Some of it was never under version control, the repository that was kept is private, and neither Antigravity nor Codex records a co-author on a commit. Everything below is drawn from this repository's history, which begins in May 2026 — so it cannot see any of the work described above.",
+    "section_built_models_title": "Models used",
+    "section_built_models_intro": "Ordered by when each model first appears. Expand any of them to see the parts of the app it worked on.",
+    "built_models": {
+      "gemini": {
+        "name": "Google Gemini 3.1 Pro and Gemini 3 Flash",
+        "role": "The earliest build, through Antigravity",
+        "summary": "Used through Google's Antigravity, largely on its free tier, for much of the original work described above. Antigravity records no commit co-author, so which of those early features came from Gemini rather than Codex is not recoverable — the two covered the same ground over the same weeks."
+      },
+      "codex": {
+        "name": "OpenAI Codex",
+        "role": "The earliest build, and later the security round",
+        "summary": "Used in two distinct phases. Early on it was one of the two tools behind the original build, largely on a free tier — that phase is not separable from Antigravity's. It returned much later for a round of security and release work, which is identifiable by its branches even though those commits carry no co-author either. The underlying model version changed over that span and was not recorded; the disclosure previously named GPT-5.4.",
+        "area_1": "Requiring sign-in for network deployments, so private pages and APIs are not exposed when the app is reachable beyond localhost.",
+        "area_2": "Validating outbound destinations at connection time, and bounding request bodies and uploads before the framework buffers them.",
+        "area_3": "Refreshing and scanning the production runtimes.",
+        "area_4": "Desktop hardening — verifying backup artifacts and confirmation state, and stopping timed-out device command groups.",
+        "area_5": "Preserving complete user data through backup and restore.",
+        "area_6": "Preparing the v0.2 release: verified draft, upgrade gates, packaged recovery, and signed image provenance.",
+        "area_7": "CSV export — readable column headings, and treating formula-looking cells as text — and decoupling the translation copy checks from the TypeScript compiler API."
+      },
+      "sonnet_4_6": {
+        "name": "Anthropic Claude Sonnet 4.6",
+        "role": "Build and container plumbing, before this repository",
+        "summary": "The only model with commits recorded under its name in the earlier repository — four of them, all infrastructure rather than product.",
+        "area_1": "The GitHub Actions workflow that built and published the Docker image.",
+        "area_2": "Multi-architecture container builds for amd64 and arm64.",
+        "area_3": "Splitting the changelog types to unblock the client bundle build."
+      },
+      "opus_4_7": {
+        "name": "Anthropic Claude Opus 4.7",
+        "role": "Desktop packaging and the component workbench",
+        "summary": "Worked mostly below the user interface — the macOS desktop release chain, and the Storybook workbench the components are developed in.",
+        "area_1": "The Storybook component workbench: decorator stack, fixtures, MDX foundation docs, and roughly forty component stories.",
+        "area_2": "The macOS release pipeline — code signing, notarisation, standalone tarball staging, and the automatic pull request to the Homebrew tap.",
+        "area_3": "Tauri desktop fixes, including the stale-sidecar-tarball race in the development bootstrap.",
+        "area_4": "Onboarding friction fixes on the app-entry and match-confirmation steps, plus the end-to-end specs covering them.",
+        "area_5": "Privacy-profile presets, audit-bundle export, and the session-continuity protocol contributors use to resume long pieces of work."
+      },
+      "opus_4_8": {
+        "name": "Anthropic Claude Opus 4.8",
+        "role": "The focus system and background jobs",
+        "summary": "Rebuilt how the app decides which surfaces to show you, and added the long-running maintenance work that keeps an always-on install healthy.",
+        "area_1": "The focus redesign, in four phases: re-keying the goal taxonomy, the multi-select goal form, the display surfaces that speak it, and the tests that pin it.",
+        "area_2": "The periodic health check and its non-destructive self-heal job, which runs every 24 hours.",
+        "area_3": "The “Since you added this app” cumulative diff card on each app's history tab.",
+        "area_4": "Shared focus trapping for modal dialogs, and making the onboarding import dropzones keyboard-operable.",
+        "area_5": "Packaging and supply chain: the Docker Compose fix for fresh Linux hosts, a slimmer runtime image, and the move from Dependabot to Renovate."
+      },
+      "fable_5": {
+        "name": "Anthropic Claude Fable 5",
+        "role": "Accessibility, translation and scale",
+        "summary": "The largest contributor by commit count in this repository. Most of the accessibility and localisation work in the app came from this model.",
+        "area_1": "The accessibility campaign: colour contrast, target sizes, arrow-key navigation in button-styled radio groups, reflow at high zoom, and focus rings.",
+        "area_2": "Localising every visible string and assistive attribute through next-intl, plus the scanners that stop new hard-coded copy landing.",
+        "area_3": "The static-route rewrite, and the hash-based Content Security Policy it made possible.",
+        "area_4": "Pagination for the apps grid and its API, so large app fleets stay responsive — and the stress harness that measured where the limits were.",
+        "area_5": "Repository toolchain: the task runner, single-sourced Node and pnpm version pins, and the shared dependency-update preset."
+      },
+      "opus_5": {
+        "name": "Anthropic Claude Opus 5",
+        "role": "Refactoring and project hygiene",
+        "summary": "Took apart the two largest components in the codebase, and tidied the project scaffolding around them.",
+        "area_1": "Splitting the settings screen into section components, subsystem hooks, and four separate group routes.",
+        "area_2": "Extracting the onboarding wizard into per-step components, dialogs, and a single state-machine hook.",
+        "area_3": "Adopting Biome and Ultracite for linting and formatting, and setting the project's policy for their rules.",
+        "area_4": "The README, the community-health files, and the scheduled repository-settings audit.",
+        "area_5": "Desktop fixes: allowing Tauri's IPC origins through the Content Security Policy, and making the desktop development command work on a fresh clone.",
+        "area_6": "This page's per-model breakdown."
+      },
+      "fable_5_1": {
+        "name": "Anthropic Claude Fable 5.1",
+        "role": "Developer environment fixes",
+        "summary": "A short, focused pass on tooling that had been silently misbehaving inside nested git worktrees.",
+        "area_1": "Anchoring the build's file-tracing root so production builds work from a worktree nested inside the repository.",
+        "area_2": "Fixing the lint configuration that had been quietly checking zero files in those same worktrees."
+      }
+    },
+    "section_built_attribution": "These breakdowns come mostly from the co-author trailers in this repository's git history, so they show which model was in the session when a change was committed rather than a formal division of labour. The trailers are not complete: the earlier period above is absent from them entirely, Codex writes none at all, and a portion of this repository's own commits carry none either. Work crossed freely between models, and the list is a hand-maintained snapshot rather than something generated at build time.",
+    "section_built_human_title": "What the model list leaves out",
+    "section_built_human_p1": "The list above is a record of who typed, and it is the least interesting part of how this app was built. Hundreds of hours went into using privacytracker against real devices and real App Store data, and feeding the results back: deciding what the product should be, testing flows on people who had never seen it, catching behaviour that read as correct in review and was wrong in practice, rewriting copy that tested badly, and discarding model output that did not hold up. Every design decision on every screen was made by a person.",
+    "section_built_p2": "Using several models in combination helped cross-check design decisions, catch bugs that any single model missed, and keep the code idiomatic across the Next.js, SQLite, and scraping layers. But the models assisted — they did not ship code unsupervised, and they did not decide what the app should do.",
     "section_built_p3": "This is disclosed here in the interest of transparency: if you are auditing privacytracker's own behaviour, you should know that its source code was co-authored with AI tooling, even though the runtime privacy-label scraping and diffing logic is fully deterministic.",
     "section_off_title": "Turning AI off",
     "section_off_pre": "Go to ",
@@ -1417,6 +1504,10 @@
     "compare_two_apps": {
       "title": "Compare two apps side by side",
       "body": "Considering an alternative? See which one collects less of what you care about."
+    },
+    "import_label_history": {
+      "title": "Reconstruct your apps' label history",
+      "body": "Import archived snapshots from the Internet Archive, back to 2021, to see how each app's labels have changed."
     },
     "setup_background_mode": {
       "title": "Let it watch in the background",
@@ -1893,7 +1984,7 @@
   "changelog_timeline": {
     "wayback_capture_fallback": "Wayback capture",
     "view_requested_capture": "View requested capture ↗",
-    "wayback_attempt_requested": "Requested a fresh Wayback snapshot (aimed at {quarter}).",
+    "wayback_attempt_requested": "Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.",
     "wayback_attempt_save_now_failed": "Could not request a Wayback snapshot for {quarter}: {error}.",
     "wayback_attempt_save_now_failed_default": "Save Page Now failed",
     "wayback_attempt_no_capture": "No Wayback capture found near {quarter}.",
@@ -1942,6 +2033,7 @@
     "card_no_changes": "✓ No changes detected",
     "card_wayback_no_diff": "🕰 Wayback snapshot — no differences from previous",
     "card_wayback_reconstruction": "🕰 Wayback reconstruction · {count, plural, one {# change} other {# changes}}",
+    "archive_bridge_caption": "Compared with the archive capture from {date}",
     "card_changes_detected": "⚡ {count, plural, one {# change detected} other {# changes detected}}",
     "version_released": "released {date}",
     "ack_covered_count": "covered {count, plural, one {# pending change} other {# pending changes}}",
@@ -3383,7 +3475,10 @@
     "hide_preview_button": "Hide preview",
     "version_updated_no_label_changes": "📱 New version released: v{version}; no label changes",
     "show_wayback_imports": "Show Wayback imports",
-    "wayback_import_count": "{count, plural, one {# Wayback import} other {# Wayback imports}} in this timeline"
+    "wayback_import_count": "{count, plural, one {# Wayback import} other {# Wayback imports}} in this timeline",
+    "show_older": "Show older entries",
+    "show_older_busy": "Loading older entries…",
+    "show_older_failed": "Couldn't load older entries: {message}"
   },
   "onboard_status": {
     "fetch_ready": "Already up to date",
@@ -3701,6 +3796,20 @@
       "origin_browser_retry_hint": "The first fetch was blocked, so we retried with a desktop-browser header bundle.",
       "origin_wayback": "From Wayback Machine",
       "origin_wayback_hint": "The live policy page blocked us, so this summary uses the most recent archived copy."
+    },
+    "history_import": {
+      "title": "Reconstruct this app's history",
+      "body": "Ask the Internet Archive for this app's App Store page as it looked each quarter back to 2021, and add what it finds to the timeline below. Safe to run again later — the archive gains captures over time, and nothing already imported is duplicated.",
+      "button": "Check the archive",
+      "button_busy": "Checking the archive…",
+      "button_title": "Re-check every quarter back to 2021, including ones a previous run skipped.",
+      "result_imported": "{count, plural, one {Added # snapshot to the timeline} other {Added # snapshots to the timeline}}",
+      "result_nothing_new": "Nothing new — the archive has no captures beyond what's already here.",
+      "note_failed": "{count, plural, one {# capture could not be read} other {# captures could not be read}}. See Settings → Developer Options → Activity log.",
+      "note_snapshot_requested": "Asked the archive to capture the page as it is today, so a later check has a recent baseline.",
+      "failed_status": "Import failed ({status})",
+      "failed_archive_busy": "The Internet Archive is rate-limiting requests right now. Wait a few minutes and try again — nothing was lost.",
+      "failed_generic": "Import failed"
     },
     "task_titles": {
       "labels_subtitle": "App Store labels only — policy stays on the AI Policy tab",
@@ -4538,7 +4647,7 @@
     },
     "wayback": {
       "title": "Historical Import (Wayback Machine)",
-      "subtitle": "Back-fill privacy-label history from archive.org, one snapshot per calendar quarter since the App Store web launch on 5 November 2025. If a capture for a specific month isn't available, the closest one is used instead. Nothing outside archive.org is contacted.",
+      "subtitle": "Back-fill privacy-label history from archive.org: one snapshot per quarter back to Q1 2021, when Apple began publishing privacy labels on the web App Store. A quarter with no capture within 45 days of its target is skipped rather than approximated. Nothing outside archive.org is contacted.",
       "import_busy": "Importing history…",
       "import_button": "🕰 Import history for all apps",
       "import_title": "Fetch each app's archived App Store page from the Wayback Machine and back-date privacy-label snapshots into the changelog.",
@@ -4556,13 +4665,15 @@
       "force_title": "Discard the paused queue and start a fresh Wayback import across all apps.",
       "remove_busy": "Removing…",
       "remove_button": "🗑 Remove all imported history",
-      "remove_title": "Delete every Wayback-imported snapshot. Live snapshots are kept.",
+      "remove_title": "Delete every Wayback-imported snapshot and the importer's notes. Live snapshots are kept.",
       "show_imported_label": "Show imported history in timelines",
       "show_imported_help": "When on, back-dated rows appear in each app's Changelog with a clock icon and a purple “Wayback” label. Turning this off keeps the rows in the database but hides them from timelines — useful for quickly comparing the live-only view against the reconstructed one.",
       "resume_label": "Resumed after restart.",
       "resume_body": "The previous bulk import was interrupted; it's continuing automatically in the background.",
       "paused_label": "Paused.",
       "paused_body": "The saved queue will stay here until you resume it, cancel it, or start over from scratch.",
+      "paused_rate_limited_label": "Paused by rate limiting.",
+      "paused_rate_limited_body": "archive.org is throttling requests. The queue is saved — wait a few minutes, then Resume queue to pick up where it stopped.",
       "starting": "Starting import…",
       "progress_lead": "Importing {current} of {total}",
       "pause_requested": "Pausing after the current app…",
@@ -4588,7 +4699,7 @@
       "remove_modal": {
         "badge": "Destructive action",
         "title": "Remove all imported history?",
-        "body": "This removes every Wayback-imported history row across all apps. Live privacy snapshots are kept — only the back-dated archive imports are deleted. You can re-run “Import history for all apps” afterward to bring them back.",
+        "body": "This removes every Wayback-imported history row across all apps, along with the “requested a fresh Wayback capture” notes the importer writes. Live privacy snapshots are kept — only the back-dated archive imports are deleted. You can re-run “Import history for all apps” afterward to bring them back.",
         "cancel": "Cancel",
         "removing": "Removing…",
         "confirm": "Remove imported history"
@@ -4597,6 +4708,7 @@
       "task_preparing": "Preparing…",
       "task_finished": "Finished",
       "bulk_paused": "{total, plural, one {Wayback import paused — {remaining} of # app remaining} other {Wayback import paused — {remaining} of # apps remaining}}",
+      "bulk_paused_rate_limited": "{total, plural, one {Wayback import paused — archive.org is rate-limiting; {remaining} of # app remaining} other {Wayback import paused — archive.org is rate-limiting; {remaining} of # apps remaining}}",
       "bulk_cancelled": "{total, plural, one {Wayback import cancelled — {remaining} of # app not processed} other {Wayback import cancelled — {remaining} of # apps not processed}}",
       "bulk_summary": "{count, plural, one {Wayback import across # app: {parts}} other {Wayback import across # apps: {parts}}}",
       "bulk_part_imported": "{count} imported",

@@ -112,7 +112,7 @@ const SERVER_JOB_KIND: Record<ServerJobKey, TaskKind> = {
 };
 
 const SERVER_JOB_HREF: Record<ServerJobKey, string> = {
-  wayback: "/dashboard/settings/admin#import-history",
+  wayback: "/dashboard/settings/admin#wayback-import",
   sync: "/dashboard/settings/sync#sync-schedule",
   policy: "/dashboard/settings/policies#privacy-policies-bulk",
 };

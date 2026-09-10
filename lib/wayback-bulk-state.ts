@@ -70,6 +70,11 @@ export interface WaybackBulkState {
   currentAppId: string | null;
   /** How the run started. `resume` means the server restarted mid-run. */
   initiator: "manual" | "resume";
+  /**
+   * Why the queue is paused: the user asked, or the runner backed off from
+   * a rate-limiting archive. Cleared when the run resumes.
+   */
+  pauseCause?: "user" | "rate_limited";
   /** Epoch-ms when the run was paused at an app boundary, if any. */
   pausedAt?: number;
   /** Epoch-ms when a pause was requested, if any. */

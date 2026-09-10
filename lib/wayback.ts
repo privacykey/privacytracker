@@ -17,6 +17,75 @@ const WAYBACK_HOSTS = ["archive.org", "web.archive.org", "www.web.archive.org"];
 const AVAILABILITY_MAX_BYTES = 64 * 1024;
 const AVAILABILITY_TIMEOUT_MS = 8000;
 const SAVE_NOW_TIMEOUT_MS = 25_000;
+/**
+ * The CDX index lists every capture of a URL in one response. Daily-collapsed
+ * over five years of App Store captures is a few KB; the cap is generous so a
+ * heavily-archived page never truncates mid-list.
+ */
+const CDX_MAX_BYTES = 1024 * 1024;
+const CDX_TIMEOUT_MS = 20_000;
+const CDX_ROW_LIMIT = 5000;
+
+/**
+ * archive.org answered but refused to serve — rate-limited (429) or a 5xx.
+ * Distinct from "no capture" so callers can back off instead of treating a
+ * throttled probe as an empty quarter. `retryAfterMs` mirrors the
+ * `Retry-After` header when present.
+ */
+export class WaybackUnavailableError extends Error {
+  readonly retryAfterMs: number | null;
+  readonly status: number;
+
+  constructor(status: number, retryAfterMs: number | null, endpoint: string) {
+    const label =
+      status === 429 ? "rate-limited" : `unavailable (HTTP ${status})`;
+    const retry =
+      retryAfterMs == null
+        ? ""
+        : ` — retry after ${Math.ceil(retryAfterMs / 1000)}s`;
+    super(`archive.org ${label} for ${endpoint}${retry}`);
+    this.name = "WaybackUnavailableError";
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+export function isWaybackUnavailableError(
+  error: unknown
+): error is WaybackUnavailableError {
+  return error instanceof WaybackUnavailableError;
+}
+
+/** Parse a `Retry-After` header (delta-seconds or HTTP-date) into ms. */
+export function parseRetryAfterMs(raw: string | null): number | null {
+  if (!raw) {
+    return null;
+  }
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.round(seconds * 1000);
+  }
+  const when = Date.parse(raw);
+  if (Number.isFinite(when)) {
+    return Math.max(0, when - Date.now());
+  }
+  return null;
+}
+
+/**
+ * Throw for responses that mean "archive.org is refusing us right now".
+ * Anything else (200, 404, 3xx that safeFetch already followed) is left to
+ * the caller's parser, which returns null for payloads without a capture.
+ */
+function throwIfUnavailable(response: Response, endpoint: string): void {
+  if (response.status === 429 || response.status >= 500) {
+    throw new WaybackUnavailableError(
+      response.status,
+      parseRetryAfterMs(response.headers.get("retry-after")),
+      endpoint
+    );
+  }
+}
 
 export interface WaybackSnapshot {
   /** Archive capture timestamp in YYYYMMDDhhmmss form, if available. */
@@ -251,7 +320,7 @@ export async function lookupWaybackSnapshotNear(
   const timestamp = formatWaybackTimestamp(targetDate);
   const endpoint = `https://archive.org/wayback/available?url=${encodeURIComponent(targetUrl)}&timestamp=${timestamp}`;
   try {
-    const { body } = await safeFetch(endpoint, {
+    const { body, response } = await safeFetch(endpoint, {
       allowedHosts: WAYBACK_HOSTS,
       maxBytes: AVAILABILITY_MAX_BYTES,
       timeoutMs: AVAILABILITY_TIMEOUT_MS,
@@ -262,6 +331,10 @@ export async function lookupWaybackSnapshotNear(
         "User-Agent": "privacytracker/1.0 (+privacy-history archiver)",
       },
     });
+    // A throttled or failing archive must not masquerade as "no capture" —
+    // the historical importer would otherwise record an empty quarter and
+    // fire Save Page Now on the strength of a 429.
+    throwIfUnavailable(response, "availability API");
 
     let parsed: unknown;
     try {
@@ -294,7 +367,111 @@ export async function lookupWaybackSnapshotNear(
         typeof closest.timestamp === "string" ? closest.timestamp : undefined,
     };
   } catch (error) {
-    if (isAbortError(error)) {
+    if (isAbortError(error) || isWaybackUnavailableError(error)) {
+      throw error;
+    }
+    return null;
+  }
+}
+
+/** One capture from the CDX index. */
+export interface WaybackCapture {
+  /** Epoch-ms of the capture, parsed from `timestamp`. */
+  ms: number;
+  /** Wayback `YYYYMMDDhhmmss` capture timestamp. */
+  timestamp: string;
+  /** Replay URL (`https://web.archive.org/web/<ts>/<original>`). */
+  url: string;
+}
+
+/**
+ * List every successful (HTTP 200) capture of `targetUrl` on or after
+ * `from`, oldest first, one per day. One request replaces the up-to-seven
+ * availability probes per target the importer used to issue, and lets the
+ * caller pick the genuinely closest capture for each target locally.
+ *
+ * Returns `null` when the index is unreachable or its payload is not the
+ * expected array-of-arrays — callers fall back to per-target availability
+ * probes. Throws {@link WaybackUnavailableError} on 429 / 5xx so a
+ * throttled archive is never mistaken for an unarchived page.
+ */
+export async function listWaybackCaptures(
+  targetUrl: string,
+  options: WaybackRequestOptions & { from?: Date } = {}
+): Promise<WaybackCapture[] | null> {
+  if (!targetUrl) {
+    return null;
+  }
+  const params = new URLSearchParams({
+    url: targetUrl,
+    output: "json",
+    fl: "timestamp,statuscode",
+    filter: "statuscode:200",
+    collapse: "timestamp:8",
+    limit: String(CDX_ROW_LIMIT),
+  });
+  if (options.from) {
+    params.set("from", formatWaybackTimestamp(options.from));
+  }
+  const endpoint = `https://web.archive.org/cdx/search/cdx?${params.toString()}`;
+  try {
+    const { body, response } = await safeFetch(endpoint, {
+      allowedHosts: WAYBACK_HOSTS,
+      maxBytes: CDX_MAX_BYTES,
+      timeoutMs: CDX_TIMEOUT_MS,
+      signal: options.signal,
+      redirect: "follow",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "privacytracker/1.0 (+privacy-history archiver)",
+      },
+    });
+    throwIfUnavailable(response, "CDX index");
+    if (response.status !== 200) {
+      return null;
+    }
+
+    const text = body.toString("utf8").trim();
+    // An unarchived URL yields an empty body (not an empty array).
+    if (text === "") {
+      return [];
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return null;
+    }
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    const captures: WaybackCapture[] = [];
+    const seen = new Set<string>();
+    for (const row of parsed) {
+      if (!Array.isArray(row) || typeof row[0] !== "string") {
+        continue;
+      }
+      const timestamp = row[0];
+      // Header row (`["timestamp","statuscode"]`) and anything malformed.
+      if (!/^\d{14}$/.test(timestamp) || seen.has(timestamp)) {
+        continue;
+      }
+      const ms = parseWaybackTimestampMs(timestamp);
+      if (ms == null) {
+        continue;
+      }
+      seen.add(timestamp);
+      captures.push({
+        timestamp,
+        ms,
+        url: `https://web.archive.org/web/${timestamp}/${targetUrl}`,
+      });
+    }
+    captures.sort((a, b) => a.ms - b.ms);
+    return captures;
+  } catch (error) {
+    if (isAbortError(error) || isWaybackUnavailableError(error)) {
       throw error;
     }
     return null;

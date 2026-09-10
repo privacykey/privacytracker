@@ -33,6 +33,7 @@ import AppDevicesPanel from "./AppDevicesPanel";
 import ChangelogTimeline from "./ChangelogTimeline";
 import CompareAppsView from "./CompareAppsView";
 import AccessibilityPanel from "./detail/AccessibilityPanel";
+import AppHistoryImportCard from "./detail/AppHistoryImportCard";
 import ChangeReviewPanel from "./detail/ChangeReviewPanel";
 import PolicySummaryPanel from "./detail/PolicySummaryPanel";
 import PrivacyTypeSection from "./detail/PrivacyTypeSection";
@@ -175,6 +176,7 @@ export interface DetailFlagState {
   timelineReviewSnapshotChips: boolean;
   timelineTriggerPills: boolean;
   timelineVersionChip: boolean;
+  timelineWaybackImport: boolean;
   timelineWaybackRows: boolean;
   timelineWaybackToggle: boolean;
 }
@@ -182,6 +184,7 @@ export interface DetailFlagState {
 export default function AppDetailView({
   app,
   changelog,
+  changelogHasMore = false,
   unacknowledged,
   aiProvider,
   recentPolicyChange,
@@ -206,6 +209,9 @@ export default function AppDetailView({
    */
   onRefresh?: () => void;
   changelog: ChangelogRow[];
+  /** Whether rows older than `changelog` exist — the timeline offers
+   *  "Show older entries" and fetches them on demand. */
+  changelogHasMore?: boolean;
   unacknowledged: UnacknowledgedChanges;
   aiProvider: string;
   /** Banner hint from the server; null when no recent change / banner disabled. */
@@ -303,6 +309,7 @@ export default function AppDetailView({
     reviewSnoozeMenu: detailFlags?.reviewSnoozeMenu ?? true,
     reviewSnoozedPanel: detailFlags?.reviewSnoozedPanel ?? true,
     timelineLiveRows: detailFlags?.timelineLiveRows ?? true,
+    timelineWaybackImport: detailFlags?.timelineWaybackImport ?? true,
     timelineWaybackRows: detailFlags?.timelineWaybackRows ?? true,
     timelineWaybackToggle: detailFlags?.timelineWaybackToggle ?? true,
     timelineTriggerPills: detailFlags?.timelineTriggerPills ?? true,
@@ -1571,6 +1578,13 @@ export default function AppDetailView({
               the install-era baseline snapshot to today, above the
               change-by-change timeline below. Self-hides until there's a
               real multi-snapshot baseline to compare against. */}
+          {/* Reconstruct this app's history from the Internet Archive.
+              Above the timeline because that's where the absence of old
+              entries is noticed; the library-wide equivalent lives in
+              Settings → Historical Import. */}
+          {f.timelineWaybackImport && (
+            <AppHistoryImportCard appId={app.id} onImported={refresh} />
+          )}
           <SinceInstallCard appId={app.id} />
           <ChangelogTimeline
             appId={app.id}
@@ -1590,6 +1604,7 @@ export default function AppDetailView({
               chartsTrendPresets: f.chartsTrendPresets,
               chartsTrendLegend: f.chartsTrendLegend,
             }}
+            hasMore={changelogHasMore}
             rows={changelog}
           />
         </div>

@@ -400,3 +400,48 @@ test("the desktop CSP allowance stays scoped to IPC, not the updater feed", () =
     .filter((d) => !d.includes("connect-src"));
   assert.deepEqual(desktopRest, webRest);
 });
+
+test("proxy normalises a trailing slash with headers attached, not a bare 308", () => {
+  // Next's own trailing-slash redirect fires inside the router before the
+  // proxy runs and returns `resHeaders: null`, so it lands with zero security
+  // headers — including the static set from next.config.js's `headers()`.
+  // `skipTrailingSlashRedirect: true` hands the redirect to us instead.
+  const response = proxy(
+    new NextRequest("http://127.0.0.1:3000/dashboard/?edit=layout", {
+      headers: { host: "127.0.0.1:3000" },
+    })
+  );
+
+  assert.equal(response.status, 308);
+  assert.equal(response.headers.get("X-Frame-Options"), "DENY");
+  assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff");
+  assert.match(
+    response.headers.get("Content-Security-Policy") ?? "",
+    /frame-ancestors 'none'/
+  );
+
+  // The Location must drop the slash and keep the query. Building it with
+  // `request.nextUrl.clone()` does NOT: NextURL's pathname setter reports the
+  // new value but does not rebuild `href`, so the redirect pointed at itself
+  // and looped forever.
+  const location = new URL(response.headers.get("Location") ?? "");
+  assert.equal(location.pathname, "/dashboard");
+  assert.equal(location.search, "?edit=layout");
+});
+
+test("proxy leaves a canonical path alone and the root slash untouched", () => {
+  const canonical = proxy(
+    new NextRequest("http://127.0.0.1:3000/dashboard", {
+      headers: { host: "127.0.0.1:3000" },
+    })
+  );
+  assert.notEqual(canonical.status, 308);
+
+  // "/" is the one path whose trailing slash IS canonical.
+  const root = proxy(
+    new NextRequest("http://127.0.0.1:3000/", {
+      headers: { host: "127.0.0.1:3000" },
+    })
+  );
+  assert.notEqual(root.status, 308);
+});

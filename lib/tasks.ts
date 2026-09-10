@@ -27,6 +27,7 @@ export type UserTaskId =
   | "create_privacy_profile"
   | "review_mismatches"
   | "compare_two_apps"
+  | "import_label_history"
   | "setup_background_mode"
   | "remove_apps_from_phone"
   | "resync_apps_from_device"
@@ -45,6 +46,9 @@ export interface TaskCompletionContext {
    *  done an import that landed in any device's app list. */
   hasDeviceWithApps: boolean;
   hasPrivacyProfile: boolean;
+  /** True once any app has a Wayback-sourced snapshot — the user has run
+   *  (or resumed) a historical import at least once. */
+  hasWaybackHistory: boolean;
   /** Epoch ms of the most-recent re-sync commit for any device, or 0.
    *  Lets `resync_apps_from_device` auto-complete once the user has
    *  done at least one re-sync — they've discovered the feature. */
@@ -137,6 +141,20 @@ export const TASK_DEFS: UserTaskDef[] = [
     i18nKey: "compare_two_apps",
     includedWhen: (focus) => has(focus, "monitor") || has(focus, "cleanup"),
     completionCheck: (ctx) => ctx.compareVisitedAt != null,
+  },
+  {
+    id: "import_label_history",
+    // Settings → Admin → "Historical Import (Wayback Machine)". The task
+    // only *links* there: the privacy policy promises archive.org is
+    // contacted solely on an explicit click, so nothing runs on its own.
+    route: "/dashboard/settings/admin#wayback-import",
+    prerequisites: [],
+    i18nKey: "import_label_history",
+    // "Monitor my apps" is the goal that cares how labels changed over
+    // time. Audience mirrors `flag.settings.policies.wayback_import`,
+    // which hides the import section for loved_one / guardian.
+    includedWhen: (focus) => focus.audience === "self" && has(focus, "monitor"),
+    completionCheck: (ctx) => ctx.hasWaybackHistory,
   },
   {
     id: "setup_background_mode",

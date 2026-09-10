@@ -14,6 +14,107 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration **Phase 2, batch 3**: `/api/sync/status`,
+  `/api/verdicts` and `/api/imports/queue` join the Rust read API, taking it
+  to 14 of the 64 read routes. All byte-identical to Node, verified against a
+  server seeded with real verdict and queued-import rows rather than empty
+  tables. The parity differ gained `--ids-from`, for comparing a backend that
+  shares the other side's database rather than being independently seeded;
+  it is off by default, so the full Node-vs-Node run still proves the two
+  sides agree on their own. Developer-facing only.
+
+- Rust-core migration **Phase 2, batch 2**: `/api/focus` and `/api/imports`
+  join the Rust read API, taking it to 11 routes. They add the two response
+  shapes batch 1 lacked — a fully derived multi-key object, and a bare array
+  with a 404 branch — and the `/api/imports?id=<missing>` error shape is now
+  gated by the parity manifest, which nothing checked before. Both are
+  byte-identical to Node under the dual-live differ. Developer-facing only;
+  the shipped app still runs entirely on Node, and the inertness guard added
+  in Phase 1 still passes.
+
+- Rust-core migration **Phase 2, batch 1**: the `core/` crate now serves an
+  HTTP read API (`pt-core serve`), starting with nine routes — the reads the
+  client shell makes on first paint plus the container/auth probes. It ports
+  the `proxy.ts` request gate (host allowlist, the fail-closed auth rule and
+  its five exact-match public-read carve-outs, and the CSRF check), so the
+  Rust server refuses what the Node server refuses. A new gate,
+  `scripts/parity/read-parity.mjs` (`just parity-read`), boots it against a
+  copy of a running Node server's database and byte-compares every implemented
+  route; `parity-diff.mjs` gained an opt-in `--only` filter so a partially
+  implemented backend can be compared without the unimplemented routes
+  drowning the signal. Nine of nine routes are byte-identical, and the auth
+  gate is probed separately because the differ authenticates every request and
+  so cannot see a missing one. Developer-facing only; the shipped app still
+  runs entirely on Node.
+
+- Rust-core migration **Phase 1**: a standalone `core/` crate that
+  reproduces the `lib/db.ts` SQLite schema + migration contract exactly.
+  `pt-core migrate <path>` opens a `privacy.db` and brings its schema up to
+  date — the pragma set, the 0700/0600 permission tightening, the full
+  CREATE/index block, every guarded `ALTER TABLE ADD COLUMN`, and the data
+  backfills db.ts runs on open (unknown-device placeholder, the
+  `pending_search` heal, the stuck-`running` reset, the
+  `privacy_policy_versions` seed). The CREATE block is lifted verbatim from
+  db.ts by a generator so it cannot drift. A new gate,
+  `scripts/parity/schema-parity.mjs` (`just parity-schema`), proves the Rust
+  migrator leaves any starting database in the same schema state db.ts would
+  — one Node dumper reads both sides, the logical schema is compared
+  authoritatively, and data backfills are checked by aggregate counts.
+  Fresh, legacy-upgrade and current+state fixtures all pass byte-identical,
+  and the gate is self-tested to fail when a single migration is dropped.
+  This is developer-facing only; nothing in the shipped app changes yet.
+
+- The AI disclosure page (`/dashboard/about/ai-disclosure`) now tells the
+  whole story of how the app was built, in three parts. **Before this
+  repository** credits the April 2026 groundwork — the scraper, the first
+  dashboard and onboarding, privacy profiles, the Wayback import, feature
+  flags, localisation, the desktop build — to the era it came from, and is
+  honest that the project was restarted here in May so none of that history
+  carried over, that some of it was never version-controlled, and that
+  neither Antigravity nor Codex records a commit co-author. **Models used**
+  is the breakdown: eight models, each a collapsible row naming the areas it
+  worked on, ordered by first appearance. Claude Sonnet 4.6, Opus 4.8,
+  Opus 5, Fable 5 and Fable 5.1 join the entries that were already there,
+  and the OpenAI entry is now *Codex* — the tool rather than a model
+  version, because the version changed across the project and was never
+  recorded. Its list is substantial: the September security round
+  (network-deployment sign-in, outbound destination validation, bounded
+  request bodies, runtime scanning, desktop backup verification), backup and
+  restore data preservation, the v0.2 release gates, CSV export safety, and
+  the TypeScript 7 translation-scanner work. **What the model list leaves
+  out** says the part no git history records: hundreds of hours of
+  real-device testing, user testing and product decisions, all of it human.
+  The attribution note states plainly that the trailers are incomplete —
+  they miss the pre-repository era, they miss Codex entirely, and a portion
+  of this repository's own commits carry none either. The rows are native
+  `<details>` elements, so they expand without JavaScript and the page keeps
+  prerendering statically.
+
+- **Per-app historical import.** The App Detail → Change History tab now
+  has a "Check the archive" card that reconstructs just that app's history,
+  the single-app counterpart to Settings → Historical Import. It posts the
+  new `force` option on `POST /api/apps/[id]/import-history`, which
+  re-probes every quarter instead of skipping the ones a nearby row already
+  covers — so a second run picks up captures the archive has gained since,
+  or ones an older parser could not read. Forcing never duplicates a
+  snapshot. When archive.org is rate-limiting, the route answers 503 with
+  `code: "archive_unavailable"` (not a 500) and the card says to wait and
+  retry rather than showing a raw error. Gated by
+  `flag.detail.timeline.wayback_import`.
+- **History tab pages backwards.** The detail payload now carries the newest
+  50 changelog rows plus `changelogHasMore`; a "Show older entries" control
+  fetches the rest from the new `GET /api/apps/[id]/changelog?before=…`
+  route. Every sync writes a row even when nothing changed, so on a daily
+  schedule the reconstructed Wayback history used to fall off the bottom of
+  the timeline after about seven weeks with no way to reach it.
+- **First-run checklist task "Reconstruct your apps' label history"** for
+  the self + monitor focus, linking to Settings → Admin → Historical Import.
+  The import still only runs on an explicit click, as the privacy policy
+  promises; the task completes once any archive row exists.
+- The Wayback importer bridges the last archive → first-live-scrape hop at
+  read time: the first scrape's card shows what changed since the newest
+  archive capture ("Compared with the archive capture from …"), without
+  rewriting the stored row or raising anything in the review queue.
 - `just fetch-node-sidecar` (`scripts/fetch-node-sidecar.sh`) — downloads
   and GPG-verifies the Node binary the desktop app bundles as its sidecar,
   into `src-tauri/binaries/`. The binary is ~139MB and gitignored, so a
@@ -30,6 +131,37 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The Rust-core parity harness now classifies **all 120** API routes, up
+  from 17. `scripts/parity/manifest.mjs` splits them into reads (57),
+  reads with a volatility transform (8), mutations (56), destructive
+  teardown (4) and quarantine (35, each with a written reason), and
+  `parity-diff.mjs` enforces a **coverage gate**: it walks `app/api` at
+  startup and fails if any `route.ts` is unlisted. The manifest had gone
+  stale while the surface grew from 110 to 120 routes with nothing
+  noticing; that can no longer happen silently. The differ also gained
+  write support — mutations replay against both servers with identical
+  bodies and then re-read the affected collection, so a write that
+  returns a plausible 200 but persists differently is caught. Writes are
+  opt-in (`--mutate` / `--teardown`) because the manifest contains
+  `/api/reset`; a bare invocation stays read-only. Node-vs-Node
+  self-test: 130 checks, 0 differences, and `--no-normalize` still fails,
+  which is what proves the differ can detect one.
+
+- **Wayback import probes the CDX index once per app** instead of up to
+  seven availability calls per target, and picks each quarter's closest
+  capture locally; the availability walk remains as a fallback. Save Page
+  Now now runs only when the archive has no capture within 45 days of
+  today (it used to fire on the first empty quarter — usually Q1 2021,
+  which archiving today's page cannot fill — for nearly every app on every
+  run), and "Remove all imported history" also removes the notes it leaves.
+- A throttled archive (HTTP 429 / 5xx) is now an error the bulk runner
+  backs off from — it waits out `Retry-After`, retries the app once, then
+  pauses the queue with a "paused by rate limiting" explanation and a
+  Resume button — rather than being recorded as "no capture" and triggering
+  Save Page Now.
+- The monthly reconstruction cadence (`intervalMonths: 1`) now lands every
+  month: the dedupe window follows the cadence (15 days monthly, 45 days
+  quarterly) instead of a fixed 45 days that skipped every other month.
 - `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
   carrying its own ~40 lines of inline download-and-verify shell. The
   Node release-key fingerprints had been duplicated between the workflow
@@ -38,6 +170,21 @@ Going forward, changes are recorded here as they land.
   same GPG-then-hash verification, same output paths — with the build
   matrix's target passed through `TAURI_BUILD_TARGET`, the variable
   `stage-standalone.mjs` already reads when choosing which binary to wrap.
+
+### Security
+
+- Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
+  failing the dependency audit on every pull request:
+  **two critical unauthenticated remote-code-execution issues** in Next.js
+  (GHSA-p293-qw3h-jr36, affecting Windows-hosted servers, and
+  GHSA-2xp9-vwfh-vxw4 in the Image Optimization API when AVIF files are
+  used), and a high-severity libheif issue in the transitive `sharp`
+  dependency (GHSA-rgj7-g3m4-5g8c). 16.3.3 patches the two Next.js issues
+  but still resolves `sharp ^0.35.3`; 16.3.4 is the first release that
+  requires the patched `sharp ^0.35.4`, so it clears all three in one bump.
+  This deployment already set `images.unoptimized: true`, which disables the
+  vulnerable image-optimisation endpoint, but the versions are patched
+  regardless.
 
 ### Fixed
 
@@ -57,6 +204,24 @@ Going forward, changes are recorded here as they land.
   static guard (`tests/app/client-flag-reads.test.ts`) fails the build if
   they return, if a client module imports the resolver, or if a
   tri-state flag is read through a boolean hook.
+- A URL with a trailing slash (`/dashboard/`) answered with a redirect that
+  carried none of the app's security headers, while the canonical URL
+  (`/dashboard`) carried all six. Next emits that redirect inside its router,
+  before `proxy.ts` runs, and its redirect branch discards every header
+  accumulated so far — including the static set from `next.config.js`. The
+  redirect is now issued by `proxy.ts` itself and goes out with the full
+  header set. Low severity in practice: a redirect has no body to inject
+  into, and the browser followed it to a URL that was properly protected.
+  This is defence-in-depth and consistency.
+- The route-parity differ's opaque-id normaliser was over-eager: its pattern
+  also matched ordinary snake_case enum *values* such as `not_collected`,
+  rewriting them to `~id`. That silently blinded the gate — a backend
+  returning the wrong privacy tier compared equal. It now requires a digit or
+  capital in the suffix, which every generated id has and no English enum word
+  does. Verified against the full 121-route Node-vs-Node run, and the run also
+  picked up `/api/apps/[id]/changelog`, a route added after the manifest
+  landed, via the coverage gate.
+
 
 - Desktop app: the hash-based Content Security Policy introduced in 0.2.0
   blocked Tauri's IPC channel, so every call into the desktop app's native
@@ -65,6 +230,30 @@ Going forward, changes are recorded here as they land.
   over a slower fallback, filling the log with `connect-src` violations. The
   policy now allows Tauri's IPC origins when running inside the desktop app;
   the browser and Docker deployments keep the unchanged, narrower policy.
+- **Wayback imports never actually reached 2021.** Captures from Feb–Oct
+  2021 keep the app record in `shoebox-ember-data-store` (keyed by app id,
+  `data.attributes.privacy`), which the shoebox extractor skipped by id and
+  never probed, so every 2021 target failed as `skipped_parse_failure`
+  while the Settings copy promised history "back to Q1 2021". Both shoebox
+  shapes are parsed now; in a live run Instagram's history extends from
+  March 2021 instead of March 2022. Captures from the first weeks of Feb
+  2021 that carry no privacy section at all are reported as skipped
+  (`skipped_no_labels`) rather than failed.
+- The oldest imported Wayback row was diffed against *today's* labels, so
+  the 2021 baseline card claimed "now collects" for labels the app had
+  since dropped (and vice versa), the universal changelog carried the
+  inverted entries, and the history chart's first bucket counted them. The
+  oldest row is now a baseline with no changes, and a wayback row that
+  lands *before* an existing one re-diffs the row that follows it.
+- `history-stats` counted accessibility and privacy-policy entries as
+  privacy-label changes.
+- Settings copy for the Historical Import still said "since the App Store
+  web launch on 5 November 2025" and that the closest capture is used;
+  the floor is Q1 2021 and captures beyond 45 days are skipped. The Task
+  Center deep link for a running Wayback job pointed at the device-import
+  section instead of `#wayback-import`.
+- A fresh install no longer probes its own install date (which equals
+  "today" and is already covered by the first live scrape).
 
 ## [0.2.0] — 2026-09-05
 

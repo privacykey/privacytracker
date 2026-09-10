@@ -6,6 +6,7 @@ import {
   requestHasValidAdminHeader,
   requestHasValidAdminToken,
 } from "@/lib/admin-auth";
+import { cspRouteKey } from "@/lib/csp-route-key";
 import {
   effectiveHostFromHeaders,
   isHostAllowed,
@@ -147,25 +148,6 @@ function loadCspHashes(): CspHashes | null {
   return hashesCache;
 }
 
-/**
- * Map a request path to the prerendered route whose HTML will be served,
- * mirroring next.config.js rewrites: the per-id detail URLs serve the
- * static `view` shells. Unknown paths serve the 404 page.
- */
-function cspRouteKey(pathname: string, hashes: CspHashes): string {
-  const clean =
-    pathname.length > 1 && pathname.endsWith("/")
-      ? pathname.slice(0, -1)
-      : pathname;
-  if (/^\/apps\/[^/]+$/.test(clean)) {
-    return "/apps/view";
-  }
-  if (/^\/manual-apps\/[^/]+$/.test(clean)) {
-    return "/manual-apps/view";
-  }
-  return clean in hashes.routes ? clean : "/_not-found";
-}
-
 function scriptSrc(pathname: string): string {
   if (process.env.NODE_ENV !== "production") {
     return "'self' 'unsafe-inline' 'unsafe-eval'";
@@ -174,7 +156,8 @@ function scriptSrc(pathname: string): string {
   if (!hashes) {
     return "'self'";
   }
-  const list = hashes.routes[cspRouteKey(pathname, hashes)] ?? hashes.all;
+  const list =
+    hashes.routes[cspRouteKey(pathname, hashes.routes)] ?? hashes.all;
   return ["'self'", ...list.map((h) => `'${h}'`)].join(" ");
 }
 
@@ -232,6 +215,37 @@ export function proxy(request: NextRequest) {
       { status: 400 }
     );
     return attachSecurityHeaders(res, pathname);
+  }
+
+  // Step 0.5 — Canonical trailing-slash redirect.
+  //
+  // Next normally emits this 308 itself, but it does so in the router
+  // (dist/server/lib/router-utils/resolve-routes.js) BEFORE middleware runs,
+  // and its redirect branch returns `resHeaders: null` — discarding every
+  // header accumulated so far, including the static set from next.config.js's
+  // `headers()`. That left `GET /dashboard/` answering 308 with zero security
+  // headers while `GET /dashboard` carried all six.
+  //
+  // `skipTrailingSlashRedirect: true` in next.config.js suppresses the router's
+  // version so the request reaches here and the redirect goes out through
+  // attachSecurityHeaders like every other response. Headers are computed for
+  // the CANONICAL path, so the CSP hash set matches the page the browser
+  // actually lands on.
+  //
+  // Not covered (and not coverable from here): Next normalises repeated
+  // slashes and backslashes with a 308 emitted before the route table is
+  // consulted at all, so `//dashboard` still answers header-less. It is a
+  // bodiless redirect to a same-origin canonical path, same as this one was.
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    // NOT `request.nextUrl.clone()`: NextURL's pathname setter reports the new
+    // value from its getter but does not rebuild `href`, so the serialised
+    // Location kept the trailing slash and the 308 pointed at itself — an
+    // infinite redirect. A plain URL over `request.url` round-trips honestly.
+    const canonical = new URL(request.url);
+    canonical.pathname = pathname.replace(/\/+$/, "");
+    const res = NextResponse.redirect(canonical, 308);
+    res.headers.set("Cache-Control", "no-store");
+    return attachSecurityHeaders(res, canonical.pathname);
   }
 
   // Browsers send CSP violation reports as anonymous POSTs (no custom
