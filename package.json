@@ -13,6 +13,7 @@
     "lint": "ultracite check",
     "lint:fix": "ultracite fix",
     "lint:i18n": "node scripts/check-i18n-parity.mjs",
+    "parity:diff-cases": "node --import tsx core/scripts/extract-diff-cases.mjs",
     "parity:read": "cargo build --manifest-path core/Cargo.toml && node scripts/parity/read-parity.mjs",
     "parity:schema": "cargo build --manifest-path core/Cargo.toml && node scripts/parity/schema-parity.mjs",
     "release:check": "node scripts/check-release.mjs",

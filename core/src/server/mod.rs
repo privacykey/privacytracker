@@ -12,10 +12,12 @@
 //! structurally incapable of doing. Matching the weaker model is the point.
 
 pub mod auth;
+pub mod diff;
 mod gate;
 mod json;
 mod ratelimit;
 mod routes;
+mod routes_app;
 mod routes_focus;
 mod routes_imports;
 mod routes_manual;
@@ -63,6 +65,13 @@ pub fn app(state: AppState) -> Router {
         // multi-key object, and a bare array with a 404 branch.
         .route("/api/focus", get(routes_focus::focus))
         .route("/api/imports", get(routes_imports::imports))
+        // The first PER-APP route, and the first whose body is computed
+        // rather than read: it ports `diffSnapshots`. Axum 0.8 spells a path
+        // parameter `{id}`, not `:id`.
+        .route(
+            "/api/apps/{id}/since-install",
+            get(routes_app::since_install),
+        )
         // Batch 3. Adds a query-scoped read with a 400 branch, a nested list
         // inside an envelope, and interval arithmetic over stored epochs.
         .route("/api/sync/status", get(routes_status::sync_status))

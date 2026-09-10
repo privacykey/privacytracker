@@ -1,0 +1,1019 @@
+{
+  "generated_by": "core/scripts/extract-diff-cases.mjs",
+  "source": "lib/changelog.ts → diffSnapshots",
+  "note": "DO NOT EDIT BY HAND. Regenerate with `just parity-diff-cases`; the expected values are the real Node function's output.",
+  "cases": [
+    {
+      "name": "both empty",
+      "why": "an empty diff must serialise as [], never null",
+      "old": [],
+      "new": [],
+      "expected": [],
+      "throws": null
+    },
+    {
+      "name": "added type with categories",
+      "why": "the only variant that carries `details`; it lists category TITLES, not identifiers",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T_TRACK",
+          "title": "Data Used to Track You",
+          "categories": [
+            {
+              "identifier": "C_ID",
+              "title": "Identifiers"
+            },
+            {
+              "identifier": "C_LOC",
+              "title": "Location"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"Data Used to Track You\"",
+          "details": [
+            "Identifiers",
+            "Location"
+          ]
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "added type with no categories",
+      "why": "`details` is an EMPTY ARRAY here, not an absent key — skip_serializing_if would drop it and diverge",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T_EMPTY",
+          "title": "Empty Label",
+          "categories": []
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"Empty Label\"",
+          "details": []
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "removed type",
+      "why": "removed-type entries carry NO `details` key at all, unlike added ones",
+      "old": [
+        {
+          "identifier": "T_GONE",
+          "title": "Departed Label",
+          "categories": [
+            {
+              "identifier": "C_ID",
+              "title": "Identifiers"
+            }
+          ]
+        }
+      ],
+      "new": [],
+      "expected": [
+        {
+          "type": "removed",
+          "description": "Removed privacy label: \"Departed Label\""
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "category added and removed inside a surviving type",
+      "why": "category-level entries carry neither `details` nor any other optional key",
+      "old": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "C_KEEP",
+              "title": "Kept"
+            },
+            {
+              "identifier": "C_GONE",
+              "title": "Gone"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "C_KEEP",
+              "title": "Kept"
+            },
+            {
+              "identifier": "C_NEW",
+              "title": "Arrived"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "\"Label\" now collects: Arrived"
+        },
+        {
+          "type": "removed",
+          "description": "\"Label\" no longer collects: Gone"
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "identical membership, reordered arrays",
+      "why": "the diff keys on identifiers, so reordering is NOT a change — this is what the canned seed happens to exercise, and all it exercises",
+      "old": [
+        {
+          "identifier": "A",
+          "title": "Alpha",
+          "categories": [
+            {
+              "identifier": "C1",
+              "title": "One"
+            },
+            {
+              "identifier": "C2",
+              "title": "Two"
+            }
+          ]
+        },
+        {
+          "identifier": "B",
+          "title": "Beta",
+          "categories": []
+        }
+      ],
+      "new": [
+        {
+          "identifier": "B",
+          "title": "Beta",
+          "categories": []
+        },
+        {
+          "identifier": "A",
+          "title": "Alpha",
+          "categories": [
+            {
+              "identifier": "C2",
+              "title": "Two"
+            },
+            {
+              "identifier": "C1",
+              "title": "One"
+            }
+          ]
+        }
+      ],
+      "expected": [],
+      "throws": null
+    },
+    {
+      "name": "several added types keep NEW array order",
+      "why": "pass 1 iterates the new snapshot; sorting by identifier (a BTreeMap port) reverses this",
+      "old": [],
+      "new": [
+        {
+          "identifier": "Z_LAST",
+          "title": "Zeta",
+          "categories": []
+        },
+        {
+          "identifier": "A_FIRST",
+          "title": "Alpha",
+          "categories": []
+        },
+        {
+          "identifier": "M_MID",
+          "title": "Mu",
+          "categories": []
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"Zeta\"",
+          "details": []
+        },
+        {
+          "type": "added",
+          "description": "New privacy label: \"Alpha\"",
+          "details": []
+        },
+        {
+          "type": "added",
+          "description": "New privacy label: \"Mu\"",
+          "details": []
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "several removed types keep OLD array order",
+      "why": "pass 2 iterates the old snapshot, not the new one",
+      "old": [
+        {
+          "identifier": "Z_LAST",
+          "title": "Zeta",
+          "categories": []
+        },
+        {
+          "identifier": "A_FIRST",
+          "title": "Alpha",
+          "categories": []
+        },
+        {
+          "identifier": "M_MID",
+          "title": "Mu",
+          "categories": []
+        }
+      ],
+      "new": [],
+      "expected": [
+        {
+          "type": "removed",
+          "description": "Removed privacy label: \"Zeta\""
+        },
+        {
+          "type": "removed",
+          "description": "Removed privacy label: \"Alpha\""
+        },
+        {
+          "type": "removed",
+          "description": "Removed privacy label: \"Mu\""
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "added, removed and modified together",
+      "why": "pins the ORDER OF THE THREE PASSES: all added types, then all removed types, then per-type category changes",
+      "old": [
+        {
+          "identifier": "KEEP",
+          "title": "Kept Label",
+          "categories": [
+            {
+              "identifier": "C_OLD",
+              "title": "Old Cat"
+            },
+            {
+              "identifier": "C_BOTH",
+              "title": "Shared"
+            }
+          ]
+        },
+        {
+          "identifier": "DROP",
+          "title": "Dropped Label",
+          "categories": [
+            {
+              "identifier": "C_X",
+              "title": "Ex"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "identifier": "KEEP",
+          "title": "Kept Label",
+          "categories": [
+            {
+              "identifier": "C_BOTH",
+              "title": "Shared"
+            },
+            {
+              "identifier": "C_NEW",
+              "title": "New Cat"
+            }
+          ]
+        },
+        {
+          "identifier": "ADD",
+          "title": "Added Label",
+          "categories": [
+            {
+              "identifier": "C_A",
+              "title": "Ay"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"Added Label\"",
+          "details": [
+            "Ay"
+          ]
+        },
+        {
+          "type": "removed",
+          "description": "Removed privacy label: \"Dropped Label\""
+        },
+        {
+          "type": "added",
+          "description": "\"Kept Label\" now collects: New Cat"
+        },
+        {
+          "type": "removed",
+          "description": "\"Kept Label\" no longer collects: Old Cat"
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "added then removed categories within one type",
+      "why": "within a type, ALL added categories precede ALL removed ones — not interleaved in array order",
+      "old": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "R1",
+              "title": "Removed One"
+            },
+            {
+              "identifier": "R2",
+              "title": "Removed Two"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "A1",
+              "title": "Added One"
+            },
+            {
+              "identifier": "A2",
+              "title": "Added Two"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "\"Label\" now collects: Added One"
+        },
+        {
+          "type": "added",
+          "description": "\"Label\" now collects: Added Two"
+        },
+        {
+          "type": "removed",
+          "description": "\"Label\" no longer collects: Removed One"
+        },
+        {
+          "type": "removed",
+          "description": "\"Label\" no longer collects: Removed Two"
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "duplicate type identifier in the new snapshot",
+      "why": "new Map() keeps the FIRST occurrence's position but the LAST occurrence's value; a Vec scan or a HashMap gets one of those wrong",
+      "old": [],
+      "new": [
+        {
+          "identifier": "DUP",
+          "title": "First Title",
+          "categories": [
+            {
+              "identifier": "C1",
+              "title": "One"
+            }
+          ]
+        },
+        {
+          "identifier": "OTHER",
+          "title": "Other",
+          "categories": []
+        },
+        {
+          "identifier": "DUP",
+          "title": "Second Title",
+          "categories": [
+            {
+              "identifier": "C2",
+              "title": "Two"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"Second Title\"",
+          "details": [
+            "Two"
+          ]
+        },
+        {
+          "type": "added",
+          "description": "New privacy label: \"Other\"",
+          "details": []
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "duplicate type identifier in the old snapshot",
+      "why": "same Map semantics on the removal pass",
+      "old": [
+        {
+          "identifier": "DUP",
+          "title": "First Title",
+          "categories": [
+            {
+              "identifier": "C1",
+              "title": "One"
+            }
+          ]
+        },
+        {
+          "identifier": "OTHER",
+          "title": "Other",
+          "categories": []
+        },
+        {
+          "identifier": "DUP",
+          "title": "Second Title",
+          "categories": [
+            {
+              "identifier": "C2",
+              "title": "Two"
+            }
+          ]
+        }
+      ],
+      "new": [],
+      "expected": [
+        {
+          "type": "removed",
+          "description": "Removed privacy label: \"Second Title\""
+        },
+        {
+          "type": "removed",
+          "description": "Removed privacy label: \"Other\""
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "duplicate category identifier within a type",
+      "why": "categories go through a Set for membership but are ITERATED from the array, so a duplicate yields two entries",
+      "old": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": []
+        }
+      ],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "C_DUP",
+              "title": "First"
+            },
+            {
+              "identifier": "C_DUP",
+              "title": "Second"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "\"Label\" now collects: First"
+        },
+        {
+          "type": "added",
+          "description": "\"Label\" now collects: Second"
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "category identifier unchanged but title changed",
+      "why": "titles are not compared; a title-only edit is invisible to the diff",
+      "old": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "C",
+              "title": "Old Title"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "C",
+              "title": "New Title"
+            }
+          ]
+        }
+      ],
+      "expected": [],
+      "throws": null
+    },
+    {
+      "name": "type title changed, identifier and categories unchanged",
+      "why": "same reason at the type level — no entry is emitted",
+      "old": [
+        {
+          "identifier": "T",
+          "title": "Old Label",
+          "categories": [
+            {
+              "identifier": "C",
+              "title": "Cat"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "New Label",
+          "categories": [
+            {
+              "identifier": "C",
+              "title": "Cat"
+            }
+          ]
+        }
+      ],
+      "expected": [],
+      "throws": null
+    },
+    {
+      "name": "type title changed while a category also changes",
+      "why": "the description quotes the NEW type's title, never the old one",
+      "old": [
+        {
+          "identifier": "T",
+          "title": "Old Label",
+          "categories": [
+            {
+              "identifier": "C1",
+              "title": "One"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "New Label",
+          "categories": [
+            {
+              "identifier": "C2",
+              "title": "Two"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "\"New Label\" now collects: Two"
+        },
+        {
+          "type": "removed",
+          "description": "\"New Label\" no longer collects: One"
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "double quotes inside titles",
+      "why": "the template literal wraps titles in bare double quotes and does NOT escape any already inside — the result is deliberately ambiguous text",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "He said \"hi\"",
+          "categories": [
+            {
+              "identifier": "C",
+              "title": "a \"quoted\" category"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"He said \"hi\"\"",
+          "details": [
+            "a \"quoted\" category"
+          ]
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "non-ASCII titles",
+      "why": "Node emits UTF-8 unescaped; serde_json must not \\u-escape it",
+      "old": [
+        {
+          "identifier": "T",
+          "title": "Étiquette",
+          "categories": [
+            {
+              "identifier": "C1",
+              "title": "Café ☕"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Étiquette",
+          "categories": [
+            {
+              "identifier": "C2",
+              "title": "日本語 🇯🇵"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "\"Étiquette\" now collects: 日本語 🇯🇵"
+        },
+        {
+          "type": "removed",
+          "description": "\"Étiquette\" no longer collects: Café ☕"
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "null titles",
+      "why": "a legacy row can hold a null title; the template literal renders the four characters n-u-l-l",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T",
+          "title": null,
+          "categories": [
+            {
+              "identifier": "C",
+              "title": null
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"null\"",
+          "details": [
+            null
+          ]
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "backslashes and newlines in titles",
+      "why": "JSON string escaping of the composed description, not of the input",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "back\\slash",
+          "categories": [
+            {
+              "identifier": "C",
+              "title": "line\nbreak\ttab"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"back\\slash\"",
+          "details": [
+            "line\nbreak\ttab"
+          ]
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "numeric and boolean titles",
+      "why": "a template literal stringifies whatever it is given; 1.0 is `1` in JS but `1.0` to a naive Rust float formatter",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T_NUM",
+          "title": 1,
+          "categories": [
+            {
+              "identifier": "C_A",
+              "title": 1
+            },
+            {
+              "identifier": "C_B",
+              "title": 2.5
+            },
+            {
+              "identifier": "C_C",
+              "title": true
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"1\"",
+          "details": [
+            1,
+            2.5,
+            true
+          ]
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "numeric identifier is a different Map key from the string of it",
+      "why": "JS Map keys use SameValueZero, so 1 and \"1\" do NOT collide; a port that stringifies keys would merge them",
+      "old": [],
+      "new": [
+        {
+          "identifier": 1,
+          "title": "Numeric Id",
+          "categories": []
+        },
+        {
+          "identifier": "1",
+          "title": "String Id",
+          "categories": []
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"Numeric Id\"",
+          "details": []
+        },
+        {
+          "type": "added",
+          "description": "New privacy label: \"String Id\"",
+          "details": []
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "missing identifier and explicit null identifier are distinct keys",
+      "why": "undefined and null are different Map keys; serde's #[serde(default)] collapses both to Null unless the field is Option<Value>",
+      "old": [],
+      "new": [
+        {
+          "title": "No Identifier At All",
+          "categories": []
+        },
+        {
+          "identifier": null,
+          "title": "Null Identifier",
+          "categories": []
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"No Identifier At All\"",
+          "details": []
+        },
+        {
+          "type": "added",
+          "description": "New privacy label: \"Null Identifier\"",
+          "details": []
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "missing identifier on both sides pairs up",
+      "why": "two undefined-identifier types are the SAME key, so they match rather than reading as add+remove",
+      "old": [
+        {
+          "title": "Old Nameless",
+          "categories": [
+            {
+              "identifier": "C_OLD",
+              "title": "Old"
+            }
+          ]
+        }
+      ],
+      "new": [
+        {
+          "title": "New Nameless",
+          "categories": [
+            {
+              "identifier": "C_NEW",
+              "title": "New"
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "\"New Nameless\" now collects: New"
+        },
+        {
+          "type": "removed",
+          "description": "\"New Nameless\" no longer collects: Old"
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "zero and negative zero are the SAME identifier",
+      "why": "Map keys use SameValueZero, so 0 and -0 collide — formatting the JSON token keeps them apart and reports a spurious add+remove",
+      "old": [
+        {
+          "identifier": 0,
+          "title": "Zero",
+          "categories": []
+        }
+      ],
+      "new": [
+        {
+          "identifier": 0,
+          "title": "Minus Zero",
+          "categories": []
+        }
+      ],
+      "expected": [],
+      "throws": null
+    },
+    {
+      "name": "an integer and its float spelling are the SAME identifier",
+      "why": "JavaScript has one number type, so 1 and 1.0 are one key",
+      "old": [
+        {
+          "identifier": 1,
+          "title": "Integer",
+          "categories": []
+        }
+      ],
+      "new": [
+        {
+          "identifier": 1,
+          "title": "Float",
+          "categories": []
+        }
+      ],
+      "expected": [],
+      "throws": null
+    },
+    {
+      "name": "a missing category title serialises as null inside details",
+      "why": "JSON.stringify turns an `undefined` ARRAY ELEMENT into null — unlike an undefined object VALUE, which it drops",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": [
+            {
+              "identifier": "c1"
+            },
+            {
+              "identifier": "c2",
+              "title": null
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"Label\"",
+          "details": [
+            null,
+            null
+          ]
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "an object title stringifies to [object Object]",
+      "why": "template literals call toString, and the raw value still reaches details unchanged",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T",
+          "title": {
+            "a": 1
+          },
+          "categories": [
+            {
+              "identifier": "c",
+              "title": [
+                "x",
+                "y"
+              ]
+            }
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "type": "added",
+          "description": "New privacy label: \"[object Object]\"",
+          "details": [
+            [
+              "x",
+              "y"
+            ]
+          ]
+        }
+      ],
+      "throws": null
+    },
+    {
+      "name": "throws: a type with no categories",
+      "why": "newType.categories.map on undefined — Node 500s; the Rust port must REFUSE the blob, not default it to an empty list and invent an answer",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Label"
+        }
+      ],
+      "expected": null,
+      "throws": "TypeError"
+    },
+    {
+      "name": "throws: categories is null",
+      "why": "same TypeError via null rather than undefined",
+      "old": [],
+      "new": [
+        {
+          "identifier": "T",
+          "title": "Label",
+          "categories": null
+        }
+      ],
+      "expected": null,
+      "throws": "TypeError"
+    },
+    {
+      "name": "throws: an array element that is not an object",
+      "why": "a snapshot blob holding a bare number is not a snapshot; neither backend may answer as though it were",
+      "old": [],
+      "new": [
+        1
+      ],
+      "expected": null,
+      "throws": "TypeError"
+    }
+  ]
+}
