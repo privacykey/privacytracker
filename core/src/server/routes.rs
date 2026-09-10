@@ -20,24 +20,8 @@ use serde::Serialize;
 
 use super::auth::{admin_token_configured, request_has_valid_admin_token};
 use super::json::{json_ok, json_response};
+use super::settings::get_setting;
 use super::AppState;
-
-// ── settings access ──────────────────────────────────────────────────
-// Port of lib/scheduler.ts's getSetting: one row lookup, defaulting when the
-// key is absent. Errors are the CALLER's business — some routes swallow them
-// into a 200 and some do not, so this returns a Result and each handler
-// decides, exactly as the Node routes do.
-fn get_setting(state: &AppState, key: &str, default: &str) -> rusqlite::Result<String> {
-    let conn = state.conn.lock().expect("db mutex poisoned");
-    let value: Option<String> = conn
-        .query_row(
-            "SELECT value FROM app_settings WHERE key = ?",
-            [key],
-            |row| row.get(0),
-        )
-        .optional()?;
-    Ok(value.unwrap_or_else(|| default.to_string()))
-}
 
 // ── /api/health ──────────────────────────────────────────────────────
 // A DB ping, deliberately NOT touching /api/apps (that route reveals what
