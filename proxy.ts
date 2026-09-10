@@ -234,6 +234,37 @@ export function proxy(request: NextRequest) {
     return attachSecurityHeaders(res, pathname);
   }
 
+  // Step 0.5 — Canonical trailing-slash redirect.
+  //
+  // Next normally emits this 308 itself, but it does so in the router
+  // (dist/server/lib/router-utils/resolve-routes.js) BEFORE middleware runs,
+  // and its redirect branch returns `resHeaders: null` — discarding every
+  // header accumulated so far, including the static set from next.config.js's
+  // `headers()`. That left `GET /dashboard/` answering 308 with zero security
+  // headers while `GET /dashboard` carried all six.
+  //
+  // `skipTrailingSlashRedirect: true` in next.config.js suppresses the router's
+  // version so the request reaches here and the redirect goes out through
+  // attachSecurityHeaders like every other response. Headers are computed for
+  // the CANONICAL path, so the CSP hash set matches the page the browser
+  // actually lands on.
+  //
+  // Not covered (and not coverable from here): Next normalises repeated
+  // slashes and backslashes with a 308 emitted before the route table is
+  // consulted at all, so `//dashboard` still answers header-less. It is a
+  // bodiless redirect to a same-origin canonical path, same as this one was.
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    // NOT `request.nextUrl.clone()`: NextURL's pathname setter reports the new
+    // value from its getter but does not rebuild `href`, so the serialised
+    // Location kept the trailing slash and the 308 pointed at itself — an
+    // infinite redirect. A plain URL over `request.url` round-trips honestly.
+    const canonical = new URL(request.url);
+    canonical.pathname = pathname.replace(/\/+$/, "");
+    const res = NextResponse.redirect(canonical, 308);
+    res.headers.set("Cache-Control", "no-store");
+    return attachSecurityHeaders(res, canonical.pathname);
+  }
+
   // Browsers send CSP violation reports as anonymous POSTs (no custom
   // headers, cookies optional). The endpoint only appends to a small,
   // rate-limited in-memory ring, so it is exempt from BOTH the auth gate

@@ -170,6 +170,15 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- A URL with a trailing slash (`/dashboard/`) answered with a redirect that
+  carried none of the app's security headers, while the canonical URL
+  (`/dashboard`) carried all six. Next emits that redirect inside its router,
+  before `proxy.ts` runs, and its redirect branch discards every header
+  accumulated so far — including the static set from `next.config.js`. The
+  redirect is now issued by `proxy.ts` itself and goes out with the full
+  header set. Low severity in practice: a redirect has no body to inject
+  into, and the browser followed it to a URL that was properly protected.
+  This is defence-in-depth and consistency.
 - The route-parity differ's opaque-id normaliser was over-eager: its pattern
   also matched ordinary snake_case enum *values* such as `not_collected`,
   rewriting them to `~id`. That silently blinded the gate — a backend
