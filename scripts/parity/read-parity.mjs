@@ -77,6 +77,9 @@ const BATCH_1 = [
   "/api/sync/status",
   "/api/verdicts",
   "/api/imports/queue",
+  // unblocked by the inbound rate-limiter port
+  "/api/manual-apps",
+  "/api/import/audit-bundle/recent",
 ];
 
 const onlyRe =
@@ -165,6 +168,59 @@ async function probeAuthGate(base) {
   return ok;
 }
 
+/** Hammer one rate-gated route past its limit and report where it gave way. */
+async function burstManualApps(base) {
+  const headers = { origin: base, "x-auditor-admin-token": TOKEN };
+  let denied = 0;
+  let firstDenyAt = null;
+  let contiguous = true;
+  // manual-apps.list is 120/min; 130 requests must trip it.
+  for (let i = 0; i < 130; i++) {
+    const res = await fetch(`${base}/api/manual-apps`, { headers });
+    if (res.status === 429) {
+      denied++;
+      firstDenyAt ??= i + 1;
+    } else if (firstDenyAt !== null) {
+      // 130 requests take far less than the 60s window, so nothing can fall
+      // out of it mid-burst. A request allowed after a denial means the
+      // window is being pruned on the wrong side.
+      contiguous = false;
+    }
+  }
+  return { firstDenyAt, denied, contiguous };
+}
+
+/**
+ * The differ sends one request per route against a 120/min limit, so it can
+ * never observe the inbound rate limiter — a backend that omitted it entirely
+ * would pass every check. Probe it directly and require a 429.
+ *
+ * This MUST run AFTER the diff. It deliberately leaves both backends'
+ * `manual-apps.list:local` bucket exhausted, and the limiter is per-process,
+ * so a probe-first ordering makes the differ's own /api/manual-apps request
+ * answer 429 — a harness artefact that looks exactly like a real parity
+ * failure.
+ */
+async function probeRateLimiter(rustBase, nodeBase) {
+  // Probe BOTH sides and require them to agree, rather than asserting a
+  // hard-coded "first 429 at request 121". The differ has already spent one
+  // request of each backend's budget by this point; a fixed constant would
+  // bake that in and break the moment the manifest reads the route twice.
+  const rust = await burstManualApps(rustBase);
+  const node = await burstManualApps(nodeBase);
+  const ok =
+    rust.firstDenyAt !== null &&
+    rust.firstDenyAt === node.firstDenyAt &&
+    rust.contiguous &&
+    node.contiguous;
+  console.log(
+    ok
+      ? `  ✔ rate limiter: /api/manual-apps denied from request ${rust.firstDenyAt} on both backends`
+      : `  ✘ rate limiter: node first-429 at ${node.firstDenyAt} (contiguous=${node.contiguous}), rust at ${rust.firstDenyAt} (contiguous=${rust.contiguous})`
+  );
+  return ok;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -213,8 +269,15 @@ async function main() {
     diffOk = false;
   }
 
+  // Last, because it burns BOTH backends' limiter budget on a route the
+  // differ reads.
+  console.log(
+    "\n── inbound rate limiter (the differ never trips a 120/min limit) ──"
+  );
+  const rateOk = await probeRateLimiter(rustBase, args.node);
+
   cleanup();
-  const ok = authOk && diffOk;
+  const ok = authOk && rateOk && diffOk;
   console.log(
     ok
       ? "\nREAD PARITY OK — the Rust core matches Node on every implemented route"

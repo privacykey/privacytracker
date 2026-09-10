@@ -14,6 +14,17 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration: the **inbound rate limiter** (`checkRateLimit` /
+  `rateLimitKeyForRequest` from `lib/security.ts`) is ported to Rust, which
+  unblocks `/api/manual-apps` and `/api/import/audit-bundle/recent` — both
+  rate-gate their GET before doing any work — and takes the Rust read API to
+  16 of the 64 read routes. Not to be confused with `lib/rate-limit.ts`,
+  Apple's outbound scrape cooldowns, which is untouched. The parity differ
+  structurally cannot see a limiter (it sends one request per route against a
+  120/min limit), so `read-parity.mjs` now bursts a gated route on both
+  backends and requires them to deny from the same request number.
+  Developer-facing only.
+
 - Rust-core migration **Phase 2, batch 3**: `/api/sync/status`,
   `/api/verdicts` and `/api/imports/queue` join the Rust read API, taking it
   to 14 of the 64 read routes. All byte-identical to Node, verified against a

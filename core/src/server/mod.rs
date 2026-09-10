@@ -14,9 +14,11 @@
 pub mod auth;
 mod gate;
 mod json;
+mod ratelimit;
 mod routes;
 mod routes_focus;
 mod routes_imports;
+mod routes_manual;
 mod routes_status;
 mod settings;
 pub mod trust;
@@ -31,6 +33,9 @@ use rusqlite::Connection;
 #[derive(Clone)]
 pub struct AppState {
     pub conn: Arc<Mutex<Connection>>,
+    /// The inbound request limiter. Per-process and in-memory, exactly as in
+    /// Node — a restart forgets the window there too.
+    pub rate_limiter: Arc<ratelimit::RateLimiter>,
 }
 
 /// Build the router. Split out from `serve` so tests can exercise routes
@@ -63,6 +68,14 @@ pub fn app(state: AppState) -> Router {
         .route("/api/sync/status", get(routes_status::sync_status))
         .route("/api/verdicts", get(routes_status::verdicts))
         .route("/api/imports/queue", get(routes_status::imports_queue))
+        // Unblocked by the inbound rate-limiter port: both of these call
+        // checkRateLimit before doing any work, so porting them without the
+        // limiter would have meant shipping a route with its gate removed.
+        .route("/api/manual-apps", get(routes_manual::manual_apps))
+        .route(
+            "/api/import/audit-bundle/recent",
+            get(routes_manual::audit_bundle_recent),
+        )
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))
@@ -79,6 +92,7 @@ pub async fn serve(db_path: &Path, addr: SocketAddr) -> Result<(), Box<dyn std::
     let conn = crate::db::open_and_migrate(db_path)?;
     let state = AppState {
         conn: Arc::new(Mutex::new(conn)),
+        rate_limiter: Arc::new(ratelimit::RateLimiter::new()),
     };
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
