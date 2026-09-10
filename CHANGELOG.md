@@ -121,6 +121,21 @@ Going forward, changes are recorded here as they land.
   matrix's target passed through `TAURI_BUILD_TARGET`, the variable
   `stage-standalone.mjs` already reads when choosing which binary to wrap.
 
+### Security
+
+- Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
+  failing the dependency audit on every pull request:
+  **two critical unauthenticated remote-code-execution issues** in Next.js
+  (GHSA-p293-qw3h-jr36, affecting Windows-hosted servers, and
+  GHSA-2xp9-vwfh-vxw4 in the Image Optimization API when AVIF files are
+  used), and a high-severity libheif issue in the transitive `sharp`
+  dependency (GHSA-rgj7-g3m4-5g8c). 16.3.3 patches the two Next.js issues
+  but still resolves `sharp ^0.35.3`; 16.3.4 is the first release that
+  requires the patched `sharp ^0.35.4`, so it clears all three in one bump.
+  This deployment already set `images.unoptimized: true`, which disables the
+  vulnerable image-optimisation endpoint, but the versions are patched
+  regardless.
+
 ### Fixed
 
 - Desktop app: the hash-based Content Security Policy introduced in 0.2.0
