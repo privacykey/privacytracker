@@ -42,6 +42,13 @@ const nextConfig = {
   // Docker (`/app`) this resolves to exactly the root Next would infer.
   // biome-ignore lint/correctness/noGlobalDirnameFilename: this file is CommonJS (require/module.exports), so import.meta.dirname is unavailable.
   outputFileTracingRoot: __dirname,
+  // Next's built-in trailing-slash 308 is emitted inside the router
+  // (dist/server/lib/router-utils/resolve-routes.js) BEFORE proxy.ts runs,
+  // and its redirect branch returns `resHeaders: null` — which discards the
+  // `headers()` block below as well. The result was a 308 carrying ZERO
+  // security headers. Handing normalisation to proxy.ts lets that redirect
+  // be issued with the full header set attached. See proxy.ts.
+  skipTrailingSlashRedirect: true,
   // Allow redirecting the build output dir for sandboxed / FUSE-mounted envs
   // where the default `.next` can't be unlinked.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
@@ -95,8 +102,17 @@ const nextConfig = {
   },
   // Defence-in-depth headers — also cover static asset responses that
   // proxy.ts's matcher excludes (`_next/static`, `_next/image`, fonts).
-  // The CSP itself stays in proxy.ts because it needs a per-request
-  // nonce; the headers below are static and safe to apply universally.
+  // The CSP itself stays in proxy.ts because it is computed per request
+  // path (the hash set differs per prerendered route); the headers below
+  // are static and safe to apply universally.
+  //
+  // These are NOT a backstop for responses that short-circuit before
+  // proxy.ts. Next's redirect branch returns `resHeaders: null`, which
+  // throws this block away too — which is why the trailing-slash 308 is
+  // handled in proxy.ts (see skipTrailingSlashRedirect above) rather than
+  // relying on these. The one gap neither layer can reach is Next's
+  // repeated-slash / backslash normalisation (`//dashboard`), emitted
+  // before the route table is consulted at all.
   // Rust-core Phase 0 (layout batch): the two per-id detail pages are
   // client shells that read their id from the URL, so they render from
   // ONE static HTML each. `/apps/<id>` is rewritten internally to the

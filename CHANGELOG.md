@@ -123,6 +123,16 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- A URL with a trailing slash (`/dashboard/`) answered with a redirect that
+  carried none of the app's security headers, while the canonical URL
+  (`/dashboard`) carried all six. Next emits that redirect inside its router,
+  before `proxy.ts` runs, and its redirect branch discards every header
+  accumulated so far — including the static set from `next.config.js`. The
+  redirect is now issued by `proxy.ts` itself and goes out with the full
+  header set. Low severity in practice: a redirect has no body to inject
+  into, and the browser followed it to a URL that was properly protected.
+  This is defence-in-depth and consistency.
+
 - Desktop app: the hash-based Content Security Policy introduced in 0.2.0
   blocked Tauri's IPC channel, so every call into the desktop app's native
   side — the notification permission check that runs on each page load, the
