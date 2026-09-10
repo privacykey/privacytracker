@@ -220,7 +220,30 @@ public one must still 200), and `trust.rs` / `auth.rs` carry unit tests. Treat
   snapshot, letting two queries in one handler see different states — which
   the Node server structurally cannot do.
 
-**Deferred from this batch**, though the triage picked them: `/api/imports`
-(bare array), `/api/apps/[id]/since-install` (per-id + 404) and `/api/focus`
-(derived multi-key object). They are the next routes to land and they add the
-three shapes this batch does not cover.
+### Batch 2 (+2 routes, 11 total)
+
+`/api/focus` and `/api/imports`. Two shapes batch 1 did not cover:
+
+- **A derived multi-key object** — `/api/focus` computes all ten of its keys
+  rather than echoing settings. Three traps, all invisible in the response
+  shape: mutual exclusion is applied *on read* (a database holding
+  `minimal=true` AND `monitor=true` reports `monitor: false`, so echoing the
+  stored values diverges); `audience` and `audienceSet` read the SAME key with
+  different fallbacks and can legitimately disagree; and `audience` is an
+  unchecked cast in Node, so it stays a `String` here rather than an enum that
+  would normalise or reject a garbage value. The suppression rule is pinned by
+  a unit test and was negative-tested against the harness — the naive echo
+  fails the gate on `"monitor"`.
+- **A bare array with a 404 branch** — `/api/imports`. No envelope, `[]` and
+  never `null` when empty. `?id` is a JavaScript truthiness check, so an EMPTY
+  `?id=` falls through to the list rather than 404ing, which a Rust
+  `Option<String>` check gets wrong. `queued` deliberately folds
+  `pending_search` in. `attemptCount` coerces NULL to 0 while the adjacent
+  `nextAttemptAt` stays null — an asymmetry a tidying port would smooth away.
+
+The `?id=<missing>` → 404 branch was ungated before; it now has a manifest
+entry, so both backends are held to the same error shape.
+
+**Still deferred:** `/api/apps/[id]/since-install`. It needs `diffSnapshots`
+ported — real snapshot-diffing business logic, closer to Phase 3 than to a
+read shim — and it deserves its own batch rather than being bolted on here.

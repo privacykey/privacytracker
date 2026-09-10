@@ -15,6 +15,9 @@ pub mod auth;
 mod gate;
 mod json;
 mod routes;
+mod routes_focus;
+mod routes_imports;
+mod settings;
 pub mod trust;
 
 use std::net::SocketAddr;
@@ -50,6 +53,10 @@ pub fn app(state: AppState) -> Router {
             "/api/accessibility-profile",
             get(routes::accessibility_profile),
         )
+        // Batch 2. Adds the two shapes batch 1 did not cover: a derived
+        // multi-key object, and a bare array with a 404 branch.
+        .route("/api/focus", get(routes_focus::focus))
+        .route("/api/imports", get(routes_imports::imports))
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))

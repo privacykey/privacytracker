@@ -14,6 +14,15 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration **Phase 2, batch 2**: `/api/focus` and `/api/imports`
+  join the Rust read API, taking it to 11 routes. They add the two response
+  shapes batch 1 lacked — a fully derived multi-key object, and a bare array
+  with a 404 branch — and the `/api/imports?id=<missing>` error shape is now
+  gated by the parity manifest, which nothing checked before. Both are
+  byte-identical to Node under the dual-live differ. Developer-facing only;
+  the shipped app still runs entirely on Node, and the inertness guard added
+  in Phase 1 still passes.
+
 - Rust-core migration **Phase 2, batch 1**: the `core/` crate now serves an
   HTTP read API (`pt-core serve`), starting with nine routes — the reads the
   client shell makes on first paint plus the container/auth probes. It ports

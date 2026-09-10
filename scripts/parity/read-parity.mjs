@@ -70,6 +70,9 @@ const BATCH_1 = [
   "/api/dev-menu-state",
   "/api/privacy-profile",
   "/api/accessibility-profile",
+  // batch 2
+  "/api/focus",
+  "/api/imports",
 ];
 
 const onlyRe =

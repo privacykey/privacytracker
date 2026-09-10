@@ -280,6 +280,16 @@ export const READS = [
 
   // -- imports
   { route: "/api/imports", name: "imports", path: "/api/imports" },
+  // The 404 branch, which nothing gated before: `?id=<missing>` must answer
+  // 404 {"error":"Import not found"} on both backends. `?id=` (empty) is
+  // deliberately NOT this case — JS truthiness makes it fall through to the
+  // list, and that is covered by the entry above.
+  {
+    route: "/api/imports",
+    name: "imports (unknown id → 404)",
+    path: "/api/imports?id=__nope__",
+    allowErrorStatus: true,
+  },
   // `lastRunAt` / `running` describe the import-queue worker's own
   // schedule, not request-driven state — a background tick that lands on
   // one server and not the other is a timing race, not a parity failure.
