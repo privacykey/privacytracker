@@ -6,6 +6,7 @@ import {
   requestHasValidAdminHeader,
   requestHasValidAdminToken,
 } from "@/lib/admin-auth";
+import { cspRouteKey } from "@/lib/csp-route-key";
 import {
   effectiveHostFromHeaders,
   isHostAllowed,
@@ -147,25 +148,6 @@ function loadCspHashes(): CspHashes | null {
   return hashesCache;
 }
 
-/**
- * Map a request path to the prerendered route whose HTML will be served,
- * mirroring next.config.js rewrites: the per-id detail URLs serve the
- * static `view` shells. Unknown paths serve the 404 page.
- */
-function cspRouteKey(pathname: string, hashes: CspHashes): string {
-  const clean =
-    pathname.length > 1 && pathname.endsWith("/")
-      ? pathname.slice(0, -1)
-      : pathname;
-  if (/^\/apps\/[^/]+$/.test(clean)) {
-    return "/apps/view";
-  }
-  if (/^\/manual-apps\/[^/]+$/.test(clean)) {
-    return "/manual-apps/view";
-  }
-  return clean in hashes.routes ? clean : "/_not-found";
-}
-
 function scriptSrc(pathname: string): string {
   if (process.env.NODE_ENV !== "production") {
     return "'self' 'unsafe-inline' 'unsafe-eval'";
@@ -174,7 +156,8 @@ function scriptSrc(pathname: string): string {
   if (!hashes) {
     return "'self'";
   }
-  const list = hashes.routes[cspRouteKey(pathname, hashes)] ?? hashes.all;
+  const list =
+    hashes.routes[cspRouteKey(pathname, hashes.routes)] ?? hashes.all;
   return ["'self'", ...list.map((h) => `'${h}'`)].join(" ");
 }
 
