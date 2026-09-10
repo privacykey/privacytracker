@@ -106,6 +106,13 @@ export const READS = [
     name: "history-stats (Instagram)",
     path: "/api/apps/{app}/history-stats",
   },
+  // Added by PR #219 (History tab paging). Caught by the coverage gate the
+  // day after it landed, which is the gate working as intended.
+  {
+    route: "/api/apps/[id]/changelog",
+    name: "app changelog page (Instagram)",
+    path: "/api/apps/{app}/changelog",
+  },
 
   // -- profiles + preferences
   { route: "/api/focus", name: "focus", path: "/api/focus" },

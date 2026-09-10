@@ -14,6 +14,38 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration **Phase 2, batch 1**: the `core/` crate now serves an
+  HTTP read API (`pt-core serve`), starting with nine routes — the reads the
+  client shell makes on first paint plus the container/auth probes. It ports
+  the `proxy.ts` request gate (host allowlist, the fail-closed auth rule and
+  its five exact-match public-read carve-outs, and the CSRF check), so the
+  Rust server refuses what the Node server refuses. A new gate,
+  `scripts/parity/read-parity.mjs` (`just parity-read`), boots it against a
+  copy of a running Node server's database and byte-compares every implemented
+  route; `parity-diff.mjs` gained an opt-in `--only` filter so a partially
+  implemented backend can be compared without the unimplemented routes
+  drowning the signal. Nine of nine routes are byte-identical, and the auth
+  gate is probed separately because the differ authenticates every request and
+  so cannot see a missing one. Developer-facing only; the shipped app still
+  runs entirely on Node.
+
+- Rust-core migration **Phase 1**: a standalone `core/` crate that
+  reproduces the `lib/db.ts` SQLite schema + migration contract exactly.
+  `pt-core migrate <path>` opens a `privacy.db` and brings its schema up to
+  date — the pragma set, the 0700/0600 permission tightening, the full
+  CREATE/index block, every guarded `ALTER TABLE ADD COLUMN`, and the data
+  backfills db.ts runs on open (unknown-device placeholder, the
+  `pending_search` heal, the stuck-`running` reset, the
+  `privacy_policy_versions` seed). The CREATE block is lifted verbatim from
+  db.ts by a generator so it cannot drift. A new gate,
+  `scripts/parity/schema-parity.mjs` (`just parity-schema`), proves the Rust
+  migrator leaves any starting database in the same schema state db.ts would
+  — one Node dumper reads both sides, the logical schema is compared
+  authoritatively, and data backfills are checked by aggregate counts.
+  Fresh, legacy-upgrade and current+state fixtures all pass byte-identical,
+  and the gate is self-tested to fail when a single migration is dropped.
+  This is developer-facing only; nothing in the shipped app changes yet.
+
 - The AI disclosure page (`/dashboard/about/ai-disclosure`) now tells the
   whole story of how the app was built, in three parts. **Before this
   repository** credits the April 2026 groundwork — the scraper, the first
@@ -121,6 +153,21 @@ Going forward, changes are recorded here as they land.
   matrix's target passed through `TAURI_BUILD_TARGET`, the variable
   `stage-standalone.mjs` already reads when choosing which binary to wrap.
 
+### Security
+
+- Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
+  failing the dependency audit on every pull request:
+  **two critical unauthenticated remote-code-execution issues** in Next.js
+  (GHSA-p293-qw3h-jr36, affecting Windows-hosted servers, and
+  GHSA-2xp9-vwfh-vxw4 in the Image Optimization API when AVIF files are
+  used), and a high-severity libheif issue in the transitive `sharp`
+  dependency (GHSA-rgj7-g3m4-5g8c). 16.3.3 patches the two Next.js issues
+  but still resolves `sharp ^0.35.3`; 16.3.4 is the first release that
+  requires the patched `sharp ^0.35.4`, so it clears all three in one bump.
+  This deployment already set `images.unoptimized: true`, which disables the
+  vulnerable image-optimisation endpoint, but the versions are patched
+  regardless.
+
 ### Fixed
 
 - A URL with a trailing slash (`/dashboard/`) answered with a redirect that
@@ -132,6 +179,15 @@ Going forward, changes are recorded here as they land.
   header set. Low severity in practice: a redirect has no body to inject
   into, and the browser followed it to a URL that was properly protected.
   This is defence-in-depth and consistency.
+- The route-parity differ's opaque-id normaliser was over-eager: its pattern
+  also matched ordinary snake_case enum *values* such as `not_collected`,
+  rewriting them to `~id`. That silently blinded the gate — a backend
+  returning the wrong privacy tier compared equal. It now requires a digit or
+  capital in the suffix, which every generated id has and no English enum word
+  does. Verified against the full 121-route Node-vs-Node run, and the run also
+  picked up `/api/apps/[id]/changelog`, a route added after the manifest
+  landed, via the coverage gate.
+
 
 - Desktop app: the hash-based Content Security Policy introduced in 0.2.0
   blocked Tauri's IPC channel, so every call into the desktop app's native

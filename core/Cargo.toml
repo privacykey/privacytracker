@@ -1,0 +1,49 @@
+[package]
+name = "privacytracker-core"
+version = "0.0.0"
+description = "privacytracker Rust core — the SQLite schema/migration contract (Phase 1) and the read-only HTTP API (Phase 2), ported from the Node server."
+edition = "2021"
+rust-version = "1.77"
+publish = false
+
+# Deliberately NOT a workspace member and NOT a workspace root. src-tauri/
+# keeps its own independent Cargo build (see core/README.md → "core/ is a
+# standalone crate"). Keeping this crate standalone means `cargo` invoked
+# here never reaches up into src-tauri and vice versa.
+[workspace]
+
+[lib]
+name = "privacytracker_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pt-core"
+path = "src/main.rs"
+
+[dependencies]
+# rusqlite with the bundled SQLite amalgamation, so CI needs no system
+# libsqlite3 and every build compiles the same SQLite version. The Node
+# side (better-sqlite3) bundles its own SQLite too; the parity harness
+# records both versions and compares the resulting schema, not the engine.
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# ── Phase 2: the read-only HTTP API ──────────────────────────────────
+# axum replaces `next start` as the server. Kept to the default feature
+# set plus nothing — no multipart, no ws — because the read API needs
+# neither and every extra feature is attack surface in a local-first app.
+axum = "0.8"
+# Multi-thread runtime + signal handling for a clean shutdown. `net` is
+# what actually binds the listener.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+serde = { version = "1", features = ["derive"] }
+# `preserve_order` is REQUIRED, not a preference: it backs serde_json's
+# Map with an IndexMap instead of a BTreeMap. Without it, every stored
+# JSON blob we re-emit (the privacy / accessibility profiles here, and
+# changes_summary, activity.detail and the bulk-runner totals later)
+# comes back alphabetised, and the parity differ compares key ORDER —
+# JSON.parse preserves insertion order and JSON.stringify replays it.
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[profile.release]
+# Nothing perf-sensitive yet; keep debug builds fast and release small.
+opt-level = 2

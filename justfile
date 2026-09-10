@@ -81,6 +81,25 @@ tauri-build: fetch-node-sidecar
 test-tauri:
     pnpm run test:tauri
 
+# Rust-core (Phase 1) crate tests — the SQLite schema/migration port
+[group("rust-core")]
+test-core:
+    pnpm run test:core
+
+# Runs over fresh, legacy and current+state databases; the logical schema is
+# the authoritative comparison. See core/README.md.
+# Schema gate: prove the Rust migrator matches lib/db.ts byte-for-byte
+[group("rust-core")]
+parity-schema:
+    pnpm run parity:schema
+
+# Needs an already-running, already-seeded Node server — pass its base URL and
+# data dir:  just parity-read http://127.0.0.1:3001 /path/to/data
+# Read gate: prove the Rust read API is byte-identical to Node's
+[group("rust-core")]
+parity-read node data:
+    pnpm run parity:read -- --node {{node}} --node-data {{data}}
+
 # SQLite lives in the privacytracker-data named volume; AGENTS.md has
 # the bind-mount variant and the backup command.
 # Run the production stack in Docker
