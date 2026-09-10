@@ -33,9 +33,9 @@ import {
   resolveDefaultBaseUrl,
   resolveDefaultModel,
 } from "@/lib/ai-config";
-import { useFlag } from "@/lib/feature-flags-hooks";
 import type { PolicyLensKey, PolicyRating } from "@/lib/policy-summary-meta";
 import type { useAiSettings } from "@/lib/use-ai-settings";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import { fmtDuration } from "./format";
 
 export default function AiSummariesSection({
@@ -45,10 +45,16 @@ export default function AiSummariesSection({
    *  this is one prop rather than thirty-five. */
   ai: ReturnType<typeof useAiSettings>;
 }) {
+  // Shared `GET /api/feature-flags` bundle; see the note in
+  // lib/use-flag-bundle.ts on why `useFlag` could not read these.
+  const flags = useFlagValuesWithDefaults([
+    "flag.settings.ai.provider_selector",
+    "flag.settings.ai.summarize_on_import",
+  ]);
   const settingsAiProviderSelectorOn =
-    useFlag("flag.settings.ai.provider_selector") === "on";
+    flags["flag.settings.ai.provider_selector"] === "on";
   const settingsAiSummarizeOnImportOn =
-    useFlag("flag.settings.ai.summarize_on_import") === "on";
+    flags["flag.settings.ai.summarize_on_import"] === "on";
 
   const tSections = useTranslations("settings.sections");
   const tSub = useTranslations("settings.subtitles");

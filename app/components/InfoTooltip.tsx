@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 
 type TooltipSide = "top" | "right";
 
@@ -42,7 +42,13 @@ export default function InfoTooltip({
   // accessibility profile) see a clean UI without help dots. Returning
   // null bypasses the mount entirely, which also drops the listener
   // wiring below — no perf cost when off.
-  const tooltipsOn = useFlag("flag.global.info_tooltips") === "on";
+  //
+  // Read from the shared `/api/feature-flags` bundle: the `useFlag`
+  // resolver hook has no primed context in the browser, so it answered
+  // with the hard default ('on') and the off state never took effect.
+  // `null` means "still loading" — hold the dot back until we know,
+  // rather than paint it and remove it.
+  const tooltipsOn = useResolvedFlag("flag.global.info_tooltips");
 
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);

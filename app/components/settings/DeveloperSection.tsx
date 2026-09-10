@@ -16,7 +16,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useFlag } from "@/lib/feature-flags-hooks";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import type { useSettingsAutoSave } from "@/lib/use-settings-auto-save";
 import DevOptionsFeatureFlagPanel from "../DevOptionsFeatureFlagPanel";
 import TasksResetRow from "../TasksResetRow";
@@ -64,8 +64,15 @@ export default function DeveloperSection({
   const tSections = useTranslations("settings.sections");
   const tSub = useTranslations("settings.subtitles");
   const tDevPresets = useTranslations("settings.dev_options.presets");
+  // Shared `GET /api/feature-flags` bundle; see the note in
+  // lib/use-flag-bundle.ts on why `useFlag` could not read this. The
+  // section as a whole is already gated on `flag.devopts.visible` by
+  // SettingsView, which holds render until that flag is known.
+  const flags = useFlagValuesWithDefaults([
+    "flag.devopts.feature_flag_presets",
+  ]);
   const devFeatureFlagPresetsOn =
-    useFlag("flag.devopts.feature_flag_presets") === "on";
+    flags["flag.devopts.feature_flag_presets"] === "on";
 
   return (
     <div className="settings-section" id="developer">

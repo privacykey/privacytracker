@@ -50,7 +50,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FlagValue } from "../../lib/feature-flag-rules";
 import { getFlagUsage } from "../../lib/feature-flag-usage";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import {
   rovingTabIndex,
   useRovingRadioGroup,
@@ -302,7 +302,11 @@ export default function DevMenu() {
   const tDev = useTranslations("dev_menu_panel");
   // Shared with TaskCenter's footer link — same target page, same hint.
   const tDiagLink = useTranslations("diagnostics_link");
-  const devOptsVisible = useFlag("flag.devopts.visible") === "on";
+  // Shared `/api/feature-flags` bundle — the `useFlag` resolver hook is
+  // never primed client-side, so the minimal-goal rule that hides dev
+  // tooling never took effect here. `null` while loading; both guards
+  // below treat that as "not visible yet".
+  const devOptsVisible = useResolvedFlag("flag.devopts.visible");
   const pathname = usePathname() || "/";
   const router = useRouter();
 

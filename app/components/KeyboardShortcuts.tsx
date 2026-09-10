@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isDesktop } from "../../lib/desktop";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import { useModalFocus } from "../../lib/use-modal-focus";
 
 // ── Shortcut catalogue (mirrored in the help overlay) ────────────────────
@@ -195,9 +195,14 @@ export default function KeyboardShortcuts() {
   // for the feature-flag panel) appear in the catalogue + the help
   // overlay. When the flag is off, the shortcut simply doesn't exist for
   // users — pressing `g f` becomes a no-op and the help overlay doesn't
-  // mention it. Resolved client-side via useFlag so a developer flipping
-  // the flag in Settings sees the shortcut light up without a reload.
-  const devOptsVisible = useFlag("flag.devopts.visible") === "on";
+  // mention it. Resolved client-side from the shared
+  // `GET /api/feature-flags` bundle so a developer flipping the flag in
+  // Settings sees the shortcut light up without a reload — the older
+  // `useFlag` hook could not, since nothing primes its resolver context
+  // in the browser. Still-loading counts as off: a dev-only shortcut
+  // should not briefly exist for a focus that hides it, and the overlay
+  // only renders on demand so nobody sees the catalogue change.
+  const devOptsVisible = useResolvedFlag("flag.devopts.visible") === true;
   const navShortcuts = useMemo<NavShortcut[]>(
     () =>
       devOptsVisible ? [...NAV_SHORTCUTS, ...DEV_NAV_SHORTCUTS] : NAV_SHORTCUTS,

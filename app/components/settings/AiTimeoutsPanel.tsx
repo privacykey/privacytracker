@@ -17,7 +17,7 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
-import { useFlag } from "@/lib/feature-flags-hooks";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import type { useSettingsAutoSave } from "@/lib/use-settings-auto-save";
 import { pushSettingsToast } from "../SettingsAutoSaveToast";
 
@@ -51,10 +51,20 @@ export default function AiTimeoutsPanel({
   setAiTimeoutMergeMs: (next: string) => void;
   aiTimeoutMergeAutoSave: TimeoutAutoSave;
 }) {
-  const devAdvancedAccordionFlag = useFlag("flag.devopts.advanced_accordion");
+  // Shared `GET /api/feature-flags` bundle. This must be the RAW-value
+  // hook: `flag.devopts.advanced_accordion` is tri-state
+  // (`on | off | collapsed`) with a hard default of `collapsed`, so a
+  // boolean bundle would coerce the default to `false` and hide the
+  // accordion outright. `on` force-opens it, `collapsed` renders it shut
+  // but present, `off` removes it.
+  const flags = useFlagValuesWithDefaults([
+    "flag.devopts.advanced_accordion",
+    "flag.settings.ai.timeout_config",
+  ]);
+  const devAdvancedAccordionFlag = flags["flag.devopts.advanced_accordion"];
   const devAdvancedAccordionOn = devAdvancedAccordionFlag !== "off";
   const settingsAiTimeoutConfigOn =
-    useFlag("flag.settings.ai.timeout_config") === "on";
+    flags["flag.settings.ai.timeout_config"] === "on";
   const tPh = useTranslations("settings.placeholders");
   const tDevAiTimeouts = useTranslations("settings.dev_options.ai_timeouts");
 

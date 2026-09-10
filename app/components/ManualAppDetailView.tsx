@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
-import { useFlag } from "../../lib/feature-flags-hooks";
 import type {
   ManualAppEvent,
   ManualAppFieldChangeDetail,
@@ -11,6 +10,7 @@ import type {
   ManualAppScrapeDetail,
 } from "../../lib/manual-app-history";
 import type { ManualApp, ManualAppSourceMeta } from "../../lib/manual-apps";
+import { useFlagValuesWithDefaults } from "../../lib/use-flag-bundle";
 import Favicon from "./Favicon";
 
 interface Props {
@@ -123,17 +123,27 @@ export default function ManualAppDetailView({
   const tSource = useTranslations("manual_app_source");
 
   // Wave I — per-section flags for the manual-app surface. Each one
-  // resolves through the same useFlag hook the rest of the client tree
-  // uses, so override toggles in Dev Options re-render this view live.
+  // resolves through the shared `GET /api/feature-flags` bundle that the
+  // rest of the client tree uses, so override toggles in Dev Options
+  // reach this view. (The older `useFlag` hook did not: its resolver
+  // context is never primed in the browser, so it always answered with
+  // the hard default.) The bundle hook seeds those same hard defaults
+  // for the first paint, so a default-focus user sees no section shift.
+  const flags = useFlagValuesWithDefaults([
+    "flag.detail.manual.scrape_button",
+    "flag.detail.manual.current_version_metadata",
+    "flag.detail.manual.show_captured_text",
+    "flag.detail.manual.edit_details",
+    "flag.detail.manual.changelog",
+  ]);
   const manualScrapeButtonOn =
-    useFlag("flag.detail.manual.scrape_button") === "on";
+    flags["flag.detail.manual.scrape_button"] === "on";
   const manualCurrentVersionMetadataOn =
-    useFlag("flag.detail.manual.current_version_metadata") === "on";
+    flags["flag.detail.manual.current_version_metadata"] === "on";
   const manualShowCapturedTextOn =
-    useFlag("flag.detail.manual.show_captured_text") === "on";
-  const manualEditDetailsOn =
-    useFlag("flag.detail.manual.edit_details") === "on";
-  const manualChangelogOn = useFlag("flag.detail.manual.changelog") === "on";
+    flags["flag.detail.manual.show_captured_text"] === "on";
+  const manualEditDetailsOn = flags["flag.detail.manual.edit_details"] === "on";
+  const manualChangelogOn = flags["flag.detail.manual.changelog"] === "on";
 
   const [liveApp] = useState<ManualApp>(app);
   const [liveEvents, setLiveEvents] = useState<ManualAppEvent[]>(events);

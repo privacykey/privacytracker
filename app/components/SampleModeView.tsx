@@ -22,7 +22,7 @@ import {
   readSampleApps,
   type SampleApp,
 } from "@/lib/sample-apps";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useFlagValuesWithDefaults } from "../../lib/use-flag-bundle";
 
 export default function SampleModeView() {
   const tSample = useTranslations("sample_mode");
@@ -31,7 +31,16 @@ export default function SampleModeView() {
   // the welcome → ?sample=1 path resolves it on for the duration of the
   // session — but we still expose the flag so users running sample mode
   // can dismiss the banner without leaving sample mode.
-  const sampleBannerOn = useFlag("flag.dashboard.sample_data_banner") === "on";
+  // Resolved through the shared `GET /api/feature-flags` bundle. The old
+  // `useFlag` hook read a resolver context that is never primed in the
+  // browser, so every one of these silently answered with its hard
+  // default — focus rules and user overrides alike were ignored. The
+  // bundle hook seeds the same hard defaults for the first paint and
+  // then corrects, so nothing shifts for a default-focus user.
+  const flags = useFlagValuesWithDefaults([
+    "flag.dashboard.sample_data_banner",
+  ]);
+  const sampleBannerOn = flags["flag.dashboard.sample_data_banner"] === "on";
 
   const [apps, setApps] = useState<SampleApp[]>([]);
   const [loaded, setLoaded] = useState(false);

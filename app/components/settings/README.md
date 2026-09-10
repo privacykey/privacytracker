@@ -36,8 +36,8 @@ that renders the strings.
 
 **Section-level gates stay in `SettingsView`; gates *inside* a card do
 not.** The rule above is about whether a card exists. Which sub-blocks a
-card shows is the card's own business, so a section may call `useFlag`
-itself for those. `DeveloperSection` is the worked example: SettingsView
+card shows is the card's own business, so a section may read the flag
+bundle (`lib/use-flag-bundle.ts`) itself for those. `DeveloperSection` is the worked example: SettingsView
 keeps `flag.devopts.visible`, while the eight flags controlling its four
 inner panels are resolved by the panels that own them. Drilling those
 down would have meant eight boolean props that no reader could match back

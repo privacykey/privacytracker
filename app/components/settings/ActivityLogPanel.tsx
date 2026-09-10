@@ -16,8 +16,8 @@
 
 import "./activity-log.css";
 import { useTranslations } from "next-intl";
-import { useFlag } from "@/lib/feature-flags-hooks";
 import { useActivityLog } from "@/lib/use-activity-log";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import ActivityRowDetail from "./ActivityRowDetail";
 import { fmtDuration, fmtRelativeTime } from "./format";
 
@@ -53,9 +53,17 @@ export default function ActivityLogPanel({
 }: {
   showToast: (msg: string) => void;
 }) {
-  const devActivityLogOn = useFlag("flag.devopts.activity_log") === "on";
+  // Shared `GET /api/feature-flags` bundle — `useFlag` resolved against
+  // a client context nothing primes, so these always read their hard
+  // default. Seeded with those same defaults so the first paint is
+  // unchanged, then corrected once the bundle lands.
+  const flags = useFlagValuesWithDefaults([
+    "flag.devopts.activity_log",
+    "flag.devopts.activity_log.retention_days",
+  ]);
+  const devActivityLogOn = flags["flag.devopts.activity_log"] === "on";
   const devActivityLogRetentionDaysOn =
-    useFlag("flag.devopts.activity_log.retention_days") === "on";
+    flags["flag.devopts.activity_log.retention_days"] === "on";
   const tSettings = useTranslations("settings");
   const tTime = useTranslations("settings.time");
   const tToast = useTranslations("settings.toasts");
