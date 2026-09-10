@@ -30,6 +30,42 @@ fn main() -> ExitCode {
                 }
             }
         }
+        Some("serve") => {
+            let Some(path) = args.get(2) else {
+                eprintln!("usage: pt-core serve <path/to/privacy.db> [--port N]");
+                return ExitCode::from(2);
+            };
+            // Default 0 = let the OS pick; the bound address is printed so a
+            // supervising script reads it rather than guessing.
+            let port: u16 = match args.iter().position(|a| a == "--port") {
+                Some(i) => match args.get(i + 1).and_then(|p| p.parse().ok()) {
+                    Some(p) => p,
+                    None => {
+                        eprintln!("pt-core: --port needs a number");
+                        return ExitCode::from(2);
+                    }
+                },
+                None => 0,
+            };
+            let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    eprintln!("pt-core: could not start the async runtime: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            match rt.block_on(privacytracker_core::server::serve(
+                std::path::Path::new(path),
+                addr,
+            )) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("pt-core: serve failed: {e}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         Some("version") => {
             let conn = rusqlite::Connection::open_in_memory().expect("open in-memory");
             let sqlite: String = conn

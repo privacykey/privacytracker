@@ -14,6 +14,21 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration **Phase 2, batch 1**: the `core/` crate now serves an
+  HTTP read API (`pt-core serve`), starting with nine routes — the reads the
+  client shell makes on first paint plus the container/auth probes. It ports
+  the `proxy.ts` request gate (host allowlist, the fail-closed auth rule and
+  its five exact-match public-read carve-outs, and the CSRF check), so the
+  Rust server refuses what the Node server refuses. A new gate,
+  `scripts/parity/read-parity.mjs` (`just parity-read`), boots it against a
+  copy of a running Node server's database and byte-compares every implemented
+  route; `parity-diff.mjs` gained an opt-in `--only` filter so a partially
+  implemented backend can be compared without the unimplemented routes
+  drowning the signal. Nine of nine routes are byte-identical, and the auth
+  gate is probed separately because the differ authenticates every request and
+  so cannot see a missing one. Developer-facing only; the shipped app still
+  runs entirely on Node.
+
 - Rust-core migration **Phase 1**: a standalone `core/` crate that
   reproduces the `lib/db.ts` SQLite schema + migration contract exactly.
   `pt-core migrate <path>` opens a `privacy.db` and brings its schema up to
@@ -139,6 +154,16 @@ Going forward, changes are recorded here as they land.
   `stage-standalone.mjs` already reads when choosing which binary to wrap.
 
 ### Fixed
+
+- The route-parity differ's opaque-id normaliser was over-eager: its pattern
+  also matched ordinary snake_case enum *values* such as `not_collected`,
+  rewriting them to `~id`. That silently blinded the gate — a backend
+  returning the wrong privacy tier compared equal. It now requires a digit or
+  capital in the suffix, which every generated id has and no English enum word
+  does. Verified against the full 121-route Node-vs-Node run, and the run also
+  picked up `/api/apps/[id]/changelog`, a route added after the manifest
+  landed, via the coverage gate.
+
 
 - Desktop app: the hash-based Content Security Policy introduced in 0.2.0
   blocked Tauri's IPC channel, so every call into the desktop app's native

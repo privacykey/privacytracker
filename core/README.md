@@ -169,3 +169,58 @@ gate is self-tested to fail when a single ALTER is dropped.
 **When `lib/db.ts` changes:** re-run `node core/scripts/extract-schema.mjs`,
 port any new ALTER/backfill into `core/src/db.rs`, and run `just parity-schema`
 — it will name exactly what diverged.
+
+## Status — Phase 2, batch 1 (the read API)
+
+The crate now also serves HTTP:
+
+```
+pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
+just parity-read http://127.0.0.1:3001 <nodeDataDir>
+```
+
+**Routes implemented (9).** `/api/health`, `/api/auth/admin-token/status`,
+`/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
+`/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
+
+Chosen for shape coverage rather than convenience — between them they exercise
+a constant response with a non-200 branch (health's 503), a no-database
+header-driven route (locale), three *different* settings-scalar coercions
+(allowlist / trim-emptiness / `=== "true"`), and two insertion-ordered nullable
+maps (the profiles). All nine are reads the client shell makes on first paint,
+or container/auth probes.
+
+**The gate — `scripts/parity/read-parity.mjs`.** Boots this server against a
+copy of a running Node server's database and byte-compares every implemented
+route through the existing dual-live differ. `parity-diff.mjs` gained an
+opt-in `--only <regex>`; without it the 100-odd unimplemented routes fail on
+`200 vs 404` and drown the signal. The copy-the-database step is scaffolding:
+the differ seeds via POST, which a read-only server cannot answer, so Node is
+seeded and its checkpointed database is cloned. That disappears once the write
+routes land.
+
+**What the parity gate cannot see.** It authenticates every request, so a
+route that forgot its auth gate still answers 200 and passes. The runner
+therefore probes the gate directly (a gated route with no token must 401, a
+public one must still 200), and `trust.rs` / `auth.rs` carry unit tests. Treat
+"parity green" as a statement about response bytes only.
+
+**Three decisions worth not re-litigating:**
+
+- `serde_json` is built with **`preserve_order`**. Without it `Value::Object`
+  is a BTreeMap and alphabetises, which silently reorders every stored blob we
+  re-emit. This is self-tested: removing the feature makes both profile routes
+  fail the gate and the other seven still pass.
+- Nullable fields serialise **present-null by default**; `skip_serializing_if`
+  is added per field only where the Node source is confirmed to produce
+  `undefined`. `JSON.stringify` drops `undefined` and keeps `null`, and the
+  differ treats those as different.
+- One `Mutex<Connection>`, not a pool. Node uses a single synchronous
+  better-sqlite3 handle; a pool would give each connection its own WAL
+  snapshot, letting two queries in one handler see different states — which
+  the Node server structurally cannot do.
+
+**Deferred from this batch**, though the triage picked them: `/api/imports`
+(bare array), `/api/apps/[id]/since-install` (per-id + 404) and `/api/focus`
+(derived multi-key object). They are the next routes to land and they add the
+three shapes this batch does not cover.

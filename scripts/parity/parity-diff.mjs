@@ -82,6 +82,12 @@ const { values: args } = parseArgs({
     "skip-seed": { type: "boolean", default: false },
     "no-normalize": { type: "boolean", default: false },
     "skip-coverage": { type: "boolean", default: false },
+    // Opt-in route filter, for comparing a backend that only implements
+    // SOME routes yet (the Rust core lands them in batches). Without it
+    // every unimplemented route fails on "HTTP 200 vs 404" and drowns the
+    // real signal. The full run remains the default and the coverage gate
+    // is untouched — this narrows what is REQUESTED, never what is listed.
+    only: { type: "string" },
     token: { type: "string" },
   },
 });
@@ -93,6 +99,11 @@ if (!(args.a && args.b)) {
   process.exit(2);
 }
 const runMutations = args.mutate || args.teardown;
+
+/** Filter a manifest group by the --only regex, when one was given. */
+const onlyRe = args.only ? new RegExp(args.only) : null;
+const selected = (entries) =>
+  onlyRe ? entries.filter((e) => onlyRe.test(e.route)) : entries;
 
 const TOKEN =
   args.token ??
@@ -231,7 +242,17 @@ function normalize(value, key = "") {
         // Opaque generated ids that are not uuids — e.g. an import's
         // `imp_RhweIpS7YkZu`. Random per row, so they can never agree
         // across two independent databases; their SHAPE is the contract.
-        .replace(/\b[a-z]{2,6}_[A-Za-z0-9_-]{8,}\b/g, "~id")
+        //
+        // The lookahead requiring a digit or capital in the suffix is
+        // load-bearing: without it this also swallowed ordinary
+        // snake_case enum VALUES such as `not_collected`, so the differ
+        // could not tell one privacy tier from another and a backend
+        // returning the wrong tier passed. Generated ids always carry a
+        // digit or capital; English enum words never do.
+        .replace(
+          /\b[a-z]{2,6}_(?=[A-Za-z0-9_-]*[0-9A-Z])[A-Za-z0-9_-]{8,}/g,
+          "~id"
+        )
     );
   }
   return value;
@@ -661,35 +682,75 @@ const main = async () => {
     await seed(args.b);
   }
 
-  const ids = {
-    a: await RESOLVERS["{app}"](args.a),
-    b: await RESOLVERS["{app}"](args.b),
-  };
-  if (ids.a !== ids.b) {
-    console.error(`FATAL: canned Instagram ids differ (${ids.a} vs ${ids.b})`);
-    process.exit(1);
-  }
-
-  console.log(`\n── reads (${READS.length}) ──`);
-  for (const entry of READS) {
-    await runEntry(entry);
-  }
-
-  console.log(
-    `\n── reads with volatility transforms (${VOLATILE_READS.length}) ──`
+  // The canned-app id must agree across the two sides before anything that
+  // addresses a row by id can be trusted. Skip it when NOTHING selected uses
+  // a placeholder — otherwise a --only run over placeholder-free routes fails
+  // on a precondition it does not depend on (and, against a backend that has
+  // not implemented /api/apps yet, on a route it was never asked to compare).
+  const needsPlaceholders = [
+    ...selected(READS),
+    ...selected(VOLATILE_READS),
+    ...(runMutations ? selected(MUTATIONS) : []),
+    ...(args.teardown ? selected(TEARDOWN) : []),
+  ].some((e) =>
+    [e.path, JSON.stringify(e.body ?? null), e.after ?? ""].some((str) =>
+      /\{[a-zA-Z]+\}/.test(str ?? "")
+    )
   );
-  for (const entry of VOLATILE_READS) {
+  if (needsPlaceholders) {
+    const ids = {
+      a: await RESOLVERS["{app}"](args.a),
+      b: await RESOLVERS["{app}"](args.b),
+    };
+    if (ids.a !== ids.b) {
+      console.error(
+        `FATAL: canned Instagram ids differ (${ids.a} vs ${ids.b})`
+      );
+      process.exit(1);
+    }
+  }
+
+  const reads = selected(READS);
+  const volatile = selected(VOLATILE_READS);
+  const quarantine = selected(QUARANTINE);
+  const mutations = selected(MUTATIONS);
+  const teardown = selected(TEARDOWN);
+  if (onlyRe) {
+    const kept =
+      reads.length +
+      volatile.length +
+      quarantine.length +
+      mutations.length +
+      teardown.length;
+    const all =
+      READS.length +
+      VOLATILE_READS.length +
+      QUARANTINE.length +
+      MUTATIONS.length +
+      TEARDOWN.length;
+    console.log(
+      `\n--only ${args.only}: ${kept}/${all} manifest entries selected (the rest are NOT compared)`
+    );
+  }
+
+  console.log(`\n── reads (${reads.length}) ──`);
+  for (const entry of reads) {
     await runEntry(entry);
   }
 
-  console.log(`\n── quarantined (${QUARANTINE.length}) ──`);
-  for (const entry of QUARANTINE) {
+  console.log(`\n── reads with volatility transforms (${volatile.length}) ──`);
+  for (const entry of volatile) {
+    await runEntry(entry);
+  }
+
+  console.log(`\n── quarantined (${quarantine.length}) ──`);
+  for (const entry of quarantine) {
     await runQuarantine(entry);
   }
 
   if (runMutations) {
-    console.log(`\n── mutations (${MUTATIONS.length}) ──`);
-    for (const entry of MUTATIONS) {
+    console.log(`\n── mutations (${mutations.length}) ──`);
+    for (const entry of mutations) {
       await runEntry(entry);
     }
   } else {
@@ -699,8 +760,8 @@ const main = async () => {
   }
 
   if (args.teardown) {
-    console.log(`\n── teardown (${TEARDOWN.length}) ──`);
-    for (const entry of TEARDOWN) {
+    console.log(`\n── teardown (${teardown.length}) ──`);
+    for (const entry of teardown) {
       await runEntry(entry);
     }
   } else {
