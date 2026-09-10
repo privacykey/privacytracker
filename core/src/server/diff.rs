@@ -51,6 +51,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
+use crate::jsnum::js_number_to_string;
+
 /// Distinguish "the key was absent" from "the key was present and null".
 ///
 /// serde's default for `Option<T>` maps BOTH to `None`, which is exactly the
@@ -134,14 +136,10 @@ fn js_display(value: Option<&Value>) -> String {
         Some(Value::Null) => "null".to_string(),
         Some(Value::Bool(b)) => b.to_string(),
         Some(Value::String(s)) => s.clone(),
-        Some(Value::Number(n)) => {
-            // `1.0` is `1` in JavaScript. serde_json's Display would say
-            // "1.0", so collapse integral floats back to integers.
-            match n.as_f64() {
-                Some(f) if f.fract() == 0.0 && f.abs() < 1e15 => format!("{}", f as i64),
-                _ => n.to_string(),
-            }
-        }
+        // `1.0` is `1` in JavaScript, and 1e17 prints its digits rather than
+        // an exponent. Shared with `js_number` so the two cannot drift apart
+        // on the integral rule while still differing on NaN, which they must.
+        Some(Value::Number(n)) => js_number_to_string(n),
         // JS gives "a,b" for arrays and "[object Object]" for plain objects.
         Some(Value::Array(items)) => items
             .iter()

@@ -15,6 +15,7 @@ use axum::{
     response::Response,
 };
 use rusqlite::types::Value as SqlValue;
+use rusqlite::OptionalExtension;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -34,9 +35,15 @@ fn column(row: &rusqlite::Row<'_>, name: &str) -> rusqlite::Result<Value> {
         SqlValue::Integer(i) => Value::from(i),
         SqlValue::Real(f) => js_number(f),
         SqlValue::Text(s) => Value::from(s),
-        // better-sqlite3 yields a Buffer; nothing here ever stores one, and
-        // a Buffer is truthy, which is the only property this code reads.
-        SqlValue::Blob(_) => Value::from("<blob>"),
+        // better-sqlite3 yields a Buffer, and `JSON.parse(buffer)` coerces it
+        // via toString — so a BLOB `snapshot_json` parses its ACTUAL bytes in
+        // Node. Decoding here keeps that working; a `"<blob>"` placeholder
+        // would not, and worse, would be indistinguishable from a genuine
+        // stored string of those characters. (A BLOB `app_version` still
+        // diverges: Node would serialise the Buffer as a `{type,data}` object.
+        // Both columns are declared TEXT and every in-tree writer passes a
+        // string, so this is reachable only from a foreign writer.)
+        SqlValue::Blob(b) => Value::from(String::from_utf8_lossy(&b).into_owned()),
     })
 }
 
@@ -136,11 +143,18 @@ fn since_install_diff(
     conn: &rusqlite::Connection,
     app_id: &str,
 ) -> rusqlite::Result<Option<SinceInstallDiff>> {
+    // `.optional()` rather than `.ok()` throughout: `.ok()` folds
+    // SQLITE_BUSY, SQLITE_CORRUPT and every other real failure into "no
+    // rows", which is indistinguishable from an empty table. Node wraps none
+    // of these queries, so a database error there propagates and the route
+    // answers 500 — swallowing it here would turn an unavailable database
+    // into a cheerful `"sinceInstall": null` and a client could not tell the
+    // two apart.
     let first_seen_raw: Option<Value> = conn
         .query_row("SELECT firstSeen FROM apps WHERE id = ?", [app_id], |row| {
             column(row, "firstSeen")
         })
-        .ok();
+        .optional()?;
     let Some(first_seen_raw) = first_seen_raw else {
         return Ok(None);
     };
@@ -163,7 +177,7 @@ fn since_install_diff(
             [app_id],
             endpoint_row,
         )
-        .ok();
+        .optional()?;
     let Some(latest) = latest.filter(|r| truthy(&r.snapshot_json)) else {
         return Ok(None);
     };
@@ -181,7 +195,7 @@ fn since_install_diff(
             rusqlite::params![app_id, bind_number(first_seen)],
             endpoint_row,
         )
-        .ok()
+        .optional()?
         .filter(|r| truthy(&r.snapshot_json));
 
     let mut baseline_is_approx = false;
@@ -205,7 +219,7 @@ fn since_install_diff(
                     [app_id],
                     endpoint_row,
                 )
-                .ok();
+                .optional()?;
             match earliest.filter(|r| truthy(&r.snapshot_json)) {
                 Some(row) => row,
                 None => return Ok(None),
@@ -300,9 +314,15 @@ pub async fn since_install(State(state): State<AppState>, Path(id): Path<String>
     // A SEPARATE existence check from the one inside the diff. It is what
     // separates "unknown app" (404) from "known app with no usable
     // snapshot" (200 with a null body).
-    let exists = conn
+    // `.is_ok()` here would answer 404 "App not found" for a database that
+    // is merely locked — a wrong and quite convincing answer.
+    let exists = match conn
         .query_row("SELECT 1 FROM apps WHERE id = ?", [&id], |_| Ok(()))
-        .is_ok();
+        .optional()
+    {
+        Ok(found) => found.is_some(),
+        Err(_) => return json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"),
+    };
     if !exists {
         return json_error(StatusCode::NOT_FOUND, "App not found");
     }

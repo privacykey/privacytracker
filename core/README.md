@@ -381,6 +381,19 @@ Fixed by escaping the whole route.
   truthiness check does, and only for the row already picked. Tidying that
   into the SQL changes which row wins and whether `baselineIsApprox` is set.
 
+**The two backends do not run the same SQLite.** `rusqlite`'s bundled
+amalgamation is 3.46.0; `better-sqlite3`'s is 3.53.2 — seven minor releases
+apart, and `just parity-schema` already prints the TypeScript side's version
+for this reason. That matters here because two behaviours this route leans on
+are decided by the query planner rather than by any `ORDER BY`:
+`buildSnapshot`'s type/category order (which becomes the stored
+`snapshot_json` byte order) and the `LIMIT 1` tie-break when several
+snapshots share a `scraped_at`. Both agree today on every query involved.
+Neither is guaranteed by anything but that agreement, so "both sides run
+SQLite" is not the argument it looks like — if a future SQLite changes an
+index choice, the fix is an explicit `ORDER BY` on both sides in the same
+commit, not a version bump on one.
+
 **Two knowing divergences**, both verified against the real Node function and
 both unreachable from data this application writes: object/array identifiers
 (JavaScript compares them by reference, which nothing survives

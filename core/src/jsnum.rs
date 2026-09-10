@@ -106,29 +106,74 @@ pub fn js_to_number(value: &serde_json::Value) -> f64 {
     }
 }
 
+/// Whether JavaScript would print this f64 as a plain integer, and if so
+/// which one.
+///
+/// JS has a single number type, so an integral value prints WITHOUT a decimal
+/// point — `9007199254740992` and `100000000000000000`, not
+/// `9007199254740992.0` and `1e17`. It only reaches exponent notation past
+/// 1e21. `serde_json`'s float formatting disagrees on both counts.
+///
+/// The bound is the i64 range rather than 2^53: an integral f64 below 2^63
+/// converts to i64 exactly, and stopping at 2^53 — the natural instinct,
+/// since that is where f64 stops representing every integer — would emit
+/// `1e17` for a value JavaScript writes out in full. Above the i64 range
+/// this gives up and lets the float formatter run, which diverges; nothing
+/// this database stores comes close.
+fn js_integral(f: f64) -> Option<i64> {
+    if f.fract() == 0.0 && f.abs() < 9.0e18 {
+        Some(f as i64)
+    } else {
+        None
+    }
+}
+
 /// Render an f64 the way `JSON.stringify` renders a JavaScript number.
 ///
-/// The important case is the boring one: JS has a single number type, so an
-/// integral value serialises WITHOUT a decimal point. `serde_json` would
-/// write `1787843602839.0` for the same f64, which is a byte difference on
-/// every timestamp the API returns.
+/// The important case is the boring one: an integral value serialises
+/// WITHOUT a decimal point. `serde_json` would write `1787843602839.0` for
+/// the same f64, which is a byte difference on every timestamp the API
+/// returns — and one the parity differ SEES, because its `~epoch` mask only
+/// covers values below 4.1e12.
 pub fn js_number(f: f64) -> serde_json::Value {
     use serde_json::Value;
     if f.is_nan() || f.is_infinite() {
         // JSON.stringify(NaN) is the four characters `null`.
         return Value::Null;
     }
-    // 2^53 — beyond it, integral f64s are no longer exactly representable
-    // and JS itself starts printing them in exponent form.
-    if f.fract() == 0.0 && f.abs() < 9_007_199_254_740_992.0 {
-        return Value::from(f as i64);
+    if let Some(i) = js_integral(f) {
+        return Value::from(i);
     }
     serde_json::Number::from_f64(f).map_or(Value::Null, Value::Number)
 }
 
+/// Render a JSON number the way a JavaScript TEMPLATE LITERAL would.
+///
+/// Not the same function as [`js_number`]: `${NaN}` is `NaN` and
+/// `${Infinity}` is `Infinity`, where `JSON.stringify` writes `null` for
+/// both. They share the integral rule, which is the half that actually
+/// bites.
+pub fn js_number_to_string(n: &serde_json::Number) -> String {
+    match n.as_f64() {
+        Some(f) if f.is_nan() => "NaN".to_string(),
+        Some(f) if f.is_infinite() => {
+            if f > 0.0 {
+                "Infinity".to_string()
+            } else {
+                "-Infinity".to_string()
+            }
+        }
+        Some(f) => match js_integral(f) {
+            Some(i) => i.to_string(),
+            None => n.to_string(),
+        },
+        None => n.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{js_number, js_parse_int, js_to_number};
+    use super::{js_number, js_number_to_string, js_parse_int, js_to_number};
     use serde_json::{json, Value};
 
     #[test]
@@ -223,5 +268,37 @@ mod tests {
         // JSON.stringify(NaN) === "null".
         assert_eq!(js_number(f64::NAN), Value::Null);
         assert_eq!(js_number(f64::INFINITY), Value::Null);
+    }
+
+    #[test]
+    fn integral_formatting_holds_past_2_pow_53() {
+        // 2^53 exactly. Bounding on `< 2^53` — the obvious choice, since that
+        // is where f64 stops representing every integer — emits a trailing
+        // `.0` here where JSON.stringify does not, and the differ can see it.
+        assert_eq!(
+            js_number(9_007_199_254_740_992.0).to_string(),
+            "9007199254740992"
+        );
+        assert_eq!(
+            js_number(9_007_199_254_740_991.0).to_string(),
+            "9007199254740991"
+        );
+        // Well past 2^53, JS still writes the digits out rather than 1e17.
+        assert_eq!(js_number(1.0e17).to_string(), "100000000000000000");
+    }
+
+    #[test]
+    fn template_literal_formatting_differs_from_json_for_nan() {
+        let num = |v: &str| serde_json::from_str::<serde_json::Number>(v).unwrap();
+        assert_eq!(js_number_to_string(&num("1")), "1");
+        assert_eq!(js_number_to_string(&num("1.0")), "1");
+        assert_eq!(js_number_to_string(&num("2.5")), "2.5");
+        assert_eq!(
+            js_number_to_string(&num("9007199254740992")),
+            "9007199254740992"
+        );
+        // `${NaN}` is "NaN" while JSON.stringify(NaN) is "null" — the one
+        // place these two helpers must NOT agree.
+        assert_eq!(js_number(f64::NAN), Value::Null);
     }
 }

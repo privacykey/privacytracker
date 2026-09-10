@@ -174,16 +174,36 @@ export const FIXTURES = [
   },
   {
     id: "pt-fixture-empty-baseline",
-    why: "a usable latest but an empty-string row at-or-before firstSeen — the empty one is skipped AND baselineIsApprox is set, because Node re-queries after the truthiness check fails",
+    why: "an empty-string row is the newest at-or-before firstSeen, so the truthiness check rejects it and the ASC fallback picks the older USABLE row instead — baselineIsApprox true even though a snapshot did predate install. Needs three rows: with only the empty one and a later real one, the fallback re-picks the same empty row and the whole response is null (that is pt-fixture-empty-json's job, not this one)",
     firstSeen: T0,
     snapshots: [
+      {
+        scrapedAt: T0 - 2 * DAY,
+        source: "wayback",
+        appVersion: "0.0.1",
+        types: [type_("A", "Alpha", [["C_OLD", "Old Cat"]])],
+      },
       { scrapedAt: T0 - DAY, source: "live", appVersion: "0.1.0", raw: "" },
       {
         scrapedAt: T0 + DAY,
         source: "live",
         appVersion: "2.0.0",
+        types: [type_("A", "Alpha", [["C_NEW", "New Cat"]])],
+      },
+    ],
+  },
+  {
+    id: "pt-fixture-empty-latest",
+    why: "the NEWEST row is an empty string, which the SQL cannot filter (the column is NOT NULL) — the truthiness check rejects it and the whole response is null, even though a perfectly good older snapshot exists",
+    firstSeen: T0,
+    snapshots: [
+      {
+        scrapedAt: T0 - DAY,
+        source: "live",
+        appVersion: "1.0.0",
         types: [type_("A", "Alpha", [["C", "Cat"]])],
       },
+      { scrapedAt: T0 + DAY, source: "live", appVersion: "2.0.0", raw: "" },
     ],
   },
   {
