@@ -18,7 +18,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useFlag } from "@/lib/feature-flags-hooks";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import { fmtDate } from "./format";
 import type { AiDebugLogRow } from "./types";
 
@@ -34,9 +34,15 @@ export default function AiDebugLogPanel({
   /** Persists the AI settings blob; only `debugLogging` is overridden here. */
   saveAiSettings: (overrides: { debugLogging: boolean }) => void;
 }) {
-  const devAiDebugLoggingOn = useFlag("flag.devopts.ai.debug_logging") === "on";
+  // Shared `GET /api/feature-flags` bundle; see the note in
+  // lib/use-flag-bundle.ts on why `useFlag` could not read these.
+  const flags = useFlagValuesWithDefaults([
+    "flag.devopts.ai.debug_logging",
+    "flag.settings.ai.debug_logging",
+  ]);
+  const devAiDebugLoggingOn = flags["flag.devopts.ai.debug_logging"] === "on";
   const settingsAiDebugLoggingOn =
-    useFlag("flag.settings.ai.debug_logging") === "on";
+    flags["flag.settings.ai.debug_logging"] === "on";
   const tSettings = useTranslations("settings");
   const tToast = useTranslations("settings.toasts");
   const tDevAiDebug = useTranslations("settings.dev_options.ai_debug");

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setDockBadge } from "../../lib/desktop";
-import { useFlag } from "../../lib/feature-flags-hooks";
 import {
   classifyNotificationType,
   DEFAULT_NOTIFICATION_PREFS,
@@ -18,6 +17,7 @@ import {
   NOTIFICATION_RELATIVE_TIERS,
   type RelativeTranslator,
 } from "../../lib/relative-time";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 
 interface NotifEntry {
   app_id: string;
@@ -106,7 +106,11 @@ export default function NotificationBell({
   // `flag.notifications.bell` so the bell vanishes consistently even if
   // a future caller drops it into a different surface that doesn't read
   // the nav-level flag.
-  const bellOn = useFlag("flag.notifications.bell") === "on";
+  // Read from the shared `/api/feature-flags` bundle — the `useFlag`
+  // resolver hook has no primed client context, so an `off` override
+  // here never reached the browser. `null` while loading: hold the bell
+  // back rather than render it and yank it out of the nav.
+  const bellOn = useResolvedFlag("flag.notifications.bell");
 
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -337,7 +341,7 @@ export default function NotificationBell({
       ? t("aria_with_unread", { count: visibleUnread })
       : t("title_aria");
 
-  if (!bellOn) {
+  if (bellOn !== true) {
     return null;
   }
 

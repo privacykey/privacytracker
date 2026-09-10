@@ -2,7 +2,10 @@
  * Feature flag system — resolver + registry (server-safe; no React imports).
  * Companion to `lib/feature-flag-rules.ts` (rule tables).
  * Server: import `resolveFlag` here + `getResolverContextFromDb` from
- * `lib/feature-flags-server.ts`. Client: use `lib/feature-flags-hooks.ts`.
+ * `lib/feature-flags-server.ts`. Client: use `lib/use-flag-bundle.ts`,
+ * which reads resolved values over `GET /api/feature-flags` — the
+ * resolver context below is NEVER primed in the browser, so anything
+ * resolving against it there gets hard defaults and nothing else.
  * See https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
@@ -284,8 +287,14 @@ function notifySubscribers() {
 }
 
 // ============================================================================
-// Cache accessors used by the React hooks (`lib/feature-flags-hooks.ts`)
+// Cache accessors
 // ============================================================================
+// These have NO consumers today. They existed for a pair of client hooks
+// (`useFlag` / `useFocus`) that resolved against `activeCache` — which
+// nothing in the browser ever populates, so those hooks silently
+// returned HARD_DEFAULTS for every flag and were deleted. Do not wire a
+// new client hook onto them: client code reads resolved values from
+// `GET /api/feature-flags` via `lib/use-flag-bundle.ts`.
 
 /** Subscribe to context changes. Returns an unsubscribe fn. */
 export function subscribeToContext(callback: () => void): () => void {
@@ -318,7 +327,8 @@ export function enabledForGoal(
   return context.focus.goals.has(goal);
 }
 
-// `useFocus` lives in `lib/feature-flags-hooks.ts` (client-only).
+// Client-side focus reads go through `GET /api/focus`; there is no
+// `useFocus` hook (see the cache-accessor note above).
 
 // ============================================================================
 // Override mutators — in-memory cache mutation. Persistence to SQLite lives

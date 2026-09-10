@@ -1,17 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { FlagKey, FlagValue } from "./feature-flag-rules";
+import {
+  type FlagKey,
+  type FlagValue,
+  HARD_DEFAULTS,
+} from "./feature-flag-rules";
 
 /**
  * Client-side resolved-flag reader for Rust-core Phase 0.
  *
  * Pages used to call `resolveFlagFromDb()` in their server component and
- * pass the results down as props. Shells can't do that, and the existing
- * `useFlag` hook (lib/feature-flags-hooks.ts) can't stand in: it reads a
- * resolver context that nothing ever primes on the client, so it always
- * returns HARD_DEFAULTS. This hook reads the real resolved values from
- * `GET /api/feature-flags` instead — the same resolver output, via the
+ * pass the results down as props. Shells can't do that, and the old
+ * `useFlag` hook couldn't stand in: it read a resolver context that
+ * nothing ever primes on the client, so it always returned
+ * HARD_DEFAULTS — every client component gating UI on it ignored focus
+ * rules AND user overrides. That hook has been deleted; these hooks are
+ * the only client-side flag reader. They read the real resolved values
+ * from `GET /api/feature-flags` — the same resolver output, via the
  * `flags[].currentValue` field.
  *
  * The response is the full registry (~42 KB), so it is fetched **once
@@ -186,6 +192,98 @@ export function useFlagBundle<K extends string>(
   }, [cacheKey]);
 
   return values;
+}
+
+/**
+ * Resolve a fixed set of flag keys, seeded with each key's HARD_DEFAULT.
+ *
+ * Unlike `useFlagValues` this NEVER returns `null` — the first render
+ * (and the prerendered HTML, where the module cache is always cold)
+ * uses `HARD_DEFAULTS[key]`, and the real resolved values replace them
+ * as soon as the shared fetch lands. An unreadable bundle leaves the
+ * hard defaults in place.
+ *
+ * Use this for the many INLINE section gates — `{flagOn && <section/>}`
+ * — whose flag defaults `on` and whose rules only ever subtract. Two
+ * reasons it beats holding render there:
+ *
+ *  - No fail-closed cliff. `useFlagBundle` resolves every key to `false`
+ *    when the fetch fails, which is right for a gate hiding a surface
+ *    that should not exist — but applied to ~40 Settings cards it would
+ *    empty the page on a blip. `AppChrome` renders the tree anyway in
+ *    that case (its own chrome flags fail OPEN), so what the user
+ *    actually gets is a Settings page with every card missing. The hard
+ *    default is the safest known value and is exactly what these call
+ *    sites rendered before. Pinned by the failure case in
+ *    tests/e2e/client-flag-gates.spec.ts.
+ *  - No flash on a LATE mount. On a fresh page load nothing paints
+ *    early either way — `AppChrome` holds the whole tree until this
+ *    bundle settles, because TaskCenterProvider seeds from it at mount.
+ *    But the cache has a 30 s TTL and `clearFlagBundleCache()` drops it
+ *    outright, so a component mounting after that (a client-side
+ *    navigation into Settings, a modal opened later) starts cold with
+ *    the chrome already up. Seeding keeps those sections steady.
+ *
+ * Surfaces whose WRONG state is the visible bug (label hints, tooltips,
+ * the social-share modal) must keep holding render via `useFlagBundle`
+ * / `useFlagValues` instead: painting them and then taking them away is
+ * the regression this migration exists to fix.
+ *
+ * Values are RAW, so tri-state flags (`flag.devopts.advanced_accordion`
+ * is `"on" | "off" | "collapsed"`) read correctly.
+ *
+ * Like the hooks above, `keys` is expected to be a fixed literal set —
+ * the identity of the array is ignored (they are joined into the effect
+ * dep) but the CONTENT is read once for the seed, so a key set that
+ * changes between renders reads `undefined` for the newly-added key
+ * until the effect re-runs. Every call site authors the array inline.
+ */
+export function useFlagValuesWithDefaults<K extends FlagKey>(
+  keys: readonly K[]
+): Record<K, FlagValue> {
+  const cacheKey = keys.join(",");
+  const [values, setValues] = useState<Record<K, FlagValue>>(() =>
+    hardDefaultsFor(keys)
+  );
+
+  useEffect(() => {
+    let live = true;
+    const wanted = cacheKey.split(",") as K[];
+    loadFlags()
+      .then((map) => {
+        if (!live) {
+          return;
+        }
+        const out = hardDefaultsFor(wanted);
+        for (const key of wanted) {
+          const value = map.get(key);
+          if (value !== undefined) {
+            out[key] = value;
+          }
+        }
+        setValues(out);
+      })
+      .catch((error) => {
+        loadFailed = true;
+        console.warn("[flags] bundle load failed:", error);
+        // Keep the hard defaults already in state — see the note above.
+      });
+    return () => {
+      live = false;
+    };
+  }, [cacheKey]);
+
+  return values;
+}
+
+function hardDefaultsFor<K extends FlagKey>(
+  keys: readonly K[]
+): Record<K, FlagValue> {
+  const out = {} as Record<K, FlagValue>;
+  for (const key of keys) {
+    out[key] = HARD_DEFAULTS[key];
+  }
+  return out;
 }
 
 /** Single-flag convenience over the same shared fetch. */

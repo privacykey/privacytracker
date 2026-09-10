@@ -37,7 +37,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 
 type TaskKind = "sync" | "scrape" | "policy" | "import" | "other";
 export type TaskStatus = "running" | "done" | "error" | "cancelled";
@@ -734,7 +734,12 @@ export function TaskCenterTrigger() {
   // The Nav already gates `flag.nav.task_center_trigger`; this is the
   // belt-and-braces gate on the widget itself so future surfaces that
   // mount it directly still respect the toggle.
-  const widgetOn = useFlag("flag.taskcenter.widget") === "on";
+  // Shared `/api/feature-flags` bundle, not the `useFlag` resolver hook:
+  // that hook reads a context nothing primes in the browser, so the
+  // minimal-goal rule that turns this widget off never applied. `null`
+  // while loading — hold the trigger back so it doesn't flash into the
+  // nav for a focus that hides it.
+  const widgetOn = useResolvedFlag("flag.taskcenter.widget");
 
   const {
     tasks,
@@ -830,7 +835,7 @@ export function TaskCenterTrigger() {
     [pathname, router]
   );
 
-  if (!widgetOn) {
+  if (widgetOn !== true) {
     return null;
   }
 

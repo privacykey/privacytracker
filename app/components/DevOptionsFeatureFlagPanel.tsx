@@ -26,7 +26,7 @@ import {
 } from "react";
 import type { FlagValue } from "@/lib/feature-flag-rules";
 import { getFlagUsage } from "../../lib/feature-flag-usage";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import { DEV_MENU_STORAGE_KEY } from "./DevMenu";
@@ -159,7 +159,11 @@ export default function DevOptionsFeatureFlagPanel() {
   // The panel is the chief surface for inspecting + overriding flags;
   // hiding it is what guardian/loved_one focus uses to keep developer
   // tooling out of curated configurations.
-  const panelOn = useFlag("flag.devopts.feature_flag_panel") === "on";
+  //
+  // Resolved from the shared `/api/feature-flags` bundle rather than the
+  // `useFlag` resolver hook, which never sees a primed context in the
+  // browser. `null` while loading — hold the panel back.
+  const panelOn = useResolvedFlag("flag.devopts.feature_flag_panel");
 
   const [rows, setRows] = useState<FlagRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -863,7 +867,7 @@ export default function DevOptionsFeatureFlagPanel() {
     }
   }
 
-  if (!panelOn) {
+  if (panelOn !== true) {
     return null;
   }
 

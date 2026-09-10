@@ -31,10 +31,10 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PrivacyTypeSnapshot } from "../../lib/changelog-types";
-import { useFlag } from "../../lib/feature-flags-hooks";
 import { CATEGORY_META } from "../../lib/privacy-meta";
 import { TYPE_IDENTIFIER_TO_TIER } from "../../lib/privacy-profile";
 import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import { useModalFocus } from "../../lib/use-modal-focus";
 
 interface PreviewLike {
@@ -609,7 +609,13 @@ export function SocialShareModal({
   // sharing your own privacy fingerprint is a deliberate opt-in, not a
   // workflow assumption. Loved-one rule turns it on so guardians sharing
   // recommendations have the affordance available.
-  const socialShareOn = useFlag("flag.global.social_share") === "on";
+  //
+  // From the shared `/api/feature-flags` bundle: the loved_one rule is
+  // exactly the case the `useFlag` resolver hook could not see, since
+  // nothing primes its context client-side and it fell back to the
+  // 'off' hard default for every audience. `null` while loading — the
+  // modal only mounts on demand, so holding is free.
+  const socialShareOn = useResolvedFlag("flag.global.social_share");
 
   // i18n. Modal chrome strings live under `social_share.*`; the strings
   // baked into the canvas image live under `social_share.canvas.*` and
@@ -882,7 +888,7 @@ export function SocialShareModal({
   // Hooks above must run unconditionally to keep React's hook order stable.
   // Bail out here if the global social-share gate is off — render nothing
   // and let the parent's onClose drive the close.
-  if (!socialShareOn) {
+  if (socialShareOn !== true) {
     return null;
   }
 

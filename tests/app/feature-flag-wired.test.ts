@@ -16,7 +16,7 @@
  * consumed several ways in this codebase and a narrower pattern produces
  * false failures:
  *
- *   useFlag("flag.x")                       // client component
+ *   useFlagValuesWithDefaults(["flag.x"])   // client component
  *   const r = (k) => resolveFlagFromDb(k)   // server page, aliased
  *   r("flag.x")
  *   { key: "a11y", flag: "flag.x" }         // table-driven, YourFocusCard

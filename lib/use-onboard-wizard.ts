@@ -72,12 +72,12 @@ import {
   runCfgutilExport,
 } from "@/lib/desktop";
 import { type DeviceClass, refineDeviceOnClient } from "@/lib/device";
-import { useFlag } from "@/lib/feature-flags-hooks";
 import {
   DEFAULT_COUNTRY,
   inferCountryFromLocale,
   normalizeCountry,
 } from "@/lib/region";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import { useModalFocus } from "@/lib/use-modal-focus";
 import { useRovingRadioGroup } from "@/lib/use-roving-radiogroup";
 
@@ -216,9 +216,10 @@ export function useOnboardWizard({
   flags,
 }: {
   initialDevice?: DeviceClass;
-  /** Server-resolved flags whose first paint must match the runtime-aware
-   *  resolver — client `useFlag` falls back to hard defaults before the
-   *  cache hydrates, which is not enough for Tauri-only gates. */
+  /** Pre-resolved flags supplied by `OnboardGate`, which holds the wizard
+   *  back until they land. Redundant with the shared bundle read below —
+   *  same key, same source — but kept so a caller can pin the value for
+   *  the Tauri-only configurator gate. */
   flags?: { methodConfigurator: boolean };
 }) {
   const router = useRouter();
@@ -288,23 +289,57 @@ export function useOnboardWizard({
   // step-1 picker. The set is computed once per render and threaded into
   // the layout filter below; methods that resolve off are removed from
   // both the primary row and the Advanced drawer (and from auto-pick).
+  //
+  // Every wizard flag below resolves through the shared
+  // `GET /api/feature-flags` bundle. They used to read `useFlag`, whose
+  // resolver context is never primed in the browser — so each one
+  // answered with its hard default and ignored both focus rules and Dev
+  // Options overrides (`flag.onboarding.method.import_audit_bundle` is
+  // the visible case: off by default, on for the loved_one audience).
+  // The bundle hook seeds those same hard defaults for the first render
+  // and corrects once the fetch lands. `OnboardGate` already holds the
+  // wizard back until the bundle is warm, so in practice the corrected
+  // values are in place before the first paint.
+  const flagValues = useFlagValuesWithDefaults([
+    "flag.onboarding.method.manual_entry",
+    "flag.onboarding.method.file_upload",
+    "flag.onboarding.method.configurator",
+    "flag.onboarding.method.screenshot_ocr",
+    "flag.onboarding.method.live_text_help",
+    "flag.onboarding.confirm.hide_tracked_toggle",
+    "flag.onboarding.step.ai_summaries",
+    "flag.onboarding.post.dashboard_skip",
+    "flag.onboarding.post.background_worker",
+    "flag.onboarding.import.rate_limit_handoff",
+    "flag.onboarding.method.restore_backup",
+    "flag.onboarding.method.import_audit_bundle",
+    "flag.onboarding.step.app_store_region",
+    "flag.onboarding.step.accessibility_toggle",
+    "flag.onboarding.step.choose_method",
+    "flag.onboarding.step.confirm_matches",
+    "flag.onboarding.step.import_progress",
+    "flag.onboarding.ai.summarize_on_import",
+  ]);
   const onboardMethodManualOn =
-    useFlag("flag.onboarding.method.manual_entry") === "on";
+    flagValues["flag.onboarding.method.manual_entry"] === "on";
   const onboardMethodFileOn =
-    useFlag("flag.onboarding.method.file_upload") === "on";
+    flagValues["flag.onboarding.method.file_upload"] === "on";
   const onboardMethodConfiguratorResolvedOn =
-    useFlag("flag.onboarding.method.configurator") === "on";
+    flagValues["flag.onboarding.method.configurator"] === "on";
+  // `flags` here is the CALLER-supplied override (OnboardGate reads the
+  // same key off the same bundle and holds render until it lands), not
+  // the bundle map above — keep the two names distinct.
   const onboardMethodConfiguratorOn =
     flags?.methodConfigurator ?? onboardMethodConfiguratorResolvedOn;
   const onboardMethodScreenshotOn =
-    useFlag("flag.onboarding.method.screenshot_ocr") === "on";
+    flagValues["flag.onboarding.method.screenshot_ocr"] === "on";
   const onboardMethodLiveTextOn =
-    useFlag("flag.onboarding.method.live_text_help") === "on";
+    flagValues["flag.onboarding.method.live_text_help"] === "on";
   // Step-3 "Hide already-tracked apps" inline toggle inside the
   // already-tracked banner. When off the banner shows the count
   // without the toggle (so the user can't filter the rescrape list).
   const onboardHideTrackedToggleOn =
-    useFlag("flag.onboarding.confirm.hide_tracked_toggle") === "on";
+    flagValues["flag.onboarding.confirm.hide_tracked_toggle"] === "on";
   // Wave I — Step-5 AI summaries entry/skip + post-import flow flags.
   // Each gates a single inline affordance:
   //   step.ai_summaries — hides the AI-summaries step entirely (the
@@ -318,39 +353,39 @@ export function useOnboardWizard({
   //     banner during step 4 (the worker still resumes in the
   //     background; users just don't see the live countdown)
   const onboardStepAiSummariesOn =
-    useFlag("flag.onboarding.step.ai_summaries") === "on";
+    flagValues["flag.onboarding.step.ai_summaries"] === "on";
   const onboardPostDashboardSkipOn =
-    useFlag("flag.onboarding.post.dashboard_skip") === "on";
+    flagValues["flag.onboarding.post.dashboard_skip"] === "on";
   const onboardPostBackgroundWorkerOn =
-    useFlag("flag.onboarding.post.background_worker") === "on";
+    flagValues["flag.onboarding.post.background_worker"] === "on";
   const onboardImportRateLimitHandoffOn =
-    useFlag("flag.onboarding.import.rate_limit_handoff") === "on";
+    flagValues["flag.onboarding.import.rate_limit_handoff"] === "on";
   // Step-1 footer affordances. The "Restore from a backup file" link
   // and the (yet-to-render) "Import audit bundle" link sit below the
   // primary method picker — both are quiet escape hatches for users
   // arriving with existing exports.
   const onboardMethodRestoreBackupOn =
-    useFlag("flag.onboarding.method.restore_backup") === "on";
+    flagValues["flag.onboarding.method.restore_backup"] === "on";
   const onboardMethodImportAuditBundleOn =
-    useFlag("flag.onboarding.method.import_audit_bundle") === "on";
+    flagValues["flag.onboarding.method.import_audit_bundle"] === "on";
   // Step-1 settings rows: the App Store region picker and the
   // "track accessibility labels" toggle each gate independently so a
   // curated focus can hide either without disturbing the other.
   const onboardStepAppStoreRegionOn =
-    useFlag("flag.onboarding.step.app_store_region") === "on";
+    flagValues["flag.onboarding.step.app_store_region"] === "on";
   const onboardStepAccessibilityToggleOn =
-    useFlag("flag.onboarding.step.accessibility_toggle") === "on";
+    flagValues["flag.onboarding.step.accessibility_toggle"] === "on";
   // Wave I — wizard step body gates. Each one wraps the body of the
   // matching step so the section disappears under curated focus, while
   // the wizard's `step` state machine still allows back/next navigation
   // between the numbered steps. When a step body is gated off, the user
   // clicks Next past the empty step.
   const onboardStepChooseMethodOn =
-    useFlag("flag.onboarding.step.choose_method") === "on";
+    flagValues["flag.onboarding.step.choose_method"] === "on";
   const onboardStepConfirmMatchesOn =
-    useFlag("flag.onboarding.step.confirm_matches") === "on";
+    flagValues["flag.onboarding.step.confirm_matches"] === "on";
   const onboardStepImportProgressOn =
-    useFlag("flag.onboarding.step.import_progress") === "on";
+    flagValues["flag.onboarding.step.import_progress"] === "on";
   // Onboarding-namespace twin of `flag.settings.ai.summarize_on_import`.
   // The settings flag controls whether the persisted preference (from
   // /api/settings) influences anything; this one is the wizard's own
@@ -361,7 +396,7 @@ export function useOnboardWizard({
   // import. Kept separate from the settings flag so the values aren't
   // accidentally yoked together when revisiting onboarding.
   const onboardAiSummarizeOnImportOn =
-    useFlag("flag.onboarding.ai.summarize_on_import") === "on";
+    flagValues["flag.onboarding.ai.summarize_on_import"] === "on";
   // The remaining method flags (restore_backup, import_audit_bundle) are
   // routed via separate links/components — wired further below where they
   // surface, not via the method-card filter here.

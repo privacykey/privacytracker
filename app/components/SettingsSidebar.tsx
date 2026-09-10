@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 import { groupForSection, isSettingsGroup } from "./settings/section-groups";
 
@@ -194,7 +194,14 @@ export default function SettingsSidebar() {
   // `flag.devopts.visible`. Other links are always visible — the rest of
   // the sidebar is the user's settings home, while Dev Options is the
   // only group whose visibility is profile-specific.
-  const devOptsVisible = useFlag("flag.devopts.visible") === "on";
+  //
+  // Read from the shared `GET /api/feature-flags` bundle — the old
+  // `useFlag` hook resolved against a context nothing primes in the
+  // browser, so the minimal-goal rule that hides this entry never fired.
+  // `null` (still loading) counts as NOT visible: a user who asked to
+  // keep things minimal should not see developer tooling flash into the
+  // rail, and the cost when it is on is one link arriving a tick late.
+  const devOptsVisible = useResolvedFlag("flag.devopts.visible") === true;
 
   // Flattened link list — useful for scroll-spy, where the group structure
   // is irrelevant. Drop the `developer` link when its flag is off so the

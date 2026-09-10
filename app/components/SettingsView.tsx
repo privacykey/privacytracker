@@ -5,12 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDateFormat } from "../../lib/date-format-hook";
-import { useFlag } from "../../lib/feature-flags-hooks";
 import { scrollPulse } from "../../lib/scroll-pulse";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import { useAiSettings } from "../../lib/use-ai-settings";
 import { useBackup } from "../../lib/use-backup";
 import { useDeployment } from "../../lib/use-deployment";
+import {
+  useFlagValuesWithDefaults,
+  useResolvedFlag,
+} from "../../lib/use-flag-bundle";
 import { useImportHistory } from "../../lib/use-import-history";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useProfiles } from "../../lib/use-profiles";
@@ -276,62 +279,88 @@ export default function SettingsView({
   // `flag.devopts.feature_flag_system.enabled` — these are the per-card
   // refinements layered on top. All default on; only the audit-bundle
   // and audit-PDF exports default off.
-  const settingsSyncScheduleOn =
-    useFlag("flag.settings.sync.schedule") === "on";
-  const settingsSyncRegionOn = useFlag("flag.settings.sync.region") === "on";
-  const settingsAiEnabledOn = useFlag("flag.settings.ai.enabled") === "on";
+  //
+  // All of them resolve through the shared `GET /api/feature-flags`
+  // bundle. They used to read `useFlag`, which resolves against a
+  // context nothing primes in the browser — so every card here silently
+  // rendered its hard default and both focus rules and user overrides
+  // were ignored (`flag.settings.policies.wayback_import` off under the
+  // minimal goal, `flag.settings.admin.export.audit_pdf` on for
+  // loved_one, and any Dev Options override). The bundle hook seeds the
+  // same hard defaults for the first paint, so a default-focus user sees
+  // no card shift, and an unreadable bundle leaves those defaults in
+  // place rather than emptying the page.
+  const flags = useFlagValuesWithDefaults([
+    "flag.settings.sync.schedule",
+    "flag.settings.sync.region",
+    "flag.settings.ai.enabled",
+    "flag.settings.policies.throttle",
+    "flag.settings.policies.wayback_import",
+    "flag.settings.notifications.prefs",
+    "flag.settings.profiles.privacy",
+    "flag.settings.profiles.accessibility",
+    "flag.settings.import.history",
+    "flag.settings.admin.backup",
+    "flag.settings.admin.export",
+    "flag.settings.admin.reset",
+    "flag.settings.admin.start_over",
+    "flag.desktop.app_section",
+    "flag.settings.admin.export.audit_pdf",
+    "flag.settings.date_format.user_preference",
+    "flag.settings.focus.picker",
+  ]);
+  const settingsSyncScheduleOn = flags["flag.settings.sync.schedule"] === "on";
+  const settingsSyncRegionOn = flags["flag.settings.sync.region"] === "on";
+  const settingsAiEnabledOn = flags["flag.settings.ai.enabled"] === "on";
   const settingsPoliciesThrottleOn =
-    useFlag("flag.settings.policies.throttle") === "on";
+    flags["flag.settings.policies.throttle"] === "on";
   const settingsPoliciesWaybackOn =
-    useFlag("flag.settings.policies.wayback_import") === "on";
+    flags["flag.settings.policies.wayback_import"] === "on";
   const settingsNotificationsPrefsOn =
-    useFlag("flag.settings.notifications.prefs") === "on";
+    flags["flag.settings.notifications.prefs"] === "on";
   const settingsProfilesPrivacyOn =
-    useFlag("flag.settings.profiles.privacy") === "on";
+    flags["flag.settings.profiles.privacy"] === "on";
   const settingsProfilesAccessibilityOn =
-    useFlag("flag.settings.profiles.accessibility") === "on";
+    flags["flag.settings.profiles.accessibility"] === "on";
   const settingsImportHistoryOn =
-    useFlag("flag.settings.import.history") === "on";
-  const settingsAdminBackupOn = useFlag("flag.settings.admin.backup") === "on";
-  const settingsAdminExportOn = useFlag("flag.settings.admin.export") === "on";
+    flags["flag.settings.import.history"] === "on";
+  const settingsAdminBackupOn = flags["flag.settings.admin.backup"] === "on";
+  const settingsAdminExportOn = flags["flag.settings.admin.export"] === "on";
   // The audit-bundle export gate (`flag.settings.admin.export.audit_bundle`)
-  // is resolved INSIDE AuditBundleExport itself rather than here. The
-  // client-side useFlag cache isn't bootstrapped from server state on
-  // fresh page loads — it returns the hard default until an override
-  // mutation fires — so flags whose default differs from their resolved
-  // value (this one is 'off' by default and 'on' for loved_one) need a
-  // client-side `/api/feature-flags` probe to read their real state.
-  const settingsAdminResetOn = useFlag("flag.settings.admin.reset") === "on";
+  // is resolved INSIDE AuditBundleExport itself rather than here — it
+  // reads the same shared bundle, just closer to the button it governs.
+  const settingsAdminResetOn = flags["flag.settings.admin.reset"] === "on";
   const settingsAdminStartOverOn =
-    useFlag("flag.settings.admin.start_over") === "on";
-  // Wave I: top-level gate for the entire Developer Options section.
-  // Mirrors the SettingsSidebar gate so the section disappears from
-  // both the link rail and the rendered page in lockstep.
-  const devOptsVisible = useFlag("flag.devopts.visible") === "on";
+    flags["flag.settings.admin.start_over"] === "on";
   // Wave I: Tauri-only "Desktop app" section. Off in the web build
   // (which is the only build today); the resolver-environment cascade
   // turns it on inside the desktop wrapper. Wiring it now means an
   // explicit override surfaces a placeholder so the gate is exercised
   // end-to-end.
-  const desktopAppSectionOn = useFlag("flag.desktop.app_section") === "on";
-
+  const desktopAppSectionOn = flags["flag.desktop.app_section"] === "on";
   // Wave I: PDF audit-bundle export. The button below appears only when
-  // its flag resolves on; default is off and the rule table doesn't
-  // elevate it on any focus today. Wiring it now means a user with an
-  // explicit `on` override sees the placeholder so the rendering path
-  // is exercised.
+  // its flag resolves on; default is off, and the loved_one audience
+  // rule turns it on.
   const settingsAdminExportAuditPdfOn =
-    useFlag("flag.settings.admin.export.audit_pdf") === "on";
+    flags["flag.settings.admin.export.audit_pdf"] === "on";
   // Wave I: per-user date-format override (auto / 24h / 12h). Off by
   // default; when on the user sees a small select inside the focus
   // card to override the locale-driven default (the actual preference
   // value persists via app_settings.date_format_preference).
   const settingsDateFormatPrefOn =
-    useFlag("flag.settings.date_format.user_preference") === "on";
+    flags["flag.settings.date_format.user_preference"] === "on";
   // Focus card on Settings — driven separately from the per-page focus
   // surface so admins can hide the picker without disabling the focus
   // system itself.
-  const settingsFocusPickerOn = useFlag("flag.settings.focus.picker") === "on";
+  const settingsFocusPickerOn = flags["flag.settings.focus.picker"] === "on";
+  // Wave I: top-level gate for the entire Developer Options section.
+  // Mirrors the SettingsSidebar gate so the section disappears from
+  // both the link rail and the rendered page in lockstep — which is why
+  // this one does NOT seed a hard default: `on` is the default, and
+  // painting the whole developer section for a user whose focus hides it
+  // (the `minimal` goal) before removing it again is exactly the flash
+  // the sidebar avoids. Still-loading reads as not visible.
+  const devOptsVisible = useResolvedFlag("flag.devopts.visible") === true;
   // Server-side import queue (for Apple 429 rate-limited items). We read the
   // global snapshot here so the Import History section can surface a banner
   // "Retry queue now" control + per-row retry countdowns without each row

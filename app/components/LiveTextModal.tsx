@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import { useModalFocus } from "../../lib/use-modal-focus";
 
 interface Props {
@@ -33,7 +33,13 @@ export default function LiveTextModal({ open, onClose }: Props) {
   // through adds noise. The trigger in OnboardWizard stays — this just
   // means the modal renders nothing when the user clicks it under that
   // focus, which is a safe no-op (the textarea below is the real input).
-  const liveTextOn = useFlag("flag.global.live_text_modal") === "on";
+  //
+  // Resolved through the shared `/api/feature-flags` bundle rather than
+  // the `useFlag` resolver hook, whose client context is never primed
+  // (it always returned the hard default). `null` while loading, which
+  // the guard below treats as "not yet" — the modal only mounts after a
+  // click, so waiting a tick is invisible.
+  const liveTextOn = useResolvedFlag("flag.global.live_text_modal");
 
   const liveTextModalRef = useModalFocus<HTMLDivElement>({
     open,
@@ -56,7 +62,7 @@ export default function LiveTextModal({ open, onClose }: Props) {
   if (!open) {
     return null;
   }
-  if (!liveTextOn) {
+  if (liveTextOn !== true) {
     return null;
   }
 

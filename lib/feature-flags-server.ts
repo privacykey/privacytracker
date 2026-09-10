@@ -1,7 +1,8 @@
 /**
  * Server-only feature-flag helpers. Kept separate from `lib/feature-flags.ts`
  * so better-sqlite3 (via `lib/feature-flag-storage.ts`) stays out of client
- * bundles. Client components use `lib/feature-flags-hooks.ts` instead.
+ * bundles. Client components read resolved values from
+ * `GET /api/feature-flags` via `lib/use-flag-bundle.ts` instead.
  */
 
 import "server-only";

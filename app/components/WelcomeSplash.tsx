@@ -8,7 +8,7 @@ import type { AgeBandKey } from "@/lib/age-rating";
 import type { PurposeFocusInput } from "@/lib/onboarding-purpose";
 import { seedSampleApps } from "@/lib/sample-apps";
 import type { UserTaskId } from "@/lib/tasks";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import FocusPurposeForm from "./FocusPurposeForm";
 
 interface Props {
@@ -32,10 +32,20 @@ export default function WelcomeSplash({
   const router = useRouter();
   const t = useTranslations("onboarding.welcome");
   const tCommon = useTranslations("common");
+  // Resolved through the shared `GET /api/feature-flags` bundle. The old
+  // `useFlag` hook read a resolver context that is never primed in the
+  // browser, so every one of these silently answered with its hard
+  // default — focus rules and user overrides alike were ignored. The
+  // bundle hook seeds the same hard defaults for the first paint and
+  // then corrects, so nothing shifts for a default-focus user.
+  const flags = useFlagValuesWithDefaults([
+    "flag.onboarding.sample_data_button",
+    "flag.onboarding.audience_picker.skip",
+  ]);
   const sampleDataButtonOn =
-    useFlag("flag.onboarding.sample_data_button") === "on";
+    flags["flag.onboarding.sample_data_button"] === "on";
   const audiencePickerSkipOn =
-    useFlag("flag.onboarding.audience_picker.skip") === "on";
+    flags["flag.onboarding.audience_picker.skip"] === "on";
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

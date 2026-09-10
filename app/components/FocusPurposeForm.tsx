@@ -12,7 +12,7 @@ import {
   type ResolvedPurposeFocus,
   resolvePurposeSelection,
 } from "@/lib/onboarding-purpose";
-import { useFlag } from "../../lib/feature-flags-hooks";
+import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
 import {
   rovingTabIndex,
   useRovingRadioGroup,
@@ -75,13 +75,30 @@ export default function FocusPurposeForm({
   const tAudience = useTranslations("audience");
   const tGoal = useTranslations("goal");
 
-  const audiencePickerOn = useFlag("flag.onboarding.audience_picker") === "on";
-  const ageRatingFlag = useFlag("flag.guardian.age_rating");
-  const goalsPickerOn = useFlag("flag.onboarding.goals_picker") === "on";
+  // Resolved through the shared `GET /api/feature-flags` bundle. The old
+  // `useFlag` hook read a resolver context that is never primed in the
+  // browser, so every one of these silently answered with its hard
+  // default — focus rules and user overrides alike were ignored. The
+  // bundle hook seeds the same hard defaults for the first paint and
+  // then corrects, so nothing shifts for a default-focus user.
+  //
+  // `flag.guardian.age_rating` is read RAW (`!== "on"` below), which is
+  // why this uses the values hook rather than the boolean one — a
+  // coerced read would collapse a future third state onto `off`.
+  const flags = useFlagValuesWithDefaults([
+    "flag.onboarding.audience_picker",
+    "flag.guardian.age_rating",
+    "flag.onboarding.goals_picker",
+    "flag.onboarding.goals_picker.minimal_option",
+    "flag.onboarding.goals_picker.accessibility_modifier",
+  ]);
+  const audiencePickerOn = flags["flag.onboarding.audience_picker"] === "on";
+  const ageRatingFlag = flags["flag.guardian.age_rating"];
+  const goalsPickerOn = flags["flag.onboarding.goals_picker"] === "on";
   const minimalOptionOn =
-    useFlag("flag.onboarding.goals_picker.minimal_option") === "on";
+    flags["flag.onboarding.goals_picker.minimal_option"] === "on";
   const accessibilityModifierOn =
-    useFlag("flag.onboarding.goals_picker.accessibility_modifier") === "on";
+    flags["flag.onboarding.goals_picker.accessibility_modifier"] === "on";
 
   // Multi-select focus state — each goal tile maps to a boolean; the Help
   // tile is expressed through `audience`. "minimal" is the subtractive switch.

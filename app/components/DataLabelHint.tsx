@@ -11,8 +11,8 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { useFlag } from "../../lib/feature-flags-hooks";
 import { categoryLabel, severityLabel } from "../../lib/i18n-meta";
+import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import { isRegistered, renderVignette } from "./vignettes/registry";
 import VignetteStage from "./vignettes/VignetteStage";
 import "./vignettes/data-label-hint.css";
@@ -67,7 +67,13 @@ export default function DataLabelHint({
   severity,
   children,
 }: Props) {
-  const hintsOn = useFlag("flag.global.label_hints") === "on";
+  // Resolved from the shared `GET /api/feature-flags` bundle, NOT the
+  // `useFlag` resolver hook — nothing primes that resolver's context in
+  // the browser, so it always answered with the hard default ('on') and
+  // an `off` focus/override rendered every hint anyway. `null` while the
+  // bundle is in flight: hold the trigger back rather than paint it and
+  // take it away, which is the flicker this gate exists to avoid.
+  const hintsOn = useResolvedFlag("flag.global.label_hints");
 
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -182,7 +188,7 @@ export default function DataLabelHint({
   }, [open]);
 
   // Bail-out branches after all hooks so React's hook order stays stable.
-  if (!(hintsOn && hasVignette)) {
+  if (!(hintsOn === true && hasVignette)) {
     return null;
   }
 

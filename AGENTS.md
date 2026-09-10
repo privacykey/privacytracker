@@ -173,13 +173,43 @@ bridge that collapses a stored focus back to a single tile label
 `resolvePurposeSelection` turns the form's multi-select state into the
 persisted focus + follow-up task opt-ins.
 
-**Five-module split** (don't break this — Next 16 enforces it):
+**Four-module split** (don't break this — Next 16 enforces it):
 
 - `lib/feature-flag-rules.ts` — server-safe types + sparse rule tables (`HARD_DEFAULTS`, `AUDIENCE_RULES`, `GOAL_RULES`, `ACCESSIBILITY_RULES`, `FLAG_DEPENDENCIES`, `TOUR_STEPS`). Pure data + helpers.
 - `lib/feature-flags.ts` — server-safe resolver (`resolveFlag`, `setResolverContext`, override mutators, cache accessors). NO React imports.
-- `lib/feature-flags-hooks.ts` — `'use client'` only: `useFlag`, `useFocus` via `useSyncExternalStore`. Importing this from a Server Component fails the build.
 - `lib/feature-flags-server.ts` — `'server-only'`: `getResolverContextFromDb`, `resolveFlagFromDb`. Pulls focus state + overrides via `lib/feature-flag-storage.ts`.
 - `lib/feature-flag-storage.ts` — SQLite reads/writes via `better-sqlite3`. Exports the 7-function CRUD plus quarantine helpers.
+
+**Client components never touch the resolver.** They read resolved values
+from `GET /api/feature-flags` through `lib/use-flag-bundle.ts` — one
+shared, cached fetch per page load however many components ask. There
+used to be a fifth module, `lib/feature-flags-hooks.ts`, exporting
+`useFlag` / `useFocus` over `useSyncExternalStore`; it was deleted
+because **nothing primes the resolver context in the browser**, so it
+answered every call with `HARD_DEFAULTS[key]` and silently ignored both
+focus rules and user overrides. Pick the hook by what a wrong first
+paint costs:
+
+- `useFlagBundle` / `useFlagValues` / `useResolvedFlag` — `null` until
+  the fetch lands, then fail **closed**. For gates where showing the
+  surface wrongly is the bug (`DataLabelHint`, `InfoTooltip`,
+  `SocialShareModal`, `RequireFlagGate`): hold render rather than paint
+  and retract.
+- `useFlagValuesWithDefaults` — seeds `HARD_DEFAULTS`, never `null`,
+  keeps them if the fetch fails. For the many inline section gates
+  (`{flagOn && <section/>}`) whose default is `on` and whose rules only
+  subtract. The operative reason is the failure path, not the first
+  paint: `AppChrome` already holds the whole tree until the bundle
+  settles, but it renders anyway when the bundle can't be READ (its own
+  chrome flags fail open) — so a fail-closed read there would hand the
+  user a Settings page with every card missing. It also keeps late
+  mounts steady, since the bundle cache has a 30 s TTL and
+  `clearFlagBundleCache()` drops it outright.
+
+`useFlagValues*` return RAW values — required for tri-state flags such
+as `flag.detail.annotations_sidebar` and `flag.devopts.advanced_accordion`
+(`on | off | collapsed`), where a boolean read collapses `collapsed`
+onto `off`.
 
 **Flag keys** are typed (`FlagKey` union); typos fail at `tsc`. Adding a flag means: (1) add the key to the union in `feature-flag-rules.ts`, (2) add a `HARD_DEFAULTS` entry, (3) add rules in the relevant tables only if behaviour differs from the default.
 

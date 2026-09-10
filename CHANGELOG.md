@@ -41,6 +41,23 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Feature flags now actually take effect in the browser. Every client
+  component that gated UI on a flag read it through a resolver context
+  that nothing primes on the client — so all ~65 of those reads silently
+  returned the flag's hard default, ignoring both your focus (audience /
+  goals) and any override you set in Dev Options. Choosing "Keep it
+  minimal" left label hints, tooltips, the Live Text walkthrough, the
+  Task Center widget, Developer Options and the Wayback import section on
+  screen; the loved-one audience never got its social-share or audit-PDF
+  affordances; and toggling a flag in Dev Options changed nothing outside
+  the panel. All of them now read resolved values from
+  `GET /api/feature-flags` through one shared, cached fetch per page
+  load. The broken `useFlag` / `useFocus` hooks are gone rather than
+  patched — a hook that cannot be primed has no correct use — and a
+  static guard (`tests/app/client-flag-reads.test.ts`) fails the build if
+  they return, if a client module imports the resolver, or if a
+  tri-state flag is read through a boolean hook.
+
 - Desktop app: the hash-based Content Security Policy introduced in 0.2.0
   blocked Tauri's IPC channel, so every call into the desktop app's native
   side — the notification permission check that runs on each page load, the
