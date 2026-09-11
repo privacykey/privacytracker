@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (14).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (16).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -200,10 +200,14 @@ seeded and its checkpointed database is cloned. That disappears once the write
 routes land.
 
 **What the parity gate cannot see.** It authenticates every request, so a
-route that forgot its auth gate still answers 200 and passes. The runner
-therefore probes the gate directly (a gated route with no token must 401, a
-public one must still 200), and `trust.rs` / `auth.rs` carry unit tests. Treat
-"parity green" as a statement about response bytes only.
+route that forgot its auth gate still answers 200 and passes. The same blind
+spot covers the inbound rate limiter: the differ sends ONE request per route
+against a 120/min limit, so a backend that omitted the limiter entirely would
+pass every check. The runner therefore probes both directly — a gated route
+with no token must 401 while a public one still 200s, and a burst past the
+limit must 429 at the same request number on both backends — and `trust.rs` /
+`auth.rs` / `ratelimit.rs` carry unit tests. Treat "parity green" as a
+statement about response bytes only.
 
 **Three decisions worth not re-litigating:**
 
@@ -264,6 +268,45 @@ read-parity flow the Rust server runs on a **byte copy** of Node's database,
 so the ids are identical by construction and resolving from one side is
 correct. It is off by default: two independently seeded servers must still
 agree on their own, and the full Node-vs-Node run still proves that.
+
+### The inbound rate limiter (+2 routes, 16 total)
+
+`/api/manual-apps` and `/api/import/audit-bundle/recent` were held back from
+batch 3 for one reason: both call `checkRateLimit` before doing any work.
+Porting them with the limiter faked out or skipped would have shipped a route
+with its gate quietly removed — and, as above, the differ could not have told.
+
+`core/src/server/ratelimit.rs` ports the INBOUND limiter from
+`lib/security.ts`. Do not confuse it with `lib/rate-limit.ts`, which is an
+unrelated thing: Apple's *outbound* scrape cooldowns, persisted in
+`app_settings`. This one is a per-process in-memory sliding window over request
+timestamps, so the two backends have independent state by construction. That
+matches Node — a restart forgets the window there too — but it means the state
+is not itself a parity contract, only the behaviour of a fresh window is.
+
+Three details a tidying port would get wrong:
+
+- **The deny path does not record a timestamp.** Node returns before the push,
+  so a client hammering a denied endpoint does not extend its own cooldown
+  indefinitely. Pushing on deny looks harmless and makes recovery impossible.
+- **`clientIpFromHeaders` returns nothing without a trusted proxy**, and the
+  key collapses to a shared `…:local` suffix. Honouring `X-Forwarded-For`
+  unconditionally would let header rotation mint a fresh bucket per request and
+  defeat the limiter outright. With a trusted proxy it takes the **last** XFF
+  entry, not the first — that is the hop the proxy appended, and the only one a
+  client cannot forge.
+- **`withinMs` on the recent-imports route is validated only when PRESENT.**
+  Node checks `raw !== null`, not truthiness, so an empty `?withinMs=` IS
+  present and 400s — the opposite of the `?id=` behaviour two sections up.
+  That route also swallows read errors into a 200 `{"recent": null}`, so a
+  query failure must not become a 500.
+
+The probe in `read-parity.mjs` runs **after** the diff, deliberately: it leaves
+both backends' bucket exhausted, and probing first makes the differ's own
+`/api/manual-apps` request answer 429 — a harness artefact indistinguishable
+from a real parity failure. It asserts the two backends deny from the same
+request number rather than a hard-coded 121, so the differ's own prior traffic
+cannot silently bake itself into the expectation.
 
 **Still deferred:** `/api/apps/[id]/since-install`. It needs `diffSnapshots`
 ported — real snapshot-diffing business logic, closer to Phase 3 than to a
