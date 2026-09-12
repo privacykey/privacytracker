@@ -20,6 +20,27 @@
 //!    comparison, so a row storing 2 is skipped. `computeCategoryTrend`
 //!    does not look at the column at all and counts such a row's entries.
 //!    The two functions genuinely disagree about what a change is.
+//!
+//! ## One knowing divergence
+//!
+//! A `changes_summary` that is valid JSON but NOT an array — `{}` — makes
+//! `computeCategoryTrend` throw, and the route answers 500. Its try/catch
+//! wraps only the `JSON.parse`; the `for (const change of parsed)` that
+//! follows sits outside it, and `for…of` over a plain object is a
+//! TypeError. (`computeQuarterlyChanges` keeps its `.filter` inside the
+//! try, so the same row is merely skipped there — the two functions do not
+//! even agree on this.) Verified against the running Node server: a row
+//! holding `{}` returns HTTP 500.
+//!
+//! Here `entries()` deserialises into `Vec<Value>`, which fails on a
+//! non-array, so the row contributes nothing and the request succeeds.
+//! Rust answers 200 where Node answers 500. The same trade as in
+//! `diff.rs`: reproducing an uncaught crash faithfully would mean
+//! reproducing Next's error page, and the alternative to refusing is
+//! inventing an answer. Unreachable from data this application writes —
+//! `saveSnapshot` always stores an array — and deliberately NOT added to
+//! the parity fixture, because a fixture row for it would fail the gate by
+//! design rather than catch a regression.
 
 use rusqlite::Connection;
 use serde::Serialize;
@@ -160,8 +181,11 @@ fn is_privacy_label_entry(entry: &Value) -> bool {
     }
 }
 
-/// Parse `changes_summary`, treating anything unusable as no entries —
-/// both Node functions wrap the parse in try/catch and fall back to `[]`.
+/// Parse `changes_summary`, treating anything unusable as no entries.
+///
+/// Both Node functions catch a parse FAILURE and fall back to `[]`. Neither
+/// catches valid-JSON-but-not-an-array: see the module note — that case
+/// throws out of `computeCategoryTrend` and 500s, where this returns empty.
 fn entries(summary: Option<&String>) -> Vec<Value> {
     summary
         .and_then(|s| serde_json::from_str::<Vec<Value>>(s).ok())
@@ -385,7 +409,10 @@ mod tests {
     fn malformed_changes_summary_yields_no_entries() {
         assert!(entries(None).is_empty());
         assert!(entries(Some(&"not json".to_string())).is_empty());
-        // Valid JSON that is not an array is equally unusable.
+        // Valid JSON that is not an array. Node reaches `for…of` on it and
+        // throws a TypeError the route does not catch, answering 500; this
+        // treats it as empty and answers 200. Documented in the module note
+        // — pinned here so the divergence is a decision, not a surprise.
         assert!(entries(Some(&"{}".to_string())).is_empty());
         assert_eq!(entries(Some(&r#"[{"type":"added"}]"#.to_string())).len(), 1);
     }
