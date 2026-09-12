@@ -38,6 +38,42 @@ pub fn column(row: &Row<'_>, name: &str) -> rusqlite::Result<Value> {
     Ok(column_value(row.get::<_, SqlValue>(name)?))
 }
 
+/// Build a JSON object from every column of a row, in the order SQLite
+/// reports them.
+///
+/// `/api/apps` needs this because its queries are `SELECT a.*, <six computed
+/// counts>` and `getAppWithPrivacy` is `SELECT * FROM apps`. What `*` expands
+/// to is the TABLE's column order, which is not a constant:
+///
+/// * on a fresh install it is the order of the `CREATE TABLE` body in
+///   `lib/db.ts`;
+/// * on an install that predates a column, it is the original `CREATE` order
+///   with each `ALTER TABLE … ADD COLUMN` appended in migration order.
+///
+/// `lib/db.ts` deliberately lists those columns in BOTH places, so the two
+/// layouts hold the same columns in a different ORDER — and `JSON.stringify`
+/// replays whatever order the driver reported. A Rust struct would hard-code
+/// one of them and diverge on the other. Both backends read the same file, so
+/// taking the order from the statement at runtime is the only thing that
+/// works on both.
+///
+/// `serde_json` is built with `preserve_order`, so its `Map` is an `IndexMap`
+/// and insertion order survives to the wire. That also gives the right answer
+/// for a DUPLICATE column name — `SELECT a.*, COUNT(*) AS name` yields two
+/// `name` columns, and `IndexMap::insert` keeps the first position with the
+/// last value, exactly as assigning twice to a JavaScript object property
+/// does.
+pub fn row_to_json(row: &Row<'_>) -> rusqlite::Result<Value> {
+    let stmt = row.as_ref();
+    let count = stmt.column_count();
+    let mut map = serde_json::Map::with_capacity(count);
+    for i in 0..count {
+        let name = stmt.column_name(i)?.to_string();
+        map.insert(name, column_value(row.get::<_, SqlValue>(i)?));
+    }
+    Ok(Value::Object(map))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -61,6 +97,77 @@ mod tests {
             .unwrap();
         // SQLite stores 1.0 as REAL; Node prints `1`, serde would print `1.0`.
         assert_eq!(serde_json::to_string(&json).unwrap(), "1");
+    }
+
+    #[test]
+    fn keys_follow_the_statements_column_order_not_the_alphabet() {
+        let c = conn();
+        let mut stmt = c.prepare("SELECT * FROM t").unwrap();
+        let json = stmt.query_row([], row_to_json).expect("row_to_json");
+        assert_eq!(
+            serde_json::to_string(&json).unwrap(),
+            r#"{"id":"a","name":"Alpha","n":7,"f":1,"spare":null}"#
+        );
+    }
+
+    #[test]
+    fn a_column_added_later_appears_last_exactly_as_alter_table_puts_it() {
+        let c = conn();
+        c.execute_batch("ALTER TABLE t ADD COLUMN added_later TEXT DEFAULT 'x';")
+            .unwrap();
+        let mut stmt = c.prepare("SELECT * FROM t").unwrap();
+        let json = stmt.query_row([], row_to_json).unwrap();
+        let keys: Vec<&str> = json
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(
+            keys.last(),
+            Some(&"added_later"),
+            "ALTER TABLE appends and `SELECT *` replays that — which is why this cannot be a struct"
+        );
+    }
+
+    #[test]
+    fn computed_columns_follow_the_table_columns() {
+        let c = conn();
+        let mut stmt = c
+            .prepare("SELECT t.*, 0 AS categoryCount, 1 AS trackCount FROM t")
+            .unwrap();
+        let json = stmt.query_row([], row_to_json).unwrap();
+        let keys: Vec<&str> = json
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(
+            keys,
+            vec![
+                "id",
+                "name",
+                "n",
+                "f",
+                "spare",
+                "categoryCount",
+                "trackCount"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_duplicate_column_name_keeps_the_first_slot_and_the_last_value() {
+        let c = conn();
+        let mut stmt = c.prepare("SELECT t.*, 'shadow' AS id FROM t").unwrap();
+        let json = stmt.query_row([], row_to_json).unwrap();
+        let obj = json.as_object().unwrap();
+        assert_eq!(
+            obj.keys().map(String::as_str).collect::<Vec<_>>(),
+            vec!["id", "name", "n", "f", "spare"]
+        );
+        assert_eq!(obj["id"], Value::from("shadow"));
     }
 
     #[test]

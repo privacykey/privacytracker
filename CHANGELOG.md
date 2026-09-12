@@ -25,6 +25,16 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration: `GET /api/apps` joins the Rust read API (20 of 64
+  read routes) — all five of its query-string branches at once, since axum
+  routes by path. Ports `getAllApps`/`getAppsPage`, `getAppWithPrivacy` with
+  the full policy-analysis hydration, `getGroupedPrivacyView`, and the
+  `meta=grid` side-band (`buildAppGridMeta` and its four map helpers,
+  including the profile-matching engine). Five of the route's eight responses
+  had no parity-manifest entry; they do now. The fixture gained a stored
+  privacy profile and a user verdict so the two `meta=grid` maps the canned
+  seed leaves empty are actually compared. Developer-facing only.
+
 - Rust-core migration: `/api/apps/[id]/changelog` joins the Rust read API
   (19 of 64 read routes), bringing the timeline kernel `getChangelog` /
   `getChangelogPage` with it — including the read-time archive bridge, which

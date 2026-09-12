@@ -57,6 +57,36 @@ export const PLACEHOLDERS = [
 export const READS = [
   // -- core collections
   { route: "/api/apps", name: "apps (bare array)", path: "/api/apps" },
+  // The three remaining GET shapes and both error branches of /api/apps.
+  // Nothing compared these before: the coverage gate counts ROUTES, and the
+  // two entries below already made the route look covered.
+  {
+    route: "/api/apps",
+    name: "app by id (Instagram)",
+    path: "/api/apps?id={app}",
+  },
+  {
+    route: "/api/apps",
+    name: "app changelog via ?changelog=true (Instagram)",
+    path: "/api/apps?id={app}&changelog=true",
+  },
+  {
+    route: "/api/apps",
+    name: "apps (grouped view)",
+    path: "/api/apps?view=grouped",
+  },
+  {
+    route: "/api/apps",
+    name: "app by id (unknown → 404)",
+    path: "/api/apps?id=does-not-exist",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/apps",
+    name: "apps (bad pagination → 400)",
+    path: "/api/apps?limit=0",
+    allowErrorStatus: true,
+  },
   {
     route: "/api/apps",
     name: "apps (paginated + grid meta)",
