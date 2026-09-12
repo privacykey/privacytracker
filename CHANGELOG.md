@@ -14,6 +14,16 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration: `/api/apps/[id]/changelog` joins the Rust read API
+  (19 of 64 read routes), bringing the timeline kernel `getChangelog` /
+  `getChangelogPage` with it — including the read-time archive bridge, which
+  is a second caller of the already-ported `diffSnapshots`. The manifest hits
+  this route once with no query string, on an app where neither read-time
+  mutation fires and no review row exists, so the parity fixture gained a
+  timeline app (a wayback row identical to its live neighbour, plus review
+  rows) and the probe covers `archive_bridge`, `matches_live_sync`, the
+  review row shape, `hasMore` and both 400 branches. Developer-facing only.
+
 - Rust-core migration: `/api/apps/[id]/history-stats` joins the Rust read API
   (18 of 64 read routes), porting the quarterly aggregates
   `computeCategoryTrend` and `computeQuarterlyChanges`. The canned seed

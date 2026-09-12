@@ -337,10 +337,79 @@ const TREND_FIXTURE = {
 // Written alongside the since-install scenarios. Declared separately
 // because it is the only entry whose point is `changes_summary`, which the
 // since-install route never reads.
-FIXTURES.push(TREND_FIXTURE);
+
+/**
+ * changelog only. The manifest hits this route on Instagram alone, where
+ * neither of its two read-time mutations fires — so `matches_live_sync` and
+ * the `kind: "review"` row shape are completely uncompared today.
+ * (`archive_bridge` is already reachable, by accident, through
+ * `pt-fixture-wayback` and `pt-fixture-approx`.)
+ *
+ * The wayback row here is written with a snapshot_json BYTE-IDENTICAL to the
+ * live row beside it, which is the whole condition for `matches_live_sync` —
+ * the comparison is on the raw string, not on parsed content.
+ */
+const TIMELINE_FIXTURE = {
+  id: "pt-fixture-timeline",
+  firstSeen: T0,
+  snapshots: [
+    {
+      scrapedAt: T0 - DAY,
+      source: "wayback",
+      appVersion: "1.0.0",
+      changesDetected: 0,
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // Same types in the same order → identical JSON.stringify output → the
+      // neighbour scan tags the wayback row above.
+      scrapedAt: T0,
+      source: "live",
+      appVersion: "1.0.1",
+      changesDetected: 0,
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+  ],
+  /**
+   * Review rows interleave with snapshots on one `scraped_at` axis
+   * (`acted_at` is read into that field). This one is deliberately dated to
+   * the SAME instant as the live snapshot above, because the merge's
+   * tie-break — snapshot before review — is otherwise unobservable.
+   */
+  reviews: [
+    {
+      id: "rev-1",
+      action: "reviewed",
+      actedAt: T0,
+      coveredCount: 2,
+      coveredSnapshotIds: '["pt-fixture-timeline-snap-0", "", null, 7]',
+      snoozeUntil: null,
+      note: "acknowledged by the parity fixture",
+    },
+    {
+      // A legacy row: covered_snapshot_ids NULL, which must read as [].
+      id: "rev-2",
+      action: "snoozed",
+      actedAt: T0 + DAY,
+      coveredCount: 0,
+      coveredSnapshotIds: null,
+      snoozeUntil: T0 + 7 * DAY,
+      note: null,
+    },
+  ],
+};
+
+// Registered after both declarations, because `const` is not hoisted.
+FIXTURES.push(TREND_FIXTURE, TIMELINE_FIXTURE);
 
 /** The fixture app whose numbers the history-stats probe checks. */
 export const TREND_ID = TREND_FIXTURE.id;
+
+/** The fixture app whose timeline the changelog probe checks. */
+export const TIMELINE_ID = TIMELINE_FIXTURE.id;
+
+/** Apps whose changelog trips `archive_bridge` — verified on the wire. */
+export const BRIDGED_IDS = ["pt-fixture-wayback", "pt-fixture-approx"];
 
 /** Ids the probe should see refused rather than answered. */
 export const MISSING_ID = "pt-fixture-does-not-exist";
@@ -358,10 +427,20 @@ export function applySinceInstallFixture(dataDir) {
      VALUES (?, ?, ?, ?, ?, ?, ?, 'sample', ?)`
   );
 
+  const insertReview = db.prepare(
+    `INSERT OR REPLACE INTO change_review_actions
+       (id, app_id, action, acted_at, covered_count, covered_snapshot_ids,
+        snooze_until, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+
   const tx = db.transaction(() => {
     // Clear first, so re-running against a dirty directory is idempotent
     // rather than additive.
     for (const fx of FIXTURES) {
+      db.prepare("DELETE FROM change_review_actions WHERE app_id = ?").run(
+        fx.id
+      );
       db.prepare("DELETE FROM privacy_snapshots WHERE app_id = ?").run(fx.id);
       db.prepare("DELETE FROM apps WHERE id = ?").run(fx.id);
     }
@@ -387,13 +466,26 @@ export function applySinceInstallFixture(dataDir) {
           snap.appVersion
         );
       });
+      for (const rev of fx.reviews ?? []) {
+        insertReview.run(
+          `${fx.id}-${rev.id}`,
+          fx.id,
+          rev.action,
+          rev.actedAt,
+          rev.coveredCount,
+          rev.coveredSnapshotIds,
+          rev.snoozeUntil,
+          rev.note
+        );
+      }
     }
   });
   tx();
   db.close();
 
   const rows = FIXTURES.reduce((n, f) => n + f.snapshots.length, 0);
-  return { apps: FIXTURES.length, snapshots: rows };
+  const reviews = FIXTURES.reduce((n, f) => n + (f.reviews?.length ?? 0), 0);
+  return { apps: FIXTURES.length, snapshots: rows, reviews };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -402,8 +494,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error("usage: since-install-fixture.mjs <dataDir>");
     process.exit(2);
   }
-  const { apps, snapshots } = applySinceInstallFixture(path.resolve(dir));
+  const { apps, snapshots, reviews } = applySinceInstallFixture(
+    path.resolve(dir)
+  );
   console.log(
-    `since-install-fixture: wrote ${apps} apps / ${snapshots} snapshots into ${dir}`
+    `since-install-fixture: wrote ${apps} apps / ${snapshots} snapshots / ${reviews} reviews into ${dir}`
   );
 }

@@ -12,6 +12,7 @@
 //! structurally incapable of doing. Matching the weaker model is the point.
 
 pub mod auth;
+mod changelog;
 pub mod diff;
 mod gate;
 mod json;
@@ -95,6 +96,10 @@ pub fn app(state: AppState) -> Router {
             "/api/apps/{id}/history-stats",
             get(routes_app::history_stats),
         )
+        // The per-app timeline. Its kernel (`changelog.rs`) is what
+        // `/api/apps?id=X&changelog=true` and `/api/apps/{id}/detail` will
+        // both be built from, which is why it lands before either of them.
+        .route("/api/apps/{id}/changelog", get(routes_app::app_changelog))
         // Batch 3. Adds a query-scoped read with a 400 branch, a nested list
         // inside an envelope, and interval arithmetic over stored epochs.
         .route("/api/sync/status", get(routes_status::sync_status))
