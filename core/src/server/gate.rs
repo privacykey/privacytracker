@@ -17,6 +17,13 @@
 //! paths in its manifest, so `scripts/parity/read-parity.mjs` probes this
 //! directly alongside the auth and rate-limiter probes.
 //!
+//! Steps 0 and 2 share `trust::effective_host`, and the first cut read
+//! `X-Forwarded-Host` there unconditionally. Node only believes it behind
+//! `PRIVACYTRACKER_TRUST_PROXY`; without that, the header is attacker-
+//! controlled and could satisfy the host allowlist or — paired with a
+//! matching `Origin` — the CSRF check. The port of `lib/request-origin.cjs`
+//! in `trust.rs` now owns both helpers; see its tests for the contract.
+//!
 //! A caution worth writing down: the parity harness sends the admin token on
 //! EVERY request, so a wrongly-ungated route still answers 200 and the gate
 //! passes. Auth behaviour cannot be verified by the parity gate — it is
@@ -32,7 +39,9 @@ use axum::{
 
 use super::auth::request_has_valid_admin_token;
 use super::json::json_error;
-use super::trust::{is_host_allowed, is_network_exposed};
+use super::trust::{
+    effective_host, is_host_allowed, is_network_exposed, is_same_origin_request, trust_proxy,
+};
 
 /// Exact-match public reads, from `proxy.ts`'s `PUBLIC_READ_PATHS`. GET/HEAD
 /// only, never a prefix match. `/login` and `/brand-icon.png` are listed for
@@ -55,29 +64,15 @@ fn header_str(req: &Request, name: header::HeaderName) -> Option<&str> {
     req.headers().get(name)?.to_str().ok()
 }
 
-/// `effectiveHostFromHeaders` — the forwarded host wins when present, else Host.
-fn effective_host(req: &Request) -> Option<String> {
-    if let Some(xfh) = req
-        .headers()
-        .get("x-forwarded-host")
-        .and_then(|v| v.to_str().ok())
-    {
-        // Only the first entry of a comma list is the effective host.
-        if let Some(first) = xfh.split(',').next() {
-            if !first.trim().is_empty() {
-                return Some(first.trim().to_string());
-            }
-        }
-    }
-    header_str(req, header::HOST).map(str::to_string)
-}
-
 pub async fn gate(req: Request, next: Next) -> Response {
     let method = req.method().clone();
     let path = req.uri().path().to_string();
+    // Read once and threaded through: Node calls `trustProxy()` inside each
+    // helper, but the env cannot change within a request.
+    let trust = trust_proxy();
 
     // ── Step 0: host allowlist, for every method including GET. ──────────
-    if !is_host_allowed(effective_host(&req).as_deref()) {
+    if !is_host_allowed(effective_host(req.headers(), trust).as_deref()) {
         // proxy.ts does NOT set Cache-Control on this branch — see `no_store`.
         return json_error(StatusCode::BAD_REQUEST, "Host not allowed");
     }
@@ -129,18 +124,11 @@ pub async fn gate(req: Request, next: Next) -> Response {
             ),
             None, // a cookie never exempts the origin check
         );
-        if !has_token_header {
-            let origin = header_str(&req, header::ORIGIN).map(str::to_string);
-            let same_origin = match (origin.as_deref(), effective_host(&req).as_deref()) {
-                (Some(o), Some(h)) => origin_matches_host(o, h),
-                // A missing Origin on a mutation is rejected unless the token
-                // was supplied — legitimate no-Origin mutations are tool-driven.
-                _ => false,
-            };
-            if !same_origin {
-                // No Cache-Control here either — see `no_store`.
-                return json_error(StatusCode::FORBIDDEN, "Cross-origin mutation rejected");
-            }
+        // A missing Origin on a mutation is rejected unless the token was
+        // supplied — legitimate no-Origin mutations are tool-driven.
+        if !(has_token_header || is_same_origin_request(req.headers(), trust)) {
+            // No Cache-Control here either — see `no_store`.
+            return json_error(StatusCode::FORBIDDEN, "Cross-origin mutation rejected");
         }
     }
 
@@ -215,15 +203,6 @@ fn trailing_slash_redirect(target: &str) -> Option<Response> {
         .ok()
 }
 
-fn origin_matches_host(origin: &str, host: &str) -> bool {
-    // Compare the origin's authority against the effective host.
-    origin
-        .split("://")
-        .nth(1)
-        .map(|authority| authority.trim_end_matches('/') == host)
-        .unwrap_or(false)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -231,8 +210,9 @@ mod tests {
     use tower::ServiceExt;
 
     /// The gate wired the way `server::app` wires it — as a layer over the
-    /// routes, so it runs for the 404 fallback too. Two real routes are
-    /// enough: one on the public-read list and one that is auth-gated.
+    /// routes, so it runs for the 404 fallback too. Three real routes: one
+    /// on the public-read list, one auth-gated, and the login path (which
+    /// bypasses auth for any method, so a POST to it reaches the CSRF step).
     fn gate_app() -> Router {
         Router::new()
             .route("/api/health", get(|| async { "ok" }))
@@ -249,13 +229,10 @@ mod tests {
     /// `is_network_exposed()` fails closed to true and auth is required
     /// regardless of what the `auth` module's tests do to
     /// `AUDITOR_ADMIN_TOKEN` on another thread.
-    async fn send(method: Method, uri: &str, host: &str, origin: Option<&str>) -> Response {
-        let mut builder = Request::builder()
-            .method(method)
-            .uri(uri)
-            .header(header::HOST, host);
-        if let Some(o) = origin {
-            builder = builder.header(header::ORIGIN, o);
+    async fn send(method: Method, uri: &str, headers: &[(&str, &str)]) -> Response {
+        let mut builder = Request::builder().method(method).uri(uri);
+        for (name, value) in headers {
+            builder = builder.header(*name, *value);
         }
         gate_app()
             .oneshot(builder.body(Body::empty()).expect("request"))
@@ -263,8 +240,14 @@ mod tests {
             .expect("router is infallible")
     }
 
+    const LOOPBACK: &str = "127.0.0.1:3000";
+
     async fn get_(uri: &str) -> Response {
-        send(Method::GET, uri, "127.0.0.1:3000", None).await
+        send(Method::GET, uri, &[("host", LOOPBACK)]).await
+    }
+
+    async fn post_login(headers: &[(&str, &str)]) -> Response {
+        send(Method::POST, "/api/auth/admin-token/login", headers).await
     }
 
     fn header_of(res: &Response, name: header::HeaderName) -> Option<&str> {
@@ -286,19 +269,6 @@ mod tests {
         assert!(!PUBLIC_READ_PATHS.contains(&"/api/health/extra"));
         assert!(!PUBLIC_READ_PATHS.contains(&"/api/healthz"));
         assert_eq!(PUBLIC_READ_PATHS.len(), 5);
-    }
-
-    #[test]
-    fn origin_host_comparison() {
-        assert!(origin_matches_host(
-            "http://127.0.0.1:3002",
-            "127.0.0.1:3002"
-        ));
-        assert!(!origin_matches_host(
-            "http://evil.example",
-            "127.0.0.1:3002"
-        ));
-        assert!(!origin_matches_host("garbage", "127.0.0.1:3002"));
     }
 
     #[test]
@@ -380,28 +350,16 @@ mod tests {
 
     #[tokio::test]
     async fn trailing_slash_redirect_runs_before_the_csrf_gate() {
-        // Auth paths bypass step 1 for any method, so this reaches step 2.
-        let blocked = send(
-            Method::POST,
-            "/api/auth/admin-token/login",
-            "127.0.0.1:3000",
-            Some("http://evil.example"),
-        )
-        .await;
+        let cross = [("host", LOOPBACK), ("origin", "http://evil.example")];
+        let blocked = post_login(&cross).await;
         assert_eq!(blocked.status(), StatusCode::FORBIDDEN);
-        let redirected = send(
-            Method::POST,
-            "/api/auth/admin-token/login/",
-            "127.0.0.1:3000",
-            Some("http://evil.example"),
-        )
-        .await;
+        let redirected = send(Method::POST, "/api/auth/admin-token/login/", &cross).await;
         assert_eq!(redirected.status(), StatusCode::PERMANENT_REDIRECT);
     }
 
     #[tokio::test]
     async fn host_allowlist_runs_before_the_trailing_slash_redirect() {
-        let res = send(Method::GET, "/api/health/", "evil.example", None).await;
+        let res = send(Method::GET, "/api/health/", &[("host", "evil.example")]).await;
         assert_eq!(res.status(), StatusCode::BAD_REQUEST);
         assert_eq!(location(&res), None);
     }
@@ -411,7 +369,7 @@ mod tests {
     /// no Cache-Control at all, 401 and the pass-through carry `no-store`.
     #[tokio::test]
     async fn cache_control_matches_node_branch_for_branch() {
-        let host_rejected = send(Method::GET, "/api/health", "evil.example", None).await;
+        let host_rejected = send(Method::GET, "/api/health", &[("host", "evil.example")]).await;
         assert_eq!(host_rejected.status(), StatusCode::BAD_REQUEST);
         assert_eq!(cache_control(&host_rejected), None);
 
@@ -419,18 +377,76 @@ mod tests {
         assert_eq!(unauthorised.status(), StatusCode::UNAUTHORIZED);
         assert_eq!(cache_control(&unauthorised), Some("no-store"));
 
-        let cross_origin = send(
-            Method::POST,
-            "/api/auth/admin-token/login",
-            "127.0.0.1:3000",
-            Some("http://evil.example"),
-        )
-        .await;
+        let cross_origin =
+            post_login(&[("host", LOOPBACK), ("origin", "http://evil.example")]).await;
         assert_eq!(cross_origin.status(), StatusCode::FORBIDDEN);
         assert_eq!(cache_control(&cross_origin), None);
 
         let passed = get_("/api/health").await;
         assert_eq!(passed.status(), StatusCode::OK);
         assert_eq!(cache_control(&passed), Some("no-store"));
+    }
+
+    /// Every outcome here was verified against a running Node server: the
+    /// exact origin reaches the route, and each of the others is a 403.
+    #[tokio::test]
+    async fn csrf_origin_comparison_is_scheme_and_serialisation_exact() {
+        let exact = post_login(&[("host", LOOPBACK), ("origin", "http://127.0.0.1:3000")]).await;
+        assert_eq!(exact.status(), StatusCode::OK);
+        for origin in [
+            "https://127.0.0.1:3000", // scheme
+            "http://127.0.0.1:3000/", // not the canonical serialisation
+            "HTTP://127.0.0.1:3000",
+            "http://127.0.0.1", // a different port
+            "null",
+        ] {
+            let res = post_login(&[("host", LOOPBACK), ("origin", origin)]).await;
+            assert_eq!(res.status(), StatusCode::FORBIDDEN, "{origin}");
+        }
+        // The expected side is normalised: an uppercase Host still matches.
+        let upper = post_login(&[
+            ("host", "LOCALHOST:3000"),
+            ("origin", "http://localhost:3000"),
+        ])
+        .await;
+        assert_eq!(upper.status(), StatusCode::OK);
+    }
+
+    /// The bypass the first cut had. A plain `#[test]` driving a
+    /// current-thread runtime, rather than `#[tokio::test]`, so the env lock
+    /// is held by the synchronous frame and never across an `.await`.
+    #[test]
+    fn forwarded_host_is_untrusted_by_default() {
+        let _env = super::super::trust::env_lock();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("runtime");
+        rt.block_on(async {
+            // A forged forwarded host cannot rescue a disallowed real Host…
+            let spoofed = send(
+                Method::GET,
+                "/api/health",
+                &[("host", "evil.example"), ("x-forwarded-host", LOOPBACK)],
+            )
+            .await;
+            assert_eq!(spoofed.status(), StatusCode::BAD_REQUEST);
+            // …and cannot poison an allowed one.
+            let real = send(
+                Method::GET,
+                "/api/health",
+                &[("host", LOOPBACK), ("x-forwarded-host", "evil.example")],
+            )
+            .await;
+            assert_eq!(real.status(), StatusCode::OK);
+            // Step 2 reads the same helper: a forged forwarded host paired
+            // with a matching Origin must not pass as same-origin.
+            let csrf = post_login(&[
+                ("host", LOOPBACK),
+                ("x-forwarded-host", "evil.example"),
+                ("origin", "http://evil.example"),
+            ])
+            .await;
+            assert_eq!(csrf.status(), StatusCode::FORBIDDEN);
+        });
     }
 }
