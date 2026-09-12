@@ -19,6 +19,7 @@
 //! forgets the window — but it does mean the state itself is not a parity
 //! contract, only the behaviour of a fresh window is.
 
+use super::trust::trust_proxy;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -114,18 +115,6 @@ fn client_ip(x_forwarded_for: Option<&str>, x_real_ip: Option<&str>) -> Option<S
     x_real_ip.map(|r| r.trim().to_lowercase())
 }
 
-fn trust_proxy() -> bool {
-    matches!(
-        std::env::var("PRIVACYTRACKER_TRUST_PROXY")
-            .ok()
-            .as_deref()
-            .map(str::trim)
-            .map(str::to_lowercase)
-            .as_deref(),
-        Some("1") | Some("true") | Some("yes") | Some("on")
-    )
-}
-
 /// Port of `rateLimitKeyForRequest`: `"{prefix}:{ip}"`, collapsing to a shared
 /// `"local"` suffix when no trusted proxy is configured. The prefix still
 /// namespaces each route, so routes stay isolated from one another even while
@@ -199,6 +188,7 @@ mod tests {
 
     #[test]
     fn forwarded_headers_are_ignored_without_a_trusted_proxy() {
+        let _env = super::super::trust::env_lock();
         std::env::remove_var("PRIVACYTRACKER_TRUST_PROXY");
         // Untrusted: the suffix collapses to "local" so header rotation
         // cannot multiply buckets.

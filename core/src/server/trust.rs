@@ -14,6 +14,8 @@
 
 use std::env;
 
+use axum::http::{header, HeaderMap};
+
 /// Port of `normalizeHost`. Lowercases, strips a port, unwraps bracketed
 /// IPv6, drops an IPv6 zone id and a single trailing FQDN dot.
 pub fn normalize_host(raw: Option<&str>) -> Option<String> {
@@ -104,10 +106,16 @@ pub fn bind_classification() -> BindClassification {
     BindClassification::Unknown
 }
 
+/// Port of `envFlag` (deployment-trust.ts) and of `trustProxy`'s
+/// `/^(1|true|yes|on)$/i` (request-origin.cjs): trimmed, case-insensitive.
+/// The first cut special-cased `TRUE` and missed `Yes`, `ON` and friends.
 fn env_flag(name: &str) -> bool {
     matches!(
-        env::var(name).ok().as_deref().map(str::trim),
-        Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("on")
+        env::var(name)
+            .ok()
+            .map(|v| v.trim().to_lowercase())
+            .as_deref(),
+        Some("1") | Some("true") | Some("yes") | Some("on")
     )
 }
 
@@ -158,6 +166,200 @@ pub fn is_host_allowed(raw: Option<&str>) -> bool {
         .any(|p| host_matches_pattern(&h, p))
 }
 
+// ── Port of `lib/request-origin.cjs` ────────────────────────────────────
+//
+// deployment-trust.ts re-exports these; they live in a dependency-free .cjs
+// so proxy.ts (which runs in the middleware sandbox) can share them with the
+// rate limiter. One flag drives all of it: `PRIVACYTRACKER_TRUST_PROXY`
+// decides whether X-Forwarded-Host / -Proto / -For are believed. It is OFF
+// by default, and off means the forwarded headers are ATTACKER-CONTROLLED.
+// The first cut of the gate honoured X-Forwarded-Host unconditionally, which
+// let a client satisfy the host allowlist — and, through the same helper,
+// the CSRF same-origin check — with a header of its choosing.
+//
+// The trust flag is passed INTO these functions rather than read inside them
+// so they are pure and testable without touching process env; the gate reads
+// `trust_proxy()` once per request and threads it through.
+
+/// Port of `trustProxy`.
+pub fn trust_proxy() -> bool {
+    env_flag("PRIVACYTRACKER_TRUST_PROXY")
+}
+
+/// Port of `firstHeaderValue`: the first comma-separated entry, trimmed;
+/// `None` when the header is absent or that entry is empty.
+fn first_header_value(headers: &HeaderMap, name: &str) -> Option<String> {
+    let raw = headers.get(name)?.to_str().ok()?;
+    let first = raw.split(',').next()?.trim();
+    (!first.is_empty()).then(|| first.to_string())
+}
+
+/// Port of `effectiveHostFromHeaders`: the first `X-Forwarded-Host` entry
+/// when — and only when — the proxy is trusted, else `Host` exactly as sent.
+pub fn effective_host(headers: &HeaderMap, trust: bool) -> Option<String> {
+    if trust {
+        if let Some(forwarded) = first_header_value(headers, "x-forwarded-host") {
+            return Some(forwarded);
+        }
+    }
+    headers.get(header::HOST)?.to_str().ok().map(str::to_string)
+}
+
+/// Port of `requestOrigin`.
+///
+/// Node reads the scheme off `request.url`, which under `next start` is
+/// always `http:` — this server likewise only ever listens on plain HTTP —
+/// and lets a trusted proxy's `X-Forwarded-Proto` override it. That override
+/// is compared CASE-SENSITIVELY: Node builds `${forwarded}:` and tests it
+/// against `"http:"` / `"https:"`, so `X-Forwarded-Proto: HTTPS` yields no
+/// origin at all (and so no same-origin match) rather than an https one.
+pub fn request_origin(headers: &HeaderMap, trust: bool) -> Option<String> {
+    let host = effective_host(headers, trust)?;
+    let mut scheme = String::from("http");
+    if trust {
+        if let Some(forwarded) = first_header_value(headers, "x-forwarded-proto") {
+            scheme = forwarded;
+        }
+    }
+    if scheme != "http" && scheme != "https" {
+        return None;
+    }
+    serialise_origin(&scheme, &host)
+}
+
+/// Port of `isSameOriginRequest`. The `Origin` header must parse to the
+/// expected origin AND already be in canonical serialised form — the
+/// `origin === parsed.origin` half — so a trailing slash, an uppercase
+/// scheme or a default port spelled out all fail even when the origin
+/// behind them matches. The expected side is normalised the same way, so an
+/// uppercase `Host` still matches a lowercase `Origin`.
+pub fn is_same_origin_request(headers: &HeaderMap, trust: bool) -> bool {
+    let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) else {
+        return false;
+    };
+    if origin.is_empty() {
+        return false;
+    }
+    let Some(expected) = request_origin(headers, trust) else {
+        return false;
+    };
+    match parse_origin(origin) {
+        Some(parsed) => parsed == expected && parsed == origin,
+        None => false,
+    }
+}
+
+/// `new URL(origin).origin` for the `Origin` header, or `None` where `URL`
+/// would throw. Only the two schemes `request_origin` can produce are
+/// parsed; anything else — `ftp:`, or the literal `null` an opaque-origin
+/// browser sends — can never equal the expected origin, so it is `None`
+/// here and `false` downstream, exactly as in Node.
+fn parse_origin(origin: &str) -> Option<String> {
+    let (scheme, rest) = origin.split_once("://")?;
+    serialise_origin(scheme, rest)
+}
+
+/// What `new URL(`${scheme}://${rest}`).origin` serialises to, with the
+/// `username || password || pathname !== "/"` rejection that `requestOrigin`
+/// applies on top — or `None` where Node's `URL` would throw or that check
+/// would fail. (Applying the rejection to the `Origin` header as well is
+/// harmless: an `Origin` carrying a path or userinfo can never equal its own
+/// serialised origin, so Node answers `false` for it too.)
+///
+/// Hand-rolled rather than pulled from the `url` crate, which is not in the
+/// lockfile and brings IDNA/ICU with it. It covers what a `Host` or `Origin`
+/// header carries in practice: scheme and host are lowercased, a default
+/// port (80/443) is dropped, a bracketed IPv6 literal is kept as written, a
+/// query or fragment is tolerated (the path stays `/`), and a path,
+/// userinfo, whitespace, a non-numeric or out-of-range port, or an empty
+/// host is a rejection. NOT covered: IPv4 shorthand (`127.1`), IDNA,
+/// percent-decoding and IPv6 compression — none of which survive step 0's
+/// `normalize_host` allowlist on either backend, so they never reach the
+/// origin check.
+fn serialise_origin(scheme: &str, rest: &str) -> Option<String> {
+    let scheme = scheme.to_ascii_lowercase();
+    let default_port: u16 = match scheme.as_str() {
+        "http" => 80,
+        "https" => 443,
+        _ => return None,
+    };
+
+    // The authority ends at the first path/query/fragment delimiter. A
+    // backslash counts: WHATWG reads it as `/` for the special schemes.
+    let end = rest.find(['/', '\\', '?', '#']).unwrap_or(rest.len());
+    let (authority, tail) = rest.split_at(end);
+    // Only an empty path or exactly `/` passes `url.pathname !== "/"`.
+    if let Some(after) = tail.strip_prefix(['/', '\\']) {
+        let path_end = after.find(['?', '#']).unwrap_or(after.len());
+        if !after[..path_end].is_empty() {
+            return None;
+        }
+    }
+    if authority.contains('@') {
+        return None; // username / password
+    }
+
+    let (host, port) = if let Some(inner) = authority.strip_prefix('[') {
+        let close = inner.find(']')?;
+        let host = &authority[..close + 2]; // keep the brackets
+        let after = &inner[close + 1..];
+        let port = match after.strip_prefix(':') {
+            Some(p) => p,
+            None if after.is_empty() => "",
+            None => return None,
+        };
+        (host, port)
+    } else {
+        match authority.rsplit_once(':') {
+            // A second colon means an unbracketed IPv6 literal: invalid.
+            Some((h, _)) if h.contains(':') => return None,
+            Some((h, p)) => (h, p),
+            None => (authority, ""),
+        }
+    };
+    if host.is_empty()
+        || host
+            .chars()
+            .any(|c| c.is_ascii_whitespace() || c.is_ascii_control() || "<>^|%".contains(c))
+    {
+        return None;
+    }
+
+    let port = if port.is_empty() {
+        None
+    } else {
+        if !port.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        // `parse` absorbs leading zeros (`:0080` is port 80) and overflows
+        // on absurd lengths, both matching WHATWG.
+        let n: u32 = port.parse().ok()?;
+        if n > u32::from(u16::MAX) {
+            return None;
+        }
+        (n != u32::from(default_port)).then_some(n)
+    };
+
+    let host = host.to_ascii_lowercase();
+    let mut origin = format!("{scheme}://{host}");
+    if let Some(p) = port {
+        origin.push(':');
+        origin.push_str(&p.to_string());
+    }
+    Some(origin)
+}
+
+/// Serialises the tests that touch `PRIVACYTRACKER_TRUST_PROXY`: the rate
+/// limiter's tests set it transiently, and the gate's forwarded-host tests
+/// need it UNSET for their whole duration. `cargo test` runs tests on
+/// parallel threads, so both sides hold this.
+#[cfg(test)]
+pub(crate) fn env_lock() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    LOCK.lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,5 +405,177 @@ mod tests {
         assert!(is_host_allowed(Some("127.0.0.1:3001")));
         assert!(is_host_allowed(Some("localhost:3000")));
         assert!(!is_host_allowed(None));
+    }
+
+    fn hm(pairs: &[(&str, &str)]) -> HeaderMap {
+        let mut h = HeaderMap::new();
+        for (k, v) in pairs {
+            h.append(
+                header::HeaderName::from_bytes(k.as_bytes()).expect("header name"),
+                header::HeaderValue::from_str(v).expect("header value"),
+            );
+        }
+        h
+    }
+
+    #[test]
+    fn trust_flag_is_trimmed_and_case_insensitive() {
+        let _env = env_lock();
+        for (raw, want) in [
+            ("1", true),
+            ("true", true),
+            (" Yes ", true),
+            ("ON", true),
+            ("0", false),
+            ("false", false),
+            ("", false),
+        ] {
+            env::set_var("PRIVACYTRACKER_TRUST_PROXY", raw);
+            assert_eq!(trust_proxy(), want, "{raw:?}");
+        }
+        env::remove_var("PRIVACYTRACKER_TRUST_PROXY");
+        assert!(!trust_proxy());
+    }
+
+    #[test]
+    fn forwarded_host_is_ignored_unless_the_proxy_is_trusted() {
+        let h = hm(&[
+            ("host", "127.0.0.1:3000"),
+            ("x-forwarded-host", "evil.example, other"),
+        ]);
+        assert_eq!(effective_host(&h, false).as_deref(), Some("127.0.0.1:3000"));
+        assert_eq!(effective_host(&h, true).as_deref(), Some("evil.example"));
+        // An empty first entry falls back to Host even when trusted.
+        let h = hm(&[("host", "127.0.0.1:3000"), ("x-forwarded-host", " , x")]);
+        assert_eq!(effective_host(&h, true).as_deref(), Some("127.0.0.1:3000"));
+        assert_eq!(effective_host(&hm(&[]), true), None);
+    }
+
+    /// Expected values generated with `node -e 'new URL(x).origin'`, plus
+    /// the userinfo/path rejections `requestOrigin` layers on top.
+    #[test]
+    fn origin_serialisation_matches_the_whatwg_url_class() {
+        for (input, want) in [
+            ("http://127.0.0.1:3011", Some("http://127.0.0.1:3011")),
+            ("HTTP://127.0.0.1:3011", Some("http://127.0.0.1:3011")),
+            ("http://127.0.0.1:3011/", Some("http://127.0.0.1:3011")),
+            ("http://127.0.0.1:80", Some("http://127.0.0.1")),
+            ("http://127.0.0.1", Some("http://127.0.0.1")),
+            ("https://127.0.0.1:443", Some("https://127.0.0.1")),
+            ("http://LOCALHOST:3011", Some("http://localhost:3011")),
+            ("http://[::1]:3011", Some("http://[::1]:3011")),
+            ("http://[::1]", Some("http://[::1]")),
+            ("http://127.0.0.1:3011?x", Some("http://127.0.0.1:3011")),
+            ("http://127.0.0.1:3011#f", Some("http://127.0.0.1:3011")),
+            ("http://127.0.0.1:", Some("http://127.0.0.1")),
+            ("http://127.0.0.1:0", Some("http://127.0.0.1:0")),
+            ("http://127.0.0.1:0080", Some("http://127.0.0.1")),
+            // `URL` throws on these.
+            ("http://127.0.0.1:99999", None),
+            ("http://", None),
+            ("http://a b", None),
+            ("http://1:2:3", None),
+            ("garbage", None),
+            ("null", None),
+            // Parses in Node, but can never equal an http(s) expectation.
+            ("ftp://127.0.0.1", None),
+            // requestOrigin's own rejections: userinfo and a real path.
+            ("http://user:pw@127.0.0.1:3011", None),
+            ("http://127.0.0.1:3011/x", None),
+            ("http://127.0.0.1:3011\\x", None),
+        ] {
+            assert_eq!(parse_origin(input).as_deref(), want, "{input}");
+        }
+    }
+
+    #[test]
+    fn request_origin_follows_the_trust_flag() {
+        let h = hm(&[
+            ("host", "127.0.0.1:3011"),
+            ("x-forwarded-host", "app.example"),
+            ("x-forwarded-proto", "https"),
+        ]);
+        assert_eq!(
+            request_origin(&h, false).as_deref(),
+            Some("http://127.0.0.1:3011")
+        );
+        assert_eq!(
+            request_origin(&h, true).as_deref(),
+            Some("https://app.example")
+        );
+        // The proto override is case-sensitive: `HTTPS:` is neither
+        // `http:` nor `https:`, so there is no origin at all.
+        let h = hm(&[("host", "127.0.0.1:3011"), ("x-forwarded-proto", "HTTPS")]);
+        assert_eq!(request_origin(&h, true), None);
+        assert_eq!(
+            request_origin(&h, false).as_deref(),
+            Some("http://127.0.0.1:3011")
+        );
+        // Host values requestOrigin rejects, and two it normalises.
+        for bad in ["127.0.0.1/x", "u@127.0.0.1", "127.0.0.1:3011,evil", ""] {
+            assert_eq!(
+                request_origin(&hm(&[("host", bad)]), false),
+                None,
+                "{bad:?}"
+            );
+        }
+        assert_eq!(
+            request_origin(&hm(&[("host", "127.0.0.1?x")]), false).as_deref(),
+            Some("http://127.0.0.1")
+        );
+        assert_eq!(
+            request_origin(&hm(&[("host", "LocalHost:3011")]), false).as_deref(),
+            Some("http://localhost:3011")
+        );
+    }
+
+    /// Every rejection here answered 403 from a running Node server, and
+    /// the two acceptances reached the route behind the gate.
+    #[test]
+    fn same_origin_requires_the_canonical_serialisation() {
+        let with = |origin: &str| hm(&[("host", "127.0.0.1:3011"), ("origin", origin)]);
+        assert!(is_same_origin_request(
+            &with("http://127.0.0.1:3011"),
+            false
+        ));
+        assert!(!is_same_origin_request(
+            &with("https://127.0.0.1:3011"),
+            false
+        ));
+        assert!(!is_same_origin_request(
+            &with("http://127.0.0.1:3011/"),
+            false
+        ));
+        assert!(!is_same_origin_request(
+            &with("HTTP://127.0.0.1:3011"),
+            false
+        ));
+        assert!(!is_same_origin_request(
+            &with("http://127.0.0.1:3011:"),
+            false
+        ));
+        assert!(!is_same_origin_request(&with("null"), false));
+        assert!(!is_same_origin_request(&with(""), false));
+        assert!(!is_same_origin_request(
+            &hm(&[("host", "127.0.0.1:3011")]),
+            false
+        ));
+        // The expected side is normalised too.
+        assert!(is_same_origin_request(
+            &hm(&[
+                ("host", "LOCALHOST:3011"),
+                ("origin", "http://localhost:3011")
+            ]),
+            false
+        ));
+        // A forwarded host only moves the expectation when trusted — which
+        // is exactly the bypass an unconditional read opened up.
+        let forged = hm(&[
+            ("host", "127.0.0.1:3011"),
+            ("x-forwarded-host", "evil.example"),
+            ("origin", "http://evil.example"),
+        ]);
+        assert!(!is_same_origin_request(&forged, false));
+        assert!(is_same_origin_request(&forged, true));
     }
 }

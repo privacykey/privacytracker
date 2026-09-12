@@ -206,8 +206,10 @@ against a 120/min limit, so a backend that omitted the limiter entirely would
 pass every check. The runner therefore probes both directly — a gated route
 with no token must 401 while a public one still 200s, and a burst past the
 limit must 429 at the same request number on both backends — and `trust.rs` /
-`auth.rs` / `ratelimit.rs` carry unit tests. Treat "parity green" as a
-statement about response bytes only.
+`auth.rs` / `ratelimit.rs` carry unit tests. Two further probes, for the
+trailing-slash redirect and for the forwarded-host / CSRF-origin inputs, are
+described in their own sections below. Treat "parity green" as a statement
+about response bytes only.
 
 **Three decisions worth not re-litigating:**
 
@@ -403,3 +405,120 @@ type with no `categories` — throws out of `diffSnapshots` in Node and 500s;
 here it fails to deserialise and the route answers `"sinceInstall": null`.
 Different, but both refuse: the alternative was to default the field and
 invent an answer.
+
+### The trailing-slash redirect (proxy.ts step 0.5)
+
+The gate ports `proxy.ts`'s steps 0, 1 and 2 (host allowlist, fail-closed
+auth, CSRF). Step **0.5** — the canonical trailing-slash 308 — was missing
+from the first cut, so `GET /api/health/` was a 308 in Node and, here, a 401
+for every path (the un-routed path fell through to the auth gate; a public
+path with auth off would have 404ed instead). It applies to every path,
+per-app routes included.
+
+`skipTrailingSlashRedirect: true` in `next.config.js` is why Node owns this
+redirect at all: Next's own version is emitted in the router before
+middleware runs and returns `resHeaders: null`, so `GET /dashboard/` answered
+308 with **zero** security headers while `GET /dashboard` carried six. Do not
+touch that flag — see AGENTS.md → "Static routes + hash-based CSP".
+
+Four details, all verified against a running Node server rather than read off
+the source:
+
+- **The Location is RELATIVE.** proxy.ts builds an absolute `URL`, but Next
+  serialises a same-origin middleware redirect back to a path, so the wire
+  carries `location: /api/health`. An absolute Location here would diverge.
+- **The query survives and an empty one is dropped** — `/a/?x=1` → `/a?x=1`,
+  `/a/?` → `/a`. Both fall out of `URL` serialisation, not the regex.
+- **`Cache-Control` is not uniform across the gate's branches**, and the
+  asymmetry is observable, so the port reproduces it rather than tidying it:
+
+  | branch | status | `Cache-Control` |
+  | --- | --- | --- |
+  | Host not allowed | 400 | *(absent)* |
+  | Trailing slash | 308 | `no-store` |
+  | Auth failure | 401 | `no-store` |
+  | CSRF | 403 | *(absent)* |
+  | pass-through | 200 | `no-store` |
+
+  The 401 was the one divergence: this server sent it without the header.
+
+- **Repeated slashes are the one deliberate difference.** Next normalises
+  `/api/health//` in its router before middleware, so Node answers a
+  header-less 308 to `/api/health/` and needs a second hop; the Rust gate
+  strips the whole run at once. Both land on the same canonical path — only
+  the hop count differs, and the header-less hop is the quirk
+  `skipTrailingSlashRedirect` exists to avoid, not a contract to copy.
+
+Not reproduced, deliberately: Next also emits `Refresh: 0;url=<loc>` and
+echoes the location in the redirect body. Both are Next redirect-serialisation
+trivia, and this server does not emit Next's security-header block either.
+
+**The gate — `probeTrailingSlash` in `scripts/parity/read-parity.mjs`.** The
+differ cannot see any of this: `parity-diff.mjs` only ever requests the
+canonical paths in its manifest, so a backend that 404ed every `…/` form
+would pass every check. The probe requests four paths on **both** backends
+with no token and requires the same status, Location and Cache-Control —
+including an auth-gated path, which pins step 0.5 above step 1, and a
+canonical path as a control. Negative-tested: disabling step 0.5 makes it
+fail on three of the four.
+
+### `X-Forwarded-Host` and the CSRF origin check (proxy.ts steps 0 and 2)
+
+Found while porting step 0.5, fixed in the same change. The gate's
+`effective_host` honoured `X-Forwarded-Host` **unconditionally**. Node only
+believes it behind `PRIVACYTRACKER_TRUST_PROXY` (`trustProxy()` in
+`lib/request-origin.cjs`); with the flag off — the default — the header is
+attacker-controlled. Verified against a running Node server with the flag
+unset:
+
+| request | Node | Rust before |
+| --- | --- | --- |
+| real `Host` + `X-Forwarded-Host: evil.example` → `/api/health` | 200 | 400 |
+| `Host: evil.example` + `X-Forwarded-Host: 127.0.0.1:<port>` | 400 | **200** |
+
+The second row is a host-allowlist bypass, and because the same helper backs
+the CSRF same-origin comparison, a forged forwarded host paired with a
+matching `Origin` passed step 2 as well.
+
+`trust.rs` now carries a port of the whole of `request-origin.cjs` —
+`trust_proxy`, `effective_host`, `request_origin`, `is_same_origin_request` —
+and the gate and the rate limiter share the one `trust_proxy`. The origin
+comparison is a real port rather than the authority-string compare it
+replaces, which had its own holes: it ignored the scheme entirely and
+tolerated a trailing slash. Node's rule is `parsed.origin === expected &&
+origin === parsed.origin`, i.e. the `Origin` header must both match and
+already be in canonical serialised form. All verified as 403s on Node: an
+`https://` Origin on the http server, a trailing slash, an uppercase scheme,
+`null`, no Origin. And the expected side is normalised, so `Host:
+LOCALHOST:3011` still matches `Origin: http://localhost:3011` (reaches the
+route on both).
+
+Two details that would be easy to get wrong:
+
+- **`X-Forwarded-Proto` is compared case-sensitively.** Node builds
+  `${forwarded}:` and tests it against `"http:"` / `"https:"`, so a trusted
+  proxy sending `HTTPS` yields no origin at all — and therefore no
+  same-origin match — rather than an https one.
+- **The origin serialiser is hand-rolled**, because the `url` crate is not in
+  the lockfile and brings IDNA/ICU with it. It reproduces `new URL(...).origin`
+  for what a `Host` or `Origin` header carries in practice (lowercased scheme
+  and host, default port dropped, `:0080` → 80, bracketed IPv6 kept, query and
+  fragment tolerated, path / userinfo / bad port / whitespace rejected), with
+  expected values generated by calling the real `URL` class. Not covered —
+  IPv4 shorthand like `127.1`, IDNA, percent-decoding, IPv6 compression — is
+  rejected by step 0's `normalize_host` allowlist on both backends before the
+  origin check runs.
+
+Also corrected on the way: `env_flag` (`PRIVACYTRACKER_NETWORK_EXPOSED` and
+now the proxy flag) special-cased `TRUE` and missed `Yes` / `ON`; Node's
+`envFlag` and `trustProxy` are both trimmed and case-insensitive.
+
+**The gate — `probeForwardedHost` in `read-parity.mjs`.** Six cases over
+plain `node:http` (undici's `fetch` silently drops a caller-set `Host`, so
+the spoof case cannot be expressed through it). Each carries the answer Node
+gave and holds BOTH backends to it — two backends agreeing on the wrong
+answer is not parity. The CSRF cases pin only the gate's decision, since past
+the gate Node's login route and the Rust core's missing route legitimately
+answer differently. Unit tests in `trust.rs` take a `trust` flag directly
+and cover both settings; the one gate-level test that needs the env unset
+holds a shared lock with the rate limiter's env-mutating tests.
