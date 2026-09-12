@@ -12,6 +12,7 @@
 //! structurally incapable of doing. Matching the weaker model is the point.
 
 pub mod auth;
+mod changelog;
 pub mod diff;
 mod gate;
 mod json;
@@ -22,7 +23,9 @@ mod routes_focus;
 mod routes_imports;
 mod routes_manual;
 mod routes_status;
+mod row;
 mod settings;
+mod trend;
 pub mod trust;
 
 use std::net::SocketAddr;
@@ -31,6 +34,19 @@ use std::sync::{Arc, Mutex};
 
 use axum::{routing::get, Router};
 use rusqlite::Connection;
+
+/// Wall-clock milliseconds since the epoch — `Date.now()`.
+///
+/// Shared so the routes that need it cannot drift into two different
+/// clocks; a saturating 0 on a pre-epoch system clock matches nothing in
+/// particular, but neither does any other answer.
+pub(crate) fn now_ms() -> i64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -72,6 +88,18 @@ pub fn app(state: AppState) -> Router {
             "/api/apps/{id}/since-install",
             get(routes_app::since_install),
         )
+        // Quarterly aggregates over the snapshot table. Shares the guard
+        // chain above; the arithmetic lives in `trend.rs` so it can be
+        // tested against a fixed clock, which the differ cannot do — it
+        // masks every bucket boundary as `~epoch`.
+        .route(
+            "/api/apps/{id}/history-stats",
+            get(routes_app::history_stats),
+        )
+        // The per-app timeline. Its kernel (`changelog.rs`) is what
+        // `/api/apps?id=X&changelog=true` and `/api/apps/{id}/detail` will
+        // both be built from, which is why it lands before either of them.
+        .route("/api/apps/{id}/changelog", get(routes_app::app_changelog))
         // Batch 3. Adds a query-scoped read with a 400 branch, a nested list
         // inside an envelope, and interval arithmetic over stored epochs.
         .route("/api/sync/status", get(routes_status::sync_status))

@@ -13,17 +13,10 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 use super::json::{json_error, json_ok};
+use super::now_ms;
 use super::ratelimit::key_for_request;
 use super::AppState;
 use crate::jsnum::js_parse_int;
-
-fn now_ms() -> i64 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
-        .unwrap_or(0)
-}
 
 fn hdr<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     headers.get(name)?.to_str().ok()

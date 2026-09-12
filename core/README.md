@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (17).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (19).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -415,6 +415,115 @@ Neither is guaranteed by anything but that agreement, so "both sides run
 SQLite" is not the argument it looks like — if a future SQLite changes an
 index choice, the fix is an explicit `ORDER BY` on both sides in the same
 commit, not a version bump on one.
+
+### `/api/apps/[id]/history-stats` (+1 route, 18 total)
+
+The quarterly aggregates behind the widgets under the per-app timeline.
+Structurally the same route as `since-install` — same guard chain, same
+`{appId, …}` envelope — over two new pure functions ported into
+`core/src/server/trend.rs`.
+
+Unlike `since-install`, the canned seed DOES give this one real numbers:
+Instagram's history steps differ, so the stored `changes_summary` blobs carry
+entries and `totalAdded` is 7 across three quarters. But only one arm:
+
+- across all ten seeded apps **`totalRemoved` is 0**, so a port that dropped
+  the removal arm entirely would pass;
+- every seeded entry is an untagged privacy-label one, so the
+  `category` filter is never exercised;
+- `changes_detected` is only ever 0 or 1, so the strict `!== 1` is never
+  distinguished from `> 0`.
+
+`scripts/parity/since-install-fixture.mjs` therefore gained a
+`pt-fixture-trend` app whose rows cover all three, and the probe asserts both
+arms are non-zero before trusting the comparison (`+3/-3` today).
+
+Three things the Node code does that read like bugs and are not:
+
+- **The first bucket starts on 1 JANUARY 2021**, not on the documented floor
+  of 1 February. `bucketByQuarter` floors the floor's month to its quarter
+  (`Math.floor(1 / 3) === 0` → Q1), and Q1 begins in January. Anchoring on
+  the floor date shifts every boundary by a month.
+- **The two aggregates disagree about what a change is.**
+  `computeQuarterlyChanges` tests `changes_detected !== 1` — strict, so a row
+  storing 2 is skipped — while `computeCategoryTrend` never reads the column
+  and counts that row's entries. Both behaviours are pinned.
+- **A row outside every bucket is dropped, not clamped.**
+  `Array.prototype.find` returns undefined for a snapshot older than Q1 2021
+  or dated in the future, and it silently contributes nothing.
+
+### `/api/apps/[id]/changelog` (+1 route, 19 total)
+
+The per-app timeline, and the reason it lands before the two big routes:
+both are this function wearing a hat. `/api/apps?id=X&changelog=true` is
+literally `getChangelog(id, 50)`, and `/api/apps/[id]/detail`'s `changelog` /
+`changelogHasMore` fields are `getChangelogPage` verbatim. Written once in
+`core/src/server/changelog.rs`, it turns two large routes into assembly.
+
+Four things decide the bytes:
+
+- **Two keys are added by MUTATION** after the row object is built, so they
+  serialise AFTER `app_version_updated_at` rather than wherever an interface
+  would put them. `archive_bridge` comes from `bridgeOldestLiveRow`;
+  `matches_live_sync` from the neighbour scan that runs after it. Verified on
+  the wire against Node.
+- **The merge is a STABLE sort with a partial tie-break.** Equal `scraped_at`
+  puts a snapshot before a review; two rows of the same kind compare EQUAL and
+  keep the order SQL returned them in. A comparator that invents a tiebreak
+  (by id, say) reorders real pages — the fixture dates a review to the same
+  instant as a snapshot so this is actually observed.
+- **Both queries take the same `limit`**, and the merge is sliced afterwards.
+  A page of 50 reads up to 50 snapshots AND 50 reviews and discards half.
+- **`changes_summary` is parsed without a try/catch here**, unlike every other
+  parse in that file — see the divergence below.
+
+**What the manifest's single request misses.** It hits this route once, on
+Instagram, with no query string, and on that app neither mutation fires and no
+review row exists. So four things were uncompared: `archive_bridge` — which is
+where `diffSnapshots` runs on this path — `matches_live_sync`, the
+`kind: "review"` row shape, and both 400 branches. `archive_bridge` turned out
+to be reachable already, by accident, through `pt-fixture-wayback` and
+`pt-fixture-approx` written for since-install; the rest needed a new
+`pt-fixture-timeline` app carrying a wayback row byte-identical to its live
+neighbour plus two review rows (one of them a legacy NULL
+`covered_snapshot_ids`). The probe compares all of it.
+
+The two validation branches earn their probe lines because they are checked by
+DIFFERENT functions and the asymmetry is invisible in the source:
+
+| query | parsed with | result |
+|---|---|---|
+| `?before=` (empty) | `Number("")` → 0 | **200** — valid, means "before the epoch" |
+| `?before=abc` | `Number` → NaN | 400 |
+| `?limit=` (empty) | `parseInt("")` → NaN | 400 |
+| `?limit=25abc` | `parseInt` prefix-tolerant | **200** — reads as 25 |
+
+**A second knowing divergence.** `getChangelog`'s `JSON.parse` of
+`changes_summary` has no try/catch, so a malformed blob throws out of the route
+and Node answers 500 with a ZERO-BYTE body — not even the `{"error":…}`
+envelope. The Rust port returns the standard envelope: same status, different
+body. Consistent with `diff.rs` and `trend.rs`, and unreachable from data this
+application writes.
+
+**One knowing divergence.** A `changes_summary` that is valid JSON but not
+an array (`{}`) makes `computeCategoryTrend` throw and the route answer 500 —
+its try/catch wraps only the `JSON.parse`, while the `for…of` that follows
+sits outside it. Verified against the running Node server. `computeQuarterlyChanges`
+keeps its `.filter` inside the try and merely skips the row, so the two
+functions do not agree with each other either. The Rust port treats a
+non-array as no entries and answers 200. Same trade as in `diff.rs`:
+reproducing an uncaught crash means reproducing Next's error page, and the
+alternative to refusing is inventing an answer. Deliberately NOT in the parity
+fixture — a row for it would fail the gate by design rather than catch a
+regression.
+
+**The differ cannot see the bucket boundaries.** Every `startMs`/`endMs` here
+is above 1.4e12, which `normalize()` masks as `~epoch`. The `label` strings
+are compared, so a whole-quarter slip is caught; a sub-quarter one is not.
+`trend.rs` therefore unit-tests the date arithmetic against a FIXED clock,
+with the `Date.UTC` expectations read out of `node -e` rather than computed by
+the same algorithm under test — a self-derived constant would agree with any
+bug it shared.
 
 **Two knowing divergences**, both verified against the real Node function and
 both unreachable from data this application writes: object/array identifiers

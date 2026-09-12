@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Write the `/api/apps/{id}/since-install` fixture rows into a data
- * directory's `privacy.db`.
+ * Write the per-app read-route fixture rows into a data directory's
+ * `privacy.db`. Backs both `/api/apps/{id}/since-install` and
+ * `/api/apps/{id}/history-stats`; the filename predates the second.
  *
  * Why this exists: the canned seed is useless for this route. It gives every
  * app a baseline and a latest snapshot whose types and categories have
@@ -32,6 +33,18 @@ import BetterSqlite3 from "better-sqlite3";
 /** A fixed epoch so the fixture is reproducible across runs and machines. */
 const T0 = 1_700_000_000_000;
 const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * What goes in `changes_summary`. `rawChanges` stores the string verbatim so
+ * a case can hold something `JSON.parse` rejects; `changes` is the normal
+ * path; absent means the empty array.
+ */
+const rawChangesFor = (snap) => {
+  if (snap.rawChanges !== undefined) {
+    return snap.rawChanges;
+  }
+  return snap.changes === undefined ? "[]" : JSON.stringify(snap.changes);
+};
 
 const type_ = (identifier, title, categories) => ({
   identifier,
@@ -227,6 +240,177 @@ export const FIXTURES = [
   },
 ];
 
+/**
+ * history-stats only. The canned seed reaches its `added` arm and nothing
+ * else: across all ten seeded apps `totalRemoved` is 0, every entry is an
+ * untagged privacy-label one, and `changes_detected` is only ever 0 or 1.
+ * So a port that dropped the removal arm, ignored the category filter, or
+ * relaxed the strict `!== 1` would pass the gate on real data.
+ *
+ * Rows are dated inside Q4 2023 and Q1 2024 so two ADJACENT buckets carry
+ * different numbers — a port with the boundaries a quarter out would merge
+ * them and the counts would move.
+ */
+const TREND_FIXTURE = {
+  id: "pt-fixture-trend",
+  firstSeen: T0,
+  snapshots: [
+    {
+      // Q4 2023. Mixed adds and removes, plus a tagged entry that must NOT
+      // count towards either total.
+      scrapedAt: T0,
+      source: "live",
+      appVersion: "1.0.0",
+      changesDetected: 1,
+      changes: [
+        { type: "added", description: "a1" },
+        { type: "added", description: "a2" },
+        { type: "removed", description: "r1" },
+        { type: "added", description: "policy", category: "privacy-policy" },
+        { type: "removed", description: "a11y", category: "accessibility" },
+        // An explicit null category is UNTAGGED — `??`, not `||` — so this
+        // one counts.
+        { type: "removed", description: "r2", category: null },
+      ],
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // Same quarter, but changes_detected = 2. computeCategoryTrend ignores
+      // the column and counts these; computeQuarterlyChanges tests `!== 1`
+      // and skips the row entirely. The two aggregates disagree on purpose.
+      scrapedAt: T0 + DAY,
+      source: "live",
+      appVersion: "1.1.0",
+      changesDetected: 2,
+      changes: [{ type: "added", description: "counted-by-trend-only" }],
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // changes_detected = 1 but every entry is tagged, so there are zero
+      // label entries and this is not an EVENT — the count must stay 0
+      // rather than becoming 1.
+      scrapedAt: T0 + 2 * DAY,
+      source: "live",
+      appVersion: "1.2.0",
+      changesDetected: 1,
+      changes: [
+        {
+          type: "added",
+          description: "policy only",
+          category: "privacy-policy",
+        },
+      ],
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // Q1 2024 — the next bucket, with different numbers from the first.
+      scrapedAt: Date.UTC(2024, 0, 15),
+      source: "live",
+      appVersion: "2.0.0",
+      changesDetected: 1,
+      changes: [{ type: "removed", description: "r3" }],
+      types: [type_("A", "Alpha", [])],
+    },
+    {
+      // Predates Q1 2021, so `Array.prototype.find` matches no bucket and
+      // the row is dropped rather than clamped into the first one.
+      scrapedAt: Date.UTC(2019, 5, 1),
+      source: "live",
+      appVersion: "0.0.1",
+      changesDetected: 1,
+      changes: [{ type: "added", description: "before the floor" }],
+      types: [type_("A", "Alpha", [])],
+    },
+    {
+      // Unparseable changes_summary: both functions swallow the error and
+      // treat it as no entries rather than failing the request.
+      scrapedAt: T0 + 3 * DAY,
+      source: "live",
+      appVersion: "1.3.0",
+      changesDetected: 1,
+      rawChanges: "not json",
+      types: [type_("A", "Alpha", [])],
+    },
+  ],
+};
+
+// Written alongside the since-install scenarios. Declared separately
+// because it is the only entry whose point is `changes_summary`, which the
+// since-install route never reads.
+
+/**
+ * changelog only. The manifest hits this route on Instagram alone, where
+ * neither of its two read-time mutations fires — so `matches_live_sync` and
+ * the `kind: "review"` row shape are completely uncompared today.
+ * (`archive_bridge` is already reachable, by accident, through
+ * `pt-fixture-wayback` and `pt-fixture-approx`.)
+ *
+ * The wayback row here is written with a snapshot_json BYTE-IDENTICAL to the
+ * live row beside it, which is the whole condition for `matches_live_sync` —
+ * the comparison is on the raw string, not on parsed content.
+ */
+const TIMELINE_FIXTURE = {
+  id: "pt-fixture-timeline",
+  firstSeen: T0,
+  snapshots: [
+    {
+      scrapedAt: T0 - DAY,
+      source: "wayback",
+      appVersion: "1.0.0",
+      changesDetected: 0,
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // Same types in the same order → identical JSON.stringify output → the
+      // neighbour scan tags the wayback row above.
+      scrapedAt: T0,
+      source: "live",
+      appVersion: "1.0.1",
+      changesDetected: 0,
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+  ],
+  /**
+   * Review rows interleave with snapshots on one `scraped_at` axis
+   * (`acted_at` is read into that field). This one is deliberately dated to
+   * the SAME instant as the live snapshot above, because the merge's
+   * tie-break — snapshot before review — is otherwise unobservable.
+   */
+  reviews: [
+    {
+      id: "rev-1",
+      action: "reviewed",
+      actedAt: T0,
+      coveredCount: 2,
+      coveredSnapshotIds: '["pt-fixture-timeline-snap-0", "", null, 7]',
+      snoozeUntil: null,
+      note: "acknowledged by the parity fixture",
+    },
+    {
+      // A legacy row: covered_snapshot_ids NULL, which must read as [].
+      id: "rev-2",
+      action: "snoozed",
+      actedAt: T0 + DAY,
+      coveredCount: 0,
+      coveredSnapshotIds: null,
+      snoozeUntil: T0 + 7 * DAY,
+      note: null,
+    },
+  ],
+};
+
+// Registered after both declarations, because `const` is not hoisted.
+FIXTURES.push(TREND_FIXTURE, TIMELINE_FIXTURE);
+
+/** The fixture app whose numbers the history-stats probe checks. */
+export const TREND_ID = TREND_FIXTURE.id;
+
+/** The fixture app whose timeline the changelog probe checks. */
+export const TIMELINE_ID = TIMELINE_FIXTURE.id;
+
+/** Apps whose changelog trips `archive_bridge` — verified on the wire. */
+export const BRIDGED_IDS = ["pt-fixture-wayback", "pt-fixture-approx"];
+
 /** Ids the probe should see refused rather than answered. */
 export const MISSING_ID = "pt-fixture-does-not-exist";
 
@@ -240,13 +424,23 @@ export function applySinceInstallFixture(dataDir) {
     `INSERT OR REPLACE INTO privacy_snapshots
        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,
         source, triggered_by, app_version)
-     VALUES (?, ?, ?, ?, 0, '[]', ?, 'sample', ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'sample', ?)`
+  );
+
+  const insertReview = db.prepare(
+    `INSERT OR REPLACE INTO change_review_actions
+       (id, app_id, action, acted_at, covered_count, covered_snapshot_ids,
+        snooze_until, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   const tx = db.transaction(() => {
     // Clear first, so re-running against a dirty directory is idempotent
     // rather than additive.
     for (const fx of FIXTURES) {
+      db.prepare("DELETE FROM change_review_actions WHERE app_id = ?").run(
+        fx.id
+      );
       db.prepare("DELETE FROM privacy_snapshots WHERE app_id = ?").run(fx.id);
       db.prepare("DELETE FROM apps WHERE id = ?").run(fx.id);
     }
@@ -265,17 +459,33 @@ export function applySinceInstallFixture(dataDir) {
           snap.scrapedAt,
           // `raw` lets a case store something the app would never write.
           snap.raw === undefined ? JSON.stringify(snap.types) : snap.raw,
+          // These two are read by history-stats and ignored by since-install.
+          snap.changesDetected ?? 0,
+          rawChangesFor(snap),
           snap.source,
           snap.appVersion
         );
       });
+      for (const rev of fx.reviews ?? []) {
+        insertReview.run(
+          `${fx.id}-${rev.id}`,
+          fx.id,
+          rev.action,
+          rev.actedAt,
+          rev.coveredCount,
+          rev.coveredSnapshotIds,
+          rev.snoozeUntil,
+          rev.note
+        );
+      }
     }
   });
   tx();
   db.close();
 
   const rows = FIXTURES.reduce((n, f) => n + f.snapshots.length, 0);
-  return { apps: FIXTURES.length, snapshots: rows };
+  const reviews = FIXTURES.reduce((n, f) => n + (f.reviews?.length ?? 0), 0);
+  return { apps: FIXTURES.length, snapshots: rows, reviews };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -284,8 +494,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error("usage: since-install-fixture.mjs <dataDir>");
     process.exit(2);
   }
-  const { apps, snapshots } = applySinceInstallFixture(path.resolve(dir));
+  const { apps, snapshots, reviews } = applySinceInstallFixture(
+    path.resolve(dir)
+  );
   console.log(
-    `since-install-fixture: wrote ${apps} apps / ${snapshots} snapshots into ${dir}`
+    `since-install-fixture: wrote ${apps} apps / ${snapshots} snapshots / ${reviews} reviews into ${dir}`
   );
 }

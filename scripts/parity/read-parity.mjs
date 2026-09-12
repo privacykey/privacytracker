@@ -39,8 +39,11 @@ import BetterSqlite3 from "better-sqlite3";
 
 import {
   applySinceInstallFixture,
+  BRIDGED_IDS,
   FIXTURES as SINCE_INSTALL_FIXTURES,
   MISSING_ID as SINCE_INSTALL_MISSING_ID,
+  TIMELINE_ID,
+  TREND_ID,
 } from "./since-install-fixture.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -91,6 +94,13 @@ const BATCH_1 = [
   // every seeded app diffs to nothing — so it is also covered by the fixture
   // probe below and by core/tests/diff_cases.rs.
   "/api/apps/[id]/since-install",
+  // Quarterly aggregates. Unlike since-install, the canned seed DOES give
+  // this one real data — its history steps differ, so the stored
+  // changes_summary blobs carry entries and the totals are non-zero.
+  "/api/apps/[id]/history-stats",
+  // The per-app timeline. Its kernel is what /api/apps?id=X&changelog=true
+  // and /api/apps/[id]/detail will both be assembled from.
+  "/api/apps/[id]/changelog",
 ];
 
 /**
@@ -565,6 +575,189 @@ async function probeSinceInstall(rustBase, nodeBase) {
   return ok;
 }
 
+/**
+ * Byte-compare `/api/apps/{id}/history-stats` on the trend fixture.
+ *
+ * The differ DOES exercise this route against the canned seed, and unlike
+ * since-install the seed gives it real numbers — but only its `added` arm.
+ * Across all ten seeded apps `totalRemoved` is 0, every entry is an untagged
+ * privacy-label one, and `changes_detected` is only ever 0 or 1. So a port
+ * that dropped the removal arm, ignored the category filter, or relaxed the
+ * strict `changes_detected !== 1` would still pass.
+ *
+ * The bucket BOUNDARIES are invisible to the differ either way: every
+ * startMs/endMs is above 1.4e12, which normalize() masks as `~epoch`. The
+ * `label` strings are compared, so a whole-quarter slip is caught; a
+ * sub-quarter one is not, and is covered by unit tests in core/src/server/trend.rs.
+ */
+async function probeHistoryStats(rustBase, nodeBase) {
+  const route = `/api/apps/${encodeURIComponent(TREND_ID)}/history-stats`;
+  const [ra, rb] = await Promise.all([
+    fetch(`${nodeBase}${route}`, {
+      headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN },
+    }),
+    fetch(`${rustBase}${route}`, {
+      headers: { origin: rustBase, "x-auditor-admin-token": TOKEN },
+    }),
+  ]);
+  const [nodeBody, rustBody] = await Promise.all([ra.text(), rb.text()]);
+
+  if (ra.status !== rb.status || nodeBody !== rustBody) {
+    console.log(
+      `  ✘ history-stats fixture: HTTP ${ra.status} vs ${rb.status}\n      node: ${nodeBody.slice(0, 400)}\n      rust: ${rustBody.slice(0, 400)}`
+    );
+    return false;
+  }
+
+  // Prove the comparison had the arms the canned seed cannot reach.
+  let trend = null;
+  try {
+    trend = JSON.parse(nodeBody)?.categoryTrend ?? null;
+  } catch {
+    trend = null;
+  }
+  const exercised =
+    (trend?.totalRemoved ?? 0) > 0 && (trend?.totalAdded ?? 0) > 0;
+  console.log(
+    exercised
+      ? `  ✔ history-stats fixture: +${trend.totalAdded}/-${trend.totalRemoved} identical on both backends (the seed alone never removes anything)`
+      : `  ✘ history-stats fixture: expected both arms exercised, got +${trend?.totalAdded} /-${trend?.totalRemoved} — the fixture has stopped proving anything`
+  );
+  return exercised;
+}
+
+/**
+ * Byte-compare `/api/apps/{id}/changelog` on the paths the manifest misses.
+ *
+ * The manifest hits this route once, on Instagram, with no query string. On
+ * that app neither read-time mutation fires and no review row exists, so
+ * four things go uncompared: `archive_bridge` (which is where
+ * `diffSnapshots` runs on this path), `matches_live_sync`, the
+ * `kind: "review"` row shape, and both 400 branches.
+ *
+ * The two 400s are worth the most per line here, because they are validated
+ * by DIFFERENT functions and the asymmetry is easy to miss: `before` goes
+ * through `Number()` (so an empty `?before=` is 0 and VALID), `limit`
+ * through `parseInt` (so an empty `?limit=` is NaN and rejected, while
+ * `?limit=25abc` is accepted as 25).
+ */
+async function probeChangelog(rustBase, nodeBase) {
+  const fetchBoth = async (suffix) => {
+    const [ra, rb] = await Promise.all([
+      fetch(`${nodeBase}${suffix}`, {
+        headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN },
+      }),
+      fetch(`${rustBase}${suffix}`, {
+        headers: { origin: rustBase, "x-auditor-admin-token": TOKEN },
+      }),
+    ]);
+    const [nodeBody, rustBody] = await Promise.all([ra.text(), rb.text()]);
+    return {
+      node: { status: ra.status, body: nodeBody },
+      rust: { status: rb.status, body: rustBody },
+    };
+  };
+
+  let ok = true;
+  const compare = async (label, suffix, expect) => {
+    const { node, rust } = await fetchBoth(suffix);
+    if (node.status !== rust.status || node.body !== rust.body) {
+      console.log(
+        `  ✘ ${label}: HTTP ${node.status} vs ${rust.status}\n      node: ${node.body.slice(0, 300)}\n      rust: ${rust.body.slice(0, 300)}`
+      );
+      ok = false;
+      return null;
+    }
+    if (expect && !expect(node)) {
+      console.log(
+        `  ✘ ${label}: both backends agree but the case is not exercising what it claims — ${node.body.slice(0, 300)}`
+      );
+      ok = false;
+      return null;
+    }
+    console.log(`  ✔ ${label} (${node.status})`);
+    return node;
+  };
+
+  const rowsOf = (res) => {
+    try {
+      return JSON.parse(res.body)?.rows ?? [];
+    } catch {
+      return [];
+    }
+  };
+
+  // archive_bridge — the only path on which diffSnapshots runs here.
+  for (const id of BRIDGED_IDS) {
+    await compare(`${id}: archive_bridge`, `/api/apps/${id}/changelog`, (res) =>
+      rowsOf(res).some((r) => r.archive_bridge)
+    );
+  }
+
+  // matches_live_sync + interleaved review rows, including the equal-timestamp
+  // tie-break (snapshot before review).
+  await compare(
+    `${TIMELINE_ID}: matches_live_sync + review rows`,
+    `/api/apps/${TIMELINE_ID}/changelog`,
+    (res) => {
+      const rows = rowsOf(res);
+      return (
+        rows.some((r) => r.matches_live_sync === true) &&
+        rows.some((r) => r.kind === "review")
+      );
+    }
+  );
+
+  // hasMore, which the default page size never reaches on fixture data.
+  await compare(
+    `${TIMELINE_ID}: hasMore with ?limit=1`,
+    `/api/apps/${TIMELINE_ID}/changelog?limit=1`,
+    (res) => {
+      try {
+        const j = JSON.parse(res.body);
+        return j.hasMore === true && j.rows.length === 1;
+      } catch {
+        return false;
+      }
+    }
+  );
+
+  // The validation branches. `?before=` EMPTY is valid (Number("") is 0) and
+  // `?limit=25abc` is 25 — both of which a stricter Rust parser rejects.
+  await compare(
+    "?before=abc → 400",
+    `/api/apps/${TIMELINE_ID}/changelog?before=abc`,
+    (res) => res.status === 400
+  );
+  await compare(
+    "?before=-1 → 400",
+    `/api/apps/${TIMELINE_ID}/changelog?before=-1`,
+    (res) => res.status === 400
+  );
+  await compare(
+    "?before= (empty) → 200, Number('') is 0",
+    `/api/apps/${TIMELINE_ID}/changelog?before=`,
+    (res) => res.status === 200
+  );
+  await compare(
+    "?limit=0 / 201 → 400",
+    `/api/apps/${TIMELINE_ID}/changelog?limit=0`,
+    (res) => res.status === 400
+  );
+  await compare(
+    "?limit= (empty) → 400, parseInt('') is NaN",
+    `/api/apps/${TIMELINE_ID}/changelog?limit=`,
+    (res) => res.status === 400
+  );
+  await compare(
+    "?limit=1abc → 200, parseInt is prefix-tolerant",
+    `/api/apps/${TIMELINE_ID}/changelog?limit=1abc`,
+    (res) => res.status === 200
+  );
+
+  return ok;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -614,6 +807,12 @@ async function main() {
     "\n── since-install fixture (the canned seed diffs to nothing) ──"
   );
   const sinceOk = await probeSinceInstall(rustBase, args.node);
+  const trendOk = await probeHistoryStats(rustBase, args.node);
+
+  console.log(
+    "\n── changelog paths the manifest's single Instagram request misses ──"
+  );
+  const changelogOk = await probeChangelog(rustBase, args.node);
 
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
@@ -652,7 +851,15 @@ async function main() {
   const rateOk = await probeRateLimiter(rustBase, args.node);
 
   cleanup();
-  const ok = authOk && slashOk && fwdOk && sinceOk && rateOk && diffOk;
+  const ok =
+    authOk &&
+    slashOk &&
+    fwdOk &&
+    sinceOk &&
+    trendOk &&
+    changelogOk &&
+    rateOk &&
+    diffOk;
   console.log(
     ok
       ? "\nREAD PARITY OK — the Rust core matches Node on every implemented route"
