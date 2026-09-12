@@ -14,6 +14,7 @@
 
 pub mod db;
 pub mod jsnum;
+pub mod jsstr;
 mod schema_sql;
 pub mod server;
 

@@ -40,6 +40,7 @@ import BetterSqlite3 from "better-sqlite3";
 import {
   applySinceInstallFixture,
   BRIDGED_IDS,
+  COLLATION_FIXTURE,
   FIXTURES as SINCE_INSTALL_FIXTURES,
   MISSING_ID as SINCE_INSTALL_MISSING_ID,
   TIMELINE_ID,
@@ -101,6 +102,10 @@ const BATCH_1 = [
   // The per-app timeline. Its kernel is what /api/apps?id=X&changelog=true
   // and /api/apps/[id]/detail will both be assembled from.
   "/api/apps/[id]/changelog",
+  // Five responses behind one path. The manifest covers the bare array and
+  // the paginated+meta form; the other three GET shapes and both error
+  // branches were ungated until the entries added alongside this route.
+  "/api/apps",
 ];
 
 /**
@@ -758,6 +763,42 @@ async function probeChangelog(rustBase, nodeBase) {
   return ok;
 }
 
+/**
+ * `/api/apps?limit=250&offset=0&meta=grid` is byte-compared by the manifest,
+ * so this does not compare again. It asserts the comparison was not vacuous:
+ * without the fixture profile and verdict, `profileBadges` and `userVerdicts`
+ * are `{}` on the canned seed, and a port that never ran the profile engine
+ * would pass. It also requires at least one `kind: "mismatches"` badge — a
+ * page of nothing but "match" badges never reaches the sort, and therefore
+ * never reaches the `localeCompare` tie-break.
+ */
+async function probeGridMeta(nodeBase) {
+  const res = await fetch(`${nodeBase}/api/apps?limit=250&offset=0&meta=grid`, {
+    headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN },
+  });
+  let meta = null;
+  try {
+    meta = (await res.json())?.meta ?? null;
+  } catch {
+    meta = null;
+  }
+  const badges = Object.values(meta?.profileBadges ?? {});
+  const verdicts = Object.keys(meta?.userVerdicts ?? {}).length;
+  const mismatched = badges.filter((b) => b?.kind === "mismatches").length;
+  // The collation app mismatches CONTACTS and CONTACT_INFO with an EQUAL gap,
+  // so worstCategory is decided by localeCompare alone. ICU: CONTACT_INFO.
+  // Byte order and insertion order both say CONTACTS.
+  const tie = meta?.profileBadges?.[COLLATION_FIXTURE.id];
+  const tieOk = tie?.count === 2 && tie?.worstCategory === "CONTACT_INFO";
+  const ok = badges.length > 0 && mismatched > 0 && verdicts > 0 && tieOk;
+  console.log(
+    ok
+      ? `  ✔ grid meta: ${badges.length} profile badges (${mismatched} with mismatches), ${verdicts} user verdict(s), and the CONTACT_INFO/CONTACTS tie resolved the ICU way — the engine ran on both sides`
+      : `  ✘ grid meta: badges=${badges.length} mismatched=${mismatched} verdicts=${verdicts} tie=${JSON.stringify(tie)} — the meta=grid comparison is passing vacuously`
+  );
+  return ok;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -814,6 +855,11 @@ async function main() {
   );
   const changelogOk = await probeChangelog(rustBase, args.node);
 
+  console.log(
+    "\n── grid meta (the seed alone leaves two of its four maps empty) ──"
+  );
+  const gridOk = await probeGridMeta(args.node);
+
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
   try {
@@ -858,6 +904,7 @@ async function main() {
     sinceOk &&
     trendOk &&
     changelogOk &&
+    gridOk &&
     rateOk &&
     diffOk;
   console.log(

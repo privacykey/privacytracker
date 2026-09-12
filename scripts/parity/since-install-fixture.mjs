@@ -414,6 +414,48 @@ export const BRIDGED_IDS = ["pt-fixture-wayback", "pt-fixture-approx"];
 /** Ids the probe should see refused rather than answered. */
 export const MISSING_ID = "pt-fixture-does-not-exist";
 
+/**
+ * A stored privacy profile, so `/api/apps?meta=grid` populates
+ * `profileBadges`. Without one the canned seed leaves that map — and the
+ * whole profile-matching engine behind it — at `{}`, so a port that skipped
+ * `computeProfileMismatch` entirely would pass.
+ *
+ * `CONTACT_INFO` and `CONTACTS` are both set, at the SAME tier, on purpose:
+ * `computeProfileMismatch` breaks equal-gap ties with `localeCompare`, and
+ * ICU order puts `CONTACT_INFO` first where byte order puts `CONTACTS`.
+ * Several seeded apps track both, so the tie-break is observed on the wire.
+ */
+export const PROFILE_FIXTURE = {
+  LOCATION: "not_linked",
+  CONTACT_INFO: "not_linked",
+  CONTACTS: "not_linked",
+  IDENTIFIERS: "not_collected",
+  USAGE_DATA: "not_linked",
+};
+
+/**
+ * The one app on which `computeProfileMismatch`'s tie-break is decisive.
+ * No canned app collects `CONTACTS` at all, so nothing in the seed can tie
+ * it against `CONTACT_INFO`. This app tracks BOTH under
+ * `DATA_USED_TO_TRACK_YOU`; with the fixture profile allowing `not_linked`
+ * for each, both mismatch with an equal gap of 2 and `worstCategory` is
+ * decided purely by `localeCompare` — ICU says `CONTACT_INFO`. The rows are
+ * inserted `CONTACTS` first so that insertion order gives the wrong answer
+ * too, not just byte order.
+ */
+export const COLLATION_FIXTURE = {
+  id: "pt-fixture-collation",
+  typeId: "pt-fixture-collation-type",
+  categories: ["CONTACTS", "CONTACT_INFO"],
+};
+
+/** A user verdict, so `userVerdicts` is non-empty for the same reason. */
+export const VERDICT_FIXTURE = {
+  id: "pt-fixture-verdict-1",
+  appId: "pt-fixture-diff",
+  verdict: "replace",
+};
+
 export function applySinceInstallFixture(dataDir) {
   const db = new BetterSqlite3(path.join(dataDir, "privacy.db"));
   const insertApp = db.prepare(
@@ -434,9 +476,25 @@ export function applySinceInstallFixture(dataDir) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
+  const insertVerdict = db.prepare(
+    `INSERT OR REPLACE INTO app_verdicts
+       (id, app_id, verdict, rationale, source, source_name, set_at, updated_at)
+     VALUES (?, ?, ?, NULL, 'user', NULL, ?, ?)`
+  );
+  const upsertSetting = db.prepare(
+    "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)"
+  );
+
   const tx = db.transaction(() => {
     // Clear first, so re-running against a dirty directory is idempotent
     // rather than additive.
+    db.prepare("DELETE FROM privacy_categories WHERE type_id = ?").run(
+      COLLATION_FIXTURE.typeId
+    );
+    db.prepare("DELETE FROM privacy_types WHERE app_id = ?").run(
+      COLLATION_FIXTURE.id
+    );
+    db.prepare("DELETE FROM apps WHERE id = ?").run(COLLATION_FIXTURE.id);
     for (const fx of FIXTURES) {
       db.prepare("DELETE FROM change_review_actions WHERE app_id = ?").run(
         fx.id
@@ -479,6 +537,34 @@ export function applySinceInstallFixture(dataDir) {
         );
       }
     }
+    insertApp.run(
+      COLLATION_FIXTURE.id,
+      `Parity fixture — ${COLLATION_FIXTURE.id}`,
+      `https://example.com/${COLLATION_FIXTURE.id}`,
+      T0,
+      T0
+    );
+    db.prepare(
+      "INSERT INTO privacy_types (id, app_id, identifier, title) VALUES (?, ?, 'DATA_USED_TO_TRACK_YOU', 'Data Used to Track You')"
+    ).run(COLLATION_FIXTURE.typeId, COLLATION_FIXTURE.id);
+    for (const cat of COLLATION_FIXTURE.categories) {
+      db.prepare(
+        "INSERT INTO privacy_categories (id, type_id, identifier, title) VALUES (?, ?, ?, ?)"
+      ).run(
+        `${COLLATION_FIXTURE.typeId}-${cat}`,
+        COLLATION_FIXTURE.typeId,
+        cat,
+        cat
+      );
+    }
+    upsertSetting.run("privacy_profile", JSON.stringify(PROFILE_FIXTURE));
+    insertVerdict.run(
+      VERDICT_FIXTURE.id,
+      VERDICT_FIXTURE.appId,
+      VERDICT_FIXTURE.verdict,
+      T0,
+      T0
+    );
   });
   tx();
   db.close();

@@ -11,14 +11,18 @@
 //! could observe different database states, which the Node server is
 //! structurally incapable of doing. Matching the weaker model is the point.
 
+mod apps;
 pub mod auth;
 mod changelog;
 pub mod diff;
 mod gate;
+mod grid_meta;
 mod json;
+mod policy;
 mod ratelimit;
 mod routes;
 mod routes_app;
+mod routes_apps;
 mod routes_focus;
 mod routes_imports;
 mod routes_manual;
@@ -79,6 +83,9 @@ pub fn app(state: AppState) -> Router {
         )
         // Batch 2. Adds the two shapes batch 1 did not cover: a derived
         // multi-key object, and a bare array with a 404 branch.
+        // One path, five responses, all-or-nothing: axum routes by path, so
+        // this lands only once every branch exists. See routes_apps.rs.
+        .route("/api/apps", get(routes_apps::apps))
         .route("/api/focus", get(routes_focus::focus))
         .route("/api/imports", get(routes_imports::imports))
         // The first PER-APP route, and the first whose body is computed

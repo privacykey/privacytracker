@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (19).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (20).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -504,6 +504,57 @@ and Node answers 500 with a ZERO-BYTE body — not even the `{"error":…}`
 envelope. The Rust port returns the standard envelope: same status, different
 body. Consistent with `diff.rs` and `trend.rs`, and unreachable from data this
 application writes.
+
+### `/api/apps` (+1 route, 20 total)
+
+One path, five responses, dispatched on the query string in a fixed order of
+early returns: `?id=X&changelog=true` → `?id=X` → `?view=grouped` →
+`?limit=` → the bare array. axum routes by path, so every branch had to exist
+before any could ship — which is why the changelog kernel (#234) landed
+first: `?id&changelog=true` is `getChangelog(id, 50)`.
+
+**Five of the eight responses had no manifest entry.** The coverage gate
+counts routes, and two entries already made `/api/apps` look covered. The
+`?id`, `?changelog=true` and `?view=grouped` shapes and both error branches
+now have entries (`allowErrorStatus` for the 404/400, which the differ
+otherwise reads as a broken entry).
+
+**What decides the bytes, per branch:**
+
+- *Bare / paginated* — `SELECT a.*` expands to the table's RUNTIME column
+  order, which differs between a fresh install and an upgraded one
+  (`privacyPolicyUrl` is ALTER-appended, so it comes LAST on this database).
+  `row_to_json` reads the order off the statement; a struct would hard-code
+  one layout. `getAllApps` orders by name with no tiebreak, `getAppsPage`
+  adds `, id ASC` — deliberately different, and left that way.
+- *`?id`* — `getAppWithPrivacy` plus the policy-analysis hydration, the
+  densest present-null-vs-absent surface in the API: twelve of twenty keys
+  are `?? undefined` (absent when null), two are present-null, one is the raw
+  column. The dead `privacy_categories.purpose_id` column still ships. Built
+  as ordered maps, not structs. Verified byte-identical on all 22 apps,
+  including the ten real policy rows.
+- *`?view=grouped`* — three ordering mechanisms on one un-ORDER-BY'd join
+  (insertion-ordered object keys, a `Set`, two stable sorts that return 0 on
+  ties), all resolving to planner row order. Verified byte-identical.
+- *`&meta=grid`* — four maps keyed by app id. **JavaScript enumerates
+  array-index keys first, ascending, then the rest by insertion** — so the
+  seed's numeric ids sort while `pt-fixture-*` ids trail. `js_keyed_object`
+  reproduces that; an insertion-ordered map fails on every mixed page. And
+  `computeProfileMismatch` ties break on `localeCompare`: ICU puts
+  `CONTACT_INFO` before `CONTACTS`, byte order the reverse. A strip-the-
+  underscore collation matches Node on all 196 ordered pairs of the real
+  keys; byte order fails two.
+
+**Two more JavaScript semantics, now in `core/src/jsstr.rs`:** `\s`/`trim`
+strip U+FEFF and NOT U+0085 — the exact inverse of `char::is_whitespace` on
+those two — and `.length`/`.slice` count UTF-16 units.
+
+**The seed leaves half of `meta=grid` empty.** No stored profile, no user
+verdicts → `profileBadges` and `userVerdicts` are `{}` and the profile engine
+never runs. The fixture now stores a profile with `CONTACT_INFO` and
+`CONTACTS` at equal tiers (so the tie-break is observed) plus a user verdict,
+and `probeGridMeta` refuses a run where either map is empty or no badge has
+mismatches.
 
 **One knowing divergence.** A `changes_summary` that is valid JSON but not
 an array (`{}`) makes `computeCategoryTrend` throw and the route answer 500 —
