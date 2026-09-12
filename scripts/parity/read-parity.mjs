@@ -136,6 +136,56 @@ function checkpoint(dataDir) {
   }
 }
 
+/**
+ * Refuse to run when copying the database would make the Rust core WRITE to
+ * it, producing rows the Node side never had.
+ *
+ * `lib/db.ts` backfills a placeholder "Unknown device" and links every app
+ * to it when the database holds apps but no devices. `core/src/db.rs` ports
+ * that faithfully — so the migration the Rust server runs on OPEN is not
+ * read-only, and which side ran it first decides what both sides see.
+ *
+ * The failure mode is silent and timing-dependent. The Node server runs its
+ * backfill when it OPENS the database, so:
+ *
+ *   - boot Node on an empty dir, then seed → apps exist, devices do not;
+ *   - read-parity copies that state;
+ *   - the Rust server opens the copy, its backfill fires, and it now has a
+ *     device and one link per app that Node does not;
+ *   - any route reading `app_devices` — `/api/apps?meta=grid` is the first —
+ *     reports a difference that is an artefact of boot order, not a bug in
+ *     the port.
+ *
+ * Restarting Node at any point after seeding hides it again, which is
+ * exactly what makes it worth asserting rather than remembering. Measured:
+ * opening a 22-app copy with 0 devices produced 1 device and 22 links.
+ */
+function assertBackfillWontFire(dataDir) {
+  const db = new BetterSqlite3(path.join(dataDir, "privacy.db"), {
+    readonly: true,
+  });
+  let apps = 0;
+  let devices = 0;
+  try {
+    apps = db.prepare("SELECT COUNT(*) AS n FROM apps").get().n;
+    devices = db.prepare("SELECT COUNT(*) AS n FROM devices").get().n;
+  } finally {
+    db.close();
+  }
+  if (apps > 0 && devices === 0) {
+    throw new Error(
+      `the Node database has ${apps} apps and no devices, so the Rust core's ` +
+        "unknown-device backfill would fire on the copy and invent rows Node " +
+        "does not have.\n" +
+        "  The Node server has not opened this database since it was seeded. " +
+        "Restart it (its own backfill then runs, and both sides agree) and " +
+        "re-run.\n" +
+        "  See core/README.md → 'the migration is not read-only'."
+    );
+  }
+  return { apps, devices };
+}
+
 /** Start pt-core and resolve with its base URL once it reports listening. */
 function startRust(dbPath) {
   return new Promise((resolve, reject) => {
@@ -533,6 +583,12 @@ async function main() {
     "checkpointing the Node database and copying it for the Rust side…"
   );
   checkpoint(nodeData);
+  // Before the copy: opening it is a WRITE on the Rust side under one
+  // specific prior state. See the helper.
+  const backfill = assertBackfillWontFire(nodeData);
+  console.log(
+    `  devices=${backfill.devices} apps=${backfill.apps} — the unknown-device backfill will not fire on the copy`
+  );
   const rustData = path.join(work, "rust-data");
   cpSync(nodeData, rustData, { recursive: true });
 

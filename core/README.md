@@ -199,6 +199,26 @@ the differ seeds via POST, which a read-only server cannot answer, so Node is
 seeded and its checkpointed database is cloned. That disappears once the write
 routes land.
 
+**The migration is not read-only, and the copy step has to account for it.**
+`lib/db.ts` backfills a placeholder "Unknown device" and links every app to it
+when a database holds apps but no devices, and `core/src/db.rs` ports that
+faithfully. So opening a database with the Rust core can WRITE to it, and
+which side opened it first decides what both sides then see:
+
+* boot Node on an empty directory and seed it — apps exist, devices do not,
+  because Node ran its backfill before there was anything to back-fill;
+* read-parity copies that state;
+* the Rust server opens the copy, its backfill fires, and it now holds a
+  device and one link per app that Node does not;
+* any route reading `app_devices` — `/api/apps?meta=grid` is the first —
+  reports a difference that is an artefact of boot order.
+
+Measured: opening a 22-app copy holding zero devices produced 1 device and 22
+links. Restarting the Node server at any point after seeding hides it again,
+which is what makes it worth asserting rather than remembering, so
+`assertBackfillWontFire` refuses the run (exit 2) with the remedy rather than
+letting a future device-reading route fail mysteriously.
+
 **What the parity gate cannot see.** It authenticates every request, so a
 route that forgot its auth gate still answers 200 and passes. The same blind
 spot covers the inbound rate limiter: the differ sends ONE request per route
