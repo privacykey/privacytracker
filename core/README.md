@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (17).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (18).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -393,6 +393,50 @@ Neither is guaranteed by anything but that agreement, so "both sides run
 SQLite" is not the argument it looks like — if a future SQLite changes an
 index choice, the fix is an explicit `ORDER BY` on both sides in the same
 commit, not a version bump on one.
+
+### `/api/apps/[id]/history-stats` (+1 route, 18 total)
+
+The quarterly aggregates behind the widgets under the per-app timeline.
+Structurally the same route as `since-install` — same guard chain, same
+`{appId, …}` envelope — over two new pure functions ported into
+`core/src/server/trend.rs`.
+
+Unlike `since-install`, the canned seed DOES give this one real numbers:
+Instagram's history steps differ, so the stored `changes_summary` blobs carry
+entries and `totalAdded` is 7 across three quarters. But only one arm:
+
+- across all ten seeded apps **`totalRemoved` is 0**, so a port that dropped
+  the removal arm entirely would pass;
+- every seeded entry is an untagged privacy-label one, so the
+  `category` filter is never exercised;
+- `changes_detected` is only ever 0 or 1, so the strict `!== 1` is never
+  distinguished from `> 0`.
+
+`scripts/parity/since-install-fixture.mjs` therefore gained a
+`pt-fixture-trend` app whose rows cover all three, and the probe asserts both
+arms are non-zero before trusting the comparison (`+3/-3` today).
+
+Three things the Node code does that read like bugs and are not:
+
+- **The first bucket starts on 1 JANUARY 2021**, not on the documented floor
+  of 1 February. `bucketByQuarter` floors the floor's month to its quarter
+  (`Math.floor(1 / 3) === 0` → Q1), and Q1 begins in January. Anchoring on
+  the floor date shifts every boundary by a month.
+- **The two aggregates disagree about what a change is.**
+  `computeQuarterlyChanges` tests `changes_detected !== 1` — strict, so a row
+  storing 2 is skipped — while `computeCategoryTrend` never reads the column
+  and counts that row's entries. Both behaviours are pinned.
+- **A row outside every bucket is dropped, not clamped.**
+  `Array.prototype.find` returns undefined for a snapshot older than Q1 2021
+  or dated in the future, and it silently contributes nothing.
+
+**The differ cannot see the bucket boundaries.** Every `startMs`/`endMs` here
+is above 1.4e12, which `normalize()` masks as `~epoch`. The `label` strings
+are compared, so a whole-quarter slip is caught; a sub-quarter one is not.
+`trend.rs` therefore unit-tests the date arithmetic against a FIXED clock,
+with the `Date.UTC` expectations read out of `node -e` rather than computed by
+the same algorithm under test — a self-derived constant would agree with any
+bug it shared.
 
 **Two knowing divergences**, both verified against the real Node function and
 both unreachable from data this application writes: object/array identifiers

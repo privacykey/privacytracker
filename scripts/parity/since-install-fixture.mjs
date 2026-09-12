@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Write the `/api/apps/{id}/since-install` fixture rows into a data
- * directory's `privacy.db`.
+ * Write the per-app read-route fixture rows into a data directory's
+ * `privacy.db`. Backs both `/api/apps/{id}/since-install` and
+ * `/api/apps/{id}/history-stats`; the filename predates the second.
  *
  * Why this exists: the canned seed is useless for this route. It gives every
  * app a baseline and a latest snapshot whose types and categories have
@@ -32,6 +33,18 @@ import BetterSqlite3 from "better-sqlite3";
 /** A fixed epoch so the fixture is reproducible across runs and machines. */
 const T0 = 1_700_000_000_000;
 const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * What goes in `changes_summary`. `rawChanges` stores the string verbatim so
+ * a case can hold something `JSON.parse` rejects; `changes` is the normal
+ * path; absent means the empty array.
+ */
+const rawChangesFor = (snap) => {
+  if (snap.rawChanges !== undefined) {
+    return snap.rawChanges;
+  }
+  return snap.changes === undefined ? "[]" : JSON.stringify(snap.changes);
+};
 
 const type_ = (identifier, title, categories) => ({
   identifier,
@@ -227,6 +240,108 @@ export const FIXTURES = [
   },
 ];
 
+/**
+ * history-stats only. The canned seed reaches its `added` arm and nothing
+ * else: across all ten seeded apps `totalRemoved` is 0, every entry is an
+ * untagged privacy-label one, and `changes_detected` is only ever 0 or 1.
+ * So a port that dropped the removal arm, ignored the category filter, or
+ * relaxed the strict `!== 1` would pass the gate on real data.
+ *
+ * Rows are dated inside Q4 2023 and Q1 2024 so two ADJACENT buckets carry
+ * different numbers — a port with the boundaries a quarter out would merge
+ * them and the counts would move.
+ */
+const TREND_FIXTURE = {
+  id: "pt-fixture-trend",
+  firstSeen: T0,
+  snapshots: [
+    {
+      // Q4 2023. Mixed adds and removes, plus a tagged entry that must NOT
+      // count towards either total.
+      scrapedAt: T0,
+      source: "live",
+      appVersion: "1.0.0",
+      changesDetected: 1,
+      changes: [
+        { type: "added", description: "a1" },
+        { type: "added", description: "a2" },
+        { type: "removed", description: "r1" },
+        { type: "added", description: "policy", category: "privacy-policy" },
+        { type: "removed", description: "a11y", category: "accessibility" },
+        // An explicit null category is UNTAGGED — `??`, not `||` — so this
+        // one counts.
+        { type: "removed", description: "r2", category: null },
+      ],
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // Same quarter, but changes_detected = 2. computeCategoryTrend ignores
+      // the column and counts these; computeQuarterlyChanges tests `!== 1`
+      // and skips the row entirely. The two aggregates disagree on purpose.
+      scrapedAt: T0 + DAY,
+      source: "live",
+      appVersion: "1.1.0",
+      changesDetected: 2,
+      changes: [{ type: "added", description: "counted-by-trend-only" }],
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // changes_detected = 1 but every entry is tagged, so there are zero
+      // label entries and this is not an EVENT — the count must stay 0
+      // rather than becoming 1.
+      scrapedAt: T0 + 2 * DAY,
+      source: "live",
+      appVersion: "1.2.0",
+      changesDetected: 1,
+      changes: [
+        {
+          type: "added",
+          description: "policy only",
+          category: "privacy-policy",
+        },
+      ],
+      types: [type_("A", "Alpha", [["C", "Cat"]])],
+    },
+    {
+      // Q1 2024 — the next bucket, with different numbers from the first.
+      scrapedAt: Date.UTC(2024, 0, 15),
+      source: "live",
+      appVersion: "2.0.0",
+      changesDetected: 1,
+      changes: [{ type: "removed", description: "r3" }],
+      types: [type_("A", "Alpha", [])],
+    },
+    {
+      // Predates Q1 2021, so `Array.prototype.find` matches no bucket and
+      // the row is dropped rather than clamped into the first one.
+      scrapedAt: Date.UTC(2019, 5, 1),
+      source: "live",
+      appVersion: "0.0.1",
+      changesDetected: 1,
+      changes: [{ type: "added", description: "before the floor" }],
+      types: [type_("A", "Alpha", [])],
+    },
+    {
+      // Unparseable changes_summary: both functions swallow the error and
+      // treat it as no entries rather than failing the request.
+      scrapedAt: T0 + 3 * DAY,
+      source: "live",
+      appVersion: "1.3.0",
+      changesDetected: 1,
+      rawChanges: "not json",
+      types: [type_("A", "Alpha", [])],
+    },
+  ],
+};
+
+// Written alongside the since-install scenarios. Declared separately
+// because it is the only entry whose point is `changes_summary`, which the
+// since-install route never reads.
+FIXTURES.push(TREND_FIXTURE);
+
+/** The fixture app whose numbers the history-stats probe checks. */
+export const TREND_ID = TREND_FIXTURE.id;
+
 /** Ids the probe should see refused rather than answered. */
 export const MISSING_ID = "pt-fixture-does-not-exist";
 
@@ -240,7 +355,7 @@ export function applySinceInstallFixture(dataDir) {
     `INSERT OR REPLACE INTO privacy_snapshots
        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,
         source, triggered_by, app_version)
-     VALUES (?, ?, ?, ?, 0, '[]', ?, 'sample', ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'sample', ?)`
   );
 
   const tx = db.transaction(() => {
@@ -265,6 +380,9 @@ export function applySinceInstallFixture(dataDir) {
           snap.scrapedAt,
           // `raw` lets a case store something the app would never write.
           snap.raw === undefined ? JSON.stringify(snap.types) : snap.raw,
+          // These two are read by history-stats and ignored by since-install.
+          snap.changesDetected ?? 0,
+          rawChangesFor(snap),
           snap.source,
           snap.appVersion
         );

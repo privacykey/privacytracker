@@ -21,31 +21,11 @@ use serde_json::Value;
 
 use super::diff::{diff_snapshots, ChangeEntry, TypeSnapshot};
 use super::json::{json_error, json_ok};
+use super::now_ms;
+use super::row::column;
+use super::trend::{compute_category_trend, compute_quarterly_changes};
 use super::AppState;
 use crate::jsnum::{js_number, js_to_number};
-
-/// What better-sqlite3 hands JavaScript for a column value. Modelling this
-/// as JSON rather than as a Rust type is what lets the coercions below read
-/// like their Node counterparts — and it matters: several of these fields
-/// are passed to the response WITHOUT coercion, so a `scraped_at` that
-/// somehow held text would come back as a JSON string on both sides.
-fn column(row: &rusqlite::Row<'_>, name: &str) -> rusqlite::Result<Value> {
-    Ok(match row.get::<_, SqlValue>(name)? {
-        SqlValue::Null => Value::Null,
-        SqlValue::Integer(i) => Value::from(i),
-        SqlValue::Real(f) => js_number(f),
-        SqlValue::Text(s) => Value::from(s),
-        // better-sqlite3 yields a Buffer, and `JSON.parse(buffer)` coerces it
-        // via toString — so a BLOB `snapshot_json` parses its ACTUAL bytes in
-        // Node. Decoding here keeps that working; a `"<blob>"` placeholder
-        // would not, and worse, would be indistinguishable from a genuine
-        // stored string of those characters. (A BLOB `app_version` still
-        // diverges: Node would serialise the Buffer as a `{type,data}` object.
-        // Both columns are declared TEXT and every in-tree writer passes a
-        // string, so this is reachable only from a foreign writer.)
-        SqlValue::Blob(b) => Value::from(String::from_utf8_lossy(&b).into_owned()),
-    })
-}
 
 /// JavaScript truthiness — `if (!latest?.snapshot_json)`.
 ///
@@ -331,6 +311,64 @@ pub async fn since_install(State(state): State<AppState>, Path(id): Path<String>
         Ok(since_install) => json_ok(&SinceInstallBody {
             app_id: id,
             since_install,
+        }),
+        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"),
+    }
+}
+
+// ── GET /api/apps/{id}/history-stats ─────────────────────────────────
+
+#[derive(serde::Serialize)]
+struct HistoryStatsBody {
+    #[serde(rename = "appId")]
+    app_id: String,
+    #[serde(rename = "categoryTrend")]
+    category_trend: super::trend::CategoryTrendResult,
+    quarterly: Vec<super::trend::QuarterlyChangePoint>,
+}
+
+/// The aggregates behind the widgets under the per-app timeline.
+///
+/// Same guard chain as `since_install` — and the same deliberate split
+/// between them: an unknown app is a 404, while a known app with no
+/// snapshots is a 200 whose buckets are all zero.
+///
+/// The bucket list runs from Q1 2021 through the quarter containing NOW, so
+/// the response depends on the wall clock. Both backends are called within
+/// milliseconds of each other, so they only disagree if a run straddles a
+/// quarter boundary — three times a year, at midnight UTC.
+pub async fn history_stats(State(state): State<AppState>, Path(id): Path<String>) -> Response {
+    if id.is_empty() {
+        return json_error(StatusCode::BAD_REQUEST, "Missing id");
+    }
+
+    let conn = state.conn.lock().expect("db mutex poisoned");
+
+    let exists = match conn
+        .query_row("SELECT 1 FROM apps WHERE id = ?", [&id], |_| Ok(()))
+        .optional()
+    {
+        Ok(found) => found.is_some(),
+        Err(_) => return json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"),
+    };
+    if !exists {
+        return json_error(StatusCode::NOT_FOUND, "App not found");
+    }
+
+    let now = now_ms();
+    // Node calls `new Date()` separately inside each compute function. Using
+    // ONE instant for both is the safer reading: a request that crossed a
+    // quarter boundary between the two calls would otherwise return a
+    // `categoryTrend` with a different bucket count from `quarterly`, which
+    // the UI indexes into in lockstep.
+    let computed = compute_category_trend(&conn, &id, now)
+        .and_then(|trend| Ok((trend, compute_quarterly_changes(&conn, &id, now)?)));
+
+    match computed {
+        Ok((category_trend, quarterly)) => json_ok(&HistoryStatsBody {
+            app_id: id,
+            category_trend,
+            quarterly,
         }),
         Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"),
     }
