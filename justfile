@@ -100,6 +100,16 @@ parity-schema:
 parity-read node data:
     pnpm run parity:read -- --node {{node}} --node-data {{data}}
 
+# Runs the REAL lib/changelog.ts diffSnapshots over a table of snapshot pairs
+# and records its output as core/tests/fixtures/diff-cases.json. The parity
+# differ cannot see that function at all (every seeded app diffs to nothing),
+# so this fixture is the only thing that catches a wrong port. CI re-runs it
+# and fails if the checked-in file has drifted. See core/README.md.
+# Regenerate the diffSnapshots differential fixture from the Node source
+[group("rust-core")]
+parity-diff-cases:
+    pnpm run parity:diff-cases
+
 # SQLite lives in the privacytracker-data named volume; AGENTS.md has
 # the bind-mount variant and the backup command.
 # Run the production stack in Docker

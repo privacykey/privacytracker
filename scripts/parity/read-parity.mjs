@@ -36,6 +36,12 @@ import { parseArgs } from "node:util";
 
 import BetterSqlite3 from "better-sqlite3";
 
+import {
+  applySinceInstallFixture,
+  FIXTURES as SINCE_INSTALL_FIXTURES,
+  MISSING_ID as SINCE_INSTALL_MISSING_ID,
+} from "./since-install-fixture.mjs";
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
 
@@ -80,10 +86,25 @@ const BATCH_1 = [
   // unblocked by the inbound rate-limiter port
   "/api/manual-apps",
   "/api/import/audit-bundle/recent",
+  // The first per-app route. On the CANNED data this is the boring case —
+  // every seeded app diffs to nothing — so it is also covered by the fixture
+  // probe below and by core/tests/diff_cases.rs.
+  "/api/apps/[id]/since-install",
 ];
 
-const onlyRe =
-  args.only ?? `^(${BATCH_1.map((r) => r.replace(/[/]/g, "\\/")).join("|")})$`;
+/**
+ * Escape a route for use inside the `--only` regex.
+ *
+ * Escaping only `/` was enough until the first route with a dynamic
+ * segment. `/api/apps/[id]/since-install` contains `[id]`, which a regex
+ * reads as a CHARACTER CLASS — so the pattern matched
+ * `/api/apps/i/since-install` and never the literal route, the manifest
+ * entry silently dropped out of the run, and the gate reported PARITY OK
+ * having never compared it.
+ */
+const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+const onlyRe = args.only ?? `^(${BATCH_1.map(escapeForRegex).join("|")})$`;
 
 const ptCore =
   args["pt-core"] ?? path.join(repo, "core", "target", "debug", "pt-core");
@@ -221,10 +242,105 @@ async function probeRateLimiter(rustBase, nodeBase) {
   return ok;
 }
 
+/**
+ * Byte-compare `/api/apps/{id}/since-install` across the fixture scenarios.
+ *
+ * The differ already covers this route, but only against the canned seed —
+ * where every app's baseline and latest snapshot hold the same types and
+ * categories, so all ten answer `"changes": []`. A Rust `diff_snapshots`
+ * that returned an empty vec unconditionally would pass that check, and
+ * none of the route's other branches (`baselineIsApprox`,
+ * `isSingleSnapshot`, the null response, the empty-string `snapshot_json`
+ * trap) is reachable from the seed at all.
+ *
+ * So this walks the fixture apps written before the copy and compares the
+ * two backends' raw response bytes. It also asserts the diff case is
+ * genuinely non-empty — otherwise a broken fixture would quietly restore the
+ * blindness it exists to remove.
+ */
+async function probeSinceInstall(rustBase, nodeBase) {
+  const fetchBoth = async (id) => {
+    const route = `/api/apps/${encodeURIComponent(id)}/since-install`;
+    const [ra, rb] = await Promise.all([
+      fetch(`${nodeBase}${route}`, {
+        headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN },
+      }),
+      fetch(`${rustBase}${route}`, {
+        headers: { origin: rustBase, "x-auditor-admin-token": TOKEN },
+      }),
+    ]);
+    return {
+      node: { status: ra.status, body: await ra.text() },
+      rust: { status: rb.status, body: await rb.text() },
+    };
+  };
+
+  let ok = true;
+  const report = (label, pass, detail) => {
+    console.log(pass ? `  ✔ ${label}` : `  ✘ ${label}: ${detail}`);
+    ok &&= pass;
+  };
+
+  for (const fx of SINCE_INSTALL_FIXTURES) {
+    const { node, rust } = await fetchBoth(fx.id);
+    if (node.status !== rust.status) {
+      report(fx.id, false, `HTTP ${node.status} vs ${rust.status}`);
+      continue;
+    }
+    if (node.body !== rust.body) {
+      report(
+        fx.id,
+        false,
+        `bodies differ\n      node: ${node.body.slice(0, 400)}\n      rust: ${rust.body.slice(0, 400)}`
+      );
+      continue;
+    }
+    report(`${fx.id} (${node.status})`, true);
+  }
+
+  // An unknown id must be REFUSED, not answered with a null body.
+  const missing = await fetchBoth(SINCE_INSTALL_MISSING_ID);
+  report(
+    `unknown id → ${missing.node.status}`,
+    missing.node.status === 404 &&
+      missing.rust.status === 404 &&
+      missing.node.body === missing.rust.body,
+    `node ${missing.node.status} ${missing.node.body} vs rust ${missing.rust.status} ${missing.rust.body}`
+  );
+
+  // The point of the whole fixture: prove the comparison had something to
+  // compare. If this ever reads 0, everything above is passing vacuously.
+  const diffCase = await fetchBoth("pt-fixture-diff");
+  let entries = 0;
+  try {
+    entries =
+      JSON.parse(diffCase.node.body)?.sinceInstall?.changes?.length ?? 0;
+  } catch {
+    entries = 0;
+  }
+  report(
+    `the diff fixture produced ${entries} change entries`,
+    entries >= 4,
+    "expected at least 4 (added type, removed type, added category, removed category) — a 0 here means the probe proves nothing"
+  );
+
+  return ok;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
   console.log(`read-parity: node=${args.node} data=${nodeData}`);
+
+  // Applied BEFORE the checkpoint/copy so the Rust side starts on a byte
+  // copy holding the same rows: both backends then compute their own answer
+  // from identical input. See since-install-fixture.mjs for why the canned
+  // seed cannot cover this route.
+  const fixture = applySinceInstallFixture(nodeData);
+  console.log(
+    `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
+  );
+
   console.log(
     "checkpointing the Node database and copying it for the Rust side…"
   );
@@ -239,6 +355,11 @@ async function main() {
     "\n── auth gate (the differ cannot see this: it always authenticates) ──"
   );
   const authOk = await probeAuthGate(rustBase);
+
+  console.log(
+    "\n── since-install fixture (the canned seed diffs to nothing) ──"
+  );
+  const sinceOk = await probeSinceInstall(rustBase, args.node);
 
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
@@ -277,7 +398,7 @@ async function main() {
   const rateOk = await probeRateLimiter(rustBase, args.node);
 
   cleanup();
-  const ok = authOk && rateOk && diffOk;
+  const ok = authOk && sinceOk && rateOk && diffOk;
   console.log(
     ok
       ? "\nREAD PARITY OK — the Rust core matches Node on every implemented route"

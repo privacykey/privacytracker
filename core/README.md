@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (16).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (17).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -307,7 +307,99 @@ both backends' bucket exhausted, and probing first makes the differ's own
 from a real parity failure. It asserts the two backends deny from the same
 request number rather than a hard-coded 121, so the differ's own prior traffic
 cannot silently bake itself into the expectation.
+### `/api/apps/[id]/since-install` (+1 route, 17 total)
 
-**Still deferred:** `/api/apps/[id]/since-install`. It needs `diffSnapshots`
-ported — real snapshot-diffing business logic, closer to Phase 3 than to a
-read shim — and it deserves its own batch rather than being bolted on here.
+The first per-app route, the first with a path parameter, and the first whose
+body is COMPUTED rather than read: it ports `diffSnapshots`, which is real
+business logic rather than a read shim. That is why it was deferred out of
+every previous batch.
+
+**The gate is blind to the part that matters.** Every app the canned seed
+creates ends up with a baseline and a latest snapshot whose types and
+categories have identical membership — the arrays are reordered between them,
+which is itself a useful signal (it proves the diff is identifier-keyed), but
+nothing is ever added or removed. All ten seeded apps therefore answer
+`"changes": []`, and this would have passed the read gate unchanged:
+
+```rust
+fn diff_snapshots(_: &[TypeSnapshot], _: &[TypeSnapshot]) -> Vec<ChangeEntry> {
+    Vec::new()
+}
+```
+
+None of the route's other branches — `baselineIsApprox`, `isSingleSnapshot`,
+the null response, the empty-string `snapshot_json` trap — is reachable from
+the seed either. Two things close that, and neither is optional:
+
+- **`core/tests/diff_cases.rs`** replays
+  `core/tests/fixtures/diff-cases.json`, whose expected values were produced
+  by IMPORTING AND CALLING the real `diffSnapshots` from `lib/changelog.ts`
+  (`just parity-diff-cases`). There is no transcription step, so there is no
+  transcription risk. CI regenerates it and fails on drift, which is what
+  catches a change to the Node function that nobody ported. The fixture was
+  negative-tested against four plausible wrong ports — an empty-vec diff
+  (25 of 31 cases diverge), a sorted-key map, first-value-wins on duplicates,
+  and a defaulted `categories` — and catches all four.
+- **`scripts/parity/since-install-fixture.mjs`** writes ten scenario apps
+  into the Node data directory *before* read-parity checkpoints and copies it,
+  so both backends compute from identical rows; the probe in
+  `read-parity.mjs` then compares their RAW RESPONSE BYTES. That is stricter
+  than the differ itself, which parses and re-serialises and so cannot see a
+  whitespace or content-type difference. The probe also asserts the diff
+  scenario produced at least four change entries — otherwise it would be
+  passing vacuously.
+
+**A harness bug this route exposed.** `read-parity.mjs` built its `--only`
+regex by escaping `/` and nothing else. `/api/apps/[id]/since-install`
+contains `[id]`, which a regex reads as a CHARACTER CLASS, so the pattern
+matched `/api/apps/i/since-install` and never the literal route: the manifest
+entry silently dropped out of the run and the gate reported PARITY OK having
+never compared it. Every previous route was static, so nothing had tripped it.
+Fixed by escaping the whole route.
+
+**What a tidy port gets wrong here** — each of these is pinned by a test:
+
+- `new Map(arr.map(t => [t.identifier, t]))` keeps the FIRST occurrence's
+  position and the LAST occurrence's value. A `BTreeMap` sorts, a `HashMap`
+  randomises, and a `Vec` scan emits the duplicate twice.
+- Map keys use SameValueZero, so `1`, `"1"`, `null` and a MISSING field are
+  four distinct keys — while `0`/`-0` and `1`/`1.0` are one. Both halves are
+  easy to get wrong in opposite directions, and serde's `Option<Value>`
+  default silently merges missing with null.
+- `details` appears ONLY on added-type entries, and must be `[]` — not
+  absent — when the new type has no categories. Blanket
+  `skip_serializing_if` is the reflex that breaks it, and it would also
+  delete `sinceInstall`, `baselineVersion` and `latestVersion` from the wire.
+- The removed-CATEGORY description quotes the NEW type's title. It reads like
+  a bug; it is the contract.
+- Field order comes from the RETURN OBJECT LITERAL, not from the
+  `SinceInstallDiff` interface — those disagree, and the interface is the one
+  that looks authoritative.
+- `isSingleSnapshot` compares `scraped_at`, not row identity, so two distinct
+  rows sharing a timestamp collapse to "one snapshot" and diff to nothing.
+- `snapshot_json IS NOT NULL` does NOT exclude the empty string; the JS
+  truthiness check does, and only for the row already picked. Tidying that
+  into the SQL changes which row wins and whether `baselineIsApprox` is set.
+
+**The two backends do not run the same SQLite.** `rusqlite`'s bundled
+amalgamation is 3.46.0; `better-sqlite3`'s is 3.53.2 — seven minor releases
+apart, and `just parity-schema` already prints the TypeScript side's version
+for this reason. That matters here because two behaviours this route leans on
+are decided by the query planner rather than by any `ORDER BY`:
+`buildSnapshot`'s type/category order (which becomes the stored
+`snapshot_json` byte order) and the `LIMIT 1` tie-break when several
+snapshots share a `scraped_at`. Both agree today on every query involved.
+Neither is guaranteed by anything but that agreement, so "both sides run
+SQLite" is not the argument it looks like — if a future SQLite changes an
+index choice, the fix is an explicit `ORDER BY` on both sides in the same
+commit, not a version bump on one.
+
+**Two knowing divergences**, both verified against the real Node function and
+both unreachable from data this application writes: object/array identifiers
+(JavaScript compares them by reference, which nothing survives
+deserialisation with) and integers beyond 2^53 inside a title (JavaScript
+loses precision; `serde_json` does not). A structurally malformed blob — a
+type with no `categories` — throws out of `diffSnapshots` in Node and 500s;
+here it fails to deserialise and the route answers `"sinceInstall": null`.
+Different, but both refuse: the alternative was to default the field and
+invent an answer.
