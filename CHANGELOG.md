@@ -12,6 +12,17 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Fixed
+
+- Rust-core parity harness: `read-parity.mjs` now refuses to run when copying
+  the Node database would let the Rust core's unknown-device backfill fire on
+  the copy. Both backends port that backfill, so whichever opens the database
+  first decides what both see — a Node server booted on an empty directory and
+  then seeded leaves apps with no devices, and the Rust core inventing them on
+  open would make any `app_devices`-reading route (`/api/apps?meta=grid` is the
+  first) differ for reasons of boot order rather than correctness. Measured at
+  1 device and 22 links on a 22-app copy. Developer-facing only.
+
 ### Added
 
 - Rust-core migration: `/api/apps/[id]/since-install` joins the Rust read API
