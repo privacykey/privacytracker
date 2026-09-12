@@ -70,9 +70,9 @@ export type FlagKey =
   | "flag.nav.task_list_icon"
   | "flag.nav.mobile_drawer"
   // Global device-scope picker in the nav. Names which device's apps the
-  // whole app is showing and lets the user narrow to a subset. Self-hides
-  // when the install has fewer than two devices, so leaving it "on" costs
-  // single-device users nothing.
+  // whole app is showing and lets the user narrow to a subset. Renders
+  // nothing when the install has no devices at all, so leaving it "on"
+  // costs a fresh install nothing.
   | "flag.nav.device_scope"
 
   // ----- Dashboard (HomeView)
@@ -395,7 +395,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.nav.task_center_trigger": "on", // task widget trigger
   "flag.nav.task_list_icon": "on", // user-facing task list nav icon
   "flag.nav.mobile_drawer": "on", // mobile-only menu drawer
-  "flag.nav.device_scope": "on", // global device-scope picker (self-hides under 2 devices)
+  "flag.nav.device_scope": "on", // global device-scope picker (renders nothing with no devices)
 
   // Dashboard
   "flag.dashboard.focus_strip": "on", // shows current focus chips

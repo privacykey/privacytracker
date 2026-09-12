@@ -46,12 +46,25 @@ export default function DeviceScopePicker({
   /** Renders trigger text as icon-only. The nav sets this at its
    *  `compact` width tier, where the full label doesn't fit. */
   compact = false,
+  /**
+   * Set when the picker is rendered INSIDE an element with
+   * `role="menu"` — which the nav's mobile drawer is.
+   *
+   * A `role="menu"` may only own menuitem-ish children, so a plain
+   * button in there is an `aria-required-children` violation (axe rates
+   * it critical, and the repo's a11y spec catches it). As a menuitem
+   * with `aria-haspopup` opening its own menu, the control is a
+   * submenu trigger, which is exactly what it behaves like.
+   */
+  inMenu = false,
 }: {
   compact?: boolean;
+  inMenu?: boolean;
 }) {
   const t = useTranslations("device_scope");
-  const { audience, devices, ready, scope, setAudience, setScope } =
-    useDeviceScope();
+  // `ready` isn't read: `devices` is empty until the fetch lands, which
+  // is the same signal and one fewer thing to keep in sync.
+  const { audience, devices, scope, setAudience, setScope } = useDeviceScope();
   // Self-gated rather than gated by a prop from Nav: almost every page
   // renders `<Nav />` with no flags at all, so a prop would resolve to
   // its `true` default nearly everywhere and the flag would look wired
@@ -122,10 +135,23 @@ export default function DeviceScopePicker({
   // install where it would only be confusing.
   const showUnattachedRow = devices.length > 0;
 
-  // Nothing to scope: a fresh install, or one whose apps all arrived
-  // before devices were recorded. Rendering a one-option picker there is
-  // pure noise.
-  const hasChoice = devices.length > 1 || (devices.length === 1 && ready);
+  /**
+   * Render from ONE device, not two.
+   *
+   * The instinct is "a one-device install has nothing to choose between,
+   * so hide it" — and that is what the grid's old dropdown tried, until
+   * it turned out that users who had just imported expected to see WHICH
+   * device the list was showing, and the silent hide read as the feature
+   * being broken (the reasoning is preserved in AppGrid's history). A
+   * single-device install also still has a real choice: that device
+   * versus the apps tied to no device at all.
+   *
+   * `devices` is empty until the fetch lands, so this doubles as the
+   * "don't flash a picker before we know" guard. Zero devices — a fresh
+   * install, or one whose apps all predate device records — renders
+   * nothing.
+   */
+  const hasChoice = devices.length > 0;
 
   const close = useCallback(() => {
     setOpen(false);
@@ -216,6 +242,7 @@ export default function DeviceScopePicker({
         data-flag-target="flag.nav.device_scope"
         onClick={() => setOpen((v) => !v)}
         ref={triggerRef}
+        role={inMenu ? "menuitem" : undefined}
         type="button"
       >
         {description.device ? (

@@ -80,8 +80,9 @@ Going forward, changes are recorded here as they land.
   which meant someone helping a relative could be several screens into a
   removal workflow with nothing on screen saying whose phone it applied
   to. The choice persists across reloads and is gated by
-  `flag.nav.device_scope`; it hides itself on installs with fewer than
-  two devices. Apps with no device link (hand-added entries and CSV
+  `flag.nav.device_scope`; it renders from the first device onward and
+  disappears only on installs with none. Apps with no device link
+  (hand-added entries and CSV
   imports) get their own "Not tied to a device" bucket rather than
   vanishing silently.
 
@@ -291,6 +292,13 @@ Going forward, changes are recorded here as they land.
   `NODE_MODULE_VERSION`.
 
 ### Changed
+
+- **Fixed: the mobile nav drawer reported a critical accessibility
+  violation once a device existed.** The drawer is a `role="menu"`,
+  which may only contain menu items, and the new device-scope control
+  was a plain button inside it — axe flagged `aria-required-children`.
+  The control is now a menu item that opens its own submenu, which is
+  what it already behaved like.
 
 - **Fixed: the apps grid's device filter changed the counts but not the
   cards.** The risk tabs and the "N of M" figure were computed from a

@@ -333,8 +333,14 @@ export default function Nav({ appCount, flags }: NavProps) {
           ref={drawerRef}
           role="menu"
         >
-          <div className="nav-drawer-device-scope">
-            <DeviceScopePicker />
+          {/* `role="none"` on the wrapper and `inMenu` on the picker:
+              the drawer is a `role="menu"`, which may only own
+              menuitem-ish children. Without both, axe flags
+              aria-required-children as critical (tests/e2e/a11y.spec.ts
+              covers this drawer). The picker becomes a submenu trigger,
+              which is what it already behaves like. */}
+          <div className="nav-drawer-device-scope" role="none">
+            <DeviceScopePicker inMenu />
           </div>
           {visibleLinks.map((link) => {
             const active = isActive(link.href, link.exact);
