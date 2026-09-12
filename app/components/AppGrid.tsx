@@ -28,7 +28,11 @@ import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import type { VerdictValue } from "../../lib/verdict-types";
 import BulkSelectBar from "./BulkSelectBar";
-import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
+import {
+  useDeviceScope,
+  useScopeLabel,
+  withScopeParam,
+} from "./DeviceScopeProvider";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
@@ -861,24 +865,16 @@ export default function AppGrid({
   /**
    * Human name for the active scope, or null when unrestricted.
    *
-   * "Sync All" now operates on a scoped fleet — the server pages only
+   * "Sync All" operates on a scoped fleet — the server pages only
    * in-scope apps, so `apps` never holds the others — and a button that
    * says "All" while touching a third of the library is a lie the user
    * can't see. Bulk actions interpolate this so the control names what
    * it will actually act on.
+   *
+   * Shared with the export notices (see useScopeLabel), which need the
+   * same phrase for the opposite reason: to admit they ignore it.
    */
-  const scopeLabel = useMemo(() => {
-    if (scopeDescription.kind === "all") {
-      return null;
-    }
-    if (scopeDescription.kind === "single" && scopeDescription.name) {
-      return scopeDescription.name;
-    }
-    if (scopeDescription.kind === "unattached") {
-      return tScope("unattached_label");
-    }
-    return tScope("multi_label", { count: scopeDescription.count });
-  }, [scopeDescription, tScope]);
+  const scopeLabel = useScopeLabel();
 
   // Per-level counts against the prefiltered subset — drives the badge on
   // each risk-filter tab.

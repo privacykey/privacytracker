@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   createContext,
   type ReactNode,
@@ -11,6 +12,7 @@ import {
 } from "react";
 import {
   type DeviceScope,
+  describeScope,
   SCOPE_ALL,
   serialiseScopeParam,
 } from "@/lib/device-scope";
@@ -106,6 +108,38 @@ const DeviceScopeContext = createContext<DeviceScopeValue>(FALLBACK);
  */
 export function useDeviceScope(): DeviceScopeValue {
   return useContext(DeviceScopeContext);
+}
+
+/**
+ * Human name for the active scope, or null when unrestricted.
+ *
+ * One implementation, because three surfaces need the same phrase and
+ * three copies would drift: the grid's "Sync {scope}" button, its
+ * "Showing {scope}" chip, and the export notices that have to admit
+ * they ignore the scope.
+ *
+ * Names the DEVICE, not its owner, even where an owner is recorded.
+ * These are labels on things being acted on or counted — "Sync Mum's
+ * iPad" says precisely what will be synced, where "Sync Mum" does not.
+ * Owner-first phrasing belongs to the focus-switch prompt, which is
+ * about a person rather than a device and carries its own strings.
+ */
+export function useScopeLabel(): string | null {
+  const t = useTranslations("device_scope");
+  const { devices, scope } = useDeviceScope();
+  return useMemo(() => {
+    const described = describeScope(scope, devices);
+    if (described.kind === "all") {
+      return null;
+    }
+    if (described.kind === "single" && described.name) {
+      return described.name;
+    }
+    if (described.kind === "unattached") {
+      return t("unattached_label");
+    }
+    return t("multi_label", { count: described.count });
+  }, [devices, scope, t]);
 }
 
 /** Append `?devices=` to a URL when a scope is active. Centralised so

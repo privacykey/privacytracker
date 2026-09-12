@@ -3573,7 +3573,9 @@
       "self": "working on my own apps",
       "loved_one": "helping someone else",
       "guardian": "looking after a child's device"
-    }
+    },
+    "export_note": "Exports cover every device, not just {scope}.",
+    "export_note_bundle": "This bundle covers every device, not just {scope}."
   },
   "device_connect_toast": {
     "no_name": "iOS device",

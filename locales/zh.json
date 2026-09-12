@@ -3573,7 +3573,9 @@
       "self": "管理我自己的应用",
       "loved_one": "帮助他人",
       "guardian": "照看孩子的设备"
-    }
+    },
+    "export_note": "导出包含所有设备，而不仅仅是{scope}。",
+    "export_note_bundle": "此文件包含所有设备，而不仅仅是{scope}。"
   },
   "device_connect_toast": {
     "no_name": "iOS 设备",

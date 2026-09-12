@@ -55,6 +55,16 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- **Exports now say when they're broader than the page.** Every export
+  stays whole-install by design — a file whose contents depend on a
+  device filter the reader can't see is worse than one that's simply
+  complete — but while a device scope is active the Stats page, Settings
+  → Export Data, the shortlist download and the audit bundle each carry
+  a line saying so. Previously the Stats page could read "3 apps
+  tracked" directly above a download containing ten, with nothing
+  reconciling the two. The note disappears entirely when no scope is
+  set.
+
 - **Device ownership** — each device can record whose it is (a name, and
   whether you're working on your own apps, helping someone else, or
   looking after a child's device), set in Settings → Devices. The nav

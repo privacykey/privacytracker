@@ -318,6 +318,50 @@ browserFlow(
 );
 
 browserFlow(
+  "exports stay whole-install, and say so while a scope is active",
+  async ({ page }) => {
+    // The decision: an export is a record of the install, and whoever
+    // opens the file cannot tell a partial one from a complete one — so
+    // exports ignore the scope. That is only defensible if the user is
+    // told, otherwise Stats reads "N apps" directly above a download
+    // containing every app, with nothing reconciling the two.
+    await page.goto("/dashboard/stats");
+    const note = page.locator(".scope-export-note");
+    // Unscoped: nothing to reconcile, so no disclaimer.
+    await expect(page.getByText("Apps Tracked")).toBeVisible();
+    await expect(note).toHaveCount(0);
+
+    await openPicker(page);
+    await pickerRow(page, PHONE_NAME).click();
+    await pickerRow(page, "Not tied to a device").click();
+    await page.keyboard.press("Escape");
+
+    await expect(
+      page.locator(".stat-card", { hasText: "Apps Tracked" })
+    ).toContainText(String(TABLET_APPS));
+    // Scoped: the page shows one device, the export covers all of them,
+    // and the note is what admits it.
+    await expect(note).toBeVisible();
+    await expect(note).toContainText(TABLET_NAME);
+
+    // The export link itself must stay unscoped — no `devices=` param.
+    const csv = page.locator('a[href*="/api/export"][href*="csv"]');
+    await expect(csv).toHaveAttribute("href", "/api/export?format=csv");
+
+    // Settings → Export Data ships the same files from a second place.
+    // It was nearly missed when this disclosure was added, which is
+    // exactly why it is pinned: one surface admitting the mismatch and
+    // another staying quiet is worse than neither doing it.
+    await page.goto("/dashboard/settings/admin");
+    const exportSection = page.locator("#export-data");
+    await expect(exportSection).toBeVisible();
+    await expect(exportSection.locator(".scope-export-note")).toContainText(
+      TABLET_NAME
+    );
+  }
+);
+
+browserFlow(
   "Escape closes the picker and returns focus to its trigger",
   async ({ page }) => {
     await page.goto("/dashboard/apps");

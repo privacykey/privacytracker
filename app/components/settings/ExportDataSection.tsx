@@ -15,6 +15,7 @@
 
 import { useTranslations } from "next-intl";
 import AuditBundleExport from "../AuditBundleExport";
+import ScopeExportNote from "../ScopeExportNote";
 
 export default function ExportDataSection({
   auditPdfOn,
@@ -53,6 +54,11 @@ export default function ExportDataSection({
       >
         {tExportCard("formats_note")}
       </p>
+      {/* These downloads are the whole install, never the active device
+          scope — a file whose contents depend on a nav setting the
+          reader can't see is worse than one that is simply complete.
+          Renders nothing while no scope is set. */}
+      <ScopeExportNote />
 
       <AuditBundleExport />
       {auditPdfOn && (

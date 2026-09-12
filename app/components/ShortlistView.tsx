@@ -57,6 +57,7 @@ import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
+import ScopeExportNote from "./ScopeExportNote";
 import { SocialShareModal } from "./SocialShareModal";
 import { useTaskCenter } from "./TaskCenter";
 
@@ -942,13 +943,19 @@ export default function ShortlistView({
         </div>
         <div className="shortlist-toolbar-actions">
           {f.actionsExport && (
-            <a
-              className="btn btn-secondary"
-              download
-              href="/api/shortlist/export?format=md"
-            >
-              {tShortlist("download_md")}
-            </a>
+            <>
+              <a
+                className="btn btn-secondary"
+                download
+                href="/api/shortlist/export?format=md"
+              >
+                {tShortlist("download_md")}
+              </a>
+              {/* The list on screen follows the device scope; the
+                  download is the whole shortlist. Reconcile the two
+                  rather than letting the file quietly hold more. */}
+              <ScopeExportNote />
+            </>
           )}
           {/* Detailed-view toggle. Styled as a pill-y checkbox label that
               sits immediately left of the Print button so the two controls
