@@ -203,7 +203,7 @@ pub async fn dev_menu_state(State(state): State<AppState>) -> Response {
 // So `{}` (stored empty object) and `null` (absent/garbage) are DIFFERENT
 // responses and the differ can tell them apart.
 
-const PROFILE_CATEGORY_KEYS: [&str; 14] = [
+pub(super) const PROFILE_CATEGORY_KEYS: [&str; 14] = [
     "CONTACT_INFO",
     "HEALTH_AND_FITNESS",
     "FINANCIAL_INFO",
@@ -219,9 +219,9 @@ const PROFILE_CATEGORY_KEYS: [&str; 14] = [
     "DIAGNOSTICS",
     "OTHER",
 ];
-const PROFILE_TIERS: [&str; 4] = ["not_collected", "not_linked", "linked", "tracking"];
+pub(super) const PROFILE_TIERS: [&str; 4] = ["not_collected", "not_linked", "linked", "tracking"];
 
-const A11Y_FEATURE_KEYS: [&str; 9] = [
+pub(super) const A11Y_FEATURE_KEYS: [&str; 9] = [
     "voiceover",
     "voice_control",
     "larger_text",
@@ -232,11 +232,11 @@ const A11Y_FEATURE_KEYS: [&str; 9] = [
     "captions",
     "audio_descriptions",
 ];
-const A11Y_PREFERENCES: [&str; 2] = ["required", "nice"];
+pub(super) const A11Y_PREFERENCES: [&str; 2] = ["required", "nice"];
 
 /// Shared port of parseStoredProfile / parseStoredA11yProfile — identical
 /// logic over different allowlists.
-fn parse_stored_profile(
+pub(super) fn parse_stored_profile(
     raw: &str,
     allowed_keys: &[&str],
     allowed_values: &[&str],

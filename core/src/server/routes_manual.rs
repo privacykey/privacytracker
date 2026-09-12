@@ -23,7 +23,7 @@ fn hdr<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 }
 
 /// Shared gate: returns the 429 response when the limit is tripped.
-fn rate_gate(
+pub(super) fn rate_gate(
     state: &AppState,
     headers: &HeaderMap,
     prefix: &str,

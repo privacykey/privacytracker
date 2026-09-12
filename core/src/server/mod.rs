@@ -23,6 +23,7 @@ mod ratelimit;
 mod routes;
 mod routes_app;
 mod routes_apps;
+mod routes_detail;
 mod routes_focus;
 mod routes_imports;
 mod routes_manual;
@@ -120,6 +121,10 @@ pub fn app(state: AppState) -> Router {
             "/api/import/audit-bundle/recent",
             get(routes_manual::audit_bundle_recent),
         )
+        // Fourteen keys assembled from reads that are almost all already
+        // ported; every one but the app row degrades to a fallback rather
+        // than failing the request. See routes_detail.rs.
+        .route("/api/apps/{id}/detail", get(routes_detail::detail))
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))

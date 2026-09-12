@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (20).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (21).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -555,6 +555,41 @@ never runs. The fixture now stores a profile with `CONTACT_INFO` and
 `CONTACTS` at equal tiers (so the tie-break is observed) plus a user verdict,
 and `probeGridMeta` refuses a run where either map is empty or no badge has
 mismatches.
+
+### `/api/apps/[id]/detail` (+1 route, 21 total)
+
+Everything the app-detail page renders, in one payload of fourteen keys. It
+is the assembly job the previous batches were building towards: the app row
+is `getAppWithPrivacy`, the timeline is `getChangelogPage`, the two profiles
+are the parsers behind `/api/privacy-profile` and `/api/accessibility-profile`,
+the import item is `hydrateImportItem` from `/api/imports`. Three reads are
+new: `getUnacknowledgedChanges`, `getRecentPolicyChange` and
+`getAppImportProvenance`.
+
+Two things shape it, and neither is a query:
+
+- **Every read is wrapped in `safe()`** with its own fallback. A failure in
+  one degrades that field to the page's old default and nothing else, so a
+  schema drift in one table cannot blank the page. The single exception is
+  the app row, whose failure IS the 404. A port that propagates any other
+  read's error turns a partial answer into a 500.
+- **`ID_RE = /^\d{1,20}$/` runs BEFORE the existence check.** A non-numeric
+  id is a 400, not a 404 — which also means the `pt-fixture-*` apps can never
+  reach this route. Its fixture coverage hangs off Instagram instead.
+
+Smaller coercions that each earned a comment: `policyDiffAlertDays` is
+`parseInt` guarded by `>= 0` (0 is meaningful — it disables the banner);
+the two boolean settings are `!== "false"`, so only that literal is false;
+`audience` is `getSetting(...) || "self"` with `||`, so a stored empty
+string is `"self"`; `childAgeBand` is present-null unless it is one of the
+five band keys.
+
+**What the seed leaves null.** `importProvenance` (the seed writes no
+import items), `a11yProfile` (no accessibility profile stored) and
+`childAgeBand` (no band stored). All three were therefore compared as
+`null` against `null`. The fixture now writes an import row for Instagram
+and both settings, and `probeDetail` refuses a run where any of the three is
+still null.
 
 **One knowing divergence.** A `changes_summary` that is valid JSON but not
 an array (`{}`) makes `computeCategoryTrend` throw and the route answer 500 —

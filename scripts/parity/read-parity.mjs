@@ -41,6 +41,7 @@ import {
   applySinceInstallFixture,
   BRIDGED_IDS,
   COLLATION_FIXTURE,
+  INSTAGRAM_ID,
   FIXTURES as SINCE_INSTALL_FIXTURES,
   MISSING_ID as SINCE_INSTALL_MISSING_ID,
   TIMELINE_ID,
@@ -106,6 +107,10 @@ const BATCH_1 = [
   // the paginated+meta form; the other three GET shapes and both error
   // branches were ungated until the entries added alongside this route.
   "/api/apps",
+  // The detail aggregate: its reads are the ones above plus three new
+  // ones. The canned seed leaves importProvenance, a11yProfile and
+  // childAgeBand null; the fixture and probe cover those.
+  "/api/apps/[id]/detail",
 ];
 
 /**
@@ -799,6 +804,38 @@ async function probeGridMeta(nodeBase) {
   return ok;
 }
 
+/**
+ * `/api/apps/{id}/detail` is byte-compared by the manifest on Instagram. On
+ * the canned seed three of its fourteen fields are null — importProvenance,
+ * a11yProfile, childAgeBand — so their real shapes were never compared. The
+ * fixture writes an import row for Instagram and the two settings; this
+ * refuses a run where any of the three is still null.
+ *
+ * Instagram specifically, because `ID_RE = /^\d{1,20}$/` runs before the
+ * existence check and a `pt-fixture-*` id is a 400 on this route.
+ */
+async function probeDetail(nodeBase) {
+  const res = await fetch(`${nodeBase}/api/apps/${INSTAGRAM_ID}/detail`, {
+    headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN },
+  });
+  let j = null;
+  try {
+    j = await res.json();
+  } catch {
+    j = null;
+  }
+  const nulls = ["importProvenance", "a11yProfile", "childAgeBand"].filter(
+    (k) => j?.[k] === null || j?.[k] === undefined
+  );
+  const ok = res.status === 200 && nulls.length === 0;
+  console.log(
+    ok
+      ? `  ✔ detail: importProvenance (${j.importProvenance?.source}), a11yProfile (${Object.keys(j.a11yProfile ?? {}).length} keys) and childAgeBand (${j.childAgeBand}) all populated — the seed alone leaves all three null`
+      : `  ✘ detail: HTTP ${res.status}, still null: ${nulls.join(", ") || "none"} — the comparison never saw their real shapes`
+  );
+  return ok;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -860,6 +897,11 @@ async function main() {
   );
   const gridOk = await probeGridMeta(args.node);
 
+  console.log(
+    "\n── detail (three of fourteen fields are null on the canned seed) ──"
+  );
+  const detailOk = await probeDetail(args.node);
+
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
   try {
@@ -905,6 +947,7 @@ async function main() {
     trendOk &&
     changelogOk &&
     gridOk &&
+    detailOk &&
     rateOk &&
     diffOk;
   console.log(

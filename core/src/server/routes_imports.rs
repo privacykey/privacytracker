@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use super::json::{json_error, json_ok};
 use super::AppState;
 
-const IMPORT_SOURCES: [&str; 3] = ["screenshots", "file", "manual"];
+pub(super) const IMPORT_SOURCES: [&str; 3] = ["screenshots", "file", "manual"];
 const IMPORT_ITEM_STATUSES: [&str; 8] = [
     "matched",
     "unmatched",
@@ -80,7 +80,7 @@ struct ImportRow {
 /// bakes in and a "tidy" port would smooth away: `attemptCount` coerces NULL
 /// to 0, while the adjacent `nextAttemptAt` stays null.
 #[derive(Serialize)]
-struct ImportItemRow {
+pub(super) struct ImportItemRow {
     id: String,
     #[serde(rename = "importId")]
     import_id: String,
@@ -116,7 +116,7 @@ struct ImportDetail {
 
 /// `normalizeSource` / `normalizeItemStatus`: an unrecognised stored value is
 /// silently coerced to a default, never surfaced and never an error.
-fn normalize(value: &str, allowed: &[&str], fallback: &str) -> String {
+pub(super) fn normalize(value: &str, allowed: &[&str], fallback: &str) -> String {
     if allowed.contains(&value) {
         value.to_string()
     } else {
@@ -143,7 +143,7 @@ fn hydrate_import(row: &Row<'_>) -> rusqlite::Result<ImportRow> {
     })
 }
 
-fn hydrate_item(row: &Row<'_>) -> rusqlite::Result<ImportItemRow> {
+pub(super) fn hydrate_item(row: &Row<'_>) -> rusqlite::Result<ImportItemRow> {
     Ok(ImportItemRow {
         id: row.get("id")?,
         import_id: row.get("import_id")?,
