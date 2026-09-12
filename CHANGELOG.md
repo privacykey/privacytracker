@@ -14,6 +14,15 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration: `/api/apps/[id]/history-stats` joins the Rust read API
+  (18 of 64 read routes), porting the quarterly aggregates
+  `computeCategoryTrend` and `computeQuarterlyChanges`. The canned seed
+  exercises only their `added` arm — across all ten seeded apps nothing is
+  ever removed, no entry is category-tagged, and `changes_detected` is only
+  ever 0 or 1 — so the parity fixture gained an app covering the removal arm,
+  the category filter and the strict `changes_detected !== 1`. Developer-facing
+  only.
+
 - Rust-core migration: `/api/apps/[id]/since-install` joins the Rust read API
   (17 of 64 read routes), bringing `diffSnapshots` with it — the first real
   business logic in the core rather than a read shim. The parity differ is
