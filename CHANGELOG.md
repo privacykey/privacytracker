@@ -25,6 +25,16 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration: `/api/apps/[id]/detail` joins the Rust read API
+  (21 of 64 read routes) — the fourteen-key aggregate the app-detail page
+  renders, assembled from reads already ported plus three new ones
+  (`getUnacknowledgedChanges`, `getRecentPolicyChange`,
+  `getAppImportProvenance`). Every read but the app row degrades to its own
+  fallback rather than failing the request, as in Node. Three fields are
+  null on the canned seed and were only ever compared as null; the fixture
+  now populates them and the probe refuses a run where they are not.
+  Developer-facing only.
+
 - Rust-core migration: `GET /api/apps` joins the Rust read API (20 of 64
   read routes) — all five of its query-string branches at once, since axum
   routes by path. Ports `getAllApps`/`getAppsPage`, `getAppWithPrivacy` with

@@ -33,6 +33,25 @@ pub fn column_value(value: SqlValue) -> Value {
     }
 }
 
+/// The inverse mapping, for a column value that is bound back into another
+/// query — `scraped_at > ?` with a `changes_acknowledged_at` read earlier,
+/// say. better-sqlite3 binds a JS number as INTEGER when integral and REAL
+/// otherwise, a string as TEXT and null as NULL; nothing this server reads
+/// out of a column and binds again can be a boolean, array or object, so
+/// those fall back to their JSON text rather than a panic.
+pub fn to_sql_value(v: &Value) -> SqlValue {
+    match v {
+        Value::Null => SqlValue::Null,
+        Value::Number(n) => match n.as_i64() {
+            Some(i) => SqlValue::Integer(i),
+            None => n.as_f64().map(SqlValue::Real).unwrap_or(SqlValue::Null),
+        },
+        Value::String(s) => SqlValue::Text(s.clone()),
+        Value::Bool(b) => SqlValue::Integer(i64::from(*b)),
+        other => SqlValue::Text(other.to_string()),
+    }
+}
+
 /// Read one named column, for the routes that do know their shape.
 pub fn column(row: &Row<'_>, name: &str) -> rusqlite::Result<Value> {
     Ok(column_value(row.get::<_, SqlValue>(name)?))

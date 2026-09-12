@@ -12,6 +12,16 @@ use super::AppState;
 
 pub fn get_setting(state: &AppState, key: &str, default: &str) -> rusqlite::Result<String> {
     let conn = state.conn.lock().expect("db mutex poisoned");
+    get_setting_with(&conn, key, default)
+}
+
+/// The same read for a handler that already holds the connection lock —
+/// calling `get_setting` there would deadlock on the mutex.
+pub fn get_setting_with(
+    conn: &rusqlite::Connection,
+    key: &str,
+    default: &str,
+) -> rusqlite::Result<String> {
     let value: Option<String> = conn
         .query_row(
             "SELECT value FROM app_settings WHERE key = ?",

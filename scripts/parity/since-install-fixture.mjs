@@ -449,6 +449,28 @@ export const COLLATION_FIXTURE = {
   categories: ["CONTACTS", "CONTACT_INFO"],
 };
 
+/**
+ * The canned Instagram app. `/api/apps/{id}/detail` rejects non-numeric ids
+ * with a 400 before it looks anything up, so the three detail fields the
+ * seed leaves null have to be populated on a SEEDED app, and this is the one
+ * the manifest already compares.
+ */
+export const INSTAGRAM_ID = "94961186";
+
+/**
+ * Rows that make three otherwise-null detail fields real:
+ *   - an import batch + item for Instagram → `importProvenance`
+ *   - an accessibility profile → `a11yProfile`
+ *   - a guardian age band → `childAgeBand`
+ * Without these all three were only ever compared as null against null.
+ */
+export const DETAIL_FIXTURE = {
+  importId: "pt-fixture-import-1",
+  itemId: "pt-fixture-import-item-1",
+  a11yProfile: { voiceover: "required", captions: "nice" },
+  childAgeBand: "13_15",
+};
+
 /** A user verdict, so `userVerdicts` is non-empty for the same reason. */
 export const VERDICT_FIXTURE = {
   id: "pt-fixture-verdict-1",
@@ -495,6 +517,10 @@ export function applySinceInstallFixture(dataDir) {
       COLLATION_FIXTURE.id
     );
     db.prepare("DELETE FROM apps WHERE id = ?").run(COLLATION_FIXTURE.id);
+    db.prepare("DELETE FROM import_items WHERE import_id = ?").run(
+      DETAIL_FIXTURE.importId
+    );
+    db.prepare("DELETE FROM imports WHERE id = ?").run(DETAIL_FIXTURE.importId);
     for (const fx of FIXTURES) {
       db.prepare("DELETE FROM change_review_actions WHERE app_id = ?").run(
         fx.id
@@ -557,6 +583,20 @@ export function applySinceInstallFixture(dataDir) {
         cat
       );
     }
+    // Detail coverage on the seeded Instagram app (see DETAIL_FIXTURE).
+    db.prepare(
+      `INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported)
+       VALUES (?, ?, ?, 'file', 'parity fixture', 1, 1, 0, 1)`
+    ).run(DETAIL_FIXTURE.importId, T0, T0);
+    db.prepare(
+      `INSERT INTO import_items (id, import_id, query, status, app_id, app_name, attempt_count)
+       VALUES (?, ?, 'Instagram', 'imported', ?, 'Instagram', 1)`
+    ).run(DETAIL_FIXTURE.itemId, DETAIL_FIXTURE.importId, INSTAGRAM_ID);
+    upsertSetting.run(
+      "accessibility_profile",
+      JSON.stringify(DETAIL_FIXTURE.a11yProfile)
+    );
+    upsertSetting.run("guardian_child_age_band", DETAIL_FIXTURE.childAgeBand);
     upsertSetting.run("privacy_profile", JSON.stringify(PROFILE_FIXTURE));
     insertVerdict.run(
       VERDICT_FIXTURE.id,
