@@ -44,6 +44,14 @@ serde = { version = "1", features = ["derive"] }
 # JSON.parse preserves insertion order and JSON.stringify replays it.
 serde_json = { version = "1", features = ["preserve_order"] }
 
+[dev-dependencies]
+# Router-level gate tests drive the axum `Router` as a plain tower service
+# (`ServiceExt::oneshot`), so the gate's step ORDER — host allowlist, then the
+# trailing-slash redirect, then auth, then CSRF — is pinned end to end rather
+# than one helper at a time. Already in the lockfile as an axum dependency, so
+# this adds no new crate to the build.
+tower = { version = "0.5", features = ["util"] }
+
 [profile.release]
 # Nothing perf-sensitive yet; keep debug builds fast and release small.
 opt-level = 2

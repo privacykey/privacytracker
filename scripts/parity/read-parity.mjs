@@ -189,6 +189,71 @@ async function probeAuthGate(base) {
   return ok;
 }
 
+/**
+ * proxy.ts step 0.5 — the canonical trailing-slash redirect.
+ *
+ * The differ cannot see this. `parity-diff.mjs` only ever requests the
+ * canonical paths in its manifest, so a backend that answered 404 for every
+ * `…/` form would pass every check — which is exactly what the first cut of
+ * `core/src/server/gate.rs` did, for every path including the per-app routes.
+ *
+ * Deliberately sends NO token. The redirect sits ABOVE the auth gate in
+ * proxy.ts, so an auth-gated path must still answer 308 rather than 401; a
+ * backend that ordered those two steps the other way is caught here instead
+ * of by inspection.
+ *
+ * Repeated-slash paths (`/api/health//`) are NOT probed. Next normalises those
+ * in its router BEFORE middleware runs, so Node answers a header-less 308 to
+ * `/api/health/` and needs a second hop, while the Rust core collapses the
+ * whole run at once. Both land on the same canonical path; only the hop count
+ * differs, and the Node behaviour there is the header-stripping quirk that
+ * `skipTrailingSlashRedirect` exists to avoid — not something to reproduce.
+ */
+async function probeTrailingSlash(rustBase, nodeBase) {
+  const paths = [
+    "/api/health/", // a public read
+    "/api/date-format/", // auth-gated: proves step 0.5 runs before step 1
+    "/api/health/?x=1&y=2", // the query must survive the rewrite
+    "/api/health", // control: a canonical path must NOT be redirected
+  ];
+  const read = async (base, path_) => {
+    const res = await fetch(base + path_, {
+      headers: { origin: base },
+      // Without this, fetch follows the 308 and reports the destination's 200.
+      redirect: "manual",
+    });
+    return {
+      status: res.status,
+      location: res.headers.get("location"),
+      cacheControl: res.headers.get("cache-control"),
+    };
+  };
+  const describe = (r) =>
+    `${r.status} location=${r.location ?? "-"} cache-control=${r.cacheControl ?? "-"}`;
+
+  let ok = true;
+  for (const path_ of paths) {
+    const nodeRes = await read(nodeBase, path_);
+    const rustRes = await read(rustBase, path_);
+    if (
+      nodeRes.status !== rustRes.status ||
+      nodeRes.location !== rustRes.location ||
+      nodeRes.cacheControl !== rustRes.cacheControl
+    ) {
+      ok = false;
+      console.log(
+        `  ✘ trailing slash: ${path_}\n      node: ${describe(nodeRes)}\n      rust: ${describe(rustRes)}`
+      );
+    }
+  }
+  console.log(
+    ok
+      ? `  ✔ trailing slash: ${paths.length} paths agree on status, Location and Cache-Control`
+      : "  ✘ trailing slash: see the mismatches above"
+  );
+  return ok;
+}
+
 /** Hammer one rate-gated route past its limit and report where it gave way. */
 async function burstManualApps(base) {
   const headers = { origin: base, "x-auditor-admin-token": TOKEN };
@@ -357,6 +422,11 @@ async function main() {
   const authOk = await probeAuthGate(rustBase);
 
   console.log(
+    "\n── trailing-slash redirect (the differ only ever asks for canonical paths) ──"
+  );
+  const slashOk = await probeTrailingSlash(rustBase, args.node);
+
+  console.log(
     "\n── since-install fixture (the canned seed diffs to nothing) ──"
   );
   const sinceOk = await probeSinceInstall(rustBase, args.node);
@@ -398,7 +468,7 @@ async function main() {
   const rateOk = await probeRateLimiter(rustBase, args.node);
 
   cleanup();
-  const ok = authOk && sinceOk && rateOk && diffOk;
+  const ok = authOk && slashOk && sinceOk && rateOk && diffOk;
   console.log(
     ok
       ? "\nREAD PARITY OK — the Rust core matches Node on every implemented route"

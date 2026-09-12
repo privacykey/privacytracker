@@ -403,3 +403,59 @@ type with no `categories` — throws out of `diffSnapshots` in Node and 500s;
 here it fails to deserialise and the route answers `"sinceInstall": null`.
 Different, but both refuse: the alternative was to default the field and
 invent an answer.
+
+### The trailing-slash redirect (proxy.ts step 0.5)
+
+The gate ports `proxy.ts`'s steps 0, 1 and 2 (host allowlist, fail-closed
+auth, CSRF). Step **0.5** — the canonical trailing-slash 308 — was missing
+from the first cut, so `GET /api/health/` was a 308 in Node and, here, a 401
+for every path (the un-routed path fell through to the auth gate; a public
+path with auth off would have 404ed instead). It applies to every path,
+per-app routes included.
+
+`skipTrailingSlashRedirect: true` in `next.config.js` is why Node owns this
+redirect at all: Next's own version is emitted in the router before
+middleware runs and returns `resHeaders: null`, so `GET /dashboard/` answered
+308 with **zero** security headers while `GET /dashboard` carried six. Do not
+touch that flag — see AGENTS.md → "Static routes + hash-based CSP".
+
+Four details, all verified against a running Node server rather than read off
+the source:
+
+- **The Location is RELATIVE.** proxy.ts builds an absolute `URL`, but Next
+  serialises a same-origin middleware redirect back to a path, so the wire
+  carries `location: /api/health`. An absolute Location here would diverge.
+- **The query survives and an empty one is dropped** — `/a/?x=1` → `/a?x=1`,
+  `/a/?` → `/a`. Both fall out of `URL` serialisation, not the regex.
+- **`Cache-Control` is not uniform across the gate's branches**, and the
+  asymmetry is observable, so the port reproduces it rather than tidying it:
+
+  | branch | status | `Cache-Control` |
+  | --- | --- | --- |
+  | Host not allowed | 400 | *(absent)* |
+  | Trailing slash | 308 | `no-store` |
+  | Auth failure | 401 | `no-store` |
+  | CSRF | 403 | *(absent)* |
+  | pass-through | 200 | `no-store` |
+
+  The 401 was the one divergence: this server sent it without the header.
+
+- **Repeated slashes are the one deliberate difference.** Next normalises
+  `/api/health//` in its router before middleware, so Node answers a
+  header-less 308 to `/api/health/` and needs a second hop; the Rust gate
+  strips the whole run at once. Both land on the same canonical path — only
+  the hop count differs, and the header-less hop is the quirk
+  `skipTrailingSlashRedirect` exists to avoid, not a contract to copy.
+
+Not reproduced, deliberately: Next also emits `Refresh: 0;url=<loc>` and
+echoes the location in the redirect body. Both are Next redirect-serialisation
+trivia, and this server does not emit Next's security-header block either.
+
+**The gate — `probeTrailingSlash` in `scripts/parity/read-parity.mjs`.** The
+differ cannot see any of this: `parity-diff.mjs` only ever requests the
+canonical paths in its manifest, so a backend that 404ed every `…/` form
+would pass every check. The probe requests four paths on **both** backends
+with no token and requires the same status, Location and Cache-Control —
+including an auth-gated path, which pins step 0.5 above step 1, and a
+canonical path as a control. Negative-tested: disabling step 0.5 makes it
+fail on three of the four.
