@@ -432,6 +432,18 @@ Three things the Node code does that read like bugs and are not:
   `Array.prototype.find` returns undefined for a snapshot older than Q1 2021
   or dated in the future, and it silently contributes nothing.
 
+**One knowing divergence.** A `changes_summary` that is valid JSON but not
+an array (`{}`) makes `computeCategoryTrend` throw and the route answer 500 —
+its try/catch wraps only the `JSON.parse`, while the `for…of` that follows
+sits outside it. Verified against the running Node server. `computeQuarterlyChanges`
+keeps its `.filter` inside the try and merely skips the row, so the two
+functions do not agree with each other either. The Rust port treats a
+non-array as no entries and answers 200. Same trade as in `diff.rs`:
+reproducing an uncaught crash means reproducing Next's error page, and the
+alternative to refusing is inventing an answer. Deliberately NOT in the parity
+fixture — a row for it would fail the gate by design rather than catch a
+regression.
+
 **The differ cannot see the bucket boundaries.** Every `startMs`/`endMs` here
 is above 1.4e12, which `normalize()` masks as `~epoch`. The `label` strings
 are compared, so a whole-quarter slip is caught; a sub-quarter one is not.
