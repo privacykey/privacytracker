@@ -75,6 +75,10 @@ test("schema: devices table exists with the expected columns", () => {
     "last_synced_at",
     "model",
     "name",
+    // Ownership (family mode). Nullable — an existing install carries no
+    // ownership information and must not have any invented for it.
+    "owner_audience",
+    "owner_label",
   ]);
 });
 

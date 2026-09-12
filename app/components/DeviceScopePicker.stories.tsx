@@ -23,6 +23,8 @@ const DEVICES: ScopeDeviceEntry[] = [
     id: "dev-phone",
     model: "iPhone15,2",
     name: "My iPhone",
+    ownerAudience: "self",
+    ownerLabel: "Me",
   },
   {
     appCount: 31,
@@ -30,6 +32,8 @@ const DEVICES: ScopeDeviceEntry[] = [
     id: "dev-tablet",
     model: "iPad13,4",
     name: "Mum's iPad",
+    ownerAudience: "loved_one",
+    ownerLabel: "Mum",
   },
   {
     appCount: 12,
@@ -37,6 +41,8 @@ const DEVICES: ScopeDeviceEntry[] = [
     id: "dev-watch",
     model: "Watch6,1",
     name: "Dad's Watch",
+    ownerAudience: null,
+    ownerLabel: null,
   },
 ];
 
@@ -93,6 +99,23 @@ export const TwoOfThree: Story = {
 export const UnattachedOnly: Story = {
   render: () => (
     <DeviceScopeStoryProvider devices={DEVICES} scope={subset([], true)}>
+      <DeviceScopePicker />
+    </DeviceScopeStoryProvider>
+  ),
+};
+
+/**
+ * Scoped to a device owned by someone else while the focus still says
+ * "my own apps" — the state the ownership work exists to surface. The
+ * prompt offers the switch; it never takes it.
+ */
+export const AudienceMismatchPrompt: Story = {
+  render: () => (
+    <DeviceScopeStoryProvider
+      audience="self"
+      devices={DEVICES}
+      scope={subset(["dev-tablet"])}
+    >
       <DeviceScopePicker />
     </DeviceScopeStoryProvider>
   ),

@@ -235,7 +235,8 @@
       "gate_denied_generic": "安全检查拒绝了本次操作，未删除任何应用。",
       "gate_unreachable": "无法连接安全检查服务，因此未删除任何应用。请确认 privacytracker 本地服务正在运行，然后重试。",
       "checking_safety": "正在检查安全状态…",
-      "record_failures": "{count, plural, one {# 项移除操作} other {# 项移除操作}}未能写入活动日志 — 应用仍已处理，但本次运行的审计记录不完整。"
+      "record_failures": "{count, plural, one {# 项移除操作} other {# 项移除操作}}未能写入活动日志 — 应用仍已处理，但本次运行的审计记录不完整。",
+      "gate_denied_audience_scoped": "安全检查拒绝了本次操作，因此未删除任何内容：你正在查看{scope}，而仅当焦点设置为「只有我」时才能移除应用。"
     },
     "saved_notes": {
       "heading": "你的备注",
@@ -1574,7 +1575,22 @@
       "subtitle": "点击设备可管理或重新同步。",
       "aria": "该应用已安装的设备",
       "manage_link": "管理设备 →"
-    }
+    },
+    "owner_meta": "{owner}",
+    "owner_set": "设置归属",
+    "owner_edit": "归属",
+    "owner_name_label": "这是谁的设备？",
+    "owner_name_placeholder": "例如：妈妈、小乐，或留空",
+    "owner_audience_label": "查看这台设备时，我是在…",
+    "owner_audience_unset": "不指定",
+    "owner_audience_option": {
+      "self": "管理我自己的应用",
+      "loved_one": "帮助他人",
+      "guardian": "照看孩子的设备"
+    },
+    "owner_audience_help": "用于对设备菜单分组，并在你切换到此设备时提示匹配的视图。不会自动更改任何设置。",
+    "owner_save": "保存",
+    "owner_cancel": "取消"
   },
   "device_sync": {
     "diff_title": "自上次以来变化了什么？",
@@ -3546,7 +3562,18 @@
     "unattached_sub": "手动添加或从 CSV 导入的应用",
     "banner_scoped": "你正在查看{scope}。",
     "banner_show_all": "显示全部设备",
-    "grid_filtering_by": "正在显示"
+    "grid_filtering_by": "正在显示",
+    "owner_unassigned": "未设置归属",
+    "audience_prompt": "这些不是你自己的应用。要切换到{mode}吗？",
+    "audience_prompt_named": "你正在查看{owner}的应用。要切换到{mode}吗？",
+    "audience_switch_cta": "切换",
+    "audience_switching": "正在切换…",
+    "audience_keep_cta": "保持当前设置",
+    "audience_name": {
+      "self": "管理我自己的应用",
+      "loved_one": "帮助他人",
+      "guardian": "照看孩子的设备"
+    }
   },
   "device_connect_toast": {
     "no_name": "iOS 设备",

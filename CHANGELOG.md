@@ -55,6 +55,20 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- **Device ownership** — each device can record whose it is (a name, and
+  whether you're working on your own apps, helping someone else, or
+  looking after a child's device), set in Settings → Devices. The nav
+  picker groups devices by owner, and when you scope to someone else's
+  device while your focus still says "just me", it offers to switch —
+  which is the gap that previously let someone drift into the
+  delete-apps flow with the button silently disabled and the reason
+  buried in Settings. The offer is always a suggestion with an explicit
+  "Stay as I am"; nothing changes automatically, and switching preserves
+  every other focus setting. Ownership is never guessed from a device's
+  name. Removing apps still requires a focus of just you — that rule is
+  unchanged — but the refusal now names the device you're viewing
+  instead of citing the rule alone.
+
 - **Device scope picker in the nav** — one control naming which device's
   apps you are looking at, with an icon and the device's name, and a
   multi-select popover to narrow to any subset ("show all", or just two

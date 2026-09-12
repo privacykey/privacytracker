@@ -75,6 +75,10 @@ export interface ScopeDevice {
   id: string;
   model?: string | null;
   name: string;
+  /** Focus audience the owner corresponds to; null when unstated. */
+  ownerAudience?: "self" | "loved_one" | "guardian" | null;
+  /** Free-text owner name ("Mum", "Leo"); null when unstated. */
+  ownerLabel?: string | null;
 }
 
 export function isScopeAll(scope: DeviceScope): boolean {
@@ -345,4 +349,152 @@ export function describeScope(
     return { kind: "unattached", count: 1, device: null, name: null };
   }
   return { kind: "multi", count, device: null, name: null };
+}
+
+// ─────────────────────────────────────────────
+// Ownership ("family mode")
+// ─────────────────────────────────────────────
+
+export interface DeviceOwnerGroup<D extends ScopeDevice = ScopeDevice> {
+  /** The audience shared by this group, when every member agrees. */
+  audience: "self" | "loved_one" | "guardian" | null;
+  devices: D[];
+  /**
+   * Stable identity for the group. The owner label when there is one,
+   * otherwise the sentinel below — used as a React key and for headings.
+   */
+  key: string;
+  /** Owner name, or null for the ungrouped bucket. */
+  label: string | null;
+}
+
+/** Group key for devices whose owner the user hasn't stated. */
+export const UNASSIGNED_OWNER = "__unassigned__";
+
+/**
+ * Group devices by owner for the picker.
+ *
+ * Owner labels are matched case-insensitively and trimmed, because
+ * "Mum" and "mum " typed into two different device rows are one person
+ * and splitting them into two headings would be nonsense. The FIRST
+ * spelling encountered wins as the display label.
+ *
+ * Devices with no owner fall into a single trailing group with a null
+ * label. Returning them as a group rather than dropping them keeps the
+ * picker complete — an unlabelled device must still be selectable.
+ *
+ * Ordering is the input order, which the API already sorts by recency,
+ * so a just-imported device's group surfaces near the top. The
+ * unassigned group is always last: it is the least specific answer to
+ * "whose is this?".
+ */
+export function groupDevicesByOwner<D extends ScopeDevice>(
+  devices: readonly D[]
+): DeviceOwnerGroup<D>[] {
+  // Generic in the device type so callers keep their own extra fields
+  // (the picker's per-device `appCount`, for one) instead of having them
+  // widened away to the bare ScopeDevice this module needs.
+  const groups = new Map<string, DeviceOwnerGroup<D>>();
+  const unassigned: D[] = [];
+
+  for (const device of devices) {
+    const label = device.ownerLabel?.trim();
+    if (!label) {
+      unassigned.push(device);
+      continue;
+    }
+    const key = label.toLowerCase();
+    const existing = groups.get(key);
+    if (existing) {
+      existing.devices.push(device);
+      // A group only claims an audience when its members agree. Two
+      // devices labelled "Mum" with conflicting audiences is a data
+      // problem the user should resolve in Settings, not something to
+      // silently pick a winner for — and definitely not something to
+      // prompt an audience switch on.
+      if (existing.audience !== (device.ownerAudience ?? null)) {
+        existing.audience = null;
+      }
+      continue;
+    }
+    groups.set(key, {
+      key,
+      label,
+      audience: device.ownerAudience ?? null,
+      devices: [device],
+    });
+  }
+
+  const out = [...groups.values()];
+  if (unassigned.length > 0) {
+    out.push({
+      key: UNASSIGNED_OWNER,
+      label: null,
+      audience: null,
+      devices: unassigned,
+    });
+  }
+  return out;
+}
+
+/**
+ * The audience the current scope implies, or null when it implies
+ * nothing.
+ *
+ * Returns a value ONLY when every selected device states the same
+ * audience. Everything else — an unrestricted scope, a mixed selection,
+ * any device with no stated owner, or a scope that also includes the
+ * unattached bucket — yields null, because none of those let you say
+ * with confidence whose apps are on screen.
+ *
+ * Deliberately strict. This drives a prompt suggesting the user change
+ * their focus, which rearranges what the whole app shows; offering that
+ * on a guess would be worse than not offering it at all.
+ */
+export function scopeOwnerAudience(
+  scope: DeviceScope,
+  devices: readonly ScopeDevice[]
+): "self" | "loved_one" | "guardian" | null {
+  if (scope.mode === "all" || scope.includeUnattached) {
+    return null;
+  }
+  const selected = devices.filter((d) => scope.deviceIds.includes(d.id));
+  if (selected.length === 0 || selected.length !== scope.deviceIds.length) {
+    return null;
+  }
+  const first = selected[0].ownerAudience ?? null;
+  if (!first) {
+    return null;
+  }
+  return selected.every((d) => (d.ownerAudience ?? null) === first)
+    ? first
+    : null;
+}
+
+/**
+ * Who the scope belongs to, for display: the owner label when every
+ * selected device shares one, otherwise null. Independent of
+ * `scopeOwnerAudience` — a scope can have a known owner ("Mum") with no
+ * stated audience, and that's still worth naming in the UI.
+ */
+export function scopeOwnerLabel(
+  scope: DeviceScope,
+  devices: readonly ScopeDevice[]
+): string | null {
+  if (scope.mode === "all" || scope.includeUnattached) {
+    return null;
+  }
+  const selected = devices.filter((d) => scope.deviceIds.includes(d.id));
+  if (selected.length === 0) {
+    return null;
+  }
+  const first = selected[0].ownerLabel?.trim() || null;
+  if (!first) {
+    return null;
+  }
+  return selected.every(
+    (d) => (d.ownerLabel?.trim() || null)?.toLowerCase() === first.toLowerCase()
+  )
+    ? first
+    : null;
 }

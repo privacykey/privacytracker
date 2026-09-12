@@ -37,9 +37,21 @@ export interface ScopeDeviceEntry {
   id: string;
   model: string | null;
   name: string;
+  ownerAudience: "self" | "loved_one" | "guardian" | null;
+  ownerLabel: string | null;
 }
 
 interface DeviceScopeValue {
+  /**
+   * The focus audience currently in effect, or null while it loads / if
+   * the read failed.
+   *
+   * The scope context owns this because "whose device am I looking at?"
+   * and "whose apps am I set up to work on?" are the same question asked
+   * two ways, and the only consumer — the picker's switch prompt —
+   * needs both answers to agree before it can say anything useful.
+   */
+  audience: "self" | "loved_one" | "guardian" | null;
   devices: ScopeDeviceEntry[];
   /** True once scope + devices have landed (or the fetch failed). Consumers
    *  that would otherwise flash unscoped content should hold on this. */
@@ -56,10 +68,20 @@ interface DeviceScopeValue {
    *  callers must omit the param entirely so the request stays
    *  byte-identical to an unscoped one. */
   scopeParam: string | null;
+  /**
+   * Switch the focus audience, preserving every other focus setting.
+   *
+   * Read-modify-write on purpose: `POST /api/focus` takes the WHOLE
+   * focus and coerces absent goal flags to false, so posting an audience
+   * on its own would silently wipe the user's goals. Resolves to true
+   * when the switch landed.
+   */
+  setAudience: (next: "self" | "loved_one" | "guardian") => Promise<boolean>;
   setScope: (next: DeviceScope) => void;
 }
 
 const FALLBACK: DeviceScopeValue = {
+  audience: null,
   devices: [],
   ready: true,
   refresh: () => {
@@ -68,6 +90,7 @@ const FALLBACK: DeviceScopeValue = {
   scope: SCOPE_ALL,
   scopeKey: "all",
   scopeParam: null,
+  setAudience: () => Promise.resolve(false),
   setScope: () => {
     /* no provider mounted */
   },
@@ -101,18 +124,22 @@ export function withScopeParam(url: string, scopeParam: string | null): string {
  * update local state so the popover is still interactive.
  */
 export function DeviceScopeStoryProvider({
+  audience = "self",
   children,
   devices,
   scope: initialScope,
 }: {
+  audience?: "self" | "loved_one" | "guardian" | null;
   children: ReactNode;
   devices: ScopeDeviceEntry[];
   scope: DeviceScope;
 }) {
   const [scope, setScope] = useState(initialScope);
+  const [storyAudience, setStoryAudience] = useState(audience);
   const value = useMemo<DeviceScopeValue>(() => {
     const scopeParam = serialiseScopeParam(scope);
     return {
+      audience: storyAudience,
       devices,
       ready: true,
       refresh: () => {
@@ -121,9 +148,13 @@ export function DeviceScopeStoryProvider({
       scope,
       scopeKey: scopeParam ?? "all",
       scopeParam,
+      setAudience: (next) => {
+        setStoryAudience(next);
+        return Promise.resolve(true);
+      },
       setScope,
     };
-  }, [devices, scope]);
+  }, [devices, scope, storyAudience]);
   return (
     <DeviceScopeContext.Provider value={value}>
       {children}
@@ -140,6 +171,31 @@ export default function DeviceScopeProvider({
   const [devices, setDevices] = useState<ScopeDeviceEntry[]>([]);
   const [ready, setReady] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [audience, setAudienceState] = useState<
+    "self" | "loved_one" | "guardian" | null
+  >(null);
+
+  // Focus audience, read once per page load. Only the picker's
+  // switch prompt consumes it, and that prompt is not worth holding the
+  // tree for — a null audience simply means no prompt yet.
+  useEffect(() => {
+    let live = true;
+    fetch("/api/focus")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (live && json?.audience) {
+          setAudienceState(json.audience);
+        }
+      })
+      .catch(() => {
+        // No audience means no prompt. Failing quiet is right here: a
+        // focus read that didn't land is not grounds for suggesting the
+        // user change their focus.
+      });
+    return () => {
+      live = false;
+    };
+  }, [nonce]);
 
   useEffect(() => {
     let live = true;
@@ -194,18 +250,58 @@ export default function DeviceScopeProvider({
       });
   }, []);
 
+  const setAudience = useCallback(
+    async (next: "self" | "loved_one" | "guardian") => {
+      try {
+        // Read-modify-write. POST /api/focus takes the whole focus and
+        // coerces absent goal flags to false, so posting `{audience}`
+        // alone would quietly clear the user's goals — turning "show me
+        // Mum's apps in helper mode" into "reset my setup".
+        const current = await fetch("/api/focus").then((res) =>
+          res.ok ? res.json() : null
+        );
+        if (!current) {
+          return false;
+        }
+        const res = await fetch("/api/focus", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accessibility: current.accessibility === true,
+            audience: next,
+            childAgeBand: current.childAgeBand ?? null,
+            cleanup: current.cleanup === true,
+            minimal: current.minimal === true,
+            monitor: current.monitor === true,
+            ...(current.workflow ? { workflow: current.workflow } : {}),
+          }),
+        });
+        if (!res.ok) {
+          return false;
+        }
+        setAudienceState(next);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    []
+  );
+
   const value = useMemo<DeviceScopeValue>(() => {
     const scopeParam = serialiseScopeParam(scope);
     return {
+      audience,
       devices,
       ready,
       refresh,
       scope,
       scopeKey: scopeParam ?? "all",
       scopeParam,
+      setAudience,
       setScope,
     };
-  }, [devices, ready, refresh, scope, setScope]);
+  }, [audience, devices, ready, refresh, scope, setAudience, setScope]);
 
   return (
     <DeviceScopeContext.Provider value={value}>

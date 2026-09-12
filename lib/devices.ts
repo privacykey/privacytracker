@@ -18,6 +18,25 @@
 import { randomUUID } from "node:crypto";
 import db from "./db";
 
+/**
+ * Which focus audience a device's owner corresponds to. Deliberately the
+ * same vocabulary as `Audience` in lib/feature-flag-rules.ts — the whole
+ * point of recording it is that the app can notice the device you are
+ * looking at disagrees with the focus you are working under.
+ *
+ * Typed structurally rather than imported so this server module doesn't
+ * pull the flag-rules graph in; `isDeviceOwnerAudience` is the guard.
+ */
+export type DeviceOwnerAudience = "self" | "loved_one" | "guardian";
+
+const OWNER_AUDIENCES: readonly string[] = ["self", "loved_one", "guardian"];
+
+export function isDeviceOwnerAudience(
+  value: unknown
+): value is DeviceOwnerAudience {
+  return typeof value === "string" && OWNER_AUDIENCES.includes(value);
+}
+
 export interface Device {
   createdAt: number;
   deviceClass: string | null;
@@ -28,6 +47,14 @@ export interface Device {
   lastSyncedAt: number;
   model: string | null;
   name: string;
+  /**
+   * Who this device belongs to. Both NULL until the user says so — we
+   * never infer ownership from a device name, because a wrong guess
+   * mislabels a real person's phone and can prompt an audience switch
+   * for no reason.
+   */
+  ownerAudience: DeviceOwnerAudience | null;
+  ownerLabel: string | null;
 }
 
 interface DeviceRow {
@@ -40,6 +67,8 @@ interface DeviceRow {
   last_synced_at: number;
   model: string | null;
   name: string;
+  owner_audience: string | null;
+  owner_label: string | null;
 }
 
 function rowToDevice(row: DeviceRow): Device {
@@ -53,6 +82,13 @@ function rowToDevice(row: DeviceRow): Device {
     createdAt: row.created_at,
     lastSyncedAt: row.last_synced_at,
     isUnknownPlaceholder: row.is_unknown_placeholder === 1,
+    ownerLabel: row.owner_label?.trim() || null,
+    // An unrecognised stored value reads back as null rather than being
+    // passed through: a junk audience would flow into the focus-switch
+    // prompt and offer to set a focus that doesn't exist.
+    ownerAudience: isDeviceOwnerAudience(row.owner_audience)
+      ? row.owner_audience
+      : null,
   };
 }
 
@@ -256,6 +292,44 @@ export function getDeviceEcidsForApps(
     }
   }
   return map;
+}
+
+/**
+ * Set (or clear) who a device belongs to.
+ *
+ * Both fields are independently clearable with `null`, and omitting a
+ * field leaves it alone — the Settings UI edits the label and the
+ * audience in one form, but the audience-switch prompt only ever needs
+ * to touch the audience.
+ *
+ * Note this never touches the device's NAME. "Mum's iPad" as a name and
+ * "Mum" as an owner are different facts: several devices can share one
+ * owner, which is exactly what makes grouping the picker worthwhile.
+ */
+export function setDeviceOwner(
+  id: string,
+  owner: {
+    audience?: DeviceOwnerAudience | null;
+    label?: string | null;
+  }
+): void {
+  const updates: string[] = [];
+  const values: (string | null)[] = [];
+  if (owner.label !== undefined) {
+    updates.push("owner_label = ?");
+    values.push(owner.label?.trim() || null);
+  }
+  if (owner.audience !== undefined) {
+    updates.push("owner_audience = ?");
+    values.push(isDeviceOwnerAudience(owner.audience) ? owner.audience : null);
+  }
+  if (updates.length === 0) {
+    return;
+  }
+  db.prepare(`UPDATE devices SET ${updates.join(", ")} WHERE id = ?`).run(
+    ...values,
+    id
+  );
 }
 
 export function renameDevice(id: string, name: string): void {

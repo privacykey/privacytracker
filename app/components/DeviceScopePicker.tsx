@@ -5,8 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   describeScope,
   expandScope,
+  groupDevicesByOwner,
   SCOPE_ALL,
+  scopeOwnerAudience,
+  scopeOwnerLabel,
   toggleScopeDevice,
+  UNASSIGNED_OWNER,
   UNATTACHED_ID,
 } from "@/lib/device-scope";
 import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
@@ -46,7 +50,8 @@ export default function DeviceScopePicker({
   compact?: boolean;
 }) {
   const t = useTranslations("device_scope");
-  const { devices, ready, scope, setScope } = useDeviceScope();
+  const { audience, devices, ready, scope, setAudience, setScope } =
+    useDeviceScope();
   // Self-gated rather than gated by a prop from Nav: almost every page
   // renders `<Nav />` with no flags at all, so a prop would resolve to
   // its `true` default nearly everywhere and the flag would look wired
@@ -69,6 +74,46 @@ export default function DeviceScopePicker({
     () => describeScope(scope, devices),
     [scope, devices]
   );
+
+  // Rows are grouped by owner when the user has told us who owns what.
+  // With no ownership recorded anywhere this collapses to a single
+  // unassigned group, and the headings are suppressed — an install with
+  // one owner shouldn't grow a "whose?" heading it never asked for.
+  const ownerGroups = useMemo(() => groupDevicesByOwner(devices), [devices]);
+  const showOwnerHeadings =
+    ownerGroups.length > 1 || ownerGroups[0]?.key !== UNASSIGNED_OWNER;
+
+  /**
+   * The focus-switch prompt.
+   *
+   * Appears only when the scope unambiguously resolves to ONE owner
+   * whose audience disagrees with the focus currently in effect — i.e.
+   * "you are looking at Mum's iPad while set up to work on your own
+   * apps". `scopeOwnerAudience` is strict about this (see its comment):
+   * a mixed selection, an unstated owner, or a scope that also includes
+   * the unattached bucket all yield null.
+   *
+   * It is a SUGGESTION, never automatic. Switching audience rearranges
+   * which features the whole app shows, and doing that behind the user's
+   * back because they clicked a device filter would be a far worse
+   * surprise than the mismatch it fixes.
+   */
+  const suggestedAudience = useMemo(
+    () => scopeOwnerAudience(scope, devices),
+    [scope, devices]
+  );
+  const ownerName = useMemo(
+    () => scopeOwnerLabel(scope, devices),
+    [scope, devices]
+  );
+  const [dismissedPrompt, setDismissedPrompt] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const promptKey =
+    suggestedAudience && audience && suggestedAudience !== audience
+      ? `${scope.deviceIds.join(",")}:${suggestedAudience}`
+      : null;
+  const showAudiencePrompt =
+    promptKey !== null && dismissedPrompt !== promptKey;
 
   // Apps with no device link at all (manual + CSV imports). Only worth a
   // row when some exist — but the provider's device list doesn't carry
@@ -227,41 +272,61 @@ export default function DeviceScopePicker({
               between menu rows adds nothing. */}
           <div aria-hidden="true" className="device-scope-divider" />
 
-          {devices.map((device) => {
-            const checked = selection.has(device.id);
-            return (
-              <button
-                aria-checked={checked}
-                className={`device-scope-row ${checked ? "is-checked" : ""}`}
-                data-scope-row=""
-                key={device.id}
-                onClick={() =>
-                  setScope(toggleScopeDevice(scope, device.id, deviceIds))
-                }
-                role="menuitemcheckbox"
-                type="button"
-              >
-                <span aria-hidden="true" className="device-scope-check">
-                  {checked ? "✓" : ""}
-                </span>
-                <DeviceGlyph
-                  className="device-scope-row-icon"
-                  device={device}
-                />
-                <span className="device-scope-row-text">
-                  <span className="device-scope-row-name">{device.name}</span>
-                  <span className="device-scope-row-sub">
-                    {device.model || device.deviceClass
-                      ? t("device_sub", {
-                          count: device.appCount,
-                          model: device.model ?? device.deviceClass ?? "",
-                        })
-                      : t("device_sub_no_model", { count: device.appCount })}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
+          {ownerGroups.map((group) => (
+            <div className="device-scope-group" key={group.key}>
+              {/* Owner heading. Suppressed entirely when no device has an
+                  owner — an install with one person shouldn't sprout a
+                  "whose is this?" heading it never asked for. The group
+                  is a plain container, not a `role="group"`: the rows
+                  are already menuitemcheckboxes inside one menu, and an
+                  extra grouping role buys nothing a visible heading and
+                  the row's own label don't already convey. */}
+              {showOwnerHeadings && (
+                <p className="device-scope-group-heading">
+                  {group.label ?? t("owner_unassigned")}
+                </p>
+              )}
+              {group.devices.map((device) => {
+                const checked = selection.has(device.id);
+                return (
+                  <button
+                    aria-checked={checked}
+                    className={`device-scope-row ${checked ? "is-checked" : ""}`}
+                    data-scope-row=""
+                    key={device.id}
+                    onClick={() =>
+                      setScope(toggleScopeDevice(scope, device.id, deviceIds))
+                    }
+                    role="menuitemcheckbox"
+                    type="button"
+                  >
+                    <span aria-hidden="true" className="device-scope-check">
+                      {checked ? "✓" : ""}
+                    </span>
+                    <DeviceGlyph
+                      className="device-scope-row-icon"
+                      device={device}
+                    />
+                    <span className="device-scope-row-text">
+                      <span className="device-scope-row-name">
+                        {device.name}
+                      </span>
+                      <span className="device-scope-row-sub">
+                        {device.model || device.deviceClass
+                          ? t("device_sub", {
+                              count: device.appCount,
+                              model: device.model ?? device.deviceClass ?? "",
+                            })
+                          : t("device_sub_no_model", {
+                              count: device.appCount,
+                            })}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
 
           {showUnattachedRow && (
             <button
@@ -294,6 +359,61 @@ export default function DeviceScopePicker({
                 </span>
               </span>
             </button>
+          )}
+
+          {showAudiencePrompt && suggestedAudience && (
+            /* The bridge between "whose device is this?" and "what am I
+               set up to do?". Before ownership existed, someone could
+               scope to a relative's iPad and stay silently in
+               self-audience — which is what hides the reason the delete
+               flow is refusing them, three screens later.
+
+               A suggestion with two explicit outs, never automatic: the
+               audience decides which features the whole app shows, and
+               changing that because someone clicked a device filter
+               would be a worse surprise than the mismatch it fixes. */
+            <div className="device-scope-prompt" role="note">
+              <p className="device-scope-prompt-text">
+                {ownerName
+                  ? t("audience_prompt_named", {
+                      owner: ownerName,
+                      mode: t(`audience_name.${suggestedAudience}`),
+                    })
+                  : t("audience_prompt", {
+                      mode: t(`audience_name.${suggestedAudience}`),
+                    })}
+              </p>
+              <div className="device-scope-prompt-actions">
+                <button
+                  className="btn btn-sm btn-primary"
+                  disabled={switching}
+                  onClick={async () => {
+                    setSwitching(true);
+                    const ok = await setAudience(suggestedAudience);
+                    setSwitching(false);
+                    if (ok) {
+                      // Dismiss on success too: the prompt's condition
+                      // resolves on its own once the audience lands, but
+                      // marking it keeps the row from flickering back
+                      // while the state settles.
+                      setDismissedPrompt(promptKey);
+                    }
+                  }}
+                  type="button"
+                >
+                  {switching
+                    ? t("audience_switching")
+                    : t("audience_switch_cta")}
+                </button>
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => setDismissedPrompt(promptKey)}
+                  type="button"
+                >
+                  {t("audience_keep_cta")}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}

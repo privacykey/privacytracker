@@ -208,3 +208,47 @@
 .nav-drawer-device-scope .device-scope-trigger-label {
   flex: 1;
 }
+
+/*
+ * Owner grouping. Headings only render when at least one device has a
+ * stated owner, so a single-person install never grows a "whose?" label
+ * it never asked for.
+ */
+.device-scope-group + .device-scope-group {
+  margin-top: 6px;
+}
+
+.device-scope-group-heading {
+  margin: 4px 8px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/*
+ * Audience-switch prompt. Given an accent tint and a top rule so it
+ * reads as a separate suggestion rather than another selectable row —
+ * the one thing in this menu that is NOT a device you can tick.
+ */
+.device-scope-prompt {
+  padding: 10px 8px 8px;
+  margin-top: 6px;
+  background: color-mix(in srgb, var(--accent, #0a84ff) 6%, transparent);
+  border-top: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.device-scope-prompt-text {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.device-scope-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

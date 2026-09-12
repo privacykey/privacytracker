@@ -35,9 +35,9 @@ export const dynamic = "force-dynamic";
 // (a UUID plus a comma is 37 bytes, so this holds ~100 devices).
 const BODY_BYTES = 8 * 1024;
 
-/** Minimal device rows for the picker: identity, iconography, and the
- *  app count each contributes. Everything else on `Device` (ecid, iOS
- *  version, timestamps) belongs to Settings → Devices, not the nav. */
+/** Minimal device rows for the picker: identity, iconography, ownership,
+ *  and the app count each contributes. Everything else on `Device`
+ *  (ecid, iOS version, timestamps) belongs to Settings → Devices. */
 function pickerDevices() {
   try {
     const counts = getDeviceAppCounts();
@@ -47,6 +47,11 @@ function pickerDevices() {
       id: d.id,
       model: d.model,
       name: d.name,
+      // Ownership drives the picker's grouping and the focus-switch
+      // prompt. Both are null until the user states them in
+      // Settings → Devices; nothing infers them.
+      ownerAudience: d.ownerAudience,
+      ownerLabel: d.ownerLabel,
     }));
   } catch (error) {
     console.warn("[device-scope] device list failed:", error);

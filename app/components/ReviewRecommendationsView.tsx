@@ -47,6 +47,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { describeScope, scopeOwnerLabel } from "@/lib/device-scope";
 import type { Annotation } from "../../lib/annotations";
 import {
   backupDeviceViaCfgutil,
@@ -65,6 +66,7 @@ import { isSafeExternalHref } from "../../lib/safe-href";
 import type { ShortlistEntry } from "../../lib/shortlist-types";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import type { AppVerdict, VerdictValue } from "../../lib/verdict-types";
+import { useDeviceScope } from "./DeviceScopeProvider";
 import VerdictPicker from "./VerdictPicker";
 
 interface Row {
@@ -187,6 +189,19 @@ export default function ReviewRecommendationsView({
   // call-sites stay short (e.g. tReview('heading') not
   // tRoot('review.heading')).
   const t = useTranslations("review_rec");
+  // Device scope, read only to make the audience refusal legible — see
+  // the comment at the gate pre-flight below. This view does NOT filter
+  // itself by the scope here; its rows already arrive scoped from
+  // /api/review-queue.
+  const { devices: scopeDevices, scope: deviceScope } = useDeviceScope();
+  const scopeOwnerName = useMemo(
+    () => scopeOwnerLabel(deviceScope, scopeDevices),
+    [deviceScope, scopeDevices]
+  );
+  const scopeDeviceName = useMemo(() => {
+    const described = describeScope(deviceScope, scopeDevices);
+    return described.kind === "single" ? described.name : null;
+  }, [deviceScope, scopeDevices]);
   const tHero = useTranslations("review_rec.hero");
   const tGate = useTranslations("review_rec.audience_gate");
   const tSteps = useTranslations("review_rec.step_labels");
@@ -933,7 +948,22 @@ export default function ReviewRecommendationsView({
           const key = gate
             ? (GATE_DENIAL_KEYS[gate.reason ?? ""] ?? "gate_denied_generic")
             : "gate_unreachable";
-          setBulkGateError(tAct(key));
+          // The audience refusal is the one a user can hit without any
+          // idea why: they scoped the app to a relative's device, which
+          // put them in a helper audience, and three screens later the
+          // delete button refuses with a rule about "focus". Naming the
+          // device they are viewing turns an arbitrary-looking block
+          // into a sentence that explains itself. The GATE ITSELF is
+          // unchanged — this is about the message, not the rule.
+          const scopedName =
+            gate?.reason === "audience"
+              ? (scopeOwnerName ?? scopeDeviceName)
+              : null;
+          setBulkGateError(
+            scopedName
+              ? tAct("gate_denied_audience_scoped", { scope: scopedName })
+              : tAct(key)
+          );
           setBulkModal(null);
           setBulkConfirmText("");
           return;

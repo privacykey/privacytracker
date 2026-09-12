@@ -235,7 +235,8 @@
       "gate_denied_generic": "The safety check refused this run, so nothing was deleted.",
       "gate_unreachable": "Couldn't reach the safety check, so nothing was deleted. Check that privacytracker's local service is running and try again.",
       "checking_safety": "Checking safety…",
-      "record_failures": "{count, plural, one {# removal} other {# removals}} couldn't be written to the activity log — the apps were still processed, but the audit trail for this run is incomplete."
+      "record_failures": "{count, plural, one {# removal} other {# removals}} couldn't be written to the activity log — the apps were still processed, but the audit trail for this run is incomplete.",
+      "gate_denied_audience_scoped": "The safety check refused this run, so nothing was deleted: you're viewing {scope}, and app removal is only available when your focus is set to just you."
     },
     "saved_notes": {
       "heading": "Your notes",
@@ -1574,7 +1575,22 @@
       "subtitle": "Click a device to manage or re-sync.",
       "aria": "Devices this app is installed on",
       "manage_link": "Manage devices →"
-    }
+    },
+    "owner_meta": "{owner}",
+    "owner_set": "Set owner",
+    "owner_edit": "Owner",
+    "owner_name_label": "Whose device is this?",
+    "owner_name_placeholder": "e.g. Mum, Leo, or leave blank",
+    "owner_audience_label": "When I'm looking at this device, I'm…",
+    "owner_audience_unset": "Not saying",
+    "owner_audience_option": {
+      "self": "working on my own apps",
+      "loved_one": "helping someone else",
+      "guardian": "looking after a child's device"
+    },
+    "owner_audience_help": "Used to group the device menu, and to offer a matching view when you switch to this device. Nothing changes automatically.",
+    "owner_save": "Save",
+    "owner_cancel": "Cancel"
   },
   "device_sync": {
     "diff_title": "What's changed since last time?",
@@ -3546,7 +3562,18 @@
     "unattached_sub": "Apps added by hand or from a CSV",
     "banner_scoped": "You're viewing {scope}.",
     "banner_show_all": "Show all devices",
-    "grid_filtering_by": "Showing"
+    "grid_filtering_by": "Showing",
+    "owner_unassigned": "No owner set",
+    "audience_prompt": "These aren't your own apps. Switch to {mode}?",
+    "audience_prompt_named": "You're looking at {owner}'s apps. Switch to {mode}?",
+    "audience_switch_cta": "Switch",
+    "audience_switching": "Switching…",
+    "audience_keep_cta": "Stay as I am",
+    "audience_name": {
+      "self": "working on my own apps",
+      "loved_one": "helping someone else",
+      "guardian": "looking after a child's device"
+    }
   },
   "device_connect_toast": {
     "no_name": "iOS device",

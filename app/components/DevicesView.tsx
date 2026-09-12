@@ -31,7 +31,21 @@ export interface DeviceListEntry {
   lastSyncedAt: number;
   model: string | null;
   name: string;
+  /** Focus audience this device's owner corresponds to; null when unstated. */
+  ownerAudience?: "self" | "loved_one" | "guardian" | null;
+  /** Free-text owner name ("Mum", "Leo"); null when unstated. */
+  ownerLabel?: string | null;
 }
+
+type OwnerAudience = "self" | "loved_one" | "guardian";
+
+/** Audience options in the owner form, in the order the focus editor
+ *  uses them so the two controls read the same way. */
+const OWNER_AUDIENCES: readonly OwnerAudience[] = [
+  "self",
+  "loved_one",
+  "guardian",
+];
 
 export default function DevicesView({
   initialDevices = [],
@@ -51,6 +65,14 @@ export default function DevicesView({
   const [devices, setDevices] = useState<DeviceListEntry[]>(initialDevices);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  // Owner editing. Separate from the rename form because a device's name
+  // and its owner are different facts — several devices can share one
+  // owner, which is what makes grouping the nav picker worth doing.
+  const [owningId, setOwningId] = useState<string | null>(null);
+  const [ownerLabelValue, setOwnerLabelValue] = useState("");
+  const [ownerAudienceValue, setOwnerAudienceValue] = useState<
+    OwnerAudience | ""
+  >("");
   const [busyId, setBusyId] = useState<string | null>(null);
   // Replaces `window.confirm()` — the native dialog is unreliable inside
   // the Tauri webview and gives no preview of what's about to break.
@@ -159,6 +181,45 @@ export default function DevicesView({
     [renameValue, refresh]
   );
 
+  const handleOwnerStart = (device: DeviceListEntry) => {
+    setOwningId(device.id);
+    setOwnerLabelValue(device.ownerLabel ?? "");
+    setOwnerAudienceValue(device.ownerAudience ?? "");
+  };
+  const handleOwnerCancel = () => {
+    setOwningId(null);
+    setOwnerLabelValue("");
+    setOwnerAudienceValue("");
+  };
+  const handleOwnerSubmit = useCallback(
+    async (id: string) => {
+      setBusyId(id);
+      try {
+        const res = await fetch(`/api/devices/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          // Empty string means "not set" for both fields, and the API
+          // treats null as an explicit clear — so blanking the form is a
+          // real way to undo an ownership label, not a no-op.
+          body: JSON.stringify({
+            ownerAudience: ownerAudienceValue || null,
+            ownerLabel: ownerLabelValue.trim() || null,
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        await refresh();
+        handleOwnerCancel();
+      } catch (error) {
+        console.warn("[devices] set owner failed:", error);
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [ownerAudienceValue, ownerLabelValue, refresh]
+  );
+
   const confirmDelete = useCallback(async () => {
     if (!pendingDelete) {
       return;
@@ -262,8 +323,15 @@ export default function DevicesView({
         <ul className="devices-list">
           {devices.map((device) => {
             const isRenaming = renamingId === device.id;
+            const isOwning = owningId === device.id;
             const isBusy = busyId === device.id;
             const subtitleParts = [
+              // Owner leads the subtitle when it's known — on a family
+              // install "whose is this?" is the question you're scanning
+              // the list to answer.
+              device.ownerLabel
+                ? t("owner_meta", { owner: device.ownerLabel })
+                : null,
               device.model,
               device.iosVersion,
               t("app_count", { count: device.appCount }),
@@ -324,8 +392,74 @@ export default function DevicesView({
                   <span className="devices-list-row-meta">
                     {subtitleParts.join(" · ")}
                   </span>
+                  {isOwning && (
+                    <form
+                      className="devices-owner-form"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void handleOwnerSubmit(device.id);
+                      }}
+                    >
+                      <label className="devices-owner-field">
+                        <span className="devices-owner-label">
+                          {t("owner_name_label")}
+                        </span>
+                        <input
+                          autoFocus
+                          className="input"
+                          disabled={isBusy}
+                          onChange={(e) => setOwnerLabelValue(e.target.value)}
+                          placeholder={t("owner_name_placeholder")}
+                          type="text"
+                          value={ownerLabelValue}
+                        />
+                      </label>
+                      <label className="devices-owner-field">
+                        <span className="devices-owner-label">
+                          {t("owner_audience_label")}
+                        </span>
+                        <select
+                          className="input"
+                          disabled={isBusy}
+                          onChange={(e) =>
+                            setOwnerAudienceValue(
+                              e.target.value as OwnerAudience | ""
+                            )
+                          }
+                          value={ownerAudienceValue}
+                        >
+                          <option value="">{t("owner_audience_unset")}</option>
+                          {OWNER_AUDIENCES.map((a) => (
+                            <option key={a} value={a}>
+                              {t(`owner_audience_option.${a}`)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <p className="devices-owner-help">
+                        {t("owner_audience_help")}
+                      </p>
+                      <div className="devices-owner-actions">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          disabled={isBusy}
+                          type="submit"
+                        >
+                          {t("owner_save")}
+                        </button>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          disabled={isBusy}
+                          onClick={handleOwnerCancel}
+                          type="button"
+                        >
+                          {t("owner_cancel")}
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
-                {!isRenaming && (
+                {!(isRenaming || isOwning) && (
                   <div className="devices-list-row-actions">
                     <Link
                       className="btn btn-primary btn-sm"
@@ -340,6 +474,16 @@ export default function DevicesView({
                       type="button"
                     >
                       {t("rename")}
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      disabled={isBusy}
+                      onClick={() => handleOwnerStart(device)}
+                      type="button"
+                    >
+                      {device.ownerLabel || device.ownerAudience
+                        ? t("owner_edit")
+                        : t("owner_set")}
                     </button>
                     <button
                       className="btn btn-danger btn-sm"
