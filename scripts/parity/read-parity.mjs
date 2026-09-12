@@ -41,6 +41,7 @@ import {
   applySinceInstallFixture,
   FIXTURES as SINCE_INSTALL_FIXTURES,
   MISSING_ID as SINCE_INSTALL_MISSING_ID,
+  TREND_ID,
 } from "./since-install-fixture.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -91,6 +92,10 @@ const BATCH_1 = [
   // every seeded app diffs to nothing — so it is also covered by the fixture
   // probe below and by core/tests/diff_cases.rs.
   "/api/apps/[id]/since-install",
+  // Quarterly aggregates. Unlike since-install, the canned seed DOES give
+  // this one real data — its history steps differ, so the stored
+  // changes_summary blobs carry entries and the totals are non-zero.
+  "/api/apps/[id]/history-stats",
 ];
 
 /**
@@ -515,6 +520,57 @@ async function probeSinceInstall(rustBase, nodeBase) {
   return ok;
 }
 
+/**
+ * Byte-compare `/api/apps/{id}/history-stats` on the trend fixture.
+ *
+ * The differ DOES exercise this route against the canned seed, and unlike
+ * since-install the seed gives it real numbers — but only its `added` arm.
+ * Across all ten seeded apps `totalRemoved` is 0, every entry is an untagged
+ * privacy-label one, and `changes_detected` is only ever 0 or 1. So a port
+ * that dropped the removal arm, ignored the category filter, or relaxed the
+ * strict `changes_detected !== 1` would still pass.
+ *
+ * The bucket BOUNDARIES are invisible to the differ either way: every
+ * startMs/endMs is above 1.4e12, which normalize() masks as `~epoch`. The
+ * `label` strings are compared, so a whole-quarter slip is caught; a
+ * sub-quarter one is not, and is covered by unit tests in core/src/server/trend.rs.
+ */
+async function probeHistoryStats(rustBase, nodeBase) {
+  const route = `/api/apps/${encodeURIComponent(TREND_ID)}/history-stats`;
+  const [ra, rb] = await Promise.all([
+    fetch(`${nodeBase}${route}`, {
+      headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN },
+    }),
+    fetch(`${rustBase}${route}`, {
+      headers: { origin: rustBase, "x-auditor-admin-token": TOKEN },
+    }),
+  ]);
+  const [nodeBody, rustBody] = await Promise.all([ra.text(), rb.text()]);
+
+  if (ra.status !== rb.status || nodeBody !== rustBody) {
+    console.log(
+      `  ✘ history-stats fixture: HTTP ${ra.status} vs ${rb.status}\n      node: ${nodeBody.slice(0, 400)}\n      rust: ${rustBody.slice(0, 400)}`
+    );
+    return false;
+  }
+
+  // Prove the comparison had the arms the canned seed cannot reach.
+  let trend = null;
+  try {
+    trend = JSON.parse(nodeBody)?.categoryTrend ?? null;
+  } catch {
+    trend = null;
+  }
+  const exercised =
+    (trend?.totalRemoved ?? 0) > 0 && (trend?.totalAdded ?? 0) > 0;
+  console.log(
+    exercised
+      ? `  ✔ history-stats fixture: +${trend.totalAdded}/-${trend.totalRemoved} identical on both backends (the seed alone never removes anything)`
+      : `  ✘ history-stats fixture: expected both arms exercised, got +${trend?.totalAdded} /-${trend?.totalRemoved} — the fixture has stopped proving anything`
+  );
+  return exercised;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -558,6 +614,7 @@ async function main() {
     "\n── since-install fixture (the canned seed diffs to nothing) ──"
   );
   const sinceOk = await probeSinceInstall(rustBase, args.node);
+  const trendOk = await probeHistoryStats(rustBase, args.node);
 
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
@@ -596,7 +653,8 @@ async function main() {
   const rateOk = await probeRateLimiter(rustBase, args.node);
 
   cleanup();
-  const ok = authOk && slashOk && fwdOk && sinceOk && rateOk && diffOk;
+  const ok =
+    authOk && slashOk && fwdOk && sinceOk && trendOk && rateOk && diffOk;
   console.log(
     ok
       ? "\nREAD PARITY OK — the Rust core matches Node on every implemented route"
