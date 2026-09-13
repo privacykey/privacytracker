@@ -1,9 +1,9 @@
 /**
  * Live runtime diagnostics endpoint.
  *
- *   GET    — return the current snapshot (memory / heap / event-loop /
- *            slow-query ring). Cheap, no DB writes. Polled every ~2s by
- *            the diagnostics dashboard.
+ *   GET    — return the current `RuntimeDiagnostics` envelope (process /
+ *            heap / SQLite / scheduler / HTTP / slow-query ring). Cheap,
+ *            no DB writes. Polled every ~2s by the diagnostics dashboard.
  *   DELETE — clear the slow-query ring AND reset the event-loop
  *            histogram so the user can capture a fresh window after
  *            making a change. Admin-token gated when configured.
@@ -15,24 +15,18 @@
  */
 
 import { NextResponse } from "next/server";
-import { clearApiTimings, snapshotApiTimings } from "@/lib/api-timing";
+import { clearApiTimings } from "@/lib/api-timing";
 import db from "@/lib/db";
-import {
-  clearDbWorkerTimings,
-  snapshotDbWorkerTimings,
-} from "@/lib/db-worker-client";
+import { clearDbWorkerTimings } from "@/lib/db-worker-client";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   clearSlowQueryRing,
   installRuntimeDiagnostics,
   resetEventLoopMonitor,
   setProfilingEnabled,
-  snapshotRuntimeMetrics,
 } from "@/lib/runtime-diagnostics";
-import {
-  clearScrapeActivity,
-  snapshotScrapeActivity,
-} from "@/lib/scrape-activity";
+import { snapshotRuntimeDiagnostics } from "@/lib/runtime-diagnostics-envelope";
+import { clearScrapeActivity } from "@/lib/scrape-activity";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -45,15 +39,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/**
+ * The backend-tagged envelope (`lib/runtime-diagnostics-envelope.ts`). The
+ * Rust core serves this same route from its own process and emits the
+ * same contract with `backend: "rust"`; the page switches on the `kind`
+ * tags rather than on the backend.
+ */
 function runtimeDiagnosticsPayload() {
   installRuntimeDiagnostics(db);
-  const runtime = snapshotRuntimeMetrics();
-  return {
-    ...runtime,
-    apiTimings: snapshotApiTimings(),
-    dbWorker: snapshotDbWorkerTimings(),
-    scrapeActivity: snapshotScrapeActivity(),
-  };
+  return snapshotRuntimeDiagnostics();
 }
 
 export async function GET() {

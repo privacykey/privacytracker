@@ -1,13 +1,20 @@
 /**
- * Runtime performance diagnostics. All state is in-memory and process-local
- * (a restart resets it). Provides:
+ * Runtime performance diagnostics — the Node-process half. All state is
+ * in-memory and process-local (a restart resets it). Provides:
  *
- *   1. snapshotRuntimeMetrics() — point-in-time read of memory, V8 heap,
- *      resource usage, and the event-loop-delay histogram. Sub-ms.
+ *   1. snapshotProcess() / snapshotV8Heap() / snapshotSchedulerLag() /
+ *      snapshotSlowQueries() — point-in-time reads of resource usage, the
+ *      V8 heap, the event-loop-delay histogram and the slow-query ring.
+ *      Sub-ms, no DB I/O.
  *   2. An always-on event-loop-delay monitor (perf_hooks histogram).
  *   3. A slow-query ring buffer fed by a wrapper around better-sqlite3's
  *      `prepare()`. Records SQL (truncated), duration, and parameter count
  *      — never parameter values.
+ *
+ * The wire shape the Diagnostics page reads — the backend-tagged
+ * `RuntimeDiagnostics` envelope — is assembled from these pieces in
+ * `lib/runtime-diagnostics-envelope.ts`, so a Rust backend can emit the
+ * same contract from its own measurements.
  */
 import { type IntervalHistogram, monitorEventLoopDelay } from "node:perf_hooks";
 import { getHeapStatistics } from "node:v8";
@@ -218,9 +225,16 @@ export function resetEventLoopMonitor(): void {
   lagHistogramStartedAt = Date.now();
 }
 
-interface EventLoopSnapshot {
+/**
+ * Scheduler-lag percentiles. On Node this is the event-loop-delay
+ * histogram; the Rust backend reports the same shape from a tokio
+ * scheduler sampler. Shared by `scheduler.lag` and `sqlite.lockWait`.
+ */
+export interface LagSnapshot {
   maxMs: number;
-  meanMs: number;
+  /** Null until there is at least one sample — a histogram with no
+   *  samples has no mean, and `JSON.stringify(NaN)` is `null` anyway. */
+  meanMs: number | null;
   /** All values are in milliseconds, so the UI doesn't need to scale ns. */
   minMs: number;
   p50Ms: number;
@@ -229,32 +243,44 @@ interface EventLoopSnapshot {
   /** Sample count over the window. */
   samples: number;
   /** p99 above 100ms is jank; above 1000ms is beach-balling. */
-  severity: "ok" | "warn" | "danger";
-  stddevMs: number;
+  severity: LagSeverity;
+  stddevMs: number | null;
   /** Wall-clock seconds the histogram has been collecting. */
   windowSeconds: number;
 }
 
-function snapshotEventLoop(): EventLoopSnapshot | null {
+export type LagSeverity = "ok" | "warn" | "danger";
+
+const finiteOrNull = (n: number): number | null =>
+  Number.isFinite(n) ? n : null;
+
+/** p99 ≥ 1s is beach-balling, ≥ 100ms is jank. Shared with the Rust port. */
+export function lagSeverity(p99Ms: number): LagSeverity {
+  return p99Ms >= 1000 ? "danger" : p99Ms >= 100 ? "warn" : "ok";
+}
+
+export function snapshotSchedulerLag(): LagSnapshot | null {
   if (!lagHistogram) {
     return null;
   }
   // perf_hooks histogram values are nanoseconds.
   const NS_PER_MS = 1e6;
   const p99Ms = lagHistogram.percentile(99) / NS_PER_MS;
-  const severity: EventLoopSnapshot["severity"] =
-    p99Ms >= 1000 ? "danger" : p99Ms >= 100 ? "warn" : "ok";
+  const severity: LagSeverity = lagSeverity(p99Ms);
+  const samples = lagHistogram.count ?? lagHistogram.exceeds ?? 0;
   return {
     windowSeconds: Math.max(
       0,
       Math.round((Date.now() - lagHistogramStartedAt) / 1000)
     ),
     // Older Node lacks `count`; `exceeds` is universal and a close-enough proxy.
-    samples: lagHistogram.count ?? lagHistogram.exceeds ?? 0,
-    minMs: lagHistogram.min / NS_PER_MS,
-    meanMs: lagHistogram.mean / NS_PER_MS,
-    maxMs: lagHistogram.max / NS_PER_MS,
-    stddevMs: lagHistogram.stddev / NS_PER_MS,
+    samples,
+    // An empty histogram reports a sentinel min and NaN mean/stddev;
+    // report 0 and null rather than pass those through.
+    minMs: samples > 0 ? lagHistogram.min / NS_PER_MS : 0,
+    meanMs: finiteOrNull(lagHistogram.mean / NS_PER_MS),
+    maxMs: samples > 0 ? lagHistogram.max / NS_PER_MS : 0,
+    stddevMs: finiteOrNull(lagHistogram.stddev / NS_PER_MS),
     p50Ms: lagHistogram.percentile(50) / NS_PER_MS,
     p95Ms: lagHistogram.percentile(95) / NS_PER_MS,
     p99Ms,
@@ -264,112 +290,137 @@ function snapshotEventLoop(): EventLoopSnapshot | null {
 
 // ── Snapshot helpers ─────────────────────────────────────────────────
 
-export interface RuntimeMetrics {
-  eventLoop: EventLoopSnapshot | null;
-  generatedAt: string;
-  /** Output of `process.memoryUsage()` with bytes formatted as MiB. */
-  memory: {
-    rssMb: number;
-    heapTotalMb: number;
-    heapUsedMb: number;
-    externalMb: number;
-    arrayBuffersMb: number;
-  };
-  /** `process.resourceUsage()` rolled up into the fields users care about. */
-  resourceUsage: {
-    userCpuSeconds: number;
-    systemCpuSeconds: number;
-    maxRssMb: number;
-    minorPageFaults: number;
-    majorPageFaults: number;
-    voluntaryContextSwitches: number;
-    involuntaryContextSwitches: number;
-  };
-  slowQueries: {
-    thresholdMs: number;
-    totalSinceStart: number;
-    profilingEnabled: boolean;
-    recent: SlowQueryRecord[];
-  };
-  uptimeSeconds: number;
-  /** V8 heap statistics. `heapSizeLimit` is the V8 ceiling. */
-  v8Heap: {
-    totalHeapSizeMb: number;
-    usedHeapSizeMb: number;
-    heapSizeLimitMb: number;
-    mallocedMemoryMb: number;
-    externalMemoryMb: number;
-    /** > 0.85 is a smell — GC of last resort. */
-    heapFractionUsed: number;
-  };
+/** `process.resourceUsage()` + RSS, in the units the envelope uses. */
+export interface ProcessMetrics {
+  involuntaryContextSwitches: number;
+  majorPageFaults: number;
+  minorPageFaults: number;
+  /** Open file descriptors. Node does not expose it. */
+  openFds: number | null;
+  /** High-water RSS, MiB (`maxRSS`). Null where the runtime cannot say. */
+  peakRssMb: number | null;
+  pid: number;
+  /** Resident set size, MiB. */
+  rssMb: number;
+  systemCpuSeconds: number;
+  /** OS threads. Node does not expose it. */
+  threads: number | null;
+  userCpuSeconds: number;
+  /** Virtual size, MiB. Node does not expose it. */
+  virtualMb: number | null;
+  voluntaryContextSwitches: number;
+}
+
+/** V8's view of the heap. `kind` is what the page switches on. */
+export interface V8HeapMetrics {
+  arrayBuffersMb: number;
+  externalMb: number;
+  externalMemoryMb: number;
+  /** > 0.85 is a smell — GC of last resort. */
+  heapFractionUsed: number;
+  heapSizeLimitMb: number;
+  /** `process.memoryUsage()` */
+  heapTotalMb: number;
+  heapUsedMb: number;
+  kind: "v8";
+  mallocedMemoryMb: number;
+  /** `v8.getHeapStatistics()` */
+  totalHeapSizeMb: number;
+  usedHeapSizeMb: number;
+}
+
+export interface SlowQueriesSnapshot {
+  profilingEnabled: boolean;
+  recent: SlowQueryRecord[];
+  thresholdMs: number;
+  totalSinceStart: number;
 }
 
 const BYTES_PER_MB = 1024 * 1024;
 const toMb = (bytes: number) => Math.round((bytes / BYTES_PER_MB) * 100) / 100;
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/**
- * Build the full runtime snapshot. Sub-ms — safe to poll frequently.
- * `recentSlowQueriesLimit` trims the payload for callers that don't need
- * the full ring (e.g. GitHub issue exports).
- */
-export function snapshotRuntimeMetrics(
-  recentSlowQueriesLimit = SLOW_QUERY_RING_SIZE
-): RuntimeMetrics {
+export function snapshotProcess(): ProcessMetrics {
   const mem = process.memoryUsage();
   const rsrc = process.resourceUsage();
-  const heap = getHeapStatistics();
-
   return {
-    generatedAt: new Date().toISOString(),
-    uptimeSeconds: Math.round(process.uptime()),
-    memory: {
-      rssMb: toMb(mem.rss),
-      heapTotalMb: toMb(mem.heapTotal),
-      heapUsedMb: toMb(mem.heapUsed),
-      externalMb: toMb(mem.external),
-      arrayBuffersMb: toMb(mem.arrayBuffers ?? 0),
-    },
-    v8Heap: {
-      totalHeapSizeMb: toMb(heap.total_heap_size),
-      usedHeapSizeMb: toMb(heap.used_heap_size),
-      heapSizeLimitMb: toMb(heap.heap_size_limit),
-      mallocedMemoryMb: toMb(heap.malloced_memory),
-      externalMemoryMb: toMb(heap.external_memory),
-      heapFractionUsed:
-        heap.heap_size_limit > 0
-          ? Math.round((heap.used_heap_size / heap.heap_size_limit) * 1000) /
-            1000
-          : 0,
-    },
-    resourceUsage: {
-      // Node reports CPU times in microseconds; convert to seconds.
-      userCpuSeconds: Math.round((rsrc.userCPUTime / 1_000_000) * 100) / 100,
-      systemCpuSeconds:
-        Math.round((rsrc.systemCPUTime / 1_000_000) * 100) / 100,
-      // `maxRSS` is in kilobytes on Linux/macOS; convert to MB.
-      maxRssMb: Math.round((rsrc.maxRSS / 1024) * 100) / 100,
-      minorPageFaults: rsrc.minorPageFault,
-      majorPageFaults: rsrc.majorPageFault,
-      voluntaryContextSwitches: rsrc.voluntaryContextSwitches,
-      involuntaryContextSwitches: rsrc.involuntaryContextSwitches,
-    },
-    eventLoop: snapshotEventLoop(),
-    slowQueries: {
-      thresholdMs: SLOW_QUERY_THRESHOLD_MS,
-      totalSinceStart: slowQueryTotalCount,
-      profilingEnabled,
-      recent: getRecentSlowQueries(recentSlowQueriesLimit),
-    },
+    pid: process.pid,
+    rssMb: toMb(mem.rss),
+    // `maxRSS` is in kilobytes on Linux/macOS; convert to MB.
+    peakRssMb: round2(rsrc.maxRSS / 1024),
+    virtualMb: null,
+    threads: null,
+    openFds: null,
+    // Node reports CPU times in microseconds; convert to seconds.
+    userCpuSeconds: round2(rsrc.userCPUTime / 1_000_000),
+    systemCpuSeconds: round2(rsrc.systemCPUTime / 1_000_000),
+    minorPageFaults: rsrc.minorPageFault,
+    majorPageFaults: rsrc.majorPageFault,
+    voluntaryContextSwitches: rsrc.voluntaryContextSwitches,
+    involuntaryContextSwitches: rsrc.involuntaryContextSwitches,
   };
+}
+
+export function snapshotV8Heap(): V8HeapMetrics {
+  const mem = process.memoryUsage();
+  const heap = getHeapStatistics();
+  return {
+    kind: "v8",
+    heapTotalMb: toMb(mem.heapTotal),
+    heapUsedMb: toMb(mem.heapUsed),
+    externalMb: toMb(mem.external),
+    arrayBuffersMb: toMb(mem.arrayBuffers ?? 0),
+    totalHeapSizeMb: toMb(heap.total_heap_size),
+    usedHeapSizeMb: toMb(heap.used_heap_size),
+    heapSizeLimitMb: toMb(heap.heap_size_limit),
+    mallocedMemoryMb: toMb(heap.malloced_memory),
+    externalMemoryMb: toMb(heap.external_memory),
+    heapFractionUsed:
+      heap.heap_size_limit > 0
+        ? Math.round((heap.used_heap_size / heap.heap_size_limit) * 1000) / 1000
+        : 0,
+  };
+}
+
+export function snapshotSlowQueries(
+  recentLimit = SLOW_QUERY_RING_SIZE
+): SlowQueriesSnapshot {
+  return {
+    thresholdMs: SLOW_QUERY_THRESHOLD_MS,
+    totalSinceStart: slowQueryTotalCount,
+    profilingEnabled,
+    recent: getRecentSlowQueries(recentLimit),
+  };
+}
+
+// ── SQLite engine identity ───────────────────────────────────────────
+
+let sqliteVersion: string | null = null;
+
+/** `sqlite_version()` as reported by the connection this process opened —
+ *  read once at install, so the snapshot itself stays free of DB I/O. */
+export function sqliteEngineVersion(): string | null {
+  return sqliteVersion;
 }
 
 // ── Boot wiring ──────────────────────────────────────────────────────
 
 /**
- * Single entry point for instrumentation.ts. Starts the event-loop monitor
- * and patches `db.prepare()`. Idempotent — safe to call twice.
+ * Single entry point for instrumentation.ts. Starts the event-loop monitor,
+ * patches `db.prepare()` and records the SQLite version. Idempotent — safe
+ * to call twice.
  */
 export function installRuntimeDiagnostics(rawDb: Database.Database): void {
   ensureEventLoopMonitor();
   instrumentDatabase(rawDb);
+  if (sqliteVersion === null) {
+    try {
+      const row = rawDb.prepare("SELECT sqlite_version() AS v").get() as
+        | { v?: unknown }
+        | undefined;
+      sqliteVersion = typeof row?.v === "string" ? row.v : null;
+    } catch {
+      sqliteVersion = null;
+    }
+  }
 }

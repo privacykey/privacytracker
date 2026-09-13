@@ -44,6 +44,8 @@
  *             review, which is why the reason is a required field.
  */
 
+import { validateRuntimeDiagnostics } from "./diagnostics-envelope.mjs";
+
 /** Placeholders resolved per-side at run time by parity-diff.mjs. */
 export const PLACEHOLDERS = [
   "{app}",
@@ -470,11 +472,17 @@ export const VOLATILE_READS = [
     path: "/api/diagnostics/health",
     transform: (v) => blankNumbers(blankMeasurements(v)),
   },
+  // The runtime envelope is held to its CONTRACT on each side
+  // (`validate`), because its backend-specific sections (`heap.kind`,
+  // `scheduler.kind`) cannot agree across a Node/Rust pair by design. The
+  // shape comparison stays for the Node-vs-Node self-test; a Rust side
+  // sets `skipCrossCompare` in read-parity when it registers the route.
   {
     route: "/api/diagnostics/runtime",
     name: "diagnostics: runtime",
     path: "/api/diagnostics/runtime",
     transform: blankScalars,
+    validate: validateRuntimeDiagnostics,
   },
   {
     route: "/api/deployment/diagnostics",
@@ -495,6 +503,7 @@ export const VOLATILE_READS = [
     name: "desktop diagnostics",
     path: "/api/desktop/diagnostics",
     transform: blankScalars,
+    validate: (v) => validateRuntimeDiagnostics(v?.runtime_diagnostics),
   },
   {
     route: "/api/backup/snapshots",

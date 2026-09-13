@@ -40,7 +40,7 @@ import {
   readPolicyBulkState,
   releasePolicyBulkMutex,
 } from "./policy-bulk-state";
-import { snapshotRuntimeMetrics } from "./runtime-diagnostics";
+import { snapshotRuntimeDiagnostics } from "./runtime-diagnostics-envelope";
 import { getSetting, setSetting } from "./scheduler";
 import {
   clearSyncBulkState,
@@ -508,14 +508,18 @@ export function runHealthCheck(opts: {
       integrity,
     };
 
-    const metrics = snapshotRuntimeMetrics(0);
-    const heapBreach = metrics.v8Heap.heapFractionUsed > HEAP_FRACTION_WARN;
+    const metrics = snapshotRuntimeDiagnostics({ recentLimit: 0 });
+    // `heapFractionUsed` is a V8 notion; a backend with another heap kind
+    // reports 0 here and never trips the heap warning.
+    const heapFractionUsed =
+      metrics.heap.kind === "v8" ? metrics.heap.heapFractionUsed : 0;
+    const heapBreach = heapFractionUsed > HEAP_FRACTION_WARN;
     checks.runtime = {
-      rssMb: metrics.memory.rssMb,
-      heapFractionUsed: metrics.v8Heap.heapFractionUsed,
+      rssMb: metrics.process.rssMb,
+      heapFractionUsed,
       heapBreach,
-      eventLoopP99Ms: metrics.eventLoop?.p99Ms ?? 0,
-      eventLoopSeverity: metrics.eventLoop?.severity ?? "ok",
+      eventLoopP99Ms: metrics.scheduler.lag?.p99Ms ?? 0,
+      eventLoopSeverity: metrics.scheduler.lag?.severity ?? "ok",
     };
 
     checks.counts = {
@@ -545,12 +549,10 @@ export function runHealthCheck(opts: {
       warnings.push(`integrity check failed: ${integrity.detail ?? "unknown"}`);
     }
     if (heapBreach) {
-      warnings.push(
-        `heap ${Math.round(metrics.v8Heap.heapFractionUsed * 100)}% of limit`
-      );
+      warnings.push(`heap ${Math.round(heapFractionUsed * 100)}% of limit`);
     }
-    if (metrics.memory.rssMb > cfg.rssWarnMb) {
-      warnings.push(`RSS ${Math.round(metrics.memory.rssMb)}MB`);
+    if (metrics.process.rssMb > cfg.rssWarnMb) {
+      warnings.push(`RSS ${Math.round(metrics.process.rssMb)}MB`);
     }
     if (checks.runtime.eventLoopSeverity !== "ok") {
       warnings.push(

@@ -1213,7 +1213,7 @@
     "not_found_title": "404 — Page not found · privacytracker",
     "not_found_description": "The page you're looking for doesn't exist.",
     "diagnostics_title": "Diagnostics · privacytracker",
-    "diagnostics_description": "Live runtime metrics for the Node sidecar — memory, event-loop lag, slow queries.",
+    "diagnostics_description": "Live runtime metrics for the server — memory, event-loop lag, slow queries.",
     "definitions_title": "Privacy Label Definitions — privacytracker",
     "definitions_description": "Definitions of Apple App Store privacy label terms — Data Not Linked to You, Data Linked to You, Data Used to Track You — and the data types developers may collect, with links to Apple’s authoritative sources.",
     "home_title": "Home — privacytracker"
@@ -5278,7 +5278,7 @@
   },
   "diagnostics_page": {
     "title": "Diagnostics",
-    "subtitle": "Live runtime metrics for the Node sidecar. Polls every {seconds}s.",
+    "subtitle": "Live runtime metrics for the server. Polls every {seconds}s.",
     "loading_runtime": "Loading runtime metrics…",
     "loading": "Loading…",
     "em_dash": "—",
@@ -5312,7 +5312,9 @@
       "integrity_failed_no_detail": "Database integrity check failed.",
       "integrity_failed_with_detail": "Database integrity check failed: {detail}.",
       "rate_limited": "Apple {cats} rate-limited; {remaining} remaining.",
-      "errors_recent": "{count, plural, one {# error} other {# errors}} logged in the last 5 minutes."
+      "errors_recent": "{count, plural, one {# error} other {# errors}} logged in the last 5 minutes.",
+      "scheduler_danger": "Backend is stalling — scheduler lag p99 {p99} ms.",
+      "scheduler_warn": "Some jank — scheduler lag p99 {p99} ms."
     },
     "severity_pill": {
       "healthy": "healthy",
@@ -5346,7 +5348,14 @@
       "array_buffers": "array buffers",
       "malloced": "malloced",
       "spark_rss": "Resident memory over recent window",
-      "spark_heap": "V8 heap utilisation over recent window"
+      "spark_heap": "V8 heap utilisation over recent window",
+      "help_allocator": "RSS = total resident size. Allocated = bytes live in the Rust global allocator.",
+      "allocator_heap": "allocated",
+      "allocated": "allocated",
+      "peak": "peak allocated",
+      "live_allocations": "live allocations",
+      "virtual": "virtual",
+      "spark_allocated": "Allocated memory over recent window"
     },
     "card_resource": {
       "title": "Resource usage",
@@ -5359,7 +5368,9 @@
       "minor_faults": "minor faults",
       "vol_ctx_sw": "vol. ctx sw",
       "invol_ctx_sw": "invol. ctx sw",
-      "spark_cpu": "CPU usage over recent window"
+      "spark_cpu": "CPU usage over recent window",
+      "threads": "threads",
+      "open_fds": "open fds"
     },
     "card_database": {
       "title": "Database",
@@ -5503,7 +5514,10 @@
       "col_route": "Route",
       "title": "Recent API calls",
       "slow_pill": "slow ≥ {ms}ms",
-      "help": "{total} requests since start · {slow} slow or errored · showing latest {showing}."
+      "help": "{total} requests since start · {slow} slow or errored · showing latest {showing}.",
+      "in_flight": "in flight",
+      "limiter_keys": "limiter keys tracked",
+      "limiter_denials": "limiter denials"
     },
     "card_db_worker": {
       "empty": "No DB worker batches captured yet. Bulk onboarding writes will appear here.",
@@ -5555,6 +5569,36 @@
       "page": "Page",
       "when": "When",
       "inline": "(inline)"
+    },
+    "card_scheduler": {
+      "title": "Scheduler lag",
+      "help": "How long a ready task waits for a tokio worker. p99 above 100ms is jank; above 1s is a stall.",
+      "workers": "workers",
+      "alive_tasks": "alive tasks",
+      "queue_depth": "queue depth"
+    },
+    "card_sqlite": {
+      "title": "SQLite",
+      "help": "The engine behind privacy.db. Cache misses climbing while hits stall means the page cache is too small for the working set.",
+      "engine": "engine",
+      "version": "version",
+      "connection_model": "connections",
+      "model_single_sync": "one, synchronous",
+      "model_single_mutex": "one, behind a mutex",
+      "memory_used": "memory used",
+      "memory_highwater": "memory high-water",
+      "page_cache": "page cache",
+      "schema": "schema",
+      "statements": "prepared statements",
+      "cache_hits": "cache hits",
+      "cache_misses": "cache misses",
+      "cache_hit_rate": "hit rate",
+      "cache_writes": "cache writes",
+      "cache_spills": "cache spills",
+      "lock_wait_p99": "lock wait p99",
+      "lock_wait_max": "lock wait max",
+      "lock_wait_samples": "lock wait samples",
+      "not_reported": "Engine counters are not exposed by this backend."
     }
   },
   "background_mode_callout": {

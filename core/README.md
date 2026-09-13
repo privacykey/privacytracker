@@ -739,9 +739,17 @@ the request's forwarded headers, the host OS — and are therefore portable
 exactly. The other three (`/api/diagnostics/runtime`,
 `/api/diagnostics/errors`, `/api/desktop/diagnostics`) describe the Node
 PROCESS: V8 heap statistics, an event-loop-lag histogram, a `console.error`
-interceptor, the db-worker thread's timings. The manifest already compares
-those shape-only; what the Rust core should report in their place is a
-design question, not a port, and is left open here.
+interceptor, the db-worker thread's timings. Those cannot be ported; they
+are re-specified instead. `/api/diagnostics/runtime` (and the block
+`/api/desktop/diagnostics` embeds) now emits a backend-tagged envelope —
+`lib/runtime-diagnostics-envelope.ts`, validated by
+`scripts/parity/diagnostics-envelope.mjs` — whose backend-specific sections
+carry a `kind` (`heap.kind: "v8" | "rust-allocator"`, `scheduler.kind:
+"event-loop" | "tokio"`) and whose unmeasurable sections are `null`. The
+Rust port fills `sqlite.memory` / `sqlite.cache` / `sqlite.lockWait` from
+`sqlite3_db_status` and its connection mutex, which Node cannot; the
+harness holds each side to the contract (`validate`) rather than
+byte-comparing a V8 heap against an allocator.
 
 **What `next start` does to the headers.** `inferDeploymentNetwork` read
 `proxyDetected: true`, `forwardedHost` equal to the Host header and
