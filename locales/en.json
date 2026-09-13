@@ -3570,18 +3570,23 @@
     "banner_show_all": "Show all devices",
     "grid_filtering_by": "Showing",
     "owner_unassigned": "No owner set",
-    "audience_prompt": "These aren't your own apps. Switch to {mode}?",
-    "audience_prompt_named": "You're looking at {owner}'s apps. Switch to {mode}?",
-    "audience_switch_cta": "Switch",
+    "audience_prompt": "Someone else's device — but you're set up for {current}.",
+    "audience_prompt_named": "{owner}'s device — but you're set up for {current}.",
+    "audience_switch_cta": "Switch to {mode}",
     "audience_switching": "Switching…",
     "audience_keep_cta": "Stay as I am",
     "audience_name": {
-      "self": "working on my own apps",
+      "self": "working on your own apps",
       "loved_one": "helping someone else",
       "guardian": "looking after a child's device"
     },
     "export_note": "Exports cover every device, not just {scope}.",
-    "export_note_bundle": "This bundle covers every device, not just {scope}."
+    "export_note_bundle": "This bundle covers every device, not just {scope}.",
+    "audience_why": {
+      "loved_one": "Switching to helping someone else turns on the tools for handing your findings to them — a shareable bundle, printable recommendations and notes on each app — and it's needed before you can remove apps from their device.",
+      "guardian": "Switching to looking after a child's device adds age ratings and a plain-language safety summary for every app, hides the power-user tools, and it's needed before you can remove apps from their device.",
+      "self": "Switching to working on your own apps puts the sharing tools away, and it's needed before you can remove apps from this device."
+    }
   },
   "device_connect_toast": {
     "no_name": "iOS device",

@@ -252,3 +252,13 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* The "what switching does" sentence — secondary to the mismatch line
+   above it, so it steps down in weight and colour rather than reading
+   as a second warning. */
+.device-scope-prompt-why {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}

@@ -303,6 +303,22 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- **The device menu's "switch mode" prompt now explains what switching
+  does.** It used to say "You're looking at Robin's apps. Switch to
+  helping someone else?" — which assumes you already know what that mode
+  is. It now states the mismatch ("Robin's device — but you're set up
+  for working on your own apps") and then what the other mode actually
+  turns on: for helping someone, the shareable bundle, printable
+  recommendations and per-app notes, plus that it's required before
+  apps can be removed from their device; for a child's device, age
+  ratings and the safety summary. The button names the mode too.
+
+- **Fixed: the apps grid scrolled the whole page sideways on a phone.**
+  Its toolbar row was set never to shrink, which stopped the mobile
+  wrap rule from ever applying — six buttons stayed on one line and
+  pushed the page out to nearly twice the screen width. The row now
+  wraps onto three lines at 375px and the page stays put.
+
 - The local visual-regression net now covers the device-scope chrome:
   the picker open, a scoped grid, the focus-switch prompt, the scoped
   Stats page with its export note, and the device owner editor. Its

@@ -400,15 +400,24 @@ export default function DeviceScopePicker({
                changing that because someone clicked a device filter
                would be a worse surprise than the mismatch it fixes. */
             <div className="device-scope-prompt" role="note">
+              {/* Two sentences, deliberately. The first says what's
+                  mismatched. The second says what switching actually
+                  DOES — a new user has no idea what "helping someone
+                  else" is, so a prompt that only names the mode reads
+                  as jargon and gets dismissed. The CTA repeats the mode
+                  name so the button stands on its own. */}
               <p className="device-scope-prompt-text">
                 {ownerName
                   ? t("audience_prompt_named", {
                       owner: ownerName,
-                      mode: t(`audience_name.${suggestedAudience}`),
+                      current: t(`audience_name.${audience ?? "self"}`),
                     })
                   : t("audience_prompt", {
-                      mode: t(`audience_name.${suggestedAudience}`),
+                      current: t(`audience_name.${audience ?? "self"}`),
                     })}
+              </p>
+              <p className="device-scope-prompt-why">
+                {t(`audience_why.${suggestedAudience}`)}
               </p>
               <div className="device-scope-prompt-actions">
                 <button
@@ -430,7 +439,9 @@ export default function DeviceScopePicker({
                 >
                   {switching
                     ? t("audience_switching")
-                    : t("audience_switch_cta")}
+                    : t("audience_switch_cta", {
+                        mode: t(`audience_name.${suggestedAudience}`),
+                      })}
                 </button>
                 <button
                   className="btn btn-sm btn-ghost"

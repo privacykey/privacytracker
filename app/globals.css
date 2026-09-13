@@ -8579,8 +8579,17 @@ body.review-rec-print-active .review-rec-print a {
   .policy-summary-title {
     font-size: 21px;
   }
+  /* The base rule gives this row `flex-shrink: 0`, which on its own
+     defeats the `flex-wrap: wrap` below: the row keeps its max-content
+     width (six buttons on the apps grid) and never gets narrow enough
+     to need wrapping, so at 375px it pushed the DOCUMENT's scrollWidth
+     out past 700px and the whole page scrolled sideways. Let it shrink
+     and take the full row instead, so the buttons wrap inside it. */
   .header-actions {
+    flex-shrink: 1;
     flex-wrap: wrap;
+    width: 100%;
+    min-width: 0;
   }
 
   /* Hero reflow: centre-align a single column so the name + icon don't

@@ -3570,18 +3570,23 @@
     "banner_show_all": "显示全部设备",
     "grid_filtering_by": "正在显示",
     "owner_unassigned": "未设置归属",
-    "audience_prompt": "这些不是你自己的应用。要切换到{mode}吗？",
-    "audience_prompt_named": "你正在查看{owner}的应用。要切换到{mode}吗？",
-    "audience_switch_cta": "切换",
+    "audience_prompt": "这是他人的设备 — 但你当前的设置是{current}。",
+    "audience_prompt_named": "这是{owner}的设备 — 但你当前的设置是{current}。",
+    "audience_switch_cta": "切换到{mode}",
     "audience_switching": "正在切换…",
     "audience_keep_cta": "保持当前设置",
     "audience_name": {
-      "self": "管理我自己的应用",
+      "self": "管理自己的应用",
       "loved_one": "帮助他人",
       "guardian": "照看孩子的设备"
     },
     "export_note": "导出包含所有设备，而不仅仅是{scope}。",
-    "export_note_bundle": "此文件包含所有设备，而不仅仅是{scope}。"
+    "export_note_bundle": "此文件包含所有设备，而不仅仅是{scope}。",
+    "audience_why": {
+      "loved_one": "切换到「帮助他人」会开启把你的发现交给对方的工具 — 可分享的清单包、可打印的建议，以及每个应用的备注 — 并且是从对方设备移除应用的前提。",
+      "guardian": "切换到「照看孩子的设备」会为每个应用加上年龄分级和通俗易懂的安全摘要，隐藏进阶工具，并且是从孩子设备移除应用的前提。",
+      "self": "切换到「管理自己的应用」会收起分享工具，并且是从这台设备移除应用的前提。"
+    }
   },
   "device_connect_toast": {
     "no_name": "iOS 设备",
