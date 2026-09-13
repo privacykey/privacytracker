@@ -43,7 +43,6 @@ fn main() -> ExitCode {
                 );
                 return ExitCode::from(2);
             }
-            let (data_dir, source) = privacytracker_core::server::resolve_data_dir();
             // Default 0 = let the OS pick; the bound address is printed so a
             // supervising script reads it rather than guessing.
             let port: u16 = match args.iter().position(|a| a == "--port") {
@@ -64,7 +63,7 @@ fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            match rt.block_on(privacytracker_core::server::serve(&data_dir, source, addr)) {
+            match rt.block_on(privacytracker_core::server::serve(addr)) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
                     eprintln!("pt-core: serve failed: {e}");
@@ -85,7 +84,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         _ => {
-            eprintln!("usage: pt-core <migrate|version> [args]");
+            eprintln!("usage: pt-core <migrate|serve|version> [args]");
             ExitCode::from(2)
         }
     }

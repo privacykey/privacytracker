@@ -14,6 +14,17 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Rust core: the data directory and database path are process-wide
+  configuration (a `OnceLock`, resolved once from `PRIVACYTRACKER_DATA_DIR`
+  or `<cwd>/data` exactly as `lib/db.ts` resolves them at module scope),
+  no longer fields of the per-request `AppState`. CodeQL's Rust model
+  treats every axum extractor — `State` included — as user-provided input,
+  so a data directory that reached `fs::metadata` / `read_dir` through
+  `State` was reported as `rust/path-injection` on each of the four
+  deployment reads that stat the database or its directory. Kept out of the
+  request's reach there is no flow to report; behaviour on the wire is
+  unchanged. Developer-facing only.
+
 - Rust-core parity harness: `read-parity.mjs` now refuses to run when copying
   the Node database would let the Rust core's unknown-device backfill fire on
   the copy. Both backends port that backfill, so whichever opens the database

@@ -36,7 +36,7 @@ use super::trust::{
     allowed_host_patterns, bind_is_ambiguous, is_loopback_normalized, is_network_exposed,
     normalize_host, trust_proxy,
 };
-use super::AppState;
+use super::{data_layout, AppState};
 use crate::jsdate::js_iso_string;
 
 /// `package.json`, embedded so `app.name` / `app.version` are the app's, not
@@ -417,7 +417,8 @@ pub fn build_deployment_diagnostics(
         "web"
     };
     let health = read_health(conn);
-    let database = read_database(conn, &state.db_path, &state.data_dir, state.data_dir_source);
+    let layout = data_layout();
+    let database = read_database(conn, &layout.db_path, &layout.data_dir, layout.source);
     let network = infer_deployment_network(headers);
     let security = read_security();
     let checks = build_checks(&health, &database, &network, &security);

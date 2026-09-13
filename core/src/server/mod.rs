@@ -44,7 +44,7 @@ pub mod webhook;
 
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
 
 use axum::{routing::get, Router};
@@ -69,13 +69,6 @@ pub struct AppState {
     /// The inbound request limiter. Per-process and in-memory, exactly as in
     /// Node — a restart forgets the window there too.
     pub rate_limiter: Arc<ratelimit::RateLimiter>,
-    /// `lib/db.ts`'s `dataDir` / `dbPath`, resolved the way `path.resolve`
-    /// does (absolute, dots folded, symlinks kept), and where the directory
-    /// came from — `"env"` for `PRIVACYTRACKER_DATA_DIR`, `"cwd"` for
-    /// `<cwd>/data`. The deployment diagnostics report all three.
-    pub data_dir: PathBuf,
-    pub db_path: PathBuf,
-    pub data_dir_source: &'static str,
     /// `process.uptime()`'s origin.
     pub started_at: Instant,
     /// The port the listener actually bound — `next start` puts it in
@@ -83,24 +76,74 @@ pub struct AppState {
     pub bound_port: u16,
 }
 
+/// Where the database lives: `lib/db.ts`'s `dataDir` / `dbPath`, plus the
+/// `dataDirSource` label the deployment diagnostics report.
+pub struct DataLayout {
+    /// `PRIVACYTRACKER_DATA_DIR` resolved the way `path.resolve` does
+    /// (absolute, dots folded, symlinks kept), else `<cwd>/data`.
+    pub data_dir: PathBuf,
+    /// `<data_dir>/privacy.db` — the filename is fixed, as in Node.
+    pub db_path: PathBuf,
+    /// `"env"` or `"cwd"`. Node's third value, `"memory"`, is its build-phase
+    /// case and has no counterpart here.
+    pub source: &'static str,
+}
+
 /// Resolve the data directory exactly as `lib/db.ts` does:
 /// `PRIVACYTRACKER_DATA_DIR` when set (honoured unconditionally — the Tauri
-/// shell injects it), else `<cwd>/data`. Returns the directory and the
-/// `dataDirSource` label the diagnostics report.
-pub fn resolve_data_dir() -> (PathBuf, &'static str) {
+/// shell injects it), else `<cwd>/data`.
+fn resolve_data_dir() -> (PathBuf, &'static str) {
     match std::env::var("PRIVACYTRACKER_DATA_DIR") {
         Ok(v) if !v.is_empty() => (deployment::resolve_path(Path::new(&v)), "env"),
+        // Node cannot boot with an unreadable cwd (`process.cwd()` throws at
+        // module load); fall back to the root, as `resolve_path` does, so
+        // the reported path is at least absolute.
         _ => (
             std::env::current_dir()
-                .unwrap_or_else(|_| PathBuf::from("."))
+                .unwrap_or_else(|_| PathBuf::from("/"))
                 .join("data"),
             "cwd",
         ),
     }
 }
 
+static DATA_LAYOUT: OnceLock<DataLayout> = OnceLock::new();
+
+/// The process's data layout, resolved once on first use — the shape
+/// `lib/db.ts` has, where `dataDir` and `dbPath` are module-scope constants
+/// evaluated from the environment when the module loads.
+///
+/// Deliberately NOT a field of `AppState`. It is process configuration,
+/// not request state; and CodeQL's Rust model treats every axum extractor
+/// argument — `State<AppState>` included — as user-provided input, so a
+/// data directory that reached `fs::metadata` or `read_dir` through
+/// `State` was reported as path injection on each of the four deployment
+/// reads that stat the database or its directory. Kept out of the
+/// request's reach, there is no flow to report and nothing to suppress.
+///
+/// Resolved ONCE per process, like the module-scope constant it mirrors.
+/// A test that needs a different directory must set
+/// `PRIVACYTRACKER_DATA_DIR` before the first call; the static is never
+/// re-read, and the unit-test binary is one process.
+pub fn data_layout() -> &'static DataLayout {
+    DATA_LAYOUT.get_or_init(|| {
+        let (data_dir, source) = resolve_data_dir();
+        DataLayout {
+            db_path: data_dir.join("privacy.db"),
+            data_dir,
+            source,
+        }
+    })
+}
+
 /// Build the router. Split out from `serve` so tests can exercise routes
 /// without binding a port.
+///
+/// The deployment reads report [`data_layout`], not the file behind
+/// `state.conn`: a caller that opens a temporary database and passes it
+/// here gets `/api/diagnostics/database` describing the configured data
+/// directory instead. `serve` is the one constructor of `AppState` and
+/// keeps the two aligned.
 pub fn app(state: AppState) -> Router {
     Router::new()
         // Batch 1. Each of these is a GET the client shell fetches on first
@@ -208,7 +251,7 @@ pub fn app(state: AppState) -> Router {
         .with_state(state)
 }
 
-/// Open + migrate `<data_dir>/privacy.db`, then serve on `addr`.
+/// Open + migrate the database at [`data_layout`], then serve on `addr`.
 ///
 /// Reuses `db::open_and_migrate` so the pragmas are byte-identical to the
 /// Node server's: `busy_timeout` and `foreign_keys` are CONNECTION-scoped,
@@ -218,13 +261,9 @@ pub fn app(state: AppState) -> Router {
 /// The listener is bound BEFORE the state is built because the bound port
 /// is part of the state (`x-forwarded-port`), and the service is built with
 /// connect info so the peer address can stand in for `socket.remoteAddress`.
-pub async fn serve(
-    data_dir: &Path,
-    data_dir_source: &'static str,
-    addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let db_path = data_dir.join("privacy.db");
-    let conn = crate::db::open_and_migrate(&db_path)?;
+pub async fn serve(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
+    let layout = data_layout();
+    let conn = crate::db::open_and_migrate(&layout.db_path)?;
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let bound = listener.local_addr()?;
@@ -232,9 +271,6 @@ pub async fn serve(
     let state = AppState {
         conn: Arc::new(Mutex::new(conn)),
         rate_limiter: Arc::new(ratelimit::RateLimiter::new()),
-        data_dir: data_dir.to_path_buf(),
-        db_path,
-        data_dir_source,
         started_at: Instant::now(),
         bound_port: bound.port(),
     };
