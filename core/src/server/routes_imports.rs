@@ -175,7 +175,7 @@ pub async fn imports(
     // JS truthiness: an EMPTY ?id= is falsy and falls through to the list.
     let id = q.get("id").filter(|v| !v.is_empty());
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
 
     if let Some(id) = id {
         let sql = format!(

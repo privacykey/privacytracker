@@ -127,7 +127,7 @@ pub async fn verdicts(
         return json_error(StatusCode::BAD_REQUEST, "appId is required");
     };
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     let listed = (|| -> rusqlite::Result<Vec<Verdict>> {
         let mut stmt = conn.prepare(
             "SELECT id, app_id, verdict, rationale, source, source_name, set_at, updated_at \
@@ -218,7 +218,7 @@ pub async fn imports_queue(State(state): State<AppState>) -> Response {
     let running =
         get_setting(&state, "import_queue_running", "false").unwrap_or_default() == "true";
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     let built = (|| -> rusqlite::Result<QueueStatus> {
         // MIN/MAX over an empty set are NULL, and COUNT is 0 — matching
         // Node's `counts.soonest ?? null` / `counts.queued ?? 0`.

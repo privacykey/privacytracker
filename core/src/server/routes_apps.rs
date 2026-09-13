@@ -55,7 +55,7 @@ pub async fn apps(
     let view = q.get("view").map(String::as_str);
     let changelog = q.get("changelog").map(String::as_str);
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
 
     // 1. `?id=X&changelog=true` — strict string equality on "true"; `TRUE`,
     //    `1` and a bare `?changelog` all miss and land on branch 2. NOTE: no

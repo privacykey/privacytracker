@@ -455,8 +455,11 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+/// A non-fatal migration step failed: say so on stderr AND in the error
+/// ring `/api/diagnostics/errors` serves, as Node's console interceptor
+/// would have captured the equivalent `console.warn`.
 fn warn(context: &str, e: &rusqlite::Error) {
-    eprintln!("[db] {context} failed: {e}");
+    crate::server::diag::log_warn(format!("[db] {context} failed: {e}"));
 }
 
 /// Verbatim from db.ts — the INSERT … SELECT that seeds

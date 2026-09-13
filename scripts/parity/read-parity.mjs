@@ -38,6 +38,11 @@ import { parseArgs } from "node:util";
 import BetterSqlite3 from "better-sqlite3";
 
 import {
+  validateErrorLog,
+  validateRuntimeDiagnostics,
+} from "./diagnostics-envelope.mjs";
+
+import {
   applySinceInstallFixture,
   BRIDGED_IDS,
   COLLATION_FIXTURE,
@@ -135,6 +140,14 @@ const BATCH_1 = [
   "/api/diagnostics/database",
   "/api/diagnostics/disk",
   "/api/diagnostics/health",
+  // The process-introspection reads. Not comparable across backends by
+  // design (a V8 heap is not a Rust allocator), so the manifest validates
+  // each side against the envelope contract and skips the cross-compare;
+  // probeRuntimeEnvelope below holds the Rust body to what it must
+  // contain and compares the parts that ARE the same database.
+  "/api/diagnostics/runtime",
+  "/api/desktop/diagnostics",
+  "/api/diagnostics/errors",
 ];
 
 /**
@@ -1205,6 +1218,247 @@ async function probeDiagnosticsReads(rustBase, nodeBase) {
   return ok;
 }
 
+/**
+ * The runtime envelope on the Rust side. The manifest can only say "each
+ * side conforms to the contract"; a Rust body that conformed by reporting
+ * every section it could measure as null would pass that. So: the sections
+ * the Rust core exists to fill (allocator, tokio, the SQLite counters,
+ * lock wait) must be present with live numbers, the sections it has no
+ * counterpart for must be null, and the database-derived parts of the
+ * desktop payload must EQUAL Node's — both servers read the same copy.
+ */
+async function probeRuntimeEnvelope(rustBase, nodeBase) {
+  const get = async (base, route) => {
+    const res = await fetch(`${base}${route}`, {
+      headers: { origin: base, "x-auditor-admin-token": TOKEN },
+    });
+    let j = null;
+    try {
+      j = await res.json();
+    } catch {
+      j = null;
+    }
+    return { status: res.status, j };
+  };
+  let ok = true;
+  const check = (label, pass, detail) => {
+    console.log(pass ? `  ✔ ${label}` : `  ✘ ${label}: ${detail}`);
+    ok &&= pass;
+  };
+
+  // Fill the Rust HTTP ring past the 20-row cap the desktop report
+  // applies, so the cap check below is not satisfied by a short ring.
+  // `?limit=0` is a 400 from a MATCHED route, and 4xx is always recorded
+  // (fast 200s are 1-in-5); neither route is rate-limited.
+  for (let i = 0; i < 25; i += 1) {
+    await get(rustBase, "/api/apps?limit=0");
+  }
+  // The sampler ticks every 20 ms and the server has been up for the whole
+  // run by now; this is belt-and-braces for a fast machine.
+  await new Promise((r) => setTimeout(r, 120));
+
+  const rt = await get(rustBase, "/api/diagnostics/runtime");
+  const problems = validateRuntimeDiagnostics(rt.j);
+  check(
+    "rust runtime envelope validates against the contract",
+    rt.status === 200 && problems.length === 0,
+    `HTTP ${rt.status}; ${problems.slice(0, 6).join("; ") || "no problems"}`
+  );
+  const e = rt.j ?? {};
+  const live = (v) => typeof v === "number" && v > 0;
+  const facts = [
+    ["backend is rust", e.backend === "rust"],
+    [
+      "heap is the counting allocator with live bytes",
+      e.heap?.kind === "rust-allocator" &&
+        live(e.heap?.allocatedMb) &&
+        live(e.heap?.liveAllocations),
+    ],
+    [
+      "scheduler is tokio with workers and a lag histogram that has sampled",
+      e.scheduler?.kind === "tokio" &&
+        live(e.scheduler?.workers) &&
+        live(e.scheduler?.lag?.samples),
+    ],
+    [
+      "sqlite engine is rusqlite behind one mutex",
+      e.sqlite?.engine === "rusqlite" &&
+        e.sqlite?.connectionModel === "single-mutex" &&
+        typeof e.sqlite?.version === "string",
+    ],
+    [
+      "sqlite memory counters are live",
+      live(e.sqlite?.memory?.usedMb) && live(e.sqlite?.memory?.schemaKb),
+    ],
+    ["sqlite page cache has been hit", live(e.sqlite?.cache?.hits)],
+    [
+      // More samples than the reading handler could produce alone: every
+      // handler takes the connection through AppState::db().
+      "lock wait has samples from more than this one request",
+      e.sqlite?.lockWait?.samples >= 5,
+    ],
+    [
+      "http: this very request is in flight, and the ring holds the 25 4xx",
+      live(e.http?.inFlight) &&
+        e.http?.totalSinceStart >= 25 &&
+        e.http?.recent?.length >= 25,
+    ],
+    [
+      // Labels are matched PATTERNS: no query string, no concrete id.
+      "http: every recorded label is a route pattern",
+      (e.http?.recent ?? []).length > 0 &&
+        (e.http?.recent ?? []).every(
+          (r) => r.route.startsWith("/api/") && !r.route.includes("?")
+        ),
+    ],
+    [
+      "slow queries: 50ms threshold, profiling on",
+      e.slowQueries?.thresholdMs === 50 &&
+        e.slowQueries?.profilingEnabled === true,
+    ],
+    [
+      "no db-worker and no scraper: null, not zeros",
+      e.dbWorker === null && e.scrapeActivity === null,
+    ],
+    [
+      "inbound limiter reported",
+      typeof e.rateLimiter?.trackedKeys === "number" &&
+        typeof e.rateLimiter?.denialsSinceStart === "number",
+    ],
+  ];
+  const failed = facts.filter(([, pass]) => !pass).map(([name]) => name);
+  check(
+    `rust envelope contents: ${facts.length - failed.length}/${facts.length} facts hold`,
+    failed.length === 0,
+    `failed: ${failed.join("; ")} — body: ${JSON.stringify(e).slice(0, 400)}`
+  );
+
+  // The desktop report: the envelope embeds, and the database-derived
+  // parts agree with Node because both servers read the same copy.
+  const [dn, dr] = await Promise.all([
+    get(nodeBase, "/api/desktop/diagnostics"),
+    get(rustBase, "/api/desktop/diagnostics"),
+  ]);
+  const embedded = validateRuntimeDiagnostics(dr.j?.runtime_diagnostics);
+  const same = [
+    "db.apps",
+    "db.snapshots",
+    "db.unread_notifications",
+    "scheduler.scheduleMode",
+    "scheduler.syncRunning",
+    "scheduler.lastAutoSync",
+    "bulk_runners",
+  ]
+    .map((p) => [
+      p,
+      p.split(".").reduce((o, k) => o?.[k], dn.j),
+      p.split(".").reduce((o, k) => o?.[k], dr.j),
+    ])
+    .filter(([, a, b]) => JSON.stringify(a) !== JSON.stringify(b))
+    .map(
+      ([p, a, b]) =>
+        `${p}: node ${JSON.stringify(a)} vs rust ${JSON.stringify(b)}`
+    );
+  check(
+    `desktop report: embedded envelope validates; db counts (${dr.j?.db?.apps} apps, ${dr.j?.db?.snapshots} snapshots), scheduler/lastAutoSync and runner flags equal Node's; the ${e.http?.recent?.length}-row ring is capped to ${dr.j?.runtime_diagnostics?.http?.recent?.length}; host memory and cpus reported`,
+    dn.status === 200 &&
+      dr.status === 200 &&
+      embedded.length === 0 &&
+      same.length === 0 &&
+      // Exact, not `<= 20`: the ring was filled past the cap above.
+      (dr.j?.runtime_diagnostics?.http?.recent ?? []).length === 20 &&
+      live(dr.j?.db?.apps) &&
+      typeof dr.j?.host?.cpu_count === "number" &&
+      live(dr.j?.host?.total_mem_mb) &&
+      live(dr.j?.host?.free_mem_mb),
+    `HTTP ${dn.status} vs ${dr.status}; ${embedded.slice(0, 4).join("; ")}${same.length ? `; ${same.join("; ")}` : ""}`
+  );
+
+  return ok;
+}
+
+/**
+ * `/api/diagnostics/errors` on both sides, run AFTER the rate-limiter probe
+ * on purpose: a denied request makes both servers warn, so the `?limit`
+ * clamp is measured against a ring that has something in it. On an empty
+ * ring every `length <= n` assertion passes for the wrong reason.
+ *
+ * NODE'S RING IS ALWAYS EMPTY IN PRODUCTION, and that is a Node-side bug
+ * this probe found rather than a porting gap. `instrumentation.ts` installs
+ * the `console.warn` interceptor through `./lib/error-log-ring` while the
+ * route reads `@/lib/error-log-ring`; Next gives those two specifiers
+ * separate module instances, so the ring that is written to is never the
+ * ring that is read. Measured: 109 warnings on stderr since boot — the
+ * limiter's DENY among them — and `{"entries":[],"capacity":200}` from the
+ * route. So the assertions below require the RUST ring to hold entries and
+ * hold each side's clamp to ITS OWN ring length; requiring Node's to be
+ * non-empty would fail the gate on a bug that predates this port.
+ */
+async function probeErrorRing(rustBase, nodeBase) {
+  const get = async (base, route) => {
+    const res = await fetch(`${base}${route}`, {
+      headers: { origin: base, "x-auditor-admin-token": TOKEN },
+    });
+    let j = null;
+    try {
+      j = await res.json();
+    } catch {
+      j = null;
+    }
+    return { status: res.status, j };
+  };
+  const routes = [
+    "/api/diagnostics/errors",
+    "/api/diagnostics/errors?limit=0",
+    "/api/diagnostics/errors?limit=abc",
+    "/api/diagnostics/errors?limit=2",
+    "/api/diagnostics/errors?limit=1&limit=5",
+  ];
+  const sides = [];
+  for (const route of routes) {
+    sides.push({
+      route,
+      node: await get(nodeBase, route),
+      rust: await get(rustBase, route),
+    });
+  }
+  const problems = sides.flatMap((s) =>
+    [
+      ["node", s.node],
+      ["rust", s.rust],
+    ].flatMap(([who, r]) =>
+      r.status === 200
+        ? validateErrorLog(r.j).map((p) => `${s.route} (${who}): ${p}`)
+        : [`${s.route} (${who}): HTTP ${r.status}`]
+    )
+  );
+  const [full, limit0, limitAbc, limit2, repeated] = sides;
+  const nodeFull = full.node.j?.entries.length ?? 0;
+  const rustFull = full.rust.j?.entries.length ?? 0;
+  // `Math.max(1, Math.min(200, …))` on both: 0 → 1, a non-number → the
+  // whole ring, 2 → 2 — each exact against that side's own ring length. A
+  // repeated key must not 400 (Node takes one and answers 200).
+  const clampOk =
+    limit0.node.j?.entries.length === Math.min(1, nodeFull) &&
+    limit0.rust.j?.entries.length === Math.min(1, rustFull) &&
+    limitAbc.node.j?.entries.length === nodeFull &&
+    limitAbc.rust.j?.entries.length === rustFull &&
+    limit2.node.j?.entries.length === Math.min(2, nodeFull) &&
+    limit2.rust.j?.entries.length === Math.min(2, rustFull) &&
+    repeated.node.status === 200 &&
+    repeated.rust.status === 200;
+  const capacityOk = sides.every(
+    (s) => s.node.j?.capacity === 200 && s.rust.j?.capacity === 200
+  );
+  const ok = problems.length === 0 && clampOk && capacityOk && rustFull > 0;
+  console.log(
+    ok
+      ? `  ✔ error log: the rust ring holds the limiter's denials (${rustFull}), both sides validate at capacity 200, and ?limit=0 / abc / 2 / repeated clamp identically against each side's own length (node reads ${nodeFull} — see this probe's note)`
+      : `  ✘ error log: node ${nodeFull} entries, rust ${rustFull}; clamp=${clampOk} capacity=${capacityOk}; ${problems.slice(0, 5).join("; ")}`
+  );
+  return ok;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -1286,6 +1540,11 @@ async function main() {
   );
   const diagOk = await probeDiagnosticsReads(rustBase, args.node);
 
+  console.log(
+    "\n── runtime envelope (validated per side; the Rust body's contents held here) ──"
+  );
+  const envelopeOk = await probeRuntimeEnvelope(rustBase, args.node);
+
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
   try {
@@ -1328,6 +1587,12 @@ async function main() {
   );
   const rateOk = await probeRateLimiter(rustBase, args.node);
 
+  // After the limiter, so both error rings hold its DENY warnings.
+  console.log(
+    "\n── error ring (empty until something warns — the limiter just did) ──"
+  );
+  const errorRingOk = await probeErrorRing(rustBase, args.node);
+
   cleanup();
   const ok =
     authOk &&
@@ -1341,6 +1606,8 @@ async function main() {
     settingsOk &&
     primedOk &&
     diagOk &&
+    envelopeOk &&
+    errorRingOk &&
     runtimeOk &&
     rateOk &&
     diffOk;

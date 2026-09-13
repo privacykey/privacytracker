@@ -19,7 +19,7 @@ pub fn json_response<T: Serialize>(status: StatusCode, value: &T) -> Response {
         // Serialising our own response types cannot realistically fail; if it
         // somehow does, say so rather than emitting a half-written body.
         Err(e) => {
-            eprintln!("[server] response serialisation failed: {e}");
+            super::diag::log_error(format!("[server] response serialisation failed: {e}"));
             return Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header(header::CONTENT_TYPE, "application/json")

@@ -44,7 +44,10 @@
  *             review, which is why the reason is a required field.
  */
 
-import { validateRuntimeDiagnostics } from "./diagnostics-envelope.mjs";
+import {
+  validateErrorLog,
+  validateRuntimeDiagnostics,
+} from "./diagnostics-envelope.mjs";
 
 /** Placeholders resolved per-side at run time by parity-diff.mjs. */
 export const PLACEHOLDERS = [
@@ -460,11 +463,15 @@ export const VOLATILE_READS = [
     path: "/api/diagnostics/disk",
     transform: blankNumbers,
   },
+  // The ring's CONTENTS are per process — what one server warned about,
+  // the other did not — so the lists are collapsed and each side is held
+  // to the shape instead.
   {
     route: "/api/diagnostics/errors",
     name: "diagnostics: errors",
     path: "/api/diagnostics/errors",
-    transform: blankMeasurements,
+    transform: blankScalars,
+    validate: validateErrorLog,
   },
   {
     route: "/api/diagnostics/health",
@@ -473,16 +480,21 @@ export const VOLATILE_READS = [
     transform: (v) => blankNumbers(blankMeasurements(v)),
   },
   // The runtime envelope is held to its CONTRACT on each side
-  // (`validate`), because its backend-specific sections (`heap.kind`,
-  // `scheduler.kind`) cannot agree across a Node/Rust pair by design. The
-  // shape comparison stays for the Node-vs-Node self-test; a Rust side
-  // sets `skipCrossCompare` in read-parity when it registers the route.
+  // (`validate`) and NOT compared across sides: its backend-specific
+  // sections (`heap.kind`, `scheduler.kind`, the nullable `dbWorker` /
+  // `scrapeActivity` / `sqlite.*`) cannot agree across a Node/Rust pair by
+  // design. `skipCrossCompare` is unconditional rather than set by the
+  // Rust side, so a Node-vs-Node self-test skips the body diff here too —
+  // `validate` still runs on both sides, which is the half that would
+  // catch a Node-side shape drift. `read-parity.mjs`'s probeRuntimeEnvelope
+  // holds the Rust body to what it must actually contain.
   {
     route: "/api/diagnostics/runtime",
     name: "diagnostics: runtime",
     path: "/api/diagnostics/runtime",
     transform: blankScalars,
     validate: validateRuntimeDiagnostics,
+    skipCrossCompare: true,
   },
   {
     route: "/api/deployment/diagnostics",
@@ -498,12 +510,16 @@ export const VOLATILE_READS = [
         blankMeasurements({ ...v, app: { ...v.app, node: "~runtime" } })
       ),
   },
+  // Same reasoning: the embedded envelope names the backend. The DB
+  // counts and settings it also carries ARE comparable, and read-parity
+  // compares those directly.
   {
     route: "/api/desktop/diagnostics",
     name: "desktop diagnostics",
     path: "/api/desktop/diagnostics",
     transform: blankScalars,
     validate: (v) => validateRuntimeDiagnostics(v?.runtime_diagnostics),
+    skipCrossCompare: true,
   },
   {
     route: "/api/backup/snapshots",

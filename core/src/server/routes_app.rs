@@ -291,7 +291,7 @@ pub async fn since_install(State(state): State<AppState>, Path(id): Path<String>
         return json_error(StatusCode::BAD_REQUEST, "Missing id");
     }
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
 
     // A SEPARATE existence check from the one inside the diff. It is what
     // separates "unknown app" (404) from "known app with no usable
@@ -344,7 +344,7 @@ pub async fn history_stats(State(state): State<AppState>, Path(id): Path<String>
         return json_error(StatusCode::BAD_REQUEST, "Missing id");
     }
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
 
     let exists = match conn
         .query_row("SELECT 1 FROM apps WHERE id = ?", [&id], |_| Ok(()))
@@ -415,7 +415,7 @@ pub async fn app_changelog(
         return json_error(StatusCode::BAD_REQUEST, "Missing id");
     }
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
 
     let exists = match conn
         .query_row("SELECT 1 FROM apps WHERE id = ?", [&id], |_| Ok(()))
