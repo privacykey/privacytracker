@@ -106,6 +106,15 @@ pub fn bind_classification() -> BindClassification {
     BindClassification::Unknown
 }
 
+/// Port of `bindIsAmbiguous`: wildcard or unknown — the two answers on
+/// which "reachable beyond localhost?" cannot be decided from config.
+pub fn bind_is_ambiguous() -> bool {
+    matches!(
+        bind_classification(),
+        BindClassification::Wildcard | BindClassification::Unknown
+    )
+}
+
 /// Port of `envFlag` (deployment-trust.ts) and of `trustProxy`'s
 /// `/^(1|true|yes|on)$/i` (request-origin.cjs): trimmed, case-insensitive.
 /// The first cut special-cased `TRUE` and missed `Yes`, `ON` and friends.
@@ -131,7 +140,7 @@ pub fn is_network_exposed() -> bool {
 }
 
 /// The configured extra-host allowlist, as normalised patterns.
-fn allowed_host_patterns() -> Vec<String> {
+pub fn allowed_host_patterns() -> Vec<String> {
     env::var("PRIVACYTRACKER_ALLOWED_HOSTS")
         .unwrap_or_default()
         .split(',')

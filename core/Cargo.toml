@@ -43,6 +43,12 @@ serde = { version = "1", features = ["derive"] }
 # comes back alphabetised, and the parity differ compares key ORDER —
 # JSON.parse preserves insertion order and JSON.stringify replays it.
 serde_json = { version = "1", features = ["preserve_order"] }
+# Three syscalls the diagnostics reads need and std does not expose:
+# statfs (volume free/total bytes, as fs.statfsSync), access (the R_OK|W_OK
+# probe behind `database.writable`, as fs.accessSync) and uname (`os.type()`
+# + `os.release()`). Already in the lockfile as a dependency of rusqlite and
+# tokio, so this adds no new crate to the build.
+libc = "0.2"
 
 [dev-dependencies]
 # Router-level gate tests drive the axum `Router` as a plain tower service
