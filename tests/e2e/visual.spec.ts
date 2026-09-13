@@ -520,11 +520,124 @@ visual("stats: scoped, with the export note", async ({ page, request }) => {
   // is where the page's own figures and a whole-install download sit
   // side by side — the reconciliation note is the only thing making
   // that honest, so a dropped rule there is a correctness problem.
+  //
+  // Scoped to `.page-header`, NOT the full page. The Stats page is
+  // 5000px of accumulated state: its policy radar auto-selects which
+  // apps to plot from whichever have been analysed, so a full-page shot
+  // failed on the legend two runs later with nothing to do with CSS.
+  // `.page-subtitle` is masked for the same reason one step smaller —
+  // it counts total syncs, which grows every time another spec seeds.
+  // What's left is exactly what this shot is for: the export controls
+  // and the note beside them.
   await scopeTo(request, "Visual iPad");
   await page.goto("/dashboard/stats");
   await expect(page.locator(".scope-export-note")).toBeVisible();
   await settle(page);
-  await expect(page).toHaveScreenshot("stats-scoped.png", shotOptions(page));
+  await expect(page.locator(".page-header")).toHaveScreenshot(
+    "stats-scoped-header.png",
+    {
+      animations: "disabled" as const,
+      mask: [page.locator(".page-subtitle")],
+    }
+  );
+});
+
+/**
+ * Mobile. The nav collapses to a drawer below ~860px and renders its
+ * OWN copy of the picker there — full-width, above the links — while
+ * the popover switches to viewport-anchored `position: fixed` under a
+ * `max-width: 640px` media query. None of that shares a code path with
+ * the desktop shots above, and the file had no mobile shot at all, so
+ * every one of those rules was uncovered.
+ *
+ * Both are ELEMENT shots rather than page shots — see the reasoning on
+ * each. A page shot here would also drag in an unrelated pre-existing
+ * bug: the apps grid overflows sideways at this width, because
+ * `.header-actions` carries `flex-shrink: 0` which defeats the
+ * `flex-wrap: wrap` set for it under `max-width: 640px`, pushing
+ * scrollWidth past 700px. Measured at 375px with no scope set, so it
+ * has nothing to do with the picker.
+ */
+const MOBILE = { width: 375, height: 812 } as const;
+
+/**
+ * Pixel budget for the two shots whose entire frame is a
+ * `backdrop-filter` surface.
+ *
+ * The drawer and the popover are glass: their own pixels are computed
+ * from whatever is behind them, so the blurred fringe at their rounded
+ * corners moves when the page behind changes — which it does whenever
+ * another suite has run in between (the header of this file already
+ * warns to compare baselines and verify runs from the same DB context).
+ * Observed drift is 27px in a 9x5 patch at one corner, on frames that
+ * are otherwise identical.
+ *
+ * 150 is deliberately far below anything a real CSS regression
+ * produces: the actual regressions this net has caught moved 897, 1042,
+ * 3618 and 20611 pixels. Same explicit trade the task-center mask makes
+ * above — a smaller gap than a net that fails for reasons no CSS change
+ * caused, which is the failure mode that gets a net ignored, then
+ * deleted.
+ */
+const GLASS_EDGE_TOLERANCE = 150;
+
+visual("mobile: nav drawer with the device picker", async ({ page }) => {
+  await page.setViewportSize(MOBILE);
+  await page.goto("/dashboard/apps");
+  const menu = page.locator(".nav-menu-trigger");
+  await expect(menu).toBeVisible();
+  await menu.click();
+  await expect(page.locator(".nav-drawer-device-scope")).toBeVisible();
+  await settle(page);
+  // Covers the drawer wrapper's rule below the links, and the trigger
+  // stretched to full width — both of which only exist at this tier.
+  // The DRAWER ELEMENT, not the page. The drawer is translucent and
+  // narrower than the viewport, so a page shot — full or viewport —
+  // captures the apps grid showing through beside and below it, and
+  // that grid's toolbar renders a variable number of rows depending on
+  // what earlier specs left in the DB. A run where the accessibility
+  // filter row appeared shifted everything under it and failed a
+  // baseline in which the picker was pixel-identical. Masking cannot
+  // help here: Playwright paints masks ON TOP, so masking the page
+  // would paint over the drawer itself.
+  //
+  // The drawer is glass, so page content still shows faintly THROUGH
+  // it — but only the ~430px the drawer itself occupies, which is the
+  // stable part of the grid (title, toolbar, risk chips). The row that
+  // caused the flake sat below that and is now out of frame by
+  // construction.
+  await expect(page.locator(".nav-drawer")).toHaveScreenshot(
+    "mobile-nav-drawer-picker.png",
+    { animations: "disabled" as const, maxDiffPixels: GLASS_EDGE_TOLERANCE }
+  );
+});
+
+visual("mobile: device picker open", async ({ page, request }) => {
+  await scopeTo(request, "Visual iPad");
+  await page.setViewportSize(MOBILE);
+  await page.goto("/dashboard/apps");
+  await page.locator(".nav-menu-trigger").click();
+  const trigger = page.locator(
+    ".nav-drawer-device-scope .device-scope-trigger"
+  );
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  await expect(page.locator(".device-scope-popover")).toBeVisible();
+  await settle(page);
+  // The popover's mobile layout: pinned to the viewport rather than the
+  // trigger, because anchoring it to a full-width control inside the
+  // drawer would push its edge off-screen. Scoped so the prompt and the
+  // checked/unchecked rows are in frame too.
+  // The POPOVER ELEMENT, for the same reason as the shot above. It is
+  // also the sharper assertion: at this width the popover is pinned to
+  // the viewport (`left: 12; right: 12`) rather than sized to its
+  // trigger, so the element's own width IS the evidence the media query
+  // applied — a regression to the desktop `width: min(300px, …)` rule
+  // changes it and fails here.
+  await expect(page.locator(".device-scope-popover")).toHaveScreenshot(
+    "mobile-device-picker-open.png",
+    { animations: "disabled" as const, maxDiffPixels: GLASS_EDGE_TOLERANCE }
+  );
 });
 
 visual("settings: devices, owner editor open", async ({ page }) => {

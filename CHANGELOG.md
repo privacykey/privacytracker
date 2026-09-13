@@ -308,8 +308,10 @@ Going forward, changes are recorded here as they land.
   Stats page with its export note, and the device owner editor. Its
   fixture builds a fixed two-device fleet instead of deleting devices
   down to none — with no devices the picker renders nothing, so the new
-  chrome had no cover at all. Developers who keep local baselines will
-  need to regenerate them
+  chrome had no cover at all — including two mobile shots for the
+  drawer's own copy of the picker and its viewport-pinned popover, which
+  share no code path with the desktop ones. Developers who keep local
+  baselines will need to regenerate them
   (`VISUAL=1 npx playwright test tests/e2e/visual.spec.ts -u`).
 
 - **App removal now checks whose device it is, not just what mode
