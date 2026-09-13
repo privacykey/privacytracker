@@ -13,7 +13,6 @@
 //! this server's responses against the running Node server's.
 
 pub mod db;
-pub mod jsdate;
 pub mod jsnum;
 pub mod jsstr;
 mod schema_sql;

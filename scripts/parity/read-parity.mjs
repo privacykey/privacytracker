@@ -41,7 +41,6 @@ import {
   applySinceInstallFixture,
   BRIDGED_IDS,
   COLLATION_FIXTURE,
-  DISK_FIXTURE,
   FLAG_OVERRIDE_FIXTURE,
   INSTAGRAM_ID,
   SETTINGS_FIXTURE,
@@ -124,17 +123,6 @@ const BATCH_1 = [
   "/api/settings/desktop",
   "/api/dashboard/layout",
   "/api/feature-flags",
-  // The deployment-facing reads: the database file, its directory, the env
-  // and the request's forwarded headers. /api/ready and the deployment
-  // diagnostics are compared byte for byte (paths and durations masked by
-  // normalize()); the three /api/diagnostics/* shape-first, since page and
-  // file counts differ between a live database and a checkpointed copy.
-  // probeDiagnosticsReads below holds the stable parts to equality.
-  "/api/ready",
-  "/api/deployment/diagnostics",
-  "/api/diagnostics/database",
-  "/api/diagnostics/disk",
-  "/api/diagnostics/health",
 ];
 
 /**
@@ -231,23 +219,10 @@ function assertBackfillWontFire(dataDir) {
 }
 
 /** Start pt-core and resolve with its base URL once it reports listening. */
-function startRust(dataDir) {
+function startRust(dbPath) {
   return new Promise((resolve, reject) => {
-    const child = spawn(ptCore, ["serve"], {
-      env: {
-        ...process.env,
-        AUDITOR_ADMIN_TOKEN: TOKEN,
-        // The Rust core resolves its data directory exactly as lib/db.ts
-        // does, so the copy is handed over the way the Tauri shell hands
-        // Node its directory: through the environment. `next start` sets
-        // NODE_ENV=production inside its own process; declare the same so
-        // `app.nodeEnv` agrees. Every other PRIVACYTRACKER_* value is
-        // inherited from THIS process — run the harness under the Node
-        // server's env (PRIVACYTRACKER_BIND_HOST above all), or the
-        // deployment diagnostics differ for reasons of env, not port.
-        PRIVACYTRACKER_DATA_DIR: dataDir,
-        NODE_ENV: "production",
-      },
+    const child = spawn(ptCore, ["serve", dbPath], {
+      env: { ...process.env, AUDITOR_ADMIN_TOKEN: TOKEN },
       stdio: ["ignore", "pipe", "pipe"],
     });
     rust = child;
@@ -1048,163 +1023,6 @@ async function probeDesktopRuntimeMark(rustBase, nodeBase) {
   return ok;
 }
 
-/**
- * `/api/diagnostics/health` returns the LAST persisted health-check result,
- * or `{ neverRun: true }` until the 24h ticker has fired once — sixty
- * seconds after boot. A harness run inside that minute would compare
- * `{neverRun:true}` against `{neverRun:true}` and prove nothing about the
- * blob passthrough. Run one on demand BEFORE the checkpoint so both sides
- * read the same real result out of the copy. The POST is rate-limited on
- * Node; a 429 on a quick re-run is fine as long as a result already exists.
- */
-async function primeHealthCheck(nodeBase) {
-  const headers = { origin: nodeBase, "x-auditor-admin-token": TOKEN };
-  const post = await fetch(`${nodeBase}/api/diagnostics/health`, {
-    method: "POST",
-    headers: { ...headers, "content-type": "application/json" },
-    body: "{}",
-  });
-  const res = await fetch(`${nodeBase}/api/diagnostics/health`, { headers });
-  let j = null;
-  try {
-    j = await res.json();
-  } catch {
-    j = null;
-  }
-  const stored = res.status === 200 && j?.neverRun !== true;
-  console.log(
-    stored
-      ? `  ✔ health check ${post.ok ? "run on demand" : `not re-run (POST ${post.status})`}; a stored result (${j?.status}, trigger ${j?.trigger}) exists before the copy`
-      : `  ✘ POST /api/diagnostics/health → HTTP ${post.status} and GET still says neverRun — the health route would compare {neverRun:true} on both sides`
-  );
-  return stored;
-}
-
-/**
- * The deployment-facing reads, held to equality on the parts the differ
- * blanks or masks. `/api/diagnostics/*` are compared shape-first because
- * page and file counts differ between a live database and its checkpointed
- * copy — but the connection pragmas, the backup fixture and the volume
- * stats must not, and `/api/deployment/diagnostics`' env-derived fields
- * must agree or the differ is comparing two deployments, not two ports.
- */
-async function probeDiagnosticsReads(rustBase, nodeBase) {
-  const get = async (base, route) => {
-    const res = await fetch(`${base}${route}`, {
-      headers: { origin: base, "x-auditor-admin-token": TOKEN },
-    });
-    const body = await res.text();
-    let j = null;
-    try {
-      j = JSON.parse(body);
-    } catch {
-      j = null;
-    }
-    return { status: res.status, body, j };
-  };
-  const both = async (route) => {
-    const [node, rust] = await Promise.all([
-      get(nodeBase, route),
-      get(rustBase, route),
-    ]);
-    return { node, rust };
-  };
-  let ok = true;
-  const check = (label, pass, detail) => {
-    console.log(pass ? `  ✔ ${label}` : `  ✘ ${label}: ${detail}`);
-    ok &&= pass;
-  };
-
-  const health = await both("/api/diagnostics/health");
-  check(
-    "health: a real stored result (version 1, not {neverRun:true}), byte-identical on both sides",
-    health.node.status === 200 &&
-      health.node.body === health.rust.body &&
-      health.node.j?.neverRun !== true &&
-      health.node.j?.version === 1,
-    `HTTP ${health.node.status} vs ${health.rust.status}\n      node: ${health.node.body.slice(0, 200)}\n      rust: ${health.rust.body.slice(0, 200)}`
-  );
-
-  const db = await both("/api/diagnostics/database");
-  const stable = [
-    "journalMode",
-    "busyTimeoutMs",
-    "foreignKeysEnabled",
-    "walAutocheckpoint",
-    "pageSize",
-  ];
-  const dbMiss = stable.filter((k) => db.node.j?.[k] !== db.rust.j?.[k]);
-  check(
-    `database: the connection pragmas agree on both sides (${db.node.j?.journalMode}, busy ${db.node.j?.busyTimeoutMs}ms, foreign keys ${db.node.j?.foreignKeysEnabled}, autocheckpoint ${db.node.j?.walAutocheckpoint}, page ${db.node.j?.pageSize}) — the numbers the differ blanks`,
-    db.node.status === 200 &&
-      db.rust.status === 200 &&
-      dbMiss.length === 0 &&
-      db.node.j?.journalMode === "wal",
-    `HTTP ${db.node.status} vs ${db.rust.status}; differing: ${dbMiss.map((k) => `${k} ${JSON.stringify(db.node.j?.[k])} vs ${JSON.stringify(db.rust.j?.[k])}`).join(", ") || "none"}`
-  );
-
-  const disk = await both("/api/diagnostics/disk");
-  const diskOk = (side) =>
-    side.status === 200 &&
-    side.j?.backupSnapshotCount === DISK_FIXTURE.jsonCount &&
-    side.j?.files?.backups > 0 &&
-    side.j?.lastBackupSnapshotAt === DISK_FIXTURE.lastRunAt &&
-    side.j?.totalBytes > 0 &&
-    side.j?.freePct >= 0 &&
-    side.j?.freePct <= 100;
-  check(
-    `disk: ${disk.node.j?.backupSnapshotCount} backup snapshots (${disk.node.j?.files?.backups} bytes) counted, lastBackupSnapshotAt read back, volume stats present — on both sides`,
-    diskOk(disk.node) &&
-      diskOk(disk.rust) &&
-      disk.node.j?.files?.backups === disk.rust.j?.files?.backups,
-    `node: ${disk.node.body.slice(0, 300)}\n      rust: ${disk.rust.body.slice(0, 300)}`
-  );
-
-  const dep = await both("/api/deployment/diagnostics");
-  const pick = [
-    ["app.nodeEnv", (j) => j?.app?.nodeEnv],
-    ["app.version", (j) => j?.app?.version],
-    ["app.arch", (j) => j?.app?.arch],
-    ["app.platform", (j) => j?.app?.platform],
-    ["app.runtime", (j) => j?.app?.runtime],
-    ["app.containerLikely", (j) => j?.app?.containerLikely],
-    ["database.dataDirSource", (j) => j?.database?.dataDirSource],
-    ["database.journalMode", (j) => j?.database?.journalMode],
-    ["network.proxyDetected", (j) => j?.network?.proxyDetected],
-    ["network.protocol", (j) => j?.network?.protocol],
-    ["security", (j) => JSON.stringify(j?.security)],
-    ["check verdicts", (j) => (j?.checks ?? []).map((c) => c.status).join(",")],
-  ];
-  const misses = pick
-    .filter(([, f]) => f(dep.node.j) !== f(dep.rust.j))
-    .map(
-      ([name, f]) =>
-        `${name}: node ${JSON.stringify(f(dep.node.j))} vs rust ${JSON.stringify(f(dep.rust.j))}`
-    );
-  check(
-    `deployment: env-derived app fields, dataDirSource, security posture and check verdicts agree; proxyDetected is ${dep.node.j?.network?.proxyDetected} on both (next start's forwarded headers, reproduced)`,
-    dep.node.status === 200 &&
-      dep.rust.status === 200 &&
-      misses.length === 0 &&
-      dep.node.j?.network?.proxyDetected === true,
-    `HTTP ${dep.node.status} vs ${dep.rust.status}; ${misses.join("; ") || "no field differs"} — the Rust server inherits THIS process's PRIVACYTRACKER_* env; run the harness with the values the Node server was started with`
-  );
-
-  const ready = await both("/api/ready");
-  const readyOk = (side) =>
-    side.status === 200 &&
-    side.j?.status === "ready" &&
-    (side.j?.checks ?? []).length === 5 &&
-    side.j.checks.every((c) => c.status === "ok");
-  check(
-    'ready: both answer 200 "ready" with five ok checks — the readiness contract is exercised, not just compared',
-    readyOk(ready.node) && readyOk(ready.rust),
-    `node ${ready.node.status} ${ready.node.body.slice(0, 200)}\n      rust ${ready.rust.status} ${ready.rust.body.slice(0, 200)}`
-  );
-
-  return ok;
-}
-
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -1220,11 +1038,6 @@ async function main() {
   );
 
   console.log(
-    "\n── health check primer (the stored result must exist before the copy) ──"
-  );
-  const primedOk = await primeHealthCheck(args.node);
-
-  console.log(
     "checkpointing the Node database and copying it for the Rust side…"
   );
   checkpoint(nodeData);
@@ -1237,7 +1050,7 @@ async function main() {
   const rustData = path.join(work, "rust-data");
   cpSync(nodeData, rustData, { recursive: true });
 
-  const rustBase = await startRust(rustData);
+  const rustBase = await startRust(path.join(rustData, "privacy.db"));
   console.log(`rust=${rustBase}`);
 
   console.log(
@@ -1280,11 +1093,6 @@ async function main() {
     "\n── settings reads (the seed leaves every secret, desktop row, layout and override empty) ──"
   );
   const settingsOk = await probeSettingsReads(args.node);
-
-  console.log(
-    "\n── deployment reads (the differ blanks their numbers and masks their paths) ──"
-  );
-  const diagOk = await probeDiagnosticsReads(rustBase, args.node);
 
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
@@ -1339,8 +1147,6 @@ async function main() {
     gridOk &&
     detailOk &&
     settingsOk &&
-    primedOk &&
-    diagOk &&
     runtimeOk &&
     rateOk &&
     diffOk;

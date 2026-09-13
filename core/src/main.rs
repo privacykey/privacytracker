@@ -7,7 +7,6 @@
 //! side, so only the migrator differs between the two.
 //!
 //!   pt-core migrate <path/to/privacy.db>   open + migrate in place
-//!   pt-core serve [--port N]                serve <PRIVACYTRACKER_DATA_DIR|cwd/data>/privacy.db
 //!   pt-core version                         print crate + SQLite versions
 
 use std::process::ExitCode;
@@ -32,18 +31,10 @@ fn main() -> ExitCode {
             }
         }
         Some("serve") => {
-            // The data directory comes from the environment, exactly as in
-            // lib/db.ts: PRIVACYTRACKER_DATA_DIR, else <cwd>/data. A path
-            // argument used to be accepted here; it went away so that the
-            // deployment diagnostics can report `dataDirSource` with the
-            // same two answers Node has.
-            if args.get(2).map(|a| !a.starts_with("--")).unwrap_or(false) {
-                eprintln!(
-                    "usage: pt-core serve [--port N]   (set PRIVACYTRACKER_DATA_DIR, else <cwd>/data is used)"
-                );
+            let Some(path) = args.get(2) else {
+                eprintln!("usage: pt-core serve <path/to/privacy.db> [--port N]");
                 return ExitCode::from(2);
-            }
-            let (data_dir, source) = privacytracker_core::server::resolve_data_dir();
+            };
             // Default 0 = let the OS pick; the bound address is printed so a
             // supervising script reads it rather than guessing.
             let port: u16 = match args.iter().position(|a| a == "--port") {
@@ -64,7 +55,10 @@ fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            match rt.block_on(privacytracker_core::server::serve(&data_dir, source, addr)) {
+            match rt.block_on(privacytracker_core::server::serve(
+                std::path::Path::new(path),
+                addr,
+            )) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
                     eprintln!("pt-core: serve failed: {e}");

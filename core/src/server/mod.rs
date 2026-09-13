@@ -14,23 +14,18 @@
 mod apps;
 pub mod auth;
 mod changelog;
-mod deployment;
-mod diagnostics;
 pub mod diff;
 pub mod flags;
-mod forwarded;
 mod gate;
 mod grid_meta;
 mod json;
 pub mod layout;
-mod osinfo;
 mod policy;
 mod ratelimit;
 mod routes;
 mod routes_app;
 mod routes_apps;
 mod routes_detail;
-mod routes_diag;
 mod routes_focus;
 mod routes_imports;
 mod routes_manual;
@@ -43,9 +38,8 @@ pub mod trust;
 pub mod webhook;
 
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use axum::{routing::get, Router};
 use rusqlite::Connection;
@@ -69,34 +63,6 @@ pub struct AppState {
     /// The inbound request limiter. Per-process and in-memory, exactly as in
     /// Node — a restart forgets the window there too.
     pub rate_limiter: Arc<ratelimit::RateLimiter>,
-    /// `lib/db.ts`'s `dataDir` / `dbPath`, resolved the way `path.resolve`
-    /// does (absolute, dots folded, symlinks kept), and where the directory
-    /// came from — `"env"` for `PRIVACYTRACKER_DATA_DIR`, `"cwd"` for
-    /// `<cwd>/data`. The deployment diagnostics report all three.
-    pub data_dir: PathBuf,
-    pub db_path: PathBuf,
-    pub data_dir_source: &'static str,
-    /// `process.uptime()`'s origin.
-    pub started_at: Instant,
-    /// The port the listener actually bound — `next start` puts it in
-    /// `x-forwarded-port` on every request (see `forwarded.rs`).
-    pub bound_port: u16,
-}
-
-/// Resolve the data directory exactly as `lib/db.ts` does:
-/// `PRIVACYTRACKER_DATA_DIR` when set (honoured unconditionally — the Tauri
-/// shell injects it), else `<cwd>/data`. Returns the directory and the
-/// `dataDirSource` label the diagnostics report.
-pub fn resolve_data_dir() -> (PathBuf, &'static str) {
-    match std::env::var("PRIVACYTRACKER_DATA_DIR") {
-        Ok(v) if !v.is_empty() => (deployment::resolve_path(Path::new(&v)), "env"),
-        _ => (
-            std::env::current_dir()
-                .unwrap_or_else(|_| PathBuf::from("."))
-                .join("data"),
-            "cwd",
-        ),
-    }
 }
 
 /// Build the router. Split out from `serve` so tests can exercise routes
@@ -178,75 +144,31 @@ pub fn app(state: AppState) -> Router {
             get(routes_settings::dashboard_layout),
         )
         .route("/api/feature-flags", get(routes_settings::feature_flags))
-        // The deployment-facing reads: facts about the database file, its
-        // directory, the env and the request — portable exactly, unlike the
-        // process-introspection diagnostics. See routes_diag.rs.
-        .route("/api/ready", get(routes_diag::ready))
-        .route(
-            "/api/deployment/diagnostics",
-            get(routes_diag::deployment_diagnostics),
-        )
-        .route(
-            "/api/diagnostics/database",
-            get(routes_diag::diagnostics_database),
-        )
-        .route("/api/diagnostics/disk", get(routes_diag::diagnostics_disk))
-        .route(
-            "/api/diagnostics/health",
-            get(routes_diag::diagnostics_health),
-        )
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))
-        // Outermost, so it runs first: the x-forwarded-* synthesis `next
-        // start` performs on every request before anything reads the
-        // headers. See forwarded.rs for why this is safe ahead of the gate.
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            forwarded::inject,
-        ))
         .with_state(state)
 }
 
-/// Open + migrate `<data_dir>/privacy.db`, then serve on `addr`.
+/// Open + migrate the database at `db_path`, then serve on `addr`.
 ///
 /// Reuses `db::open_and_migrate` so the pragmas are byte-identical to the
 /// Node server's: `busy_timeout` and `foreign_keys` are CONNECTION-scoped,
 /// not stored in the file, so a server that opened the database differently
-/// would report different values from `/api/diagnostics/database`.
-///
-/// The listener is bound BEFORE the state is built because the bound port
-/// is part of the state (`x-forwarded-port`), and the service is built with
-/// connect info so the peer address can stand in for `socket.remoteAddress`.
-pub async fn serve(
-    data_dir: &Path,
-    data_dir_source: &'static str,
-    addr: SocketAddr,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let db_path = data_dir.join("privacy.db");
-    let conn = crate::db::open_and_migrate(&db_path)?;
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    let bound = listener.local_addr()?;
-
+/// would report different values from `/api/diagnostics/database` later.
+pub async fn serve(db_path: &Path, addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
+    let conn = crate::db::open_and_migrate(db_path)?;
     let state = AppState {
         conn: Arc::new(Mutex::new(conn)),
         rate_limiter: Arc::new(ratelimit::RateLimiter::new()),
-        data_dir: data_dir.to_path_buf(),
-        db_path,
-        data_dir_source,
-        started_at: Instant::now(),
-        bound_port: bound.port(),
     };
 
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let bound = listener.local_addr()?;
     // Printed so a supervising script can wait for readiness on stdout
     // rather than polling a port it only assumes is right.
     println!("pt-core: listening on http://{bound}");
 
-    axum::serve(
-        listener,
-        app(state).into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await?;
+    axum::serve(listener, app(state)).await?;
     Ok(())
 }

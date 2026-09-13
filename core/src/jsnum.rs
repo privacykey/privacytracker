@@ -227,31 +227,6 @@ pub fn js_number(f: f64) -> serde_json::Value {
     serde_json::Number::from_f64(f).map_or(Value::Null, Value::Number)
 }
 
-/// Walk a parsed JSON value and re-render every number as JavaScript
-/// would, so a stored blob round-trips byte-for-byte through
-/// `JSON.parse` → `JSON.stringify`.
-///
-/// `serde_json` keeps `1.0` as a float and prints it back as `1.0`;
-/// JavaScript has one number type and prints `1`. A blob that Node wrote
-/// never contains `1.0` in the first place, so this is insurance against a
-/// hand-edited row — and against the day a Rust writer stores one.
-pub fn js_normalise_value(value: serde_json::Value) -> serde_json::Value {
-    use serde_json::Value;
-    match value {
-        Value::Number(n) => match n.as_f64() {
-            Some(f) if n.is_f64() => js_number(f),
-            _ => Value::Number(n),
-        },
-        Value::Array(items) => Value::Array(items.into_iter().map(js_normalise_value).collect()),
-        Value::Object(map) => Value::Object(
-            map.into_iter()
-                .map(|(k, v)| (k, js_normalise_value(v)))
-                .collect(),
-        ),
-        other => other,
-    }
-}
-
 /// Render a JSON number the way a JavaScript TEMPLATE LITERAL would.
 ///
 /// Not the same function as [`js_number`]: `${NaN}` is `NaN` and
@@ -455,18 +430,6 @@ mod tests {
         );
         // Well past 2^53, JS still writes the digits out rather than 1e17.
         assert_eq!(js_number(1.0e17).to_string(), "100000000000000000");
-    }
-
-    #[test]
-    fn normalise_value_reprints_floats_the_javascript_way() {
-        use super::js_normalise_value;
-        let v: Value =
-            serde_json::from_str(r#"{"a":1.0,"b":[2.5,3.0,{"c":1e2}],"d":"1.0","e":null}"#)
-                .unwrap();
-        assert_eq!(
-            js_normalise_value(v).to_string(),
-            r#"{"a":1,"b":[2.5,3,{"c":100}],"d":"1.0","e":null}"#
-        );
     }
 
     #[test]

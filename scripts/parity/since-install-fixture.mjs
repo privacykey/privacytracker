@@ -26,7 +26,6 @@
  *
  *   node scripts/parity/since-install-fixture.mjs <dataDir>
  */
-import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import BetterSqlite3 from "better-sqlite3";
@@ -515,9 +514,6 @@ export const SETTINGS_FIXTURE = {
     desktop_hide_dock: "TRUE",
     desktop_tray_visible: "false",
     desktop_global_shortcut: "CmdOrCtrl+Alt+P",
-    // `/api/diagnostics/disk` reads this back as `lastBackupSnapshotAt`;
-    // automated backups are OFF by default, so nothing runs on it.
-    backup_snapshot_last_run_at: String(T0),
     "flag.focus.audience": "guardian",
     "flag.focus.goal.monitor": "true",
     "flag.focus.goal.accessibility": "true",
@@ -551,24 +547,6 @@ export const SETTINGS_FIXTURE = {
       desktop_global_shortcut: "CmdOrCtrl+Alt+P",
     },
     hidden: ["hero", "activity_section"],
-  },
-};
-
-/**
- * Files for `/api/diagnostics/disk`: a `backups/` directory holding two
- * snapshot-looking `.json` files and one that is not, so
- * `backupSnapshotCount` and `files.backups` are non-zero — the canned seed
- * has no backups directory at all, and the differ blanks both numbers
- * anyway. Written into the Node data directory before the copy, so both
- * sides walk the same files.
- */
-export const DISK_FIXTURE = {
-  lastRunAt: T0,
-  jsonCount: 2,
-  files: {
-    "pt-fixture-backup-1.json": '{"pt_fixture":1}\n',
-    "pt-fixture-backup-2.json": '{"pt_fixture":2}\n',
-    "pt-fixture-notes.txt": "not a snapshot\n",
   },
 };
 
@@ -740,12 +718,6 @@ export function applySinceInstallFixture(dataDir) {
   });
   tx();
   db.close();
-
-  const backups = path.join(dataDir, "backups");
-  mkdirSync(backups, { recursive: true });
-  for (const [name, body] of Object.entries(DISK_FIXTURE.files)) {
-    writeFileSync(path.join(backups, name), body);
-  }
 
   const rows = FIXTURES.reduce((n, f) => n + f.snapshots.length, 0);
   const reviews = FIXTURES.reduce((n, f) => n + (f.reviews?.length ?? 0), 0);

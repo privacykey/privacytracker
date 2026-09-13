@@ -25,20 +25,6 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
-- Rust-core migration: the five deployment-facing reads join the Rust read
-  API (30 of 64 read routes) — `GET /api/ready`, `/api/deployment/diagnostics`,
-  `/api/diagnostics/database`, `/api/diagnostics/disk` and
-  `/api/diagnostics/health`. Reproduces the `x-forwarded-*` header synthesis
-  `next start` performs before route handlers run (without it the readiness
-  checks differ on every direct request), embeds `package.json` for
-  `app.name`/`version`, and moves `pt-core serve` to `PRIVACYTRACKER_DATA_DIR`
-  / `<cwd>/data` exactly as `lib/db.ts` resolves the data directory. The
-  parity harness primes a health-check result before copying the database
-  and holds the connection pragmas, backup fixture and env-derived fields
-  to equality where the differ blanks numbers. The three process-
-  introspection diagnostics (`runtime`, `errors`, `desktop`) are left for a
-  design decision. Developer-facing only.
-
 - Rust-core migration: the four settings-backed reads join the Rust read API
   (25 of 64 read routes) — `GET /api/settings`, `/api/settings/desktop`,
   `/api/dashboard/layout` and `/api/feature-flags`. The last ports the focus

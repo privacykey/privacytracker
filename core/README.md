@@ -175,11 +175,11 @@ port any new ALTER/backfill into `core/src/db.rs`, and run `just parity-schema`
 The crate now also serves HTTP:
 
 ```
-PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port 0/omitted = OS-assigned
+pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (30).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (25).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -728,78 +728,6 @@ hand-edited row plausibly holds. Not reproduced, each unreachable from an
 app-written row and each changing only the host's spelling inside an
 otherwise identical mask: IDNA, IPv4 shorthand, IPv6 compression,
 percent-escapes in a host, `file:` hosts beyond `file:///`.
-
-### The deployment reads (+5 routes, 30 total)
-
-`/api/ready`, `/api/deployment/diagnostics`, `/api/diagnostics/database`,
-`/api/diagnostics/disk` and `/api/diagnostics/health`. Five of the eight
-routes under the diagnostics umbrella, chosen because they describe the
-DEPLOYMENT — the database file, its directory and pragmas, the process env,
-the request's forwarded headers, the host OS — and are therefore portable
-exactly. The other three (`/api/diagnostics/runtime`,
-`/api/diagnostics/errors`, `/api/desktop/diagnostics`) describe the Node
-PROCESS: V8 heap statistics, an event-loop-lag histogram, a `console.error`
-interceptor, the db-worker thread's timings. The manifest already compares
-those shape-only; what the Rust core should report in their place is a
-design question, not a port, and is left open here.
-
-**What `next start` does to the headers.** `inferDeploymentNetwork` read
-`proxyDetected: true`, `forwardedHost` equal to the Host header and
-`protocol: "http"` on every direct request to the Node server, with no
-proxy anywhere. Next's `base-server.js` fills `x-forwarded-host`, `-port`,
-`-proto` and `-for` when they are absent (never `x-real-ip`), before any
-route handler runs — so Node's "Proxy detection" check can never say "no
-proxy headers seen" under `next start`. A Rust server that left the headers
-alone would answer `/api/ready` differently on every request, for reasons
-that are Next's, not the app's. `forwarded.rs` reproduces the synthesis as
-the outermost layer. It is safe ahead of the gate: every synthesised value
-equals what the gate would derive anyway, and a caller-supplied header is
-kept exactly as `??=` keeps it — verified on the wire with a forged
-`X-Forwarded-Host`.
-
-**Two fields name the process, not the deployment.** `app.node` is
-`process.version`; this server answers `pt-core <crate version>` and the
-manifest masks the field — the only field it masks for that reason.
-`app.nodeEnv` is `NODE_ENV ?? "development"`, which `next start` sets to
-`production` inside its own process; here the env var wins when set, else
-the build profile decides, and the harness passes `NODE_ENV=production`.
-Everything else agrees, including the two that are easy to skip:
-`app.name`/`version` come from the repo's `package.json`, embedded at build
-time (the crate says `0.0.0`); `app.arch` is spelled Node's way (`arm64`,
-`x64`), and `app.platform` is `uname`'s sysname and release.
-
-**`pt-core serve` now takes its data directory from the environment**,
-exactly as `lib/db.ts` does — `PRIVACYTRACKER_DATA_DIR`, else `<cwd>/data`
-— because `database.dataDirSource` reports which, and the old positional
-path had no honest value for it. The harness hands the Rust side its copy
-through the env, the way the Tauri shell hands Node its directory. The
-Rust server inherits every other `PRIVACYTRACKER_*` value from the harness
-process, so run the harness under the Node server's env
-(`PRIVACYTRACKER_BIND_HOST` above all) or `security.bindAmbiguous` differs
-for reasons of env, not port; `probeDiagnosticsReads` names the field.
-
-**What the copy cannot make equal.** Page counts, WAL bytes and file sizes
-differ between a live database and its checkpointed copy, which is why the
-manifest compares the three `/api/diagnostics/*` reads through
-`blankNumbers`. The probe holds the stable parts to equality instead: the
-connection pragmas (`journal_mode`, `busy_timeout`, `foreign_keys`,
-`wal_autocheckpoint`, `page_size` — the ones `open_and_migrate` sets to
-match `db.ts`), the backup fixture's count and bytes, and non-zero volume
-stats on both sides. `/api/diagnostics/health` is a passthrough of the
-stored `health_check_last_result` blob, which does not exist until sixty
-seconds after boot; the harness runs one on demand before the copy so both
-sides read a real result rather than `{neverRun:true}` against
-`{neverRun:true}`.
-
-Smaller things each earned a test: `redactHomeDir` maps only `$HOME` and
-`$HOME/…` (a sibling sharing the prefix is untouched); `fs.accessSync`'s
-failure message is libuv's (`EACCES: permission denied, access '/p'`), not
-std's; `PRAGMA busy_timeout` answers in a column named `timeout`, which is
-why Node falls back to the first column; `Date.prototype.toISOString` is
-twenty lines of civil-date arithmetic (`jsdate.rs`) pinned to `node -e`
-output including a leap day and a negative epoch; and the `libc` crate is
-now a direct dependency for `statfs`, `access` and `uname` — it was already
-in the lockfile under rusqlite and tokio.
 
 ### The trailing-slash redirect (proxy.ts step 0.5)
 
