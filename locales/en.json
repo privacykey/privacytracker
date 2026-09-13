@@ -242,7 +242,9 @@
       "gate_denied_device_owner_unnamed": "The safety check refused this run, so nothing was deleted: that device belongs to someone else, and you're currently set up to {mode}. Switch using the device menu at the top, or pick a different device.",
       "gate_mode_self": "work on your own apps",
       "gate_mode_loved_one": "help someone else",
-      "gate_mode_guardian": "look after a child's device"
+      "gate_mode_guardian": "look after a child's device",
+      "gate_denied_permission": "The safety check refused this run, so nothing was deleted: {device} belongs to {owner}, and you haven't yet confirmed that you have their permission to remove apps from it. You can confirm that under Settings → Devices.",
+      "gate_denied_permission_unnamed": "The safety check refused this run, so nothing was deleted: that device belongs to someone else, and you haven't yet confirmed that you have their permission to remove apps from it. You can confirm that under Settings → Devices."
     },
     "saved_notes": {
       "heading": "Your notes",
@@ -804,7 +806,18 @@
       "summary_chip_name": "{count} name/manual",
       "summary_chip_pending": "{count} pending",
       "summary_chip_skipped": "{count} skipped",
-      "summary_chip_unavailable": "{count} unavailable"
+      "summary_chip_unavailable": "{count} unavailable",
+      "owner_heading": "Whose device is this?",
+      "owner_help": "This decides how the app groups it, and what it will let you do with it later.",
+      "owner_mine": "Mine",
+      "owner_helping": "Someone I'm helping",
+      "owner_child": "A child I look after",
+      "owner_name_label": "Their name (optional)",
+      "owner_name_placeholder": "e.g. Mum, Robin",
+      "owner_ack_helping": "I have this person's permission to view the apps on their device, and to remove apps from it if we decide to.",
+      "owner_ack_child": "I'm responsible for this child and their device.",
+      "owner_ack_why": "You'll need to confirm this before the app will remove anything from their device. It's recorded with the time you ticked it.",
+      "owner_ack_required": "Tick the box above to continue."
     },
     "profile_setup": {
       "back_to_goals": "Back to your purpose",
@@ -1596,7 +1609,11 @@
     },
     "owner_audience_help": "Used to group the device menu, and to offer a matching view when you switch to this device. Nothing changes automatically.",
     "owner_save": "Save",
-    "owner_cancel": "Cancel"
+    "owner_cancel": "Cancel",
+    "owner_ack_helping": "I have this person's permission to view the apps on their device, and to remove apps from it if we decide to.",
+    "owner_ack_child": "I'm responsible for this child and their device.",
+    "owner_ack_why": "Required before the app will remove anything from their device. Recorded with the time you tick it.",
+    "owner_ack_confirmed_meta": "permission confirmed"
   },
   "device_sync": {
     "diff_title": "What's changed since last time?",

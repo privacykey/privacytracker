@@ -14,6 +14,8 @@ import {
   getAllDevices,
   getDeviceAppCounts,
   getDeviceById,
+  isDeviceOwnerAudience,
+  setDeviceOwner,
 } from "@/lib/devices";
 import { getImportCountForDevice } from "@/lib/imports";
 import { requestBodyErrorResponse } from "@/lib/request-body";
@@ -82,13 +84,57 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const { name, ecid, model, iosVersion, deviceClass } = body as {
+  const {
+    name,
+    ecid,
+    model,
+    iosVersion,
+    deviceClass,
+    ownerLabel,
+    ownerAudience,
+    permissionAcknowledged,
+  } = body as {
     name?: unknown;
     ecid?: unknown;
     model?: unknown;
     iosVersion?: unknown;
     deviceClass?: unknown;
+    ownerAudience?: unknown;
+    ownerLabel?: unknown;
+    permissionAcknowledged?: unknown;
   };
+  // Ownership is optional at create time; the onboarding wizard sends it
+  // from its "whose device is this?" step. Validated the same way PATCH
+  // validates it, so the two paths cannot accept different shapes.
+  const hasOwnership =
+    Object.hasOwn(body, "ownerAudience") || Object.hasOwn(body, "ownerLabel");
+  if (
+    Object.hasOwn(body, "ownerLabel") &&
+    !(ownerLabel === null || typeof ownerLabel === "string")
+  ) {
+    return NextResponse.json(
+      { error: "ownerLabel must be a string or null" },
+      { status: 400 }
+    );
+  }
+  if (
+    Object.hasOwn(body, "ownerAudience") &&
+    !(ownerAudience === null || isDeviceOwnerAudience(ownerAudience))
+  ) {
+    return NextResponse.json(
+      { error: "ownerAudience must be self, loved_one, guardian, or null" },
+      { status: 400 }
+    );
+  }
+  if (
+    Object.hasOwn(body, "permissionAcknowledged") &&
+    typeof permissionAcknowledged !== "boolean"
+  ) {
+    return NextResponse.json(
+      { error: "permissionAcknowledged must be a boolean" },
+      { status: 400 }
+    );
+  }
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "name required" }, { status: 400 });
   }
@@ -126,7 +172,45 @@ export async function POST(req: NextRequest) {
       detail: JSON.stringify({ id: device.id, ecid: device.ecid }),
       success: true,
     });
-    return NextResponse.json({ device });
+    // Applied AFTER find-or-create rather than passed into createDevice,
+    // because a cfgutil ECID the install has seen before resolves to the
+    // existing row — and the user's answer to "whose device is this?"
+    // must land on that row too, not be silently dropped.
+    if (hasOwnership || Object.hasOwn(body, "permissionAcknowledged")) {
+      setDeviceOwner(device.id, {
+        ...(Object.hasOwn(body, "ownerLabel")
+          ? { label: (ownerLabel as string | null) ?? null }
+          : {}),
+        ...(Object.hasOwn(body, "ownerAudience")
+          ? {
+              audience: isDeviceOwnerAudience(ownerAudience)
+                ? ownerAudience
+                : null,
+            }
+          : {}),
+        ...(typeof permissionAcknowledged === "boolean"
+          ? { permissionAcknowledged }
+          : {}),
+      });
+      // The attestation is the auditable part: who said they had
+      // permission, for which device, and when.
+      recordAudit({
+        action:
+          permissionAcknowledged === true
+            ? "devices.permission_acknowledged"
+            : "devices.set_owner",
+        actorIp: requestActorIp(req),
+        userAgent: req.headers.get("user-agent"),
+        detail: JSON.stringify({
+          id: device.id,
+          ownerLabel,
+          ownerAudience,
+          permissionAcknowledged,
+        }),
+        success: true,
+      });
+    }
+    return NextResponse.json({ device: getDeviceById(device.id) });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: msg }, { status: 400 });

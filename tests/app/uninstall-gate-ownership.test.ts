@@ -62,7 +62,15 @@ function ownedDevice(
 ) {
   const device = createDevice({ name, ecid, deviceClass: "iPad" });
   if (owner) {
-    setDeviceOwner(device.id, { audience: owner, label });
+    // This file is about the MODE MATCH. The permission attestation the
+    // gate also requires for anyone else's device is given here so it
+    // does not confound these cases; tests/app/device-permission.test.ts
+    // owns the attestation-missing path.
+    setDeviceOwner(device.id, {
+      audience: owner,
+      label,
+      permissionAcknowledged: owner !== "self",
+    });
   }
   return device;
 }

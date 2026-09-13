@@ -35,6 +35,8 @@ export interface DeviceListEntry {
   ownerAudience?: "self" | "loved_one" | "guardian" | null;
   /** Free-text owner name ("Mum", "Leo"); null when unstated. */
   ownerLabel?: string | null;
+  /** When the user attested they have the owner's permission; null if never. */
+  permissionAcknowledgedAt?: number | null;
 }
 
 type OwnerAudience = "self" | "loved_one" | "guardian";
@@ -73,6 +75,7 @@ export default function DevicesView({
   const [ownerAudienceValue, setOwnerAudienceValue] = useState<
     OwnerAudience | ""
   >("");
+  const [ownerAckValue, setOwnerAckValue] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   // Replaces `window.confirm()` — the native dialog is unreliable inside
   // the Tauri webview and gives no preview of what's about to break.
@@ -185,11 +188,13 @@ export default function DevicesView({
     setOwningId(device.id);
     setOwnerLabelValue(device.ownerLabel ?? "");
     setOwnerAudienceValue(device.ownerAudience ?? "");
+    setOwnerAckValue(Boolean(device.permissionAcknowledgedAt));
   };
   const handleOwnerCancel = () => {
     setOwningId(null);
     setOwnerLabelValue("");
     setOwnerAudienceValue("");
+    setOwnerAckValue(false);
   };
   const handleOwnerSubmit = useCallback(
     async (id: string) => {
@@ -204,6 +209,12 @@ export default function DevicesView({
           body: JSON.stringify({
             ownerAudience: ownerAudienceValue || null,
             ownerLabel: ownerLabelValue.trim() || null,
+            // Only meaningful for someone else's device; the server
+            // clears it whenever the owner is set back to self.
+            permissionAcknowledged:
+              ownerAudienceValue !== "" &&
+              ownerAudienceValue !== "self" &&
+              ownerAckValue,
           }),
         });
         if (!res.ok) {
@@ -217,7 +228,7 @@ export default function DevicesView({
         setBusyId(null);
       }
     },
-    [ownerAudienceValue, ownerLabelValue, refresh]
+    [ownerAudienceValue, ownerLabelValue, ownerAckValue, refresh]
   );
 
   const confirmDelete = useCallback(async () => {
@@ -332,6 +343,14 @@ export default function DevicesView({
               device.ownerLabel
                 ? t("owner_meta", { owner: device.ownerLabel })
                 : null,
+              // Surfaced in the row so the attestation is visible
+              // without opening the editor — it is a record, and records
+              // should be readable at a glance.
+              device.ownerAudience &&
+              device.ownerAudience !== "self" &&
+              device.permissionAcknowledgedAt
+                ? `✓ ${t("owner_ack_confirmed_meta")}`
+                : null,
               device.model,
               device.iosVersion,
               t("app_count", { count: device.appCount }),
@@ -421,11 +440,16 @@ export default function DevicesView({
                         <select
                           className="input"
                           disabled={isBusy}
-                          onChange={(e) =>
-                            setOwnerAudienceValue(
-                              e.target.value as OwnerAudience | ""
-                            )
-                          }
+                          onChange={(e) => {
+                            const next = e.target.value as OwnerAudience | "";
+                            // The attestation is worded per owner, so a
+                            // tick given for one owner does not carry to
+                            // another — same rule as the import step.
+                            if (next !== ownerAudienceValue) {
+                              setOwnerAckValue(false);
+                            }
+                            setOwnerAudienceValue(next);
+                          }}
                           value={ownerAudienceValue}
                         >
                           <option value="">{t("owner_audience_unset")}</option>
@@ -439,6 +463,35 @@ export default function DevicesView({
                       <p className="devices-owner-help">
                         {t("owner_audience_help")}
                       </p>
+                      {/* The attestation. Shown only once the owner is
+                          someone other than the user — for your own
+                          device there is nobody's permission to have —
+                          and required by the uninstall gate before the
+                          app will remove anything from that device. */}
+                      {ownerAudienceValue !== "" &&
+                        ownerAudienceValue !== "self" && (
+                          <label className="devices-owner-ack">
+                            <input
+                              checked={ownerAckValue}
+                              className="settings-checkbox"
+                              disabled={isBusy}
+                              onChange={(e) =>
+                                setOwnerAckValue(e.target.checked)
+                              }
+                              type="checkbox"
+                            />
+                            <span>
+                              <span className="devices-owner-ack-text">
+                                {ownerAudienceValue === "guardian"
+                                  ? t("owner_ack_child")
+                                  : t("owner_ack_helping")}
+                              </span>
+                              <span className="devices-owner-help">
+                                {t("owner_ack_why")}
+                              </span>
+                            </span>
+                          </label>
+                        )}
                       <div className="devices-owner-actions">
                         <button
                           className="btn btn-primary btn-sm"

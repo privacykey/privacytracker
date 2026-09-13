@@ -55,6 +55,21 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- **Importing from a device now asks whose it is — and, for someone
+  else's, asks you to confirm you have their permission.** Every import
+  that creates a new device record (any method: cable, CSV, screenshots
+  or typed in) has a "Whose device is this?" step: yours, someone
+  you're helping, or a child you look after — pre-selected from your
+  current setup, so importing your own phone is one click. Choosing
+  anyone but yourself reveals a statement that you have their
+  permission to view the apps on their device and to remove apps from
+  it; the import won't continue until it's ticked. The confirmation is
+  timestamped, recorded in the audit log, and required before the app
+  will remove anything from that device. It can also be given later in
+  Settings → Devices, and is cleared automatically if the device is
+  reassigned to you. Your own devices — phone, iPad, work and personal
+  — are never asked for it; they're told apart by name.
+
 - **Exports now say when they're broader than the page.** Every export
   stays whole-install by design — a file whose contents depend on a
   device filter the reader can't see is worse than one that's simply

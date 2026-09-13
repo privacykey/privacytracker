@@ -413,6 +413,58 @@ browserFlow(
         await request.get("/api/focus", { headers: sameOriginHeaders })
       ).json();
       expect(focus.audience).toBe("loved_one");
+
+      // The attestation. Now that the mode matches the tablet's owner,
+      // the ONLY thing between the user and removing apps from it is
+      // whether they have said they are allowed to. Set an ECID so the
+      // gate can resolve the device, ask it, give the attestation, ask
+      // again. The device-actions route is a plain GET, so this is the
+      // gate's real decision, not a unit-level stand-in.
+      const ECID = "0xE2E0000000000001";
+      const withEcid = await request.post("/api/devices", {
+        headers: sameOriginHeaders,
+        data: {
+          name: "Gate iPad",
+          ecid: ECID,
+          ownerLabel: "Mum",
+          ownerAudience: "loved_one",
+        },
+      });
+      await expect(withEcid).toBeOK();
+      const gateId = (await withEcid.json()).device.id as string;
+      const before = await (
+        await request.get(
+          `/api/device-actions/uninstall?ecid=${ECID}&acknowledgeNoBackup=1`,
+          { headers: sameOriginHeaders }
+        )
+      ).json();
+      expect(before.allowed).toBe(false);
+      expect(before.reason).toBe("permission_unacknowledged");
+      expect(before.ownerLabel).toBe("Mum");
+
+      const ack = await request.patch(`/api/devices/${gateId}`, {
+        headers: sameOriginHeaders,
+        data: { permissionAcknowledged: true },
+      });
+      await expect(ack).toBeOK();
+      expect((await ack.json()).device.permissionAcknowledgedAt).toBeTruthy();
+
+      const after = await (
+        await request.get(
+          `/api/device-actions/uninstall?ecid=${ECID}&acknowledgeNoBackup=1`,
+          { headers: sameOriginHeaders }
+        )
+      ).json();
+      // Ownership and permission both satisfied. What the gate says NEXT
+      // — the feature flag, a backup, or outright allowed — depends on
+      // what earlier specs left behind and is not this test's subject.
+      // The assertion is that neither ownership reason is returned any
+      // more: the attestation was the thing in the way, and it isn't.
+      expect(after.reason).not.toBe("permission_unacknowledged");
+      expect(after.reason).not.toBe("device_owner");
+      await request.delete(`/api/devices/${gateId}`, {
+        headers: sameOriginHeaders,
+      });
       // The switch is a read-modify-write precisely because POST
       // /api/focus coerces absent goal flags to false — posting the
       // audience alone would quietly wipe the user's setup.

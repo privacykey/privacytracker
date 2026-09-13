@@ -74,6 +74,14 @@ export type DeviceActionGate =
       ownerAudience: string;
       ownerLabel: string | null;
     }
+  | {
+      allowed: false;
+      reason: "permission_unacknowledged";
+      activeAudience: string;
+      deviceName: string;
+      ownerAudience: string;
+      ownerLabel: string | null;
+    }
   | { allowed: false; reason: "flag" }
   | { allowed: false; reason: "backup_missing" }
   | { allowed: false; reason: "backup_stale"; agedMs: number }
@@ -124,8 +132,9 @@ export type DeviceActionGate =
  * that the delete flow serves both the user and the person they are
  * helping). Deleting apps off another person's device is now reachable
  * — but only once the user has explicitly recorded that the device is
- * theirs and explicitly switched into the matching mode, and only
- * through the rest of the chain: the device physically connected,
+ * theirs, explicitly attested that they have that person's permission
+ * (`permission_acknowledged_at`), and explicitly switched into the
+ * matching mode, and only through the rest of the chain: the device physically connected,
  * unlocked and trusting this Mac, `flag.devopts.cfgutil_uninstall` on,
  * a fresh verified backup, and a native Touch ID prompt per app inside
  * `run_cfgutil_remove_app`. The gate stops mistakes; Touch ID is what
@@ -140,17 +149,35 @@ export function checkDeviceOwnershipGate(ecid: string): DeviceActionGate {
   const ownerAudience = device?.ownerAudience ?? null;
 
   if (ownerAudience) {
-    if (ownerAudience === focus.audience) {
-      return { allowed: true };
+    if (ownerAudience !== focus.audience) {
+      return {
+        allowed: false,
+        reason: "device_owner",
+        activeAudience: focus.audience,
+        deviceName: device?.name ?? "",
+        ownerAudience,
+        ownerLabel: device?.ownerLabel ?? null,
+      };
     }
-    return {
-      allowed: false,
-      reason: "device_owner",
-      activeAudience: focus.audience,
-      deviceName: device?.name ?? "",
-      ownerAudience,
-      ownerLabel: device?.ownerLabel ?? null,
-    };
+    // Someone else's device, in the matching mode. Matching the mode is
+    // necessary but not sufficient: acting on another person's device
+    // also requires that the user has said, in so many words, that they
+    // have that person's permission. That attestation is taken at
+    // import (the "whose device is this?" step) or in Settings →
+    // Devices, is stamped with a time, and is audit-logged. Without it
+    // the mode match alone would let "I'm helping someone" unlock
+    // deleting apps off any device labelled as theirs.
+    if (ownerAudience !== "self" && !device?.permissionAcknowledgedAt) {
+      return {
+        allowed: false,
+        reason: "permission_unacknowledged",
+        activeAudience: focus.audience,
+        deviceName: device?.name ?? "",
+        ownerAudience,
+        ownerLabel: device?.ownerLabel ?? null,
+      };
+    }
+    return { allowed: true };
   }
 
   // No ownership recorded for this device — the pre-ownership rule.

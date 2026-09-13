@@ -159,6 +159,7 @@ function modeLabel(
 const GATE_DENIAL_KEYS: Record<string, string> = {
   audience: "gate_denied_audience",
   device_owner: "gate_denied_device_owner_unnamed",
+  permission_unacknowledged: "gate_denied_permission_unnamed",
   backup_missing: "gate_denied_backup",
   backup_stale: "gate_denied_backup",
   backup_unverified: "gate_denied_unverified",
@@ -1014,6 +1015,18 @@ export default function ReviewRecommendationsView({
                   owner: owner || tAct("gate_mode_loved_one"),
                 })
               : tAct("gate_denied_device_owner_unnamed", { mode });
+          } else if (gate?.reason === "permission_unacknowledged") {
+            // Same shape as device_owner, different missing thing: the
+            // mode matches, the attestation doesn't exist. Says where to
+            // give it, since that is the only thing between the user
+            // and continuing.
+            const owner = gate.ownerLabel?.trim();
+            message = gate.deviceName?.trim()
+              ? tAct("gate_denied_permission", {
+                  device: gate.deviceName.trim(),
+                  owner: owner || tAct("gate_mode_loved_one"),
+                })
+              : tAct("gate_denied_permission_unnamed");
           } else if (gate?.reason === "audience") {
             const scopedName = scopeOwnerName ?? scopeDeviceName;
             if (scopedName) {

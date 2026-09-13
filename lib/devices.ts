@@ -55,6 +55,13 @@ export interface Device {
    */
   ownerAudience: DeviceOwnerAudience | null;
   ownerLabel: string | null;
+  /**
+   * When the user attested they have the owner's permission to view
+   * and act on this device. Null until explicitly given, and only ever
+   * meaningful for a device owned by someone else — the uninstall gate
+   * requires it before acting on any device whose owner is not 'self'.
+   */
+  permissionAcknowledgedAt: number | null;
 }
 
 interface DeviceRow {
@@ -69,6 +76,7 @@ interface DeviceRow {
   name: string;
   owner_audience: string | null;
   owner_label: string | null;
+  permission_acknowledged_at: number | null;
 }
 
 function rowToDevice(row: DeviceRow): Device {
@@ -89,6 +97,7 @@ function rowToDevice(row: DeviceRow): Device {
     ownerAudience: isDeviceOwnerAudience(row.owner_audience)
       ? row.owner_audience
       : null,
+    permissionAcknowledgedAt: row.permission_acknowledged_at ?? null,
   };
 }
 
@@ -98,6 +107,12 @@ export interface CreateDeviceInput {
   iosVersion?: string | null;
   model?: string | null;
   name: string;
+  /** Whose device this is, if the user said at import time. */
+  ownerAudience?: DeviceOwnerAudience | null;
+  ownerLabel?: string | null;
+  /** The user's attestation that they have the owner's permission.
+   *  Ignored (never stored) when the owner is 'self' or unset. */
+  permissionAcknowledged?: boolean;
 }
 
 /** Create a device row. Returns the persisted Device. */
@@ -108,10 +123,14 @@ export function createDevice(input: CreateDeviceInput): Device {
   }
   const id = randomUUID();
   const now = Date.now();
+  const ownerAudience = isDeviceOwnerAudience(input.ownerAudience)
+    ? input.ownerAudience
+    : null;
   db.prepare(`
     INSERT INTO devices (id, name, ecid, model, ios_version, device_class,
-                         created_at, last_synced_at, is_unknown_placeholder)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                         created_at, last_synced_at, is_unknown_placeholder,
+                         owner_label, owner_audience, permission_acknowledged_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
   `).run(
     id,
     name,
@@ -120,7 +139,13 @@ export function createDevice(input: CreateDeviceInput): Device {
     input.iosVersion ?? null,
     input.deviceClass ?? null,
     now,
-    now
+    now,
+    input.ownerLabel?.trim() || null,
+    ownerAudience,
+    // An attestation only makes sense for someone else's device.
+    ownerAudience && ownerAudience !== "self" && input.permissionAcknowledged
+      ? now
+      : null
   );
   return getDeviceById(id)!;
 }
@@ -353,17 +378,45 @@ export function setDeviceOwner(
   owner: {
     audience?: DeviceOwnerAudience | null;
     label?: string | null;
+    /** true stamps now; false clears. Omit to leave alone. */
+    permissionAcknowledged?: boolean;
   }
 ): void {
   const updates: string[] = [];
-  const values: (string | null)[] = [];
+  const values: (string | number | null)[] = [];
   if (owner.label !== undefined) {
     updates.push("owner_label = ?");
     values.push(owner.label?.trim() || null);
   }
-  if (owner.audience !== undefined) {
+  const nextAudience =
+    owner.audience === undefined
+      ? undefined
+      : isDeviceOwnerAudience(owner.audience)
+        ? owner.audience
+        : null;
+  if (nextAudience !== undefined) {
     updates.push("owner_audience = ?");
-    values.push(isDeviceOwnerAudience(owner.audience) ? owner.audience : null);
+    values.push(nextAudience);
+  }
+  // The attestation is about someone ELSE's device. Setting the owner
+  // to self, or clearing it, makes a stored acknowledgement meaningless
+  // — so it goes too. Otherwise handing the device back to a relative
+  // later would inherit a stale "yes" from a previous owner.
+  const resolvedAudience =
+    nextAudience === undefined
+      ? (getDeviceById(id)?.ownerAudience ?? null)
+      : nextAudience;
+  const ownerBecameSelfOrNone =
+    nextAudience !== undefined && (!nextAudience || nextAudience === "self");
+  if (owner.permissionAcknowledged !== undefined || ownerBecameSelfOrNone) {
+    const stamp =
+      owner.permissionAcknowledged === true &&
+      resolvedAudience &&
+      resolvedAudience !== "self"
+        ? Date.now()
+        : null;
+    updates.push("permission_acknowledged_at = ?");
+    values.push(stamp);
   }
   if (updates.length === 0) {
     return;

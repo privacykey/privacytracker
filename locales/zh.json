@@ -242,7 +242,9 @@
       "gate_denied_device_owner_unnamed": "安全检查拒绝了本次操作，因此未删除任何内容：该设备属于他人，而你当前的设置是{mode}。可在顶部的设备菜单中切换，或选择其他设备。",
       "gate_mode_self": "管理自己的应用",
       "gate_mode_loved_one": "帮助他人",
-      "gate_mode_guardian": "照看孩子的设备"
+      "gate_mode_guardian": "照看孩子的设备",
+      "gate_denied_permission": "安全检查拒绝了本次操作，因此未删除任何内容：{device}属于{owner}，而你尚未确认已获得对方许可从其设备移除应用。可在「设置 → 设备」中确认。",
+      "gate_denied_permission_unnamed": "安全检查拒绝了本次操作，因此未删除任何内容：该设备属于他人，而你尚未确认已获得对方许可从其设备移除应用。可在「设置 → 设备」中确认。"
     },
     "saved_notes": {
       "heading": "你的备注",
@@ -804,7 +806,18 @@
       "summary_chip_name": "名称/手动匹配 {count} 个",
       "summary_chip_pending": "待处理 {count} 个",
       "summary_chip_skipped": "已跳过 {count} 个",
-      "summary_chip_unavailable": "不可用 {count} 个"
+      "summary_chip_unavailable": "不可用 {count} 个",
+      "owner_heading": "这是谁的设备？",
+      "owner_help": "这决定应用如何对其分组，以及之后允许你对它做什么。",
+      "owner_mine": "我自己的",
+      "owner_helping": "我正在帮助的人",
+      "owner_child": "我照看的孩子",
+      "owner_name_label": "对方的名字（可选）",
+      "owner_name_placeholder": "例如：妈妈、小乐",
+      "owner_ack_helping": "我已获得此人的许可，可以查看其设备上的应用，并在我们决定后移除其中的应用。",
+      "owner_ack_child": "我对这个孩子及其设备负责。",
+      "owner_ack_why": "在应用从对方设备移除任何内容之前，你需要先确认这一点。确认时间会被记录。",
+      "owner_ack_required": "请勾选上方选项以继续。"
     },
     "profile_setup": {
       "back_to_goals": "返回你的用途",
@@ -1596,7 +1609,11 @@
     },
     "owner_audience_help": "用于对设备菜单分组，并在你切换到此设备时提示匹配的视图。不会自动更改任何设置。",
     "owner_save": "保存",
-    "owner_cancel": "取消"
+    "owner_cancel": "取消",
+    "owner_ack_helping": "我已获得此人的许可，可以查看其设备上的应用，并在我们决定后移除其中的应用。",
+    "owner_ack_child": "我对这个孩子及其设备负责。",
+    "owner_ack_why": "在应用从对方设备移除任何内容之前必须先确认。确认时间会被记录。",
+    "owner_ack_confirmed_meta": "已确认许可"
   },
   "device_sync": {
     "diff_title": "自上次以来变化了什么？",

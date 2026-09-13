@@ -88,14 +88,28 @@ export async function PATCH(
       { status: 400 }
     );
   }
-  const { name, mergeIntoDeviceId, ownerLabel, ownerAudience } = body as {
+  const {
+    name,
+    mergeIntoDeviceId,
+    ownerLabel,
+    ownerAudience,
+    permissionAcknowledged,
+  } = body as {
     mergeIntoDeviceId?: unknown;
     name?: unknown;
     ownerAudience?: unknown;
     ownerLabel?: unknown;
+    permissionAcknowledged?: unknown;
   };
   const hasOwnerLabel = Object.hasOwn(body, "ownerLabel");
   const hasOwnerAudience = Object.hasOwn(body, "ownerAudience");
+  const hasAck = Object.hasOwn(body, "permissionAcknowledged");
+  if (hasAck && typeof permissionAcknowledged !== "boolean") {
+    return NextResponse.json(
+      { error: "permissionAcknowledged must be a boolean" },
+      { status: 400 }
+    );
+  }
 
   if (
     hasOwnerLabel &&
@@ -148,7 +162,7 @@ export async function PATCH(
 
     // Ownership rides in the same PATCH as the rename so the Settings
     // form can save a device's name and owner in one round trip.
-    if (hasOwnerLabel || hasOwnerAudience) {
+    if (hasOwnerLabel || hasOwnerAudience || hasAck) {
       setDeviceOwner(id, {
         ...(hasOwnerLabel
           ? { label: (ownerLabel as string | null) ?? null }
@@ -160,12 +174,26 @@ export async function PATCH(
                 : null,
             }
           : {}),
+        ...(hasAck
+          ? { permissionAcknowledged: permissionAcknowledged as boolean }
+          : {}),
       });
+      // A ticked acknowledgement gets its own audit action: it is an
+      // attestation about another person's device, and "who said so,
+      // and when" is the whole point of recording it.
       recordAudit({
-        action: "devices.set_owner",
+        action:
+          permissionAcknowledged === true
+            ? "devices.permission_acknowledged"
+            : "devices.set_owner",
         actorIp: requestActorIp(req),
         userAgent: req.headers.get("user-agent"),
-        detail: JSON.stringify({ id, ownerLabel, ownerAudience }),
+        detail: JSON.stringify({
+          id,
+          ownerLabel,
+          ownerAudience,
+          permissionAcknowledged,
+        }),
         success: true,
       });
       updated = true;

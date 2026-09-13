@@ -700,7 +700,13 @@ db.exec(`
        notice that you are looking at someone else's device while your
        focus still says you're working on your own. */
     owner_label              TEXT,
-    owner_audience           TEXT
+    owner_audience           TEXT,
+    /* When the user attested they have the owner's permission to view
+       this device's apps and remove apps from it. Only meaningful when
+       owner_audience is not 'self' — it is cleared if the owner is
+       later set to self — and required by the uninstall gate before
+       acting on anyone else's device. NULL until explicitly ticked. */
+    permission_acknowledged_at INTEGER
   );
   /* Unique partial index — multiple devices can have NULL ECID (CSV/manual);
      at most one device can claim a specific cfgutil ECID. */
@@ -864,6 +870,10 @@ const deviceCols = (
 const deviceMigrations: [string, string][] = [
   ["owner_label", "ALTER TABLE devices ADD COLUMN owner_label TEXT"],
   ["owner_audience", "ALTER TABLE devices ADD COLUMN owner_audience TEXT"],
+  [
+    "permission_acknowledged_at",
+    "ALTER TABLE devices ADD COLUMN permission_acknowledged_at INTEGER",
+  ],
 ];
 applyColumnMigrations(deviceCols, deviceMigrations);
 

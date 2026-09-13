@@ -444,3 +444,26 @@
   display: flex;
   gap: 6px;
 }
+
+/* The permission attestation inside the owner editor. A checkbox with a
+   two-line label: the statement being made, and why it's asked. */
+.devices-owner-ack {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  background: color-mix(in srgb, var(--accent, #0a84ff) 6%, transparent);
+  border-radius: var(--r-md);
+}
+
+.devices-owner-ack > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.devices-owner-ack-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}

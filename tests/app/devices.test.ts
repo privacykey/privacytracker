@@ -79,6 +79,8 @@ test("schema: devices table exists with the expected columns", () => {
     // ownership information and must not have any invented for it.
     "owner_audience",
     "owner_label",
+    // The user's attestation that they have the owner's permission.
+    "permission_acknowledged_at",
   ]);
 });
 
