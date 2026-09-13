@@ -195,6 +195,48 @@ export function getDeviceById(id: string): Device | null {
   return row ? rowToDevice(row) : null;
 }
 
+/**
+ * Look up a device by ECID, tolerating spelling differences.
+ *
+ * cfgutil prints ECIDs `0x`-prefixed and mixed-case, and what lands in
+ * `devices.ecid` is whatever spelling the import happened to see, while
+ * callers may pass any other. A plain `WHERE ecid = ?` therefore misses
+ * real matches — which matters here because the uninstall gate uses this
+ * to decide whose device is being acted on, and a missed match silently
+ * downgrades it to the older, coarser rule.
+ *
+ * Compared in JS rather than with SQL string surgery: the normalisation
+ * lives in one place (`normalizeEcid`, lib/device-actions.ts, mirrored
+ * here to avoid a server-only import), and a family install has a
+ * handful of devices, not thousands.
+ */
+export function getDeviceByEcid(ecid: string): Device | null {
+  const target = normalizeEcidForMatch(ecid);
+  if (!target) {
+    return null;
+  }
+  const rows = db
+    .prepare("SELECT * FROM devices WHERE ecid IS NOT NULL AND ecid != ''")
+    .all() as DeviceRow[];
+  for (const row of rows) {
+    if (row.ecid && normalizeEcidForMatch(row.ecid) === target) {
+      return rowToDevice(row);
+    }
+  }
+  return null;
+}
+
+/** Strip an `0x` prefix and upper-case the hex body. Deliberately the
+ *  same shape as `normalizeEcid` in lib/device-actions.ts; that module
+ *  is `server-only` and this one is imported more widely. */
+function normalizeEcidForMatch(value: string): string | null {
+  const body = value.trim().replace(/^0[xX]/, "");
+  if (!/^[A-Fa-f0-9]{8,24}$/.test(body)) {
+    return null;
+  }
+  return body.toUpperCase();
+}
+
 export function getDevicesForApp(appId: string): Device[] {
   const rows = db
     .prepare(`

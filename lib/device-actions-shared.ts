@@ -11,6 +11,11 @@ export interface BackupStamp {
 
 export type UninstallGateReason =
   | "audience"
+  // The device being acted on has a recorded owner whose audience
+  // disagrees with the active focus — "this is Mum's iPad and you are
+  // set up to work on your own apps". Distinct from `audience`, which
+  // is the older rule that knew nothing about whose device it was.
+  | "device_owner"
   | "backup_missing"
   | "backup_stale"
   | "backup_unverified"
@@ -20,7 +25,12 @@ export interface UninstallGateResponse {
   activeAudience?: string;
   agedMs?: number;
   allowed?: boolean;
+  /** `device_owner` only: what the wizard needs to name the device in
+   *  its refusal rather than citing an abstract rule. */
+  deviceName?: string;
   lastBackup?: BackupStamp | null;
+  ownerAudience?: string;
+  ownerLabel?: string | null;
   reason?: UninstallGateReason;
 }
 

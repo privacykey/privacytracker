@@ -303,6 +303,23 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- **App removal now checks whose device it is, not just what mode
+  you're in.** Previously the gate asked only whether your focus was set
+  to "just me" — so it would happily remove apps from a relative's phone
+  the moment it was plugged in, while refusing to touch your own phone
+  whenever you were in helping mode. It now compares the device's
+  recorded owner against how you're set up: your device in your own
+  mode, theirs in helping mode, a child's in guardian mode. A mismatch
+  is refused, and the refusal names the device instead of citing a rule.
+
+  This makes removal possible on a device belonging to someone you're
+  helping, which was not possible before. It requires you to have
+  recorded that the device is theirs and to have switched into the
+  matching mode, and everything else still applies: the phone connected,
+  unlocked and trusting this Mac, the feature switched on, a fresh
+  verified backup, and Touch ID for every single app. Devices with no
+  recorded owner behave exactly as they did before.
+
 - **Fixed: the mobile nav drawer reported a critical accessibility
   violation once a device existed.** The drawer is a `role="menu"`,
   which may only contain menu items, and the new device-scope control

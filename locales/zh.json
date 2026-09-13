@@ -80,7 +80,8 @@
       "body_after": "模式开放给",
       "body_after_audience": "受众。你可以在此完善判断并导出，由对方在他们自己的应用中执行。",
       "switch_link": "在「设置 → 你的关注重点」中切换受众",
-      "switch_suffix": "（如果这是你自己的设备）。"
+      "switch_suffix": "（如果这是你自己的设备）。",
+      "device_hint": "也可以在页面顶部的设备菜单中选择你正在协助的那个人的设备 — 当设备归属与你的当前设置一致时，即可执行移除。"
     },
     "stepper_aria": "向导步骤",
     "step_labels": {
@@ -236,7 +237,12 @@
       "gate_unreachable": "无法连接安全检查服务，因此未删除任何应用。请确认 privacytracker 本地服务正在运行，然后重试。",
       "checking_safety": "正在检查安全状态…",
       "record_failures": "{count, plural, one {# 项移除操作} other {# 项移除操作}}未能写入活动日志 — 应用仍已处理，但本次运行的审计记录不完整。",
-      "gate_denied_audience_scoped": "安全检查拒绝了本次操作，因此未删除任何内容：你正在查看{scope}，而仅当焦点设置为「只有我」时才能移除应用。"
+      "gate_denied_audience_scoped": "安全检查拒绝了本次操作，因此未删除任何内容：你正在查看{scope}，而仅当焦点设置为「只有我」时才能移除应用。",
+      "gate_denied_device_owner": "安全检查拒绝了本次操作，因此未删除任何内容：{device}属于{owner}，而你当前的设置是{mode}。可在顶部的设备菜单中切换，或选择其他设备。",
+      "gate_denied_device_owner_unnamed": "安全检查拒绝了本次操作，因此未删除任何内容：该设备属于他人，而你当前的设置是{mode}。可在顶部的设备菜单中切换，或选择其他设备。",
+      "gate_mode_self": "管理自己的应用",
+      "gate_mode_loved_one": "帮助他人",
+      "gate_mode_guardian": "照看孩子的设备"
     },
     "saved_notes": {
       "heading": "你的备注",

@@ -80,7 +80,8 @@
       "body_after": "mode for the",
       "body_after_audience": "audience. You can refine your verdicts here and export them — the recipient acts on them from their own copy of the app.",
       "switch_link": "Switch audience under Settings → Your focus",
-      "switch_suffix": "if this is your own device."
+      "switch_suffix": "if this is your own device.",
+      "device_hint": "Or choose a device in the menu at the top of the page that belongs to the person you're helping — removal is allowed when the device's owner matches how you're set up."
     },
     "stepper_aria": "Wizard steps",
     "step_labels": {
@@ -236,7 +237,12 @@
       "gate_unreachable": "Couldn't reach the safety check, so nothing was deleted. Check that privacytracker's local service is running and try again.",
       "checking_safety": "Checking safety…",
       "record_failures": "{count, plural, one {# removal} other {# removals}} couldn't be written to the activity log — the apps were still processed, but the audit trail for this run is incomplete.",
-      "gate_denied_audience_scoped": "The safety check refused this run, so nothing was deleted: you're viewing {scope}, and app removal is only available when your focus is set to just you."
+      "gate_denied_audience_scoped": "The safety check refused this run, so nothing was deleted: you're viewing {scope}, and app removal is only available when your focus is set to just you.",
+      "gate_denied_device_owner": "The safety check refused this run, so nothing was deleted: {device} belongs to {owner}, and you're currently set up to {mode}. Switch using the device menu at the top, or pick a different device.",
+      "gate_denied_device_owner_unnamed": "The safety check refused this run, so nothing was deleted: that device belongs to someone else, and you're currently set up to {mode}. Switch using the device menu at the top, or pick a different device.",
+      "gate_mode_self": "work on your own apps",
+      "gate_mode_loved_one": "help someone else",
+      "gate_mode_guardian": "look after a child's device"
     },
     "saved_notes": {
       "heading": "Your notes",

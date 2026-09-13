@@ -277,7 +277,19 @@ Two things read it:
 
 **The audience switch is read-modify-write and must stay that way.** `POST /api/focus` takes the WHOLE focus and coerces absent goal flags to `false`, so posting `{audience}` alone silently clears the user's goals — turning "show me Mum's apps in helper mode" into "reset my setup". `DeviceScopeProvider.setAudience` GETs the current focus and posts it back with only the audience changed.
 
-**The uninstall gate is unchanged.** `checkUninstallGate` still hard-requires `audience === 'self'` (lib/device-actions.ts) — ownership metadata does NOT relax it; changing a destructive gate deserves its own change with its own review. What ownership improved is the *message*: a refusal with `reason: 'audience'` now names the device or owner being viewed, so "app removal is only available when your focus is set to just you" stops reading as an arbitrary block three screens after the device filter that caused it.
+**The uninstall gate keys on whose device is being acted on.** `checkDeviceOwnershipGate` (lib/device-actions.ts) replaced the flat `audience === 'self'` check, which keyed on the user's global MODE rather than the TARGET and so got the important case backwards — a self-focus user could delete apps off a relative's phone the moment it was plugged in, because nothing asked whose phone it was.
+
+The rule, in order:
+
+1. Resolve the target ECID to a device row (`getDeviceByEcid`, which normalises the `0x` prefix and case — cfgutil's spelling varies, and a missed match would silently downgrade the gate).
+2. **Device has a recorded owner audience** → it must MATCH the active focus. Your device in self mode, their device in helping mode, a child's in guardian mode. A mismatch returns `reason: 'device_owner'` carrying the device name, owner label and both audiences, so the wizard can name what it refused instead of citing a rule.
+3. **No recorded owner, or the ECID resolves to nothing** → fall back to the pre-ownership rule (`audience === 'self'`). Installs that predate ownership must be neither newly blocked nor newly permitted; `tests/app/uninstall-gate-ownership.test.ts` pins that in both directions, and the older `uninstall-gate.test.ts` passes untouched because its fixtures have no device rows.
+
+**This was a deliberate expansion, approved as a product decision** (the delete flow is meant to serve both the user and the person they are helping). Deleting apps off another person's device is now reachable — but only after the user explicitly records that the device is theirs AND explicitly switches into the matching mode, and still only through the rest of the chain: the device physically connected, unlocked and trusting this Mac, `flag.devopts.cfgutil_uninstall` on, a fresh verified backup, and a native Touch ID prompt per app inside `run_cfgutil_remove_app`. **The gate stops mistakes; Touch ID is what stops a compromised webview.** `acknowledgeNoBackup` relaxes the BACKUP requirement only and must never unlock ownership or the flag — pinned by test.
+
+**Two gates, and both must move together.** The server gate is the authority, but `ReviewRecommendationsView`'s `audienceOk` decides whether the Backup/Act steps render at all; leaving it at `audience === 'self'` would have made the server change inert. It now also passes when the active device scope resolves unambiguously to one owner matching the focus. It deliberately requires the scope to be narrowed first: in helping mode with no device picked, nothing can say whose phone is about to be acted on, and the honest answer to that is to stay closed.
+
+Failure modes all land on the STRICTER legacy rule: an unreadable device row, an unparseable ECID, a missing owner. `safeGetDeviceByEcid` swallows lookup errors for exactly this reason — a throw must degrade to "ownership unknown", never to "allowed".
 
 ### Historical Wayback import
 
