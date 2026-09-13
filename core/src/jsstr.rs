@@ -128,10 +128,114 @@ pub fn js_keyed_object(pairs: Vec<(String, Value)>) -> Value {
     Value::Object(map)
 }
 
+/// The printable ASCII characters in the order Node's `localeCompare` sorts
+/// them — ICU root collation. This string is Node's own output over the 94
+/// characters and is pinned again by `tests/settings_cases.rs` from the
+/// generated fixture, so an ICU upgrade that moved a character would fail
+/// there rather than as an unexplained resort.
+///
+/// What it shows: punctuation, then symbols, then digits, then letters; and
+/// `a` next to `A` because at the PRIMARY level the two cases are equal —
+/// the lowercase-first pair order is the tertiary rule in
+/// [`js_locale_compare`]. Byte order gets all three bands wrong (`_` is
+/// 0x5F, between the upper- and lowercase letters), which is what put
+/// `CONTACTS` before `CONTACT_INFO` in the first port of the profile matcher.
+const ICU_ASCII_ORDER: &str =
+    "_-,;:!?.'\"()[]{}@*/\\&#%`^+<=>|~$0123456789aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ";
+
+/// Primary collation weight of one character under the model above.
+///
+/// Space sorts before everything printable (verified: `" " < "_"`). Letters
+/// share a weight across case. Anything outside printable ASCII gets a
+/// weight past the whole table, by code point — ICU does something far more
+/// involved there (controls are ignorable, accented letters sort with their
+/// base letter), but no string this is used on contains such a character:
+/// flag keys, flag surfaces and privacy-category keys are ASCII by
+/// construction. The fallback exists so the function is total, not so it
+/// is right on that input.
+fn primary_weight(c: char) -> u32 {
+    if c == ' ' {
+        return 0;
+    }
+    let probe = c.to_ascii_lowercase();
+    match ICU_ASCII_ORDER.chars().position(|t| t == probe) {
+        Some(i) => 1 + i as u32,
+        None => 1000 + c as u32,
+    }
+}
+
+/// `a.localeCompare(b)` for the ASCII strings this codebase sorts with it.
+///
+/// ICU root collation, reduced to the two levels ASCII can exercise:
+/// primary weights from [`ICU_ASCII_ORDER`] compared as sequences (a proper
+/// prefix sorts first, so `"a" < "a1"` and `"A" < "ab"`), then, on a primary
+/// tie, case — lowercase before uppercase at the first position that differs
+/// (`"aB" < "Ab"`). A byte comparison closes the function over inputs the
+/// model does not distinguish. Verified against Node on every ordered pair
+/// of the fourteen privacy-category keys and on the full sorted order of the
+/// 221 flag keys and 18 flag surfaces (see `tests/settings_cases.rs`).
+///
+/// Not a general `localeCompare`: no accents, no ignorable controls, no
+/// numeric collation, no locale tailoring. See [`primary_weight`].
+pub fn js_locale_compare(a: &str, b: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    let primary = |s: &str| s.chars().map(primary_weight).collect::<Vec<u32>>();
+    match primary(a).cmp(&primary(b)) {
+        Ordering::Equal => {}
+        other => return other,
+    }
+    for (ca, cb) in a.chars().zip(b.chars()) {
+        let (ua, ub) = (ca.is_ascii_uppercase(), cb.is_ascii_uppercase());
+        if ua != ub {
+            return if ua {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            };
+        }
+    }
+    a.cmp(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::cmp::Ordering::{Equal, Greater, Less};
+
+    #[test]
+    fn locale_compare_reproduces_the_pairs_node_was_asked_about() {
+        // Every expectation here is a `localeCompare` result read out of
+        // `node -e`, not reasoned about.
+        assert_eq!(js_locale_compare("a", "A"), Less);
+        assert_eq!(js_locale_compare("A", "a"), Greater);
+        assert_eq!(js_locale_compare("a", "B"), Less);
+        assert_eq!(js_locale_compare("B", "a"), Greater);
+        // Primary decides before case does: "ab" is LONGER than "A".
+        assert_eq!(js_locale_compare("ab", "A"), Greater);
+        assert_eq!(js_locale_compare("A", "ab"), Less);
+        // Punctuation sorts before letters and digits, non-ignorable.
+        assert_eq!(js_locale_compare("a_b", "ab"), Less);
+        assert_eq!(js_locale_compare("a.b", "a_b"), Greater);
+        assert_eq!(js_locale_compare("a1", "a_"), Greater);
+        assert_eq!(js_locale_compare("a", "a1"), Less);
+        // Case is decided at the FIRST differing position.
+        assert_eq!(js_locale_compare("Ab", "aB"), Greater);
+        assert_eq!(js_locale_compare("aB", "Ab"), Less);
+        // Space before every printable character.
+        assert_eq!(js_locale_compare(" ", "_"), Less);
+        assert_eq!(js_locale_compare("a b", "a_b"), Less);
+        assert_eq!(js_locale_compare("a", "a "), Less);
+        assert_eq!(js_locale_compare("", "a"), Less);
+        assert_eq!(js_locale_compare("same", "same"), Equal);
+    }
+
+    #[test]
+    fn locale_compare_gets_the_pair_byte_order_gets_wrong() {
+        // The one disagreement on the fourteen privacy-category keys.
+        assert_eq!(js_locale_compare("CONTACT_INFO", "CONTACTS"), Less);
+        assert_eq!("CONTACT_INFO".cmp("CONTACTS"), Greater);
+    }
 
     #[test]
     fn whitespace_matches_javascript_on_the_two_characters_that_differ() {

@@ -25,6 +25,21 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration: the four settings-backed reads join the Rust read API
+  (25 of 64 read routes) — `GET /api/settings`, `/api/settings/desktop`,
+  `/api/dashboard/layout` and `/api/feature-flags`. The last ports the focus
+  resolver over rule tables generated from the Node source rather than
+  transcribed (`core/scripts/extract-settings-cases.mjs`, with a CI drift
+  check like the `diffSnapshots` fixture), and the same script records the
+  real `maskWebhookUrl`, `reconcileLayout` and resolver outputs for the Rust
+  tests to replay. The profile matcher's strip-underscore collation is
+  replaced by an ICU-root model verified against Node on the flag keys, flag
+  surfaces and category keys. The parity fixture now stores a masked secret,
+  out-of-range desktop rows, a non-preset layout and flag overrides so the
+  four routes are compared on real state, and a probe exercises the
+  write-on-read runtime marker the differ never triggers. Developer-facing
+  only.
+
 - Rust-core migration: `/api/apps/[id]/detail` joins the Rust read API
   (21 of 64 read routes) — the fourteen-key aggregate the app-detail page
   renders, assembled from reads already ported plus three new ones

@@ -478,6 +478,99 @@ export const VERDICT_FIXTURE = {
   verdict: "replace",
 };
 
+/**
+ * `app_settings` rows behind the four settings-backed reads, chosen so that
+ * every coercion those routes apply has something to coerce:
+ *
+ *   - `/api/settings`: a stored API key (masked to `__SET__`), an explicit
+ *     country, and a Slack webhook URL — the one shape `maskWebhookUrl`
+ *     treats specially. The key and token are not real.
+ *   - `/api/settings/desktop`: a zoom with trailing junk (`parseFloat`
+ *     keeps the prefix), an idle timeout past 1440 (back to the default),
+ *     an uppercase theme (case-sensitive allowlist → `system`), `TRUE` for
+ *     a boolean (`=== "true"` → false), a plain false, and a custom
+ *     shortcut echoed verbatim.
+ *   - `/api/dashboard/layout`: a blob with unknown ids, a non-string, a
+ *     duplicate, a callout in `hidden` and an unknown in `hidden` — every
+ *     branch of `reconcileLayout` in one row, matching no preset.
+ *   - `/api/feature-flags`: a `guardian` focus with monitor+accessibility,
+ *     so audience, goal and accessibility rules all fire (and
+ *     `flag.desktop.app_section` is OFF, which the runtime-marker probe
+ *     needs). The seed's `self` focus with monitor exercised one table.
+ *
+ * `expect` is what Node answers for the parts `probeSettingsReads` checks;
+ * the byte comparison is the differ's.
+ */
+export const SETTINGS_FIXTURE = {
+  settings: {
+    ai_api_key: "pt-fixture-not-a-real-key",
+    app_country: "gb",
+    notification_webhook_url:
+      "https://hooks.slack.com/services/T0PARITY/B0FIXTURE/s3cretT0ken",
+    notification_webhook_format: "slack",
+    desktop_zoom_level: "1.5abc",
+    desktop_auto_lock_idle_minutes: "2000",
+    desktop_theme_override: "DARK",
+    desktop_hide_dock: "TRUE",
+    desktop_tray_visible: "false",
+    desktop_global_shortcut: "CmdOrCtrl+Alt+P",
+    "flag.focus.audience": "guardian",
+    "flag.focus.goal.monitor": "true",
+    "flag.focus.goal.accessibility": "true",
+    "dashboard.layout": JSON.stringify({
+      v: 1,
+      order: [
+        "hero",
+        "bogus_card",
+        "review_cta",
+        "hero",
+        42,
+        "activity_section",
+      ],
+      hidden: [
+        "activity_section",
+        "cleanup_callout",
+        "hero",
+        "hero",
+        "not_a_card",
+      ],
+    }),
+  },
+  expect: {
+    webhookMask: "https://hooks.slack.com/services/T***/B***/***",
+    desktop: {
+      zoom_level: 1.5,
+      auto_lock_idle_minutes: 15,
+      theme_override: "system",
+      hide_dock: false,
+      tray_visible: false,
+      desktop_global_shortcut: "CmdOrCtrl+Alt+P",
+    },
+    hidden: ["hero", "activity_section"],
+  },
+};
+
+/**
+ * `feature_flag_overrides` rows: a parent flag forced off (its dependents
+ * collapse), a child of that parent forced on (its own override beats the
+ * collapse, while its `focusValue` — the override stripped — stays off), a
+ * QUARANTINED override the read must ignore, and an override for a key the
+ * registry does not know, which `getAllOverrides` drops. `set_at` is the
+ * fixture epoch; `set_by` is `'user'`.
+ */
+export const FLAG_OVERRIDE_FIXTURE = {
+  parent: "flag.detail.timeline.wayback_rows",
+  child: "flag.detail.timeline.wayback_import",
+  quarantinedKey: "flag.global.keyboard_shortcuts",
+  unknownKey: "flag.not.a.real.flag",
+  rows: [
+    { key: "flag.detail.timeline.wayback_rows", value: "off", quarantined: 0 },
+    { key: "flag.detail.timeline.wayback_import", value: "on", quarantined: 0 },
+    { key: "flag.global.keyboard_shortcuts", value: "off", quarantined: 1 },
+    { key: "flag.not.a.real.flag", value: "on", quarantined: 0 },
+  ],
+};
+
 export function applySinceInstallFixture(dataDir) {
   const db = new BetterSqlite3(path.join(dataDir, "privacy.db"));
   const insertApp = db.prepare(
@@ -505,6 +598,11 @@ export function applySinceInstallFixture(dataDir) {
   );
   const upsertSetting = db.prepare(
     "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)"
+  );
+  const upsertOverride = db.prepare(
+    `INSERT OR REPLACE INTO feature_flag_overrides
+       (flag_key, override_value, set_at, set_by, previous_focus, quarantined)
+     VALUES (?, ?, ?, 'user', NULL, ?)`
   );
 
   const tx = db.transaction(() => {
@@ -598,6 +696,18 @@ export function applySinceInstallFixture(dataDir) {
     );
     upsertSetting.run("guardian_child_age_band", DETAIL_FIXTURE.childAgeBand);
     upsertSetting.run("privacy_profile", JSON.stringify(PROFILE_FIXTURE));
+    // The settings-backed reads (see SETTINGS_FIXTURE / FLAG_OVERRIDE_FIXTURE).
+    for (const [key, value] of Object.entries(SETTINGS_FIXTURE.settings)) {
+      upsertSetting.run(key, value);
+    }
+    // probeDesktopRuntimeMark WRITES this row into the Node data directory
+    // on every run; clear it so the next run can watch the write happen.
+    db.prepare(
+      "DELETE FROM app_settings WHERE key = 'runtime_environment'"
+    ).run();
+    for (const row of FLAG_OVERRIDE_FIXTURE.rows) {
+      upsertOverride.run(row.key, row.value, T0, row.quarantined);
+    }
     insertVerdict.run(
       VERDICT_FIXTURE.id,
       VERDICT_FIXTURE.appId,

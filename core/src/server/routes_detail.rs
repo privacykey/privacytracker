@@ -50,7 +50,7 @@ fn is_valid_app_id(id: &str) -> bool {
 
 /// `normalizeAiProvider`: the legacy `"ollama"` maps to `"custom"`; anything
 /// not in the allowlist is `"disabled"`.
-fn normalize_ai_provider(value: &str) -> &'static str {
+pub(super) fn normalize_ai_provider(value: &str) -> &'static str {
     if value == "ollama" {
         return "custom";
     }

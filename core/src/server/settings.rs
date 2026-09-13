@@ -15,6 +15,21 @@ pub fn get_setting(state: &AppState, key: &str, default: &str) -> rusqlite::Resu
     get_setting_with(&conn, key, default)
 }
 
+/// Port of `setSetting` — `INSERT OR REPLACE`, so the row is rewritten
+/// rather than updated in place. Lock-held variant only: the single caller
+/// so far (`/api/settings/desktop` marking the runtime) already holds it.
+pub fn set_setting_with(
+    conn: &rusqlite::Connection,
+    key: &str,
+    value: &str,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+        [key, value],
+    )?;
+    Ok(())
+}
+
 /// The same read for a handler that already holds the connection lock —
 /// calling `get_setting` there would deadlock on the mutex.
 pub fn get_setting_with(

@@ -98,7 +98,9 @@ parity-schema:
 # Read gate: prove the Rust read API is byte-identical to Node's
 [group("rust-core")]
 parity-read node data:
-    pnpm run parity:read -- --node {{node}} --node-data {{data}}
+    # No `--` separator: pnpm forwards it verbatim and parseArgs then reads
+    # `--node` as a positional argument and refuses to start.
+    pnpm run parity:read --node {{node}} --node-data {{data}}
 
 # Runs the REAL lib/changelog.ts diffSnapshots over a table of snapshot pairs
 # and records its output as core/tests/fixtures/diff-cases.json. The parity
@@ -109,6 +111,17 @@ parity-read node data:
 [group("rust-core")]
 parity-diff-cases:
     pnpm run parity:diff-cases
+
+# Runs the REAL Node code behind the settings reads — the feature-flag
+# resolver, reconcileLayout/matchDashboardPreset and maskWebhookUrl — and
+# writes both the rule tables the Rust server include_str!s
+# (core/src/server/flag_rules.json) and the differential fixture its tests
+# replay (core/tests/fixtures/settings-cases.json). CI re-runs it and fails
+# if either checked-in file has drifted. See core/README.md.
+# Regenerate the settings-read rule tables + differential fixture from the Node source
+[group("rust-core")]
+parity-settings-cases:
+    pnpm run parity:settings-cases
 
 # SQLite lives in the privacytracker-data named volume; AGENTS.md has
 # the bind-mount variant and the backup command.

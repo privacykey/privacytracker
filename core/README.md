@@ -179,7 +179,7 @@ pt-core serve <path/to/privacy.db> [--port N]   # port 0/omitted = OS-assigned
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (21).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (25).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -620,6 +620,114 @@ type with no `categories` — throws out of `diffSnapshots` in Node and 500s;
 here it fails to deserialise and the route answers `"sinceInstall": null`.
 Different, but both refuse: the alternative was to default the field and
 invent an answer.
+
+### The settings reads (+4 routes, 25 total)
+
+`/api/settings`, `/api/settings/desktop`, `/api/dashboard/layout` and
+`/api/feature-flags`. Three are `app_settings` reads wearing a coercion
+each; the fourth runs the focus resolver. The differ compares all four on
+ONE database state, and the canned seed leaves that state nearly empty for
+them — no API key, no country, no webhook, no `desktop_*` rows, no stored
+layout, no overrides, a `self`/`monitor` focus. It was comparing `""`
+against `""`, defaults against defaults, and one resolver context out of
+the hundreds a database can hold. Three things close that.
+
+**`core/scripts/extract-settings-cases.mjs`** (`just parity-settings-cases`)
+imports and RUNS the Node code and writes two files:
+
+- `core/src/server/flag_rules.json` — the six rule tables (`HARD_DEFAULTS`,
+  `AUDIENCE_RULES`, `GOAL_RULES`, `ACCESSIBILITY_RULES`, `FLAG_DEPENDENCIES`,
+  `WIRED_FLAGS`) lifted from `lib/feature-flag-rules.ts` and
+  `lib/feature-flag-wired.ts`. The server `include_str!`s it, so 221 defaults
+  and seventy dependency edges are never transcribed — the one wrong entry a
+  transcription produces is the one no seeded focus ever selects.
+- `core/tests/fixtures/settings-cases.json` — expected outputs of
+  `maskWebhookUrl` (module-local to the route, so its source text is lifted
+  into a scratch module and executed), `reconcileLayout` +
+  `matchDashboardPreset` + the five `DASHBOARD_PRESETS`, and the resolver
+  over 39 contexts: every audience × nine goal sets, the desktop runtime, and
+  override cases for the dependency collapse, the escape hatch, the kill
+  switch, a garbage value and a garbage audience. One reference context
+  carries the full 221-row body; the rest record only the rows that differ
+  from it, since the sort order is value-independent.
+  `core/tests/settings_cases.rs` replays it byte for byte. CI regenerates
+  both files and fails on drift, as it does for `diff-cases.json`.
+
+**The fixture** (`SETTINGS_FIXTURE`, `FLAG_OVERRIDE_FIXTURE` in
+`since-install-fixture.mjs`) writes a stored API key, an explicit country, a
+Slack webhook, six `desktop_*` rows each chosen to trip a different coercion,
+a layout blob holding every kind of junk `reconcileLayout` filters, a
+`guardian` + monitor + accessibility focus, and four overrides — a parent
+forced off, its child forced on, a quarantined one, an unknown key.
+`probeSettingsReads` refuses a run where Node's answers show any of it did
+not land (a masked secret, a coerced desktop value, a reconciled layout that
+matches no preset, an override that collapsed its dependents while its
+child escaped, 221 ICU-sorted rows).
+
+**`probeDesktopRuntimeMark`** — `GET /api/settings/desktop` WRITES.
+`markDesktopRuntimeIfTrusted` upserts `runtime_environment = "desktop"` when
+the process env or the `x-privacytracker-runtime` header says so, and the
+resolver reads that row back to force `flag.desktop.app_section` on. The
+first write-on-GET in this server, ported as it is: a Rust server that never
+wrote it would resolve that flag differently from Node on every desktop
+boot. The differ never sends the header, so the probe sends it to both
+sides after the diff (it changes both databases for good), then checks the
+flag flipped from off to on and the bodies still match.
+
+What the port had to get right, none of it visible in the response shape:
+
+- **Resolver order.** Goal rules apply in the fixed order monitor, cleanup,
+  minimal — not storage order. The runtime rule (step 5) runs before the
+  override (step 7), so an override off beats the forced on. The dependency
+  parent is resolved through the whole chain, its own override included. The
+  kill switch short-circuits BEFORE the override, so its own row reports
+  `currentValue: "on"` while `override: "off"`; and `focusValue` copies
+  `killSwitchOff` unchanged, so stripping that override does not turn the
+  engine back on. A garbage stored audience makes `AUDIENCE_RULES[x][key]`
+  throw and the route answers 500 `{error:"Failed to list flags"}` — unless
+  the garbage names an `Object.prototype` property, in which case the lookup
+  finds a function and no rule applies. `override_value` is an unchecked
+  cast: `"banana"` is echoed and still fails the parent's `!== "on"`.
+- **`reconcileLayout`.** A canonical card missing from the stored order is
+  slotted after its nearest preceding canonical neighbour that is already
+  placed — and with none, `unshift`ed to the FRONT. So `order: ["hero"]`
+  comes back `task_list`-first with hero sixth. `[]` is `typeof "object"`
+  and truthy, so it is NOT the early-return default; it reconciles to the
+  same answer by the long road.
+- **Desktop coercions.** Booleans are `=== "true"` (so `TRUE` is false);
+  the idle timeout is `parseInt` gated to `0..=1440`; the theme is a
+  case-sensitive allowlist; zoom is `parseFloat` gated to `0.5..=3.0` and
+  serialised as a JavaScript number (`1`, not `1.0`). `js_parse_float` joins
+  `jsnum.rs` for this — prefix-tolerant like `parseInt`, but `"Infinity"` is
+  the one word it takes and `"1e400"` overflows to it, which is why the
+  guard is `isFinite`. `js_parse_int` was also corrected to skip
+  JavaScript's whitespace (U+FEFF yes, U+0085 no) rather than Rust's.
+- **`maskWebhookUrl`.** Origin lowercased, path case kept; default ports
+  dropped even when spelled `:0443`; credentials, query and hash blanked;
+  `.`/`..`/`%2e` segments resolved; backslashes are slashes; non-special
+  schemes have the origin `"null"` (so `mailto:` masks to `null/***`); a
+  refused URL is the word `configured`.
+
+**Collation.** `/api/feature-flags` sorts 221 keys with `localeCompare`, and
+the strip-underscore comparator the profile matcher used was right on the
+fourteen category keys by coincidence — it has no answer for `.` against
+`_`, or digits against letters. Replaced by `jsstr::js_locale_compare`, an
+ICU-root model for ASCII: primary weights from a 94-character table that is
+Node's own `localeCompare` order (punctuation, symbols, digits, then
+case-folded letters), then lowercase-before-uppercase on a primary tie.
+Pinned against the table, the sorted 221 keys, the 18 surfaces and the
+fourteen category keys, all from Node. Not general: no accents, no
+ignorable controls, no numeric collation — and nothing it sorts contains
+any of those.
+
+**The URL parser is a WHATWG subset, not the `url` crate**, for the reason
+given under the forwarded-host section. On write, `validateExternalUrl`
+stores `new URL(raw).toString()` — an http(s) URL already canonical — so
+re-parsing that is exact, and the subset is chosen to also cover what a
+hand-edited row plausibly holds. Not reproduced, each unreachable from an
+app-written row and each changing only the host's spelling inside an
+otherwise identical mask: IDNA, IPv4 shorthand, IPv6 compression,
+percent-escapes in a host, `file:` hosts beyond `file:///`.
 
 ### The trailing-slash redirect (proxy.ts step 0.5)
 
