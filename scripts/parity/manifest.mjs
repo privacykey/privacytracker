@@ -480,7 +480,15 @@ export const VOLATILE_READS = [
     route: "/api/deployment/diagnostics",
     name: "deployment diagnostics",
     path: "/api/deployment/diagnostics",
-    transform: (v) => blankNumbers(blankMeasurements(v)),
+    // `app.node` is `process.version` — the serving runtime's own version
+    // string. Two Node servers agree on it; the Rust core has no Node and
+    // answers with its own identity. It is the one field in this payload
+    // that names the process rather than the deployment, so it is masked
+    // like `pid` — and it is the ONLY field masked for that reason.
+    transform: (v) =>
+      blankNumbers(
+        blankMeasurements({ ...v, app: { ...v.app, node: "~runtime" } })
+      ),
   },
   {
     route: "/api/desktop/diagnostics",

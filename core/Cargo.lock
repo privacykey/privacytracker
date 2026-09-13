@@ -377,6 +377,7 @@ name = "privacytracker-core"
 version = "0.0.0"
 dependencies = [
  "axum",
+ "libc",
  "rusqlite",
  "serde",
  "serde_json",
