@@ -94,27 +94,172 @@ test.beforeEach(async ({ request }) => {
     },
   });
   await expect(a11yProfile).toBeOK();
-  // Devices are cross-suite state: device-sync / audit-bundle specs
-  // create named devices, and the apps grid's device <select> sizes
-  // itself to its widest option — so stray devices shift everything to
-  // the right of the dropdown by a few pixels between run contexts.
-  // Normalise to the seeded "Unknown device" placeholder only.
-  const devicesRes = await request.get("/api/devices", {
+  await ensureDeviceFixture(request);
+  await resetDeviceScope(request);
+  await forceFlagsOn(request);
+});
+
+/**
+ * Devices are cross-suite state — the device-sync and audit-bundle specs
+ * create named ones, and the nav picker lists every device it finds, so
+ * a stray row changes the popover in any shot that has it open.
+ *
+ * This used to delete everything down to the seeded placeholder,
+ * because the apps grid's device `<select>` sized itself to its widest
+ * option and stray names shifted the whole toolbar. That `<select>` is
+ * gone (the nav picker replaced it), and "no devices" turned out to be
+ * the wrong normalisation anyway: with zero devices the picker renders
+ * NOTHING, so the nav was identical in every shot and three stylesheets
+ * of new chrome sat outside the net entirely.
+ *
+ * So: a fixed, owned, two-device fleet instead. Owners differ on
+ * purpose — one 'self', one 'loved_one' — because that is what makes
+ * the group headings and the focus-switch prompt reachable.
+ *
+ * IDEMPOTENT BY DESIGN. `beforeEach` runs once per shot, and
+ * `devices.delete` is rate limited to 15/min server-side, so recreating
+ * the fleet 13 times would be throttled into silently inconsistent
+ * state. Steady state after the first shot is zero writes.
+ */
+const FIXTURE_DEVICES = [
+  {
+    appCount: 3,
+    deviceClass: "iPhone",
+    model: "iPhone15,2",
+    name: "Visual iPhone",
+    ownerAudience: "self",
+    ownerLabel: "Me",
+  },
+  {
+    appCount: 2,
+    deviceClass: "iPad",
+    model: "iPad13,4",
+    name: "Visual iPad",
+    ownerAudience: "loved_one",
+    ownerLabel: "Robin",
+  },
+] as const;
+
+const FIXTURE_NAMES: readonly string[] = FIXTURE_DEVICES.map((d) => d.name);
+
+/** Narrow the global scope to a single fixture device by name. The
+ *  shared beforeEach puts it back afterwards. */
+async function scopeTo(
+  request: APIRequestContext,
+  deviceName: string
+): Promise<void> {
+  const { devices } = (await (
+    await request.get("/api/device-scope", { headers: sameOriginHeaders })
+  ).json()) as { devices: Array<{ id: string; name: string }> };
+  const target = devices.find((d) => d.name === deviceName);
+  if (!target) {
+    throw new Error(`visual fixture device not found: ${deviceName}`);
+  }
+  const res = await request.put("/api/device-scope", {
     headers: sameOriginHeaders,
+    data: {
+      scope: {
+        v: 1,
+        mode: "subset",
+        deviceIds: [target.id],
+        includeUnattached: false,
+      },
+    },
   });
-  const { devices } = (await devicesRes.json()) as {
-    devices: Array<{ id: string; isUnknownPlaceholder?: boolean }>;
+  await expect(res).toBeOK();
+}
+
+async function ensureDeviceFixture(request: APIRequestContext): Promise<void> {
+  const { devices } = (await (
+    await request.get("/api/devices", { headers: sameOriginHeaders })
+  ).json()) as {
+    devices: Array<{ id: string; name: string; appCount: number }>;
   };
+
   for (const device of devices) {
-    if (!device.isUnknownPlaceholder) {
+    if (!FIXTURE_NAMES.includes(device.name)) {
       await request.delete(`/api/devices/${device.id}`, {
         headers: sameOriginHeaders,
       });
     }
   }
-  // Force every flag-gated section on so the shots cover the full surface —
-  // a selector for a hidden section would otherwise never be exercised.
-  for (const key of [
+
+  // App ids are stable across runs (the canned set is keyed by Apple
+  // track id), so slicing the sorted list gives the same apps on every
+  // device every time — which is what keeps the per-device counts in
+  // the popover from drifting.
+  const apps = (await (
+    await request.get("/api/apps", { headers: sameOriginHeaders })
+  ).json()) as Array<{ id: string }>;
+  const ids = apps.map((a) => a.id);
+
+  let offset = 0;
+  for (const fixture of FIXTURE_DEVICES) {
+    const slice = ids.slice(offset, offset + fixture.appCount);
+    offset += fixture.appCount;
+    const existing = devices.find((d) => d.name === fixture.name);
+    const id =
+      existing?.id ??
+      (
+        (await (
+          await request.post("/api/devices", {
+            headers: sameOriginHeaders,
+            data: {
+              name: fixture.name,
+              deviceClass: fixture.deviceClass,
+              model: fixture.model,
+            },
+          })
+        ).json()) as { device: { id: string } }
+      ).device.id;
+
+    if (!existing) {
+      await request.patch(`/api/devices/${id}`, {
+        headers: sameOriginHeaders,
+        data: {
+          ownerAudience: fixture.ownerAudience,
+          ownerLabel: fixture.ownerLabel,
+        },
+      });
+    }
+    // Links are re-asserted only when the count is wrong. Other specs
+    // run /api/reset, which cascades app_devices away while leaving the
+    // device rows behind, so "the device exists" does not imply "its
+    // apps are still linked".
+    if (!existing || existing.appCount !== fixture.appCount) {
+      await request.post("/api/device-sync/commit", {
+        headers: sameOriginHeaders,
+        data: { deviceId: id, addAppIds: slice, removeAppIds: [] },
+      });
+    }
+  }
+}
+
+/** Every shot starts unscoped; the scoped shots opt in and this puts it
+ *  back. Read-then-delete so the common case costs no write — the
+ *  scope endpoint is rate limited too. */
+async function resetDeviceScope(request: APIRequestContext): Promise<void> {
+  const { scope } = (await (
+    await request.get("/api/device-scope", { headers: sameOriginHeaders })
+  ).json()) as { scope?: { mode?: string } };
+  if (scope?.mode !== "all") {
+    await request.delete("/api/device-scope", { headers: sameOriginHeaders });
+  }
+}
+
+/**
+ * Force every flag-gated section on so the shots cover the full surface
+ * — a selector for a hidden section would otherwise never be exercised.
+ *
+ * Only writes flags that are not already on. The unconditional version
+ * posted eight overrides per shot, which blew through the 30/min
+ * override limiter partway down the file: later shots were then taken
+ * with some sections MISSING, quietly weakening the very coverage this
+ * loop exists to provide (the rate-limit DENY lines are visible in any
+ * full-file run).
+ */
+async function forceFlagsOn(request: APIRequestContext): Promise<void> {
+  const wanted = [
     "flag.settings.admin.backup",
     "flag.settings.admin.reset",
     "flag.settings.admin.start_over",
@@ -123,13 +268,20 @@ test.beforeEach(async ({ request }) => {
     "flag.devopts.visible",
     "flag.settings.ai.enabled",
     "flag.settings.import.history",
-  ]) {
-    await request.post("/api/feature-flags/overrides", {
-      headers: sameOriginHeaders,
-      data: { key, value: "on" },
-    });
+  ];
+  const { flags } = (await (
+    await request.get("/api/feature-flags", { headers: sameOriginHeaders })
+  ).json()) as { flags: Array<{ key: string; currentValue: string }> };
+  const current = new Map(flags.map((f) => [f.key, f.currentValue]));
+  for (const key of wanted) {
+    if (current.get(key) !== "on") {
+      await request.post("/api/feature-flags/overrides", {
+        headers: sameOriginHeaders,
+        data: { key, value: "on" },
+      });
+    }
   }
-});
+}
 
 /**
  * Neutralise legitimate nondeterminism before comparing pixels: relative
@@ -311,6 +463,85 @@ visual("apps grid", async ({ page }) => {
  * screenshot of two empty columns would compare clean forever and prove
  * nothing.
  */
+/**
+ * Device-scope chrome. Four shots for four distinct CSS states — the
+ * picker's own stylesheet has no other cover, and the net's whole
+ * premise is that a rule which silently stops applying passes every
+ * behavioural test.
+ */
+visual("device picker: open", async ({ page }) => {
+  await page.goto("/dashboard/apps");
+  const trigger = page.locator(".nav-right .device-scope-trigger");
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  await expect(page.locator(".nav-right .device-scope-popover")).toBeVisible();
+  await settle(page);
+  // Covers: trigger, popover chrome, help copy, All-devices row, owner
+  // group headings, per-device rows with their phone/tablet glyphs and
+  // sub-lines, the unattached row, the divider and the tick column.
+  await expect(page).toHaveScreenshot(
+    "device-picker-open.png",
+    shotOptions(page)
+  );
+});
+
+visual("apps grid: scoped to one device", async ({ page, request }) => {
+  await scopeTo(request, "Visual iPad");
+  await page.goto("/dashboard/apps");
+  await expect(page.locator(".app-card").first()).toBeVisible();
+  await settle(page);
+  // Covers the trigger's `is-scoped` treatment and the in-grid
+  // "Showing {device}" chip — the two things that tell a user the list
+  // in front of them is a subset.
+  await expect(page).toHaveScreenshot(
+    "apps-grid-scoped.png",
+    shotOptions(page)
+  );
+});
+
+visual("device picker: focus-switch prompt", async ({ page, request }) => {
+  // Scoped to the loved-one device while the fixture's focus is 'self',
+  // which is exactly the mismatch the prompt exists to surface.
+  await scopeTo(request, "Visual iPad");
+  await page.goto("/dashboard/apps");
+  const trigger = page.locator(".nav-right .device-scope-trigger");
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  await expect(page.locator(".device-scope-prompt")).toBeVisible();
+  await settle(page);
+  await expect(page).toHaveScreenshot(
+    "device-picker-prompt.png",
+    shotOptions(page)
+  );
+});
+
+visual("stats: scoped, with the export note", async ({ page, request }) => {
+  // Stats had no shot at all before this. It earns one now because it
+  // is where the page's own figures and a whole-install download sit
+  // side by side — the reconciliation note is the only thing making
+  // that honest, so a dropped rule there is a correctness problem.
+  await scopeTo(request, "Visual iPad");
+  await page.goto("/dashboard/stats");
+  await expect(page.locator(".scope-export-note")).toBeVisible();
+  await settle(page);
+  await expect(page).toHaveScreenshot("stats-scoped.png", shotOptions(page));
+});
+
+visual("settings: devices, owner editor open", async ({ page }) => {
+  await page.goto("/dashboard/settings/devices");
+  const row = page.locator(".devices-list-row").first();
+  await expect(row).toBeVisible();
+  await row.getByRole("button", { name: /owner/i }).click();
+  await expect(page.locator(".devices-owner-form")).toBeVisible();
+  await settle(page);
+  // Covers the owner meta line on every row plus the inline editor's
+  // fields, help copy and action row.
+  await expect(page).toHaveScreenshot(
+    "settings-devices-owner.png",
+    shotOptions(page)
+  );
+});
+
 visual("compare", async ({ page, request }) => {
   const res = await request.get("/api/apps");
   const apps = (await res.json()) as { id: string; name: string }[];

@@ -303,6 +303,15 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The local visual-regression net now covers the device-scope chrome:
+  the picker open, a scoped grid, the focus-switch prompt, the scoped
+  Stats page with its export note, and the device owner editor. Its
+  fixture builds a fixed two-device fleet instead of deleting devices
+  down to none — with no devices the picker renders nothing, so the new
+  chrome had no cover at all. Developers who keep local baselines will
+  need to regenerate them
+  (`VISUAL=1 npx playwright test tests/e2e/visual.spec.ts -u`).
+
 - **App removal now checks whose device it is, not just what mode
   you're in.** Previously the gate asked only whether your focus was set
   to "just me" — so it would happily remove apps from a relative's phone
