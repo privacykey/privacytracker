@@ -81,7 +81,7 @@
       "body_after_audience": "audience. You can refine your verdicts here and export them — the recipient acts on them from their own copy of the app.",
       "switch_link": "Switch audience under Settings → Your focus",
       "switch_suffix": "if this is your own device.",
-      "device_hint": "Or choose a device in the menu at the top of the page that belongs to the person you're helping — removal is allowed when the device's owner matches how you're set up."
+      "device_hint": "Or choose a device in the menu at the top of the page that belongs to the person you're helping — removal is allowed when the device's owner matches how you're set up. If the device has no owner recorded yet, set one under Settings → Devices."
     },
     "stepper_aria": "Wizard steps",
     "step_labels": {

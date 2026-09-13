@@ -79,7 +79,7 @@ export default function Step3ConfirmMatches({
     webClipSavedCount,
     deviceOwner,
     setDeviceOwner,
-    willCreateDevice,
+    askDeviceOwner,
     canConfirmImport,
   } = w;
 
@@ -1228,15 +1228,17 @@ export default function Step3ConfirmMatches({
                 )}
               </div>
 
-              {/* "Whose device is this?" — only when this import creates
-                  a device row. It sits here rather than on the cfgutil
-                  panel because every method lands on this step: a
-                  relative's app list can arrive by hand or CSV as
-                  easily as by cable. Answering "mine" costs one click
-                  on a pre-selected control; answering anything else
-                  reveals the attestation, and the import will not
-                  proceed until it is ticked. */}
-              {willCreateDevice && (
+              {/* "Whose device is this?" — from the SECOND device onward,
+                  and only when this import creates a device row. It
+                  sits here rather than on the cfgutil panel because
+                  every method lands on this step: a relative's app
+                  list can arrive by hand or CSV as easily as by cable.
+                  Answering "mine" costs one click on a pre-selected
+                  control; answering anything else reveals the
+                  attestation, and the import will not proceed until it
+                  is ticked. The first device is never asked and gets no
+                  owner recorded. */}
+              {askDeviceOwner && (
                 <fieldset className="wizard-device-owner">
                   <legend className="wizard-device-owner-heading">
                     {tStep3("owner_heading")}

@@ -1834,9 +1834,14 @@ export function useOnboardWizard({
   } | null>(null);
 
   /**
-   * "Whose device is this?" — answered on Step 3 whenever this import
-   * will CREATE a device row (re-sync reuses one that already has an
-   * owner, so it is not asked there).
+   * "Whose device is this?" — answered on Step 3 from the SECOND device
+   * onward: whenever this import will create a device row AND the
+   * install already has a real one. Re-sync reuses a device that
+   * already has an owner, so it is never asked there; the first device
+   * of an install is not asked either, and is created with no owner
+   * recorded at all — not the focus default, which the user never saw.
+   * That device stays under the pre-ownership rule (removal only in
+   * "just me" mode) until ownership is recorded in Settings → Devices.
    *
    * The audience is pre-selected from the current focus: a self-focus
    * user importing their own phone sees "Mine" and just continues; a
@@ -1856,6 +1861,41 @@ export function useOnboardWizard({
     label: string;
   }>({ acknowledged: false, audience: "self", label: "" });
   const deviceOwnerTouched = useRef(false);
+  /**
+   * How many real devices the install already has. Decides whether the
+   * owner question is asked at all. The seeded "Unknown device"
+   * placeholder (lib/db.ts backfill for pre-device installs) is not
+   * counted: it isn't something the user imported, and "second device"
+   * means the second one THEY brought in. `null` until the read lands;
+   * treated as "don't ask" so a slow read never blocks the import.
+   */
+  const [existingDeviceCount, setExistingDeviceCount] = useState<number | null>(
+    null
+  );
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/devices")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled) {
+          return;
+        }
+        const devices = Array.isArray(json?.devices) ? json.devices : [];
+        setExistingDeviceCount(
+          devices.filter(
+            (d: { isUnknownPlaceholder?: boolean }) => !d.isUnknownPlaceholder
+          ).length
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setExistingDeviceCount(0);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const setDeviceOwner = useCallback(
     (
       next: Partial<{
@@ -2479,17 +2519,26 @@ export function useOnboardWizard({
    * completes (it just won't be device-attached, the same as legacy
    * imports before this feature shipped).
    */
+  /** Whether Step 3 shows the owner question for THIS import. */
+  const askDeviceOwner = !resyncDeviceId && (existingDeviceCount ?? 0) > 0;
+
   /** The Step 3 answer, in the shape POST /api/devices accepts. Applies
    *  to every import method: someone can be typing a relative's app list
-   *  in by hand just as easily as plugging their phone in. */
+   *  in by hand just as easily as plugging their phone in. Returns
+   *  nothing when the question wasn't asked — the first device is
+   *  created without an owner rather than with a default the user never
+   *  confirmed. */
   const ownershipForCreate = useCallback(
-    () => ({
-      ownerAudience: deviceOwner.audience,
-      ownerLabel: deviceOwner.label.trim() || null,
-      permissionAcknowledged:
-        deviceOwner.audience !== "self" && deviceOwner.acknowledged,
-    }),
-    [deviceOwner]
+    () =>
+      askDeviceOwner
+        ? {
+            ownerAudience: deviceOwner.audience,
+            ownerLabel: deviceOwner.label.trim() || null,
+            permissionAcknowledged:
+              deviceOwner.audience !== "self" && deviceOwner.acknowledged,
+          }
+        : {},
+    [askDeviceOwner, deviceOwner]
   );
 
   const resolveDeviceIdForImport = useCallback(async (): Promise<
@@ -5228,14 +5277,16 @@ export function useOnboardWizard({
     priorImportHistory,
     deviceOwner,
     setDeviceOwner,
-    // A device row is created iff this is not a re-sync — reconnecting
-    // a known device auto-enters re-sync, so this is precisely "will a
-    // new device be created", with no device counting involved.
-    willCreateDevice: !resyncDeviceId,
+    // Asked from the second device onward. A row is created iff this is
+    // not a re-sync (reconnecting a known device auto-enters re-sync),
+    // and the question is only worth asking once there is already a
+    // device to be distinct from.
+    askDeviceOwner,
     // The import may not proceed while the device is someone else's and
-    // the attestation is unticked. For your own device nothing is asked.
+    // the attestation is unticked. When the question isn't asked —
+    // first device, or re-sync — there is nothing to hold it on.
     canConfirmImport:
-      Boolean(resyncDeviceId) ||
+      !askDeviceOwner ||
       deviceOwner.audience === "self" ||
       deviceOwner.acknowledged,
     setPriorImportHistory,

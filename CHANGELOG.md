@@ -55,12 +55,14 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
-- **Importing from a device now asks whose it is — and, for someone
-  else's, asks you to confirm you have their permission.** Every import
-  that creates a new device record (any method: cable, CSV, screenshots
-  or typed in) has a "Whose device is this?" step: yours, someone
-  you're helping, or a child you look after — pre-selected from your
-  current setup, so importing your own phone is one click. Choosing
+- **Importing from a second device now asks whose it is — and, for
+  someone else's, asks you to confirm you have their permission.** From
+  your second device onward, any import that creates a new device
+  record (any method: cable, CSV, screenshots or typed in) has a "Whose
+  device is this?" step: yours, someone you're helping, or a child you
+  look after — pre-selected from your current setup, so your own iPad
+  is one click. Your first device isn't asked, and nothing is recorded
+  about its owner until you say so in Settings → Devices. Choosing
   anyone but yourself reveals a statement that you have their
   permission to view the apps on their device and to remove apps from
   it; the import won't continue until it's ticked. The confirmation is
