@@ -428,8 +428,12 @@ mod tests {
     #[test]
     fn the_tables_loaded_with_the_expected_shape() {
         let r = rules();
-        assert_eq!(r.keys().count(), 221);
+        // Bumps whenever lib/feature-flag-rules.ts gains a key and
+        // `just parity-settings-cases` is re-run; the `knows` line names
+        // the most recent addition so the count change is traceable.
+        assert_eq!(r.keys().count(), 222);
         assert_eq!(r.hard_default(KILL_SWITCH), "on");
+        assert!(r.knows("flag.nav.device_scope"));
         assert!(r.knows("flag.detail.timeline.wayback_import"));
         assert!(!r.knows("flag.not.a.real.flag"));
         assert_eq!(
