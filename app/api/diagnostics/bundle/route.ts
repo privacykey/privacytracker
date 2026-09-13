@@ -22,10 +22,8 @@
 
 import os from "node:os";
 import { NextResponse } from "next/server";
-import { snapshotApiTimings } from "@/lib/api-timing";
 import db from "@/lib/db";
 import { snapshotDatabaseHealth } from "@/lib/db-health";
-import { snapshotDbWorkerTimings } from "@/lib/db-worker-client";
 import { buildDeploymentDiagnostics } from "@/lib/deployment-diagnostics";
 import { snapshotDisk } from "@/lib/disk-usage";
 import { snapshotErrorLog } from "@/lib/error-log-ring";
@@ -38,10 +36,8 @@ import { resolveFlag } from "@/lib/feature-flags";
 import { getResolverContextFromDb } from "@/lib/feature-flags-server";
 import { describeCurrentPolicyRun } from "@/lib/policy-bulk-runner";
 import { getAllRateLimits } from "@/lib/rate-limit";
-import {
-  installRuntimeDiagnostics,
-  snapshotRuntimeMetrics,
-} from "@/lib/runtime-diagnostics";
+import { installRuntimeDiagnostics } from "@/lib/runtime-diagnostics";
+import { snapshotRuntimeDiagnostics } from "@/lib/runtime-diagnostics-envelope";
 import { describeCurrentSyncRun } from "@/lib/sync-bulk-runner";
 import { describeCurrentRun as describeWaybackRun } from "@/lib/wayback-bulk-runner";
 
@@ -104,7 +100,7 @@ export async function GET(request: Request) {
 
   const bundle = {
     generatedAt,
-    schemaVersion: 2,
+    schemaVersion: 3,
     app: {
       version: process.env.npm_package_version ?? null,
       nodeVersion: process.version,
@@ -112,12 +108,12 @@ export async function GET(request: Request) {
       arch: process.arch,
     },
     host,
+    // The runtime envelope carries http (api timings), dbWorker and
+    // scrapeActivity as sections; they used to be separate keys here.
     runtime: safe(() => {
       installRuntimeDiagnostics(db);
-      return snapshotRuntimeMetrics();
+      return snapshotRuntimeDiagnostics();
     }, null),
-    apiTimings: safe(() => snapshotApiTimings(), null),
-    dbWorker: safe(() => snapshotDbWorkerTimings(), null),
     database: safe(() => snapshotDatabaseHealth(), null),
     disk: safe(() => snapshotDisk(), null),
     errorLog: safe(() => snapshotErrorLog({ limit: 50 }), {

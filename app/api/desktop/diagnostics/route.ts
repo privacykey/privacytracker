@@ -3,11 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
-import { snapshotDbWorkerTimings } from "@/lib/db-worker-client";
-import {
-  installRuntimeDiagnostics,
-  snapshotRuntimeMetrics,
-} from "@/lib/runtime-diagnostics";
+import { installRuntimeDiagnostics } from "@/lib/runtime-diagnostics";
+import { snapshotRuntimeDiagnostics } from "@/lib/runtime-diagnostics-envelope";
 import { getSetting } from "@/lib/scheduler";
 
 /**
@@ -112,13 +109,12 @@ function readDbStats(): Record<string, unknown> {
 }
 
 export async function GET() {
-  // Live runtime metrics — memory / heap / event-loop / slow-query
-  // counts. Cap the slow-query excerpt at 20 rows here because this
+  // Live runtime diagnostics — the same envelope /api/diagnostics/runtime
+  // serves, with every `recent` list capped at 20 rows because this
   // payload ships to GitHub issues and we don't want a 200-row dump in
-  // every bug report. The full ring is available via
-  // /api/diagnostics/runtime for the live dashboard.
+  // every bug report. The full rings are on the live dashboard route.
   installRuntimeDiagnostics(db);
-  const runtimeMetrics = snapshotRuntimeMetrics(20);
+  const runtimeDiagnostics = snapshotRuntimeDiagnostics({ recentLimit: 20 });
 
   const payload = {
     generated_at: new Date().toISOString(),
@@ -136,12 +132,11 @@ export async function GET() {
       free_mem_mb: Math.round(os.freemem() / 1024 / 1024),
       cpu_count: os.cpus().length,
     },
-    // Performance vitals — added so the user-copyable diagnostics report
-    // surfaces "is the Node sidecar swapping or stalling?" without
-    // requiring the user to open the live diagnostics dashboard. The
-    // dashboard re-uses the same shape via /api/diagnostics/runtime.
-    runtime_metrics: runtimeMetrics,
-    db_worker: snapshotDbWorkerTimings(20),
+    // Performance vitals — so the user-copyable report surfaces "is the
+    // backend swapping or stalling?" without opening the live dashboard.
+    // Same envelope as /api/diagnostics/runtime (db-worker timings are a
+    // section of it), so a Rust-served report reads the same way.
+    runtime_diagnostics: runtimeDiagnostics,
     scheduler: readLastSync(),
     bulk_runners: readBulkRunners(),
     db: readDbStats(),

@@ -12,6 +12,25 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Changed
+
+- `GET /api/diagnostics/runtime` now returns a backend-tagged envelope
+  (`backend`, `schemaVersion: 2`, `process`, `heap` with a `kind` of `v8`,
+  `sqlite`, `scheduler` with a `kind` of `event-loop`, `http`,
+  `slowQueries`, `dbWorker`, `scrapeActivity`, `rateLimiter`) in place of
+  the Node-shaped `memory` / `v8Heap` / `resourceUsage` / `eventLoop` /
+  `apiTimings` keys. Sections a backend cannot measure are `null`, never
+  zeros. The same envelope replaces `runtime_metrics` + `db_worker` in
+  `GET /api/desktop/diagnostics` (as `runtime_diagnostics`) and `runtime` +
+  `apiTimings` + `dbWorker` in the support bundle (`schemaVersion` 3). The
+  Diagnostics page reads the new shape; the health check's persisted
+  result is unchanged. This is the contract the Rust core will serve from
+  its own process — with `rust-allocator` / `tokio` sections and SQLite
+  page-cache and lock-wait numbers Node cannot report — so the page is
+  written once. Pinned by a plain-JS validator
+  (`scripts/parity/diagnostics-envelope.mjs`) that both the parity harness
+  and `tests/app/runtime-diagnostics.test.ts` hold the payload to.
+
 ### Fixed
 
 - Rust core: the data directory and database path are process-wide

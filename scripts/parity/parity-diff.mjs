@@ -591,7 +591,38 @@ async function runEntry(entry, { expect200 = true } = {}) {
     return;
   }
 
-  if (!entry.compareStatusOnly) {
+  // A contract check on EACH side, before any cross-comparison: routes
+  // whose sections legitimately differ by backend (the runtime envelope's
+  // `heap.kind`) cannot be byte-compared across a Node/Rust pair, but each
+  // side must still emit the declared shape.
+  if (entry.validate) {
+    const problems = [];
+    for (const [side, res] of [
+      ["A", ra],
+      ["B", rb],
+    ]) {
+      let json;
+      try {
+        json = JSON.parse(res.text);
+      } catch {
+        problems.push(`${side}: body is not JSON`);
+        continue;
+      }
+      for (const problem of entry.validate(json)) {
+        problems.push(`${side}: ${problem}`);
+      }
+    }
+    if (problems.length) {
+      console.log(`✘ ${label}: contract violation(s)`);
+      for (const problem of problems.slice(0, 12)) {
+        console.log(`    ${problem}`);
+      }
+      results.fail++;
+      return;
+    }
+  }
+
+  if (!(entry.compareStatusOnly || entry.skipCrossCompare)) {
     const { bodyA: na, bodyB: nb } = compareBodies(entry, ra, rb);
     if (na !== nb) {
       const d = firstDiff(na, nb);

@@ -7,10 +7,8 @@ import {
   createImport,
   getImport,
 } from "../../lib/imports";
-import {
-  installRuntimeDiagnostics,
-  snapshotRuntimeMetrics,
-} from "../../lib/runtime-diagnostics";
+import { installRuntimeDiagnostics } from "../../lib/runtime-diagnostics";
+import { snapshotRuntimeDiagnostics } from "../../lib/runtime-diagnostics-envelope";
 import { resetTestDb, seedTrackedApp } from "../helpers/test-db";
 
 test.beforeEach(() => {
@@ -70,11 +68,12 @@ test("addImportItemsAsync bulk-upserts large onboarding batches and recomputes c
 
 test("runtime diagnostics can expose event-loop and DB worker snapshots on demand", () => {
   installRuntimeDiagnostics(db);
-  const runtime = snapshotRuntimeMetrics();
+  const runtime = snapshotRuntimeDiagnostics();
   const worker = snapshotDbWorkerTimings();
 
+  assert.equal(runtime.scheduler.kind, "event-loop");
   assert.ok(
-    runtime.eventLoop,
+    runtime.scheduler.lag,
     "event-loop monitor should be installed before snapshot"
   );
   assert.ok(Array.isArray(worker.recent));

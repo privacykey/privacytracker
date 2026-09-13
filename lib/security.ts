@@ -598,6 +598,24 @@ interface RateLimitBucket {
 
 const rateLimitBuckets = new Map<string, RateLimitBucket>();
 
+/** Requests the inbound limiter refused since process start. */
+let rateLimitDenials = 0;
+
+/**
+ * The inbound limiter's own health, for `/api/diagnostics/runtime`'s
+ * `rateLimiter` section: how many keys it is tracking and how many
+ * requests it has denied since boot. Process-local, like the buckets.
+ */
+export function snapshotInboundRateLimiter(): {
+  trackedKeys: number;
+  denialsSinceStart: number;
+} {
+  return {
+    trackedKeys: rateLimitBuckets.size,
+    denialsSinceStart: rateLimitDenials,
+  };
+}
+
 export interface RateLimitOptions {
   /** Unique identifier for this limit (e.g. "scrape:1.2.3.4"). */
   key: string;
@@ -640,6 +658,7 @@ export function checkRateLimit({
     bucket.timestamps.shift();
   }
   if (bucket.timestamps.length >= limit) {
+    rateLimitDenials += 1;
     const retryAfterMs = bucket.timestamps[0] + windowMs - now;
     // Surface the deny as a server-log warning so when the Tauri
     // sidecar's queue drain (or any other internal call) gets bounced

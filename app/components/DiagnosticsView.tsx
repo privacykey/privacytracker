@@ -41,6 +41,7 @@ import {
   DIAGNOSTICS_RELATIVE_TIERS,
   formatRelativeTime,
 } from "@/lib/relative-time";
+import type { RuntimeDiagnostics } from "@/lib/runtime-diagnostics-envelope";
 import Sparkline from "./Sparkline";
 
 const RUNTIME_POLL_MS = 2000;
@@ -59,76 +60,13 @@ interface SlowQueryRecord {
   sql: string;
 }
 
-interface RuntimeMetrics {
-  /** Server-side ring of recent API request timings, surfaced alongside
-   *  slow queries so the user can see "the import-queue POST took 4s". */
-  apiTimings?: {
-    thresholdMs: number;
-    totalSinceStart: number;
-    slowSinceStart: number;
-    recent: ApiTimingRecord[];
-  };
-  dbWorker?: DbWorkerTimings;
-  eventLoop: {
-    windowSeconds: number;
-    samples: number;
-    minMs: number;
-    meanMs: number;
-    maxMs: number;
-    stddevMs: number;
-    p50Ms: number;
-    p95Ms: number;
-    p99Ms: number;
-    severity: "ok" | "warn" | "danger";
-  } | null;
-  generatedAt: string;
-  memory: {
-    rssMb: number;
-    heapTotalMb: number;
-    heapUsedMb: number;
-    externalMb: number;
-    arrayBuffersMb: number;
-  };
-  resourceUsage: {
-    userCpuSeconds: number;
-    systemCpuSeconds: number;
-    maxRssMb: number;
-    minorPageFaults: number;
-    majorPageFaults: number;
-    voluntaryContextSwitches: number;
-    involuntaryContextSwitches: number;
-  };
-  /** Live + recent App Store scrape attempts with per-phase timings. */
-  scrapeActivity?: {
-    totalSinceStart: number;
-    inProgress: InProgressScrape[];
-    recent: ScrapeRecord[];
-  };
-  slowQueries: {
-    thresholdMs: number;
-    totalSinceStart: number;
-    profilingEnabled: boolean;
-    recent: SlowQueryRecord[];
-  };
-  uptimeSeconds: number;
-  v8Heap: {
-    totalHeapSizeMb: number;
-    usedHeapSizeMb: number;
-    heapSizeLimitMb: number;
-    mallocedMemoryMb: number;
-    externalMemoryMb: number;
-    heapFractionUsed: number;
-  };
-}
-
-interface ApiTimingRecord {
-  at: number;
-  durationMs: number;
-  error?: string;
-  method: string;
-  route: string;
-  status: number;
-}
+/**
+ * The backend-tagged envelope `/api/diagnostics/runtime` serves — see
+ * `lib/runtime-diagnostics-envelope.ts`. Type-only: that module's runtime
+ * side is server-only. Every card below switches on the `kind` tags rather
+ * than on `backend`, so a Rust-served page needs no branch of its own.
+ */
+type RuntimeMetrics = RuntimeDiagnostics;
 
 interface DbWorkerTimingRecord {
   at: number;
@@ -152,32 +90,6 @@ interface DbWorkerTimings {
   workerCached: boolean;
   workerDisabled: boolean;
   workerEnabled: boolean;
-}
-
-interface ScrapePhaseMark {
-  atOffsetMs: number;
-  phase: string;
-}
-
-interface InProgressScrape {
-  id: string;
-  phases: ScrapePhaseMark[];
-  resync: boolean;
-  runningMs: number;
-  startedAt: number;
-  url: string;
-}
-
-interface ScrapeRecord {
-  appName?: string;
-  error?: string;
-  id: string;
-  outcome: "success" | "error" | "rate_limited";
-  phases: ScrapePhaseMark[];
-  resync: boolean;
-  startedAt: number;
-  totalMs: number;
-  url: string;
 }
 
 interface DatabaseHealth {
@@ -378,28 +290,35 @@ function rollupStatus(
   };
 
   if (state.runtime) {
-    if (state.runtime.eventLoop && state.runtime.eventLoop.severity !== "ok") {
-      bump(state.runtime.eventLoop.severity);
+    const { scheduler, heap } = state.runtime;
+    if (scheduler.lag && scheduler.lag.severity !== "ok") {
+      bump(scheduler.lag.severity);
+      const tokio = scheduler.kind === "tokio";
       notes.push({
         key:
-          state.runtime.eventLoop.severity === "danger"
-            ? "event_loop_danger"
-            : "event_loop_warn",
-        params: { p99: formatMs(state.runtime.eventLoop.p99Ms) },
+          scheduler.lag.severity === "danger"
+            ? tokio
+              ? "scheduler_danger"
+              : "event_loop_danger"
+            : tokio
+              ? "scheduler_warn"
+              : "event_loop_warn",
+        params: { p99: formatMs(scheduler.lag.p99Ms) },
       });
     }
-    if (state.runtime.v8Heap.heapFractionUsed >= 0.85) {
-      bump("danger");
-      notes.push({
-        key: "heap_full",
-        params: {
-          pct: Math.round(state.runtime.v8Heap.heapFractionUsed * 100),
-        },
-      });
-    } else if (state.runtime.v8Heap.heapFractionUsed >= 0.7) {
-      bump("warn");
+    // Heap pressure is a V8 notion; an allocator has no limit to be near.
+    if (heap.kind === "v8") {
+      if (heap.heapFractionUsed >= 0.85) {
+        bump("danger");
+        notes.push({
+          key: "heap_full",
+          params: { pct: Math.round(heap.heapFractionUsed * 100) },
+        });
+      } else if (heap.heapFractionUsed >= 0.7) {
+        bump("warn");
+      }
     }
-    if (state.runtime.resourceUsage.majorPageFaults >= 1000) {
+    if (state.runtime.process.majorPageFaults >= 1000) {
       bump("danger");
       notes.push({ key: "swapping" });
     }
@@ -521,9 +440,9 @@ export default function DiagnosticsView() {
   const [history, setHistory] = useState<{
     p99: number[];
     rssMb: number[];
-    heapPct: number[];
+    heap: number[];
     cpuPct: number[];
-  }>({ p99: [], rssMb: [], heapPct: [], cpuPct: [] });
+  }>({ p99: [], rssMb: [], heap: [], cpuPct: [] });
 
   const inflightRuntimeRef = useRef(false);
   const inflightAuxRef = useRef(false);
@@ -566,19 +485,21 @@ export default function DiagnosticsView() {
         body.uptimeSeconds > 0
           ? Math.min(
               100,
-              ((body.resourceUsage.userCpuSeconds +
-                body.resourceUsage.systemCpuSeconds) /
+              ((body.process.userCpuSeconds + body.process.systemCpuSeconds) /
                 body.uptimeSeconds) *
                 100
             )
           : 0;
+      // The heap series is a percentage of the V8 limit, or allocated MB
+      // for a backend whose allocator has no limit — the card labels it.
+      const heapPoint =
+        body.heap.kind === "v8"
+          ? Math.round(body.heap.heapFractionUsed * 100)
+          : body.heap.allocatedMb;
       setHistory((prev) => ({
-        p99: [...prev.p99, body.eventLoop?.p99Ms ?? 0].slice(-HISTORY_CAP),
-        rssMb: [...prev.rssMb, body.memory.rssMb].slice(-HISTORY_CAP),
-        heapPct: [
-          ...prev.heapPct,
-          Math.round(body.v8Heap.heapFractionUsed * 100),
-        ].slice(-HISTORY_CAP),
+        p99: [...prev.p99, body.scheduler.lag?.p99Ms ?? 0].slice(-HISTORY_CAP),
+        rssMb: [...prev.rssMb, body.process.rssMb].slice(-HISTORY_CAP),
+        heap: [...prev.heap, heapPoint].slice(-HISTORY_CAP),
         cpuPct: [...prev.cpuPct, cpuPct].slice(-HISTORY_CAP),
       }));
     } catch (e) {
@@ -728,7 +649,7 @@ export default function DiagnosticsView() {
         setMetrics(body);
         // Also reset client-side sparkline history so the line restarts
         // from the moment the user clicked Clear.
-        setHistory({ p99: [], rssMb: [], heapPct: [], cpuPct: [] });
+        setHistory({ p99: [], rssMb: [], heap: [], cpuPct: [] });
         setError(null);
       } else {
         setError(tErrors("clear_failed_http", { status: runtimeRes.status }));
@@ -972,23 +893,24 @@ export default function DiagnosticsView() {
 
       {metrics ? (
         <div className="diagnostics-grid">
-          <EventLoopCard
-            eventLoop={metrics.eventLoop}
+          <SchedulerCard
             history={history.p99}
+            scheduler={metrics.scheduler}
             uptimeSeconds={metrics.uptimeSeconds}
           />
           <CspReportsCard />
           <MemoryCard
-            historyHeap={history.heapPct}
+            heap={metrics.heap}
+            historyHeap={history.heap}
             historyRss={history.rssMb}
-            memory={metrics.memory}
-            v8Heap={metrics.v8Heap}
+            proc={metrics.process}
           />
           <ResourceCard
             historyCpu={history.cpuPct}
-            resourceUsage={metrics.resourceUsage}
+            proc={metrics.process}
             uptimeSeconds={metrics.uptimeSeconds}
           />
+          <SqliteCard sqlite={metrics.sqlite} />
           <DatabaseCard
             busy={busy === "integrity"}
             database={database}
@@ -1010,9 +932,10 @@ export default function DiagnosticsView() {
           {metrics.scrapeActivity && (
             <ScrapeActivityCard activity={metrics.scrapeActivity} />
           )}
-          {metrics.apiTimings && (
-            <ApiTimingsCard timings={metrics.apiTimings} />
-          )}
+          <ApiTimingsCard
+            rateLimiter={metrics.rateLimiter}
+            timings={metrics.http}
+          />
           {metrics.dbWorker && <DbWorkerCard timings={metrics.dbWorker} />}
           {clientDiag && (
             <ClientActivityCard
@@ -1127,61 +1050,78 @@ function CspReportsCard() {
   );
 }
 
-function EventLoopCard({
-  eventLoop,
+function SchedulerCard({
+  scheduler,
   uptimeSeconds,
   history,
 }: {
-  eventLoop: RuntimeMetrics["eventLoop"];
+  scheduler: RuntimeMetrics["scheduler"];
   uptimeSeconds: number;
   history: number[];
 }) {
   const t = useTranslations("diagnostics_page.card_event_loop");
+  const tSched = useTranslations("diagnostics_page.card_scheduler");
+  const tokio = scheduler.kind === "tokio";
+  const lag = scheduler.lag;
   return (
     <section className="diagnostics-card">
       <header className="diagnostics-card-header">
-        <h2 className="diagnostics-card-title">{t("title")}</h2>
-        <p className="diagnostics-card-help">{t("help")}</p>
+        <h2 className="diagnostics-card-title">
+          {tokio ? tSched("title") : t("title")}
+        </h2>
+        <p className="diagnostics-card-help">
+          {tokio ? tSched("help") : t("help")}
+        </p>
       </header>
-      {eventLoop ? (
+      {lag ? (
         <>
           <div className="diagnostics-metric-row diagnostics-metric-row--hero">
             <div className="diagnostics-metric">
               <span className="diagnostics-metric-label">{t("p99")}</span>
               <span
-                className={`diagnostics-metric-value diagnostics-severity-${eventLoop.severity}`}
+                className={`diagnostics-metric-value diagnostics-severity-${lag.severity}`}
               >
-                {formatMs(eventLoop.p99Ms)}
+                {formatMs(lag.p99Ms)}
                 <small>ms</small>
               </span>
               <Sparkline
                 ariaLabel={t("spark_label", {
                   seconds: (HISTORY_CAP * RUNTIME_POLL_MS) / 1000,
                 })}
-                severity={eventLoop.severity}
+                severity={lag.severity}
                 values={history}
               />
             </div>
-            <SeverityBadge severity={eventLoop.severity} />
+            <SeverityBadge severity={lag.severity} />
           </div>
           <dl className="diagnostics-kvs">
-            <KV label={t("p50")} value={`${formatMs(eventLoop.p50Ms)} ms`} />
-            <KV label={t("p95")} value={`${formatMs(eventLoop.p95Ms)} ms`} />
-            <KV label={t("mean")} value={`${formatMs(eventLoop.meanMs)} ms`} />
-            <KV label={t("max")} value={`${formatMs(eventLoop.maxMs)} ms`} />
-            <KV
-              label={t("stddev")}
-              value={`${formatMs(eventLoop.stddevMs)} ms`}
-            />
+            <KV label={t("p50")} value={`${formatMs(lag.p50Ms)} ms`} />
+            <KV label={t("p95")} value={`${formatMs(lag.p95Ms)} ms`} />
+            <KV label={t("mean")} value={`${formatMs(lag.meanMs)} ms`} />
+            <KV label={t("max")} value={`${formatMs(lag.maxMs)} ms`} />
+            <KV label={t("stddev")} value={`${formatMs(lag.stddevMs)} ms`} />
             <KV
               label={t("window")}
-              value={`${formatUptime(eventLoop.windowSeconds)}`}
+              value={`${formatUptime(lag.windowSeconds)}`}
             />
-            <KV
-              label={t("samples")}
-              value={eventLoop.samples.toLocaleString()}
-            />
+            <KV label={t("samples")} value={lag.samples.toLocaleString()} />
             <KV label={t("uptime")} value={formatUptime(uptimeSeconds)} />
+            {scheduler.kind === "tokio" && (
+              <>
+                <KV
+                  label={tSched("workers")}
+                  value={scheduler.workers.toLocaleString()}
+                />
+                <KV
+                  label={tSched("alive_tasks")}
+                  value={scheduler.aliveTasks.toLocaleString()}
+                />
+                <KV
+                  label={tSched("queue_depth")}
+                  value={scheduler.globalQueueDepth.toLocaleString()}
+                />
+              </>
+            )}
           </dl>
         </>
       ) : (
@@ -1192,88 +1132,126 @@ function EventLoopCard({
 }
 
 function MemoryCard({
-  memory,
-  v8Heap,
+  proc,
+  heap,
   historyRss,
   historyHeap,
 }: {
-  memory: RuntimeMetrics["memory"];
-  v8Heap: RuntimeMetrics["v8Heap"];
+  proc: RuntimeMetrics["process"];
+  heap: RuntimeMetrics["heap"];
   historyRss: number[];
   historyHeap: number[];
 }) {
   const t = useTranslations("diagnostics_page.card_memory");
-  const heapPct = Math.round(v8Heap.heapFractionUsed * 100);
+  const tPage = useTranslations("diagnostics_page");
   const heapSeverity: Severity =
-    v8Heap.heapFractionUsed >= 0.85
-      ? "danger"
-      : v8Heap.heapFractionUsed >= 0.7
-        ? "warn"
-        : "ok";
+    heap.kind === "v8"
+      ? heap.heapFractionUsed >= 0.85
+        ? "danger"
+        : heap.heapFractionUsed >= 0.7
+          ? "warn"
+          : "ok"
+      : "ok";
   return (
     <section className="diagnostics-card">
       <header className="diagnostics-card-header">
         <h2 className="diagnostics-card-title">{t("title")}</h2>
-        <p className="diagnostics-card-help">{t("help")}</p>
+        <p className="diagnostics-card-help">
+          {heap.kind === "v8" ? t("help") : t("help_allocator")}
+        </p>
       </header>
       <div className="diagnostics-metric-row diagnostics-metric-row--hero">
         <div className="diagnostics-metric">
           <span className="diagnostics-metric-label">{t("rss")}</span>
           <span className="diagnostics-metric-value">
-            {memory.rssMb}
+            {proc.rssMb}
             <small>MB</small>
           </span>
           <Sparkline ariaLabel={t("spark_rss")} values={historyRss} />
         </div>
-        <div className="diagnostics-metric">
-          <span className="diagnostics-metric-label">{t("v8_heap")}</span>
-          <span
-            className={`diagnostics-metric-value diagnostics-severity-${heapSeverity}`}
-          >
-            {heapPct}
-            <small>%</small>
-          </span>
-          <Sparkline
-            ariaLabel={t("spark_heap")}
-            severity={heapSeverity}
-            values={historyHeap}
-          />
-        </div>
+        {heap.kind === "v8" ? (
+          <div className="diagnostics-metric">
+            <span className="diagnostics-metric-label">{t("v8_heap")}</span>
+            <span
+              className={`diagnostics-metric-value diagnostics-severity-${heapSeverity}`}
+            >
+              {Math.round(heap.heapFractionUsed * 100)}
+              <small>%</small>
+            </span>
+            <Sparkline
+              ariaLabel={t("spark_heap")}
+              severity={heapSeverity}
+              values={historyHeap}
+            />
+          </div>
+        ) : (
+          <div className="diagnostics-metric">
+            <span className="diagnostics-metric-label">
+              {t("allocator_heap")}
+            </span>
+            <span className="diagnostics-metric-value">
+              {heap.allocatedMb}
+              <small>MB</small>
+            </span>
+            <Sparkline ariaLabel={t("spark_allocated")} values={historyHeap} />
+          </div>
+        )}
       </div>
       <dl className="diagnostics-kvs">
-        <KV label={t("heap_used")} value={`${memory.heapUsedMb} MB`} />
-        <KV label={t("heap_total")} value={`${memory.heapTotalMb} MB`} />
-        <KV label={t("heap_limit")} value={`${v8Heap.heapSizeLimitMb} MB`} />
-        <KV label={t("external")} value={`${memory.externalMb} MB`} />
-        <KV label={t("array_buffers")} value={`${memory.arrayBuffersMb} MB`} />
-        <KV label={t("malloced")} value={`${v8Heap.mallocedMemoryMb} MB`} />
+        {heap.kind === "v8" ? (
+          <>
+            <KV label={t("heap_used")} value={`${heap.heapUsedMb} MB`} />
+            <KV label={t("heap_total")} value={`${heap.heapTotalMb} MB`} />
+            <KV label={t("heap_limit")} value={`${heap.heapSizeLimitMb} MB`} />
+            <KV label={t("external")} value={`${heap.externalMb} MB`} />
+            <KV
+              label={t("array_buffers")}
+              value={`${heap.arrayBuffersMb} MB`}
+            />
+            <KV label={t("malloced")} value={`${heap.mallocedMemoryMb} MB`} />
+          </>
+        ) : (
+          <>
+            <KV label={t("allocated")} value={`${heap.allocatedMb} MB`} />
+            <KV label={t("peak")} value={`${heap.peakMb} MB`} />
+            <KV
+              label={t("live_allocations")}
+              value={heap.liveAllocations.toLocaleString()}
+            />
+          </>
+        )}
+        <KV
+          label={t("virtual")}
+          value={
+            proc.virtualMb === null ? tPage("em_dash") : `${proc.virtualMb} MB`
+          }
+        />
       </dl>
     </section>
   );
 }
 
 function ResourceCard({
-  resourceUsage,
+  proc,
   uptimeSeconds,
   historyCpu,
 }: {
-  resourceUsage: RuntimeMetrics["resourceUsage"];
+  proc: RuntimeMetrics["process"];
   uptimeSeconds: number;
   historyCpu: number[];
 }) {
   const t = useTranslations("diagnostics_page.card_resource");
+  const tPage = useTranslations("diagnostics_page");
   const cpuPct =
     uptimeSeconds > 0
       ? Math.round(
-          ((resourceUsage.userCpuSeconds + resourceUsage.systemCpuSeconds) /
-            uptimeSeconds) *
-            100
+          ((proc.userCpuSeconds + proc.systemCpuSeconds) / uptimeSeconds) * 100
         )
       : 0;
   const majorFaultsSeverity: Severity =
-    resourceUsage.majorPageFaults >= 1000
+    proc.majorPageFaults >= 1000
       ? "danger"
-      : resourceUsage.majorPageFaults >= 100
+      : proc.majorPageFaults >= 100
         ? "warn"
         : "ok";
   return (
@@ -1296,33 +1274,127 @@ function ResourceCard({
           <span
             className={`diagnostics-metric-value diagnostics-severity-${majorFaultsSeverity}`}
           >
-            {resourceUsage.majorPageFaults.toLocaleString()}
+            {proc.majorPageFaults.toLocaleString()}
           </span>
         </div>
       </div>
       <dl className="diagnostics-kvs">
         <KV
           label={t("user_cpu")}
-          value={`${resourceUsage.userCpuSeconds.toFixed(1)} s`}
+          value={`${proc.userCpuSeconds.toFixed(1)} s`}
         />
         <KV
           label={t("system_cpu")}
-          value={`${resourceUsage.systemCpuSeconds.toFixed(1)} s`}
+          value={`${proc.systemCpuSeconds.toFixed(1)} s`}
         />
-        <KV label={t("peak_rss")} value={`${resourceUsage.maxRssMb} MB`} />
+        <KV
+          label={t("peak_rss")}
+          value={
+            proc.peakRssMb === null ? tPage("em_dash") : `${proc.peakRssMb} MB`
+          }
+        />
         <KV
           label={t("minor_faults")}
-          value={resourceUsage.minorPageFaults.toLocaleString()}
+          value={proc.minorPageFaults.toLocaleString()}
         />
         <KV
           label={t("vol_ctx_sw")}
-          value={resourceUsage.voluntaryContextSwitches.toLocaleString()}
+          value={proc.voluntaryContextSwitches.toLocaleString()}
         />
         <KV
           label={t("invol_ctx_sw")}
-          value={resourceUsage.involuntaryContextSwitches.toLocaleString()}
+          value={proc.involuntaryContextSwitches.toLocaleString()}
         />
+        {proc.threads !== null && (
+          <KV label={t("threads")} value={proc.threads.toLocaleString()} />
+        )}
+        {proc.openFds !== null && (
+          <KV label={t("open_fds")} value={proc.openFds.toLocaleString()} />
+        )}
       </dl>
+    </section>
+  );
+}
+
+function SqliteCard({ sqlite }: { sqlite: RuntimeMetrics["sqlite"] }) {
+  const t = useTranslations("diagnostics_page.card_sqlite");
+  const tPage = useTranslations("diagnostics_page");
+  const { memory, cache, lockWait } = sqlite;
+  const measured = memory !== null || cache !== null || lockWait !== null;
+  const hitRate =
+    cache && cache.hits + cache.misses > 0
+      ? Math.round((cache.hits / (cache.hits + cache.misses)) * 100)
+      : null;
+  return (
+    <section className="diagnostics-card">
+      <header className="diagnostics-card-header">
+        <h2 className="diagnostics-card-title">{t("title")}</h2>
+        <p className="diagnostics-card-help">{t("help")}</p>
+      </header>
+      <dl className="diagnostics-kvs">
+        <KV label={t("engine")} value={sqlite.engine} />
+        <KV label={t("version")} value={sqlite.version ?? tPage("em_dash")} />
+        <KV
+          label={t("connection_model")}
+          value={
+            sqlite.connectionModel === "single-mutex"
+              ? t("model_single_mutex")
+              : t("model_single_sync")
+          }
+        />
+        {memory && (
+          <>
+            <KV label={t("memory_used")} value={`${memory.usedMb} MB`} />
+            <KV
+              label={t("memory_highwater")}
+              value={`${memory.highwaterMb} MB`}
+            />
+            <KV label={t("page_cache")} value={`${memory.pageCacheMb} MB`} />
+            <KV label={t("schema")} value={`${memory.schemaKb} KB`} />
+            <KV label={t("statements")} value={`${memory.statementsKb} KB`} />
+          </>
+        )}
+        {cache && (
+          <>
+            <KV label={t("cache_hits")} value={cache.hits.toLocaleString()} />
+            <KV
+              label={t("cache_misses")}
+              value={cache.misses.toLocaleString()}
+            />
+            <KV
+              label={t("cache_hit_rate")}
+              value={hitRate === null ? tPage("em_dash") : `${hitRate}%`}
+            />
+            <KV
+              label={t("cache_writes")}
+              value={cache.writes.toLocaleString()}
+            />
+            <KV
+              label={t("cache_spills")}
+              value={cache.spills.toLocaleString()}
+            />
+          </>
+        )}
+        {lockWait && (
+          <>
+            <KV
+              label={t("lock_wait_p99")}
+              value={`${formatMs(lockWait.p99Ms)} ms`}
+            />
+            <KV
+              label={t("lock_wait_max")}
+              value={`${formatMs(lockWait.maxMs)} ms`}
+            />
+            <KV
+              label={t("lock_wait_samples")}
+              value={lockWait.samples.toLocaleString()}
+            />
+          </>
+        )}
+      </dl>
+      {!measured && (
+        <div className="diagnostics-empty">{t("not_reported")}</div>
+      )}
     </section>
   );
 }
@@ -1996,10 +2068,13 @@ function ScrapeActivityCard({
  */
 function ApiTimingsCard({
   timings,
+  rateLimiter,
 }: {
-  timings: NonNullable<RuntimeMetrics["apiTimings"]>;
+  timings: RuntimeMetrics["http"];
+  rateLimiter: RuntimeMetrics["rateLimiter"];
 }) {
   const t = useTranslations("diagnostics_page.card_api_timings");
+  const tPage = useTranslations("diagnostics_page");
   const tCols = useTranslations("diagnostics_page.table_headers");
   const tFormat = useTranslations("diagnostics_page.format");
   const sorted = useMemo(
@@ -2023,6 +2098,32 @@ function ApiTimingsCard({
           })}
         </p>
       </header>
+      {(timings.inFlight !== null || rateLimiter) && (
+        <dl className="diagnostics-kvs">
+          {timings.inFlight !== null && (
+            <KV
+              label={t("in_flight")}
+              value={timings.inFlight.toLocaleString()}
+            />
+          )}
+          {rateLimiter && (
+            <>
+              <KV
+                label={t("limiter_keys")}
+                value={rateLimiter.trackedKeys.toLocaleString()}
+              />
+              <KV
+                label={t("limiter_denials")}
+                value={
+                  rateLimiter.denialsSinceStart === null
+                    ? tPage("em_dash")
+                    : rateLimiter.denialsSinceStart.toLocaleString()
+                }
+              />
+            </>
+          )}
+        </dl>
+      )}
       {sorted.length === 0 ? (
         <div className="diagnostics-empty">{t("empty")}</div>
       ) : (
