@@ -25,7 +25,7 @@ use serde_json::Value;
 use super::deployment::{build_deployment_diagnostics, is_ready, DeploymentCheck};
 use super::diagnostics::{read_last_health_check, snapshot_database_health, snapshot_disk};
 use super::json::{json_error, json_ok, json_response};
-use super::AppState;
+use super::{data_layout, AppState};
 
 fn internal_error() -> Response {
     json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
@@ -68,12 +68,12 @@ pub async fn deployment_diagnostics(State(state): State<AppState>, headers: Head
 
 pub async fn diagnostics_database(State(state): State<AppState>) -> Response {
     let conn = state.conn.lock().expect("db mutex poisoned");
-    json_ok(&snapshot_database_health(&conn, &state.db_path))
+    json_ok(&snapshot_database_health(&conn, &data_layout().db_path))
 }
 
 pub async fn diagnostics_disk(State(state): State<AppState>) -> Response {
     let conn = state.conn.lock().expect("db mutex poisoned");
-    match snapshot_disk(&conn, &state.data_dir) {
+    match snapshot_disk(&conn, &data_layout().data_dir) {
         Ok(s) => json_ok(&s),
         Err(_) => internal_error(),
     }
