@@ -12,10 +12,12 @@
 //! 2. **`computeProfileMismatch` breaks ties with `localeCompare`** — ICU
 //!    collation, not byte order. On the fourteen real category keys the two
 //!    disagree exactly once: ICU puts `CONTACT_INFO` before `CONTACTS`
-//!    (the underscore is ignored at the primary level), byte order puts
-//!    `CONTACTS` first (`S` < `_`). `locale_compare` below strips
-//!    underscores before comparing and was checked against Node on all 196
-//!    ordered pairs of that key set.
+//!    (punctuation sorts before letters), byte order puts `CONTACTS` first
+//!    (`S` < `_`). The first cut here stripped underscores, which is right
+//!    on these fourteen keys by coincidence and wrong in general; the sort
+//!    now goes through `jsstr::js_locale_compare`, the ICU-root model that
+//!    the feature-flag route needs too, checked against Node on all 196
+//!    ordered pairs of this key set and on the 221 flag keys.
 //! 3. **Each helper is individually try/caught in Node** with a per-map
 //!    fallback (`{}`), so one failing read must not change the shape of the
 //!    other three. A port that `?`s straight out of the whole function
@@ -29,7 +31,7 @@
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
-use crate::jsstr::js_keyed_object;
+use crate::jsstr::{js_keyed_object, js_locale_compare};
 
 /// `(category, tier)` pairs in object-insertion order — a profile, or one
 /// app's `worstByCategory` footprint.
@@ -87,16 +89,6 @@ fn tier_short_label_lower(tier: &str) -> &'static str {
         "tracking" => "tracking",
         _ => "",
     }
-}
-
-/// `a.localeCompare(b)` for the strings that reach it here — category keys
-/// drawn from `CATEGORY_META`. ICU's primary strength ignores `_`, so
-/// compare with underscores stripped and fall back to the raw strings only
-/// on a primary tie. Verified against Node on every ordered pair of the
-/// fourteen keys (196/196; byte order scores 194/196).
-fn locale_compare(a: &str, b: &str) -> std::cmp::Ordering {
-    let strip = |s: &str| s.chars().filter(|c| *c != '_').collect::<String>();
-    strip(a).cmp(&strip(b)).then_with(|| a.cmp(b))
 }
 
 /// `getSetting(PROFILE_SETTING_KEY, "")` then `parseStoredProfile`.
@@ -256,7 +248,7 @@ fn compute_profile_mismatch(
     mismatches.sort_by(|a, b| {
         b.severity_gap
             .cmp(&a.severity_gap)
-            .then_with(|| locale_compare(&a.category, &b.category))
+            .then_with(|| js_locale_compare(&a.category, &b.category))
     });
     MismatchResult {
         mismatches,
@@ -551,7 +543,7 @@ mod tests {
     fn locale_compare_matches_icu_on_the_pair_byte_order_gets_wrong() {
         use std::cmp::Ordering::*;
         // ICU: CONTACT_INFO < CONTACTS. Bytes: 'S' (0x53) < '_' (0x5F).
-        assert_eq!(locale_compare("CONTACT_INFO", "CONTACTS"), Less);
+        assert_eq!(js_locale_compare("CONTACT_INFO", "CONTACTS"), Less);
         assert_eq!(
             "CONTACT_INFO".cmp("CONTACTS"),
             Greater,
@@ -574,7 +566,7 @@ mod tests {
             "BROWSING_HISTORY",
             "OTHER_DATA",
         ];
-        keys.sort_by(|a, b| locale_compare(a, b));
+        keys.sort_by(|a, b| js_locale_compare(a, b));
         assert_eq!(
             keys,
             [

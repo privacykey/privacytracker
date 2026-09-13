@@ -16,6 +16,7 @@
     "parity:diff-cases": "node --import tsx core/scripts/extract-diff-cases.mjs",
     "parity:read": "cargo build --manifest-path core/Cargo.toml && node scripts/parity/read-parity.mjs",
     "parity:schema": "cargo build --manifest-path core/Cargo.toml && node scripts/parity/schema-parity.mjs",
+    "parity:settings-cases": "node --import tsx core/scripts/extract-settings-cases.mjs",
     "release:check": "node scripts/check-release.mjs",
     "release:prepare": "node scripts/prepare-release.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",

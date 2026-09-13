@@ -15,9 +15,11 @@ mod apps;
 pub mod auth;
 mod changelog;
 pub mod diff;
+pub mod flags;
 mod gate;
 mod grid_meta;
 mod json;
+pub mod layout;
 mod policy;
 mod ratelimit;
 mod routes;
@@ -27,11 +29,13 @@ mod routes_detail;
 mod routes_focus;
 mod routes_imports;
 mod routes_manual;
+mod routes_settings;
 mod routes_status;
 mod row;
 mod settings;
 mod trend;
 pub mod trust;
+pub mod webhook;
 
 use std::net::SocketAddr;
 use std::path::Path;
@@ -125,6 +129,21 @@ pub fn app(state: AppState) -> Router {
         // ported; every one but the app row degrades to a fallback rather
         // than failing the request. See routes_detail.rs.
         .route("/api/apps/{id}/detail", get(routes_detail::detail))
+        // The settings-backed reads. Three coercion-heavy app_settings
+        // views and the feature-flag resolver, whose rule tables are
+        // generated from the Node source (flag_rules.json) rather than
+        // transcribed. /api/settings/desktop is the first GET here that can
+        // WRITE — the runtime marker Node also writes on this request.
+        .route("/api/settings", get(routes_settings::settings))
+        .route(
+            "/api/settings/desktop",
+            get(routes_settings::desktop_settings),
+        )
+        .route(
+            "/api/dashboard/layout",
+            get(routes_settings::dashboard_layout),
+        )
+        .route("/api/feature-flags", get(routes_settings::feature_flags))
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))

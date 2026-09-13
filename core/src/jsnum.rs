@@ -19,9 +19,9 @@
 /// bugs: `"1e3"` is 1 (parsing stops at `e`), `"0x10"` is 0 (stops at `x`),
 /// `" +7 "` is 7, `""` and `"abc"` are `None`.
 pub fn js_parse_int(s: &str) -> Option<i64> {
-    // JS skips leading *whitespace* (its own definition, but ASCII
-    // whitespace covers every realistic query-string input).
-    let t = s.trim_start();
+    // JS skips leading whitespace by ITS definition — which strips U+FEFF
+    // and keeps U+0085, the reverse of `str::trim_start`.
+    let t = s.trim_start_matches(crate::jsstr::is_js_whitespace);
     let bytes = t.as_bytes();
     let mut i = 0usize;
 
@@ -59,6 +59,86 @@ pub fn js_parse_int(s: &str) -> Option<i64> {
         return Some(if negative { i64::MIN } else { i64::MAX });
     }
     Some(if negative { -acc } else { acc })
+}
+
+/// Port of `Number.parseFloat(s)`, returning `NaN` where JS does.
+///
+/// Like [`js_parse_int`] it is prefix-tolerant: the longest leading
+/// `StrDecimalLiteral` wins and everything after it is ignored, so
+/// `"1.5abc"` is 1.5, `"1.2.3"` is 1.2, `"1e"` is 1 (a dangling exponent
+/// marker is not consumed) and `"0x10"` is 0 (hex is `parseInt`'s
+/// leniency, not this one's). `"Infinity"` with an optional sign is the one
+/// word it accepts, case-sensitively; `"inf"`, `"nan"` and `"infinity"` —
+/// all of which Rust's `f64::from_str` takes — are `NaN` here. `"1e400"`
+/// overflows to `Infinity`, which is why callers guard with
+/// `Number.isFinite`. Every case in the tests was read out of `node -e`.
+pub fn js_parse_float(s: &str) -> f64 {
+    let t = s.trim_start_matches(crate::jsstr::is_js_whitespace);
+    let bytes = t.as_bytes();
+    let mut i = 0usize;
+    let negative = match bytes.first() {
+        Some(b'-') => {
+            i = 1;
+            true
+        }
+        Some(b'+') => {
+            i = 1;
+            false
+        }
+        _ => false,
+    };
+    if t[i..].starts_with("Infinity") {
+        return if negative {
+            f64::NEG_INFINITY
+        } else {
+            f64::INFINITY
+        };
+    }
+
+    let start = i;
+    let mut int_digits = 0usize;
+    while i < bytes.len() && bytes[i].is_ascii_digit() {
+        i += 1;
+        int_digits += 1;
+    }
+    let mut frac_digits = 0usize;
+    if i < bytes.len() && bytes[i] == b'.' {
+        let mut j = i + 1;
+        while j < bytes.len() && bytes[j].is_ascii_digit() {
+            j += 1;
+            frac_digits += 1;
+        }
+        // `"5."` and `".5"` are numbers; `"."` alone is not.
+        if int_digits + frac_digits > 0 {
+            i = j;
+        }
+    }
+    if int_digits + frac_digits == 0 {
+        return f64::NAN;
+    }
+    if i < bytes.len() && (bytes[i] == b'e' || bytes[i] == b'E') {
+        let mut j = i + 1;
+        if j < bytes.len() && (bytes[j] == b'+' || bytes[j] == b'-') {
+            j += 1;
+        }
+        let exp_start = j;
+        while j < bytes.len() && bytes[j].is_ascii_digit() {
+            j += 1;
+        }
+        // An `e` with no digits behind it is not part of the literal.
+        if j > exp_start {
+            i = j;
+        }
+    }
+
+    // What remains is a literal Rust's parser agrees with JavaScript on:
+    // digits, one optional point, one optional signed exponent.
+    let magnitude: f64 = t[start..i].parse().unwrap_or(f64::NAN);
+    if negative {
+        -magnitude
+    } else {
+        magnitude
+    }
 }
 
 /// Port of the `Number(x)` conversion, for a value that came out of SQLite.
@@ -173,8 +253,73 @@ pub fn js_number_to_string(n: &serde_json::Number) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{js_number, js_number_to_string, js_parse_int, js_to_number};
+    use super::{js_number, js_number_to_string, js_parse_float, js_parse_int, js_to_number};
     use serde_json::{json, Value};
+
+    #[test]
+    fn parse_int_skips_javascript_whitespace_not_rust_whitespace() {
+        // U+FEFF is whitespace to JS and not to Rust; U+0085 the reverse.
+        assert_eq!(js_parse_int("\u{FEFF}7"), Some(7));
+        assert_eq!(js_parse_int("\u{0085}7"), None);
+        assert_eq!(js_parse_int("\u{00A0}7"), Some(7));
+    }
+
+    #[test]
+    fn matches_js_parse_float_semantics() {
+        // Every line is `String(Number.parseFloat(input))` from node -e.
+        let cases: &[(&str, f64)] = &[
+            ("1.5abc", 1.5),
+            ("  2.5", 2.5),
+            ("-.5", -0.5),
+            (".5", 0.5),
+            ("5.", 5.0),
+            ("1e", 1.0),
+            ("1e5", 100_000.0),
+            ("1E+2", 100.0),
+            ("+.5e-1", 0.05),
+            ("0x10", 0.0),
+            ("1.2.3", 1.2),
+            ("1_000", 1.0),
+            (" 1", 1.0),
+            ("\u{FEFF}2", 2.0),
+            ("-0", 0.0),
+            ("0.5", 0.5),
+            ("3", 3.0),
+            ("3.0", 3.0),
+            ("1.50", 1.5),
+        ];
+        for (input, expected) in cases {
+            let got = js_parse_float(input);
+            assert_eq!(got, *expected, "parseFloat({input:?})");
+        }
+        assert_eq!(js_parse_float("Infinity"), f64::INFINITY);
+        assert_eq!(js_parse_float("+Infinity"), f64::INFINITY);
+        assert_eq!(js_parse_float("-Infinity"), f64::NEG_INFINITY);
+        assert_eq!(js_parse_float("1e400"), f64::INFINITY);
+        for input in ["", ".", "e5", "abc", "infinity", "inf", "NaN", "-", "+"] {
+            assert!(js_parse_float(input).is_nan(), "parseFloat({input:?})");
+        }
+        // The desktop-settings guard: finite AND in range. Infinity fails
+        // the first half, so `"1e400"` falls back to the default.
+        let in_range = |s: &str| {
+            let z = js_parse_float(s);
+            z.is_finite() && (0.5..=3.0).contains(&z)
+        };
+        assert!(in_range("1.5abc"));
+        assert!(!in_range("1e400"));
+        assert!(!in_range("0.25"));
+        assert!(!in_range("abc"));
+    }
+
+    #[test]
+    fn rust_stdlib_would_disagree_on_parse_float_too() {
+        for s in ["inf", "infinity", "nan", "NaN"] {
+            assert!(s.parse::<f64>().is_ok(), "{s}: stdlib accepts");
+            assert!(js_parse_float(s).is_nan(), "{s}: JS does not");
+        }
+        assert!("1.5abc".parse::<f64>().is_err());
+        assert_eq!(js_parse_float("1.5abc"), 1.5);
+    }
 
     #[test]
     fn matches_js_parse_int_semantics() {

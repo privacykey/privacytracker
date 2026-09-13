@@ -294,6 +294,18 @@ jobs:
           git diff --exit-code -- core/tests/fixtures/diff-cases.json \
             || { echo "::error::diffSnapshots changed but core/tests/fixtures/diff-cases.json was not regenerated — run \`just parity-diff-cases\` and port the change to core/src/server/diff.rs"; exit 1; }
 
+      - name: Settings-read rule tables + fixture are current
+        # Re-derives core/src/server/flag_rules.json (the feature-flag rule
+        # tables the Rust server include_str!s) and
+        # core/tests/fixtures/settings-cases.json by RUNNING the real
+        # resolver, reconcileLayout/matchDashboardPreset and maskWebhookUrl.
+        # A diff here means a rule table or one of those functions changed in
+        # Node and the Rust side has not been regenerated / ported to match.
+        run: |
+          pnpm parity:settings-cases
+          git diff --exit-code -- core/src/server/flag_rules.json core/tests/fixtures/settings-cases.json \
+            || { echo "::error::the feature-flag rules, dashboard-layout helpers or maskWebhookUrl changed but the generated Rust inputs were not regenerated — run \`just parity-settings-cases\`, commit both files, and port any resolver change to core/src/server/flags.rs"; exit 1; }
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

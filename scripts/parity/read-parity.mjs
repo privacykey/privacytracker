@@ -41,7 +41,9 @@ import {
   applySinceInstallFixture,
   BRIDGED_IDS,
   COLLATION_FIXTURE,
+  FLAG_OVERRIDE_FIXTURE,
   INSTAGRAM_ID,
+  SETTINGS_FIXTURE,
   FIXTURES as SINCE_INSTALL_FIXTURES,
   MISSING_ID as SINCE_INSTALL_MISSING_ID,
   TIMELINE_ID,
@@ -111,6 +113,16 @@ const BATCH_1 = [
   // ones. The canned seed leaves importProvenance, a11yProfile and
   // childAgeBand null; the fixture and probe cover those.
   "/api/apps/[id]/detail",
+  // The settings-backed reads. On the canned seed every secret is unset,
+  // every desktop row empty, the layout untouched and no override stored,
+  // so the fixture writes real state for all four and probeSettingsReads
+  // refuses a run where it did not land. The resolver behind
+  // /api/feature-flags is additionally pinned across 39 contexts by
+  // core/tests/settings_cases.rs, since one database holds one.
+  "/api/settings",
+  "/api/settings/desktop",
+  "/api/dashboard/layout",
+  "/api/feature-flags",
 ];
 
 /**
@@ -836,6 +848,181 @@ async function probeDetail(nodeBase) {
   return ok;
 }
 
+/**
+ * The four settings-backed reads are byte-compared by the manifest, but on
+ * a database the seed leaves nearly empty for them: no API key, no country,
+ * no webhook, no `desktop_*` rows, no stored layout, no overrides. So every
+ * masked secret was compared as "" against "", every desktop coercion as
+ * its default, the layout as the canonical default, and the resolver on one
+ * focus. SETTINGS_FIXTURE / FLAG_OVERRIDE_FIXTURE write rows that make each
+ * of those real; this refuses a run where Node's answers show they did not
+ * land — the comparison itself is the differ's job.
+ */
+async function probeSettingsReads(nodeBase) {
+  const get = async (route) => {
+    const res = await fetch(`${nodeBase}${route}`, {
+      headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN },
+    });
+    let j = null;
+    try {
+      j = await res.json();
+    } catch {
+      j = null;
+    }
+    return { status: res.status, j };
+  };
+  let ok = true;
+  const check = (label, pass, detail) => {
+    console.log(pass ? `  ✔ ${label}` : `  ✘ ${label}: ${detail}`);
+    ok &&= pass;
+  };
+  const expect = SETTINGS_FIXTURE.expect;
+
+  const s = await get("/api/settings");
+  check(
+    "settings: API key masked as __SET__, country explicit, webhook masked the Slack way",
+    s.status === 200 &&
+      s.j?.ai_api_key === "__SET__" &&
+      s.j?.ai_api_key_set === true &&
+      s.j?.app_country === SETTINGS_FIXTURE.settings.app_country &&
+      s.j?.app_country_explicit === true &&
+      s.j?.notification_webhook_url === expect.webhookMask &&
+      s.j?.notification_webhook_url_set === true,
+    `HTTP ${s.status} ${JSON.stringify(s.j)?.slice(0, 300)}`
+  );
+
+  const d = await get("/api/settings/desktop");
+  const desktopMisses = Object.entries(expect.desktop).filter(
+    ([k, v]) => d.j?.[k] !== v
+  );
+  check(
+    "desktop: parseFloat prefix, out-of-range int, uppercase theme and TRUE all coerced as Node does",
+    d.status === 200 && desktopMisses.length === 0,
+    `HTTP ${d.status}; expected ${JSON.stringify(Object.fromEntries(desktopMisses))} but got ${JSON.stringify(Object.fromEntries(desktopMisses.map(([k]) => [k, d.j?.[k]])))}`
+  );
+
+  const l = await get("/api/dashboard/layout");
+  const order = l.j?.layout?.order ?? [];
+  check(
+    "layout: a stored blob with junk was reconciled (18 cards, hidden filtered+sorted, no preset)",
+    l.status === 200 &&
+      order.length === 18 &&
+      new Set(order).size === 18 &&
+      order[0] === "task_list" &&
+      order[1] === "hero" &&
+      JSON.stringify(l.j?.layout?.hidden) === JSON.stringify(expect.hidden) &&
+      l.j?.matchedPreset === null,
+    `HTTP ${l.status} ${JSON.stringify(l.j)?.slice(0, 300)}`
+  );
+
+  const f = await get("/api/feature-flags");
+  const rows = f.j?.flags ?? [];
+  const byKey = new Map(rows.map((r) => [r.key, r]));
+  const parent = byKey.get(FLAG_OVERRIDE_FIXTURE.parent);
+  const child = byKey.get(FLAG_OVERRIDE_FIXTURE.child);
+  const quarantined = byKey.get(FLAG_OVERRIDE_FIXTURE.quarantinedKey);
+  // A rule fired somewhere: current differs from the hard default with no
+  // override to explain it. Zero here would mean the focus never reached
+  // the resolver.
+  const ruled = rows.filter(
+    (r) => r.override === null && r.currentValue !== r.hardDefault
+  ).length;
+  const sorted = rows.every(
+    (r, i) =>
+      i === 0 ||
+      (rows[i - 1].surface === r.surface
+        ? rows[i - 1].key.localeCompare(r.key)
+        : rows[i - 1].surface.localeCompare(r.surface)) < 0
+  );
+  check(
+    `feature flags: ${rows.length} rows, ${ruled} moved by focus rules, parent override collapses, child override escapes (focusValue still off), quarantined and unknown overrides ignored, ICU-sorted`,
+    f.status === 200 &&
+      rows.length === 221 &&
+      ruled > 0 &&
+      sorted &&
+      parent?.override === "off" &&
+      parent?.currentValue === "off" &&
+      child?.override === "on" &&
+      child?.currentValue === "on" &&
+      child?.focusValue === "off" &&
+      quarantined?.override === null &&
+      !byKey.has(FLAG_OVERRIDE_FIXTURE.unknownKey),
+    `HTTP ${f.status} rows=${rows.length} ruled=${ruled} sorted=${sorted} parent=${JSON.stringify(parent)} child=${JSON.stringify(child)} quarantined=${JSON.stringify(quarantined)}`
+  );
+
+  return ok;
+}
+
+/**
+ * `GET /api/settings/desktop` WRITES when the request carries
+ * `x-privacytracker-runtime: desktop` (or the process env says so): it
+ * upserts `runtime_environment`, which the flag resolver reads back to force
+ * two desktop-only flags on. The differ never sends that header, so neither
+ * the write nor the rule it feeds is in the comparison. Runs AFTER the
+ * differ, because it changes both databases for the rest of the run.
+ *
+ * Only `flag.desktop.app_section` is required to flip: the other forced
+ * flag has a dependency parent that can collapse it straight back, and
+ * whether it does is Node's call — the byte comparison covers it.
+ */
+async function probeDesktopRuntimeMark(rustBase, nodeBase) {
+  const fetchBoth = async (route, extra = {}) => {
+    const [ra, rb] = await Promise.all([
+      fetch(`${nodeBase}${route}`, {
+        headers: { origin: nodeBase, "x-auditor-admin-token": TOKEN, ...extra },
+      }),
+      fetch(`${rustBase}${route}`, {
+        headers: { origin: rustBase, "x-auditor-admin-token": TOKEN, ...extra },
+      }),
+    ]);
+    const [nodeBody, rustBody] = await Promise.all([ra.text(), rb.text()]);
+    return {
+      node: { status: ra.status, body: nodeBody },
+      rust: { status: rb.status, body: rustBody },
+    };
+  };
+  const flagValue = (body, key) => {
+    try {
+      return JSON.parse(body).flags.find((r) => r.key === key)?.currentValue;
+    } catch {}
+  };
+  let ok = true;
+  const report = (label, pass, detail) => {
+    console.log(pass ? `  ✔ ${label}` : `  ✘ ${label}: ${detail}`);
+    ok &&= pass;
+  };
+  const FORCED = "flag.desktop.app_section";
+
+  const before = await fetchBoth("/api/feature-flags");
+  const wasOff = flagValue(before.node.body, FORCED) !== "on";
+
+  const marked = await fetchBoth("/api/settings/desktop", {
+    "x-privacytracker-runtime": "desktop",
+  });
+  report(
+    "desktop GET with the runtime header answers identically on both sides",
+    marked.node.status === 200 &&
+      marked.rust.status === 200 &&
+      marked.node.body === marked.rust.body,
+    `HTTP ${marked.node.status} vs ${marked.rust.status}\n      node: ${marked.node.body.slice(0, 200)}\n      rust: ${marked.rust.body.slice(0, 200)}`
+  );
+
+  const after = await fetchBoth("/api/feature-flags");
+  const nowOn = flagValue(after.node.body, FORCED) === "on";
+  report(
+    `${FORCED} was ${wasOff ? "off" : "already on"} before the mark and is ${nowOn ? "on" : "NOT on"} after it; feature-flag bodies identical`,
+    after.node.status === 200 &&
+      after.node.body === after.rust.body &&
+      wasOff &&
+      nowOn,
+    wasOff
+      ? `HTTP ${after.node.status} vs ${after.rust.status}, bodies ${after.node.body === after.rust.body ? "equal" : "DIFFER"}, node value ${flagValue(after.node.body, FORCED)}`
+      : "the flag was on before the write, so this probe cannot see the write happen — the fixture focus must leave it off"
+  );
+
+  return ok;
+}
+
 async function main() {
   const nodeData = path.resolve(args["node-data"]);
 
@@ -902,6 +1089,11 @@ async function main() {
   );
   const detailOk = await probeDetail(args.node);
 
+  console.log(
+    "\n── settings reads (the seed leaves every secret, desktop row, layout and override empty) ──"
+  );
+  const settingsOk = await probeSettingsReads(args.node);
+
   console.log(`\n── dual-live diff, --only ${onlyRe} ──`);
   let diffOk = true;
   try {
@@ -931,6 +1123,12 @@ async function main() {
     diffOk = false;
   }
 
+  // After the diff, because it WRITES to both databases.
+  console.log(
+    "\n── desktop runtime marker (a write on GET the differ never triggers) ──"
+  );
+  const runtimeOk = await probeDesktopRuntimeMark(rustBase, args.node);
+
   // Last, because it burns BOTH backends' limiter budget on a route the
   // differ reads.
   console.log(
@@ -948,6 +1146,8 @@ async function main() {
     changelogOk &&
     gridOk &&
     detailOk &&
+    settingsOk &&
+    runtimeOk &&
     rateOk &&
     diffOk;
   console.log(
