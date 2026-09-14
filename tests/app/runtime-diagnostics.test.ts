@@ -14,7 +14,10 @@ import {
   snapshotRuntimeDiagnostics,
 } from "../../lib/runtime-diagnostics-envelope";
 import { checkRateLimit, snapshotInboundRateLimiter } from "../../lib/security";
-import { validateRuntimeDiagnostics } from "../../scripts/parity/diagnostics-envelope.mjs";
+import {
+  validateErrorLog,
+  validateRuntimeDiagnostics,
+} from "../../scripts/parity/diagnostics-envelope.mjs";
 import { resetTestDb } from "../helpers/test-db";
 
 test.beforeEach(() => {
@@ -142,6 +145,57 @@ test("the validator refuses what the contract forbids and accepts a Rust envelop
       p.startsWith("heap.kind")
     )
   );
+});
+
+test("the error-log validator refuses what the contract forbids", () => {
+  const ok = {
+    entries: [
+      { at: 2, level: "warn", message: "later", truncated: false },
+      { at: 1, level: "error", message: "earlier", truncated: true },
+    ],
+    capacity: 200,
+  };
+  assert.deepEqual(validateErrorLog(ok), []);
+  assert.deepEqual(validateErrorLog({ entries: [], capacity: 200 }), []);
+
+  // Newest-first is part of the contract: `snapshotErrorLog` reverses the
+  // ring rather than sorting, and a port that forgot would look fine.
+  assert.ok(
+    validateErrorLog({
+      ...ok,
+      entries: [...ok.entries].reverse(),
+    }).some((p) => p.includes("not newest-first"))
+  );
+  // Level is a closed set; `console.info` is not intercepted.
+  assert.ok(
+    validateErrorLog({
+      entries: [{ at: 1, level: "info", message: "x", truncated: false }],
+      capacity: 200,
+    }).some((p) => p.startsWith("entries[0].level"))
+  );
+  // A missing field, a wrong type, an extra key, and more entries than the
+  // ring can hold.
+  assert.ok(
+    validateErrorLog({ entries: [{ at: 1, level: "warn" }], capacity: 200 })
+      .length >= 2
+  );
+  assert.ok(
+    validateErrorLog({ entries: [], capacity: "200" }).some((p) =>
+      p.startsWith("capacity")
+    )
+  );
+  assert.ok(
+    validateErrorLog({ entries: [], capacity: 200, extra: 1 }).includes(
+      "extra: unexpected top-level key"
+    )
+  );
+  assert.ok(
+    validateErrorLog({
+      entries: [ok.entries[0], ok.entries[1]],
+      capacity: 1,
+    }).some((p) => p.includes("exceeds capacity"))
+  );
+  assert.ok(validateErrorLog(null).length === 1);
 });
 
 test("the inbound limiter reports its denials", () => {

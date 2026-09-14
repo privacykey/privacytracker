@@ -370,7 +370,7 @@ pub async fn detail(
         return json_error(StatusCode::BAD_REQUEST, "Invalid app id");
     }
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
 
     // `safe(fn, fallback)`: every read below degrades to its fallback on
     // error, and the warning is the only trace — exactly as in Node.
@@ -379,7 +379,7 @@ pub async fn detail(
             match $e {
                 Ok(v) => v,
                 Err(err) => {
-                    eprintln!("[apps/{id}/detail] {} failed: {err}", $label);
+                    super::diag::log_error(format!("[apps/{id}/detail] {} failed: {err}", $label));
                     $fallback
                 }
             }
@@ -391,7 +391,9 @@ pub async fn detail(
         Ok(Some(app)) => app,
         Ok(None) => return json_error(StatusCode::NOT_FOUND, "Not found"),
         Err(err) => {
-            eprintln!("[apps/{id}/detail] getAppWithPrivacy failed: {err}");
+            super::diag::log_error(format!(
+                "[apps/{id}/detail] getAppWithPrivacy failed: {err}"
+            ));
             return json_error(StatusCode::NOT_FOUND, "Not found");
         }
     };

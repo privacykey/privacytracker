@@ -179,7 +179,7 @@ PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (30).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (33).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -808,6 +808,108 @@ twenty lines of civil-date arithmetic (`jsdate.rs`) pinned to `node -e`
 output including a leap day and a negative epoch; and the `libc` crate is
 now a direct dependency for `statfs`, `access` and `uname` — it was already
 in the lockfile under rusqlite and tokio.
+
+### The runtime envelope (+3 routes, 33 total)
+
+`/api/diagnostics/runtime`, `/api/desktop/diagnostics` and
+`/api/diagnostics/errors` — the three that could not be ported, because
+they describe the serving process, and were re-specified instead (PR #241
+moved Node to a backend-tagged envelope; this is the Rust side of it).
+Where the deployment reads were held to Node byte for byte, these are held
+to a CONTRACT — `scripts/parity/diagnostics-envelope.mjs`, run on each
+side by the manifest's `validate` hook with `skipCrossCompare` on — and
+`probeRuntimeEnvelope` in `read-parity.mjs` then holds the Rust body to
+what it must actually contain, since a body that reported every section
+as `null` would satisfy the contract too.
+
+**What the Rust core measures, and from where.**
+
+- `process` — `getrusage(RUSAGE_SELF)`, the same syscall libuv wraps for
+  `process.resourceUsage()`, so CPU time, page faults and context switches
+  share a source with Node's; plus what Node cannot report: virtual size,
+  thread count and open descriptors from `proc_pidinfo` (macOS) or `/proc`
+  (Linux). `ru_maxrss` is bytes on macOS and kilobytes on Linux; libuv
+  normalises, so does `sysproc.rs`.
+- `heap` — `kind: "rust-allocator"`: a counting `#[global_allocator]`
+  (`core/src/alloc.rs`, two relaxed atomics per allocation) reporting live
+  bytes, the high-water mark and live allocation count. The honest analogue
+  of V8's `used_heap_size`; there is no limit to be a fraction of.
+- `sqlite` — the three sections Node leaves `null`: `memory` from
+  `sqlite3_memory_used` / `_highwater` and `sqlite3_db_status`
+  (`CACHE_USED`, `SCHEMA_USED`, `STMT_USED`); `cache` hits / misses /
+  writes / spills per connection since open; `lockWait`, the time each
+  handler waits to acquire the single connection's mutex. Every handler now
+  takes the connection through `AppState::db()`, which times the wait —
+  with one connection behind one mutex, that is this server's contention
+  signal.
+- `scheduler` — `kind: "tokio"`: worker, alive-task and global-queue
+  counts from the runtime's stable metrics, and `lag` from a task that
+  sleeps 20 ms in a loop and records **the interval it actually took** —
+  which is what `monitorEventLoopDelay` records. Measured on the installed
+  Node, an idle loop at `resolution: 20` reports min 20.02 ms and p50
+  21.04 ms: the raw delta between timer fires, resolution included.
+  Recording the overshoot instead — the first cut here — read ~20 ms
+  "better" than Node for the same stall, and since the two backends share
+  the severity thresholds (100 ms / 1000 ms), warn and danger would have
+  fired ~20 ms late.
+- `http` — one timing layer inside the gate (a request the gate refuses
+  never reaches Node's ring either), with Node's sampling rule: every slow
+  (≥ 100 ms) or erroring (≥ 400) response, one in five of the rest — and
+  the 1-in-5 counter advances only on the rest, because `||` short-circuits
+  past `++sampleCounter` in Node. The label is always the matched route
+  PATTERN: an unmatched path is not recorded at all, which is both what
+  Node does (its 404s come from Next, not from a wrapped handler) and the
+  safe choice, since the only label available there is a client-chosen
+  string that would end up in the GitHub-issue blob. `inFlight` counts the
+  request reading it, decremented by a drop guard so a panicking or
+  disconnected handler cannot inflate it.
+- `slowQueries` — SQLite's own `sqlite3_profile` callback, installed on the
+  connection at open, so every statement is timed with no call-site
+  instrumentation (Node wraps `db.prepare()`). Three fields say something
+  different and each is unavoidable: `method` is always `"statement"` (the
+  hook sees statements, not the `all`/`get`/`run`/`iterate` call Node
+  names), `paramCount` counts `?` placeholders rather than bound arguments,
+  and `durationMs` carries whole milliseconds because the callback's
+  nanosecond argument is documented as having only millisecond resolution,
+  where Node's `performance.now()` gives two decimals.
+- `dbWorker` and `scrapeActivity` are `null`: no worker thread, no scraper
+  until Phase 3. `rateLimiter` counts the limiter's tracked keys and its
+  denials since start.
+
+The histograms (`histogram.rs`) are log-linear over microseconds — ~1.6 %
+precision at every magnitude for 30 KB, no dependency — and accumulate
+since start or reset, as Node's `perf_hooks` histogram does; percentiles
+report the bucket's upper bound as HDR's `valueAtPercentile` does. An empty
+histogram reports `null` mean/stddev, which C1 made explicit in the
+contract because Node's was already emitting them.
+
+`/api/desktop/diagnostics` reproduces Node's payload key for key
+(`generated_at`, `runtime`, `host`, `runtime_diagnostics` with the rings
+capped at 20, `scheduler`, `bulk_runners`, `db`); the probe requires its
+database-derived parts — app and snapshot counts, the scheduler and runner
+flags — to EQUAL Node's, since both servers read the same copy.
+`/api/diagnostics/errors` is a ring the server's own warnings and errors
+go through (`diag::log_warn` / `log_error`, in front of stderr), with
+Node's `?limit` semantics: `parseInt` prefix, then
+`Math.max(1, Math.min(200, …))`. Its sources are the ones whose Node
+counterparts are `console.warn`/`console.error` calls the interceptor
+captures: the migration warnings in `db.rs`, the per-helper failures in
+`grid_meta.rs` and `routes_detail.rs`, the response-serialisation failure
+in `json.rs`, and the rate limiter's DENY — throttled, as Node's is, to
+one warning per key per second. That last one is also what lets the parity
+harness check the `?limit` clamp against a ring that has something in it:
+`probeErrorRing` runs after the rate-limiter probe on purpose.
+
+**The lock is held for the database and nothing else.** `runtime_diag::build`
+takes the already-read `sqlite` section rather than the connection, so the
+handlers acquire the mutex for the counters and release it before the
+syscalls, histogram walks and serialisation. Holding it across all of that
+would serialise every other handler behind a 2-second diagnostics poll —
+and inflate the very `lockWait` number the section reports.
+
+Not ported, because they are write routes: the `DELETE` that clears the
+rings and the `POST` that toggles profiling. The clear helpers exist and
+are tested; the routes wait for the writers phase.
 
 ### The trailing-slash redirect (proxy.ts step 0.5)
 

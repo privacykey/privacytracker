@@ -12,6 +12,7 @@
 //! parity harness (`scripts/parity/read-parity.mjs`), which byte-compares
 //! this server's responses against the running Node server's.
 
+pub mod alloc;
 pub mod db;
 pub mod jsdate;
 pub mod jsnum;

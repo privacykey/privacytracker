@@ -84,7 +84,7 @@ const DEFAULT_COUNTRY: &str = "us";
 const MASKED_SECRET_VALUE: &str = "__SET__";
 
 pub async fn settings(State(state): State<AppState>) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     let body = (|| -> rusqlite::Result<SettingsBody> {
         let get = |key: &str, default: &str| get_setting_with(&conn, key, default);
 
@@ -231,7 +231,7 @@ fn desktop_zoom(raw: &str) -> f64 {
 }
 
 pub async fn desktop_settings(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
 
     // markDesktopRuntimeIfTrusted. Next's `headers.get` joins repeated
     // headers with ", "; axum's returns the first. A client sending the
@@ -301,7 +301,7 @@ pub async fn desktop_settings(State(state): State<AppState>, headers: HeaderMap)
 // ── /api/dashboard/layout ────────────────────────────────────────────
 
 pub async fn dashboard_layout(State(state): State<AppState>) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     match read_layout_with_match(&conn) {
         Ok(body) => json_ok(&body),
         Err(_) => internal_error(),
@@ -319,7 +319,7 @@ struct FlagsBody {
 }
 
 pub async fn feature_flags(State(state): State<AppState>) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     let rows = context_from_db(&conn)
         .ok()
         .and_then(|ctx| build_rows(&ctx).ok());

@@ -11,7 +11,7 @@ use rusqlite::OptionalExtension;
 use super::AppState;
 
 pub fn get_setting(state: &AppState, key: &str, default: &str) -> rusqlite::Result<String> {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     get_setting_with(&conn, key, default)
 }
 

@@ -55,6 +55,18 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core migration: the three process-introspection reads join the Rust
+  read API (33 of 64 read routes) — `GET /api/diagnostics/runtime`,
+  `/api/desktop/diagnostics` and `/api/diagnostics/errors` — emitting the
+  backend-tagged envelope with `backend: "rust"`: a counting global
+  allocator for `heap`, tokio's runtime metrics plus a 20 ms scheduler-lag
+  sampler for `scheduler`, `sqlite3_memory_used` / `sqlite3_db_status` and
+  the connection-mutex wait for the `sqlite` sections Node cannot fill, a
+  request-timing layer with Node's sampling rule for `http`, and SQLite's
+  own profile hook for `slowQueries`. The parity harness validates each
+  side against the envelope contract instead of byte-comparing a V8 heap
+  against a Rust allocator, and holds the Rust body to live numbers.
+  Developer-facing only.
 - **Importing from a second device now asks whose it is — and, for
   someone else's, asks you to confirm you have their permission.** From
   your second device onward, any import that creates a new device

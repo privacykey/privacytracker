@@ -138,7 +138,7 @@ pub async fn manual_apps(State(state): State<AppState>, headers: HeaderMap) -> R
         return denied;
     }
 
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     let listed = (|| -> rusqlite::Result<Vec<ManualApp>> {
         // COLLATE NOCASE is ASCII-only in SQLite, and both backends run
         // SQLite, so the ordering matches without extra work here.
@@ -236,7 +236,7 @@ pub async fn audit_bundle_recent(
     }
 
     let cutoff = now_ms() - within_ms;
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     let found = conn
         .query_row(
             "SELECT imported_at, recommender_name, apps_total, apps_added, apps_updated, \

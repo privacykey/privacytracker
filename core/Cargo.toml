@@ -25,7 +25,10 @@ path = "src/main.rs"
 # libsqlite3 and every build compiles the same SQLite version. The Node
 # side (better-sqlite3) bundles its own SQLite too; the parity harness
 # records both versions and compares the resulting schema, not the engine.
-rusqlite = { version = "0.32", features = ["bundled"] }
+# `trace` exposes `Connection::profile`, SQLite's own per-statement
+# timing callback — the slow-query ring reads from it instead of
+# wrapping every call site, as Node has to.
+rusqlite = { version = "0.32", features = ["bundled", "trace"] }
 
 # ── Phase 2: the read-only HTTP API ──────────────────────────────────
 # axum replaces `next start` as the server. Kept to the default feature
@@ -34,7 +37,9 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 axum = "0.8"
 # Multi-thread runtime + signal handling for a clean shutdown. `net` is
 # what actually binds the listener.
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+# `time` for the scheduler-lag sampler (the tokio analogue of Node's
+# event-loop-delay monitor).
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` is REQUIRED, not a preference: it backs serde_json's
 # Map with an IndexMap instead of a BTreeMap. Without it, every stored

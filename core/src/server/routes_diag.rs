@@ -38,7 +38,7 @@ struct ReadyBody {
 }
 
 pub async fn ready(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     match build_deployment_diagnostics(&state, &conn, &headers) {
         Ok(d) => {
             let ready = is_ready(&d);
@@ -59,7 +59,7 @@ pub async fn ready(State(state): State<AppState>, headers: HeaderMap) -> Respons
 }
 
 pub async fn deployment_diagnostics(State(state): State<AppState>, headers: HeaderMap) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     match build_deployment_diagnostics(&state, &conn, &headers) {
         Ok(d) => json_ok(&d),
         Err(_) => internal_error(),
@@ -67,12 +67,12 @@ pub async fn deployment_diagnostics(State(state): State<AppState>, headers: Head
 }
 
 pub async fn diagnostics_database(State(state): State<AppState>) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     json_ok(&snapshot_database_health(&conn, &data_layout().db_path))
 }
 
 pub async fn diagnostics_disk(State(state): State<AppState>) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     match snapshot_disk(&conn, &data_layout().data_dir) {
         Ok(s) => json_ok(&s),
         Err(_) => internal_error(),
@@ -86,7 +86,7 @@ struct NeverRun {
 }
 
 pub async fn diagnostics_health(State(state): State<AppState>) -> Response {
-    let conn = state.conn.lock().expect("db mutex poisoned");
+    let conn = state.db();
     match read_last_health_check(&conn) {
         Ok(Some(blob)) => json_ok::<Value>(&blob),
         Ok(None) => json_ok(&NeverRun { never_run: true }),

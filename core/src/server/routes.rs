@@ -35,7 +35,7 @@ struct HealthBody {
 
 pub async fn health(State(state): State<AppState>) -> Response {
     let ok = {
-        let conn = state.conn.lock().expect("db mutex poisoned");
+        let conn = state.db();
         conn.query_row("SELECT 1 as ok", [], |row| row.get::<_, i64>(0))
             .optional()
     };

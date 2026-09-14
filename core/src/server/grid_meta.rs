@@ -510,19 +510,25 @@ pub fn build_app_grid_meta(conn: &Connection, app_ids: &[String]) -> rusqlite::R
     // `try { … } catch { console.warn(…) }` — the fallback is the empty
     // object, and the warning is the only trace. Reproduced per helper.
     let profile_badges = get_profile_badges_by_app(conn, app_ids).unwrap_or_else(|e| {
-        eprintln!("[app-grid-meta] getProfileBadgesByApp failed: {e}");
+        crate::server::diag::log_error(format!(
+            "[app-grid-meta] getProfileBadgesByApp failed: {e}"
+        ));
         empty()
     });
     let pending = get_pending_change_categories_by_app(conn, app_ids).unwrap_or_else(|e| {
-        eprintln!("[app-grid-meta] getPendingChangeCategoriesByApp failed: {e}");
+        crate::server::diag::log_error(format!(
+            "[app-grid-meta] getPendingChangeCategoriesByApp failed: {e}"
+        ));
         empty()
     });
     let user_verdicts = get_user_verdicts_by_app(conn, app_ids).unwrap_or_else(|e| {
-        eprintln!("[app-grid-meta] getUserVerdictsByAppId failed: {e}");
+        crate::server::diag::log_error(format!(
+            "[app-grid-meta] getUserVerdictsByAppId failed: {e}"
+        ));
         empty()
     });
     let app_device_map = get_app_device_map(conn, app_ids).unwrap_or_else(|e| {
-        eprintln!("[app-grid-meta] getAppDeviceMap failed: {e}");
+        crate::server::diag::log_error(format!("[app-grid-meta] getAppDeviceMap failed: {e}"));
         empty()
     });
 

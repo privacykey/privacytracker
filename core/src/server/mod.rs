@@ -15,12 +15,14 @@ mod apps;
 pub mod auth;
 mod changelog;
 mod deployment;
+pub(crate) mod diag;
 mod diagnostics;
 pub mod diff;
 pub mod flags;
 mod forwarded;
 mod gate;
 mod grid_meta;
+mod histogram;
 mod json;
 pub mod layout;
 mod osinfo;
@@ -34,10 +36,14 @@ mod routes_diag;
 mod routes_focus;
 mod routes_imports;
 mod routes_manual;
+mod routes_runtime;
 mod routes_settings;
 mod routes_status;
 mod row;
+mod runtime_diag;
 mod settings;
+mod sysproc;
+mod timing;
 mod trend;
 pub mod trust;
 pub mod webhook;
@@ -74,6 +80,19 @@ pub struct AppState {
     /// The port the listener actually bound — `next start` puts it in
     /// `x-forwarded-port` on every request (see `forwarded.rs`).
     pub bound_port: u16,
+}
+
+impl AppState {
+    /// Acquire the single connection, timing the wait. Every handler goes
+    /// through here rather than `conn.lock()` directly so the wait is
+    /// observed: with one connection behind one mutex, this is the
+    /// server's contention signal (`sqlite.lockWait` in the diagnostics).
+    pub fn db(&self) -> std::sync::MutexGuard<'_, Connection> {
+        let started = Instant::now();
+        let guard = self.conn.lock().expect("db mutex poisoned");
+        diag::record_lock_wait(started.elapsed());
+        guard
+    }
 }
 
 /// Where the database lives: `lib/db.ts`'s `dataDir` / `dbPath`, plus the
@@ -238,6 +257,18 @@ pub fn app(state: AppState) -> Router {
             "/api/diagnostics/health",
             get(routes_diag::diagnostics_health),
         )
+        // The process-introspection reads, re-specified as one backend-
+        // tagged envelope rather than ported (see routes_runtime.rs).
+        .route("/api/diagnostics/runtime", get(routes_runtime::runtime))
+        .route(
+            "/api/desktop/diagnostics",
+            get(routes_runtime::desktop_diagnostics),
+        )
+        .route("/api/diagnostics/errors", get(routes_runtime::errors))
+        // Request timing, INSIDE the gate: a request the gate refuses never
+        // reaches Node's ring either. Runs after routing, so the matched
+        // path pattern is available as the route label.
+        .layer(axum::middleware::from_fn(timing::http_timing))
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))
@@ -263,7 +294,12 @@ pub fn app(state: AppState) -> Router {
 /// connect info so the peer address can stand in for `socket.remoteAddress`.
 pub async fn serve(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
     let layout = data_layout();
-    let conn = crate::db::open_and_migrate(&layout.db_path)?;
+    let mut conn = crate::db::open_and_migrate(&layout.db_path)?;
+    // SQLite's per-statement profile hook feeds the slow-query ring for
+    // every statement this connection runs, with no call-site wrapping.
+    conn.profile(Some(diag::on_statement_profiled));
+    // The scheduler-lag sampler needs the runtime, which `serve` is on.
+    diag::start_scheduler_sampler();
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let bound = listener.local_addr()?;

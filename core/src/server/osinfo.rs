@@ -23,13 +23,13 @@ pub fn node_arch() -> &'static str {
     }
 }
 
-/// `${os.type()} ${os.release()}` — `uname`'s sysname and release, e.g.
-/// `Darwin 25.6.0` or `Linux 6.8.0-45-generic`.
+/// `(os.type(), os.release())` — `uname`'s sysname and release, e.g.
+/// `("Darwin", "25.6.0")` or `("Linux", "6.8.0-45-generic")`.
 #[cfg(unix)]
-pub fn platform_string() -> String {
+pub fn uname_parts() -> (String, String) {
     let mut uts: libc::utsname = unsafe { std::mem::zeroed() };
     if unsafe { libc::uname(&mut uts) } != 0 {
-        return std::env::consts::OS.to_string();
+        return (std::env::consts::OS.to_string(), String::new());
     }
     let field = |raw: &[libc::c_char]| -> String {
         let bytes: Vec<u8> = raw
@@ -39,12 +39,22 @@ pub fn platform_string() -> String {
             .collect();
         String::from_utf8_lossy(&bytes).into_owned()
     };
-    format!("{} {}", field(&uts.sysname), field(&uts.release))
+    (field(&uts.sysname), field(&uts.release))
 }
 
 #[cfg(not(unix))]
+pub fn uname_parts() -> (String, String) {
+    (std::env::consts::OS.to_string(), String::new())
+}
+
+/// `${os.type()} ${os.release()}`.
 pub fn platform_string() -> String {
-    std::env::consts::OS.to_string()
+    let (sysname, release) = uname_parts();
+    if release.is_empty() {
+        sysname
+    } else {
+        format!("{sysname} {release}")
+    }
 }
 
 /// `fs.statfsSync(path)` reduced to `(bavail * bsize, blocks * bsize)` —

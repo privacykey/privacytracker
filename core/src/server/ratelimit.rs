@@ -39,7 +39,12 @@ pub struct Verdict {
 #[derive(Default)]
 pub struct RateLimiter {
     buckets: Mutex<HashMap<String, Bucket>>,
+    /// Per-key mute deadline for the deny warning — `rateLimitLogMutedUntil`.
+    log_muted_until: Mutex<HashMap<String, i64>>,
 }
+
+/// `RATE_LIMIT_LOG_COOLDOWN_MS`.
+const LOG_COOLDOWN_MS: i64 = 1000;
 
 /// Node opportunistically drops empty buckets once the map grows past this.
 const GC_THRESHOLD: usize = 5000;
@@ -47,6 +52,32 @@ const GC_THRESHOLD: usize = 5000;
 impl RateLimiter {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The throttled deny warning. Node's message names the limiter so a
+    /// reader does not mistake it for Apple's 429 cooldown; kept verbatim.
+    fn warn_denied(&self, key: &str, limit: i64, window_ms: i64, retry_after_ms: i64, now: i64) {
+        {
+            let Ok(mut muted) = self.log_muted_until.lock() else {
+                return;
+            };
+            if *muted.get(key).unwrap_or(&0) > now {
+                return;
+            }
+            muted.insert(key.to_string(), now + LOG_COOLDOWN_MS);
+        }
+        super::diag::log_warn(format!(
+            "[rate-limit] DENY {key} — {limit}/{limit} in {}s window; retry-after {}s. \
+             This is our INTERNAL limiter (lib/security.ts), not Apple's 429 cooldown.",
+            (window_ms as f64 / 1000.0).round(),
+            (retry_after_ms.max(0) as f64 / 1000.0).round(),
+        ));
+    }
+
+    /// `rateLimitBuckets.size` — keys the limiter is currently tracking,
+    /// for the diagnostics envelope's `rateLimiter` section.
+    pub fn tracked_keys(&self) -> usize {
+        self.buckets.lock().map(|b| b.len()).unwrap_or(0)
     }
 
     /// Port of `checkRateLimit`. Prunes timestamps older than the window,
@@ -67,7 +98,12 @@ impl RateLimiter {
         }
 
         if bucket.timestamps.len() as i64 >= limit {
+            super::diag::RATE_LIMIT_DENIALS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let retry_after_ms = bucket.timestamps[0] + window_ms - now;
+            // Node warns on every deny, throttled to one per key per
+            // second so a tight retry loop cannot drown the log. The ring
+            // behind `log_warn` is what `/api/diagnostics/errors` serves.
+            self.warn_denied(key, limit, window_ms, retry_after_ms, now);
             return Verdict {
                 allowed: false,
                 remaining: 0,

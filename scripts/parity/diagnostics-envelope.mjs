@@ -235,6 +235,51 @@ const TOP_LEVEL_KEYS = [
 ];
 
 /**
+ * `GET /api/diagnostics/errors`: `{ entries: [{at, level, message,
+ * truncated}], capacity }`, newest first. Its contents are per-process by
+ * definition, so this is the whole contract.
+ */
+export function validateErrorLog(value) {
+  const errors = [];
+  if (!isObj(value)) {
+    return [`$: expected object, got ${describe(value)}`];
+  }
+  check(errors, "capacity", value.capacity, "number");
+  if (!Array.isArray(value.entries)) {
+    errors.push(`entries: expected array, got ${describe(value.entries)}`);
+    return errors;
+  }
+  value.entries.forEach((e, i) => {
+    check(errors, `entries[${i}]`, e, {
+      at: "number",
+      level: ["error", "warn"],
+      message: "string",
+      truncated: "boolean",
+    });
+  });
+  for (let i = 1; i < value.entries.length; i += 1) {
+    if (value.entries[i - 1]?.at < value.entries[i]?.at) {
+      errors.push(`entries[${i}]: not newest-first`);
+      break;
+    }
+  }
+  if (
+    typeof value.capacity === "number" &&
+    value.entries.length > value.capacity
+  ) {
+    errors.push(
+      `entries: ${value.entries.length} entries exceeds capacity ${value.capacity}`
+    );
+  }
+  for (const key of Object.keys(value)) {
+    if (!["entries", "capacity"].includes(key)) {
+      errors.push(`${key}: unexpected top-level key`);
+    }
+  }
+  return errors;
+}
+
+/**
  * Validate one envelope. Returns `[]` when it conforms; otherwise one
  * message per problem, dotted-path first.
  */
