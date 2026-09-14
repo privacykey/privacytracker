@@ -95,6 +95,7 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.nav.notification_bell",
   "flag.nav.task_center_trigger",
   "flag.nav.mobile_drawer",
+  "flag.nav.device_scope",
 
   // HomeView sections
   "flag.dashboard.focus_strip",

@@ -11,6 +11,7 @@ import {
   sortPrivacyTypesForDisplay,
 } from "../../lib/privacy-meta";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import InfoTooltip from "./InfoTooltip";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
@@ -47,6 +48,7 @@ export default function PrivacyGroupedView({
    */
   initialData?: PrivacyGroup[];
 }) {
+  const { ready: scopeReady, scopeParam } = useDeviceScope();
   const tMap = useTranslations("privacy_map");
   const tError = useTranslations("loader_error");
   const [search, setSearch] = useState("");
@@ -61,8 +63,14 @@ export default function PrivacyGroupedView({
   );
 
   useEffect(() => {
+    // Held until the device scope lands, then re-fetched whenever it
+    // changes — this page describes a set of apps, and which apps it
+    // describes is exactly what the scope decides.
+    if (!scopeReady) {
+      return;
+    }
     let live = true;
-    fetch("/api/apps?view=grouped")
+    fetch(withScopeParam("/api/apps?view=grouped", scopeParam))
       .then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
       )
@@ -81,7 +89,7 @@ export default function PrivacyGroupedView({
     return () => {
       live = false;
     };
-  }, []);
+  }, [scopeReady, scopeParam]);
 
   // If the user landed here via a deep-link like
   // `/dashboard/privacy#cat-DATA_LINKED_TO_YOU-USER_CONTENT` we capture both

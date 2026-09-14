@@ -80,7 +80,8 @@
       "body_after": "模式开放给",
       "body_after_audience": "受众。你可以在此完善判断并导出，由对方在他们自己的应用中执行。",
       "switch_link": "在「设置 → 你的关注重点」中切换受众",
-      "switch_suffix": "（如果这是你自己的设备）。"
+      "switch_suffix": "（如果这是你自己的设备）。",
+      "device_hint": "也可以在页面顶部的设备菜单中选择你正在协助的那个人的设备 — 当设备归属与你的当前设置一致时，即可执行移除。如果该设备尚未记录归属，请先在「设置 → 设备」中设置。"
     },
     "stepper_aria": "向导步骤",
     "step_labels": {
@@ -235,7 +236,15 @@
       "gate_denied_generic": "安全检查拒绝了本次操作，未删除任何应用。",
       "gate_unreachable": "无法连接安全检查服务，因此未删除任何应用。请确认 privacytracker 本地服务正在运行，然后重试。",
       "checking_safety": "正在检查安全状态…",
-      "record_failures": "{count, plural, one {# 项移除操作} other {# 项移除操作}}未能写入活动日志 — 应用仍已处理，但本次运行的审计记录不完整。"
+      "record_failures": "{count, plural, one {# 项移除操作} other {# 项移除操作}}未能写入活动日志 — 应用仍已处理，但本次运行的审计记录不完整。",
+      "gate_denied_audience_scoped": "安全检查拒绝了本次操作，因此未删除任何内容：你正在查看{scope}，而仅当焦点设置为「只有我」时才能移除应用。",
+      "gate_denied_device_owner": "安全检查拒绝了本次操作，因此未删除任何内容：{device}属于{owner}，而你当前的设置是{mode}。可在顶部的设备菜单中切换，或选择其他设备。",
+      "gate_denied_device_owner_unnamed": "安全检查拒绝了本次操作，因此未删除任何内容：该设备属于他人，而你当前的设置是{mode}。可在顶部的设备菜单中切换，或选择其他设备。",
+      "gate_mode_self": "管理自己的应用",
+      "gate_mode_loved_one": "帮助他人",
+      "gate_mode_guardian": "照看孩子的设备",
+      "gate_denied_permission": "安全检查拒绝了本次操作，因此未删除任何内容：{device}属于{owner}，而你尚未确认已获得对方许可从其设备移除应用。可在「设置 → 设备」中确认。",
+      "gate_denied_permission_unnamed": "安全检查拒绝了本次操作，因此未删除任何内容：该设备属于他人，而你尚未确认已获得对方许可从其设备移除应用。可在「设置 → 设备」中确认。"
     },
     "saved_notes": {
       "heading": "你的备注",
@@ -797,7 +806,18 @@
       "summary_chip_name": "名称/手动匹配 {count} 个",
       "summary_chip_pending": "待处理 {count} 个",
       "summary_chip_skipped": "已跳过 {count} 个",
-      "summary_chip_unavailable": "不可用 {count} 个"
+      "summary_chip_unavailable": "不可用 {count} 个",
+      "owner_heading": "这是谁的设备？",
+      "owner_help": "这决定应用如何对其分组，以及之后允许你对它做什么。",
+      "owner_mine": "我自己的",
+      "owner_helping": "我正在帮助的人",
+      "owner_child": "我照看的孩子",
+      "owner_name_label": "对方的名字（可选）",
+      "owner_name_placeholder": "例如：妈妈、小乐",
+      "owner_ack_helping": "我已获得此人的许可，可以查看其设备上的应用，并在我们决定后移除其中的应用。",
+      "owner_ack_child": "我对这个孩子及其设备负责。",
+      "owner_ack_why": "在应用从对方设备移除任何内容之前，你需要先确认这一点。确认时间会被记录。",
+      "owner_ack_required": "请勾选上方选项以继续。"
     },
     "profile_setup": {
       "back_to_goals": "返回你的用途",
@@ -1574,7 +1594,26 @@
       "subtitle": "点击设备可管理或重新同步。",
       "aria": "该应用已安装的设备",
       "manage_link": "管理设备 →"
-    }
+    },
+    "owner_meta": "{owner}",
+    "owner_set": "设置归属",
+    "owner_edit": "归属",
+    "owner_name_label": "这是谁的设备？",
+    "owner_name_placeholder": "例如：妈妈、小乐，或留空",
+    "owner_audience_label": "查看这台设备时，我是在…",
+    "owner_audience_unset": "不指定",
+    "owner_audience_option": {
+      "self": "管理我自己的应用",
+      "loved_one": "帮助他人",
+      "guardian": "照看孩子的设备"
+    },
+    "owner_audience_help": "用于对设备菜单分组，并在你切换到此设备时提示匹配的视图。不会自动更改任何设置。",
+    "owner_save": "保存",
+    "owner_cancel": "取消",
+    "owner_ack_helping": "我已获得此人的许可，可以查看其设备上的应用，并在我们决定后移除其中的应用。",
+    "owner_ack_child": "我对这个孩子及其设备负责。",
+    "owner_ack_why": "在应用从对方设备移除任何内容之前必须先确认。确认时间会被记录。",
+    "owner_ack_confirmed_meta": "已确认许可"
   },
   "device_sync": {
     "diff_title": "自上次以来变化了什么？",
@@ -3145,11 +3184,6 @@
     "clear_a11y_aria": "清除无障碍筛选",
     "clear_device_title": "清除设备筛选",
     "clear_device_aria": "清除设备筛选",
-    "device_filter_aria": "按设备筛选应用",
-    "device_filter_label": "设备",
-    "device_filter_all": "全部设备 · {count}",
-    "device_filter_unattached": "未关联 · {count}",
-    "device_filter_unattached_short": "未关联应用",
     "profile_mismatches_label": "档案不一致",
     "has_features_title": "至少声明一项无障碍功能的应用。",
     "has_features_label": "有功能",
@@ -3287,7 +3321,10 @@
     "change_dot_privacy_title": "检测到 {count, plural, one {# 处隐私标签变化} other {# 处隐私标签变化}}",
     "change_dot_accessibility_title": "检测到 {count, plural, one {# 处无障碍标签变化} other {# 处无障碍标签变化}}",
     "change_dot_both_title": "检测到 {count, plural, one {# 处隐私与无障碍标签变化} other {# 处隐私与无障碍标签变化}}",
-    "change_dot_generic_title": "检测到 {count, plural, one {# 处权限变化} other {# 处权限变化}}"
+    "change_dot_generic_title": "检测到 {count, plural, one {# 处权限变化} other {# 处权限变化}}",
+    "sync_all_scoped": "同步{scope}",
+    "task_sync_all_scoped_title": "正在同步{scope}上的应用",
+    "sync_all_scoped_title": "当前仅载入{scope}上的应用，因此只会同步这些应用。"
   },
   "review_queue": {
     "mode_toggle": {
@@ -3534,6 +3571,39 @@
     "stats_updated": "更新 {count} 个",
     "stats_separator": " · ",
     "dismiss_aria": "忽略"
+  },
+  "device_scope": {
+    "trigger_aria": "正在显示以下设备的应用：{scope}。可更改查看的设备。",
+    "menu_aria": "选择要显示的设备",
+    "help": "选择你要查看谁的应用。此设置在全局生效 — 仪表板、统计和复查清单都会随之变化。",
+    "all_label": "全部设备",
+    "all_sub": "{count, plural, =0 {你导入的全部内容} one {# 台设备，以及之后新增的设备} other {# 台设备，以及之后新增的设备}}",
+    "multi_label": "{count, plural, one {已选 # 项} other {已选 # 项}}",
+    "device_sub": "{model} · {count, plural, one {# 个应用} other {# 个应用}}",
+    "device_sub_no_model": "{count, plural, one {# 个应用} other {# 个应用}}",
+    "unattached_label": "未关联设备",
+    "unattached_sub": "手动添加或从 CSV 导入的应用",
+    "banner_scoped": "你正在查看{scope}。",
+    "banner_show_all": "显示全部设备",
+    "grid_filtering_by": "正在显示",
+    "owner_unassigned": "未设置归属",
+    "audience_prompt": "这是他人的设备 — 但你当前的设置是{current}。",
+    "audience_prompt_named": "这是{owner}的设备 — 但你当前的设置是{current}。",
+    "audience_switch_cta": "切换到{mode}",
+    "audience_switching": "正在切换…",
+    "audience_keep_cta": "保持当前设置",
+    "audience_name": {
+      "self": "管理自己的应用",
+      "loved_one": "帮助他人",
+      "guardian": "照看孩子的设备"
+    },
+    "export_note": "导出包含所有设备，而不仅仅是{scope}。",
+    "export_note_bundle": "此文件包含所有设备，而不仅仅是{scope}。",
+    "audience_why": {
+      "loved_one": "切换到「帮助他人」会开启把你的发现交给对方的工具 — 可分享的清单包、可打印的建议，以及每个应用的备注 — 并且是从对方设备移除应用的前提。",
+      "guardian": "切换到「照看孩子的设备」会为每个应用加上年龄分级和通俗易懂的安全摘要，隐藏进阶工具，并且是从孩子设备移除应用的前提。",
+      "self": "切换到「管理自己的应用」会收起分享工具，并且是从这台设备移除应用的前提。"
+    }
   },
   "device_connect_toast": {
     "no_name": "iOS 设备",

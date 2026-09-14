@@ -18,6 +18,25 @@
 import { randomUUID } from "node:crypto";
 import db from "./db";
 
+/**
+ * Which focus audience a device's owner corresponds to. Deliberately the
+ * same vocabulary as `Audience` in lib/feature-flag-rules.ts — the whole
+ * point of recording it is that the app can notice the device you are
+ * looking at disagrees with the focus you are working under.
+ *
+ * Typed structurally rather than imported so this server module doesn't
+ * pull the flag-rules graph in; `isDeviceOwnerAudience` is the guard.
+ */
+export type DeviceOwnerAudience = "self" | "loved_one" | "guardian";
+
+const OWNER_AUDIENCES: readonly string[] = ["self", "loved_one", "guardian"];
+
+export function isDeviceOwnerAudience(
+  value: unknown
+): value is DeviceOwnerAudience {
+  return typeof value === "string" && OWNER_AUDIENCES.includes(value);
+}
+
 export interface Device {
   createdAt: number;
   deviceClass: string | null;
@@ -28,6 +47,21 @@ export interface Device {
   lastSyncedAt: number;
   model: string | null;
   name: string;
+  /**
+   * Who this device belongs to. Both NULL until the user says so — we
+   * never infer ownership from a device name, because a wrong guess
+   * mislabels a real person's phone and can prompt an audience switch
+   * for no reason.
+   */
+  ownerAudience: DeviceOwnerAudience | null;
+  ownerLabel: string | null;
+  /**
+   * When the user attested they have the owner's permission to view
+   * and act on this device. Null until explicitly given, and only ever
+   * meaningful for a device owned by someone else — the uninstall gate
+   * requires it before acting on any device whose owner is not 'self'.
+   */
+  permissionAcknowledgedAt: number | null;
 }
 
 interface DeviceRow {
@@ -40,6 +74,9 @@ interface DeviceRow {
   last_synced_at: number;
   model: string | null;
   name: string;
+  owner_audience: string | null;
+  owner_label: string | null;
+  permission_acknowledged_at: number | null;
 }
 
 function rowToDevice(row: DeviceRow): Device {
@@ -53,6 +90,14 @@ function rowToDevice(row: DeviceRow): Device {
     createdAt: row.created_at,
     lastSyncedAt: row.last_synced_at,
     isUnknownPlaceholder: row.is_unknown_placeholder === 1,
+    ownerLabel: row.owner_label?.trim() || null,
+    // An unrecognised stored value reads back as null rather than being
+    // passed through: a junk audience would flow into the focus-switch
+    // prompt and offer to set a focus that doesn't exist.
+    ownerAudience: isDeviceOwnerAudience(row.owner_audience)
+      ? row.owner_audience
+      : null,
+    permissionAcknowledgedAt: row.permission_acknowledged_at ?? null,
   };
 }
 
@@ -62,6 +107,12 @@ export interface CreateDeviceInput {
   iosVersion?: string | null;
   model?: string | null;
   name: string;
+  /** Whose device this is, if the user said at import time. */
+  ownerAudience?: DeviceOwnerAudience | null;
+  ownerLabel?: string | null;
+  /** The user's attestation that they have the owner's permission.
+   *  Ignored (never stored) when the owner is 'self' or unset. */
+  permissionAcknowledged?: boolean;
 }
 
 /** Create a device row. Returns the persisted Device. */
@@ -72,10 +123,14 @@ export function createDevice(input: CreateDeviceInput): Device {
   }
   const id = randomUUID();
   const now = Date.now();
+  const ownerAudience = isDeviceOwnerAudience(input.ownerAudience)
+    ? input.ownerAudience
+    : null;
   db.prepare(`
     INSERT INTO devices (id, name, ecid, model, ios_version, device_class,
-                         created_at, last_synced_at, is_unknown_placeholder)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                         created_at, last_synced_at, is_unknown_placeholder,
+                         owner_label, owner_audience, permission_acknowledged_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
   `).run(
     id,
     name,
@@ -84,7 +139,13 @@ export function createDevice(input: CreateDeviceInput): Device {
     input.iosVersion ?? null,
     input.deviceClass ?? null,
     now,
-    now
+    now,
+    input.ownerLabel?.trim() || null,
+    ownerAudience,
+    // An attestation only makes sense for someone else's device.
+    ownerAudience && ownerAudience !== "self" && input.permissionAcknowledged
+      ? now
+      : null
   );
   return getDeviceById(id)!;
 }
@@ -157,6 +218,48 @@ export function getDeviceById(id: string): Device | null {
     | DeviceRow
     | undefined;
   return row ? rowToDevice(row) : null;
+}
+
+/**
+ * Look up a device by ECID, tolerating spelling differences.
+ *
+ * cfgutil prints ECIDs `0x`-prefixed and mixed-case, and what lands in
+ * `devices.ecid` is whatever spelling the import happened to see, while
+ * callers may pass any other. A plain `WHERE ecid = ?` therefore misses
+ * real matches — which matters here because the uninstall gate uses this
+ * to decide whose device is being acted on, and a missed match silently
+ * downgrades it to the older, coarser rule.
+ *
+ * Compared in JS rather than with SQL string surgery: the normalisation
+ * lives in one place (`normalizeEcid`, lib/device-actions.ts, mirrored
+ * here to avoid a server-only import), and a family install has a
+ * handful of devices, not thousands.
+ */
+export function getDeviceByEcid(ecid: string): Device | null {
+  const target = normalizeEcidForMatch(ecid);
+  if (!target) {
+    return null;
+  }
+  const rows = db
+    .prepare("SELECT * FROM devices WHERE ecid IS NOT NULL AND ecid != ''")
+    .all() as DeviceRow[];
+  for (const row of rows) {
+    if (row.ecid && normalizeEcidForMatch(row.ecid) === target) {
+      return rowToDevice(row);
+    }
+  }
+  return null;
+}
+
+/** Strip an `0x` prefix and upper-case the hex body. Deliberately the
+ *  same shape as `normalizeEcid` in lib/device-actions.ts; that module
+ *  is `server-only` and this one is imported more widely. */
+function normalizeEcidForMatch(value: string): string | null {
+  const body = value.trim().replace(/^0[xX]/, "");
+  if (!/^[A-Fa-f0-9]{8,24}$/.test(body)) {
+    return null;
+  }
+  return body.toUpperCase();
 }
 
 export function getDevicesForApp(appId: string): Device[] {
@@ -256,6 +359,72 @@ export function getDeviceEcidsForApps(
     }
   }
   return map;
+}
+
+/**
+ * Set (or clear) who a device belongs to.
+ *
+ * Both fields are independently clearable with `null`, and omitting a
+ * field leaves it alone — the Settings UI edits the label and the
+ * audience in one form, but the audience-switch prompt only ever needs
+ * to touch the audience.
+ *
+ * Note this never touches the device's NAME. "Mum's iPad" as a name and
+ * "Mum" as an owner are different facts: several devices can share one
+ * owner, which is exactly what makes grouping the picker worthwhile.
+ */
+export function setDeviceOwner(
+  id: string,
+  owner: {
+    audience?: DeviceOwnerAudience | null;
+    label?: string | null;
+    /** true stamps now; false clears. Omit to leave alone. */
+    permissionAcknowledged?: boolean;
+  }
+): void {
+  const updates: string[] = [];
+  const values: (string | number | null)[] = [];
+  if (owner.label !== undefined) {
+    updates.push("owner_label = ?");
+    values.push(owner.label?.trim() || null);
+  }
+  const nextAudience =
+    owner.audience === undefined
+      ? undefined
+      : isDeviceOwnerAudience(owner.audience)
+        ? owner.audience
+        : null;
+  if (nextAudience !== undefined) {
+    updates.push("owner_audience = ?");
+    values.push(nextAudience);
+  }
+  // The attestation is about someone ELSE's device. Setting the owner
+  // to self, or clearing it, makes a stored acknowledgement meaningless
+  // — so it goes too. Otherwise handing the device back to a relative
+  // later would inherit a stale "yes" from a previous owner.
+  const resolvedAudience =
+    nextAudience === undefined
+      ? (getDeviceById(id)?.ownerAudience ?? null)
+      : nextAudience;
+  const ownerBecameSelfOrNone =
+    nextAudience !== undefined && (!nextAudience || nextAudience === "self");
+  if (owner.permissionAcknowledged !== undefined || ownerBecameSelfOrNone) {
+    const stamp =
+      owner.permissionAcknowledged === true &&
+      resolvedAudience &&
+      resolvedAudience !== "self"
+        ? Date.now()
+        : null;
+    updates.push("permission_acknowledged_at = ?");
+    values.push(stamp);
+  }
+  if (updates.length === 0) {
+    return;
+  }
+  db.prepare(`UPDATE devices SET ${updates.join(", ")} WHERE id = ?`).run(
+    ...values,
+    id
+  );
 }
 
 export function renameDevice(id: string, name: string): void {

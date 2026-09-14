@@ -7,6 +7,12 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type AgeBandKey, compareRatingToBand } from "../../lib/age-rating";
 import {
+  appMatchesScope,
+  describeScope,
+  parseScopeParam,
+  SCOPE_ALL,
+} from "../../lib/device-scope";
+import {
   localiseBadgeDescription,
   localiseBadgeLabel,
 } from "../../lib/i18n-meta";
@@ -22,6 +28,11 @@ import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import type { VerdictValue } from "../../lib/verdict-types";
 import BulkSelectBar from "./BulkSelectBar";
+import {
+  useDeviceScope,
+  useScopeLabel,
+  withScopeParam,
+} from "./DeviceScopeProvider";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
@@ -224,17 +235,6 @@ export interface AppGridDevice {
   name: string;
 }
 
-/** Validate a `?device=<id>` URL param against the supplied list. */
-function parseDeviceParam(
-  raw: string | null,
-  devices: readonly AppGridDevice[]
-): string | null {
-  if (!raw) {
-    return null;
-  }
-  return devices.some((d) => d.id === raw) ? raw : null;
-}
-
 interface AppGridProps {
   /**
    * `appId → deviceId[]` lookup. Apps with no junction-table rows are
@@ -252,9 +252,12 @@ interface AppGridProps {
    */
   childAgeBand?: AgeBandKey | null;
   /**
-   * Devices the user has connected — drives the device-scope dropdown.
-   * Sorted by recency in the server query so the most-recently-synced
-   * device sits at the top of the menu. Empty array hides the filter.
+   * Devices the user has connected. The grid no longer owns a device
+   * dropdown — the nav's DeviceScopePicker does, reading the same list
+   * from DeviceScopeProvider — so this is now only a fallback source of
+   * device NAMES for the "Showing <device>" status chip, used when the
+   * provider isn't mounted (Storybook, isolated tests). Prefer the
+   * provider; this prop is not the source of truth.
    */
   devices?: AppGridDevice[];
   /**
@@ -376,6 +379,9 @@ export default function AppGrid({
   // per-row card-body copy (developer chip, last-changed relative
   // timestamps) is still English; tracked under the broader sweep.
   const tGrid = useTranslations("app_grid");
+  // Scope copy is shared with the nav picker, so it lives in its own
+  // namespace rather than being duplicated under `app_grid`.
+  const tScope = useTranslations("device_scope");
   const tBadge = useTranslations("profile_badge");
   const tRisk = useTranslations("risk");
   // Manual-source short labels (Web app / TestFlight / Personal /
@@ -471,7 +477,10 @@ export default function AppGrid({
       try {
         for (;;) {
           const res = await fetch(
-            `/api/apps?limit=${FETCH_PAGE_SIZE}&offset=${offset}&meta=grid`
+            withScopeParam(
+              `/api/apps?limit=${FETCH_PAGE_SIZE}&offset=${offset}&meta=grid`,
+              scopeParamRef.current
+            )
           );
           if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
@@ -576,18 +585,26 @@ export default function AppGrid({
     }
     return parseAgeParam(searchParams?.get("age") ?? null);
   }, [searchParams, ageFeatureOn]);
-  // URL-backed device-scope filter. Validates against the supplied device
-  // list so a stale bookmark to a deleted device falls back to "all".
-  // Also accepts the sentinel `'unattached'` for apps with no device
-  // links (legacy manual entries, pre-junction installs) so users can
-  // surface or hide those specifically.
-  const deviceFilter = useMemo<string | null>(() => {
-    const raw = searchParams?.get("device") ?? null;
-    if (raw === "unattached") {
-      return "unattached";
-    }
-    return parseDeviceParam(raw, devices);
-  }, [searchParams, devices]);
+  // Device scope is GLOBAL now — owned by the nav picker and shared via
+  // DeviceScopeProvider, so the dashboard, stats and the review queue
+  // agree with the grid about whose apps are on screen. The grid used to
+  // own a `?device=<id>` URL filter and its own toolbar dropdown; the
+  // dropdown is gone and the param is handled as a deep link below.
+  const {
+    devices: scopeDevices,
+    scope,
+    scopeParam,
+    setScope,
+  } = useDeviceScope();
+  // Read through a ref inside the paging loops: they are long-lived async
+  // callbacks, and capturing `scopeParam` in their closure would let a
+  // loop started under one scope keep requesting it after the user has
+  // switched. The ref means each iteration asks for the current scope.
+  const scopeParamRef = useRef(scopeParam);
+  scopeParamRef.current = scopeParam;
+  // Provider first, prop as the fallback (Storybook / isolated tests
+  // render AppGrid without the chrome that mounts the provider).
+  const scopeDeviceList = scopeDevices.length > 0 ? scopeDevices : devices;
   // URL-backed sort order. Matches the `?risk=` / `?mismatch=` pattern so
   // navigating into an app and using browser back restores the user's
   // chosen sort instead of snapping to the default. Unknown / missing
@@ -745,21 +762,50 @@ export default function AppGrid({
     [router, pathname, searchParams]
   );
 
-  /** URL writer for the device-scope dropdown. Accepts a device id, the
-   *  string `'unattached'` (apps with no junction rows), or null to clear. */
-  const setDeviceFilter = useCallback(
-    (next: string | null) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? "");
-      if (next) {
-        params.set("device", next);
-      } else {
-        params.delete("device");
-      }
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [router, pathname, searchParams]
-  );
+  /**
+   * Back-compat for `?device=<id>` deep links, which shipped before the
+   * scope was global: adopt the param into the shared scope, then strip
+   * it from the URL.
+   *
+   * Adopting rather than reading-through matters. Two mechanisms both
+   * claiming to control the same filter is how you end up with a nav
+   * pill and a grid that disagree — the param now names a starting
+   * scope, and the picker owns it from that moment on. Stripping the
+   * param is what stops a browser Back into this URL re-applying a scope
+   * the user has since changed.
+   *
+   * Extended to accept a comma-separated list, so a link can hand over a
+   * multi-device scope. An id that no longer resolves parses to null and
+   * is simply dropped — a bookmark to a deleted device shows the fleet
+   * rather than an empty grid.
+   */
+  const deviceParamAdopted = useRef(false);
+  useEffect(() => {
+    if (deviceParamAdopted.current) {
+      return;
+    }
+    const raw = searchParams?.get("device") ?? null;
+    if (!raw) {
+      return;
+    }
+    // Hold until the provider's device list lands, otherwise every id in
+    // the param reconciles against an empty list and resolves to null.
+    if (scopeDeviceList.length === 0) {
+      return;
+    }
+    deviceParamAdopted.current = true;
+    const parsed = parseScopeParam(
+      raw,
+      scopeDeviceList.map((d) => d.id)
+    );
+    if (parsed) {
+      setScope(parsed);
+    }
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.delete("device");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [searchParams, scopeDeviceList, setScope, router, pathname]);
 
   // Whether the user has an active privacy profile (i.e. we received any
   // badge data from the server). Drives visibility of the mismatch filter —
@@ -799,54 +845,36 @@ export default function AppGrid({
       if (mismatchOnly && (badges[a.id]?.count ?? 0) === 0) {
         return false;
       }
-      if (deviceFilter) {
-        const linkedDevices = deviceLinks[a.id] ?? [];
-        if (deviceFilter === "unattached") {
-          if (linkedDevices.length > 0) {
-            return false;
-          }
-        } else if (!linkedDevices.includes(deviceFilter)) {
-          return false;
-        }
+      if (!appMatchesScope(scope, deviceLinks[a.id])) {
+        return false;
       }
       return true;
     });
-  }, [apps, filter, mismatchOnly, badges, deviceFilter, deviceLinks]);
+  }, [apps, filter, mismatchOnly, badges, scope, deviceLinks]);
 
-  // Per-device counts for the dropdown labels. Counting against the full
-  // `apps` list (not `prefilteredApps`) so the menu reflects the underlying
-  // device totals rather than what's currently filtered — same model as
-  // the risk-tab counts.
-  const deviceCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    let unattached = 0;
-    for (const a of apps) {
-      const links = deviceLinks[a.id] ?? [];
-      if (links.length === 0) {
-        unattached += 1;
-      } else {
-        for (const id of links) {
-          counts.set(id, (counts.get(id) ?? 0) + 1);
-        }
-      }
-    }
-    return { perDevice: counts, unattached };
-  }, [apps, deviceLinks]);
-
-  // Show the dropdown whenever there's at least one device row. We
-  // previously hid it for single-device users on the theory "a one-item
-  // dropdown is noise" — but in practice users who recently imported
-  // expected to see *which* device the grid was showing, and the silent
-  // hide made them think the feature was broken. The cost of an always-
-  // present menu is one extra row in the toolbar; cheap.
-  const showDeviceFilter = useMemo(() => {
-    if (!f.filterDevice) {
-      return false;
-    }
-    const knownDeviceCount = devices.length;
-    const hasUnattached = deviceCounts.unattached > 0;
-    return knownDeviceCount + (hasUnattached ? 1 : 0) >= 1;
-  }, [f.filterDevice, devices, deviceCounts]);
+  // What the active scope is, for the status chip. The per-device app
+  // counts that used to label the dropdown options now come from the
+  // server with the picker's device list (`/api/device-scope`), counted
+  // across the whole fleet rather than only the apps this grid has
+  // hydrated — which is the honest number for a control that claims to
+  // scope the entire app.
+  const scopeDescription = useMemo(
+    () => describeScope(scope, scopeDeviceList),
+    [scope, scopeDeviceList]
+  );
+  /**
+   * Human name for the active scope, or null when unrestricted.
+   *
+   * "Sync All" operates on a scoped fleet — the server pages only
+   * in-scope apps, so `apps` never holds the others — and a button that
+   * says "All" while touching a third of the library is a lie the user
+   * can't see. Bulk actions interpolate this so the control names what
+   * it will actually act on.
+   *
+   * Shared with the export notices (see useScopeLabel), which need the
+   * same phrase for the opposite reason: to admit they ignore it.
+   */
+  const scopeLabel = useScopeLabel();
 
   // Per-level counts against the prefiltered subset — drives the badge on
   // each risk-filter tab.
@@ -910,7 +938,10 @@ export default function AppGrid({
     let serverTotal: number | null = null;
     for (;;) {
       const res = await fetch(
-        `/api/apps?limit=${FETCH_PAGE_SIZE}&offset=${offset}&meta=grid`
+        withScopeParam(
+          `/api/apps?limit=${FETCH_PAGE_SIZE}&offset=${offset}&meta=grid`,
+          scopeParamRef.current
+        )
       );
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
@@ -1009,7 +1040,9 @@ export default function AppGrid({
     const controller = new AbortController();
     const title =
       scope === "all"
-        ? tGrid("task_sync_all_title")
+        ? scopeLabel
+          ? tGrid("task_sync_all_scoped_title", { scope: scopeLabel })
+          : tGrid("task_sync_all_title")
         : tGrid("task_sync_filtered_title");
     const successMsg =
       scope === "all"
@@ -1105,22 +1138,24 @@ export default function AppGrid({
     return "fresh";
   };
 
-  const sorted = [...apps]
-    .filter((a) => {
-      const q = filter.trim().toLowerCase();
-      if (!q) {
-        return true;
-      }
-      if (a.name.toLowerCase().includes(q)) {
-        return true;
-      }
-      if (a.developer?.toLowerCase().includes(q)) {
-        return true;
-      }
-      return false;
-    })
+  /**
+   * The rendered card list.
+   *
+   * Derived from `prefilteredApps`, NOT from `apps` — and that is a
+   * bug fix, not a refactor. The two lists had drifted: the counts
+   * (risk tabs, "N of M") came from `prefilteredApps`, which applies
+   * search / mismatch / device, while the cards came straight off
+   * `apps` with their own re-implementation of search and mismatch and
+   * NO device filter at all. Picking a device therefore changed every
+   * number on the page and none of the cards.
+   *
+   * Building on `prefilteredApps` means search, mismatch and device are
+   * applied exactly once, in one place, and counts can no longer
+   * disagree with what is on screen. What stays here is the part
+   * `prefilteredApps` doesn't do: risk, accessibility, age, and sort.
+   */
+  const sorted = [...prefilteredApps]
     .filter((a) => (riskFilter ? computeRiskLevel(a) === riskFilter : true))
-    .filter((a) => (mismatchOnly ? (badges[a.id]?.count ?? 0) > 0 : true))
     .filter((a) => {
       // Accessibility filter is only meaningful for apps we've actually
       // evaluated — `null` rows predate the scraper and shouldn't silently
@@ -1171,6 +1206,14 @@ export default function AppGrid({
   // the current sort mode, except for 'synced' which maps naturally to
   // `updatedAt`.
   const filteredManualApps = useMemo(() => {
+    // Custom apps live in their own table and never carry an
+    // `app_devices` row, which makes them unattached by construction.
+    // A scope that excludes the unattached bucket has to exclude them
+    // too — otherwise narrowing to a relative's iPad still lists the
+    // user's own hand-added entries.
+    if (scope.mode === "subset" && !scope.includeUnattached) {
+      return [];
+    }
     if (riskFilter) {
       return [];
     }
@@ -1216,10 +1259,20 @@ export default function AppGrid({
     accessibilityFilter,
     ageFilter,
     sort,
+    scope,
   ]);
 
   const totalShown = sorted.length + filteredManualApps.length;
-  const totalTracked = total + manualApps.length;
+  /**
+   * The denominator in "showing N of M" and the "M apps tracked"
+   * headline. `total` already comes from the server scoped, so the only
+   * thing to correct here is the custom-app half: a scope that excludes
+   * the unattached bucket excludes custom apps entirely, and counting
+   * them would advertise apps this view will never show.
+   */
+  const manualInScope =
+    scope.mode === "subset" && !scope.includeUnattached ? 0 : manualApps.length;
+  const totalTracked = total + manualInScope;
   const filterActive =
     Boolean(riskFilter) ||
     mismatchOnly ||
@@ -1487,12 +1540,18 @@ export default function AppGrid({
               title={
                 fleetIncomplete && apps.length > 0
                   ? tGrid("bulk_wait_loading_title")
-                  : undefined
+                  : scopeLabel
+                    ? tGrid("sync_all_scoped_title", { scope: scopeLabel })
+                    : undefined
               }
               type="button"
             >
               {syncingAll ? <span className="spinner" /> : "↻"}
-              {syncingAll ? tGrid("syncing") : tGrid("sync_all")}
+              {syncingAll
+                ? tGrid("syncing")
+                : scopeLabel
+                  ? tGrid("sync_all_scoped", { scope: scopeLabel })
+                  : tGrid("sync_all")}
             </button>
           )}
           {f.actionsCustomAppsNav && (
@@ -1686,50 +1745,13 @@ export default function AppGrid({
             })}
           </div>
         )}
-        {/* Device-scope dropdown. Auto-hidden by `showDeviceFilter` when
-            the user only has one device (or only unattached apps) — a
-            single-choice dropdown is just noise. Each option carries
-            its app-count so users see how much each device contributes
-            before clicking. The "Unattached" option is gated on there
-            actually being any unattached apps. */}
-        {showDeviceFilter && (
-          <label
-            className="device-filter-wrap"
-            data-flag-target="flag.appgrid.filter.device"
-          >
-            <span className="device-filter-label">
-              {tGrid("device_filter_label")}
-            </span>
-            <select
-              aria-label={tGrid("device_filter_aria")}
-              className="device-filter-select"
-              onChange={(event) => {
-                const value = event.target.value;
-                setDeviceFilter(value === "" ? null : value);
-              }}
-              value={deviceFilter ?? ""}
-            >
-              <option value="">
-                {tGrid("device_filter_all", { count: apps.length })}
-              </option>
-              {devices.map((d) => {
-                const count = deviceCounts.perDevice.get(d.id) ?? 0;
-                return (
-                  <option key={d.id} value={d.id}>
-                    {d.name} · {count}
-                  </option>
-                );
-              })}
-              {deviceCounts.unattached > 0 && (
-                <option value="unattached">
-                  {tGrid("device_filter_unattached", {
-                    count: deviceCounts.unattached,
-                  })}
-                </option>
-              )}
-            </select>
-          </label>
-        )}
+        {/* The device dropdown that used to live here is gone. It was
+            single-select and only scoped this one page, which is what
+            let a user drift into the removal workflow without knowing
+            whose phone it applied to. The nav's DeviceScopePicker owns
+            the choice now — one control, multi-select, visible from
+            every surface. What stays here is the "Showing X" status
+            chip below, which reflects the scope and can clear it. */}
         {/* Privacy-profile filter — only visible once the user has set a
             profile and at least one app falls outside it. A single-purpose
             toggle rather than a radiogroup, so it can stack with the risk
@@ -1772,7 +1794,7 @@ export default function AppGrid({
           mismatchOnly ||
           accessibilityFilter ||
           ageFilter ||
-          deviceFilter) && (
+          (f.filterDevice && scopeDescription.kind !== "all")) && (
           <div className="active-filters-row" role="region">
             {riskFilter && (
               <div className={`filter-status filter-status-${riskFilter}`}>
@@ -1860,23 +1882,31 @@ export default function AppGrid({
                 </button>
               </div>
             )}
-            {deviceFilter && (
+            {/* Scope echo. The nav picker is the control; this is the
+                in-context reminder that the grid is showing a subset,
+                plus a one-click way out of it. Without it, a user who
+                set a scope on another page lands here on a short list
+                with no on-screen explanation. */}
+            {f.filterDevice && scopeDescription.kind !== "all" && (
               <div className="filter-status filter-status-device">
                 <span className="filter-status-text">
                   <span className="filter-status-label">
-                    {tGrid("filtering_by")}
+                    {tScope("grid_filtering_by")}
                   </span>
                   <strong>
-                    {deviceFilter === "unattached"
-                      ? tGrid("device_filter_unattached_short")
-                      : (devices.find((d) => d.id === deviceFilter)?.name ??
-                        deviceFilter)}
+                    {scopeDescription.kind === "single" && scopeDescription.name
+                      ? scopeDescription.name
+                      : scopeDescription.kind === "unattached"
+                        ? tScope("unattached_label")
+                        : tScope("multi_label", {
+                            count: scopeDescription.count,
+                          })}
                   </strong>
                 </span>
                 <button
                   aria-label={tGrid("clear_device_aria")}
                   className="filter-status-clear"
-                  onClick={() => setDeviceFilter(null)}
+                  onClick={() => setScope({ ...SCOPE_ALL })}
                   title={tGrid("clear_device_title")}
                   type="button"
                 >

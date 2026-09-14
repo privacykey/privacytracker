@@ -19,6 +19,7 @@ import PrivacySankey from "./charts/PrivacySankey";
 import PrivacyTimeline from "./charts/PrivacyTimeline";
 import SmallMultiples from "./charts/SmallMultiples";
 import InfoTooltip from "./InfoTooltip";
+import ScopeExportNote from "./ScopeExportNote";
 import Toast from "./Toast";
 
 function timeAgo(t: RelativeTranslator, ts: number): string {
@@ -440,6 +441,10 @@ export default function StatsView({
           >
             ⬇ Export JSON
           </a>
+          {/* This page's figures follow the device scope; these
+              downloads do not. Say so, rather than letting "3 Apps
+              Tracked" sit above a file containing ten. */}
+          <ScopeExportNote />
         </div>
       </div>
 

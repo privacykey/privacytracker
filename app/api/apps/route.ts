@@ -5,6 +5,8 @@ import { withApiTiming } from "../../../lib/api-timing";
 import { buildAppGridMeta } from "../../../lib/app-grid-meta";
 import { getChangelog } from "../../../lib/changelog";
 import db from "../../../lib/db";
+import { isScopeAll } from "../../../lib/device-scope";
+import { scopeFromRequest } from "../../../lib/device-scope-server";
 import { markImportItemsRemovedForApp } from "../../../lib/imports";
 import {
   countApps,
@@ -44,8 +46,16 @@ async function getAppsRoute(request: Request) {
     return NextResponse.json(appInfo);
   }
 
+  // `?devices=` narrows every read below to the apps on those devices.
+  // Opt-in, exactly like `?limit=`: a request without it gets the whole
+  // fleet, whatever the user last picked in the nav. The stored scope is
+  // a client preference and must never silently reshape a documented
+  // response — the client passes the param when it wants scoping.
+  const scope = scopeFromRequest(request.url);
+  const scoped = isScopeAll(scope) ? undefined : scope;
+
   if (view === "grouped") {
-    return NextResponse.json(getGroupedPrivacyView());
+    return NextResponse.json(getGroupedPrivacyView(scoped));
   }
 
   // Opt-in pagination: the presence of `limit` switches the response from
@@ -71,10 +81,15 @@ async function getAppsRoute(request: Request) {
         { status: 400 }
       );
     }
-    const apps = getAppsPage({ limit, offset }) as Array<{ id: string }>;
+    const apps = getAppsPage({ limit, offset, scope: scoped }) as Array<{
+      id: string;
+    }>;
     const body: Record<string, unknown> = {
       apps,
-      total: countApps(),
+      // Scoped total, so the grid's "loaded N of TOTAL" arithmetic — and
+      // the background-hydration loop that reads it — counts the same
+      // set the pages are drawn from.
+      total: countApps(scoped),
       limit,
       offset,
     };
@@ -88,7 +103,7 @@ async function getAppsRoute(request: Request) {
     return NextResponse.json(body);
   }
 
-  return NextResponse.json(getAllApps());
+  return NextResponse.json(getAllApps(scoped));
 }
 
 export const GET = withApiTiming("/api/apps", getAppsRoute);

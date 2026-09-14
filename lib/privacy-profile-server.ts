@@ -11,6 +11,8 @@
 // `-server.ts` filename convention plus db/fs imports to keep the module out
 // of the client bundle, mirroring `lib/preferences-server.ts`.
 import db from "./db";
+import type { DeviceScope } from "./device-scope";
+import { getScopedAppIds, scopeSqlClause } from "./device-scope-server";
 import {
   type AppMismatchSummary,
   type AppProfileBadge,
@@ -152,15 +154,20 @@ export function buildAllFootprints(
  * actually mismatch, sorted by totalGap desc. Callers that need "all apps,
  * even clean ones" can call computeAppMismatch() per app instead.
  */
-export function getMismatchedApps(): AppMismatchSummary[] {
+export function getMismatchedApps(scope?: DeviceScope): AppMismatchSummary[] {
   const profile = getPrivacyProfile();
   if (!profile) {
     return [];
   }
 
+  const fragment = scope ? scopeSqlClause(scope, "a") : null;
   const apps = db
-    .prepare("SELECT id, name, iconUrl, developer FROM apps")
-    .all() as Array<{
+    .prepare(
+      `SELECT a.id, a.name, a.iconUrl, a.developer FROM apps a${
+        fragment ? ` WHERE ${fragment.clause}` : ""
+      }`
+    )
+    .all(...(fragment?.params ?? [])) as Array<{
     id: string;
     name: string;
     iconUrl?: string;
@@ -200,15 +207,24 @@ export function computeAppMismatch(appId: string): ProfileMismatchResult {
 }
 
 /** Map of appId → mismatch count — lightweight accessor for list views / badges. */
-export function getMismatchCountsByApp(): Map<string, number> {
+export function getMismatchCountsByApp(
+  scope?: DeviceScope
+): Map<string, number> {
   const profile = getPrivacyProfile();
   if (!profile) {
     return new Map();
   }
 
+  // Filtered against the scope's id set rather than re-querying: the
+  // footprints are already built in memory here, so the id lookup is
+  // cheaper than a second pass over privacy_categories.
+  const allowed = scope ? getScopedAppIds(scope) : null;
   const footprints = buildAllFootprints();
   const out = new Map<string, number>();
   for (const [appId, footprint] of footprints) {
+    if (allowed && !allowed.has(appId)) {
+      continue;
+    }
     const result = computeProfileMismatch(profile, footprint);
     if (result.count > 0) {
       out.set(appId, result.count);

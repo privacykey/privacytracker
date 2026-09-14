@@ -69,6 +69,11 @@ export type FlagKey =
   | "flag.nav.task_center_trigger"
   | "flag.nav.task_list_icon"
   | "flag.nav.mobile_drawer"
+  // Global device-scope picker in the nav. Names which device's apps the
+  // whole app is showing and lets the user narrow to a subset. Renders
+  // nothing when the install has no devices at all, so leaving it "on"
+  // costs a fresh install nothing.
+  | "flag.nav.device_scope"
 
   // ----- Dashboard (HomeView)
   | "flag.dashboard.focus_strip"
@@ -125,8 +130,11 @@ export type FlagKey =
   | "flag.appgrid.filter.accessibility"
   // Device-scope dropdown — filters the grid to apps from a single
   // cfgutil device (or "Unknown" placeholder for legacy/manual apps).
-  // Auto-hidden by the client when fewer than 2 devices exist, so
-  // single-device users don't see a no-op control.
+  // NOTE: this no longer gates a dropdown. The device choice moved to
+  // the nav (flag.nav.device_scope) so it applies to every surface; what
+  // this key now gates is the grid's "Showing <device>" status chip —
+  // the in-context reminder that the list is scoped, with its clear
+  // button. Turning it off hides that reminder, not the scope itself.
   | "flag.appgrid.filter.device"
   | "flag.appgrid.filter.active_banners"
   | "flag.appgrid.actions.sync_filtered"
@@ -387,6 +395,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.nav.task_center_trigger": "on", // task widget trigger
   "flag.nav.task_list_icon": "on", // user-facing task list nav icon
   "flag.nav.mobile_drawer": "on", // mobile-only menu drawer
+  "flag.nav.device_scope": "on", // global device-scope picker (renders nothing with no devices)
 
   // Dashboard
   "flag.dashboard.focus_strip": "on", // shows current focus chips
@@ -418,7 +427,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.appgrid.filter.risk_buttons": "on", // risk-tier filter row
   "flag.appgrid.filter.profile_mismatch": "on", // mismatch filter toggle
   "flag.appgrid.filter.accessibility": "off", // a11y filter row — only when modifier on
-  "flag.appgrid.filter.device": "on", // device-scope dropdown (auto-hidden when <2 devices)
+  "flag.appgrid.filter.device": "on", // grid's "Showing <device>" scope chip (the picker itself is flag.nav.device_scope)
   "flag.appgrid.filter.active_banners": "on", // active-filter status banners
   "flag.appgrid.actions.sync_filtered": "on", // sync-filtered context button
   "flag.appgrid.actions.sync_all": "on", // sync-all header button

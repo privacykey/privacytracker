@@ -420,3 +420,103 @@
   outline: 2px solid var(--blue, #0a84ff);
   outline-offset: 2px;
 }
+
+/*
+ * Step 3 — "Whose device is this?". A fieldset above the footer actions,
+ * shown only when the import will create a device row. The three-way
+ * choice is a radiogroup of button-styled radios, matching the focus
+ * form's own "Who's this for?" control so the two read as the same
+ * question asked in two places.
+ */
+.wizard-device-owner {
+  padding: 14px 16px 12px;
+  margin: 0 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+
+.wizard-device-owner-heading {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.wizard-device-owner-help {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.wizard-device-owner-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wizard-device-owner-option {
+  padding: 7px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+}
+
+.wizard-device-owner-option:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+/* Active state carries a border-colour AND an inset ring, so it reads
+   structurally and not only chromatically — the same rule the verdict
+   picker follows. */
+.wizard-device-owner-option.is-active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--blue, #0a84ff) 14%, transparent);
+  border-color: var(--blue, #0a84ff);
+  box-shadow: inset 0 0 0 1px var(--blue, #0a84ff);
+}
+
+.wizard-device-owner-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.wizard-device-owner-ack {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  background: color-mix(in srgb, var(--accent, #0a84ff) 6%, transparent);
+  border-radius: var(--r-md);
+}
+
+.wizard-device-owner-ack > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wizard-device-owner-ack-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.wizard-device-owner-required {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-2);
+}

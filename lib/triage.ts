@@ -1,5 +1,7 @@
 import type { ChangeEntry } from "./changelog";
 import db from "./db";
+import type { DeviceScope } from "./device-scope";
+import { scopeSqlClause } from "./device-scope-server";
 
 // ─────────────────────────────────────────────
 // Types
@@ -120,8 +122,18 @@ function pickTopChange(entries: ChangeEntry[]): string | null {
   return entries[0].description;
 }
 
-export function getTriageData(): TriageData {
+/**
+ * `scope` narrows every count and list to the apps on the given
+ * device(s). Both queries below are scoped rather than just the first:
+ * "changes this week" is derived independently of `rows`, so leaving it
+ * unscoped would show a dashboard where the headline counts describe one
+ * device and the activity feed describes the whole fleet.
+ */
+export function getTriageData(scope?: DeviceScope): TriageData {
   const now = Date.now();
+  const fragment = scope ? scopeSqlClause(scope) : null;
+  const scopeWhere = fragment ? `WHERE ${fragment.clause}` : "";
+  const scopeAnd = fragment ? `AND ${fragment.clause}` : "";
 
   const rows = db
     .prepare(
@@ -136,10 +148,11 @@ export function getTriageData(): TriageData {
       (SELECT COUNT(c.id) FROM privacy_categories c JOIN privacy_types t ON c.type_id = t.id
         WHERE t.app_id = a.id AND t.identifier = 'DATA_NOT_LINKED_TO_YOU') AS unlinkedCount
     FROM apps a
+    ${scopeWhere}
     ORDER BY a.name ASC
     `
     )
-    .all() as Array<{
+    .all(...(fragment?.params ?? [])) as Array<{
     id: string;
     name: string;
     iconUrl?: string;
@@ -288,11 +301,12 @@ export function getTriageData(): TriageData {
       FROM privacy_snapshots ps
       JOIN apps a ON a.id = ps.app_id
       WHERE ps.changes_detected = 1 AND ps.scraped_at > ?
+      ${scopeAnd}
       ORDER BY ps.scraped_at DESC
       LIMIT 8
     `
     )
-    .all(weekAgo) as Array<{
+    .all(weekAgo, ...(fragment?.params ?? [])) as Array<{
     app_id: string;
     scraped_at: number;
     changes_summary: string | null;

@@ -8,6 +8,7 @@ import AboutModal from "./AboutModal";
 import AccessibilityQuickToggles from "./AccessibilityQuickToggles";
 import AdminTokenBridge from "./AdminTokenBridge";
 import ClientDiagnosticsBoot from "./ClientDiagnosticsBoot";
+import DeviceScopeProvider from "./DeviceScopeProvider";
 import DevMenu from "./DevMenu";
 import FlagHighlightHandler from "./FlagHighlightHandler";
 import FocusPreviewBanner from "./FocusPreviewBanner";
@@ -89,66 +90,74 @@ function ChromeTree({ children }: { children: ReactNode }) {
           {tFooter("skip_to_content")}
         </a>
       </header>
-      <TaskCenterProvider
-        autoDismissEnabled={on("flag.taskcenter.auto_dismiss")}
-        pollingEnabled={on("flag.taskcenter.polling")}
-        resumeCardsEnabled={on("flag.taskcenter.resume_cards")}
-      >
-        <UserTasksProvider>
-          <QueuedSearchProvider>
-            <ImportQueueProvider>
-              {/* Boots the client diagnostics module (long-task observer,
+      {/* Device scope sits ABOVE the page content and therefore above the
+        Nav each page renders, which is what lets the picker and the
+        surface it scopes read one shared value. It is mounted
+        unconditionally rather than behind flag.nav.device_scope: the
+        flag hides the *control*, and a hidden control must not also
+        silently drop a scope the user already chose. */}
+      <DeviceScopeProvider>
+        <TaskCenterProvider
+          autoDismissEnabled={on("flag.taskcenter.auto_dismiss")}
+          pollingEnabled={on("flag.taskcenter.polling")}
+          resumeCardsEnabled={on("flag.taskcenter.resume_cards")}
+        >
+          <UserTasksProvider>
+            <QueuedSearchProvider>
+              <ImportQueueProvider>
+                {/* Boots the client diagnostics module (long-task observer,
               fetch wrapper, import-event ring). Renders nothing —
               surface is read from the Diagnostics page. */}
-              <ClientDiagnosticsBoot />
-              {/* Path tracker. Writes pathname+search to sessionStorage on
+                <ClientDiagnosticsBoot />
+                {/* Path tracker. Writes pathname+search to sessionStorage on
               every navigation so downstream pages can render a "← Back
               to X" link (document.referrer alone is unreliable —
               Next's soft navigations don't update it). */}
-              <NavigationHistoryTracker />
-              <AdminTokenBridge />
-              {/* Listens for menu-bar-driven events (Cmd+F search focus,
+                <NavigationHistoryTracker />
+                <AdminTokenBridge />
+                {/* Listens for menu-bar-driven events (Cmd+F search focus,
               Help → Copy Diagnostics). The actual menu items live
               in src-tauri/src/app_menu.rs; this component is the
               webview-side counterpart. */}
-              <MenuActionsBridge />
-              {/* Read-only notice — only renders when served from a
+                <MenuActionsBridge />
+                {/* Read-only notice — only renders when served from a
               non-local host without the admin-token cookie, i.e. when
               proxy.ts will 401 every write. */}
-              <NonLocalReadOnlyBanner />
-              {/* Focus preview banner — only renders when a preview is staged. */}
-              <FocusPreviewBanner />
-              {/* Update banner — polls /api/update-status; self-gated on
+                <NonLocalReadOnlyBanner />
+                {/* Focus preview banner — only renders when a preview is staged. */}
+                <FocusPreviewBanner />
+                {/* Update banner — polls /api/update-status; self-gated on
               cache state + user-dismissed flag. */}
-              <UpdateBanner />
-              {/* Cross-page flag-highlight handler — reads
+                <UpdateBanner />
+                {/* Cross-page flag-highlight handler — reads
               `?flag-highlight=<key>` and rings the gated element. */}
-              <FlagHighlightHandler />
-              <main className="app-main" id="main-content" tabIndex={-1}>
-                {children}
-              </main>
-              {/* Footer landmark (role="contentinfo") groups the bottom-
+                <FlagHighlightHandler />
+                <main className="app-main" id="main-content" tabIndex={-1}>
+                  {children}
+                </main>
+                {/* Footer landmark (role="contentinfo") groups the bottom-
               right cluster (About, shortcuts, a11y) under one region.
               Widgets are flag-gated; the landmark always renders. */}
-              <footer className="app-footer-landmark">
-                {/* Dev menu — gated on flag.devopts.visible + the
+                <footer className="app-footer-landmark">
+                  {/* Dev menu — gated on flag.devopts.visible + the
                 `dev-menu-on` localStorage opt-in. Renders null when
                 either gate is off. */}
-                <DevMenu />
-                {/* Reposition the Next.js dev indicator above our cluster.
+                  <DevMenu />
+                  {/* Reposition the Next.js dev indicator above our cluster.
                 Renders null in production. */}
-                <NextDevIndicatorRepositioner />
-                {on("flag.global.accessibility_toggles") && (
-                  <AccessibilityQuickToggles />
-                )}
-                {on("flag.global.keyboard_shortcuts") && <KeyboardHint />}
-                {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
-                {on("flag.global.site_info_hint") && <SiteInfoHint />}
-              </footer>
-            </ImportQueueProvider>
-          </QueuedSearchProvider>
-        </UserTasksProvider>
-      </TaskCenterProvider>
+                  <NextDevIndicatorRepositioner />
+                  {on("flag.global.accessibility_toggles") && (
+                    <AccessibilityQuickToggles />
+                  )}
+                  {on("flag.global.keyboard_shortcuts") && <KeyboardHint />}
+                  {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
+                  {on("flag.global.site_info_hint") && <SiteInfoHint />}
+                </footer>
+              </ImportQueueProvider>
+            </QueuedSearchProvider>
+          </UserTasksProvider>
+        </TaskCenterProvider>
+      </DeviceScopeProvider>
       {/* Global overlay portals — dialogs that render outside the main
         landmark when open. The region wrapper keeps axe happy even
         when both overlays are flag-off. */}

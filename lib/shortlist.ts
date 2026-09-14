@@ -24,6 +24,8 @@
 import crypto from "node:crypto";
 import { buildSnapshot } from "./changelog";
 import db from "./db";
+import type { DeviceScope } from "./device-scope";
+import { scopeSqlClause } from "./device-scope-server";
 import type {
   AppProfileBadge,
   AppProfileFootprint,
@@ -384,7 +386,16 @@ export function removeAllShortlistEntries(): number {
  * orphan rows can't exist, but the join will return an empty group if an
  * app row with zero entries sneaks in, so we filter those out here too).
  */
-export function listShortlistGroups(): ShortlistGroup[] {
+/**
+ * `scope` restricts groups to shortlists hanging off apps on the given
+ * device(s). The SOURCE app is what's scoped, not the candidate — a
+ * shortlist entry is "something to replace this app with", so it belongs
+ * to whichever device the app being replaced lives on. Candidates are
+ * App Store listings and have no device of their own.
+ */
+export function listShortlistGroups(scope?: DeviceScope): ShortlistGroup[] {
+  const fragment = scope ? scopeSqlClause(scope, "a") : null;
+  const scopeWhere = fragment ? `WHERE ${fragment.clause}` : "";
   const rows = db
     .prepare(
       `SELECT s.*,
@@ -401,9 +412,10 @@ export function listShortlistGroups(): ShortlistGroup[] {
          FROM shortlist_entries s
          JOIN apps a ON a.id = s.source_app_id
          LEFT JOIN apps t ON t.id = s.candidate_apple_id
+        ${scopeWhere}
         ORDER BY s.added_at DESC`
     )
-    .all() as (ShortlistRow & {
+    .all(...(fragment?.params ?? [])) as (ShortlistRow & {
     source_name: string;
     source_icon: string | null;
     source_developer: string | null;

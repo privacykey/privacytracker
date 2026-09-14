@@ -47,6 +47,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  describeScope,
+  scopeOwnerAudience,
+  scopeOwnerLabel,
+} from "@/lib/device-scope";
 import type { Annotation } from "../../lib/annotations";
 import {
   backupDeviceViaCfgutil,
@@ -65,6 +70,7 @@ import { isSafeExternalHref } from "../../lib/safe-href";
 import type { ShortlistEntry } from "../../lib/shortlist-types";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import type { AppVerdict, VerdictValue } from "../../lib/verdict-types";
+import { useDeviceScope } from "./DeviceScopeProvider";
 import VerdictPicker from "./VerdictPicker";
 
 interface Row {
@@ -135,8 +141,25 @@ type Step = "review" | "compare" | "action" | "backup" | "act";
  * reasons fall back to `gate_denied_generic` in the caller — fail
  * closed with an honest "refused" message rather than guessing.
  */
+/** Localised name for a focus audience, for refusal copy. Falls back to
+ *  the self wording rather than rendering a raw enum at the user. */
+function modeLabel(
+  t: (key: string) => string,
+  audience: string | undefined
+): string {
+  if (audience === "loved_one") {
+    return t("gate_mode_loved_one");
+  }
+  if (audience === "guardian") {
+    return t("gate_mode_guardian");
+  }
+  return t("gate_mode_self");
+}
+
 const GATE_DENIAL_KEYS: Record<string, string> = {
   audience: "gate_denied_audience",
+  device_owner: "gate_denied_device_owner_unnamed",
+  permission_unacknowledged: "gate_denied_permission_unnamed",
   backup_missing: "gate_denied_backup",
   backup_stale: "gate_denied_backup",
   backup_unverified: "gate_denied_unverified",
@@ -187,6 +210,19 @@ export default function ReviewRecommendationsView({
   // call-sites stay short (e.g. tReview('heading') not
   // tRoot('review.heading')).
   const t = useTranslations("review_rec");
+  // Device scope, read only to make the audience refusal legible — see
+  // the comment at the gate pre-flight below. This view does NOT filter
+  // itself by the scope here; its rows already arrive scoped from
+  // /api/review-queue.
+  const { devices: scopeDevices, scope: deviceScope } = useDeviceScope();
+  const scopeOwnerName = useMemo(
+    () => scopeOwnerLabel(deviceScope, scopeDevices),
+    [deviceScope, scopeDevices]
+  );
+  const scopeDeviceName = useMemo(() => {
+    const described = describeScope(deviceScope, scopeDevices);
+    return described.kind === "single" ? described.name : null;
+  }, [deviceScope, scopeDevices]);
   const tHero = useTranslations("review_rec.hero");
   const tGate = useTranslations("review_rec.audience_gate");
   const tSteps = useTranslations("review_rec.step_labels");
@@ -341,7 +377,33 @@ export default function ReviewRecommendationsView({
     setDesktop(isDesktop());
   }, []);
 
-  const audienceOk = audience === "self";
+  /**
+   * Whether the destructive device add-on (Backup / Act) is offered.
+   *
+   * Mirrors `checkDeviceOwnershipGate` on the server, which is the
+   * authority — this only decides whether to show the steps at all. Two
+   * ways in:
+   *
+   *   - `audience === 'self'`, as before. Covers your own devices and
+   *     every device with no recorded owner.
+   *   - The active device scope resolves unambiguously to ONE owner
+   *     whose audience matches your current focus. That is what lets
+   *     someone in helping mode act on the device they are helping
+   *     with — the capability this gate was opened for.
+   *
+   * Deliberately requires the scope to be narrowed first. In helping
+   * mode with no device picked, we cannot say whose phone is about to
+   * be acted on, and the honest answer to that is to stay closed.
+   */
+  const scopedOwnerAudience = useMemo(
+    () => scopeOwnerAudience(deviceScope, scopeDevices),
+    [deviceScope, scopeDevices]
+  );
+  const audienceOk = audience === "self" || scopedOwnerAudience === audience;
+  // True when picking a device COULD unlock the step — i.e. the user is
+  // in a helping mode and simply hasn't narrowed yet. Drives the extra
+  // line on the banner below, which would be misleading otherwise.
+  const ownershipCouldUnlock = !audienceOk;
   const showDeviceAddon = audienceOk && flagOn && desktop;
 
   const uninstallQueue = useMemo(
@@ -933,7 +995,47 @@ export default function ReviewRecommendationsView({
           const key = gate
             ? (GATE_DENIAL_KEYS[gate.reason ?? ""] ?? "gate_denied_generic")
             : "gate_unreachable";
-          setBulkGateError(tAct(key));
+          // Both ownership-shaped refusals get a message that names
+          // something concrete, because an abstract rule three screens
+          // after the device filter that caused it reads as an
+          // arbitrary block.
+          //
+          // `device_owner` is the precise one — the server knows exactly
+          // whose device this is, so the copy says so. `audience` is the
+          // older rule, which knows only the mode; there we fall back to
+          // naming whatever the nav is currently scoped to.
+          let message = tAct(key);
+          if (gate?.reason === "device_owner") {
+            const owner = gate.ownerLabel?.trim();
+            const mode = modeLabel(tAct, gate.activeAudience);
+            message = gate.deviceName?.trim()
+              ? tAct("gate_denied_device_owner", {
+                  device: gate.deviceName.trim(),
+                  mode,
+                  owner: owner || tAct("gate_mode_loved_one"),
+                })
+              : tAct("gate_denied_device_owner_unnamed", { mode });
+          } else if (gate?.reason === "permission_unacknowledged") {
+            // Same shape as device_owner, different missing thing: the
+            // mode matches, the attestation doesn't exist. Says where to
+            // give it, since that is the only thing between the user
+            // and continuing.
+            const owner = gate.ownerLabel?.trim();
+            message = gate.deviceName?.trim()
+              ? tAct("gate_denied_permission", {
+                  device: gate.deviceName.trim(),
+                  owner: owner || tAct("gate_mode_loved_one"),
+                })
+              : tAct("gate_denied_permission_unnamed");
+          } else if (gate?.reason === "audience") {
+            const scopedName = scopeOwnerName ?? scopeDeviceName;
+            if (scopedName) {
+              message = tAct("gate_denied_audience_scoped", {
+                scope: scopedName,
+              });
+            }
+          }
+          setBulkGateError(message);
           setBulkModal(null);
           setBulkConfirmText("");
           return;
@@ -1195,6 +1297,13 @@ export default function ReviewRecommendationsView({
             </Link>{" "}
             {tGate("switch_suffix")}
           </p>
+          {ownershipCouldUnlock && (
+            // Since the gate keys on whose device is being acted on,
+            // switching focus is no longer the only way through: naming
+            // the device works too, and is the less disruptive of the
+            // two.
+            <p>{tGate("device_hint")}</p>
+          )}
         </div>
       )}
 

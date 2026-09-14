@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PrivacyProfile } from "@/lib/privacy-profile";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
+import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import ShortlistView, { type ShortlistFlagState } from "./ShortlistView";
 
 /**
@@ -36,14 +37,21 @@ const SHORTLIST_FLAG_KEYS = [
 type Groups = Parameters<typeof ShortlistView>[0]["initialGroups"];
 
 export default function ShortlistLoader() {
+  const { ready: scopeReady, scopeParam } = useDeviceScope();
   const [groups, setGroups] = useState<Groups | null>(null);
   const [profile, setProfile] = useState<PrivacyProfile | null>(null);
   const flagValues = useFlagBundle(SHORTLIST_FLAG_KEYS);
 
   useEffect(() => {
+    // Held until the device scope lands, then re-fetched whenever it
+    // changes — this page describes a set of apps, and which apps it
+    // describes is exactly what the scope decides.
+    if (!scopeReady) {
+      return;
+    }
     let live = true;
     Promise.all([
-      fetch("/api/shortlist")
+      fetch(withScopeParam("/api/shortlist", scopeParam))
         .then((res) => (res.ok ? res.json() : null))
         .catch(() => null),
       fetch("/api/privacy-profile")
@@ -59,7 +67,7 @@ export default function ShortlistLoader() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [scopeReady, scopeParam]);
 
   if (!(groups && flagValues)) {
     return null;

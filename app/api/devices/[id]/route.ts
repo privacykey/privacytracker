@@ -1,13 +1,26 @@
 /**
- * /api/devices/[id] — rename, merge, or delete.
+ * /api/devices/[id] — rename, set ownership, merge, or delete.
  *
- *   PATCH { name?, mergeIntoDeviceId? } → { device | merged: true }
- *   DELETE                              → { orphanedAndDeleted }
+ *   PATCH { name?, ownerLabel?, ownerAudience?, mergeIntoDeviceId? }
+ *         → { device | merged: true }
+ *   DELETE → { orphanedAndDeleted }
+ *
+ * `ownerLabel` / `ownerAudience` are independently clearable with
+ * `null`; omitting a key leaves that field alone. Ownership is only ever
+ * set because the user said so — nothing here infers it from a device
+ * name, since a wrong guess both mislabels a real person's device and
+ * can prompt an unwanted focus change.
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { requireMutationGuard } from "@/lib/api-guards";
-import { deleteDevice, getDeviceById, renameDevice } from "@/lib/devices";
+import {
+  deleteDevice,
+  getDeviceById,
+  isDeviceOwnerAudience,
+  renameDevice,
+  setDeviceOwner,
+} from "@/lib/devices";
 import { getImportCountForDevice } from "@/lib/imports";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson, recordAudit, requestActorIp } from "@/lib/security";
@@ -75,10 +88,47 @@ export async function PATCH(
       { status: 400 }
     );
   }
-  const { name, mergeIntoDeviceId } = body as {
-    name?: unknown;
+  const {
+    name,
+    mergeIntoDeviceId,
+    ownerLabel,
+    ownerAudience,
+    permissionAcknowledged,
+  } = body as {
     mergeIntoDeviceId?: unknown;
+    name?: unknown;
+    ownerAudience?: unknown;
+    ownerLabel?: unknown;
+    permissionAcknowledged?: unknown;
   };
+  const hasOwnerLabel = Object.hasOwn(body, "ownerLabel");
+  const hasOwnerAudience = Object.hasOwn(body, "ownerAudience");
+  const hasAck = Object.hasOwn(body, "permissionAcknowledged");
+  if (hasAck && typeof permissionAcknowledged !== "boolean") {
+    return NextResponse.json(
+      { error: "permissionAcknowledged must be a boolean" },
+      { status: 400 }
+    );
+  }
+
+  if (
+    hasOwnerLabel &&
+    !(ownerLabel === null || typeof ownerLabel === "string")
+  ) {
+    return NextResponse.json(
+      { error: "ownerLabel must be a string or null" },
+      { status: 400 }
+    );
+  }
+  if (
+    hasOwnerAudience &&
+    !(ownerAudience === null || isDeviceOwnerAudience(ownerAudience))
+  ) {
+    return NextResponse.json(
+      { error: "ownerAudience must be self, loved_one, guardian, or null" },
+      { status: 400 }
+    );
+  }
 
   try {
     if (typeof mergeIntoDeviceId === "string" && mergeIntoDeviceId.trim()) {
@@ -96,6 +146,8 @@ export async function PATCH(
       return NextResponse.json({ merged: true, ...result });
     }
 
+    let updated = false;
+
     if (typeof name === "string" && name.trim()) {
       renameDevice(id, name.trim());
       recordAudit({
@@ -105,6 +157,49 @@ export async function PATCH(
         detail: JSON.stringify({ id, name: name.trim() }),
         success: true,
       });
+      updated = true;
+    }
+
+    // Ownership rides in the same PATCH as the rename so the Settings
+    // form can save a device's name and owner in one round trip.
+    if (hasOwnerLabel || hasOwnerAudience || hasAck) {
+      setDeviceOwner(id, {
+        ...(hasOwnerLabel
+          ? { label: (ownerLabel as string | null) ?? null }
+          : {}),
+        ...(hasOwnerAudience
+          ? {
+              audience: isDeviceOwnerAudience(ownerAudience)
+                ? ownerAudience
+                : null,
+            }
+          : {}),
+        ...(hasAck
+          ? { permissionAcknowledged: permissionAcknowledged as boolean }
+          : {}),
+      });
+      // A ticked acknowledgement gets its own audit action: it is an
+      // attestation about another person's device, and "who said so,
+      // and when" is the whole point of recording it.
+      recordAudit({
+        action:
+          permissionAcknowledged === true
+            ? "devices.permission_acknowledged"
+            : "devices.set_owner",
+        actorIp: requestActorIp(req),
+        userAgent: req.headers.get("user-agent"),
+        detail: JSON.stringify({
+          id,
+          ownerLabel,
+          ownerAudience,
+          permissionAcknowledged,
+        }),
+        success: true,
+      });
+      updated = true;
+    }
+
+    if (updated) {
       return NextResponse.json({ device: getDeviceById(id) });
     }
 

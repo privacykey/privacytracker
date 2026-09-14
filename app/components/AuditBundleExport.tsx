@@ -24,6 +24,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import ScopeExportNote from "./ScopeExportNote";
 
 export default function AuditBundleExport() {
   const t = useTranslations("settings.audit_bundle_export");
@@ -149,6 +150,10 @@ export default function AuditBundleExport() {
         <p className="audit-bundle-export__subtitle">
           {t("panel_description")}
         </p>
+        {/* A bundle is handed to someone else, and they have no way to
+            tell a partial one from a complete one — so it is always the
+            whole install. Said here rather than left implicit. */}
+        <ScopeExportNote messageKey="export_note_bundle" />
       </div>
 
       <label className="audit-bundle-export__field">

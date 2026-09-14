@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { isScopeAll } from "@/lib/device-scope";
+import { scopeFromRequest } from "@/lib/device-scope-server";
 import { getMismatchedApps } from "@/lib/privacy-profile-server";
 import { checkRateLimit, rateLimitKeyForRequest } from "@/lib/security";
 
@@ -28,7 +30,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
   try {
-    return NextResponse.json({ apps: getMismatchedApps() });
+    const scope = scopeFromRequest(request.url);
+    return NextResponse.json({
+      apps: getMismatchedApps(isScopeAll(scope) ? undefined : scope),
+    });
   } catch (error) {
     console.warn("[privacy-profile/mismatches] failed:", error);
     return NextResponse.json({ apps: [] });

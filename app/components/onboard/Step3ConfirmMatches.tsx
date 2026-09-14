@@ -77,6 +77,10 @@ export default function Step3ConfirmMatches({
     webClipSaveError,
     webClipSaveState,
     webClipSavedCount,
+    deviceOwner,
+    setDeviceOwner,
+    askDeviceOwner,
+    canConfirmImport,
   } = w;
 
   return (
@@ -1224,6 +1228,99 @@ export default function Step3ConfirmMatches({
                 )}
               </div>
 
+              {/* "Whose device is this?" — from the SECOND device onward,
+                  and only when this import creates a device row. It
+                  sits here rather than on the cfgutil panel because
+                  every method lands on this step: a relative's app
+                  list can arrive by hand or CSV as easily as by cable.
+                  Answering "mine" costs one click on a pre-selected
+                  control; answering anything else reveals the
+                  attestation, and the import will not proceed until it
+                  is ticked. The first device is never asked and gets no
+                  owner recorded. */}
+              {askDeviceOwner && (
+                <fieldset className="wizard-device-owner">
+                  <legend className="wizard-device-owner-heading">
+                    {tStep3("owner_heading")}
+                  </legend>
+                  <p className="wizard-device-owner-help">
+                    {tStep3("owner_help")}
+                  </p>
+                  <div
+                    aria-label={tStep3("owner_heading")}
+                    className="wizard-device-owner-options"
+                    role="radiogroup"
+                  >
+                    {(
+                      [
+                        ["self", "owner_mine"],
+                        ["loved_one", "owner_helping"],
+                        ["guardian", "owner_child"],
+                      ] as const
+                    ).map(([value, key]) => (
+                      <button
+                        aria-checked={deviceOwner.audience === value}
+                        className={`wizard-device-owner-option ${
+                          deviceOwner.audience === value ? "is-active" : ""
+                        }`}
+                        data-testid={`onboard-device-owner-${value}`}
+                        key={value}
+                        onClick={() => setDeviceOwner({ audience: value })}
+                        role="radio"
+                        type="button"
+                      >
+                        {tStep3(key)}
+                      </button>
+                    ))}
+                  </div>
+                  {deviceOwner.audience !== "self" && (
+                    <>
+                      <label className="wizard-device-owner-field">
+                        <span>{tStep3("owner_name_label")}</span>
+                        <input
+                          className="input"
+                          onChange={(e) =>
+                            setDeviceOwner({ label: e.target.value })
+                          }
+                          placeholder={tStep3("owner_name_placeholder")}
+                          type="text"
+                          value={deviceOwner.label}
+                        />
+                      </label>
+                      <label className="wizard-device-owner-ack">
+                        <input
+                          checked={deviceOwner.acknowledged}
+                          className="settings-checkbox"
+                          data-testid="onboard-device-owner-ack"
+                          onChange={(e) =>
+                            setDeviceOwner({ acknowledged: e.target.checked })
+                          }
+                          type="checkbox"
+                        />
+                        <span>
+                          <span className="wizard-device-owner-ack-text">
+                            {deviceOwner.audience === "guardian"
+                              ? tStep3("owner_ack_child")
+                              : tStep3("owner_ack_helping")}
+                          </span>
+                          <span className="wizard-device-owner-help">
+                            {tStep3("owner_ack_why")}
+                          </span>
+                        </span>
+                      </label>
+                      {!canConfirmImport && (
+                        <p
+                          className="wizard-device-owner-required"
+                          role="status"
+                        >
+                          {tStep3("owner_ack_required")}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </fieldset>
+              )}
+
               <div className="wizard-footer-actions">
                 <button
                   className="btn btn-secondary"
@@ -1238,7 +1335,8 @@ export default function Step3ConfirmMatches({
                   disabled={
                     effectiveCount === 0 ||
                     pendingMatchCount > 0 ||
-                    rematchingRegion
+                    rematchingRegion ||
+                    !canConfirmImport
                   }
                   onClick={() => void handleConfirm(effectiveSelected)}
                   style={{ flex: 1 }}

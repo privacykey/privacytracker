@@ -20,6 +20,8 @@ import {
 } from "./accessibility-types";
 import type { ChangeEntry } from "./changelog-types";
 import db from "./db";
+import type { DeviceScope } from "./device-scope";
+import { scopeAppIdClause } from "./device-scope-server";
 
 /**
  * A single accessibility feature on an app's listing. `identifier` is our
@@ -266,17 +268,24 @@ export function diffAccessibility(
  * List per-feature app counts across all tracked apps. Used by the stats
  * page's "X% of tracked apps support Y" chart.
  */
-export function getAccessibilityCoverageByFeature(): Array<{
+export function getAccessibilityCoverageByFeature(scope?: DeviceScope): Array<{
   identifier: string;
   title: string;
   appCount: number;
 }> {
+  const fragment = scope ? scopeAppIdClause(scope, "af.app_id") : null;
+  const scopeWhere = fragment ? `WHERE ${fragment.clause}` : "";
   return db
     .prepare(
-      `SELECT identifier, MIN(title) AS title, COUNT(DISTINCT app_id) AS appCount
-         FROM accessibility_features
-         GROUP BY identifier
+      `SELECT af.identifier, MIN(af.title) AS title, COUNT(DISTINCT af.app_id) AS appCount
+         FROM accessibility_features af
+         ${scopeWhere}
+         GROUP BY af.identifier
          ORDER BY appCount DESC, title ASC`
     )
-    .all() as Array<{ identifier: string; title: string; appCount: number }>;
+    .all(...(fragment?.params ?? [])) as Array<{
+    identifier: string;
+    title: string;
+    appCount: number;
+  }>;
 }
