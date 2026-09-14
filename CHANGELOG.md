@@ -55,6 +55,64 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- **Importing from a second device now asks whose it is — and, for
+  someone else's, asks you to confirm you have their permission.** From
+  your second device onward, any import that creates a new device
+  record (any method: cable, CSV, screenshots or typed in) has a "Whose
+  device is this?" step: yours, someone you're helping, or a child you
+  look after — pre-selected from your current setup, so your own iPad
+  is one click. Your first device isn't asked, and nothing is recorded
+  about its owner until you say so in Settings → Devices. Choosing
+  anyone but yourself reveals a statement that you have their
+  permission to view the apps on their device and to remove apps from
+  it; the import won't continue until it's ticked. The confirmation is
+  timestamped, recorded in the audit log, and required before the app
+  will remove anything from that device. It can also be given later in
+  Settings → Devices, and is cleared automatically if the device is
+  reassigned to you. Your own devices — phone, iPad, work and personal
+  — are never asked for it; they're told apart by name.
+
+- **Exports now say when they're broader than the page.** Every export
+  stays whole-install by design — a file whose contents depend on a
+  device filter the reader can't see is worse than one that's simply
+  complete — but while a device scope is active the Stats page, Settings
+  → Export Data, the shortlist download and the audit bundle each carry
+  a line saying so. Previously the Stats page could read "3 apps
+  tracked" directly above a download containing ten, with nothing
+  reconciling the two. The note disappears entirely when no scope is
+  set.
+
+- **Device ownership** — each device can record whose it is (a name, and
+  whether you're working on your own apps, helping someone else, or
+  looking after a child's device), set in Settings → Devices. The nav
+  picker groups devices by owner, and when you scope to someone else's
+  device while your focus still says "just me", it offers to switch —
+  which is the gap that previously let someone drift into the
+  delete-apps flow with the button silently disabled and the reason
+  buried in Settings. The offer is always a suggestion with an explicit
+  "Stay as I am"; nothing changes automatically, and switching preserves
+  every other focus setting. Ownership is never guessed from a device's
+  name. Removing apps still requires a focus of just you — that rule is
+  unchanged — but the refusal now names the device you're viewing
+  instead of citing the rule alone.
+
+- **Device scope picker in the nav** — one control naming which device's
+  apps you are looking at, with an icon and the device's name, and a
+  multi-select popover to narrow to any subset ("show all", or just two
+  of three). It applies everywhere: the apps grid, the dashboard's
+  counts, Stats, the Privacy Map, the shortlist, and the review queue
+  that feeds "delete apps off a phone" all follow it. Previously the only
+  device control was a single-select dropdown inside the apps-grid
+  toolbar, so every other surface silently spoke for the whole fleet —
+  which meant someone helping a relative could be several screens into a
+  removal workflow with nothing on screen saying whose phone it applied
+  to. The choice persists across reloads and is gated by
+  `flag.nav.device_scope`; it renders from the first device onward and
+  disappears only on installs with none. Apps with no device link
+  (hand-added entries and CSV
+  imports) get their own "Not tied to a device" bucket rather than
+  vanishing silently.
+
 - Rust-core migration: the five deployment-facing reads join the Rust read
   API (30 of 64 read routes) — `GET /api/ready`, `/api/deployment/diagnostics`,
   `/api/diagnostics/database`, `/api/diagnostics/disk` and
@@ -261,6 +319,67 @@ Going forward, changes are recorded here as they land.
   `NODE_MODULE_VERSION`.
 
 ### Changed
+
+- **The device menu's "switch mode" prompt now explains what switching
+  does.** It used to say "You're looking at Robin's apps. Switch to
+  helping someone else?" — which assumes you already know what that mode
+  is. It now states the mismatch ("Robin's device — but you're set up
+  for working on your own apps") and then what the other mode actually
+  turns on: for helping someone, the shareable bundle, printable
+  recommendations and per-app notes, plus that it's required before
+  apps can be removed from their device; for a child's device, age
+  ratings and the safety summary. The button names the mode too.
+
+- **Fixed: the apps grid scrolled the whole page sideways on a phone.**
+  Its toolbar row was set never to shrink, which stopped the mobile
+  wrap rule from ever applying — six buttons stayed on one line and
+  pushed the page out to nearly twice the screen width. The row now
+  wraps onto three lines at 375px and the page stays put.
+
+- The local visual-regression net now covers the device-scope chrome:
+  the picker open, a scoped grid, the focus-switch prompt, the scoped
+  Stats page with its export note, and the device owner editor. Its
+  fixture builds a fixed two-device fleet instead of deleting devices
+  down to none — with no devices the picker renders nothing, so the new
+  chrome had no cover at all — including two mobile shots for the
+  drawer's own copy of the picker and its viewport-pinned popover, which
+  share no code path with the desktop ones. Developers who keep local
+  baselines will need to regenerate them
+  (`VISUAL=1 npx playwright test tests/e2e/visual.spec.ts -u`).
+
+- **App removal now checks whose device it is, not just what mode
+  you're in.** Previously the gate asked only whether your focus was set
+  to "just me" — so it would happily remove apps from a relative's phone
+  the moment it was plugged in, while refusing to touch your own phone
+  whenever you were in helping mode. It now compares the device's
+  recorded owner against how you're set up: your device in your own
+  mode, theirs in helping mode, a child's in guardian mode. A mismatch
+  is refused, and the refusal names the device instead of citing a rule.
+
+  This makes removal possible on a device belonging to someone you're
+  helping, which was not possible before. It requires you to have
+  recorded that the device is theirs and to have switched into the
+  matching mode, and everything else still applies: the phone connected,
+  unlocked and trusting this Mac, the feature switched on, a fresh
+  verified backup, and Touch ID for every single app. Devices with no
+  recorded owner behave exactly as they did before.
+
+- **Fixed: the mobile nav drawer reported a critical accessibility
+  violation once a device existed.** The drawer is a `role="menu"`,
+  which may only contain menu items, and the new device-scope control
+  was a plain button inside it — axe flagged `aria-required-children`.
+  The control is now a menu item that opens its own submenu, which is
+  what it already behaved like.
+
+- **Fixed: the apps grid's device filter changed the counts but not the
+  cards.** The risk tabs and the "N of M" figure were computed from a
+  filtered list while the card list was built from a separate,
+  re-implemented filter chain that never applied the device filter at
+  all — so picking a device updated every number on the page and none of
+  the apps. The card list is now derived from the same filtered list the
+  counts use, so the two cannot disagree. Custom apps, which have no App
+  Store listing and never carry a device link, are now treated as
+  unattached and hidden when the scope excludes that bucket.
 
 - The Rust-core parity harness now classifies **all 120** API routes, up
   from 17. `scripts/parity/manifest.mjs` splits them into reads (57),

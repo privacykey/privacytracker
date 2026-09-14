@@ -145,6 +145,29 @@ pub fn open_and_migrate(path: &Path) -> rusqlite::Result<Connection> {
         ],
     )?;
 
+    // 4b. devices ownership (family mode). Nullable on purpose: an
+    //     existing install has no ownership information and must not have
+    //     any invented for it. Mirrors `deviceMigrations` in lib/db.ts,
+    //     which sits at this same point in the sequence.
+    apply_col_migrations(
+        &conn,
+        "devices",
+        &[
+            (
+                "owner_label",
+                "ALTER TABLE devices ADD COLUMN owner_label TEXT",
+            ),
+            (
+                "owner_audience",
+                "ALTER TABLE devices ADD COLUMN owner_audience TEXT",
+            ),
+            (
+                "permission_acknowledged_at",
+                "ALTER TABLE devices ADD COLUMN permission_acknowledged_at INTEGER",
+            ),
+        ],
+    )?;
+
     // 5. change_review_actions.covered_snapshot_ids (single).
     apply_col_migrations(
         &conn,

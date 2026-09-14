@@ -17,6 +17,8 @@ import {
 import db from "./db";
 import { runBulkWrite } from "./db-worker-client";
 import type { DbWorkerStatement } from "./db-worker-types";
+import type { DeviceScope } from "./device-scope";
+import { scopeSqlClause } from "./device-scope-server";
 import {
   computeNotBefore,
   createParserFallthroughNotification,
@@ -2538,7 +2540,9 @@ async function commitScrapedAppToDb(
 // Queries
 // ─────────────────────────────────────────────
 
-export function getAllApps() {
+export function getAllApps(scope?: DeviceScope) {
+  const fragment = scope ? scopeSqlClause(scope) : null;
+  const scopeWhere = fragment ? `WHERE ${fragment.clause}` : "";
   return db
     .prepare(`
     WITH privacy_counts AS (
@@ -2573,16 +2577,26 @@ export function getAllApps() {
     LEFT JOIN privacy_counts pc ON pc.app_id = a.id
     LEFT JOIN sync_counts sc ON sc.app_id = a.id
     LEFT JOIN accessibility_counts ac ON ac.app_id = a.id
+    ${scopeWhere}
     ORDER BY a.name ASC
   `)
-    .all();
+    .all(...(fragment?.params ?? []));
 }
 
-/** Total tracked-app count — cheap COUNT(*) for pagination totals and the Nav badge. */
-export function countApps(): number {
-  const row = db.prepare("SELECT COUNT(*) AS n FROM apps").get() as {
-    n: number;
-  };
+/**
+ * Total tracked-app count — cheap COUNT(*) for pagination totals and the
+ * Nav badge.
+ *
+ * `scope` restricts the count to one or more devices (see
+ * lib/device-scope.ts). Omitting it counts the whole fleet, which is
+ * what every caller that hasn't opted into scoping gets.
+ */
+export function countApps(scope?: DeviceScope): number {
+  const fragment = scope ? scopeSqlClause(scope) : null;
+  const where = fragment ? ` WHERE ${fragment.clause}` : "";
+  const row = db
+    .prepare(`SELECT COUNT(*) AS n FROM apps a${where}`)
+    .get(...(fragment?.params ?? [])) as { n: number };
   return row.n;
 }
 
@@ -2597,16 +2611,27 @@ export function countApps(): number {
 export function getAppsPage({
   limit,
   offset = 0,
+  scope,
 }: {
   limit: number;
   offset?: number;
+  /**
+   * Restrict the page to apps on the given device(s). Applied INSIDE the
+   * `page_apps` CTE, not as a post-filter, so `limit`/`offset` page
+   * through the scoped set — filtering after the fact would return short
+   * (or empty) pages and break the grid's offset arithmetic.
+   */
+  scope?: DeviceScope;
 }) {
+  const fragment = scope ? scopeSqlClause(scope) : null;
+  const scopeWhere = fragment ? `WHERE ${fragment.clause}` : "";
   return db
     .prepare(`
     WITH page_apps AS (
-      SELECT *
-      FROM apps
-      ORDER BY name ASC, id ASC
+      SELECT a.*
+      FROM apps a
+      ${scopeWhere}
+      ORDER BY a.name ASC, a.id ASC
       LIMIT ? OFFSET ?
     ),
     privacy_counts AS (
@@ -2646,7 +2671,7 @@ export function getAppsPage({
     LEFT JOIN accessibility_counts ac ON ac.app_id = a.id
     ORDER BY a.name ASC, a.id ASC
   `)
-    .all(limit, offset);
+    .all(...(fragment?.params ?? []), limit, offset);
 }
 
 /**
@@ -2771,12 +2796,23 @@ export function getAppWithPrivacy(appId: string) {
  * Returns data pivoted by privacy type → category, each category listing
  * every app that has it. Ordered by severity (most serious first).
  */
-export function getGroupedPrivacyView() {
+export function getGroupedPrivacyView(scope?: DeviceScope) {
+  const fragment = scope ? scopeSqlClause(scope) : null;
+  const scopeWhere = fragment ? `WHERE ${fragment.clause}` : "";
   const apps = db
-    .prepare("SELECT id, name, iconUrl, developer FROM apps")
-    .all() as any[];
+    .prepare(
+      `SELECT a.id, a.name, a.iconUrl, a.developer FROM apps a ${scopeWhere}`
+    )
+    .all(...(fragment?.params ?? [])) as any[];
   const appMap = new Map<string, any>(apps.map((a) => [a.id, a]));
 
+  // The category rows are filtered through the SAME scope rather than
+  // being post-filtered against appMap: a category whose only apps are
+  // out of scope must vanish from the map entirely, not linger as an
+  // empty row with a zero count.
+  const rowScopeWhere = fragment
+    ? `WHERE EXISTS (SELECT 1 FROM apps a WHERE a.id = pt.app_id AND ${fragment.clause})`
+    : "";
   const rows = db
     .prepare(`
     SELECT
@@ -2788,8 +2824,9 @@ export function getGroupedPrivacyView() {
       pt.app_id
     FROM privacy_types pt
     JOIN privacy_categories pc ON pc.type_id = pt.id
+    ${rowScopeWhere}
   `)
-    .all() as any[];
+    .all(...(fragment?.params ?? [])) as any[];
 
   // Category risk weight — red > orange > blue > neutral (matches CATEGORY_META.color).
   // Used to break ties when multiple categories have similar app counts within a severity.

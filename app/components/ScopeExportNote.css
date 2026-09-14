@@ -1,0 +1,21 @@
+/*
+ * Reconciliation note shown beside export controls while a device scope
+ * is active. Informational, not a warning — nothing is wrong, the export
+ * is simply broader than the page. Styled accordingly: muted text, no
+ * red, no border that would read as an error state.
+ */
+.scope-export-note {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  width: 100%;
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.scope-export-note-icon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}

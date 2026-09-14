@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { type Annotation, listAnnotations } from "@/lib/annotations";
+import { isScopeAll } from "@/lib/device-scope";
+import { getScopedAppIds, scopeFromRequest } from "@/lib/device-scope-server";
 import { getDeviceEcidsForApps } from "@/lib/devices";
 import type { AppProfileBadge } from "@/lib/privacy-profile";
 import { getProfileBadgesByApp } from "@/lib/privacy-profile-server";
@@ -67,6 +69,8 @@ export async function GET(request: Request) {
   }
 
   const countOnly = new URL(request.url).searchParams.get("count") === "1";
+  const requested = scopeFromRequest(request.url);
+  const scope = isScopeAll(requested) ? undefined : requested;
 
   const safe = <T>(fn: () => T, fallback: T, label: string): T => {
     try {
@@ -90,16 +94,25 @@ export async function GET(request: Request) {
 
   // Raw union — the dashboard's semantics. Counts verdicts for apps that
   // are no longer tracked; the row list below drops those.
-  const reviewableCount = new Set([
+  //
+  // Under a device scope that generosity has to go: an untracked app has
+  // no device link, so counting it would mean "3 to review" on a device
+  // whose queue is empty, with no row to click. Unscoped requests keep
+  // the original union untouched — that number is the documented one.
+  const scopedIds = scope ? getScopedAppIds(scope) : null;
+  const reviewableIds = new Set([
     ...userVerdicts.keys(),
     ...importedVerdicts.keys(),
-  ]).size;
+  ]);
+  const reviewableCount = scopedIds
+    ? [...reviewableIds].filter((id) => scopedIds.has(id)).length
+    : reviewableIds.size;
 
   if (countOnly) {
     return NextResponse.json({ reviewableCount });
   }
 
-  const apps = safe(() => getAllApps() as any[], [], "getAllApps");
+  const apps = safe(() => getAllApps(scope) as any[], [], "getAllApps");
   const profileBadges = safe(
     () => getProfileBadgesByApp(),
     {} as Record<string, AppProfileBadge>,

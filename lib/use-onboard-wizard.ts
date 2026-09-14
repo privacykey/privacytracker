@@ -1833,6 +1833,119 @@ export function useOnboardWizard({
     lastCompletedAt: number | null;
   } | null>(null);
 
+  /**
+   * "Whose device is this?" — answered on Step 3 from the SECOND device
+   * onward: whenever this import will create a device row AND the
+   * install already has a real one. Re-sync reuses a device that
+   * already has an owner, so it is never asked there; the first device
+   * of an install is not asked either, and is created with no owner
+   * recorded at all — not the focus default, which the user never saw.
+   * That device stays under the pre-ownership rule (removal only in
+   * "just me" mode) until ownership is recorded in Settings → Devices.
+   *
+   * The audience is pre-selected from the current focus: a self-focus
+   * user importing their own phone sees "Mine" and just continues; a
+   * helper sees "Someone I'm helping" and is shown the attestation. A
+   * pre-selected default the user confirms is not the same as inferring
+   * ownership silently — nothing is written until they proceed.
+   *
+   * `acknowledged` is the attestation itself: that the user has the
+   * owner's permission to view and act on the device. It is required
+   * before the import can continue whenever the owner is not the user,
+   * and it is what the uninstall gate checks before acting on anyone
+   * else's device.
+   */
+  const [deviceOwner, setDeviceOwnerState] = useState<{
+    acknowledged: boolean;
+    audience: "self" | "loved_one" | "guardian";
+    label: string;
+  }>({ acknowledged: false, audience: "self", label: "" });
+  const deviceOwnerTouched = useRef(false);
+  /**
+   * How many real devices the install already has. Decides whether the
+   * owner question is asked at all. The seeded "Unknown device"
+   * placeholder (lib/db.ts backfill for pre-device installs) is not
+   * counted: it isn't something the user imported, and "second device"
+   * means the second one THEY brought in. `null` until the read lands;
+   * treated as "don't ask" so a slow read never blocks the import.
+   */
+  const [existingDeviceCount, setExistingDeviceCount] = useState<number | null>(
+    null
+  );
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/devices")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled) {
+          return;
+        }
+        const devices = Array.isArray(json?.devices) ? json.devices : [];
+        setExistingDeviceCount(
+          devices.filter(
+            (d: { isUnknownPlaceholder?: boolean }) => !d.isUnknownPlaceholder
+          ).length
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setExistingDeviceCount(0);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const setDeviceOwner = useCallback(
+    (
+      next: Partial<{
+        acknowledged: boolean;
+        audience: "self" | "loved_one" | "guardian";
+        label: string;
+      }>
+    ) => {
+      deviceOwnerTouched.current = true;
+      setDeviceOwnerState((prev) => {
+        const merged = { ...prev, ...next };
+        // ANY change of owner retires the attestation, not just a switch
+        // to "mine". The statement differs by owner — "I have this
+        // person's permission" for someone you're helping, "I'm
+        // responsible for this child" for a child — and a tick given to
+        // one must not be silently counted as a tick for the other.
+        if (next.audience !== undefined && next.audience !== prev.audience) {
+          merged.acknowledged = false;
+        }
+        return merged;
+      });
+    },
+    []
+  );
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/focus")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (cancelled || deviceOwnerTouched.current) {
+          return;
+        }
+        const audience = json?.audience;
+        if (
+          audience === "self" ||
+          audience === "loved_one" ||
+          audience === "guardian"
+        ) {
+          setDeviceOwnerState((prev) => ({ ...prev, audience }));
+        }
+      })
+      .catch(() => {
+        // Default stays "self", which is the conservative answer: it
+        // triggers no attestation and grants nothing extra.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Step-2 upfront diff state. Lives only on the auto-resync path
   // (cfgutil detects a known ECID without an explicit `?resync=` URL
   // param). The URL-supplied entry point keeps the post-scrape overlay
@@ -2406,6 +2519,28 @@ export function useOnboardWizard({
    * completes (it just won't be device-attached, the same as legacy
    * imports before this feature shipped).
    */
+  /** Whether Step 3 shows the owner question for THIS import. */
+  const askDeviceOwner = !resyncDeviceId && (existingDeviceCount ?? 0) > 0;
+
+  /** The Step 3 answer, in the shape POST /api/devices accepts. Applies
+   *  to every import method: someone can be typing a relative's app list
+   *  in by hand just as easily as plugging their phone in. Returns
+   *  nothing when the question wasn't asked — the first device is
+   *  created without an owner rather than with a default the user never
+   *  confirmed. */
+  const ownershipForCreate = useCallback(
+    () =>
+      askDeviceOwner
+        ? {
+            ownerAudience: deviceOwner.audience,
+            ownerLabel: deviceOwner.label.trim() || null,
+            permissionAcknowledged:
+              deviceOwner.audience !== "self" && deviceOwner.acknowledged,
+          }
+        : {},
+    [askDeviceOwner, deviceOwner]
+  );
+
   const resolveDeviceIdForImport = useCallback(async (): Promise<
     string | null
   > => {
@@ -2428,6 +2563,7 @@ export function useOnboardWizard({
             model: cfgDevice.model ?? null,
             iosVersion: cfgDevice.iosVersion ?? null,
             deviceClass: cfgDevice.deviceClass ?? null,
+            ...ownershipForCreate(),
           }),
         });
         const json = await res.json();
@@ -2450,7 +2586,7 @@ export function useOnboardWizard({
       const res = await fetch("/api/devices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: defaultName }),
+        body: JSON.stringify({ name: defaultName, ...ownershipForCreate() }),
       });
       const json = await res.json();
       if (res.ok && typeof json?.device?.id === "string") {
@@ -2468,6 +2604,7 @@ export function useOnboardWizard({
     uploadedFileName,
     deriveImportLabel,
     resyncDeviceId,
+    ownershipForCreate,
   ]);
 
   const createImportRecord = useCallback(
@@ -5138,6 +5275,20 @@ export function useOnboardWizard({
     resyncOverlayApps,
     setResyncOverlayApps,
     priorImportHistory,
+    deviceOwner,
+    setDeviceOwner,
+    // Asked from the second device onward. A row is created iff this is
+    // not a re-sync (reconnecting a known device auto-enters re-sync),
+    // and the question is only worth asking once there is already a
+    // device to be distinct from.
+    askDeviceOwner,
+    // The import may not proceed while the device is someone else's and
+    // the attestation is unticked. When the question isn't asked —
+    // first device, or re-sync — there is nothing to hold it on.
+    canConfirmImport:
+      !askDeviceOwner ||
+      deviceOwner.audience === "self" ||
+      deviceOwner.acknowledged,
     setPriorImportHistory,
     step2DiffConfirmOpen,
     setStep2DiffConfirmOpen,

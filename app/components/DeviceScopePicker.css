@@ -1,0 +1,264 @@
+/*
+ * Device scope picker — nav trigger + multi-select popover.
+ *
+ * Co-located per docs/CSS.md. Everything here reads the global theme
+ * tokens (--popover-*, --text-*, --border) so both colour schemes and
+ * the data-theme-override the desktop build sets are handled without a
+ * second palette.
+ */
+
+.device-scope-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.device-scope-trigger {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 200px;
+  height: 36px;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-2);
+  touch-action: manipulation;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.device-scope-trigger:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+/*
+ * Scoped state gets a border and full-strength text, not just a colour
+ * shift — "you are looking at a subset" is the single most important
+ * thing this control says, and it has to survive a monochrome or
+ * forced-colours rendering. The device name in the label carries the
+ * same meaning in text.
+ */
+.device-scope-trigger.is-scoped {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.device-scope-trigger.is-open {
+  background: var(--surface-hover);
+}
+
+.device-scope-trigger-icon {
+  flex-shrink: 0;
+}
+
+.device-scope-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.device-scope-caret {
+  flex-shrink: 0;
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.device-scope-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 200;
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--nav-h) - 24px);
+  padding: 6px;
+  overflow-y: auto;
+  background: var(--popover-bg);
+  border: 1px solid var(--popover-border);
+  border-radius: var(--r-xl);
+  box-shadow:
+    var(--popover-shadow),
+    inset 0 1px 0 var(--popover-inner-highlight);
+  -webkit-backdrop-filter: var(--popover-blur);
+  backdrop-filter: var(--popover-blur);
+  animation: dropIn 0.18s ease both;
+}
+
+.device-scope-help {
+  margin: 4px 8px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.device-scope-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 7px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-md);
+}
+
+.device-scope-row:hover {
+  background: var(--surface-hover);
+}
+
+/* Checkmark column is fixed-width so names stay aligned whether or not
+   the row is ticked — a jittering list is hard to scan. */
+.device-scope-check {
+  flex-shrink: 0;
+  width: 12px;
+  font-size: 11px;
+  color: var(--blue, #0a84ff);
+}
+
+.device-scope-row-icon {
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+
+.device-scope-row-icon-text {
+  width: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.device-scope-row.is-checked .device-scope-row-icon {
+  color: var(--text);
+}
+
+.device-scope-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.device-scope-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.device-scope-row-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.device-scope-divider {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--border);
+}
+
+/*
+ * The nav's compact tier drops the trigger label; below 640px the
+ * popover anchors to the viewport instead of the trigger, matching the
+ * notification dropdown — a left-anchored panel on a narrow screen
+ * pushes its right edge off-screen.
+ */
+@media (max-width: 640px) {
+  .device-scope-popover {
+    position: fixed;
+    top: calc(var(--nav-h) + 8px);
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+/*
+ * Drawer placement (nav's narrowest tier). The drawer is a column of
+ * full-width rows, so the trigger stretches to match rather than sitting
+ * as a small pill, and it gets a rule beneath it to separate "what am I
+ * looking at" from "where do I go".
+ */
+.nav-drawer-device-scope {
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-drawer-device-scope .device-scope-wrap,
+.nav-drawer-device-scope .device-scope-trigger {
+  width: 100%;
+  max-width: none;
+}
+
+.nav-drawer-device-scope .device-scope-trigger-label {
+  flex: 1;
+}
+
+/*
+ * Owner grouping. Headings only render when at least one device has a
+ * stated owner, so a single-person install never grows a "whose?" label
+ * it never asked for.
+ */
+.device-scope-group + .device-scope-group {
+  margin-top: 6px;
+}
+
+.device-scope-group-heading {
+  margin: 4px 8px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/*
+ * Audience-switch prompt. Given an accent tint and a top rule so it
+ * reads as a separate suggestion rather than another selectable row —
+ * the one thing in this menu that is NOT a device you can tick.
+ */
+.device-scope-prompt {
+  padding: 10px 8px 8px;
+  margin-top: 6px;
+  background: color-mix(in srgb, var(--accent, #0a84ff) 6%, transparent);
+  border-top: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.device-scope-prompt-text {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.device-scope-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* The "what switching does" sentence — secondary to the mismatch line
+   above it, so it steps down in weight and colour rather than reading
+   as a second warning. */
+.device-scope-prompt-why {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}

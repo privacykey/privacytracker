@@ -78,6 +78,12 @@ export async function GET(request: Request) {
   const format = searchParams.get("format") ?? "csv";
 
   if (format === "json") {
+    // Deliberately UNSCOPED. An export is a record of the install, and
+    // silently shipping a third of it because of a nav setting the
+    // exporter can't see from the file is a data-loss-shaped surprise —
+    // the recipient of an audit bundle has no way to tell a scoped
+    // export from a complete one. If per-device export is ever wanted it
+    // should be an explicit choice in the export UI, not a side effect.
     const apps = getAllApps() as any[];
     const full = apps.map((a: any) => getAppWithPrivacy(a.id));
     return NextResponse.json({

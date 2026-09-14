@@ -22,6 +22,7 @@ import "server-only";
 import { recordActivity } from "./activity";
 import type { BackupStamp } from "./device-actions-shared";
 import { verifyBackupArtifact } from "./device-backup-verification";
+import { getDeviceByEcid } from "./devices";
 import { getActiveFocus } from "./feature-flag-storage";
 import { resolveFlagFromDb } from "./feature-flags-server";
 import { getSetting, setSetting } from "./scheduler";
@@ -65,6 +66,22 @@ export function normalizeEcid(value: string): string | null {
 export type DeviceActionGate =
   | { allowed: true }
   | { allowed: false; reason: "audience"; activeAudience: string }
+  | {
+      allowed: false;
+      reason: "device_owner";
+      activeAudience: string;
+      deviceName: string;
+      ownerAudience: string;
+      ownerLabel: string | null;
+    }
+  | {
+      allowed: false;
+      reason: "permission_unacknowledged";
+      activeAudience: string;
+      deviceName: string;
+      ownerAudience: string;
+      ownerLabel: string | null;
+    }
   | { allowed: false; reason: "flag" }
   | { allowed: false; reason: "backup_missing" }
   | { allowed: false; reason: "backup_stale"; agedMs: number }
@@ -74,11 +91,10 @@ export type DeviceActionGate =
  * Resolve whether the user can currently invoke the uninstall path.
  * Three gates, evaluated in order:
  *
- *   1. Audience must be 'self'. Loved-one and guardian can build
- *      verdicts and export bundles, but cannot trigger device-side
- *      changes. This is the most important gate — a guardian
- *      auditing a child's apps must never accidentally execute on
- *their own* device. Cannot be bypassed.
+ *   1. WHOSE DEVICE THIS IS must agree with what you are set up to do.
+ *      See `checkDeviceOwnershipGate` below for the full rule and why
+ *      it replaced a flat "audience must be 'self'". Cannot be
+ *      bypassed.
  *   2. The `flag.devopts.cfgutil_uninstall` flag must be 'on'. Off by
  *      default, surfaced under Developer Options so the user has
  *      explicitly opted in to the destructive feature. Cannot be
@@ -90,11 +106,81 @@ export type DeviceActionGate =
  *      to confirm without a backup" modal sets this. The bypass is
  *      activity-logged separately (see `recordUninstall.detail`).
  */
-export function checkUninstallGate(
-  ecid: string,
-  opts: { acknowledgeNoBackup?: boolean } = {}
-): DeviceActionGate {
+/**
+ * "Is this device mine to act on, given what I'm set up to do?"
+ *
+ * WHY THIS REPLACED A FLAT `audience === 'self'` CHECK. The old rule
+ * keyed on the user's GLOBAL focus, not on the device in front of them,
+ * and so got the important case backwards: a user whose focus said
+ * 'self' could delete apps off a relative's phone the moment it was
+ * plugged in, because nothing asked whose phone it was. Meanwhile a
+ * user helping someone was blocked from acting on their OWN device,
+ * because the focus is a mode, not a target.
+ *
+ * The rule now:
+ *
+ *   - Device has a recorded owner audience → it must MATCH the active
+ *     focus. Your device in self mode, their device in helping mode.
+ *     A mismatch is refused with `reason: 'device_owner'`, which is the
+ *     case the old gate could not even express.
+ *   - Device has no recorded owner, or the ECID resolves to no device →
+ *     fall back to the old rule (`audience === 'self'`). Existing
+ *     installs carry no ownership, and they must behave exactly as
+ *     before rather than being newly blocked or newly permitted.
+ *
+ * THIS IS AN EXPANSION, and deliberately so (the product decision is
+ * that the delete flow serves both the user and the person they are
+ * helping). Deleting apps off another person's device is now reachable
+ * — but only once the user has explicitly recorded that the device is
+ * theirs, explicitly attested that they have that person's permission
+ * (`permission_acknowledged_at`), and explicitly switched into the
+ * matching mode, and only through the rest of the chain: the device physically connected,
+ * unlocked and trusting this Mac, `flag.devopts.cfgutil_uninstall` on,
+ * a fresh verified backup, and a native Touch ID prompt per app inside
+ * `run_cfgutil_remove_app`. The gate stops mistakes; Touch ID is what
+ * stops a compromised webview.
+ *
+ * Fails toward the OLD behaviour, never open: an unreadable device row,
+ * an unparseable ECID or a missing owner all land on the focus rule.
+ */
+export function checkDeviceOwnershipGate(ecid: string): DeviceActionGate {
   const focus = getActiveFocus();
+  const device = safeGetDeviceByEcid(ecid);
+  const ownerAudience = device?.ownerAudience ?? null;
+
+  if (ownerAudience) {
+    if (ownerAudience !== focus.audience) {
+      return {
+        allowed: false,
+        reason: "device_owner",
+        activeAudience: focus.audience,
+        deviceName: device?.name ?? "",
+        ownerAudience,
+        ownerLabel: device?.ownerLabel ?? null,
+      };
+    }
+    // Someone else's device, in the matching mode. Matching the mode is
+    // necessary but not sufficient: acting on another person's device
+    // also requires that the user has said, in so many words, that they
+    // have that person's permission. That attestation is taken at
+    // import (the "whose device is this?" step) or in Settings →
+    // Devices, is stamped with a time, and is audit-logged. Without it
+    // the mode match alone would let "I'm helping someone" unlock
+    // deleting apps off any device labelled as theirs.
+    if (ownerAudience !== "self" && !device?.permissionAcknowledgedAt) {
+      return {
+        allowed: false,
+        reason: "permission_unacknowledged",
+        activeAudience: focus.audience,
+        deviceName: device?.name ?? "",
+        ownerAudience,
+        ownerLabel: device?.ownerLabel ?? null,
+      };
+    }
+    return { allowed: true };
+  }
+
+  // No ownership recorded for this device — the pre-ownership rule.
   if (focus.audience !== "self") {
     return {
       allowed: false,
@@ -102,12 +188,35 @@ export function checkUninstallGate(
       activeAudience: focus.audience,
     };
   }
+  return { allowed: true };
+}
+
+/** Device lookup that can never take the gate down with it. A throw
+ *  here (missing column mid-migration, corrupt row) must degrade to
+ *  "ownership unknown", which lands on the stricter legacy rule. */
+function safeGetDeviceByEcid(ecid: string) {
+  try {
+    return getDeviceByEcid(ecid);
+  } catch (error) {
+    console.warn("[device-actions] device lookup failed:", error);
+    return null;
+  }
+}
+
+export function checkUninstallGate(
+  ecid: string,
+  opts: { acknowledgeNoBackup?: boolean } = {}
+): DeviceActionGate {
+  const ownership = checkDeviceOwnershipGate(ecid);
+  if (!ownership.allowed) {
+    return ownership;
+  }
 
   if (resolveFlagFromDb("flag.devopts.cfgutil_uninstall") !== "on") {
     return { allowed: false, reason: "flag" };
   }
 
-  // Per-call user opt-out of the backup-freshness check. The audience +
+  // Per-call user opt-out of the backup-freshness check. The ownership +
   // flag gates above stay enforced — we only relax the backup
   // requirement, and only when the caller explicitly acknowledges the
   // risk. The wizard's no-backup modal types DELETE to set this.

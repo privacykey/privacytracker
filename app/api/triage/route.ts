@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { isScopeAll } from "@/lib/device-scope";
+import { scopeFromRequest } from "@/lib/device-scope-server";
 import { checkRateLimit, rateLimitKeyForRequest } from "@/lib/security";
 import { getTriageData, type TriageData } from "@/lib/triage";
 
@@ -45,7 +47,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
   try {
-    return NextResponse.json(getTriageData());
+    // `?devices=` narrows the dashboard to one or more devices. Absent,
+    // this is the whole fleet exactly as before.
+    const scope = scopeFromRequest(request.url);
+    return NextResponse.json(
+      getTriageData(isScopeAll(scope) ? undefined : scope)
+    );
   } catch (error) {
     console.warn("[triage] getTriageData failed:", error);
     return NextResponse.json(EMPTY);

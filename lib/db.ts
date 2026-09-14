@@ -688,7 +688,25 @@ db.exec(`
     device_class             TEXT,
     created_at               INTEGER NOT NULL,
     last_synced_at           INTEGER NOT NULL,
-    is_unknown_placeholder   INTEGER NOT NULL DEFAULT 0
+    is_unknown_placeholder   INTEGER NOT NULL DEFAULT 0,
+    /* Whose device this is. Both NULL until the user says — we never
+       infer ownership, because guessing wrong here mislabels a real
+       person's phone in the nav and, worse, can nudge the audience
+       switch prompt at them for no reason.
+
+       owner_label is a free-text name ("Mum", "Leo") used to group the
+       device picker. owner_audience is one of the focus audiences
+       ('self' | 'loved_one' | 'guardian') and is what lets the app
+       notice that you are looking at someone else's device while your
+       focus still says you're working on your own. */
+    owner_label              TEXT,
+    owner_audience           TEXT,
+    /* When the user attested they have the owner's permission to view
+       this device's apps and remove apps from it. Only meaningful when
+       owner_audience is not 'self' — it is cleared if the owner is
+       later set to self — and required by the uninstall gate before
+       acting on anyone else's device. NULL until explicitly ticked. */
+    permission_acknowledged_at INTEGER
   );
   /* Unique partial index — multiple devices can have NULL ECID (CSV/manual);
      at most one device can claim a specific cfgutil ECID. */
@@ -841,6 +859,23 @@ const snapshotMigrations: [string, string][] = [
   ],
 ];
 applyColumnMigrations(snapshotCols, snapshotMigrations);
+
+// Device ownership (Phase 3 of the family-mode work). Nullable on
+// purpose: an existing install has no ownership information and must not
+// have any invented for it. See the CREATE TABLE body above for what the
+// two columns mean.
+const deviceCols = (
+  db.prepare("PRAGMA table_info(devices)").all() as { name: string }[]
+).map((c) => c.name);
+const deviceMigrations: [string, string][] = [
+  ["owner_label", "ALTER TABLE devices ADD COLUMN owner_label TEXT"],
+  ["owner_audience", "ALTER TABLE devices ADD COLUMN owner_audience TEXT"],
+  [
+    "permission_acknowledged_at",
+    "ALTER TABLE devices ADD COLUMN permission_acknowledged_at INTEGER",
+  ],
+];
+applyColumnMigrations(deviceCols, deviceMigrations);
 
 // Migration: change_review_actions.covered_snapshot_ids — JSON array of
 // snapshot ids pending at action time, so the History timeline can link

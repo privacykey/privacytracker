@@ -1833,6 +1833,7 @@
         "flag.legal.privacy_policy_page",
         "flag.legal.terms_page",
         "flag.nav.app_count_badge",
+        "flag.nav.device_scope",
         "flag.nav.mobile_drawer",
         "flag.nav.notification_bell",
         "flag.nav.task_center_trigger",
@@ -3119,6 +3120,15 @@
           },
           {
             "key": "flag.nav.app_count_badge",
+            "surface": "nav",
+            "hardDefault": "on",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null,
+            "wired": true
+          },
+          {
+            "key": "flag.nav.device_scope",
             "surface": "nav",
             "hardDefault": "on",
             "currentValue": "on",

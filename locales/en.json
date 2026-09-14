@@ -80,7 +80,8 @@
       "body_after": "mode for the",
       "body_after_audience": "audience. You can refine your verdicts here and export them — the recipient acts on them from their own copy of the app.",
       "switch_link": "Switch audience under Settings → Your focus",
-      "switch_suffix": "if this is your own device."
+      "switch_suffix": "if this is your own device.",
+      "device_hint": "Or choose a device in the menu at the top of the page that belongs to the person you're helping — removal is allowed when the device's owner matches how you're set up. If the device has no owner recorded yet, set one under Settings → Devices."
     },
     "stepper_aria": "Wizard steps",
     "step_labels": {
@@ -235,7 +236,15 @@
       "gate_denied_generic": "The safety check refused this run, so nothing was deleted.",
       "gate_unreachable": "Couldn't reach the safety check, so nothing was deleted. Check that privacytracker's local service is running and try again.",
       "checking_safety": "Checking safety…",
-      "record_failures": "{count, plural, one {# removal} other {# removals}} couldn't be written to the activity log — the apps were still processed, but the audit trail for this run is incomplete."
+      "record_failures": "{count, plural, one {# removal} other {# removals}} couldn't be written to the activity log — the apps were still processed, but the audit trail for this run is incomplete.",
+      "gate_denied_audience_scoped": "The safety check refused this run, so nothing was deleted: you're viewing {scope}, and app removal is only available when your focus is set to just you.",
+      "gate_denied_device_owner": "The safety check refused this run, so nothing was deleted: {device} belongs to {owner}, and you're currently set up to {mode}. Switch using the device menu at the top, or pick a different device.",
+      "gate_denied_device_owner_unnamed": "The safety check refused this run, so nothing was deleted: that device belongs to someone else, and you're currently set up to {mode}. Switch using the device menu at the top, or pick a different device.",
+      "gate_mode_self": "work on your own apps",
+      "gate_mode_loved_one": "help someone else",
+      "gate_mode_guardian": "look after a child's device",
+      "gate_denied_permission": "The safety check refused this run, so nothing was deleted: {device} belongs to {owner}, and you haven't yet confirmed that you have their permission to remove apps from it. You can confirm that under Settings → Devices.",
+      "gate_denied_permission_unnamed": "The safety check refused this run, so nothing was deleted: that device belongs to someone else, and you haven't yet confirmed that you have their permission to remove apps from it. You can confirm that under Settings → Devices."
     },
     "saved_notes": {
       "heading": "Your notes",
@@ -797,7 +806,18 @@
       "summary_chip_name": "{count} name/manual",
       "summary_chip_pending": "{count} pending",
       "summary_chip_skipped": "{count} skipped",
-      "summary_chip_unavailable": "{count} unavailable"
+      "summary_chip_unavailable": "{count} unavailable",
+      "owner_heading": "Whose device is this?",
+      "owner_help": "This decides how the app groups it, and what it will let you do with it later.",
+      "owner_mine": "Mine",
+      "owner_helping": "Someone I'm helping",
+      "owner_child": "A child I look after",
+      "owner_name_label": "Their name (optional)",
+      "owner_name_placeholder": "e.g. Mum, Robin",
+      "owner_ack_helping": "I have this person's permission to view the apps on their device, and to remove apps from it if we decide to.",
+      "owner_ack_child": "I'm responsible for this child and their device.",
+      "owner_ack_why": "You'll need to confirm this before the app will remove anything from their device. It's recorded with the time you ticked it.",
+      "owner_ack_required": "Tick the box above to continue."
     },
     "profile_setup": {
       "back_to_goals": "Back to your purpose",
@@ -1574,7 +1594,26 @@
       "subtitle": "Click a device to manage or re-sync.",
       "aria": "Devices this app is installed on",
       "manage_link": "Manage devices →"
-    }
+    },
+    "owner_meta": "{owner}",
+    "owner_set": "Set owner",
+    "owner_edit": "Owner",
+    "owner_name_label": "Whose device is this?",
+    "owner_name_placeholder": "e.g. Mum, Leo, or leave blank",
+    "owner_audience_label": "When I'm looking at this device, I'm…",
+    "owner_audience_unset": "Not saying",
+    "owner_audience_option": {
+      "self": "working on my own apps",
+      "loved_one": "helping someone else",
+      "guardian": "looking after a child's device"
+    },
+    "owner_audience_help": "Used to group the device menu, and to offer a matching view when you switch to this device. Nothing changes automatically.",
+    "owner_save": "Save",
+    "owner_cancel": "Cancel",
+    "owner_ack_helping": "I have this person's permission to view the apps on their device, and to remove apps from it if we decide to.",
+    "owner_ack_child": "I'm responsible for this child and their device.",
+    "owner_ack_why": "Required before the app will remove anything from their device. Recorded with the time you tick it.",
+    "owner_ack_confirmed_meta": "permission confirmed"
   },
   "device_sync": {
     "diff_title": "What's changed since last time?",
@@ -3145,11 +3184,6 @@
     "clear_a11y_aria": "Clear accessibility filter",
     "clear_device_title": "Clear device filter",
     "clear_device_aria": "Clear device filter",
-    "device_filter_aria": "Filter apps by device",
-    "device_filter_label": "Device",
-    "device_filter_all": "All devices · {count}",
-    "device_filter_unattached": "Unattached · {count}",
-    "device_filter_unattached_short": "unattached apps",
     "profile_mismatches_label": "Profile mismatches",
     "has_features_title": "Apps that declare at least one accessibility feature.",
     "has_features_label": "Has features",
@@ -3287,7 +3321,10 @@
     "change_dot_privacy_title": "{count, plural, one {# privacy label change detected} other {# privacy label changes detected}}",
     "change_dot_accessibility_title": "{count, plural, one {# accessibility label change detected} other {# accessibility label changes detected}}",
     "change_dot_both_title": "{count, plural, one {# privacy and accessibility label change detected} other {# privacy and accessibility label changes detected}}",
-    "change_dot_generic_title": "{count, plural, one {# permission change detected} other {# permission changes detected}}"
+    "change_dot_generic_title": "{count, plural, one {# permission change detected} other {# permission changes detected}}",
+    "sync_all_scoped": "Sync {scope}",
+    "task_sync_all_scoped_title": "Syncing apps on {scope}",
+    "sync_all_scoped_title": "Only apps on {scope} are loaded, so only those will sync."
   },
   "review_queue": {
     "mode_toggle": {
@@ -3534,6 +3571,39 @@
     "stats_updated": "{count} updated",
     "stats_separator": " · ",
     "dismiss_aria": "Dismiss"
+  },
+  "device_scope": {
+    "trigger_aria": "Showing apps from: {scope}. Change which devices you're viewing.",
+    "menu_aria": "Choose which devices to show",
+    "help": "Choose whose apps you're looking at. This applies everywhere — the dashboard, stats and the review list all follow it.",
+    "all_label": "All devices",
+    "all_sub": "{count, plural, =0 {Everything you've imported} one {# device, plus anything you add later} other {# devices, plus anything you add later}}",
+    "multi_label": "{count, plural, one {# selection} other {# selected}}",
+    "device_sub": "{model} · {count, plural, one {# app} other {# apps}}",
+    "device_sub_no_model": "{count, plural, one {# app} other {# apps}}",
+    "unattached_label": "Not tied to a device",
+    "unattached_sub": "Apps added by hand or from a CSV",
+    "banner_scoped": "You're viewing {scope}.",
+    "banner_show_all": "Show all devices",
+    "grid_filtering_by": "Showing",
+    "owner_unassigned": "No owner set",
+    "audience_prompt": "Someone else's device — but you're set up for {current}.",
+    "audience_prompt_named": "{owner}'s device — but you're set up for {current}.",
+    "audience_switch_cta": "Switch to {mode}",
+    "audience_switching": "Switching…",
+    "audience_keep_cta": "Stay as I am",
+    "audience_name": {
+      "self": "working on your own apps",
+      "loved_one": "helping someone else",
+      "guardian": "looking after a child's device"
+    },
+    "export_note": "Exports cover every device, not just {scope}.",
+    "export_note_bundle": "This bundle covers every device, not just {scope}.",
+    "audience_why": {
+      "loved_one": "Switching to helping someone else turns on the tools for handing your findings to them — a shareable bundle, printable recommendations and notes on each app — and it's needed before you can remove apps from their device.",
+      "guardian": "Switching to looking after a child's device adds age ratings and a plain-language safety summary for every app, hides the power-user tools, and it's needed before you can remove apps from their device.",
+      "self": "Switching to working on your own apps puts the sharing tools away, and it's needed before you can remove apps from this device."
+    }
   },
   "device_connect_toast": {
     "no_name": "iOS device",
