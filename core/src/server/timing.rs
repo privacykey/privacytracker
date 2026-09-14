@@ -89,43 +89,46 @@ mod tests {
             .status()
     }
 
-    #[tokio::test]
-    async fn records_the_matched_pattern_and_skips_the_404_fallback() {
-        diag::clear_http();
+    #[test]
+    fn records_the_matched_pattern_and_skips_the_404_fallback() {
+        let _guard = diag::HTTP_TEST_LOCK.lock().unwrap();
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            diag::clear_http();
 
-        // A 500 is always recorded, and the label is the PATTERN — not
-        // `/api/apps/94961186/detail`.
-        assert_eq!(send("/api/boom").await, StatusCode::INTERNAL_SERVER_ERROR);
-        let s = diag::http_snapshot(200);
-        assert_eq!(s.total_since_start, 1);
-        assert_eq!(s.recent[0].route, "/api/boom");
-        assert_eq!(s.recent[0].status, 500);
+            // A 500 is always recorded, and the label is the PATTERN — not
+            // `/api/apps/94961186/detail`.
+            assert_eq!(send("/api/boom").await, StatusCode::INTERNAL_SERVER_ERROR);
+            let s = diag::http_snapshot(200);
+            assert_eq!(s.total_since_start, 1);
+            assert_eq!(s.recent[0].route, "/api/boom");
+            assert_eq!(s.recent[0].status, 500);
 
-        assert_eq!(send("/api/apps/94961186/detail").await, StatusCode::OK);
-        assert!(
-            !diag::http_snapshot(200)
-                .recent
-                .iter()
-                .any(|r| r.route.contains("94961186")),
-            "a concrete id must never reach the ring"
-        );
+            assert_eq!(send("/api/apps/94961186/detail").await, StatusCode::OK);
+            assert!(
+                !diag::http_snapshot(200)
+                    .recent
+                    .iter()
+                    .any(|r| r.route.contains("94961186")),
+                "a concrete id must never reach the ring"
+            );
 
-        // An unmatched path: answered, never recorded, and its raw text
-        // never stored.
-        assert_eq!(
-            send("/api/../secret-token-in-a-path").await,
-            StatusCode::NOT_FOUND
-        );
-        let s = diag::http_snapshot(200);
-        assert!(
-            !s.recent.iter().any(|r| r.route.contains("secret-token")),
-            "unmatched paths are not recorded: {:?}",
-            s.recent
-        );
-        assert_eq!(s.total_since_start, 1, "only the 500 was recorded");
+            // An unmatched path: answered, never recorded, and its raw text
+            // never stored.
+            assert_eq!(
+                send("/api/../secret-token-in-a-path").await,
+                StatusCode::NOT_FOUND
+            );
+            let s = diag::http_snapshot(200);
+            assert!(
+                !s.recent.iter().any(|r| r.route.contains("secret-token")),
+                "unmatched paths are not recorded: {:?}",
+                s.recent
+            );
+            assert_eq!(s.total_since_start, 1, "only the 500 was recorded");
 
-        // The gauge returns to where it started.
-        assert_eq!(s.in_flight, 0);
-        diag::clear_http();
+            // The gauge returns to where it started.
+            assert_eq!(s.in_flight, 0);
+            diag::clear_http();
+        });
     }
 }

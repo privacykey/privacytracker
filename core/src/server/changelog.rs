@@ -121,7 +121,7 @@ impl ChangelogRow {
 /// is invisible here because both spell the same string, but a port that
 /// passed the already-normalised `"live"` would still be correct only by
 /// accident.
-fn normalize_trigger(raw: Option<&str>, source: Option<&str>) -> Option<&'static str> {
+pub(super) fn normalize_trigger(raw: Option<&str>, source: Option<&str>) -> Option<&'static str> {
     match raw {
         Some("scheduled") => return Some("scheduled"),
         Some("manual") => return Some("manual"),

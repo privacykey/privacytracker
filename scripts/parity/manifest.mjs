@@ -202,28 +202,231 @@ export const READS = [
   },
 
   // -- derived views + stats
-  { route: "/api/stats", name: "stats", path: "/api/stats" },
-  // KNOWN NONDETERMINISM IN THE APP, not in this harness. /api/stats/radar
-  // selects a subset of apps and two runs of the SAME implementation can
-  // return DIFFERENT app sets from an identical database — observed
-  // swapping 95427241 for 94778184 between two freshly, identically
-  // seeded servers. Sorting cannot reconcile differing sets, so the app
-  // list is compared by size only while the axes and the rating legend —
-  // which are stable — are compared in full.
-  //
-  // This is worth fixing in the route (add a deterministic tiebreak to
-  // the selection) and then tightening this entry back to a full
-  // comparison; until then the strongest honest contract is the shape.
+  {
+    route: "/api/stats",
+    name: "stats single device",
+    path: "/api/stats?devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/stats",
+    name: "stats overlapping devices",
+    path: "/api/stats?devices=pt-stats-device-a,pt-stats-device-b",
+  },
+  {
+    route: "/api/stats",
+    name: "stats unattached",
+    path: "/api/stats?devices=unattached",
+  },
+  {
+    route: "/api/stats",
+    name: "stats stale scope",
+    path: "/api/stats?devices=deleted-device",
+  },
+  {
+    route: "/api/stats",
+    name: "stats first repeated scope",
+    path: "/api/stats?devices=&devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/triage",
+    name: "triage single device",
+    path: "/api/triage?devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/triage",
+    name: "triage overlapping devices",
+    path: "/api/triage?devices=pt-stats-device-a,pt-stats-device-b",
+  },
+  {
+    route: "/api/triage",
+    name: "triage unattached",
+    path: "/api/triage?devices=unattached",
+  },
+  {
+    route: "/api/triage",
+    name: "triage stale scope",
+    path: "/api/triage?devices=deleted-device",
+  },
+  {
+    route: "/api/triage",
+    name: "triage first repeated scope",
+    path: "/api/triage?devices=&devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/review-queue",
+    name: "review-queue single device",
+    path: "/api/review-queue?devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/review-queue",
+    name: "review-queue overlapping devices",
+    path: "/api/review-queue?devices=pt-stats-device-a,pt-stats-device-b",
+  },
+  {
+    route: "/api/review-queue",
+    name: "review-queue unattached",
+    path: "/api/review-queue?devices=unattached",
+  },
+  {
+    route: "/api/review-queue",
+    name: "review-queue stale scope",
+    path: "/api/review-queue?devices=deleted-device",
+  },
+  {
+    route: "/api/review-queue",
+    name: "review-queue first repeated scope",
+    path: "/api/review-queue?devices=&devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/privacy-profile/mismatches",
+    name: "privacy-profile/mismatches single device",
+    path: "/api/privacy-profile/mismatches?devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/privacy-profile/mismatches",
+    name: "privacy-profile/mismatches overlapping devices",
+    path: "/api/privacy-profile/mismatches?devices=pt-stats-device-a,pt-stats-device-b",
+  },
+  {
+    route: "/api/privacy-profile/mismatches",
+    name: "privacy-profile/mismatches unattached",
+    path: "/api/privacy-profile/mismatches?devices=unattached",
+  },
+  {
+    route: "/api/privacy-profile/mismatches",
+    name: "privacy-profile/mismatches stale scope",
+    path: "/api/privacy-profile/mismatches?devices=deleted-device",
+  },
+  {
+    route: "/api/privacy-profile/mismatches",
+    name: "privacy-profile/mismatches first repeated scope",
+    path: "/api/privacy-profile/mismatches?devices=&devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/review-queue",
+    name: "queue count only",
+    path: "/api/review-queue?count=1",
+  },
+  {
+    route: "/api/review-queue",
+    name: "queue scoped count",
+    path: "/api/review-queue?count=1&devices=pt-stats-device-a",
+  },
+  {
+    route: "/api/review-queue",
+    name: "queue nonliteral count",
+    path: "/api/review-queue?count=01",
+  },
+  {
+    route: "/api/review-queue",
+    name: "queue first repeated count",
+    path: "/api/review-queue?count=0&count=1",
+  },
   {
     route: "/api/stats/radar",
-    name: "stats radar",
-    path: "/api/stats/radar",
-    canonicalizeById: true,
-    transform: (json) => ({
-      ...json,
-      apps: { count: (json.apps ?? []).length },
-    }),
+    name: "radar explicit summaries",
+    path: "/api/stats/radar?apps=89999001,89999002,89999003",
   },
+  {
+    route: "/api/stats/radar",
+    name: "radar empty ids selects default",
+    path: "/api/stats/radar?apps=,%20,",
+  },
+  {
+    route: "/api/stats/radar",
+    name: "radar missing id",
+    path: "/api/stats/radar?apps=missing",
+  },
+  {
+    route: "/api/stats/radar",
+    name: "radar first repeated ids",
+    path: "/api/stats/radar?apps=89999001&apps=89999002",
+  },
+  {
+    route: "/api/stats/radar",
+    name: "radar too many ids",
+    path: "/api/stats/radar?apps=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "fixed timeline day",
+    path: "/api/stats/timeline?from=1709035200000&to=1709546400000&bucket=day&appId=89999001",
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "fixed timeline week",
+    path: "/api/stats/timeline?from=1709035200000&to=1709546400000&bucket=week&appId=89999001",
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "fixed timeline month",
+    path: "/api/stats/timeline?from=1709035200000&to=1709546400000&bucket=month&appId=89999001",
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "fixed timeline invalid",
+    path: "/api/stats/timeline?from=1709035200000&to=1709546400000&bucket=invalid&appId=89999001",
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "timeline prefix parsing",
+    path: "/api/stats/timeline?from=1709035200000abc&to=1709546400000&bucket=day&appId=89999001",
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "timeline rejects reversed window",
+    path: "/api/stats/timeline?from=200&to=100",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "timeline invalid Date produces no points",
+    path: "/api/stats/timeline?from=9000000000000000&to=9000000000000001",
+  },
+  {
+    route: "/api/stats/timeline",
+    name: "timeline invalid app id ignored",
+    path: "/api/stats/timeline?from=1709035200000&to=1709546400000&appId=not-an-id",
+  },
+  {
+    route: "/api/changelog",
+    name: "changelog entry filters and offset",
+    path: "/api/changelog?appId=89999001&type=added,removed&category=accessibility&limit=1&offset=1",
+  },
+  {
+    route: "/api/changelog",
+    name: "changelog zero limit clamps to one",
+    path: "/api/changelog?appId=89999001&limit=0",
+  },
+  {
+    route: "/api/changelog",
+    name: "changelog prefix integers",
+    path: "/api/changelog?appId=89999001&limit=2abc&offset=1tail",
+  },
+  {
+    route: "/api/changelog",
+    name: "changelog capped and empty page",
+    path: "/api/changelog?appId=89999001&limit=1000&offset=999",
+  },
+  {
+    route: "/api/changelog",
+    name: "changelog unknown filters ignored",
+    path: "/api/changelog?appId=89999001&type=invalid&category=unknown",
+  },
+  {
+    route: "/api/changelog",
+    name: "changelog reversed bounds empty",
+    path: "/api/changelog?from=200&to=100",
+  },
+  {
+    route: "/api/changelog",
+    name: "changelog fixed bounds",
+    path: "/api/changelog?appId=89999001&from=0&to=1709546400000",
+  },
+  { route: "/api/stats", name: "stats", path: "/api/stats" },
+  // The Node query now has an id tie-break; compare the full radar again.
+  { route: "/api/stats/radar", name: "stats radar", path: "/api/stats/radar" },
   {
     route: "/api/stats/timeline",
     name: "stats timeline",

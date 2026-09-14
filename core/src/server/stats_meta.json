@@ -1,0 +1,152 @@
+{
+  "categories": [
+    {
+      "identifier": "CONTACT_INFO",
+      "label": "Contact Info"
+    },
+    {
+      "identifier": "HEALTH_AND_FITNESS",
+      "label": "Health & Fitness"
+    },
+    {
+      "identifier": "FINANCIAL_INFO",
+      "label": "Financial Info"
+    },
+    {
+      "identifier": "LOCATION",
+      "label": "Location"
+    },
+    {
+      "identifier": "SENSITIVE_INFO",
+      "label": "Sensitive Info"
+    },
+    {
+      "identifier": "CONTACTS",
+      "label": "Contacts"
+    },
+    {
+      "identifier": "USER_CONTENT",
+      "label": "User Content"
+    },
+    {
+      "identifier": "BROWSING_HISTORY",
+      "label": "Browsing History"
+    },
+    {
+      "identifier": "SEARCH_HISTORY",
+      "label": "Search History"
+    },
+    {
+      "identifier": "IDENTIFIERS",
+      "label": "Identifiers"
+    },
+    {
+      "identifier": "PURCHASES",
+      "label": "Purchases"
+    },
+    {
+      "identifier": "USAGE_DATA",
+      "label": "Usage Data"
+    },
+    {
+      "identifier": "DIAGNOSTICS",
+      "label": "Diagnostics"
+    },
+    {
+      "identifier": "OTHER",
+      "label": "Other Data"
+    }
+  ],
+  "severities": [
+    {
+      "identifier": "DATA_NOT_LINKED_TO_YOU",
+      "label": "Data Not Linked to You"
+    },
+    {
+      "identifier": "DATA_LINKED_TO_YOU",
+      "label": "Data Linked to You"
+    },
+    {
+      "identifier": "DATA_USED_TO_TRACK_YOU",
+      "label": "Data Used to Track You"
+    }
+  ],
+  "axes": [
+    {
+      "key": "collection_scope",
+      "label": "Collection Scope"
+    },
+    {
+      "key": "product_use",
+      "label": "Product Use"
+    },
+    {
+      "key": "ads_marketing",
+      "label": "Ads & Marketing"
+    },
+    {
+      "key": "third_party_sharing",
+      "label": "Third-Party Sharing"
+    },
+    {
+      "key": "tracking_analytics",
+      "label": "Tracking & Analytics"
+    },
+    {
+      "key": "user_controls",
+      "label": "User Controls"
+    },
+    {
+      "key": "data_retention",
+      "label": "Data Retention"
+    },
+    {
+      "key": "children_minors",
+      "label": "Children & Minors"
+    }
+  ],
+  "ratings": [
+    "favorable",
+    "mixed",
+    "concerning",
+    "unclear"
+  ],
+  "accessibility": [
+    {
+      "identifier": "voiceover",
+      "title": "VoiceOver"
+    },
+    {
+      "identifier": "voice_control",
+      "title": "Voice Control"
+    },
+    {
+      "identifier": "larger_text",
+      "title": "Larger Text"
+    },
+    {
+      "identifier": "dark_interface",
+      "title": "Dark Interface"
+    },
+    {
+      "identifier": "differentiate_without_color_alone",
+      "title": "Differentiate Without Color Alone"
+    },
+    {
+      "identifier": "sufficient_contrast",
+      "title": "Sufficient Contrast"
+    },
+    {
+      "identifier": "reduced_motion",
+      "title": "Reduced Motion"
+    },
+    {
+      "identifier": "captions",
+      "title": "Captions"
+    },
+    {
+      "identifier": "audio_descriptions",
+      "title": "Audio Descriptions"
+    }
+  ]
+}
