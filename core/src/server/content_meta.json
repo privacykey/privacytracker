@@ -1,0 +1,114 @@
+{
+  "activityTypes": [
+    "scrape",
+    "resync",
+    "policy_summary",
+    "scheduled_sync",
+    "manual_sync",
+    "import",
+    "wayback_import",
+    "backup_export",
+    "backup_restore",
+    "reset",
+    "migration",
+    "annotation_created",
+    "annotation_edited",
+    "annotation_deleted",
+    "verdict_set",
+    "verdict_cleared",
+    "bulk_verdict_set",
+    "queue_session_completed",
+    "cfgutil_backup",
+    "cfgutil_uninstall",
+    "flag_quarantined_purged",
+    "bundle_imported",
+    "profile_preset_applied",
+    "dashboard_layout_applied",
+    "health_check"
+  ],
+  "notificationDefaults": {
+    "labelChanges": true,
+    "profileMismatch": true,
+    "policyUpdates": true,
+    "versionUpdates": true,
+    "importCompleted": true,
+    "manualAppsPrompt": true,
+    "aiTimeout": true
+  },
+  "tasks": [
+    {
+      "id": "view_privacy_map",
+      "route": "/dashboard/privacy",
+      "prerequisites": [],
+      "i18nKey": "view_privacy_map",
+      "optInOnly": false
+    },
+    {
+      "id": "open_any_app_detail",
+      "route": "/dashboard/apps",
+      "prerequisites": [],
+      "i18nKey": "open_any_app_detail",
+      "optInOnly": false
+    },
+    {
+      "id": "create_privacy_profile",
+      "route": "/onboard/profile",
+      "prerequisites": [],
+      "i18nKey": "create_privacy_profile",
+      "optInOnly": false
+    },
+    {
+      "id": "review_mismatches",
+      "route": "/dashboard/review-recommendations",
+      "prerequisites": [
+        "create_privacy_profile"
+      ],
+      "i18nKey": "review_mismatches",
+      "optInOnly": false
+    },
+    {
+      "id": "compare_two_apps",
+      "route": "/dashboard/compare",
+      "prerequisites": [],
+      "i18nKey": "compare_two_apps",
+      "optInOnly": false
+    },
+    {
+      "id": "import_label_history",
+      "route": "/dashboard/settings/admin#wayback-import",
+      "prerequisites": [],
+      "i18nKey": "import_label_history",
+      "optInOnly": false
+    },
+    {
+      "id": "setup_background_mode",
+      "route": "/dashboard/settings/sync",
+      "prerequisites": [],
+      "i18nKey": "setup_background_mode",
+      "optInOnly": true
+    },
+    {
+      "id": "remove_apps_from_phone",
+      "route": "/dashboard/review-recommendations",
+      "prerequisites": [
+        "create_privacy_profile"
+      ],
+      "i18nKey": "remove_apps_from_phone",
+      "optInOnly": true
+    },
+    {
+      "id": "resync_apps_from_device",
+      "route": "/dashboard/settings/devices",
+      "prerequisites": [],
+      "i18nKey": "resync_apps_from_device",
+      "optInOnly": true
+    },
+    {
+      "id": "export_audit_bundle",
+      "route": "/dashboard/settings/admin#export-data",
+      "prerequisites": [],
+      "i18nKey": "export_audit_bundle",
+      "optInOnly": true
+    }
+  ]
+}

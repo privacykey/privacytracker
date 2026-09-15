@@ -605,6 +605,79 @@ export const READS = [
   },
   { route: "/api/shortlist", name: "shortlist", path: "/api/shortlist" },
   {
+    route: "/api/shortlist",
+    name: "device-scoped shortlist",
+    path: "/api/shortlist?devices=pt-content-device",
+  },
+  {
+    route: "/api/shortlist",
+    name: "unattached shortlist",
+    path: "/api/shortlist?devices=unattached",
+  },
+  {
+    route: "/api/shortlist",
+    name: "unknown scope falls back",
+    path: "/api/shortlist?devices=missing",
+  },
+  {
+    route: "/api/shortlist/export",
+    name: "JSON whole-install export",
+    path: "/api/shortlist/export?format=json&devices=pt-content-device",
+  },
+  {
+    route: "/api/shortlist/export",
+    name: "uppercase JSON export",
+    path: "/api/shortlist/export?format=JSON",
+  },
+  {
+    route: "/api/shortlist/export",
+    name: "untrimmed format is Markdown",
+    path: "/api/shortlist/export?format=%20json",
+  },
+  {
+    route: "/api/annotations",
+    name: "note count takes precedence",
+    path: "/api/annotations?countApps=1&appId=",
+  },
+  {
+    route: "/api/annotations",
+    name: "private and imported notes",
+    path: "/api/annotations?appId=89997001",
+  },
+  {
+    route: "/api/annotations",
+    name: "missing app validation",
+    path: "/api/annotations",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/annotations",
+    name: "empty first app id",
+    path: "/api/annotations?appId=&appId=89997001",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/activity",
+    name: "activity filtered page",
+    path: "/api/activity?type=dashboard_layout_applied&limit=2&offset=1",
+  },
+  {
+    route: "/api/activity",
+    name: "activity ended order",
+    path: "/api/activity?type=dashboard_layout_applied&sortBy=ended_at&sortDir=asc",
+  },
+  {
+    route: "/api/activity",
+    name: "activity clamped query",
+    path: "/api/activity?type=dashboard_layout_applied&limit=0&offset=-5",
+  },
+  {
+    route: "/api/activity",
+    name: "activity repeated limit",
+    path: "/api/activity?type=dashboard_layout_applied&limit=2tail&limit=4",
+  },
+
+  {
     route: "/api/shortlist/export",
     name: "shortlist export",
     path: "/api/shortlist/export",

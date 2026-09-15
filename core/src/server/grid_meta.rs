@@ -641,6 +641,25 @@ pub(super) fn candidate_badges(conn: &Connection) -> rusqlite::Result<Value> {
     Ok(js_keyed_object(pairs))
 }
 
+/// Both shortlist decorations share Node's single full-footprint scan.
+pub(super) fn shortlist_profile_maps(conn: &Connection) -> rusqlite::Result<(Value, Value)> {
+    let Some(profile) = get_privacy_profile(conn)? else {
+        return Ok((serde_json::json!({}), serde_json::json!({})));
+    };
+    let mut badges = Vec::new();
+    let mut mismatches = Vec::new();
+    for (id, fp) in build_all_footprints(conn, None)? {
+        let result = compute_profile_mismatch(Some(&profile), &fp);
+        if result.profile_active {
+            badges.push((id.clone(), summarise_badge(&result)));
+            if !result.mismatches.is_empty() {
+                mismatches.push((id, mismatch_json(&result)));
+            }
+        }
+    }
+    Ok((js_keyed_object(badges), js_keyed_object(mismatches)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

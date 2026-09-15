@@ -36,6 +36,8 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import BetterSqlite3 from "better-sqlite3";
+import { applyContentFixture } from "./content-fixture.mjs";
+import { probeContentReads } from "./content-probes.mjs";
 import { applyDevicesFixture, probeDeviceReads } from "./devices-fixture.mjs";
 import {
   validateErrorLog,
@@ -86,6 +88,14 @@ const BATCH_1 = [
   "/api/devices/[id]/bundles",
   "/api/devices/[id]/tracked-apps",
   "/api/devices/for-app/[appId]",
+  "/api/activity",
+  "/api/notifications",
+  "/api/notification-prefs",
+  "/api/user-tasks",
+  "/api/annotations",
+  "/api/shortlist",
+  "/api/shortlist/export",
+
   // Database-backed fleet analysis (live Apple reads wait for Phase 3).
   "/api/stats",
   "/api/stats/matrix",
@@ -1487,6 +1497,7 @@ async function main() {
   const fixture = applySinceInstallFixture(nodeData);
   applyStatsFixture(nodeData);
   applyDevicesFixture(nodeData);
+  applyContentFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
   );
@@ -1613,10 +1624,18 @@ async function main() {
 
   const devicesOk = await probeDeviceReads(args.node, rustBase, TOKEN);
   const statsOk = await probeStatsReads(args.node, rustBase, TOKEN);
+  const contentOk = await probeContentReads(
+    args.node,
+    rustBase,
+    TOKEN,
+    nodeData,
+    rustData
+  );
 
   cleanup();
   const ok =
     devicesOk &&
+    contentOk &&
     statsOk &&
     authOk &&
     slashOk &&

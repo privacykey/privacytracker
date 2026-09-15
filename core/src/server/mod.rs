@@ -15,6 +15,8 @@ mod analysis;
 mod apps;
 pub mod auth;
 mod changelog;
+#[cfg(test)]
+mod content_tests;
 mod deployment;
 #[cfg(test)]
 mod devices_tests;
@@ -35,6 +37,7 @@ mod review;
 mod routes;
 mod routes_app;
 mod routes_apps;
+mod routes_content;
 mod routes_detail;
 mod routes_devices;
 mod routes_diag;
@@ -49,6 +52,7 @@ mod row;
 mod runtime_diag;
 mod scope;
 mod settings;
+mod shortlist;
 mod stats;
 #[cfg(test)]
 mod stats_tests;
@@ -56,6 +60,8 @@ mod sysproc;
 mod timing;
 mod trend;
 pub mod trust;
+mod user_content;
+mod user_tasks;
 pub mod webhook;
 
 use std::net::SocketAddr;
@@ -201,6 +207,19 @@ pub fn app(state: AppState) -> Router {
             get(routes_devices::tracked_apps),
         )
         .route("/api/devices/for-app/{appId}", get(routes_devices::for_app))
+        .route("/api/activity", get(routes_content::activity))
+        .route("/api/notifications", get(routes_content::notifications))
+        .route(
+            "/api/notification-prefs",
+            get(routes_content::notification_prefs),
+        )
+        .route("/api/user-tasks", get(routes_content::user_tasks))
+        .route("/api/annotations", get(routes_content::annotations))
+        .route("/api/shortlist", get(routes_content::shortlist))
+        .route(
+            "/api/shortlist/export",
+            get(routes_content::shortlist_export),
+        )
         .route(
             "/api/auth/admin-token/status",
             get(routes::admin_token_status),
