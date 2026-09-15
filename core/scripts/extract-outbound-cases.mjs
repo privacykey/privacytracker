@@ -21,6 +21,14 @@ const {
 const { isPrivateIpv4, isPrivateIpv6, isMetadataHost } = await import(
   "../../lib/network-address.ts"
 );
+// RFC 1952's OS byte describes the compressor's host, not response behavior.
+// Use the specified "unknown" value so macOS and Linux emit identical inputs.
+const portableGzip = (input) => {
+  const compressed = gzipSync(input);
+  compressed[9] = 255;
+  return compressed;
+};
+
 const hosts = ["apps.apple.com", "itunes.apple.com"];
 const urls = [
   "",
@@ -196,7 +204,7 @@ const scenarios = [
       {
         ...reply(),
         headers: { "content-encoding": "gzip" },
-        body: [...gzipSync("compressed λ")],
+        body: [...portableGzip("compressed λ")],
       },
     ],
   },
@@ -236,7 +244,7 @@ const scenarios = [
       {
         ...reply(),
         headers: { "content-encoding": "gzip" },
-        body: [...gzipSync("x".repeat(2048))],
+        body: [...portableGzip("x".repeat(2048))],
       },
     ],
   },
