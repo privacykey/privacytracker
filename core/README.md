@@ -179,7 +179,7 @@ PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (42).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (47).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -1120,3 +1120,75 @@ but malformed stored JSON shapes that app writers never produce are not a
 general JavaScript emulation contract (for example a JSON string used as a
 universal-changelog entry array); invalid JSON and common null/object cases
 are pinned by the oracle.
+
+
+### Device reads (+5 routes, 47 total)
+
+`GET /api/devices`, `/api/devices/[id]`, `/api/devices/[id]/bundles`,
+`/api/devices/[id]/tracked-apps` and `/api/devices/for-app/[appId]` now read
+stored device metadata, ownership, import history and app links. All five
+remain inside the existing host/auth gate; none adds a per-route rate limit
+because none of the Node GETs has one. The device mutation handlers and
+hardware access remain for later phases. No shipping path, dependency,
+Node server logic or schema changes in this batch.
+
+**The wire contract follows the route, not the helper that sounds closest.**
+`/api/devices?ecid=…` trims JavaScript whitespace and does an exact SQL match.
+It does not use `getDeviceByEcid`'s case/prefix normalisation from the device
+action gate. A nonempty ECID chooses `{ device, importHistory }`; no match
+returns both keys as null. Missing, empty or whitespace-only ECIDs choose
+`{ devices }`, with `appCount` appended to each device. Repeated query keys
+use the first value, even when that value is empty.
+
+`rowToDevice`'s object literal determines the field order. Nullable metadata
+stays explicitly null; `ownerLabel` is JS-trimmed, invalid stored audiences
+read as null, and only a numeric `is_unknown_placeholder === 1` is true.
+`permissionAcknowledgedAt` uses nullish fallback, preserving zero. Reads
+never infer an owner or stamp an acknowledgement. Device lists sort by
+`last_synced_at DESC, name` and include placeholders and zero-app devices.
+
+**ID handling and failures are intentionally asymmetric.** Detail uses its
+path ID verbatim and returns `404 {"error":"device not found"}` for a miss;
+its error branch is `500 {"error":"internal"}`. Bundles and tracked-apps
+trim the ID, return an empty list for a missing device, and also return an
+empty list with status 200 on database errors. Reverse app lookup trims,
+returns `400 {"devices":[]}` for a blank ID, an empty 200 for an unknown
+app, and an empty 500 on read errors. The device list's own failure envelope
+is `500 {"devices":[]}`, including failures during ECID lookup.
+
+Import history counts `completed_at IS NOT NULL`, including zero and rows
+whose `imported` count is zero, and takes the maximum completion timestamp.
+An existing device without completed imports has `{ count: 0,
+lastCompletedAt: null }`. The imports helper catches its own SQL errors;
+a missing imports table must not turn an otherwise valid device into a 500.
+
+Bundles use SQL `DISTINCT`, exclude only NULL and the empty string, and keep
+whitespace-only bundle IDs. Tracked apps retain null/empty bundle IDs and
+sort with SQLite `COLLATE NOCASE` (ASCII folding, not locale collation).
+Bundle order and ties without a secondary ORDER BY remain planner-decided,
+matching Node. The bundled SQLite versions differ, so the fixture pins
+current agreement rather than adding a Rust-only sorting rule.
+
+**Coverage.** `scripts/parity/devices-fixture.mjs` seeds five devices,
+six linked apps, overlapping memberships, duplicate/null/empty/blank bundle
+IDs, mixed-case and non-ASCII names, three ownership audiences and completed,
+zero-timestamp and pending imports. The live manifest adds 28 branch cases
+beside the five existing device entries. Twelve raw-response probes assert
+that their scenarios were exercised, including unmasked timestamp values
+and key order. This brings the complete local gate to **126 comparisons
+across 47 routes**, plus the existing auth/runtime/rate-limit probes.
+
+`node --conditions=react-server --import tsx core/scripts/extract-devices-cases.mjs`
+executes the actual Node GET handlers in 58 isolated database scenarios.
+Rust replays the same SQL and compares exact status and body bytes. Cases
+include empty databases, Unicode whitespace, repeated ECIDs, legacy invalid
+owner/placeholder values, and missing-table fault injection. Both the Node
+oracle and Rust replay assert that GET leaves SQLite's change count intact.
+CI regenerates `core/tests/fixtures/devices-cases.json` before running the
+crate tests, so Node route drift cannot silently leave a stale oracle green.
+
+The negative control changes the ECID SQL to `COLLATE NOCASE`; the live gate
+must fail its case-sensitive lookup case and raw-response probe. Normal
+shipping builds remain protected by the unchanged `rust-core-inert` test.
+Phase 2 now has 18 compared reads left; `/api/compare` and `/api/related-apps`
+still need Phase 3's live scraper support before all branches can be ported.

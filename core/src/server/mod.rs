@@ -16,6 +16,8 @@ mod apps;
 pub mod auth;
 mod changelog;
 mod deployment;
+#[cfg(test)]
+mod devices_tests;
 pub(crate) mod diag;
 mod diagnostics;
 pub mod diff;
@@ -34,6 +36,7 @@ mod routes;
 mod routes_app;
 mod routes_apps;
 mod routes_detail;
+mod routes_devices;
 mod routes_diag;
 mod routes_focus;
 mod routes_imports;
@@ -188,6 +191,16 @@ pub fn app(state: AppState) -> Router {
             get(routes_stats::mismatches),
         )
         .route("/api/changelog", get(routes_stats::changelog))
+        // Stored device reads: ownership, exact ECID lookup, import history
+        // and app links. No cfgutil calls or mutation handlers are enabled.
+        .route("/api/devices", get(routes_devices::devices))
+        .route("/api/devices/{id}", get(routes_devices::detail))
+        .route("/api/devices/{id}/bundles", get(routes_devices::bundles))
+        .route(
+            "/api/devices/{id}/tracked-apps",
+            get(routes_devices::tracked_apps),
+        )
+        .route("/api/devices/for-app/{appId}", get(routes_devices::for_app))
         .route(
             "/api/auth/admin-token/status",
             get(routes::admin_token_status),

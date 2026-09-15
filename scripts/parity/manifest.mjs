@@ -103,6 +103,151 @@ export const READS = [
     name: "manual app detail",
     path: "/api/manual-apps/{manualApp}",
   },
+  // Device branches use nonempty fixtures; database failures are in the Node oracle.
+  {
+    route: "/api/devices",
+    name: "devices empty ECID",
+    path: "/api/devices?ecid=",
+  },
+  {
+    route: "/api/devices",
+    name: "devices blank ECID",
+    path: "/api/devices?ecid=%EF%BB%BF%20%C2%A0",
+  },
+  {
+    route: "/api/devices",
+    name: "devices exact ECID",
+    path: "/api/devices?ecid=0xAbCd1234",
+  },
+  {
+    route: "/api/devices",
+    name: "devices trimmed ECID",
+    path: "/api/devices?ecid=%EF%BB%BF0xAbCd1234%C2%A0",
+  },
+  {
+    route: "/api/devices",
+    name: "devices unknown ECID",
+    path: "/api/devices?ecid=missing",
+  },
+  {
+    route: "/api/devices",
+    name: "devices case-sensitive ECID",
+    path: "/api/devices?ecid=0xABCD1234",
+  },
+  {
+    route: "/api/devices",
+    name: "devices unprefixed ECID",
+    path: "/api/devices?ecid=AbCd1234",
+  },
+  {
+    route: "/api/devices",
+    name: "devices first repeated ECID",
+    path: "/api/devices?ecid=missing&ecid=0xAbCd1234",
+  },
+  {
+    route: "/api/devices",
+    name: "devices first empty ECID",
+    path: "/api/devices?ecid=&ecid=0xAbCd1234",
+  },
+  {
+    route: "/api/devices/[id]",
+    name: "device detail fixture",
+    path: "/api/devices/pt-device-reads-a",
+  },
+  {
+    route: "/api/devices/[id]",
+    name: "device detail no imports or apps",
+    path: "/api/devices/pt-device-reads-empty",
+  },
+  {
+    route: "/api/devices/[id]",
+    name: "device detail missing",
+    path: "/api/devices/pt-missing-device",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/devices/[id]",
+    name: "device detail trimmed",
+    path: "/api/devices/%20pt-device-reads-a%20",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/devices/[id]",
+    name: "device detail blank",
+    path: "/api/devices/%EF%BB%BF%20",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/devices/[id]/bundles",
+    name: "device bundles fixture",
+    path: "/api/devices/pt-device-reads-a/bundles",
+  },
+  {
+    route: "/api/devices/[id]/bundles",
+    name: "device bundles no imports or apps",
+    path: "/api/devices/pt-device-reads-empty/bundles",
+  },
+  {
+    route: "/api/devices/[id]/bundles",
+    name: "device bundles missing",
+    path: "/api/devices/pt-missing-device/bundles",
+  },
+  {
+    route: "/api/devices/[id]/bundles",
+    name: "device bundles trimmed",
+    path: "/api/devices/%20pt-device-reads-a%20/bundles",
+  },
+  {
+    route: "/api/devices/[id]/bundles",
+    name: "device bundles blank",
+    path: "/api/devices/%EF%BB%BF%20/bundles",
+  },
+  {
+    route: "/api/devices/[id]/tracked-apps",
+    name: "device tracked apps fixture",
+    path: "/api/devices/pt-device-reads-a/tracked-apps",
+  },
+  {
+    route: "/api/devices/[id]/tracked-apps",
+    name: "device tracked apps no imports or apps",
+    path: "/api/devices/pt-device-reads-empty/tracked-apps",
+  },
+  {
+    route: "/api/devices/[id]/tracked-apps",
+    name: "device tracked apps missing",
+    path: "/api/devices/pt-missing-device/tracked-apps",
+  },
+  {
+    route: "/api/devices/[id]/tracked-apps",
+    name: "device tracked apps trimmed",
+    path: "/api/devices/%20pt-device-reads-a%20/tracked-apps",
+  },
+  {
+    route: "/api/devices/[id]/tracked-apps",
+    name: "device tracked apps blank",
+    path: "/api/devices/%EF%BB%BF%20/tracked-apps",
+  },
+  {
+    route: "/api/devices/for-app/[appId]",
+    name: "devices for app fixture",
+    path: "/api/devices/for-app/89998001",
+  },
+  {
+    route: "/api/devices/for-app/[appId]",
+    name: "devices for app trimmed",
+    path: "/api/devices/for-app/%EF%BB%BF89998001%C2%A0",
+  },
+  {
+    route: "/api/devices/for-app/[appId]",
+    name: "devices for app missing",
+    path: "/api/devices/for-app/pt-missing-app",
+  },
+  {
+    route: "/api/devices/for-app/[appId]",
+    name: "devices for app blank",
+    path: "/api/devices/for-app/%EF%BB%BF%20",
+    allowErrorStatus: true,
+  },
   { route: "/api/devices", name: "devices", path: "/api/devices" },
   {
     route: "/api/devices/[id]",
