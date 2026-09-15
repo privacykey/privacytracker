@@ -170,7 +170,7 @@ gate is self-tested to fail when a single ALTER is dropped.
 port any new ALTER/backfill into `core/src/db.rs`, and run `just parity-schema`
 — it will name exactly what diverged.
 
-## Status — Phase 2, batch 1 (the read API)
+## Status — Phase 2 complete (66 reads)
 
 The crate now also serves HTTP:
 
@@ -179,7 +179,8 @@ PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (63).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented: all 65 handoff reads plus the newer `/api/device-scope` read (66 total).** The sections below record
+each batch and its verification. The initial nine were `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -1036,10 +1037,10 @@ Ports `/api/stats`, `/api/stats/{matrix,radar,timeline}`, `/api/triage`,
 registered with every database-backed response branch. The Node server,
 Docker and Tauri still do not import, compile or run the Rust core.
 
-`/api/compare` and `/api/related-apps` remain unregistered: compare's `url:`
+`/api/compare` and `/api/related-apps` were deferred in this batch: compare's `url:`
 slots scrape live HTML, and related-apps' default mode fetches Apple feeds.
-They require the Phase 3 fetch/parser work even though their HTTP verb is
-GET. Registering only their library/cached branches would claim incomplete
+They require outbound HTTP and preview parsing even though their HTTP verb is
+GET; the final Phase 2 batch below adds those dependencies. Registering only their library/cached branches would claim incomplete
 routes as finished. This batch brought coverage to 42 of the handoff's 65
 compared reads; the user-content batch below brings this branch to 54.
 
@@ -1191,16 +1192,15 @@ The negative control changes the ECID SQL to `COLLATE NOCASE`; the live gate
 must fail its case-sensitive lookup case and raw-response probe. Normal
 shipping builds remain protected by the unchanged `rust-core-inert` test.
 This batch left 18 compared reads; the user-content batch below leaves 11.
-`/api/compare` and `/api/related-apps` still need Phase 3's live scraper
-support before all branches can be ported.
+The final Phase 2 batch below completes the deferred comparison and related-app
+reads, including their outbound branches.
 
 ### User content (+7 routes, 54 total)
 
 Ports `/api/activity`, `/api/notifications`, `/api/notification-prefs`,
 `/api/user-tasks`, `/api/annotations`, `/api/shortlist` and
 `/api/shortlist/export`. Every handler branch is registered. With the five
-device reads from PR #245, coverage is now 54 of 65. Eleven compared reads
-remain. The Node app, Tauri and Docker still do not compile or start `core/`;
+device reads from PR #245, this batch brought coverage to 54 of 65. The Node app, Tauri and Docker still do not compile or start `core/`;
 `rust-core-inert.test.ts` remains unchanged.
 
 Activity retains prefix-tolerant integer parsing, the route's unclamped
@@ -1251,9 +1251,8 @@ shortlists, both export formats and database failures.
 Ports `/api/tasks/active`, the GETs on `/api/wayback/import-all` and
 `/api/policy/sync-all`, `/api/backup/snapshots`, `/api/rate-limit/status`,
 `/api/ai/debug-log`, `/api/csp-report`, `/api/export` and
-`/api/manual-apps/[id]`. Two of the handoff's 65 compared reads remain:
-`/api/compare` and `/api/related-apps` need Phase 3's live fetch/parser
-support to implement every branch. All shipping paths remain inert.
+`/api/manual-apps/[id]`. This initially left two reads; the final batch
+below completes them in the same PR. All shipping paths remain inert.
 
 **Stacking.** Migration batches now branch from and target the preceding
 unmerged migration PR, as requested by the maintainer. Dependent PRs stay
@@ -1338,3 +1337,71 @@ every raw probe. As a negative control, treating paused Wayback state as
 running failed 31 Node-oracle cases, the live Wayback comparison and both
 raw pause-status probes; the remaining live probes passed. The intentional
 fault was removed before the final passing run.
+
+
+### Comparison, discovery and scope (+3 routes, 66 total)
+
+Completes `/api/compare` and `/api/related-apps`, including on-demand Apple
+preview, lookup and chart requests. All 65 reads in the Phase 2 plan and the newer `/api/device-scope` read are
+registered. The nine operational reads and these three reads share PR #247,
+now based on `main` after #246 merged. Full scraper persistence, historical
+HTML support, notifications and snapshot writes remain Phase 3 work.
+
+`outbound.rs` supplies bounded public GET requests. Both URL validation and
+the actual connector reject private/metadata addresses; every DNS answer
+must be public, including a second answer after the preflight check. Each
+redirect is revalidated, cross-origin credentials are stripped, and a
+single deadline covers resolution, headers, redirects and body reading.
+Declared and decompressed sizes are bounded. gzip, Brotli, zlib and raw
+deflate are decoded explicitly so the declared compressed size is checked
+before decoding. TLS uses rustls. No private-service exception, environment
+bypass, proxy support or write method is exposed by the production client.
+
+Comparison copies stored privacy, policy and accessibility values without
+holding SQLite across network awaits. Preview parsing matches the separate
+Node `compare-scrape.ts` contract: modern serialized JSON only, direct/header/
+generic privacy fallback, legacy purpose flattening, accessibility tri-state,
+policy URL sanitization and exact 429/error responses. Historical shoebox
+HTML remains unsupported here because Node comparison does not parse it.
+Invalid spec slicing preserves JavaScript's 40 UTF-16 units, including an
+escaped lone surrogate at the boundary.
+
+Related apps retains cached shelf order, nullable fields, country handling,
+lookup fallback without persistence, chart order/duplicates, source exclusion
+and soft failures. The observed default limit is **one** (`Number(null)`),
+not the five claimed by Node's comment. Fractional limits truncate for a
+stored shelf but round up while iterating chart entries. These behaviors are
+preserved rather than silently corrected during the port.
+
+**Verification layers.** The live HTTP gate covers stored and empty responses,
+validation errors, private-host rejection and the comparison limiter. Apple
+responses are exercised deterministically by running the actual Node handlers
+against recorded HTTP replies: 116 cases compare exact status, response bytes,
+headers and outbound requests in Rust, assert zero SQLite writes, and verify
+that network requests never hold the database mutex. A separate transport
+oracle covers 168 URL verdicts, 31 IP verdicts and 22 real local HTTP scenarios
+including redirects, credential stripping, compression, size limits and
+header/body deadlines. The production DNS resolver is also tested directly.
+Only the test client maps virtual Apple hosts onto the local fixture server;
+there is no production bypass. CI regenerates both oracles before testing.
+Live success parity does not depend on mutable Apple pages or feeds.
+
+
+The complete inventory check also found `/api/device-scope`, introduced after
+the handoff and previously absent from the manifest. Its GET now returns the
+reconciled saved selection, picker device counts and normalized ownership.
+Malformed/stale selections fall back to all devices without overwriting the
+stored setting. The device oracle now contains 73 cases, including subset
+ordering, full/empty collapse, corrupt settings and missing tables. PUT and
+DELETE remain part of Phase 4; the shipping Node handlers are unchanged.
+
+
+The final local production gate passed **178 comparisons across all 66 reads**
+and every raw probe. It waits for Node's startup timers before inserting
+unfinished-job fixtures so the Node recovery runners cannot mutate the inputs
+while Rust reads its copy. As a negative control, rounding a stored related-app
+limit up instead of truncating it failed the Node oracle, the live shelf
+comparison and the fractional-limit probe; all other live checks passed. The
+fault was removed before the final passing run. Production build, TypeScript,
+lint, schema parity, 193 Rust tests and the Node suite (715 pass, 4 skip) pass.
+The `rust-core-inert` guard is unchanged.

@@ -17,6 +17,7 @@ const { default: db } = await import("../../lib/db.ts");
 const handlers = {};
 for (const [op, file] of Object.entries({
   devices: "devices",
+  scope: "device-scope",
   detail: "devices/[id]",
   bundles: "devices/[id]/bundles",
   tracked_apps: "devices/[id]/tracked-apps",
@@ -155,6 +156,49 @@ try {
     DEVICE_APP,
     "",
     drop("devices")
+  );
+  for (const raw of [
+    "",
+    "bad",
+    "null",
+    "[]",
+    "0",
+    { mode: "all" },
+    {
+      mode: "subset",
+      deviceIds: [DEVICE_B, DEVICE_A, DEVICE_A, "stale", 1],
+      includeUnattached: false,
+    },
+    { mode: "subset", deviceIds: [DEVICE_A], includeUnattached: true },
+    { mode: "subset", deviceIds: [], includeUnattached: true },
+    { mode: "subset", deviceIds: [], includeUnattached: false },
+    { mode: "subset", deviceIds: ["stale"], includeUnattached: "true" },
+    {
+      mode: "subset",
+      deviceIds: [
+        DEVICE_A,
+        DEVICE_B,
+        DEVICE_EMPTY,
+        "pt-device-reads-c",
+        "pt-device-reads-unknown",
+      ],
+      includeUnattached: true,
+    },
+  ]) {
+    await run(`scope stored ${JSON.stringify(raw)}`, "scope", DEVICE_A, "", [
+      {
+        sql: "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+        params: [typeof raw === "string" ? raw : JSON.stringify(raw)],
+      },
+    ]);
+  }
+  await run("scope missing devices", "scope", DEVICE_A, "", drop("devices"));
+  await run(
+    "scope missing junction",
+    "scope",
+    DEVICE_A,
+    "",
+    drop("app_devices")
   );
   writeFileSync(
     new URL("../tests/fixtures/devices-cases.json", import.meta.url),

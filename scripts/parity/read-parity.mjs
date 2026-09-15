@@ -43,6 +43,8 @@ import {
   validateErrorLog,
   validateRuntimeDiagnostics,
 } from "./diagnostics-envelope.mjs";
+import { applyDiscoveryFixture } from "./discovery-fixture.mjs";
+import { probeDiscoveryReads } from "./discovery-probes.mjs";
 import { QUARANTINE, READS, VOLATILE_READS } from "./manifest.mjs";
 import {
   applyOperationsFixture,
@@ -89,6 +91,9 @@ if (!(args.node && args["node-data"])) {
 // so an unimplemented route can never silently drop out of the comparison —
 // adding a route to the server means adding it here in the same commit.
 const BATCH_1 = [
+  "/api/device-scope",
+  "/api/compare",
+  "/api/related-apps",
   "/api/tasks/active",
   "/api/wayback/import-all",
   "/api/policy/sync-all",
@@ -111,7 +116,7 @@ const BATCH_1 = [
   "/api/shortlist",
   "/api/shortlist/export",
 
-  // Database-backed fleet analysis (live Apple reads wait for Phase 3).
+  // Database-backed fleet analysis.
   "/api/stats",
   "/api/stats/matrix",
   "/api/stats/radar",
@@ -1520,6 +1525,32 @@ async function main() {
 
   console.log(`read-parity: node=${args.node} data=${nodeData}`);
 
+  // Startup recovery, import draining, backups and the initial health check
+  // run 8–60 seconds after Node boots. Let those timers finish BEFORE writing
+  // simulated unfinished jobs; otherwise Node resumes the fixture while Rust
+  // reads its copy, and the gate measures a race instead of route parity.
+  for (;;) {
+    const response = await fetch(`${args.node}/api/diagnostics/runtime`, {
+      headers: { "x-auditor-admin-token": TOKEN },
+    });
+    if (!response.ok) {
+      throw new Error(`Cannot check Node startup: HTTP ${response.status}`);
+    }
+    const { uptimeSeconds } = await response.json();
+    if (!Number.isFinite(uptimeSeconds)) {
+      throw new Error("Node diagnostics omitted uptimeSeconds");
+    }
+    if (uptimeSeconds >= 65) {
+      break;
+    }
+    console.log(
+      `Waiting for Node startup timers before seeding (${uptimeSeconds}s / 65s)`
+    );
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(15_000, (65 - uptimeSeconds) * 1000))
+    );
+  }
+
   // Applied BEFORE the checkpoint/copy so the Rust side starts on a byte
   // copy holding the same rows: both backends then compute their own answer
   // from identical input. See since-install-fixture.mjs for why the canned
@@ -1529,6 +1560,7 @@ async function main() {
   applyDevicesFixture(nodeData);
   applyContentFixture(nodeData);
   applyOperationsFixture(nodeData);
+  applyDiscoveryFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
   );
@@ -1672,8 +1704,10 @@ async function main() {
     rustData
   );
 
+  const discoveryOk = await probeDiscoveryReads(args.node, rustBase, TOKEN);
   cleanup();
   const ok =
+    discoveryOk &&
     operationsOk &&
     devicesOk &&
     contentOk &&

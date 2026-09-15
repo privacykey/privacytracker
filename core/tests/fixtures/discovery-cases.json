@@ -1,0 +1,4365 @@
+{
+  "base": [
+    {
+      "sql": "INSERT OR REPLACE INTO apps (id,name,url,iconUrl,developer,privacyPolicyUrl,hasPrivacyDetails,hasAccessibilityLabels,genreId,genreName,priceAmount,lastSynced) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "89995001",
+        "Discovery λ",
+        "https://apps.apple.com/us/app/id89995001",
+        "icon",
+        "Developer",
+        "https://example.com/privacy",
+        1,
+        1,
+        6005,
+        "Social",
+        0,
+        0
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO apps (id,name,url,lastSynced) VALUES (?,?,?,?)",
+      "params": [
+        "pt-discovery-empty",
+        "No stored labels",
+        "",
+        0
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO privacy_types (id,app_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        89995001,
+        "89995001",
+        "DATA_LINKED_TO_YOU",
+        "Linked"
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        89995001,
+        89995001,
+        "CONTACT_INFO",
+        "Contact info"
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO accessibility_features (id,app_id,identifier,title,description,icon_template) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "pt-discovery-a11y",
+        "89995001",
+        "voice_over",
+        "VoiceOver",
+        "Description",
+        "systemimage://voiceover"
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO related_apps_observed (source_app_id,related_apple_id,related_name,related_developer,related_icon_url,related_store_url,shelf_type,observed_at) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "89995001",
+        "003",
+        "Candidate 003",
+        "Developer",
+        null,
+        "https://apps.apple.com/us/app/id003",
+        "may_also_like",
+        2
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO related_apps_observed (source_app_id,related_apple_id,related_name,related_developer,related_icon_url,related_store_url,shelf_type,observed_at) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "89995001",
+        "001",
+        "Candidate 001",
+        null,
+        null,
+        "https://apps.apple.com/us/app/id001",
+        "may_also_like",
+        2
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO related_apps_observed (source_app_id,related_apple_id,related_name,related_developer,related_icon_url,related_store_url,shelf_type,observed_at) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "89995001",
+        "002",
+        "Candidate 002",
+        "Developer",
+        null,
+        "https://apps.apple.com/us/app/id002",
+        "may_also_like",
+        1
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "name": "compare missing",
+      "route": "compare",
+      "query": [],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"Both `a` and `b` are required\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "compare empty",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          ""
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"Both `a` and `b` are required\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "library populated and empty",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "id:89995001"
+        ],
+        [
+          "b",
+          "id:pt-discovery-empty"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1},\"b\":{\"source\":\"library\",\"id\":\"pt-discovery-empty\",\"name\":\"No stored labels\",\"iconUrl\":null,\"developer\":null,\"privacyPolicyUrl\":null,\"url\":\"\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "library missing",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "id:absent"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"App not found: absent\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "library no trim",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "id: 89995001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"App not found:  89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "invalid spec",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "invalid"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Invalid spec: invalid\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "invalid spec surrogate",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀tail"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Invalid spec: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\ud83d\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "repeated specs use first",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "id:89995001"
+        ],
+        [
+          "a",
+          "bad"
+        ],
+        [
+          "b",
+          "id:pt-discovery-empty"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1},\"b\":{\"source\":\"library\",\"id\":\"pt-discovery-empty\",\"name\":\"No stored labels\",\"iconUrl\":null,\"developer\":null,\"privacyPolicyUrl\":null,\"url\":\"\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "rejected ",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Rejected URL (invalid_url)\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "rejected ftp://apps.apple.com/id1",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:ftp://apps.apple.com/id1"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Rejected URL (unsupported_protocol)\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "rejected https://example.com/id1",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://example.com/id1"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Rejected URL (host_not_allowed)\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "rejected http://127.0.0.1/id1",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:http://127.0.0.1/id1"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Rejected URL (private_host)\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "rejected https://apps.apple.com/app/no-id",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/app/no-id"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Rejected URL (invalid_url)\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "rejected https://user:pass@apps.apple.com/id1",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://user:pass@apps.apple.com/id1"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Rejected URL (invalid_url)\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "compare local limiter",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:invalid"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 31,
+      "calls": [],
+      "expected": {
+        "status": 429,
+        "body": "{\"error\":\"Rate limit exceeded for /api/compare. Try again shortly.\"}",
+        "type": "application/json",
+        "retry": "60"
+      }
+    },
+    {
+      "name": "preview HTTP 403",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "",
+          "status": 403
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"HTTP 403 fetching App Store page\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "preview HTTP 404",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "",
+          "status": 404
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"HTTP 404 fetching App Store page\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "preview HTTP 429",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "",
+          "status": 429
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 429,
+        "body": "{\"error\":\"App Store rate-limited us. Try again in a minute.\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "preview HTTP 500",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "",
+          "status": 500
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"HTTP 500 fetching App Store page\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "preview fetch fails",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "error": "fetch failed"
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"fetch failed\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "missing script",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<html>empty</html>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"No serialized-server-data script found in App Store page\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "invalid JSON",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<script id=\"serialized-server-data\">bad</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Failed to parse serialized-server-data JSON\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "single quote script",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<script id='serialized-server-data'>[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"No serialized-server-data script found in App Store page\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "historical preview remains unsupported",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<script id=\"shoebox-media-api-cache-apps\">{}</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"No serialized-server-data script found in App Store page\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root null",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">null</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Failed to parse serialized-server-data JSON\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root {}",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">{}</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root []",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root 0",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">0</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root false",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">false</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root {\"data\":[]}",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">{\"data\":[]}</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root [{\"data\":{\"shelfMapping\":{},\"title\":\"  Clean title  \"}}]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{},\"title\":\"  Clean title  \"}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Clean title\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root [{\"data\":{\"shelfMapping\":{},\"title\":1}}]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{},\"title\":1}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"jsonTitle.trim is not a function\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "root [{\"data\":{\"shelfMapping\":{},\"title\":\"\"}}]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{},\"title\":\"\"}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "direct privacy preferred",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}]},\"privacyHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"LINKED\",\"title\":\"wrong\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}]}]}}}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "wrapped modern",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}]}}}}],\"userTokenHash\":\"unused\"}</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "malformed/coerced items [null]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[null]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Cannot read properties of null (reading 'identifier')\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "malformed/coerced items \"bad\"",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":\"bad\"}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"privacyItems.map is not a function\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "malformed/coerced items [{\"identifier\":5,\"title\":false,\"categories\":[{\"identifier\":[\"a\",null,\"b\"],\"title\":{}}]}]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":5,\"title\":false,\"categories\":[{\"identifier\":[\"a\",null,\"b\"],\"title\":{}}]}]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[{\"identifier\":\"5\",\"title\":\"false\",\"categories\":[{\"identifier\":\"a,,b\",\"title\":\"[object Object]\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "malformed/coerced items [{\"identifier\":\"empty\"}]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"empty\"}]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[{\"identifier\":\"empty\",\"title\":\"\",\"categories\":[]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "malformed/coerced items [{\"categories\":2}]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"categories\":2}]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"(item.categories ?? []).map is not a function\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "malformed/coerced items [{\"categories\":[null]}]",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"categories\":[null]}]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Cannot read properties of null (reading 'identifier')\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "header flatten first duplicate wins",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"ignore\"},{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"LEGACY\",\"title\":\"Legacy\",\"purposes\":[{\"categories\":[{\"identifier\":\"a\",\"title\":\"First\"}]},{\"categories\":[{\"identifier\":\"a\",\"title\":\"Second\"},{\"identifier\":\"b\",\"title\":\"Other\"}]}]}]}]}}}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[{\"identifier\":\"LEGACY\",\"title\":\"Legacy\",\"categories\":[{\"identifier\":\"a\",\"title\":\"First\"},{\"identifier\":\"b\",\"title\":\"Other\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "generic fallback",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{},\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}]}]}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "selection failure keeps preceding rows",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"privacyHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]},null]}]}}}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[{\"identifier\":\"LINKED\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT\",\"title\":\"Contact\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "accessibility absent",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "accessibility header empty",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"accessibilityHeader\":{}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":0},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "accessibility compact",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"accessibilityFeatures\":{\"items\":[null,{\"features\":[null,0,{\"title\":2},{\"title\":\"  VoiceOver \",\"description\":\" Spoken \",\"artwork\":{\"template\":\"systemimage://vo\"}},{\"title\":\"voiceover\",\"description\":\"duplicate\"},{\"title\":\"😀\"},{\"title\":\"  Larger Text \",\"description\":\" \"},{\"title\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"},{\"title\":\"İ Voice\"}]}]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"description\":\"Spoken\",\"iconTemplate\":\"systemimage://vo\"},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"description\":null,\"iconTemplate\":null},{\"identifier\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"title\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"description\":null,\"iconTemplate\":null},{\"identifier\":\"i_voice\",\"title\":\"İ Voice\",\"description\":null,\"iconTemplate\":null}],\"hasAccessibilityLabels\":1},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "accessibility rich preferred",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"accessibilityHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[null,{\"contentType\":\"accessibilityFeatures\",\"items\":[{\"features\":[null,0,{\"title\":2},{\"title\":\"  VoiceOver \",\"description\":\" Spoken \",\"artwork\":{\"template\":\"systemimage://vo\"}},{\"title\":\"voiceover\",\"description\":\"duplicate\"},{\"title\":\"😀\"},{\"title\":\"  Larger Text \",\"description\":\" \"},{\"title\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"},{\"title\":\"İ Voice\"}]}]}]}}},\"accessibilityFeatures\":{\"items\":[{\"features\":[{\"title\":\"Wrong\"}]}]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"description\":\"Spoken\",\"iconTemplate\":\"systemimage://vo\"},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"description\":null,\"iconTemplate\":null},{\"identifier\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"title\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\"description\":null,\"iconTemplate\":null},{\"identifier\":\"i_voice\",\"title\":\"İ Voice\",\"description\":null,\"iconTemplate\":null}],\"hasAccessibilityLabels\":1},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "accessibility rich empty preferred",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{\"accessibilityHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"accessibilityFeatures\",\"items\":[{\"features\":[]}]}]}}},\"accessibilityFeatures\":{\"items\":[{\"features\":[null,0,{\"title\":2},{\"title\":\"  VoiceOver \",\"description\":\" Spoken \",\"artwork\":{\"template\":\"systemimage://vo\"}},{\"title\":\"voiceover\",\"description\":\"duplicate\"},{\"title\":\"😀\"},{\"title\":\"  Larger Text \",\"description\":\" \"},{\"title\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"},{\"title\":\"İ Voice\"}]}]}}}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":0},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "author",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\">\"author\":{\"@type\":\"Org\",\"name\":\"Original Case\"}<script id=\"serialized-server-data\">[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"Original Case\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "aria before",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><a aria-label=\"Developer’s Privacy Policy\" href=\"https://example.com/Case\"><script id=\"serialized-server-data\">[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"https://example.com/Case\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "href before",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><A HREF=\"https://example.com/Case\" aria-label=\"Developer's Privacy Policy\"><script id=\"serialized-server-data\">[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"https://example.com/Case\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "legacy case insensitive",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><div ID=\"notPurchasedLinks\"><A HREF=\"https://example.com/Case\">Privacy Policy</A><script id=\"serialized-server-data\">[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"https://example.com/Case\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "blocked policy",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><a href=\"http://127.0.0.1/private\" aria-label=\"Developer's Privacy Policy\"><script id=\"serialized-server-data\">[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "bounded policy",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "id:89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><a xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx href=\"https://example.com/Case\" aria-label=\"Developer's Privacy Policy\"><script id=\"serialized-server-data\">[]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Preview\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"library\",\"id\":\"89995001\",\"name\":\"Discovery λ\",\"iconUrl\":\"icon\",\"developer\":\"Developer\",\"privacyPolicyUrl\":\"https://example.com/privacy\",\"url\":\"https://apps.apple.com/us/app/id89995001\",\"privacyTypes\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Linked\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact info\"}]}],\"hasPrivacyDetails\":1,\"policySummary\":null,\"accessibilityFeatures\":[{\"identifier\":\"voice_over\",\"title\":\"VoiceOver\",\"description\":\"Description\",\"iconTemplate\":\"systemimage://voiceover\"}],\"hasAccessibilityLabels\":1}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "two parallel previews",
+      "route": "compare",
+      "query": [
+        [
+          "a",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ],
+        [
+          "b",
+          "url:https://apps.apple.com/us/app/id90000001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{},\"title\":\"First\"}}]</script>",
+          "status": 200
+        },
+        {
+          "body": "<meta property=\"og:title\" content=\" Preview on the App Store\"><meta property=\"og:image\" content=\"https://example.com/Icon.png\"><script id=\"serialized-server-data\">[{\"data\":{\"shelfMapping\":{},\"title\":\"Second\"}}]</script>",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://apps.apple.com/us/app/id90000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"a\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"First\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null},\"b\":{\"source\":\"scrape\",\"id\":\"90000001\",\"name\":\"Second\",\"iconUrl\":\"https://example.com/Icon.png\",\"developer\":\"\",\"privacyPolicyUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id90000001\",\"privacyTypes\":[],\"hasPrivacyDetails\":null,\"policySummary\":null,\"accessibilityFeatures\":[],\"hasAccessibilityLabels\":null}}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "source ",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          ""
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"sourceAppId is required and must be a valid app id.\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "source bad id",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "bad id"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"sourceAppId is required and must be a valid app id.\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "source 😀",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "😀"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"sourceAppId is required and must be a valid app id.\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "source absent",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "absent"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 404,
+        "body": "{\"error\":\"Source app not found.\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "missing genre skips nonnumeric lookup",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "pt-discovery-empty"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"sourceAppUrl\":\"\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored empty",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "pt-discovery-empty"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"reason\":\"not_scraped_yet\",\"sourceAppUrl\":\"\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit undefined",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit ",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          ""
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 0",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "0"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit -1",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "-1"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 2",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "2"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 2.9",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "2.9"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 0x2",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "0x2"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 0b10",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "0b10"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 0o2",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "0o2"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit invalid",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "invalid"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit Infinity",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "Infinity"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 10",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 999",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "999"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit 1e1",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "1e1"
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored limit ﻿2 ",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ],
+        [
+          "limit",
+          "﻿2 "
+        ]
+      ],
+      "changes": [],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"may_also_like\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id001\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"\",\"url\":\"https://apps.apple.com/us/app/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit undefined",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit ",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          ""
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit 0",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "0"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit -1",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "-1"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit 2",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "2"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit 2.9",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "2.9"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit 0x2",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "0x2"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit 0b10",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "0b10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit 0o2",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "0o2"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit invalid",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "invalid"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit Infinity",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "Infinity"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed limit 10",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"003\",\"name\":\"Candidate 003\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id003\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "country  AU ",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "3"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "app_country",
+            " AU "
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/au/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "country GB",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "3"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "app_country",
+            "GB"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/gb/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "country invalid",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "3"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "app_country",
+            "invalid"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "country İs",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "3"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "app_country",
+            "İs"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "country ",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "3"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "app_country",
+            ""
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"},{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"},{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "paid feed and unknown mode",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "future"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET priceAmount=1.99 WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/toppaidapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":false,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape \"bad\"",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "bad",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape null",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "null",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {\"feed\":{\"entry\":{}}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":{}}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},null]}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},null]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":3},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":3},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"a\"}},\"im:name\":{\"label\":\"A\"},\"link\":{\"attributes\":{\"href\":\"link\"}}}]}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"a\"}},\"im:name\":{\"label\":\"A\"},\"link\":{\"attributes\":{\"href\":\"link\"}}}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"a\",\"name\":\"A\",\"developer\":\"\",\"iconUrl\":\"\",\"url\":\"link\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed soft failure {\"body\":\"\",\"status\":429}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "",
+          "status": 429
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed soft failure {\"body\":\"\",\"status\":500}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "",
+          "status": 500
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed soft failure {\"error\":\"fetch failed\"}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "error": "fetch failed"
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup fills without writes",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET genreId=NULL,genreName=NULL,priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"results\":[{\"primaryGenreId\":6014,\"primaryGenreName\":\"Games\",\"price\":2.5}]}",
+          "status": 200
+        },
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/us/rss/toppaidapplications/limit=50/genre=6014/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6014,\"genreName\":\"Games\",\"free\":false,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup retains cached genre",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"results\":[{\"primaryGenreId\":6014,\"primaryGenreName\":\"Games\",\"price\":2.5}]}",
+          "status": 200
+        },
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/us/rss/toppaidapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":false,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup soft failure {\"body\":\"bad\",\"status\":200}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET genreId=NULL,genreName=NULL,priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "bad",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup soft failure {\"body\":\"null\",\"status\":200}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET genreId=NULL,genreName=NULL,priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "null",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup soft failure {\"body\":\"{\\\"results\\\":[]}\",\"status\":200}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET genreId=NULL,genreName=NULL,priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"results\":[]}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup soft failure {\"body\":\"{\\\"results\\\":[{\\\"primaryGenreId\\\":\\\"6014\\\",\\\"price\\\":\\\"0\\\"}]}\",\"status\":200}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET genreId=NULL,genreName=NULL,priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "{\"results\":[{\"primaryGenreId\":\"6014\",\"price\":\"0\"}]}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup soft failure {\"body\":\"\",\"status\":429}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET genreId=NULL,genreName=NULL,priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "body": "",
+          "status": 429
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup soft failure {\"error\":\"fetch failed\"}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET genreId=NULL,genreName=NULL,priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "error": "fetch failed"
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":null,\"genreName\":null,\"free\":null,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "lookup failure defaults known genre free",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "UPDATE apps SET priceAmount=NULL WHERE id=?",
+          "params": [
+            "89995001"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "error": "fetch failed"
+        },
+        {
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"002\"}},\"im:name\":{\"label\":\" Candidate 002 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id002\"}},{\"attributes\":{\"href\":\"ignored\"}}]},{\"id\":{\"attributes\":{\"im:id\":\"003\"}},\"im:name\":{\"label\":\" Candidate 003 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id003\"}},{\"attributes\":{\"href\":\"ignored\"}}]}]}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?id=89995001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"002\",\"name\":\"Candidate 002\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id002\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "source database failure",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "DROP TABLE apps",
+          "params": []
+        }
+      ],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Could not read source app.\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "stored database failure",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "mode",
+          "may_also_like"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "DROP TABLE related_apps_observed",
+          "params": []
+        }
+      ],
+      "replies": [],
+      "repeat": 1,
+      "calls": [],
+      "expected": {
+        "status": 500,
+        "body": "",
+        "type": null,
+        "retry": null
+      }
+    }
+  ]
+}

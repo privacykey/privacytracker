@@ -52,6 +52,7 @@ async fn device_gets_match_node_status_and_raw_bytes_without_writes() {
                 .await
             }
             "detail" => routes_devices::detail(extract, id).await,
+            "scope" => routes_devices::device_scope(extract).await,
             "bundles" => routes_devices::bundles(extract, id).await,
             "tracked_apps" => routes_devices::tracked_apps(extract, id).await,
             "for_app" => routes_devices::for_app(extract, id).await,

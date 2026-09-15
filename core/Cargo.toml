@@ -39,7 +39,7 @@ axum = "0.8"
 # what actually binds the listener.
 # `time` for the scheduler-lag sampler (the tokio analogue of Node's
 # event-loop-delay monitor).
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "io-util"] }
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` is REQUIRED, not a preference: it backs serde_json's
 # Map with an IndexMap instead of a BTreeMap. Without it, every stored
@@ -54,6 +54,15 @@ serde_json = { version = "1", features = ["preserve_order"] }
 # + `os.release()`). Already in the lockfile as a dependency of rusqlite and
 # tokio, so this adds no new crate to the build.
 libc = "0.2"
+
+# Outbound reads use a public-address-only connector and bounded redirects.
+# TLS is pure Rust; HTTP/3, cookies, proxies and blocking APIs are not enabled.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+async-compression = { version = "0.4", features = ["tokio", "gzip", "brotli", "zlib", "deflate"] }
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+url = "2"
+regex = "1"
 
 [dev-dependencies]
 # Router-level gate tests drive the axum `Router` as a plain tower service

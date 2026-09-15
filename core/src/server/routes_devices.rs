@@ -124,6 +124,61 @@ pub async fn devices(State(state): State<AppState>, Query(q): Query<Params>) -> 
     )
 }
 
+/// Saved picker state is reconciled on read, never persisted by this GET.
+pub async fn device_scope(State(state): State<AppState>) -> Response {
+    let conn = state.db();
+    let raw = match super::settings::get_setting_with(&conn, "device.scope", "") {
+        Ok(raw) => raw,
+        Err(error) => {
+            super::diag::log_error(error.to_string());
+            return Response::builder()
+                .status(500)
+                .body(axum::body::Body::empty())
+                .unwrap();
+        }
+    };
+    let parsed = super::user_content::parse(&raw).unwrap_or(Value::Null);
+    let known = super::stats::query(&conn, "SELECT id FROM devices", &[]).unwrap_or_default();
+    let requested = parsed["deviceIds"].as_array().cloned().unwrap_or_default();
+    let ids = known
+        .iter()
+        .filter(|r| requested.contains(&r["id"]))
+        .map(|r| r["id"].clone())
+        .collect::<Vec<_>>();
+    let unattached = parsed["includeUnattached"] == true;
+    let scope = if parsed["mode"] != "subset"
+        || (ids.is_empty() && !unattached)
+        || (ids.len() == known.len() && unattached)
+    {
+        json!({"v":1,"mode":"all","deviceIds":[],"includeUnattached":true})
+    } else {
+        json!({"v":1,"mode":"subset","deviceIds":ids,"includeUnattached":unattached})
+    };
+    let devices = match list(&conn, None) {
+        Ok(value) => value["devices"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|d| {
+                json!({
+                    "appCount":d["appCount"],
+                    "deviceClass":d["deviceClass"],
+                    "id":d["id"],
+                    "model":d["model"],
+                    "name":d["name"],
+                    "ownerAudience":d["ownerAudience"],
+                    "ownerLabel":d["ownerLabel"]
+                })
+            })
+            .collect::<Vec<_>>(),
+        Err(error) => {
+            super::diag::log_warn(format!("[device-scope] device list failed: {error}"));
+            vec![]
+        }
+    };
+    json_ok(&json!({"scope":scope,"devices":devices}))
+}
+
 pub async fn detail(State(state): State<AppState>, Path(id): Path<String>) -> Response {
     // Unlike bundles/tracked-apps/for-app, detail never trims its path ID.
     let result = {

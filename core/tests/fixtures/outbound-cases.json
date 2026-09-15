@@ -1,0 +1,2961 @@
+{
+  "validation": [
+    {
+      "raw": "",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL is empty or not a string"
+      }
+    },
+    {
+      "raw": "",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL is empty or not a string"
+      }
+    },
+    {
+      "raw": "",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": " ",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL is empty or not a string"
+      }
+    },
+    {
+      "raw": " ",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL is empty or not a string"
+      }
+    },
+    {
+      "raw": " ",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "﻿",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL is empty or not a string"
+      }
+    },
+    {
+      "raw": "﻿",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL is empty or not a string"
+      }
+    },
+    {
+      "raw": "﻿",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "no url",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "no url",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "no url",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "/relative",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "/relative",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "/relative",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "https://",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "https://",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "https://",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "https://[broken]/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "https://[broken]/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "Not a parseable URL"
+      }
+    },
+    {
+      "raw": "https://[broken]/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "javascript:alert(1)",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got javascript:)"
+      }
+    },
+    {
+      "raw": "javascript:alert(1)",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got javascript:)"
+      }
+    },
+    {
+      "raw": "javascript:alert(1)",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "data:text/plain,hi",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got data:)"
+      }
+    },
+    {
+      "raw": "data:text/plain,hi",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got data:)"
+      }
+    },
+    {
+      "raw": "data:text/plain,hi",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "ftp://example.com/a",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got ftp:)"
+      }
+    },
+    {
+      "raw": "ftp://example.com/a",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got ftp:)"
+      }
+    },
+    {
+      "raw": "ftp://example.com/a",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "mailto:a@b.c",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got mailto:)"
+      }
+    },
+    {
+      "raw": "mailto:a@b.c",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "unsupported_protocol",
+        "detail": "Only http(s) URLs are accepted (got mailto:)"
+      }
+    },
+    {
+      "raw": "mailto:a@b.c",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "https://apps.apple.com/us/app/a/id123",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/us/app/a/id123"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/us/app/a/id123",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/us/app/a/id123"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/us/app/a/id123",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/us/app/a/id123"
+    },
+    {
+      "raw": " HTTP://APPS.APPLE.COM:80/a/id123?x=1#f ",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "http://apps.apple.com/a/id123?x=1#f"
+      }
+    },
+    {
+      "raw": " HTTP://APPS.APPLE.COM:80/a/id123?x=1#f ",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "http://apps.apple.com/a/id123?x=1#f"
+      }
+    },
+    {
+      "raw": " HTTP://APPS.APPLE.COM:80/a/id123?x=1#f ",
+      "kind": "policy",
+      "expected": "http://apps.apple.com/a/id123?x=1#f"
+    },
+    {
+      "raw": "https://apps.apple.com./a/id123",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com./a/id123"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com./a/id123",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com./a/id123"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com./a/id123",
+      "kind": "policy",
+      "expected": "https://apps.apple.com./a/id123"
+    },
+    {
+      "raw": "https://apps.apple.com/a/ID123/",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/ID123/"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/ID123/",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/ID123/"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/ID123/",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/ID123/"
+    },
+    {
+      "raw": "https://itunes.apple.com/a/id12?x=1",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://itunes.apple.com/a/id12?x=1"
+      }
+    },
+    {
+      "raw": "https://itunes.apple.com/a/id12?x=1",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://itunes.apple.com/a/id12?x=1"
+      }
+    },
+    {
+      "raw": "https://itunes.apple.com/a/id12?x=1",
+      "kind": "policy",
+      "expected": "https://itunes.apple.com/a/id12?x=1"
+    },
+    {
+      "raw": "https://apps.apple.com/a/id1extra",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id1extra"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id1extra",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "App Store URL must contain an /id<digits> segment"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id1extra",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/id1extra"
+    },
+    {
+      "raw": "https://apps.apple.com/a/id",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "App Store URL must contain an /id<digits> segment"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/id"
+    },
+    {
+      "raw": "https://apps.apple.com/a/%69d12",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/%69d12"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/%69d12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "App Store URL must contain an /id<digits> segment"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/%69d12",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/%69d12"
+    },
+    {
+      "raw": "https://apps.apple.com/a/id12%3Fhi",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id12%3Fhi"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id12%3Fhi",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "App Store URL must contain an /id<digits> segment"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id12%3Fhi",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/id12%3Fhi"
+    },
+    {
+      "raw": "https://apps.apple.com/a/id12/../other",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/other"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id12/../other",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "App Store URL must contain an /id<digits> segment"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id12/../other",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/other"
+    },
+    {
+      "raw": "https:\\apps.apple.com\\a\\id12",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id12"
+      }
+    },
+    {
+      "raw": "https:\\apps.apple.com\\a\\id12",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id12"
+      }
+    },
+    {
+      "raw": "https:\\apps.apple.com\\a\\id12",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/id12"
+    },
+    {
+      "raw": "https://user:pass@apps.apple.com/a/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL credentials are not supported"
+      }
+    },
+    {
+      "raw": "https://user:pass@apps.apple.com/a/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL credentials are not supported"
+      }
+    },
+    {
+      "raw": "https://user:pass@apps.apple.com/a/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "https://user@apps.apple.com/a/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL credentials are not supported"
+      }
+    },
+    {
+      "raw": "https://user@apps.apple.com/a/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "invalid_url",
+        "detail": "URL credentials are not supported"
+      }
+    },
+    {
+      "raw": "https://user@apps.apple.com/a/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "https://:@apps.apple.com/a/id12",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id12"
+      }
+    },
+    {
+      "raw": "https://:@apps.apple.com/a/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id12"
+      }
+    },
+    {
+      "raw": "https://:@apps.apple.com/a/id12",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/id12"
+    },
+    {
+      "raw": "https://apps.apple.com.evil.test/a/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname apps.apple.com.evil.test is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com.evil.test/a/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname apps.apple.com.evil.test is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com.evil.test/a/id12",
+      "kind": "policy",
+      "expected": "https://apps.apple.com.evil.test/a/id12"
+    },
+    {
+      "raw": "https://sub.apps.apple.com/a/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname sub.apps.apple.com is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://sub.apps.apple.com/a/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname sub.apps.apple.com is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://sub.apps.apple.com/a/id12",
+      "kind": "policy",
+      "expected": "https://sub.apps.apple.com/a/id12"
+    },
+    {
+      "raw": "https://example.com/a/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname example.com is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://example.com/a/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname example.com is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://example.com/a/id12",
+      "kind": "policy",
+      "expected": "https://example.com/a/id12"
+    },
+    {
+      "raw": "https://localhost/a/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname localhost is blocked"
+      }
+    },
+    {
+      "raw": "https://localhost/a/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname localhost is blocked"
+      }
+    },
+    {
+      "raw": "https://localhost/a/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://localhost.localdomain/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname localhost.localdomain is blocked"
+      }
+    },
+    {
+      "raw": "http://localhost.localdomain/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname localhost.localdomain is blocked"
+      }
+    },
+    {
+      "raw": "http://localhost.localdomain/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://ip6-loopback/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname ip6-loopback is blocked"
+      }
+    },
+    {
+      "raw": "http://ip6-loopback/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname ip6-loopback is blocked"
+      }
+    },
+    {
+      "raw": "http://ip6-loopback/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://metadata/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host metadata is always blocked"
+      }
+    },
+    {
+      "raw": "http://metadata/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host metadata is always blocked"
+      }
+    },
+    {
+      "raw": "http://metadata/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://metadata.google.internal/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host metadata.google.internal is always blocked"
+      }
+    },
+    {
+      "raw": "http://metadata.google.internal/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host metadata.google.internal is always blocked"
+      }
+    },
+    {
+      "raw": "http://metadata.google.internal/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://127.1/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://127.1/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://127.1/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://0x7f000001/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://0x7f000001/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://0x7f000001/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://2130706433/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://2130706433/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://2130706433/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://0177.0.0.1/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://0177.0.0.1/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 127.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://0177.0.0.1/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://10.0.0.1/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 10.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://10.0.0.1/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 10.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://10.0.0.1/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://169.254.169.254/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host 169.254.169.254 is always blocked"
+      }
+    },
+    {
+      "raw": "http://169.254.169.254/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host 169.254.169.254 is always blocked"
+      }
+    },
+    {
+      "raw": "http://169.254.169.254/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://172.16.0.1/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 172.16.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://172.16.0.1/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 172.16.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://172.16.0.1/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://192.168.1.1/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 192.168.1.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://192.168.1.1/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 192.168.1.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://192.168.1.1/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://100.64.0.1/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 100.64.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://100.64.0.1/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 100.64.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://100.64.0.1/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://224.0.0.1/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 224.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://224.0.0.1/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname 224.0.0.1 is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://224.0.0.1/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://8.8.8.8/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname 8.8.8.8 is not on the allowlist"
+      }
+    },
+    {
+      "raw": "http://8.8.8.8/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname 8.8.8.8 is not on the allowlist"
+      }
+    },
+    {
+      "raw": "http://8.8.8.8/id12",
+      "kind": "policy",
+      "expected": "http://8.8.8.8/id12"
+    },
+    {
+      "raw": "http://[::1]/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [::1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[::1]/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [::1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[::1]/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://[::ffff:127.0.0.1]/id12",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [::ffff:7f00:1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[::ffff:127.0.0.1]/id12",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [::ffff:7f00:1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[::ffff:127.0.0.1]/id12",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://[fe80::1]/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host [fe80::1] is always blocked"
+      }
+    },
+    {
+      "raw": "http://[fe80::1]/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host [fe80::1] is always blocked"
+      }
+    },
+    {
+      "raw": "http://[fe80::1]/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://[fd00:ec2::254]/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host [fd00:ec2::254] is always blocked"
+      }
+    },
+    {
+      "raw": "http://[fd00:ec2::254]/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Metadata host [fd00:ec2::254] is always blocked"
+      }
+    },
+    {
+      "raw": "http://[fd00:ec2::254]/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://[2001:4860:4860::8888]/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname [2001:4860:4860::8888] is not on the allowlist"
+      }
+    },
+    {
+      "raw": "http://[2001:4860:4860::8888]/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname [2001:4860:4860::8888] is not on the allowlist"
+      }
+    },
+    {
+      "raw": "http://[2001:4860:4860::8888]/",
+      "kind": "policy",
+      "expected": "http://[2001:4860:4860::8888]/"
+    },
+    {
+      "raw": "http://[2002:0808:0808::1]/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [2002:808:808::1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[2002:0808:0808::1]/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [2002:808:808::1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[2002:0808:0808::1]/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "http://[2001:0:1::1]/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [2001:0:1::1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[2001:0:1::1]/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "private_host",
+        "detail": "Hostname [2001:0:1::1] is a private/loopback IP"
+      }
+    },
+    {
+      "raw": "http://[2001:0:1::1]/",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "https://éxample.com/",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname xn--xample-9ua.com is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://éxample.com/",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "host_not_allowed",
+        "detail": "Hostname xn--xample-9ua.com is not on the allowlist"
+      }
+    },
+    {
+      "raw": "https://éxample.com/",
+      "kind": "policy",
+      "expected": "https://xn--xample-9ua.com/"
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?unicode=λ",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id123?unicode=%CE%BB"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?unicode=λ",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id123?unicode=%CE%BB"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?unicode=λ",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/id123?unicode=%CE%BB"
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123\n",
+      "kind": "external",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id123"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123\n",
+      "kind": "apple",
+      "expected": {
+        "ok": true,
+        "url": "https://apps.apple.com/a/id123"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123\n",
+      "kind": "policy",
+      "expected": "https://apps.apple.com/a/id123"
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "too_long",
+        "detail": "URL exceeds 2048 chars"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "too_long",
+        "detail": "URL exceeds 2048 chars"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "policy",
+      "expected": ""
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "kind": "external",
+      "expected": {
+        "ok": false,
+        "error": "too_long",
+        "detail": "URL exceeds 2048 chars"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "kind": "apple",
+      "expected": {
+        "ok": false,
+        "error": "too_long",
+        "detail": "URL exceeds 2048 chars"
+      }
+    },
+    {
+      "raw": "https://apps.apple.com/a/id123?😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "kind": "policy",
+      "expected": ""
+    }
+  ],
+  "addresses": [
+    {
+      "ip": "0.1.2.3",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "10.0.0.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "127.0.0.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "169.254.0.1",
+      "private": true,
+      "metadata": true
+    },
+    {
+      "ip": "172.15.1.1",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "172.16.1.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "172.31.1.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "172.32.1.1",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "192.168.1.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "100.63.1.1",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "100.64.1.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "100.127.1.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "100.128.1.1",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "223.1.1.1",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "224.1.1.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "255.255.255.255",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "8.8.8.8",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "::",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "::1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "::ffff:8.8.8.8",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "::ffff:192.168.1.1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "64:ff9b::808:808",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "2001:4860::8888",
+      "private": false,
+      "metadata": false
+    },
+    {
+      "ip": "2002:808:808::1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "2001:0:1::1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "fc00::1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "fd00:ec2::254",
+      "private": true,
+      "metadata": true
+    },
+    {
+      "ip": "fe80::1",
+      "private": true,
+      "metadata": true
+    },
+    {
+      "ip": "febf::1",
+      "private": true,
+      "metadata": true
+    },
+    {
+      "ip": "fec0::1",
+      "private": true,
+      "metadata": false
+    },
+    {
+      "ip": "ff02::1",
+      "private": true,
+      "metadata": false
+    }
+  ],
+  "transport": [
+    {
+      "name": "plain response",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            104,
+            101,
+            108,
+            108,
+            111,
+            32,
+            206,
+            187
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          104,
+          101,
+          108,
+          108,
+          111,
+          32,
+          206,
+          187
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "non-success status is a response",
+      "steps": [
+        {
+          "status": 429,
+          "headers": {},
+          "body": [
+            98,
+            117,
+            115,
+            121
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 429,
+        "body": [
+          98,
+          117,
+          115,
+          121
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "redirect without location is a response",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {},
+          "body": [
+            110,
+            111,
+            32,
+            108,
+            111,
+            99,
+            97,
+            116,
+            105,
+            111,
+            110
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 302,
+        "body": [
+          110,
+          111,
+          32,
+          108,
+          111,
+          99,
+          97,
+          116,
+          105,
+          111,
+          110
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "relative redirect",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {
+            "location": "/next?x=1"
+          },
+          "body": []
+        },
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            100,
+            111,
+            110,
+            101
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          100,
+          111,
+          110,
+          101
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        },
+        {
+          "host": "apps.apple.com",
+          "path": "/next?x=1",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "cross-origin strips credentials",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {
+            "location": "http://itunes.apple.com/next"
+          },
+          "body": []
+        },
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            100,
+            111,
+            110,
+            101
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          100,
+          111,
+          110,
+          101
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        },
+        {
+          "host": "itunes.apple.com",
+          "path": "/next",
+          "authorization": null,
+          "cookie": null
+        }
+      ]
+    },
+    {
+      "name": "same-origin retains credentials",
+      "steps": [
+        {
+          "status": 307,
+          "headers": {
+            "location": "/next"
+          },
+          "body": []
+        },
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            100,
+            111,
+            110,
+            101
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          100,
+          111,
+          110,
+          101
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        },
+        {
+          "host": "apps.apple.com",
+          "path": "/next",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "private redirect",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {
+            "location": "http://127.0.0.1/private"
+          },
+          "body": []
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: redirect rejected — private_host: Hostname 127.0.0.1 is a private/loopback IP"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "disallowed redirect",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {
+            "location": "http://example.com/private"
+          },
+          "body": []
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: redirect rejected — host_not_allowed: Hostname example.com is not on the allowlist"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "credential redirect",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {
+            "location": "http://user@apps.apple.com/private"
+          },
+          "body": []
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: redirect rejected — invalid_url: URL credentials are not supported"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "invalid redirect",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {
+            "location": "http://[broken]/"
+          },
+          "body": []
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: invalid redirect target: http://[broken]/"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "redirect cap",
+      "steps": [
+        {
+          "status": 302,
+          "headers": {
+            "location": "/again"
+          },
+          "body": []
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: too many redirects (3)"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        },
+        {
+          "host": "apps.apple.com",
+          "path": "/again",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        },
+        {
+          "host": "apps.apple.com",
+          "path": "/again",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "exact byte cap",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120,
+          120
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "declared byte cap",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {
+            "content-length": "65"
+          },
+          "body": [
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: declared content-length 65 exceeds cap 64"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "stream byte cap",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120,
+            120
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: response exceeded 64 bytes"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "gzip",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {
+            "content-encoding": "gzip"
+          },
+          "body": [
+            31,
+            139,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            19,
+            75,
+            206,
+            207,
+            45,
+            40,
+            74,
+            45,
+            46,
+            78,
+            77,
+            81,
+            56,
+            183,
+            27,
+            0,
+            212,
+            227,
+            251,
+            73,
+            13,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          99,
+          111,
+          109,
+          112,
+          114,
+          101,
+          115,
+          115,
+          101,
+          100,
+          32,
+          206,
+          187
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "brotli",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {
+            "content-encoding": "br"
+          },
+          "body": [
+            11,
+            6,
+            128,
+            99,
+            111,
+            109,
+            112,
+            114,
+            101,
+            115,
+            115,
+            101,
+            100,
+            32,
+            206,
+            187,
+            3
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          99,
+          111,
+          109,
+          112,
+          114,
+          101,
+          115,
+          115,
+          101,
+          100,
+          32,
+          206,
+          187
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "zlib",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {
+            "content-encoding": "deflate"
+          },
+          "body": [
+            120,
+            156,
+            75,
+            206,
+            207,
+            45,
+            40,
+            74,
+            45,
+            46,
+            78,
+            77,
+            81,
+            56,
+            183,
+            27,
+            0,
+            38,
+            152,
+            5,
+            223
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          99,
+          111,
+          109,
+          112,
+          114,
+          101,
+          115,
+          115,
+          101,
+          100,
+          32,
+          206,
+          187
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "raw deflate",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {
+            "content-encoding": "deflate"
+          },
+          "body": [
+            75,
+            206,
+            207,
+            45,
+            40,
+            74,
+            45,
+            46,
+            78,
+            77,
+            81,
+            56,
+            183,
+            27,
+            0
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          99,
+          111,
+          109,
+          112,
+          114,
+          101,
+          115,
+          115,
+          101,
+          100,
+          32,
+          206,
+          187
+        ]
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "gzip decoded byte cap",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {
+            "content-encoding": "gzip"
+          },
+          "body": [
+            31,
+            139,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            19,
+            171,
+            168,
+            24,
+            5,
+            163,
+            96,
+            20,
+            140,
+            130,
+            81,
+            48,
+            10,
+            70,
+            193,
+            72,
+            3,
+            0,
+            207,
+            52,
+            82,
+            111,
+            0,
+            8,
+            0,
+            0
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "safeFetch: response exceeded 64 bytes"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "invalid gzip",
+      "steps": [
+        {
+          "status": 200,
+          "headers": {
+            "content-encoding": "gzip"
+          },
+          "body": [
+            98,
+            97,
+            100,
+            32,
+            103,
+            122,
+            105,
+            112
+          ]
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 2000,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "terminated"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "header timeout",
+      "timeout_ms": 500,
+      "steps": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            111,
+            107
+          ],
+          "delay_headers_ms": 1500
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 500,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "The operation was aborted due to timeout"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    },
+    {
+      "name": "body timeout",
+      "timeout_ms": 500,
+      "steps": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": [
+            111,
+            107
+          ],
+          "delay_body_ms": 1500
+        }
+      ],
+      "request": {
+        "url": "http://apps.apple.com/start",
+        "allowed_hosts": [
+          "apps.apple.com",
+          "itunes.apple.com"
+        ],
+        "headers": [
+          [
+            "authorization",
+            "test-secret"
+          ],
+          [
+            "cookie",
+            "fixture=1"
+          ]
+        ],
+        "max_bytes": 64,
+        "timeout_ms": 500,
+        "max_redirects": 2
+      },
+      "expected": {
+        "error": "The operation was aborted due to timeout"
+      },
+      "calls": [
+        {
+          "host": "apps.apple.com",
+          "path": "/start",
+          "authorization": "test-secret",
+          "cookie": "fixture=1"
+        }
+      ]
+    }
+  ]
+}
