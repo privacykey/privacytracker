@@ -35,6 +35,14 @@ const COUNT_COLUMNS: &str = "COALESCE(pc.categoryCount, 0) AS categoryCount,
 
 /// Port of `getAllApps` — the bare `/api/apps` array, whole fleet.
 pub fn get_all_apps(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
+    get_all_apps_scoped(conn, &super::scope::Scope::default())
+}
+
+pub(super) fn get_all_apps_scoped(
+    conn: &Connection,
+    scope: &super::scope::Scope,
+) -> rusqlite::Result<Vec<Value>> {
+    let filter = scope.fragment("WHERE", "a.id");
     let sql = format!(
         "
     WITH privacy_counts AS (
@@ -64,11 +72,12 @@ pub fn get_all_apps(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
     LEFT JOIN privacy_counts pc ON pc.app_id = a.id
     LEFT JOIN sync_counts sc ON sc.app_id = a.id
     LEFT JOIN accessibility_counts ac ON ac.app_id = a.id
+    {filter}
     ORDER BY a.name ASC
   "
     );
     let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map([], row_to_json)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(scope.params()), row_to_json)?;
     rows.collect()
 }
 

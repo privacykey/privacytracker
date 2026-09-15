@@ -11,6 +11,7 @@
 //! could observe different database states, which the Node server is
 //! structurally incapable of doing. Matching the weaker model is the point.
 
+mod analysis;
 mod apps;
 pub mod auth;
 mod changelog;
@@ -28,6 +29,7 @@ pub mod layout;
 mod osinfo;
 mod policy;
 mod ratelimit;
+mod review;
 mod routes;
 mod routes_app;
 mod routes_apps;
@@ -38,10 +40,15 @@ mod routes_imports;
 mod routes_manual;
 mod routes_runtime;
 mod routes_settings;
+mod routes_stats;
 mod routes_status;
 mod row;
 mod runtime_diag;
+mod scope;
 mod settings;
+mod stats;
+#[cfg(test)]
+mod stats_tests;
 mod sysproc;
 mod timing;
 mod trend;
@@ -168,6 +175,19 @@ pub fn app(state: AppState) -> Router {
         // Batch 1. Each of these is a GET the client shell fetches on first
         // paint, a container/auth probe, or both.
         .route("/api/health", get(routes::health))
+        // Fleet analysis: scoped summaries, UTC buckets and entry-level filters.
+        .route("/api/stats", get(routes_stats::summary))
+        .route("/api/stats/matrix", get(routes_stats::matrix))
+        .route("/api/stats/radar", get(routes_stats::radar))
+        .route("/api/stats/timeline", get(routes_stats::timeline))
+        .route("/api/triage", get(routes_stats::triage))
+        .route("/api/review-queue", get(routes_stats::review_queue))
+        .route("/api/age-rating/summary", get(routes_stats::age_summary))
+        .route(
+            "/api/privacy-profile/mismatches",
+            get(routes_stats::mismatches),
+        )
+        .route("/api/changelog", get(routes_stats::changelog))
         .route(
             "/api/auth/admin-token/status",
             get(routes::admin_token_status),

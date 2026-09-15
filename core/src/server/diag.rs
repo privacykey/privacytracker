@@ -481,12 +481,18 @@ pub fn clear_error_log() {
 /// `ratelimit.rs`, read by the envelope's `rateLimiter` section.
 pub static RATE_LIMIT_DENIALS: AtomicU64 = AtomicU64::new(0);
 
+// Tests that reset the process-global HTTP ring hold this for their
+// entire scenario, including the timing middleware test.
+#[cfg(test)]
+pub(super) static HTTP_TEST_LOCK: Mutex<()> = Mutex::new(());
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn http_sampling_records_slow_errors_and_every_fifth_fast_request() {
+        let _guard = HTTP_TEST_LOCK.lock().unwrap();
         clear_http();
         for _ in 0..4 {
             record_http(
@@ -562,6 +568,7 @@ mod tests {
 
     #[test]
     fn http_record_serialises_in_nodes_literal_order() {
+        let _guard = HTTP_TEST_LOCK.lock().unwrap();
         clear_http();
         record_http(
             "GET".into(),

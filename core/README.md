@@ -179,7 +179,7 @@ PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (33).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (42).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -1027,3 +1027,96 @@ the gate Node's login route and the Rust core's missing route legitimately
 answer differently. Unit tests in `trust.rs` take a `trust` flag directly
 and cover both settings; the one gate-level test that needs the env unset
 holds a shared lock with the rate limiter's env-mutating tests.
+
+### Fleet statistics and analysis (+9 routes, 42 total)
+
+Ports `/api/stats`, `/api/stats/{matrix,radar,timeline}`, `/api/triage`,
+`/api/review-queue`, `/api/age-rating/summary`,
+`/api/privacy-profile/mismatches` and `/api/changelog`. All nine are
+registered with every database-backed response branch. The Node server,
+Docker and Tauri still do not import, compile or run the Rust core.
+
+`/api/compare` and `/api/related-apps` remain unregistered: compare's `url:`
+slots scrape live HTML, and related-apps' default mode fetches Apple feeds.
+They require the Phase 3 fetch/parser work even though their HTTP verb is
+GET. Registering only their library/cached branches would claim incomplete
+routes as finished. Of the handoff's 65 compared reads, 42 are now ported;
+23 remain, including these two. Device reads are the next independent unit.
+
+**Shared code.** `scope.rs` mirrors request-only device selection: unknown
+ids fall back to the full fleet, overlapping links never duplicate an app,
+and `unattached` means no junction rows. The stored UI preference never
+changes a bare API response. Summary counts, triage lists and mismatch
+queries apply scope in SQL; the review queue's raw verdict union uses the
+same scoped id set. The existing app-list and profile-footprint helpers
+now also support these fleet/scoped callers without changing their old
+unscoped behavior.
+
+**Details that carry the bytes:**
+
+- Matrix cells use the worst severity per category; canonical categories
+  precede unknown categories sorted by UTF-16 units. Nested objects keyed
+  by app/category ids enumerate array-index keys first. Category counts
+  still include unknown severity rows where the Node query does.
+- Radar keeps the last duplicate lens, emits `unclear` as `1.5`, distinguishes
+  corrupt/absent summaries, and omits null status. An unknown truthy rating
+  omits `score`, because Node's lookup produces `undefined`. The old manifest
+  transform that discarded radar content is removed: Node already added the
+  deterministic `lastSynced DESC, id ASC` selection tie-break.
+- Timeline uses UTC days, Monday weeks and calendar months, includes both
+  endpoint timestamps, fills empty buckets and counts syncs/reviews
+  separately. Accessibility adds/removals have separate counters;
+  accessibility modifications and Wayback attempts do not contribute to
+  `total`. Automatic boundaries remain 14 and 120 days. Invalid Dates skip
+  the fill loop, and finite query integers beyond i64 remain accepted.
+- Triage's `changesThisWeek` counts entries in only its eight newest
+  snapshots, not the whole week's history. Reviewable rows retain
+  `changeCount` and `acknowledgedAt`; risk/stale rows strip them. Top change
+  prefers the first addition, then removal. Its failure payload has a
+  different literal key order from its normal empty-database response.
+- The review queue keeps `reviewableCount` (raw union, including legacy
+  orphan verdicts) distinct from `rowCount` (tracked rows). Each read fails
+  independently. Candidate badges require an actual footprint; modes are
+  normalized; advisory verdicts stay separate from the user's verdict.
+  Notes include private visibility because this is a local review, not an
+  export. Like Node, a full read sweeps expired soft-deleted annotations
+  transactionally; `?count=1` returns before that write.
+- Age parsing prefers the first digits-before-plus match before trying
+  Brazil's plus-before-digits form; unknown and out-of-range ratings never
+  count as violations. The band is validated without trimming.
+- Universal changelog filters individual entries before slicing, defaults
+  missing categories to privacy-label, keeps original entry indices in ids,
+  and reports `total` only within the candidate cap (`limit * 8`, max 4000).
+  Its `limit=0` clamps to one. Unknown filters are ignored; query integers
+  accept prefixes; repeated query keys take the first value.
+
+**Gates.** `stats-fixture.mjs` adds three apps, overlapping devices, novel
+accessibility metadata, mixed change categories, leap-day timestamps,
+recommendations, shortlist candidates and active/soft-deleted notes before
+copying the Node database. Its probes compare raw response bytes, refuse
+vacuous results, and exhaust each of the five new rate-limited routes only
+AFTER the body comparisons. The manifest covers device subsets, empty/stale
+scope, count-only, radar input variants, timeline validation and changelog
+pagination/filter branches.
+
+`node --conditions=react-server --import tsx core/scripts/extract-stats-cases.mjs`
+executes the real Node readers on 75 fixed-clock database scenarios and 13
+age coercions, producing `core/tests/fixtures/stats-cases.json` and the wire
+metadata in `stats_meta.json`. Rust replays identical SQL and compares the
+serialized bytes and annotation sweep effects. CI regenerates both files
+before crate tests, detecting Node drift even though live read parity is
+still a local gate. Invalid JSON/error paths and independent read failures
+are included. No new dependency or schema migration is introduced.
+
+Two pre-existing gate defects surfaced during verification: the feature-flag
+probe's stale 221-row expectation is now 222, and three diagnostics tests
+that clear the same process-global HTTP ring share a test-only mutex. The
+mutex does not affect runtime behavior.
+
+SQL without an explicit tie-break retains Node's planner-decided order;
+these backends still bundle different SQLite versions. The parity fixture
+checks current agreement rather than inventing Rust-only ordering. Valid
+but malformed stored JSON shapes that app writers never produce are not a
+general JavaScript emulation contract (for example a JSON string used as a
+universal-changelog entry array); invalid JSON and common null/object cases
+are pinned by the oracle.

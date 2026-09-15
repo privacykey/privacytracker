@@ -55,6 +55,8 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust core Phase 2: nine fleet statistics and analysis GET routes (42 read routes total), with device-scope parity, fixed-clock Node oracle cases and raw-response/rate-limit probes. Rust remains inactive in shipped builds. Developer-facing only.
+
 - Rust-core migration: the three process-introspection reads join the Rust
   read API (33 of 64 read routes) — `GET /api/diagnostics/runtime`,
   `/api/desktop/diagnostics` and `/api/diagnostics/errors` — emitting the

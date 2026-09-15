@@ -1,0 +1,1944 @@
+{
+  "now": 1789473600000,
+  "base": [
+    {
+      "sql": "DELETE FROM privacy_categories WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM privacy_types WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM privacy_snapshots WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM change_review_actions WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM notifications WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM app_verdicts WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM shortlist_entries WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM annotations WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM accessibility_features WHERE id LIKE 'pt-stats-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM app_devices WHERE app_id = ?",
+      "params": [
+        "89999001"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89999001"
+      ]
+    },
+    {
+      "sql": "DELETE FROM app_devices WHERE app_id = ?",
+      "params": [
+        "89999002"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89999002"
+      ]
+    },
+    {
+      "sql": "DELETE FROM app_devices WHERE app_id = ?",
+      "params": [
+        "89999003"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89999003"
+      ]
+    },
+    {
+      "sql": "DELETE FROM devices WHERE id = ?",
+      "params": [
+        "pt-stats-device-a"
+      ]
+    },
+    {
+      "sql": "INSERT INTO devices (id,name,ecid,created_at,last_synced_at) VALUES (?,?,?,?,?)",
+      "params": [
+        "pt-stats-device-a",
+        "pt-stats-device-a",
+        "0xABC",
+        1789473599000,
+        1789473599000
+      ]
+    },
+    {
+      "sql": "DELETE FROM devices WHERE id = ?",
+      "params": [
+        "pt-stats-device-b"
+      ]
+    },
+    {
+      "sql": "INSERT INTO devices (id,name,ecid,created_at,last_synced_at) VALUES (?,?,?,?,?)",
+      "params": [
+        "pt-stats-device-b",
+        "pt-stats-device-b",
+        "0xDEF",
+        1789473599000,
+        1789473599000
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,firstSeen,lastSynced,changeCount,ageRating,hasAccessibilityLabels,priceFormatted,priceCurrency,hasIap) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "89999001",
+        "Stats Alpha",
+        "https://apps.apple.com/us/app/id89999001",
+        1708948800000,
+        1786017600000,
+        2,
+        "Rated +17",
+        1,
+        "$2.99",
+        "USD",
+        1
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,firstSeen,lastSynced,changeCount,ageRating,hasAccessibilityLabels,priceFormatted,priceCurrency,hasIap) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "89999002",
+        "stats alpha",
+        "https://apps.apple.com/us/app/id89999002",
+        1708948800000,
+        1789473599000,
+        0,
+        "9+",
+        0,
+        "$2.99",
+        "USD",
+        1
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,firstSeen,lastSynced,changeCount,ageRating,hasAccessibilityLabels,priceFormatted,priceCurrency,hasIap) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "89999003",
+        "Stats Empty",
+        "https://apps.apple.com/us/app/id89999003",
+        1708948800000,
+        1789473599000,
+        0,
+        null,
+        null,
+        "$2.99",
+        "USD",
+        1
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89999001",
+        "pt-stats-device-a",
+        1789473600000,
+        1789473600000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89999001",
+        "pt-stats-device-b",
+        1789473600000,
+        1789473600000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89999002",
+        "pt-stats-device-b",
+        1789473600000,
+        1789473600000
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_types (id,app_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-type-0",
+        "89999001",
+        "DATA_LINKED_TO_YOU",
+        "DATA_LINKED_TO_YOU"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-0-0",
+        "pt-stats-type-0",
+        "CONTACTS",
+        "CONTACTS"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-0-1",
+        "pt-stats-type-0",
+        "CONTACT_INFO",
+        "CONTACT_INFO"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_types (id,app_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-type-1",
+        "89999001",
+        "DATA_USED_TO_TRACK_YOU",
+        "DATA_USED_TO_TRACK_YOU"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-1-0",
+        "pt-stats-type-1",
+        "CONTACTS",
+        "CONTACTS"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-1-1",
+        "pt-stats-type-1",
+        "IDENTIFIERS",
+        "IDENTIFIERS"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-1-2",
+        "pt-stats-type-1",
+        "2",
+        "2"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-1-3",
+        "pt-stats-type-1",
+        "10",
+        "10"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_types (id,app_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-type-2",
+        "89999002",
+        "DATA_NOT_LINKED_TO_YOU",
+        "DATA_NOT_LINKED_TO_YOU"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-2-0",
+        "pt-stats-type-2",
+        "LOCATION",
+        "LOCATION"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_categories (id,type_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-cat-2-1",
+        "pt-stats-type-2",
+        "NEW_CATEGORY",
+        "NEW_CATEGORY"
+      ]
+    },
+    {
+      "sql": "INSERT INTO accessibility_features (id,app_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-a11y-0",
+        "89999001",
+        "voiceover",
+        "Fixture voiceover"
+      ]
+    },
+    {
+      "sql": "INSERT INTO accessibility_features (id,app_id,identifier,title) VALUES (?,?,?,?)",
+      "params": [
+        "pt-stats-a11y-1",
+        "89999001",
+        "future_feature",
+        "Fixture future_feature"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_snapshots (id,app_id,scraped_at,snapshot_json,changes_detected,changes_summary,source,triggered_by) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-snap-0",
+        "89999001",
+        1709035200000,
+        "[]",
+        1,
+        "[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}]",
+        "live",
+        "manual"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_snapshots (id,app_id,scraped_at,snapshot_json,changes_detected,changes_summary,source,triggered_by) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-snap-1",
+        "89999001",
+        1709164800000,
+        "[]",
+        1,
+        "[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}]",
+        "wayback",
+        null
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_snapshots (id,app_id,scraped_at,snapshot_json,changes_detected,changes_summary,source,triggered_by) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-snap-2",
+        "89999001",
+        1709546400000,
+        "[]",
+        1,
+        "[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}]",
+        "live",
+        "manual"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_snapshots (id,app_id,scraped_at,snapshot_json,changes_detected,changes_summary,source,triggered_by) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-snap-3",
+        "89999001",
+        1789387200000,
+        "[]",
+        1,
+        "[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}]",
+        "live",
+        "manual"
+      ]
+    },
+    {
+      "sql": "INSERT INTO change_review_actions (id,app_id,action,acted_at,covered_count) VALUES (?,?,?,?,?)",
+      "params": [
+        "pt-stats-review",
+        "89999001",
+        "reviewed",
+        1709251200000,
+        4
+      ]
+    },
+    {
+      "sql": "INSERT INTO notifications (id,app_id,app_name,change_summary,created_at,read) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-notification",
+        "89999001",
+        "Stats Alpha",
+        "[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}]",
+        1789387200000,
+        0
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_verdicts (id,app_id,verdict,rationale,source,source_name,set_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-verdict-0",
+        "89999001",
+        "uninstall",
+        null,
+        "user",
+        null,
+        1789473600000,
+        1789473600000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_verdicts (id,app_id,verdict,rationale,source,source_name,set_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-verdict-1",
+        "89999001",
+        "safe",
+        null,
+        "imported",
+        "Fixture recommender",
+        1789473599000,
+        1789473599000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_verdicts (id,app_id,verdict,rationale,source,source_name,set_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-verdict-2",
+        "89999002",
+        "replace",
+        null,
+        "imported",
+        "Fixture recommender",
+        1789473598000,
+        1789473598000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_verdicts (id,app_id,verdict,rationale,source,source_name,set_at,updated_at) VALUES (?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-verdict-3",
+        "pt-stats-orphan",
+        "replace",
+        null,
+        "user",
+        null,
+        1789473597000,
+        1789473597000
+      ]
+    },
+    {
+      "sql": "INSERT INTO shortlist_entries (id,source_app_id,candidate_apple_id,candidate_name,candidate_store_url,added_at,mode) VALUES (?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-shortlist-0",
+        "89999001",
+        "89999002",
+        "Candidate 0",
+        "https://apps.apple.com/us/app/id89999002",
+        1789473600000,
+        " accessibility,PRIVACY,accessibility,unknown "
+      ]
+    },
+    {
+      "sql": "INSERT INTO shortlist_entries (id,source_app_id,candidate_apple_id,candidate_name,candidate_store_url,added_at,mode) VALUES (?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-shortlist-1",
+        "89999001",
+        "89999003",
+        "Candidate 1",
+        "https://apps.apple.com/us/app/id89999003",
+        1789473599000,
+        "unknown"
+      ]
+    },
+    {
+      "sql": "INSERT INTO shortlist_entries (id,source_app_id,candidate_apple_id,candidate_name,candidate_store_url,added_at,mode) VALUES (?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-shortlist-2",
+        "89999001",
+        "99999000",
+        "Candidate 2",
+        "https://apps.apple.com/us/app/id99999000",
+        1789473598000,
+        "unknown"
+      ]
+    },
+    {
+      "sql": "INSERT INTO annotations (id,app_id,content,source,source_name,visibility,tag,created_at,updated_at,deleted_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-note-0",
+        "89999001",
+        "Note 0",
+        "user",
+        null,
+        "private",
+        "concern",
+        1789473600000,
+        1789473600000,
+        null
+      ]
+    },
+    {
+      "sql": "INSERT INTO annotations (id,app_id,content,source,source_name,visibility,tag,created_at,updated_at,deleted_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-note-1",
+        "89999001",
+        "Note 1",
+        "user",
+        null,
+        "private",
+        "concern",
+        1789473600000,
+        1789473600000,
+        1789473540000
+      ]
+    },
+    {
+      "sql": "INSERT INTO annotations (id,app_id,content,source,source_name,visibility,tag,created_at,updated_at,deleted_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-stats-note-2",
+        "89999001",
+        "Note 2",
+        "user",
+        null,
+        "private",
+        "concern",
+        1789473600000,
+        1789473600000,
+        1789473590000
+      ]
+    },
+    {
+      "sql": "DELETE FROM privacy_policy_analyses WHERE app_id = ?",
+      "params": [
+        "89999001"
+      ]
+    },
+    {
+      "sql": "DELETE FROM privacy_policy_analyses WHERE app_id = ?",
+      "params": [
+        "89999002"
+      ]
+    },
+    {
+      "sql": "DELETE FROM privacy_policy_analyses WHERE app_id = ?",
+      "params": [
+        "89999003"
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_policy_analyses (app_id,status,summary_json,policy_url,updated_at) VALUES (?,?,?,?,?)",
+      "params": [
+        "89999001",
+        "ready",
+        "{\"lenses\":[{\"key\":\"collection_scope\",\"rating\":\"mixed\"},{\"key\":\"ads_marketing\",\"rating\":\"concerning\"},{\"key\":\"collection_scope\",\"rating\":\"unclear\"},{\"key\":\"user_controls\",\"rating\":\"favorable\"}]}",
+        "https://example.com/privacy",
+        1789473600000
+      ]
+    },
+    {
+      "sql": "INSERT INTO privacy_policy_analyses (app_id,status,summary_json,policy_url,updated_at) VALUES (?,?,?,?,?)",
+      "params": [
+        "89999002",
+        "source_ready",
+        "not json",
+        "https://example.com/privacy",
+        1789473600000
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+      "params": [
+        "privacy_profile",
+        "{\"CONTACTS\":\"not_collected\",\"CONTACT_INFO\":\"not_collected\",\"IDENTIFIERS\":\"not_linked\",\"LOCATION\":\"not_collected\"}"
+      ]
+    },
+    {
+      "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+      "params": [
+        "guardian_child_age_band",
+        "9_12"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "name": "summary: populated",
+      "op": "summary",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":3,\"totalCategories\":8,\"totalUniqueCategories\":7,\"appsWithChanges\":1,\"staleApps\":1,\"totalSyncs\":4,\"appsNotMatchingProfile\":2,\"profileActive\":true,\"categoryFrequency\":[{\"identifier\":\"10\",\"title\":\"10\",\"appCount\":1},{\"identifier\":\"2\",\"title\":\"2\",\"appCount\":1},{\"identifier\":\"CONTACTS\",\"title\":\"CONTACTS\",\"appCount\":1},{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\",\"appCount\":1},{\"identifier\":\"IDENTIFIERS\",\"title\":\"IDENTIFIERS\",\"appCount\":1},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\",\"appCount\":1},{\"identifier\":\"NEW_CATEGORY\",\"title\":\"NEW_CATEGORY\",\"appCount\":1}],\"recentChanges\":[{\"id\":\"pt-stats-notification\",\"app_id\":\"89999001\",\"app_name\":\"Stats Alpha\",\"change_summary\":[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}],\"created_at\":1789387200000,\"read\":0,\"iconUrl\":null}],\"staleAppsList\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"lastSynced\":1786017600000}],\"appsWithAccessibilityLabels\":1,\"appsEvaluatedForAccessibility\":2,\"accessibilityFeatureFrequency\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"appCount\":1},{\"identifier\":\"voice_control\",\"title\":\"Voice Control\",\"appCount\":0},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"appCount\":0},{\"identifier\":\"dark_interface\",\"title\":\"Dark Interface\",\"appCount\":0},{\"identifier\":\"differentiate_without_color_alone\",\"title\":\"Differentiate Without Color Alone\",\"appCount\":0},{\"identifier\":\"sufficient_contrast\",\"title\":\"Sufficient Contrast\",\"appCount\":0},{\"identifier\":\"reduced_motion\",\"title\":\"Reduced Motion\",\"appCount\":0},{\"identifier\":\"captions\",\"title\":\"Captions\",\"appCount\":0},{\"identifier\":\"audio_descriptions\",\"title\":\"Audio Descriptions\",\"appCount\":0},{\"identifier\":\"future_feature\",\"title\":\"Fixture future_feature\",\"appCount\":1}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "summary: empty",
+      "op": "summary",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "{\"totalApps\":0,\"totalCategories\":0,\"totalUniqueCategories\":0,\"appsWithChanges\":0,\"staleApps\":0,\"totalSyncs\":0,\"appsNotMatchingProfile\":0,\"profileActive\":false,\"categoryFrequency\":[],\"recentChanges\":[],\"staleAppsList\":[],\"appsWithAccessibilityLabels\":0,\"appsEvaluatedForAccessibility\":0,\"accessibilityFeatureFrequency\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"appCount\":0},{\"identifier\":\"voice_control\",\"title\":\"Voice Control\",\"appCount\":0},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"appCount\":0},{\"identifier\":\"dark_interface\",\"title\":\"Dark Interface\",\"appCount\":0},{\"identifier\":\"differentiate_without_color_alone\",\"title\":\"Differentiate Without Color Alone\",\"appCount\":0},{\"identifier\":\"sufficient_contrast\",\"title\":\"Sufficient Contrast\",\"appCount\":0},{\"identifier\":\"reduced_motion\",\"title\":\"Reduced Motion\",\"appCount\":0},{\"identifier\":\"captions\",\"title\":\"Captions\",\"appCount\":0},{\"identifier\":\"audio_descriptions\",\"title\":\"Audio Descriptions\",\"appCount\":0}]}",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "triage: populated",
+      "op": "triage",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":3,\"totalCategories\":8,\"highRiskCount\":1,\"moderateRiskCount\":0,\"staleCount\":1,\"lastSyncedAt\":1789473599000,\"changesThisWeek\":6,\"reviewable\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\",\"changeCount\":2,\"acknowledgedAt\":0,\"lastChangeAt\":1789387200000,\"topChange\":\"Added VoiceOver\",\"categories\":[\"privacy-label\",\"accessibility\",\"privacy-policy\"]}],\"higherRisk\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"stale\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"recentActivity\":[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"scrapedAt\":1789387200000,\"addedCount\":1,\"removedCount\":2,\"modifiedCount\":1,\"topChange\":\"Added VoiceOver\"}],\"quiet\":false}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: empty",
+      "op": "triage",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "{\"totalApps\":0,\"totalCategories\":0,\"highRiskCount\":0,\"moderateRiskCount\":0,\"staleCount\":0,\"lastSyncedAt\":0,\"changesThisWeek\":0,\"reviewable\":[],\"higherRisk\":[],\"stale\":[],\"recentActivity\":[],\"quiet\":false}",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "matrix: populated",
+      "op": "matrix",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "{\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"categoryCount\":5},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"developer\":null,\"categoryCount\":2},{\"id\":\"89999003\",\"name\":\"Stats Empty\",\"iconUrl\":null,\"developer\":null,\"categoryCount\":0}],\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"label\":\"Contact Info\",\"appCount\":1},{\"identifier\":\"LOCATION\",\"label\":\"Location\",\"appCount\":1},{\"identifier\":\"CONTACTS\",\"label\":\"Contacts\",\"appCount\":1},{\"identifier\":\"IDENTIFIERS\",\"label\":\"Identifiers\",\"appCount\":1},{\"identifier\":\"10\",\"label\":\"10\",\"appCount\":1},{\"identifier\":\"2\",\"label\":\"2\",\"appCount\":1},{\"identifier\":\"NEW_CATEGORY\",\"label\":\"NEW_CATEGORY\",\"appCount\":1}],\"severities\":[{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"label\":\"Data Not Linked to You\"},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"label\":\"Data Linked to You\"},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"label\":\"Data Used to Track You\"}],\"cells\":{\"89999001\":{\"2\":\"DATA_USED_TO_TRACK_YOU\",\"10\":\"DATA_USED_TO_TRACK_YOU\",\"CONTACTS\":\"DATA_USED_TO_TRACK_YOU\",\"CONTACT_INFO\":\"DATA_LINKED_TO_YOU\",\"IDENTIFIERS\":\"DATA_USED_TO_TRACK_YOU\"},\"89999002\":{\"LOCATION\":\"DATA_NOT_LINKED_TO_YOU\",\"NEW_CATEGORY\":\"DATA_NOT_LINKED_TO_YOU\"}}}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "matrix: empty",
+      "op": "matrix",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "{\"apps\":[],\"categories\":[],\"severities\":[{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"label\":\"Data Not Linked to You\"},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"label\":\"Data Linked to You\"},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"label\":\"Data Used to Track You\"}],\"cells\":{}}",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "radar: populated",
+      "op": "radar",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "{\"axes\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\"},{\"key\":\"product_use\",\"label\":\"Product Use\"},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\"},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\"},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\"},{\"key\":\"user_controls\",\"label\":\"User Controls\"},{\"key\":\"data_retention\",\"label\":\"Data Retention\"},{\"key\":\"children_minors\",\"label\":\"Children & Minors\"}],\"ratings\":[\"favorable\",\"mixed\",\"concerning\",\"unclear\"],\"apps\":[{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"lenses\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\",\"rating\":null,\"score\":null},{\"key\":\"product_use\",\"label\":\"Product Use\",\"rating\":null,\"score\":null},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\",\"rating\":null,\"score\":null},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\",\"rating\":null,\"score\":null},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\",\"rating\":null,\"score\":null},{\"key\":\"user_controls\",\"label\":\"User Controls\",\"rating\":null,\"score\":null},{\"key\":\"data_retention\",\"label\":\"Data Retention\",\"rating\":null,\"score\":null},{\"key\":\"children_minors\",\"label\":\"Children & Minors\",\"rating\":null,\"score\":null}],\"hasPolicy\":false,\"status\":\"source_ready\"},{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"lenses\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\",\"rating\":\"unclear\",\"score\":1.5},{\"key\":\"product_use\",\"label\":\"Product Use\",\"rating\":null,\"score\":null},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\",\"rating\":\"concerning\",\"score\":4},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\",\"rating\":null,\"score\":null},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\",\"rating\":null,\"score\":null},{\"key\":\"user_controls\",\"label\":\"User Controls\",\"rating\":\"favorable\",\"score\":1},{\"key\":\"data_retention\",\"label\":\"Data Retention\",\"rating\":null,\"score\":null},{\"key\":\"children_minors\",\"label\":\"Children & Minors\",\"rating\":null,\"score\":null}],\"hasPolicy\":true,\"status\":\"ready\"}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "radar: empty",
+      "op": "radar",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "{\"axes\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\"},{\"key\":\"product_use\",\"label\":\"Product Use\"},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\"},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\"},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\"},{\"key\":\"user_controls\",\"label\":\"User Controls\"},{\"key\":\"data_retention\",\"label\":\"Data Retention\"},{\"key\":\"children_minors\",\"label\":\"Children & Minors\"}],\"ratings\":[\"favorable\",\"mixed\",\"concerning\",\"unclear\"],\"apps\":[]}",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "mismatches: populated",
+      "op": "mismatches",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"mismatch\":{\"mismatches\":[{\"category\":\"CONTACTS\",\"allowed\":\"not_collected\",\"observed\":\"tracking\",\"severityGap\":3},{\"category\":\"CONTACT_INFO\",\"allowed\":\"not_collected\",\"observed\":\"linked\",\"severityGap\":2},{\"category\":\"IDENTIFIERS\",\"allowed\":\"not_linked\",\"observed\":\"tracking\",\"severityGap\":2}],\"count\":3,\"totalGap\":7,\"profileActive\":true}},{\"appId\":\"89999002\",\"appName\":\"stats alpha\",\"iconUrl\":null,\"developer\":null,\"mismatch\":{\"mismatches\":[{\"category\":\"LOCATION\",\"allowed\":\"not_collected\",\"observed\":\"not_linked\",\"severityGap\":1}],\"count\":1,\"totalGap\":1,\"profileActive\":true}}]",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "mismatches: empty",
+      "op": "mismatches",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "[]",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "queue: populated",
+      "op": "queue",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"profileBadge\":{\"count\":3,\"totalGap\":7,\"tone\":\"bad\",\"kind\":\"mismatches\",\"label\":\"3 mismatches\",\"description\":\"Contacts: tracking (you allow not collected at most)\",\"worstCategory\":\"CONTACTS\",\"worstCategoryLabel\":\"Contacts\"},\"shortlistCandidates\":[{\"id\":\"pt-stats-shortlist-0\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999002\",\"candidateName\":\"Candidate 0\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999002\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473600000,\"candidateIsTracked\":true,\"modes\":[\"privacy\",\"accessibility\"],\"profileBadge\":{\"count\":1,\"totalGap\":1,\"tone\":\"warn\",\"kind\":\"mismatches\",\"label\":\"1 mismatch\",\"description\":\"Location: not linked (you allow not collected at most)\",\"worstCategory\":\"LOCATION\",\"worstCategoryLabel\":\"Location\"},\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-1\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999003\",\"candidateName\":\"Candidate 1\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999003\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473599000,\"candidateIsTracked\":true,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-2\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"99999000\",\"candidateName\":\"Candidate 2\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id99999000\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473598000,\"candidateIsTracked\":false,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":null,\"candidatePriceCurrency\":null,\"candidateHasIap\":null}],\"notes\":[{\"id\":\"pt-stats-note-0\",\"appId\":\"89999001\",\"content\":\"Note 0\",\"source\":\"user\",\"sourceName\":null,\"visibility\":\"private\",\"tag\":\"concern\",\"createdAt\":1789473600000,\"updatedAt\":1789473600000,\"deletedAt\":null}],\"userVerdict\":{\"id\":\"pt-stats-verdict-0\",\"appId\":\"89999001\",\"verdict\":\"uninstall\",\"rationale\":null,\"source\":\"user\",\"sourceName\":null,\"setAt\":1789473600000,\"updatedAt\":1789473600000},\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-1\",\"appId\":\"89999001\",\"verdict\":\"safe\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473599000,\"updatedAt\":1789473599000}]},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999002\",\"profileBadge\":{\"count\":1,\"totalGap\":1,\"tone\":\"warn\",\"kind\":\"mismatches\",\"label\":\"1 mismatch\",\"description\":\"Location: not linked (you allow not collected at most)\",\"worstCategory\":\"LOCATION\",\"worstCategoryLabel\":\"Location\"},\"shortlistCandidates\":[],\"notes\":[],\"userVerdict\":null,\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-2\",\"appId\":\"89999002\",\"verdict\":\"replace\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473598000,\"updatedAt\":1789473598000}]}],\"sourceDeviceEcids\":{\"89999001\":[\"0xABC\",\"0xDEF\"]},\"rowCount\":2,\"reviewableCount\":3,\"total\":3}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: empty",
+      "op": "queue",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "{\"rows\":[],\"sourceDeviceEcids\":{},\"rowCount\":0,\"reviewableCount\":0,\"total\":0}",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "age: populated",
+      "op": "age",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "{\"band\":\"9_12\",\"count\":1}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "age: empty",
+      "op": "age",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "{\"band\":null,\"count\":0}",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "changelog: populated",
+      "op": "changelog",
+      "args": {},
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"pt-stats-snap-3:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"description\":\"Removed location\"}},{\"id\":\"pt-stats-snap-3:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-3:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-3:3\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"}},{\"id\":\"pt-stats-snap-3:4\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"}},{\"id\":\"pt-stats-snap-3:5\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}},{\"id\":\"pt-stats-snap-2:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"description\":\"Removed location\"}},{\"id\":\"pt-stats-snap-2:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-2:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-2:3\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"}},{\"id\":\"pt-stats-snap-2:4\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"}},{\"id\":\"pt-stats-snap-2:5\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}},{\"id\":\"pt-stats-snap-1:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"removed\",\"description\":\"Removed location\"}},{\"id\":\"pt-stats-snap-1:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-1:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-1:3\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"}},{\"id\":\"pt-stats-snap-1:4\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"}},{\"id\":\"pt-stats-snap-1:5\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}},{\"id\":\"pt-stats-snap-0:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"description\":\"Removed location\"}},{\"id\":\"pt-stats-snap-0:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-0:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-0:3\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"}},{\"id\":\"pt-stats-snap-0:4\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"}},{\"id\":\"pt-stats-snap-0:5\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}}],\"total\":24}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: empty",
+      "op": "changelog",
+      "args": {},
+      "changes": [],
+      "empty": true,
+      "expected": "{\"rows\":[],\"total\":0}",
+      "error": false,
+      "annotations": []
+    },
+    {
+      "name": "summary: scope pt-stats-device-a",
+      "op": "summary",
+      "args": {
+        "devices": "pt-stats-device-a"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":1,\"totalCategories\":6,\"totalUniqueCategories\":5,\"appsWithChanges\":1,\"staleApps\":1,\"totalSyncs\":4,\"appsNotMatchingProfile\":1,\"profileActive\":true,\"categoryFrequency\":[{\"identifier\":\"10\",\"title\":\"10\",\"appCount\":1},{\"identifier\":\"2\",\"title\":\"2\",\"appCount\":1},{\"identifier\":\"CONTACTS\",\"title\":\"CONTACTS\",\"appCount\":1},{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\",\"appCount\":1},{\"identifier\":\"IDENTIFIERS\",\"title\":\"IDENTIFIERS\",\"appCount\":1}],\"recentChanges\":[{\"id\":\"pt-stats-notification\",\"app_id\":\"89999001\",\"app_name\":\"Stats Alpha\",\"change_summary\":[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}],\"created_at\":1789387200000,\"read\":0,\"iconUrl\":null}],\"staleAppsList\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"lastSynced\":1786017600000}],\"appsWithAccessibilityLabels\":1,\"appsEvaluatedForAccessibility\":1,\"accessibilityFeatureFrequency\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"appCount\":1},{\"identifier\":\"voice_control\",\"title\":\"Voice Control\",\"appCount\":0},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"appCount\":0},{\"identifier\":\"dark_interface\",\"title\":\"Dark Interface\",\"appCount\":0},{\"identifier\":\"differentiate_without_color_alone\",\"title\":\"Differentiate Without Color Alone\",\"appCount\":0},{\"identifier\":\"sufficient_contrast\",\"title\":\"Sufficient Contrast\",\"appCount\":0},{\"identifier\":\"reduced_motion\",\"title\":\"Reduced Motion\",\"appCount\":0},{\"identifier\":\"captions\",\"title\":\"Captions\",\"appCount\":0},{\"identifier\":\"audio_descriptions\",\"title\":\"Audio Descriptions\",\"appCount\":0},{\"identifier\":\"future_feature\",\"title\":\"Fixture future_feature\",\"appCount\":1}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: scope pt-stats-device-a",
+      "op": "triage",
+      "args": {
+        "devices": "pt-stats-device-a"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":1,\"totalCategories\":6,\"highRiskCount\":1,\"moderateRiskCount\":0,\"staleCount\":1,\"lastSyncedAt\":1786017600000,\"changesThisWeek\":6,\"reviewable\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\",\"changeCount\":2,\"acknowledgedAt\":0,\"lastChangeAt\":1789387200000,\"topChange\":\"Added VoiceOver\",\"categories\":[\"privacy-label\",\"accessibility\",\"privacy-policy\"]}],\"higherRisk\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"stale\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"recentActivity\":[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"scrapedAt\":1789387200000,\"addedCount\":1,\"removedCount\":2,\"modifiedCount\":1,\"topChange\":\"Added VoiceOver\"}],\"quiet\":false}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "mismatches: scope pt-stats-device-a",
+      "op": "mismatches",
+      "args": {
+        "devices": "pt-stats-device-a"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"mismatch\":{\"mismatches\":[{\"category\":\"CONTACTS\",\"allowed\":\"not_collected\",\"observed\":\"tracking\",\"severityGap\":3},{\"category\":\"CONTACT_INFO\",\"allowed\":\"not_collected\",\"observed\":\"linked\",\"severityGap\":2},{\"category\":\"IDENTIFIERS\",\"allowed\":\"not_linked\",\"observed\":\"tracking\",\"severityGap\":2}],\"count\":3,\"totalGap\":7,\"profileActive\":true}}]",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: scope pt-stats-device-a",
+      "op": "queue",
+      "args": {
+        "devices": "pt-stats-device-a"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"profileBadge\":{\"count\":3,\"totalGap\":7,\"tone\":\"bad\",\"kind\":\"mismatches\",\"label\":\"3 mismatches\",\"description\":\"Contacts: tracking (you allow not collected at most)\",\"worstCategory\":\"CONTACTS\",\"worstCategoryLabel\":\"Contacts\"},\"shortlistCandidates\":[{\"id\":\"pt-stats-shortlist-0\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999002\",\"candidateName\":\"Candidate 0\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999002\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473600000,\"candidateIsTracked\":true,\"modes\":[\"privacy\",\"accessibility\"],\"profileBadge\":{\"count\":1,\"totalGap\":1,\"tone\":\"warn\",\"kind\":\"mismatches\",\"label\":\"1 mismatch\",\"description\":\"Location: not linked (you allow not collected at most)\",\"worstCategory\":\"LOCATION\",\"worstCategoryLabel\":\"Location\"},\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-1\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999003\",\"candidateName\":\"Candidate 1\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999003\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473599000,\"candidateIsTracked\":true,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-2\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"99999000\",\"candidateName\":\"Candidate 2\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id99999000\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473598000,\"candidateIsTracked\":false,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":null,\"candidatePriceCurrency\":null,\"candidateHasIap\":null}],\"notes\":[{\"id\":\"pt-stats-note-0\",\"appId\":\"89999001\",\"content\":\"Note 0\",\"source\":\"user\",\"sourceName\":null,\"visibility\":\"private\",\"tag\":\"concern\",\"createdAt\":1789473600000,\"updatedAt\":1789473600000,\"deletedAt\":null}],\"userVerdict\":{\"id\":\"pt-stats-verdict-0\",\"appId\":\"89999001\",\"verdict\":\"uninstall\",\"rationale\":null,\"source\":\"user\",\"sourceName\":null,\"setAt\":1789473600000,\"updatedAt\":1789473600000},\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-1\",\"appId\":\"89999001\",\"verdict\":\"safe\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473599000,\"updatedAt\":1789473599000}]}],\"sourceDeviceEcids\":{\"89999001\":[\"0xABC\",\"0xDEF\"]},\"rowCount\":1,\"reviewableCount\":1,\"total\":1}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "summary: scope unattached",
+      "op": "summary",
+      "args": {
+        "devices": "unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":1,\"totalCategories\":0,\"totalUniqueCategories\":0,\"appsWithChanges\":0,\"staleApps\":0,\"totalSyncs\":0,\"appsNotMatchingProfile\":0,\"profileActive\":true,\"categoryFrequency\":[],\"recentChanges\":[],\"staleAppsList\":[],\"appsWithAccessibilityLabels\":0,\"appsEvaluatedForAccessibility\":0,\"accessibilityFeatureFrequency\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"appCount\":0},{\"identifier\":\"voice_control\",\"title\":\"Voice Control\",\"appCount\":0},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"appCount\":0},{\"identifier\":\"dark_interface\",\"title\":\"Dark Interface\",\"appCount\":0},{\"identifier\":\"differentiate_without_color_alone\",\"title\":\"Differentiate Without Color Alone\",\"appCount\":0},{\"identifier\":\"sufficient_contrast\",\"title\":\"Sufficient Contrast\",\"appCount\":0},{\"identifier\":\"reduced_motion\",\"title\":\"Reduced Motion\",\"appCount\":0},{\"identifier\":\"captions\",\"title\":\"Captions\",\"appCount\":0},{\"identifier\":\"audio_descriptions\",\"title\":\"Audio Descriptions\",\"appCount\":0}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: scope unattached",
+      "op": "triage",
+      "args": {
+        "devices": "unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":1,\"totalCategories\":0,\"highRiskCount\":0,\"moderateRiskCount\":0,\"staleCount\":0,\"lastSyncedAt\":1789473599000,\"changesThisWeek\":0,\"reviewable\":[],\"higherRisk\":[],\"stale\":[],\"recentActivity\":[],\"quiet\":true}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "mismatches: scope unattached",
+      "op": "mismatches",
+      "args": {
+        "devices": "unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "[]",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: scope unattached",
+      "op": "queue",
+      "args": {
+        "devices": "unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[],\"sourceDeviceEcids\":{},\"rowCount\":0,\"reviewableCount\":0,\"total\":1}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "summary: scope missing",
+      "op": "summary",
+      "args": {
+        "devices": "missing"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":3,\"totalCategories\":8,\"totalUniqueCategories\":7,\"appsWithChanges\":1,\"staleApps\":1,\"totalSyncs\":4,\"appsNotMatchingProfile\":2,\"profileActive\":true,\"categoryFrequency\":[{\"identifier\":\"10\",\"title\":\"10\",\"appCount\":1},{\"identifier\":\"2\",\"title\":\"2\",\"appCount\":1},{\"identifier\":\"CONTACTS\",\"title\":\"CONTACTS\",\"appCount\":1},{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\",\"appCount\":1},{\"identifier\":\"IDENTIFIERS\",\"title\":\"IDENTIFIERS\",\"appCount\":1},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\",\"appCount\":1},{\"identifier\":\"NEW_CATEGORY\",\"title\":\"NEW_CATEGORY\",\"appCount\":1}],\"recentChanges\":[{\"id\":\"pt-stats-notification\",\"app_id\":\"89999001\",\"app_name\":\"Stats Alpha\",\"change_summary\":[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}],\"created_at\":1789387200000,\"read\":0,\"iconUrl\":null}],\"staleAppsList\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"lastSynced\":1786017600000}],\"appsWithAccessibilityLabels\":1,\"appsEvaluatedForAccessibility\":2,\"accessibilityFeatureFrequency\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"appCount\":1},{\"identifier\":\"voice_control\",\"title\":\"Voice Control\",\"appCount\":0},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"appCount\":0},{\"identifier\":\"dark_interface\",\"title\":\"Dark Interface\",\"appCount\":0},{\"identifier\":\"differentiate_without_color_alone\",\"title\":\"Differentiate Without Color Alone\",\"appCount\":0},{\"identifier\":\"sufficient_contrast\",\"title\":\"Sufficient Contrast\",\"appCount\":0},{\"identifier\":\"reduced_motion\",\"title\":\"Reduced Motion\",\"appCount\":0},{\"identifier\":\"captions\",\"title\":\"Captions\",\"appCount\":0},{\"identifier\":\"audio_descriptions\",\"title\":\"Audio Descriptions\",\"appCount\":0},{\"identifier\":\"future_feature\",\"title\":\"Fixture future_feature\",\"appCount\":1}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: scope missing",
+      "op": "triage",
+      "args": {
+        "devices": "missing"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":3,\"totalCategories\":8,\"highRiskCount\":1,\"moderateRiskCount\":0,\"staleCount\":1,\"lastSyncedAt\":1789473599000,\"changesThisWeek\":6,\"reviewable\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\",\"changeCount\":2,\"acknowledgedAt\":0,\"lastChangeAt\":1789387200000,\"topChange\":\"Added VoiceOver\",\"categories\":[\"privacy-label\",\"accessibility\",\"privacy-policy\"]}],\"higherRisk\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"stale\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"recentActivity\":[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"scrapedAt\":1789387200000,\"addedCount\":1,\"removedCount\":2,\"modifiedCount\":1,\"topChange\":\"Added VoiceOver\"}],\"quiet\":false}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "mismatches: scope missing",
+      "op": "mismatches",
+      "args": {
+        "devices": "missing"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"mismatch\":{\"mismatches\":[{\"category\":\"CONTACTS\",\"allowed\":\"not_collected\",\"observed\":\"tracking\",\"severityGap\":3},{\"category\":\"CONTACT_INFO\",\"allowed\":\"not_collected\",\"observed\":\"linked\",\"severityGap\":2},{\"category\":\"IDENTIFIERS\",\"allowed\":\"not_linked\",\"observed\":\"tracking\",\"severityGap\":2}],\"count\":3,\"totalGap\":7,\"profileActive\":true}},{\"appId\":\"89999002\",\"appName\":\"stats alpha\",\"iconUrl\":null,\"developer\":null,\"mismatch\":{\"mismatches\":[{\"category\":\"LOCATION\",\"allowed\":\"not_collected\",\"observed\":\"not_linked\",\"severityGap\":1}],\"count\":1,\"totalGap\":1,\"profileActive\":true}}]",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: scope missing",
+      "op": "queue",
+      "args": {
+        "devices": "missing"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"profileBadge\":{\"count\":3,\"totalGap\":7,\"tone\":\"bad\",\"kind\":\"mismatches\",\"label\":\"3 mismatches\",\"description\":\"Contacts: tracking (you allow not collected at most)\",\"worstCategory\":\"CONTACTS\",\"worstCategoryLabel\":\"Contacts\"},\"shortlistCandidates\":[{\"id\":\"pt-stats-shortlist-0\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999002\",\"candidateName\":\"Candidate 0\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999002\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473600000,\"candidateIsTracked\":true,\"modes\":[\"privacy\",\"accessibility\"],\"profileBadge\":{\"count\":1,\"totalGap\":1,\"tone\":\"warn\",\"kind\":\"mismatches\",\"label\":\"1 mismatch\",\"description\":\"Location: not linked (you allow not collected at most)\",\"worstCategory\":\"LOCATION\",\"worstCategoryLabel\":\"Location\"},\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-1\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999003\",\"candidateName\":\"Candidate 1\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999003\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473599000,\"candidateIsTracked\":true,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-2\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"99999000\",\"candidateName\":\"Candidate 2\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id99999000\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473598000,\"candidateIsTracked\":false,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":null,\"candidatePriceCurrency\":null,\"candidateHasIap\":null}],\"notes\":[{\"id\":\"pt-stats-note-0\",\"appId\":\"89999001\",\"content\":\"Note 0\",\"source\":\"user\",\"sourceName\":null,\"visibility\":\"private\",\"tag\":\"concern\",\"createdAt\":1789473600000,\"updatedAt\":1789473600000,\"deletedAt\":null}],\"userVerdict\":{\"id\":\"pt-stats-verdict-0\",\"appId\":\"89999001\",\"verdict\":\"uninstall\",\"rationale\":null,\"source\":\"user\",\"sourceName\":null,\"setAt\":1789473600000,\"updatedAt\":1789473600000},\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-1\",\"appId\":\"89999001\",\"verdict\":\"safe\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473599000,\"updatedAt\":1789473599000}]},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999002\",\"profileBadge\":{\"count\":1,\"totalGap\":1,\"tone\":\"warn\",\"kind\":\"mismatches\",\"label\":\"1 mismatch\",\"description\":\"Location: not linked (you allow not collected at most)\",\"worstCategory\":\"LOCATION\",\"worstCategoryLabel\":\"Location\"},\"shortlistCandidates\":[],\"notes\":[],\"userVerdict\":null,\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-2\",\"appId\":\"89999002\",\"verdict\":\"replace\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473598000,\"updatedAt\":1789473598000}]}],\"sourceDeviceEcids\":{\"89999001\":[\"0xABC\",\"0xDEF\"]},\"rowCount\":2,\"reviewableCount\":3,\"total\":3}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "summary: scope pt-stats-device-a,unattached",
+      "op": "summary",
+      "args": {
+        "devices": "pt-stats-device-a,unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":2,\"totalCategories\":6,\"totalUniqueCategories\":5,\"appsWithChanges\":1,\"staleApps\":1,\"totalSyncs\":4,\"appsNotMatchingProfile\":1,\"profileActive\":true,\"categoryFrequency\":[{\"identifier\":\"10\",\"title\":\"10\",\"appCount\":1},{\"identifier\":\"2\",\"title\":\"2\",\"appCount\":1},{\"identifier\":\"CONTACTS\",\"title\":\"CONTACTS\",\"appCount\":1},{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\",\"appCount\":1},{\"identifier\":\"IDENTIFIERS\",\"title\":\"IDENTIFIERS\",\"appCount\":1}],\"recentChanges\":[{\"id\":\"pt-stats-notification\",\"app_id\":\"89999001\",\"app_name\":\"Stats Alpha\",\"change_summary\":[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}],\"created_at\":1789387200000,\"read\":0,\"iconUrl\":null}],\"staleAppsList\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"lastSynced\":1786017600000}],\"appsWithAccessibilityLabels\":1,\"appsEvaluatedForAccessibility\":1,\"accessibilityFeatureFrequency\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"appCount\":1},{\"identifier\":\"voice_control\",\"title\":\"Voice Control\",\"appCount\":0},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"appCount\":0},{\"identifier\":\"dark_interface\",\"title\":\"Dark Interface\",\"appCount\":0},{\"identifier\":\"differentiate_without_color_alone\",\"title\":\"Differentiate Without Color Alone\",\"appCount\":0},{\"identifier\":\"sufficient_contrast\",\"title\":\"Sufficient Contrast\",\"appCount\":0},{\"identifier\":\"reduced_motion\",\"title\":\"Reduced Motion\",\"appCount\":0},{\"identifier\":\"captions\",\"title\":\"Captions\",\"appCount\":0},{\"identifier\":\"audio_descriptions\",\"title\":\"Audio Descriptions\",\"appCount\":0},{\"identifier\":\"future_feature\",\"title\":\"Fixture future_feature\",\"appCount\":1}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: scope pt-stats-device-a,unattached",
+      "op": "triage",
+      "args": {
+        "devices": "pt-stats-device-a,unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"totalApps\":2,\"totalCategories\":6,\"highRiskCount\":1,\"moderateRiskCount\":0,\"staleCount\":1,\"lastSyncedAt\":1789473599000,\"changesThisWeek\":6,\"reviewable\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\",\"changeCount\":2,\"acknowledgedAt\":0,\"lastChangeAt\":1789387200000,\"topChange\":\"Added VoiceOver\",\"categories\":[\"privacy-label\",\"accessibility\",\"privacy-policy\"]}],\"higherRisk\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"stale\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"recentActivity\":[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"scrapedAt\":1789387200000,\"addedCount\":1,\"removedCount\":2,\"modifiedCount\":1,\"topChange\":\"Added VoiceOver\"}],\"quiet\":false}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "mismatches: scope pt-stats-device-a,unattached",
+      "op": "mismatches",
+      "args": {
+        "devices": "pt-stats-device-a,unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"mismatch\":{\"mismatches\":[{\"category\":\"CONTACTS\",\"allowed\":\"not_collected\",\"observed\":\"tracking\",\"severityGap\":3},{\"category\":\"CONTACT_INFO\",\"allowed\":\"not_collected\",\"observed\":\"linked\",\"severityGap\":2},{\"category\":\"IDENTIFIERS\",\"allowed\":\"not_linked\",\"observed\":\"tracking\",\"severityGap\":2}],\"count\":3,\"totalGap\":7,\"profileActive\":true}}]",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: scope pt-stats-device-a,unattached",
+      "op": "queue",
+      "args": {
+        "devices": "pt-stats-device-a,unattached"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"profileBadge\":{\"count\":3,\"totalGap\":7,\"tone\":\"bad\",\"kind\":\"mismatches\",\"label\":\"3 mismatches\",\"description\":\"Contacts: tracking (you allow not collected at most)\",\"worstCategory\":\"CONTACTS\",\"worstCategoryLabel\":\"Contacts\"},\"shortlistCandidates\":[{\"id\":\"pt-stats-shortlist-0\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999002\",\"candidateName\":\"Candidate 0\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999002\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473600000,\"candidateIsTracked\":true,\"modes\":[\"privacy\",\"accessibility\"],\"profileBadge\":{\"count\":1,\"totalGap\":1,\"tone\":\"warn\",\"kind\":\"mismatches\",\"label\":\"1 mismatch\",\"description\":\"Location: not linked (you allow not collected at most)\",\"worstCategory\":\"LOCATION\",\"worstCategoryLabel\":\"Location\"},\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-1\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999003\",\"candidateName\":\"Candidate 1\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999003\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473599000,\"candidateIsTracked\":true,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-2\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"99999000\",\"candidateName\":\"Candidate 2\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id99999000\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473598000,\"candidateIsTracked\":false,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":null,\"candidatePriceCurrency\":null,\"candidateHasIap\":null}],\"notes\":[{\"id\":\"pt-stats-note-0\",\"appId\":\"89999001\",\"content\":\"Note 0\",\"source\":\"user\",\"sourceName\":null,\"visibility\":\"private\",\"tag\":\"concern\",\"createdAt\":1789473600000,\"updatedAt\":1789473600000,\"deletedAt\":null}],\"userVerdict\":{\"id\":\"pt-stats-verdict-0\",\"appId\":\"89999001\",\"verdict\":\"uninstall\",\"rationale\":null,\"source\":\"user\",\"sourceName\":null,\"setAt\":1789473600000,\"updatedAt\":1789473600000},\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-1\",\"appId\":\"89999001\",\"verdict\":\"safe\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473599000,\"updatedAt\":1789473599000}]}],\"sourceDeviceEcids\":{\"89999001\":[\"0xABC\",\"0xDEF\"]},\"rowCount\":1,\"reviewableCount\":1,\"total\":2}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: count does not sweep notes",
+      "op": "queue",
+      "args": {
+        "count": true
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"reviewableCount\":3}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: each read degrades independently",
+      "op": "queue",
+      "args": {},
+      "changes": [
+        {
+          "sql": "DROP TABLE shortlist_entries",
+          "params": []
+        },
+        {
+          "sql": "DROP TABLE annotations",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"profileBadge\":{\"count\":3,\"totalGap\":7,\"tone\":\"bad\",\"kind\":\"mismatches\",\"label\":\"3 mismatches\",\"description\":\"Contacts: tracking (you allow not collected at most)\",\"worstCategory\":\"CONTACTS\",\"worstCategoryLabel\":\"Contacts\"},\"shortlistCandidates\":[],\"notes\":[],\"userVerdict\":{\"id\":\"pt-stats-verdict-0\",\"appId\":\"89999001\",\"verdict\":\"uninstall\",\"rationale\":null,\"source\":\"user\",\"sourceName\":null,\"setAt\":1789473600000,\"updatedAt\":1789473600000},\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-1\",\"appId\":\"89999001\",\"verdict\":\"safe\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473599000,\"updatedAt\":1789473599000}]},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999002\",\"profileBadge\":{\"count\":1,\"totalGap\":1,\"tone\":\"warn\",\"kind\":\"mismatches\",\"label\":\"1 mismatch\",\"description\":\"Location: not linked (you allow not collected at most)\",\"worstCategory\":\"LOCATION\",\"worstCategoryLabel\":\"Location\"},\"shortlistCandidates\":[],\"notes\":[],\"userVerdict\":null,\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-2\",\"appId\":\"89999002\",\"verdict\":\"replace\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473598000,\"updatedAt\":1789473598000}]}],\"sourceDeviceEcids\":{\"89999001\":[\"0xABC\",\"0xDEF\"]},\"rowCount\":2,\"reviewableCount\":3,\"total\":3}",
+      "error": false,
+      "annotations": null
+    },
+    {
+      "name": "summary: no profile or band",
+      "op": "summary",
+      "args": {},
+      "changes": [
+        {
+          "sql": "DELETE FROM app_settings",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "expected": "{\"totalApps\":3,\"totalCategories\":8,\"totalUniqueCategories\":7,\"appsWithChanges\":1,\"staleApps\":1,\"totalSyncs\":4,\"appsNotMatchingProfile\":0,\"profileActive\":false,\"categoryFrequency\":[{\"identifier\":\"10\",\"title\":\"10\",\"appCount\":1},{\"identifier\":\"2\",\"title\":\"2\",\"appCount\":1},{\"identifier\":\"CONTACTS\",\"title\":\"CONTACTS\",\"appCount\":1},{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\",\"appCount\":1},{\"identifier\":\"IDENTIFIERS\",\"title\":\"IDENTIFIERS\",\"appCount\":1},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\",\"appCount\":1},{\"identifier\":\"NEW_CATEGORY\",\"title\":\"NEW_CATEGORY\",\"appCount\":1}],\"recentChanges\":[{\"id\":\"pt-stats-notification\",\"app_id\":\"89999001\",\"app_name\":\"Stats Alpha\",\"change_summary\":[{\"type\":\"removed\",\"description\":\"Removed location\"},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"},{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"},{\"type\":\"modified\",\"category\":\"accessibility\",\"description\":\"Ignored by timeline\"},{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Policy changed\"},{\"type\":\"wayback\",\"category\":\"wayback-attempt\",\"description\":\"Archive attempt\"}],\"created_at\":1789387200000,\"read\":0,\"iconUrl\":null}],\"staleAppsList\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"lastSynced\":1786017600000}],\"appsWithAccessibilityLabels\":1,\"appsEvaluatedForAccessibility\":2,\"accessibilityFeatureFrequency\":[{\"identifier\":\"voiceover\",\"title\":\"VoiceOver\",\"appCount\":1},{\"identifier\":\"voice_control\",\"title\":\"Voice Control\",\"appCount\":0},{\"identifier\":\"larger_text\",\"title\":\"Larger Text\",\"appCount\":0},{\"identifier\":\"dark_interface\",\"title\":\"Dark Interface\",\"appCount\":0},{\"identifier\":\"differentiate_without_color_alone\",\"title\":\"Differentiate Without Color Alone\",\"appCount\":0},{\"identifier\":\"sufficient_contrast\",\"title\":\"Sufficient Contrast\",\"appCount\":0},{\"identifier\":\"reduced_motion\",\"title\":\"Reduced Motion\",\"appCount\":0},{\"identifier\":\"captions\",\"title\":\"Captions\",\"appCount\":0},{\"identifier\":\"audio_descriptions\",\"title\":\"Audio Descriptions\",\"appCount\":0},{\"identifier\":\"future_feature\",\"title\":\"Fixture future_feature\",\"appCount\":1}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "mismatches: no profile or band",
+      "op": "mismatches",
+      "args": {},
+      "changes": [
+        {
+          "sql": "DELETE FROM app_settings",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "expected": "[]",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "queue: no profile or band",
+      "op": "queue",
+      "args": {},
+      "changes": [
+        {
+          "sql": "DELETE FROM app_settings",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999001\",\"profileBadge\":null,\"shortlistCandidates\":[{\"id\":\"pt-stats-shortlist-0\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999002\",\"candidateName\":\"Candidate 0\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999002\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473600000,\"candidateIsTracked\":true,\"modes\":[\"privacy\",\"accessibility\"],\"profileBadge\":null,\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-1\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"89999003\",\"candidateName\":\"Candidate 1\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id89999003\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473599000,\"candidateIsTracked\":true,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":\"$2.99\",\"candidatePriceCurrency\":\"USD\",\"candidateHasIap\":1},{\"id\":\"pt-stats-shortlist-2\",\"sourceAppId\":\"89999001\",\"candidateAppleId\":\"99999000\",\"candidateName\":\"Candidate 2\",\"candidateDeveloper\":\"\",\"candidateIconUrl\":\"\",\"candidateStoreUrl\":\"https://apps.apple.com/us/app/id99999000\",\"candidateBundleId\":\"\",\"note\":\"\",\"addedAt\":1789473598000,\"candidateIsTracked\":false,\"modes\":[\"privacy\"],\"profileBadge\":null,\"candidatePriceFormatted\":null,\"candidatePriceCurrency\":null,\"candidateHasIap\":null}],\"notes\":[{\"id\":\"pt-stats-note-0\",\"appId\":\"89999001\",\"content\":\"Note 0\",\"source\":\"user\",\"sourceName\":null,\"visibility\":\"private\",\"tag\":\"concern\",\"createdAt\":1789473600000,\"updatedAt\":1789473600000,\"deletedAt\":null}],\"userVerdict\":{\"id\":\"pt-stats-verdict-0\",\"appId\":\"89999001\",\"verdict\":\"uninstall\",\"rationale\":null,\"source\":\"user\",\"sourceName\":null,\"setAt\":1789473600000,\"updatedAt\":1789473600000},\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-1\",\"appId\":\"89999001\",\"verdict\":\"safe\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473599000,\"updatedAt\":1789473599000}]},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"developer\":null,\"iconUrl\":null,\"bundleId\":null,\"url\":\"https://apps.apple.com/us/app/id89999002\",\"profileBadge\":null,\"shortlistCandidates\":[],\"notes\":[],\"userVerdict\":null,\"importedVerdicts\":[{\"id\":\"pt-stats-verdict-2\",\"appId\":\"89999002\",\"verdict\":\"replace\",\"rationale\":null,\"source\":\"imported\",\"sourceName\":\"Fixture recommender\",\"setAt\":1789473598000,\"updatedAt\":1789473598000}]}],\"sourceDeviceEcids\":{\"89999001\":[\"0xABC\",\"0xDEF\"]},\"rowCount\":2,\"reviewableCount\":3,\"total\":3}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "age: no profile or band",
+      "op": "age",
+      "args": {},
+      "changes": [
+        {
+          "sql": "DELETE FROM app_settings",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "expected": "{\"band\":null,\"count\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "age: under_9",
+      "op": "age",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE app_settings SET value=? WHERE key='guardian_child_age_band'",
+          "params": [
+            "under_9"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"band\":\"under_9\",\"count\":2}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "age: 13_15",
+      "op": "age",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE app_settings SET value=? WHERE key='guardian_child_age_band'",
+          "params": [
+            "13_15"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"band\":\"13_15\",\"count\":1}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "age: 16_17",
+      "op": "age",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE app_settings SET value=? WHERE key='guardian_child_age_band'",
+          "params": [
+            "16_17"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"band\":\"16_17\",\"count\":1}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "age: 18_plus",
+      "op": "age",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE app_settings SET value=? WHERE key='guardian_child_age_band'",
+          "params": [
+            "18_plus"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"band\":\"18_plus\",\"count\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "age: invalid",
+      "op": "age",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE app_settings SET value=? WHERE key='guardian_child_age_band'",
+          "params": [
+            "invalid"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"band\":null,\"count\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: leap day day",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1709546400000,
+        "bucket": "day",
+        "appId": "89999001"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1709546400000,\"bucketType\":\"day\",\"points\":[{\"bucket\":\"2024-02-27\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-02-28\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-02-29\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-03-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":1},{\"bucket\":\"2024-03-02\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-03\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-04\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: blank December/January day",
+      "op": "timeline",
+      "args": {
+        "from": 1704024000000,
+        "to": 1704283200000,
+        "bucket": "day"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1704024000000,\"to\":1704283200000,\"bucketType\":\"day\",\"points\":[{\"bucket\":\"2023-12-31\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-02\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-03\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: leap day week",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1709546400000,
+        "bucket": "week",
+        "appId": "89999001"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1709546400000,\"bucketType\":\"week\",\"points\":[{\"bucket\":\"2024-02-26\",\"added\":0,\"removed\":2,\"modified\":0,\"policy\":2,\"accessibilityAdded\":2,\"accessibilityRemoved\":2,\"syncs\":2,\"reviews\":1},{\"bucket\":\"2024-03-04\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: blank December/January week",
+      "op": "timeline",
+      "args": {
+        "from": 1704024000000,
+        "to": 1704283200000,
+        "bucket": "week"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1704024000000,\"to\":1704283200000,\"bucketType\":\"week\",\"points\":[{\"bucket\":\"2023-12-25\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: leap day month",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1709546400000,
+        "bucket": "month",
+        "appId": "89999001"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1709546400000,\"bucketType\":\"month\",\"points\":[{\"bucket\":\"2024-02-01\",\"added\":0,\"removed\":2,\"modified\":0,\"policy\":2,\"accessibilityAdded\":2,\"accessibilityRemoved\":2,\"syncs\":2,\"reviews\":0},{\"bucket\":\"2024-03-01\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":1}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: blank December/January month",
+      "op": "timeline",
+      "args": {
+        "from": 1704024000000,
+        "to": 1704283200000,
+        "bucket": "month"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1704024000000,\"to\":1704283200000,\"bucketType\":\"month\",\"points\":[{\"bucket\":\"2023-12-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: leap day null",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1709546400000,
+        "bucket": null,
+        "appId": "89999001"
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1709546400000,\"bucketType\":\"day\",\"points\":[{\"bucket\":\"2024-02-27\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-02-28\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-02-29\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-03-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":1},{\"bucket\":\"2024-03-02\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-03\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-04\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: blank December/January null",
+      "op": "timeline",
+      "args": {
+        "from": 1704024000000,
+        "to": 1704283200000,
+        "bucket": null
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1704024000000,\"to\":1704283200000,\"bucketType\":\"day\",\"points\":[{\"bucket\":\"2023-12-31\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-02\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-01-03\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: automatic threshold 14",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1710244800000
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1710244800000,\"bucketType\":\"day\",\"points\":[{\"bucket\":\"2024-02-27\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-02-28\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-02-29\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-03-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":1},{\"bucket\":\"2024-03-02\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-03\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-04\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-03-05\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-06\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-07\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-08\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-09\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-10\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-11\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-12\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: automatic threshold 14.01",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1710245664000
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1710245664000,\"bucketType\":\"week\",\"points\":[{\"bucket\":\"2024-02-26\",\"added\":0,\"removed\":2,\"modified\":0,\"policy\":2,\"accessibilityAdded\":2,\"accessibilityRemoved\":2,\"syncs\":2,\"reviews\":1},{\"bucket\":\"2024-03-04\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-03-11\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: automatic threshold 120",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1719403200000
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1719403200000,\"bucketType\":\"week\",\"points\":[{\"bucket\":\"2024-02-26\",\"added\":0,\"removed\":2,\"modified\":0,\"policy\":2,\"accessibilityAdded\":2,\"accessibilityRemoved\":2,\"syncs\":2,\"reviews\":1},{\"bucket\":\"2024-03-04\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":0},{\"bucket\":\"2024-03-11\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-18\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-03-25\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-04-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-04-08\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-04-15\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-04-22\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-04-29\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-05-06\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-05-13\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-05-20\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-05-27\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-06-03\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-06-10\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-06-17\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-06-24\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: automatic threshold 120.01",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1719404064000
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1719404064000,\"bucketType\":\"month\",\"points\":[{\"bucket\":\"2024-02-01\",\"added\":0,\"removed\":2,\"modified\":0,\"policy\":2,\"accessibilityAdded\":2,\"accessibilityRemoved\":2,\"syncs\":2,\"reviews\":0},{\"bucket\":\"2024-03-01\",\"added\":0,\"removed\":1,\"modified\":0,\"policy\":1,\"accessibilityAdded\":1,\"accessibilityRemoved\":1,\"syncs\":1,\"reviews\":1},{\"bucket\":\"2024-04-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-05-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-06-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0}],\"total\":12}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: invalid Dates",
+      "op": "timeline",
+      "args": {
+        "from": 9000000000000000,
+        "to": 9000000000000001
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"from\":9000000000000000,\"to\":9000000000000001,\"bucketType\":\"day\",\"points\":[],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "radar: explicit including null status",
+      "op": "radar",
+      "args": {
+        "ids": [
+          "89999001",
+          "89999002",
+          "89999003"
+        ]
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"axes\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\"},{\"key\":\"product_use\",\"label\":\"Product Use\"},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\"},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\"},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\"},{\"key\":\"user_controls\",\"label\":\"User Controls\"},{\"key\":\"data_retention\",\"label\":\"Data Retention\"},{\"key\":\"children_minors\",\"label\":\"Children & Minors\"}],\"ratings\":[\"favorable\",\"mixed\",\"concerning\",\"unclear\"],\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"lenses\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\",\"rating\":\"unclear\",\"score\":1.5},{\"key\":\"product_use\",\"label\":\"Product Use\",\"rating\":null,\"score\":null},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\",\"rating\":\"concerning\",\"score\":4},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\",\"rating\":null,\"score\":null},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\",\"rating\":null,\"score\":null},{\"key\":\"user_controls\",\"label\":\"User Controls\",\"rating\":\"favorable\",\"score\":1},{\"key\":\"data_retention\",\"label\":\"Data Retention\",\"rating\":null,\"score\":null},{\"key\":\"children_minors\",\"label\":\"Children & Minors\",\"rating\":null,\"score\":null}],\"hasPolicy\":true,\"status\":\"ready\"},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"lenses\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\",\"rating\":null,\"score\":null},{\"key\":\"product_use\",\"label\":\"Product Use\",\"rating\":null,\"score\":null},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\",\"rating\":null,\"score\":null},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\",\"rating\":null,\"score\":null},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\",\"rating\":null,\"score\":null},{\"key\":\"user_controls\",\"label\":\"User Controls\",\"rating\":null,\"score\":null},{\"key\":\"data_retention\",\"label\":\"Data Retention\",\"rating\":null,\"score\":null},{\"key\":\"children_minors\",\"label\":\"Children & Minors\",\"rating\":null,\"score\":null}],\"hasPolicy\":false,\"status\":\"source_ready\"},{\"id\":\"89999003\",\"name\":\"Stats Empty\",\"iconUrl\":null,\"lenses\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\",\"rating\":null,\"score\":null},{\"key\":\"product_use\",\"label\":\"Product Use\",\"rating\":null,\"score\":null},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\",\"rating\":null,\"score\":null},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\",\"rating\":null,\"score\":null},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\",\"rating\":null,\"score\":null},{\"key\":\"user_controls\",\"label\":\"User Controls\",\"rating\":null,\"score\":null},{\"key\":\"data_retention\",\"label\":\"Data Retention\",\"rating\":null,\"score\":null},{\"key\":\"children_minors\",\"label\":\"Children & Minors\",\"rating\":null,\"score\":null}],\"hasPolicy\":false}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "radar: duplicate-last and unknown rating",
+      "op": "radar",
+      "args": {
+        "ids": [
+          "89999001"
+        ]
+      },
+      "changes": [
+        {
+          "sql": "UPDATE privacy_policy_analyses SET summary_json=? WHERE app_id=?",
+          "params": [
+            "{\"lenses\":[{\"key\":\"collection_scope\",\"rating\":\"invalid\"}]}",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"axes\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\"},{\"key\":\"product_use\",\"label\":\"Product Use\"},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\"},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\"},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\"},{\"key\":\"user_controls\",\"label\":\"User Controls\"},{\"key\":\"data_retention\",\"label\":\"Data Retention\"},{\"key\":\"children_minors\",\"label\":\"Children & Minors\"}],\"ratings\":[\"favorable\",\"mixed\",\"concerning\",\"unclear\"],\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"lenses\":[{\"key\":\"collection_scope\",\"label\":\"Collection Scope\",\"rating\":\"invalid\"},{\"key\":\"product_use\",\"label\":\"Product Use\",\"rating\":null,\"score\":null},{\"key\":\"ads_marketing\",\"label\":\"Ads & Marketing\",\"rating\":null,\"score\":null},{\"key\":\"third_party_sharing\",\"label\":\"Third-Party Sharing\",\"rating\":null,\"score\":null},{\"key\":\"tracking_analytics\",\"label\":\"Tracking & Analytics\",\"rating\":null,\"score\":null},{\"key\":\"user_controls\",\"label\":\"User Controls\",\"rating\":null,\"score\":null},{\"key\":\"data_retention\",\"label\":\"Data Retention\",\"rating\":null,\"score\":null},{\"key\":\"children_minors\",\"label\":\"Children & Minors\",\"rating\":null,\"score\":null}],\"hasPolicy\":true,\"status\":\"ready\"}]}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: corrupt changes not json",
+      "op": "triage",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "not json",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"totalApps\":3,\"totalCategories\":8,\"highRiskCount\":1,\"moderateRiskCount\":0,\"staleCount\":1,\"lastSyncedAt\":1789473599000,\"changesThisWeek\":0,\"reviewable\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\",\"changeCount\":2,\"acknowledgedAt\":0,\"lastChangeAt\":1789387200000,\"topChange\":null,\"categories\":[]}],\"higherRisk\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"stale\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"developer\":null,\"lastSynced\":1786017600000,\"categoryCount\":6,\"trackCount\":4,\"linkedCount\":2,\"unlinkedCount\":0,\"riskScore\":46,\"riskLevel\":\"high\"}],\"recentActivity\":[{\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"iconUrl\":null,\"scrapedAt\":1789387200000,\"addedCount\":0,\"removedCount\":0,\"modifiedCount\":0,\"topChange\":null}],\"quiet\":false}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: corrupt changes not json",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1789473600000
+      },
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "not json",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"from\":1709035200000,\"to\":1789473600000,\"bucketType\":\"month\",\"points\":[{\"bucket\":\"2024-02-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":2,\"reviews\":0},{\"bucket\":\"2024-03-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":1,\"reviews\":1},{\"bucket\":\"2024-04-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-05-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-06-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-07-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-08-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-09-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-10-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-11-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2024-12-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-01-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-02-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-03-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-04-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-05-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-06-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-07-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-08-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-09-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-10-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-11-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2025-12-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-01-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-02-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-03-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-04-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-05-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-06-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-07-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-08-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":0,\"reviews\":0},{\"bucket\":\"2026-09-01\",\"added\":0,\"removed\":0,\"modified\":0,\"policy\":0,\"accessibilityAdded\":0,\"accessibilityRemoved\":0,\"syncs\":1,\"reviews\":0}],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: corrupt changes not json",
+      "op": "changelog",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "not json",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"rows\":[],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: corrupt changes null",
+      "op": "triage",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "null",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: corrupt changes null",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1789473600000
+      },
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "null",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: corrupt changes null",
+      "op": "changelog",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "null",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: corrupt changes {}",
+      "op": "triage",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "{}",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: corrupt changes {}",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1789473600000
+      },
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "{}",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: corrupt changes {}",
+      "op": "changelog",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "{}",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"rows\":[],\"total\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "triage: corrupt changes [null]",
+      "op": "triage",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "[null]",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "timeline: corrupt changes [null]",
+      "op": "timeline",
+      "args": {
+        "from": 1709035200000,
+        "to": 1789473600000
+      },
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "[null]",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: corrupt changes [null]",
+      "op": "changelog",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE privacy_snapshots SET changes_summary=? WHERE app_id=?",
+          "params": [
+            "[null]",
+            "89999001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"pt-stats-snap-3:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":null},{\"id\":\"pt-stats-snap-2:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":null},{\"id\":\"pt-stats-snap-1:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":null},{\"id\":\"pt-stats-snap-0:0\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":null}],\"total\":4}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "summary: malformed notification is fatal",
+      "op": "summary",
+      "args": {},
+      "changes": [
+        {
+          "sql": "UPDATE notifications SET change_summary='not json'",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "expected": null,
+      "error": true,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: limit 0",
+      "op": "changelog",
+      "args": {
+        "limit": 0,
+        "offset": 1,
+        "types": [
+          "added",
+          "removed"
+        ],
+        "categories": [
+          "accessibility"
+        ]
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"pt-stats-snap-3:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}}],\"total\":8}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: limit 1",
+      "op": "changelog",
+      "args": {
+        "limit": 1,
+        "offset": 1,
+        "types": [
+          "added",
+          "removed"
+        ],
+        "categories": [
+          "accessibility"
+        ]
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"pt-stats-snap-3:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}}],\"total\":8}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: limit 500",
+      "op": "changelog",
+      "args": {
+        "limit": 500,
+        "offset": 1,
+        "types": [
+          "added",
+          "removed"
+        ],
+        "categories": [
+          "accessibility"
+        ]
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"pt-stats-snap-3:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-2:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-2:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-1:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-1:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-0:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-0:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}}],\"total\":8}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "changelog: limit 1000",
+      "op": "changelog",
+      "args": {
+        "limit": 1000,
+        "offset": 1,
+        "types": [
+          "added",
+          "removed"
+        ],
+        "categories": [
+          "accessibility"
+        ]
+      },
+      "changes": [],
+      "empty": false,
+      "expected": "{\"rows\":[{\"id\":\"pt-stats-snap-3:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1789387200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-2:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-2:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709546400000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-1:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-1:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709164800000,\"source\":\"wayback\",\"triggeredBy\":\"wayback\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}},{\"id\":\"pt-stats-snap-0:1\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Added VoiceOver\"}},{\"id\":\"pt-stats-snap-0:2\",\"appId\":\"89999001\",\"appName\":\"Stats Alpha\",\"appIconUrl\":null,\"appDeveloper\":null,\"scrapedAt\":1709035200000,\"source\":\"live\",\"triggeredBy\":\"manual\",\"entry\":{\"type\":\"removed\",\"category\":\"accessibility\",\"description\":\"Removed captions\"}}],\"total\":8}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    }
+  ],
+  "ratings": [
+    {
+      "raw": null,
+      "expected": null
+    },
+    {
+      "raw": "4+",
+      "expected": 4
+    },
+    {
+      "raw": "+17",
+      "expected": 17
+    },
+    {
+      "raw": "Rated 13 +",
+      "expected": 13
+    },
+    {
+      "raw": "+ 12",
+      "expected": 12
+    },
+    {
+      "raw": "+8 and 13+",
+      "expected": 13
+    },
+    {
+      "raw": "0+",
+      "expected": null
+    },
+    {
+      "raw": "100+",
+      "expected": null
+    },
+    {
+      "raw": "١٣+",
+      "expected": null
+    },
+    {
+      "raw": "17﻿+",
+      "expected": 17
+    },
+    {
+      "raw": "17+",
+      "expected": null
+    },
+    {
+      "raw": "+003",
+      "expected": 3
+    },
+    {
+      "raw": "none",
+      "expected": null
+    }
+  ]
+}

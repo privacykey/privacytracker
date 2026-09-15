@@ -96,7 +96,7 @@ fn tier_short_label_lower(tier: &str) -> &'static str {
 /// Reads `app_settings` directly rather than through `settings::get_setting`,
 /// which takes the whole `AppState` and locks the connection itself — this
 /// runs with the lock already held.
-fn get_privacy_profile(conn: &Connection) -> rusqlite::Result<Option<TierMap>> {
+pub(super) fn get_privacy_profile(conn: &Connection) -> rusqlite::Result<Option<TierMap>> {
     use rusqlite::OptionalExtension;
     let raw: Option<String> = conn
         .query_row(
@@ -137,20 +137,25 @@ fn parse_stored_profile(raw: Option<&str>) -> Option<TierMap> {
 /// the order `computeProfileMismatch` sees on a tie — is planner order.
 fn build_all_footprints(
     conn: &Connection,
-    app_ids: &[String],
+    app_ids: Option<&[String]>,
 ) -> rusqlite::Result<Vec<(String, TierMap)>> {
-    if app_ids.is_empty() {
+    if app_ids.is_some_and(|ids| ids.is_empty()) {
         return Ok(Vec::new());
     }
-    let placeholders = vec!["?"; app_ids.len()].join(", ");
+    let filter = app_ids
+        .map(|ids| format!(" WHERE t.app_id IN ({})", vec!["?"; ids.len()].join(", ")))
+        .unwrap_or_default();
     let sql = format!(
         "SELECT t.app_id AS app_id, c.identifier AS identifier, t.identifier AS type_identifier \
            FROM privacy_categories c \
-           JOIN privacy_types t ON c.type_id = t.id WHERE t.app_id IN ({placeholders})"
+           JOIN privacy_types t ON c.type_id = t.id{filter}"
     );
     let mut stmt = conn.prepare(&sql)?;
-    let params: Vec<&dyn rusqlite::ToSql> =
-        app_ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+    let params: Vec<&dyn rusqlite::ToSql> = app_ids
+        .unwrap_or(&[])
+        .iter()
+        .map(|s| s as &dyn rusqlite::ToSql)
+        .collect();
     let rows = stmt.query_map(params.as_slice(), |row| {
         Ok((
             row.get::<_, String>("app_id")?,
@@ -165,6 +170,13 @@ fn build_all_footprints(
     let mut by_app: Vec<(String, TierMap)> = Vec::new();
     for row in rows {
         let (app_id, identifier, type_identifier) = row?;
+        let entry = match by_app.iter_mut().find(|(a, _)| *a == app_id) {
+            Some(e) => e,
+            None => {
+                by_app.push((app_id.clone(), Vec::new()));
+                by_app.last_mut().unwrap()
+            }
+        };
         let Some(tier) = type_to_tier(&type_identifier) else {
             continue;
         };
@@ -173,13 +185,6 @@ fn build_all_footprints(
         if tier == "not_collected" {
             continue;
         }
-        let entry = match by_app.iter_mut().find(|(a, _)| *a == app_id) {
-            Some(e) => e,
-            None => {
-                by_app.push((app_id.clone(), Vec::new()));
-                by_app.last_mut().unwrap()
-            }
-        };
         match entry.1.iter_mut().find(|(k, _)| *k == identifier) {
             Some((_, existing)) => {
                 if tier_rank(tier) > tier_rank(existing) {
@@ -321,14 +326,17 @@ fn summarise_badge(result: &MismatchResult) -> Value {
 /// otherwise one badge per id whose result is active — and since a profile
 /// with any preference makes EVERY result active, that is every id, footprint
 /// or not (an app with no rows gets an empty footprint → "match").
-fn get_profile_badges_by_app(conn: &Connection, app_ids: &[String]) -> rusqlite::Result<Value> {
+pub(super) fn get_profile_badges_by_app(
+    conn: &Connection,
+    app_ids: &[String],
+) -> rusqlite::Result<Value> {
     let Some(profile) = get_privacy_profile(conn)? else {
         return Ok(Value::Object(Map::new()));
     };
     if app_ids.is_empty() {
         return Ok(Value::Object(Map::new()));
     }
-    let footprints = build_all_footprints(conn, app_ids)?;
+    let footprints = build_all_footprints(conn, Some(app_ids))?;
     let empty: TierMap = Vec::new();
     let mut pairs = Vec::with_capacity(app_ids.len());
     for id in app_ids {
@@ -538,6 +546,99 @@ pub fn build_app_grid_meta(conn: &Connection, app_ids: &[String]) -> rusqlite::R
     m.insert("profileBadges".into(), profile_badges);
     m.insert("userVerdicts".into(), user_verdicts);
     Ok(Value::Object(m))
+}
+
+/// Full mismatch payload (badge callers deliberately emit a different shape).
+fn mismatch_json(result: &MismatchResult) -> Value {
+    serde_json::json!({
+        "mismatches": result.mismatches.iter().map(|m| serde_json::json!({
+    "category":m.category,
+    "allowed":m.allowed,
+    "observed":m.observed,
+    "severityGap":m.severity_gap})).collect::<Vec<_>>(),
+        "count": result.mismatches.len(), "totalGap": result.total_gap, "profileActive": result.profile_active
+    })
+}
+
+pub(super) fn mismatched_apps(
+    conn: &Connection,
+    scope: &super::scope::Scope,
+) -> rusqlite::Result<Vec<Value>> {
+    let Some(profile) = get_privacy_profile(conn)? else {
+        return Ok(vec![]);
+    };
+    let apps = super::stats::query(
+        conn,
+        &format!(
+            "SELECT a.id, a.name, a.iconUrl, a.developer FROM apps a{}",
+            scope.fragment("WHERE", "a.id")
+        ),
+        &scope.params(),
+    )?;
+    let footprints = build_all_footprints(conn, None)?;
+    let mut out = Vec::new();
+    for app in apps {
+        let fp = footprints
+            .iter()
+            .find(|(id, _)| app["id"] == *id)
+            .map(|(_, f)| f.as_slice())
+            .unwrap_or(&[]);
+        let result = compute_profile_mismatch(Some(&profile), fp);
+        if !result.mismatches.is_empty() {
+            out.push(serde_json::json!({
+"appId":app["id"],
+"appName":app["name"],
+"iconUrl":app["iconUrl"],
+"developer":app["developer"],
+"mismatch":mismatch_json(&result)}));
+        }
+    }
+    out.sort_by(|a, b| {
+        super::stats::number(&b["mismatch"]["totalGap"])
+            .cmp(&super::stats::number(&a["mismatch"]["totalGap"]))
+            .then_with(|| {
+                js_locale_compare(
+                    super::stats::text(&a["appName"]),
+                    super::stats::text(&b["appName"]),
+                )
+            })
+    });
+    Ok(out)
+}
+
+pub(super) fn mismatch_count(
+    conn: &Connection,
+    scope: &super::scope::Scope,
+) -> rusqlite::Result<usize> {
+    let Some(profile) = get_privacy_profile(conn)? else {
+        return Ok(0);
+    };
+    let allowed = scope.allowed(conn);
+    Ok(build_all_footprints(conn, None)?
+        .iter()
+        .filter(|(id, fp)| {
+            allowed.as_ref().map_or(true, |ids| ids.contains(id))
+                && !compute_profile_mismatch(Some(&profile), fp)
+                    .mismatches
+                    .is_empty()
+        })
+        .count())
+}
+
+/// Shortlist candidates without any category rows have no footprint, hence
+/// no badge (unlike a tracked grid app with an empty footprint).
+pub(super) fn candidate_badges(conn: &Connection) -> rusqlite::Result<Value> {
+    let Some(profile) = get_privacy_profile(conn)? else {
+        return Ok(serde_json::json!({}));
+    };
+    let mut pairs = Vec::new();
+    for (id, fp) in build_all_footprints(conn, None)? {
+        let result = compute_profile_mismatch(Some(&profile), &fp);
+        if result.profile_active {
+            pairs.push((id, summarise_badge(&result)));
+        }
+    }
+    Ok(js_keyed_object(pairs))
 }
 
 #[cfg(test)]

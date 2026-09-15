@@ -56,6 +56,8 @@ import {
   TREND_ID,
 } from "./since-install-fixture.mjs";
 
+import { applyStatsFixture, probeStatsReads } from "./stats-fixture.mjs";
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
 
@@ -81,6 +83,17 @@ if (!(args.node && args["node-data"])) {
 // so an unimplemented route can never silently drop out of the comparison —
 // adding a route to the server means adding it here in the same commit.
 const BATCH_1 = [
+  // Database-backed fleet analysis (live Apple reads wait for Phase 3).
+  "/api/stats",
+  "/api/stats/matrix",
+  "/api/stats/radar",
+  "/api/stats/timeline",
+  "/api/triage",
+  "/api/review-queue",
+  "/api/age-rating/summary",
+  "/api/privacy-profile/mismatches",
+  "/api/changelog",
+
   "/api/health",
   "/api/auth/admin-token/status",
   "/api/locale",
@@ -975,7 +988,7 @@ async function probeSettingsReads(nodeBase) {
   check(
     `feature flags: ${rows.length} rows, ${ruled} moved by focus rules, parent override collapses, child override escapes (focusValue still off), quarantined and unknown overrides ignored, ICU-sorted`,
     f.status === 200 &&
-      rows.length === 221 &&
+      rows.length === 222 &&
       ruled > 0 &&
       sorted &&
       parent?.override === "off" &&
@@ -1469,6 +1482,7 @@ async function main() {
   // from identical input. See since-install-fixture.mjs for why the canned
   // seed cannot cover this route.
   const fixture = applySinceInstallFixture(nodeData);
+  applyStatsFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
   );
@@ -1593,8 +1607,11 @@ async function main() {
   );
   const errorRingOk = await probeErrorRing(rustBase, args.node);
 
+  const statsOk = await probeStatsReads(args.node, rustBase, TOKEN);
+
   cleanup();
   const ok =
+    statsOk &&
     authOk &&
     slashOk &&
     fwdOk &&
