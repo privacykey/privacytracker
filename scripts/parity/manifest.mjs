@@ -60,6 +60,44 @@ export const PLACEHOLDERS = [
 // ── READS ────────────────────────────────────────────────────────────
 
 export const READS = [
+  ...["json", "JSON", "", "unknown"].map((format) => ({
+    route: "/api/export",
+    name: `export format ${format || "empty"}`,
+    path: `/api/export?format=${format}`,
+  })),
+  {
+    route: "/api/export",
+    name: "whole-install JSON ignores device scope",
+    path: "/api/export?format=json&devices=unattached",
+  },
+  {
+    route: "/api/export",
+    name: "first repeated export format wins",
+    path: "/api/export?format=json&format=csv",
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail populated operations history",
+    path: "/api/manual-apps/pt-ops-manual",
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail missing",
+    path: "/api/manual-apps/pt-ops-missing",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail invalid length",
+    path: `/api/manual-apps/${"a".repeat(129)}`,
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail keeps whitespace",
+    path: "/api/manual-apps/%20pt-ops-manual",
+    allowErrorStatus: true,
+  },
   // -- core collections
   { route: "/api/apps", name: "apps (bare array)", path: "/api/apps" },
   // The three remaining GET shapes and both error branches of /api/apps.

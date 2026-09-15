@@ -127,6 +127,15 @@ fn source_meta() -> Vec<SourceMeta> {
     ]
 }
 
+pub(super) fn source_metadata(source: &str) -> serde_json::Value {
+    let metas = source_meta();
+    let meta = metas
+        .iter()
+        .find(|m| m.value == source)
+        .unwrap_or(&metas[3]);
+    serde_json::to_value(meta).expect("static source metadata")
+}
+
 #[derive(Serialize)]
 struct ManualAppsBody {
     apps: Vec<ManualApp>,

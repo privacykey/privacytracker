@@ -179,7 +179,7 @@ PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (54).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (63).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -1245,3 +1245,96 @@ and surviving annotation IDs. Cases include empty/populated reads, query
 coercions, per-type filtering, legacy preference fallbacks, all task focus
 combinations, task timestamps, global purge boundaries, scoped/global
 shortlists, both export formats and database failures.
+
+### Operational reads (+9 routes, 63 total)
+
+Ports `/api/tasks/active`, the GETs on `/api/wayback/import-all` and
+`/api/policy/sync-all`, `/api/backup/snapshots`, `/api/rate-limit/status`,
+`/api/ai/debug-log`, `/api/csp-report`, `/api/export` and
+`/api/manual-apps/[id]`. Two of the handoff's 65 compared reads remain:
+`/api/compare` and `/api/related-apps` need Phase 3's live fetch/parser
+support to implement every branch. All shipping paths remain inert.
+
+**Stacking.** Migration batches now branch from and target the preceding
+unmerged migration PR, as requested by the maintainer. Dependent PRs stay
+in draft. Merge the oldest into `main`, then rebase its child onto updated
+`main`, retarget that PR and rerun its checks before marking it ready.
+Update descendant bases and dependency links as the stack advances; do not
+merge a dependent PR into an already-merged feature branch. This replaces
+the older handoff's independent/main-only workflow.
+
+The job reads project existing state without clearing locks, upgrading
+persisted blobs or starting/resuming work. Wayback accepts v1/v2 state and
+normalizes its pause/cancel status in memory. Its `running` value requires
+a held, non-stale mutex and a status other than `paused`; sync and policy
+report running when either a state blob or mutex exists. A held lock with
+no pending/in-progress entries is stale, including completed queues.
+Unknown entry statuses still count toward total. Missing direct properties
+are omitted; the task-center view's null-coalesced fields remain present.
+A null queue entry throws in Node and therefore yields an empty HTTP 500.
+The unified view also includes at most ten active per-app policy runs,
+ordered by their effective start time, with tolerant last-log extraction.
+The shared policy reader now drops log entries missing `at`, matching
+Node's `Number(undefined)` behavior; explicit null still coerces to zero.
+
+Manual detail bounds IDs by UTF-16 length, preserves whitespace, falls back
+to `sideloaded` source metadata, caps events at 200 with rowid ordering for
+timestamp ties, and returns the latest policy version. Invalid IDs and
+misses use their distinct 400/404 envelopes. AI logs cap at 50 and omit
+nullable optional fields while retaining empty strings and zero durations.
+Their 60/min read bucket and manual detail's separate 120/min bucket sit
+behind the existing authentication gate. No AI call or policy fetch occurs.
+
+Cooldowns retain prefix integer parsing and hide expired reasons. Operational
+JSON uses JS number spelling even at the decimal/exponent boundaries and
+beyond i64; the new value serializer is scoped to this batch. JSON exports
+reuse the existing full-app reader and ignore device scope. CSV defaults on
+anything except the exact first `format=json`; quoting, formula prefixes,
+newlines, UTC dates and attachment headers follow Node. Both formats retain
+the existing in-memory response construction.
+
+Backup settings preserve exact boolean parsing, clamps and nullable run
+times. Listing includes every matching filename, follows symlinks, uses
+parsed filename dates or the exact file mtime, and sorts newest first.
+The filename date parser follows the ISO/legacy rules of
+[V8's date parser](https://github.com/v8/v8/tree/main/src/date), including
+local timezone/DST interpretation; its attribution is in `core/V8-LICENSE`.
+Phase 6 must carry that notice with any binary distribution of the core.
+The database lock is released before filesystem work. Missing directories
+return an empty list; a non-directory or broken matching symlink causes the
+same empty HTTP 500 as Node. No snapshot is created or pruned.
+
+CSP GET reads a process-local ring. Its live value is empty until Phase 4
+adds the bounded POST writer; it cannot read the separate Node process's
+ring. A populated-ring Node oracle verifies ordering and response shape
+without exposing a test writer over HTTP. Authentication applies to GET.
+
+**Coverage.** `extract-operations-cases.mjs` executes the real Node handlers
+in 197 scenarios and generates another 180 date-parsing expectations across
+UTC, Melbourne and New York. Rust runs the real schema migrations before
+replaying each scenario, compares raw status/body/content headers and
+asserts zero SQLite writes. Filesystem cases use disposable files with
+explicit mtimes, so filename fallback is measured rather than normalized.
+CI regenerates the fixture and rejects drift.
+
+The live fixture populates durable queues, manual history, AI logs and a
+formula-looking app with privacy data. Raw probes verify runner status
+transitions, malformed-state errors, export bytes, privacy gates and read
+limits. Backup files/settings are populated after the existing disk probe
+so its independent fixture remains meaningful. Only each export's newly
+generated timestamp and cooldown's server clock are normalized, after
+checking recency; backup directory prefixes are substituted because the
+two servers deliberately read separate copies. All stored timestamps,
+file sizes, list order and response headers are compared unchanged.
+
+Active policy rows are primed after both servers finish their database
+startup so startup cleanup cannot turn the coverage into an empty result.
+The manual-list limit probe accounts for the differ's extra Node-only ID
+resolution requests. Backup probes restore settings and remove their files
+so another server startup cannot launch a backup from the fixture settings.
+
+The local production gate passed 166 comparisons across all 63 routes and
+every raw probe. As a negative control, treating paused Wayback state as
+running failed 31 Node-oracle cases, the live Wayback comparison and both
+raw pause-status probes; the remaining live probes passed. The intentional
+fault was removed before the final passing run.

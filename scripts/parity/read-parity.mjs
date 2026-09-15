@@ -43,6 +43,12 @@ import {
   validateErrorLog,
   validateRuntimeDiagnostics,
 } from "./diagnostics-envelope.mjs";
+import { QUARANTINE, READS, VOLATILE_READS } from "./manifest.mjs";
+import {
+  applyOperationsFixture,
+  primeOperationsAfterBoot,
+} from "./operations-fixture.mjs";
+import { probeOperationsReads } from "./operations-probes.mjs";
 import {
   applySinceInstallFixture,
   BRIDGED_IDS,
@@ -83,6 +89,15 @@ if (!(args.node && args["node-data"])) {
 // so an unimplemented route can never silently drop out of the comparison —
 // adding a route to the server means adding it here in the same commit.
 const BATCH_1 = [
+  "/api/tasks/active",
+  "/api/wayback/import-all",
+  "/api/policy/sync-all",
+  "/api/backup/snapshots",
+  "/api/rate-limit/status",
+  "/api/ai/debug-log",
+  "/api/csp-report",
+  "/api/export",
+  "/api/manual-apps/[id]",
   "/api/devices",
   "/api/devices/[id]",
   "/api/devices/[id]/bundles",
@@ -563,14 +578,29 @@ async function probeRateLimiter(rustBase, nodeBase) {
   // bake that in and break the moment the manifest reads the route twice.
   const rust = await burstManualApps(rustBase);
   const node = await burstManualApps(nodeBase);
+  // --ids-from=a resolves both sides' placeholders through Node. Each
+  // selected manualApp placeholder therefore spends two extra Node list
+  // reads; account for actual manifest traffic instead of masking a limit.
+  const resolverReads =
+    2 *
+    [...READS, ...VOLATILE_READS, ...QUARANTINE].filter(
+      (entry) =>
+        new RegExp(onlyRe).test(entry.route) &&
+        [
+          entry.path,
+          JSON.stringify(entry.body ?? null),
+          entry.after ?? "",
+        ].some((s) => s?.includes("{manualApp}"))
+    ).length;
   const ok =
     rust.firstDenyAt !== null &&
-    rust.firstDenyAt === node.firstDenyAt &&
+    node.firstDenyAt !== null &&
+    rust.firstDenyAt === node.firstDenyAt + resolverReads &&
     rust.contiguous &&
     node.contiguous;
   console.log(
     ok
-      ? `  ✔ rate limiter: /api/manual-apps denied from request ${rust.firstDenyAt} on both backends`
+      ? `  ✔ rate limiter: /api/manual-apps denied at Rust ${rust.firstDenyAt}, Node ${node.firstDenyAt} (${resolverReads} extra Node placeholder reads accounted for)`
       : `  ✘ rate limiter: node first-429 at ${node.firstDenyAt} (contiguous=${node.contiguous}), rust at ${rust.firstDenyAt} (contiguous=${rust.contiguous})`
   );
   return ok;
@@ -1498,6 +1528,7 @@ async function main() {
   applyStatsFixture(nodeData);
   applyDevicesFixture(nodeData);
   applyContentFixture(nodeData);
+  applyOperationsFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
   );
@@ -1521,6 +1552,7 @@ async function main() {
   cpSync(nodeData, rustData, { recursive: true });
 
   const rustBase = await startRust(rustData);
+  primeOperationsAfterBoot(nodeData, rustData);
   console.log(`rust=${rustBase}`);
 
   console.log(
@@ -1632,8 +1664,17 @@ async function main() {
     rustData
   );
 
+  const operationsOk = await probeOperationsReads(
+    args.node,
+    rustBase,
+    TOKEN,
+    nodeData,
+    rustData
+  );
+
   cleanup();
   const ok =
+    operationsOk &&
     devicesOk &&
     contentOk &&
     statsOk &&
