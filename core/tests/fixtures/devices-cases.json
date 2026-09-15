@@ -1,0 +1,1046 @@
+{
+  "base": [
+    {
+      "sql": "DELETE FROM imports WHERE id LIKE 'pt-device-reads-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM devices WHERE id LIKE 'pt-device-reads-%'",
+      "params": []
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89998001"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89998002"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89998003"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89998004"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89998005"
+      ]
+    },
+    {
+      "sql": "DELETE FROM apps WHERE id = ?",
+      "params": [
+        "89998006"
+      ]
+    },
+    {
+      "sql": "INSERT INTO devices (id,name,ecid,model,ios_version,device_class,\n       created_at,last_synced_at,owner_label,owner_audience,permission_acknowledged_at,is_unknown_placeholder)\n       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-a",
+        "Zulu phone",
+        "0xAbCd1234",
+        "iPhone16,1",
+        "18.5",
+        "iPhone",
+        1789459199900,
+        1789459200000,
+        "﻿ Mum ",
+        "loved_one",
+        1789459200000,
+        0
+      ]
+    },
+    {
+      "sql": "INSERT INTO devices (id,name,ecid,model,ios_version,device_class,\n       created_at,last_synced_at,owner_label,owner_audience,permission_acknowledged_at,is_unknown_placeholder)\n       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-b",
+        "Alpha tablet",
+        null,
+        null,
+        null,
+        null,
+        1789459199900,
+        1789459200000,
+        "Leo",
+        "guardian",
+        null,
+        0
+      ]
+    },
+    {
+      "sql": "INSERT INTO devices (id,name,ecid,model,ios_version,device_class,\n       created_at,last_synced_at,owner_label,owner_audience,permission_acknowledged_at,is_unknown_placeholder)\n       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-c",
+        "alpha tablet",
+        "0xabcd1234",
+        null,
+        null,
+        null,
+        1789459199900,
+        1789459200000,
+        " ﻿ ",
+        "unknown",
+        null,
+        2
+      ]
+    },
+    {
+      "sql": "INSERT INTO devices (id,name,ecid,model,ios_version,device_class,\n       created_at,last_synced_at,owner_label,owner_audience,permission_acknowledged_at,is_unknown_placeholder)\n       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-unknown",
+        "Unknown device",
+        null,
+        null,
+        null,
+        null,
+        1789459199900,
+        1789459199999,
+        null,
+        null,
+        null,
+        1
+      ]
+    },
+    {
+      "sql": "INSERT INTO devices (id,name,ecid,model,ios_version,device_class,\n       created_at,last_synced_at,owner_label,owner_audience,permission_acknowledged_at,is_unknown_placeholder)\n       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-empty",
+        "Empty phone",
+        "1234ABCD",
+        null,
+        null,
+        null,
+        1789459199900,
+        1789459200001,
+        "Self",
+        "self",
+        0,
+        0
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,bundleId,firstSeen,lastSynced) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "89998001",
+        "zebra",
+        "https://apps.apple.com/us/app/id89998001",
+        "org.pt.shared",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998001",
+        "pt-device-reads-a",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998001",
+        "pt-device-reads-b",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,bundleId,firstSeen,lastSynced) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "89998002",
+        "Alpha",
+        "https://apps.apple.com/us/app/id89998002",
+        "org.pt.shared",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998002",
+        "pt-device-reads-a",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998002",
+        "pt-device-reads-b",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,bundleId,firstSeen,lastSynced) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "89998003",
+        "alpha",
+        "https://apps.apple.com/us/app/id89998003",
+        null,
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998003",
+        "pt-device-reads-a",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,bundleId,firstSeen,lastSynced) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "89998004",
+        "Éclair",
+        "https://apps.apple.com/us/app/id89998004",
+        "",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998004",
+        "pt-device-reads-a",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,bundleId,firstSeen,lastSynced) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "89998005",
+        "beta",
+        "https://apps.apple.com/us/app/id89998005",
+        " ",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998005",
+        "pt-device-reads-a",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO apps (id,name,url,bundleId,firstSeen,lastSynced) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "89998006",
+        "Blank",
+        "https://apps.apple.com/us/app/id89998006",
+        "org.pt.unique",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_devices (app_id,device_id,first_seen_at,last_seen_at) VALUES (?,?,?,?)",
+      "params": [
+        "89998006",
+        "pt-device-reads-a",
+        1789459200000,
+        1789459200000
+      ]
+    },
+    {
+      "sql": "INSERT INTO imports (id,created_at,completed_at,source,imported,device_id) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-import-0",
+        1789459199900,
+        1789459199970,
+        "cfgutil",
+        6,
+        "pt-device-reads-a"
+      ]
+    },
+    {
+      "sql": "INSERT INTO imports (id,created_at,completed_at,source,imported,device_id) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-import-1",
+        1789459199900,
+        1789459199990,
+        "csv",
+        0,
+        "pt-device-reads-a"
+      ]
+    },
+    {
+      "sql": "INSERT INTO imports (id,created_at,completed_at,source,imported,device_id) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-import-2",
+        1789459199900,
+        0,
+        "manual",
+        0,
+        "pt-device-reads-a"
+      ]
+    },
+    {
+      "sql": "INSERT INTO imports (id,created_at,completed_at,source,imported,device_id) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-import-3",
+        1789459199900,
+        null,
+        "cfgutil",
+        3,
+        "pt-device-reads-a"
+      ]
+    },
+    {
+      "sql": "INSERT INTO imports (id,created_at,completed_at,source,imported,device_id) VALUES (?,?,?,?,?,?)",
+      "params": [
+        "pt-device-reads-import-4",
+        1789459199900,
+        1789459200100,
+        "cfgutil",
+        2,
+        "pt-device-reads-b"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "name": "list",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[{\"id\":\"pt-device-reads-empty\",\"name\":\"Empty phone\",\"ecid\":\"1234ABCD\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200001,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Self\",\"ownerAudience\":\"self\",\"permissionAcknowledgedAt\":0,\"appCount\":0},{\"id\":\"pt-device-reads-b\",\"name\":\"Alpha tablet\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Leo\",\"ownerAudience\":\"guardian\",\"permissionAcknowledgedAt\":null,\"appCount\":2},{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000,\"appCount\":6},{\"id\":\"pt-device-reads-c\",\"name\":\"alpha tablet\",\"ecid\":\"0xabcd1234\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0},{\"id\":\"pt-device-reads-unknown\",\"name\":\"Unknown device\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459199999,\"isUnknownPlaceholder\":true,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0}]}"
+    },
+    {
+      "name": "empty ecid",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          ""
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[{\"id\":\"pt-device-reads-empty\",\"name\":\"Empty phone\",\"ecid\":\"1234ABCD\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200001,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Self\",\"ownerAudience\":\"self\",\"permissionAcknowledgedAt\":0,\"appCount\":0},{\"id\":\"pt-device-reads-b\",\"name\":\"Alpha tablet\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Leo\",\"ownerAudience\":\"guardian\",\"permissionAcknowledgedAt\":null,\"appCount\":2},{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000,\"appCount\":6},{\"id\":\"pt-device-reads-c\",\"name\":\"alpha tablet\",\"ecid\":\"0xabcd1234\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0},{\"id\":\"pt-device-reads-unknown\",\"name\":\"Unknown device\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459199999,\"isUnknownPlaceholder\":true,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0}]}"
+    },
+    {
+      "name": "JS whitespace ecid",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          " ﻿ "
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[{\"id\":\"pt-device-reads-empty\",\"name\":\"Empty phone\",\"ecid\":\"1234ABCD\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200001,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Self\",\"ownerAudience\":\"self\",\"permissionAcknowledgedAt\":0,\"appCount\":0},{\"id\":\"pt-device-reads-b\",\"name\":\"Alpha tablet\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Leo\",\"ownerAudience\":\"guardian\",\"permissionAcknowledgedAt\":null,\"appCount\":2},{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000,\"appCount\":6},{\"id\":\"pt-device-reads-c\",\"name\":\"alpha tablet\",\"ecid\":\"0xabcd1234\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0},{\"id\":\"pt-device-reads-unknown\",\"name\":\"Unknown device\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459199999,\"isUnknownPlaceholder\":true,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0}]}"
+    },
+    {
+      "name": "ECID",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "0xAbCd1234"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000},\"importHistory\":{\"count\":3,\"lastCompletedAt\":1789459199990}}"
+    },
+    {
+      "name": "trimmed ECID",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "﻿ 0xAbCd1234 "
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000},\"importHistory\":{\"count\":3,\"lastCompletedAt\":1789459199990}}"
+    },
+    {
+      "name": "unknown ECID",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "missing"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":null,\"importHistory\":null}"
+    },
+    {
+      "name": "case sensitive",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "0xABCD1234"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":null,\"importHistory\":null}"
+    },
+    {
+      "name": "lowercase distinct device",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "0xabcd1234"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-c\",\"name\":\"alpha tablet\",\"ecid\":\"0xabcd1234\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null},\"importHistory\":{\"count\":0,\"lastCompletedAt\":null}}"
+    },
+    {
+      "name": "no prefix normalisation",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "AbCd1234"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":null,\"importHistory\":null}"
+    },
+    {
+      "name": "non-JS whitespace",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "0xAbCd1234"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":null,\"importHistory\":null}"
+    },
+    {
+      "name": "first repeated",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "missing"
+        ],
+        [
+          "ecid",
+          "0xAbCd1234"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":null,\"importHistory\":null}"
+    },
+    {
+      "name": "first empty repeated",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          ""
+        ],
+        [
+          "ecid",
+          "0xAbCd1234"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[{\"id\":\"pt-device-reads-empty\",\"name\":\"Empty phone\",\"ecid\":\"1234ABCD\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200001,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Self\",\"ownerAudience\":\"self\",\"permissionAcknowledgedAt\":0,\"appCount\":0},{\"id\":\"pt-device-reads-b\",\"name\":\"Alpha tablet\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Leo\",\"ownerAudience\":\"guardian\",\"permissionAcknowledgedAt\":null,\"appCount\":2},{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000,\"appCount\":6},{\"id\":\"pt-device-reads-c\",\"name\":\"alpha tablet\",\"ecid\":\"0xabcd1234\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0},{\"id\":\"pt-device-reads-unknown\",\"name\":\"Unknown device\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459199999,\"isUnknownPlaceholder\":true,\"ownerLabel\":null,\"ownerAudience\":null,\"permissionAcknowledgedAt\":null,\"appCount\":0}]}"
+    },
+    {
+      "name": "no history",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "1234ABCD"
+        ]
+      ],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-empty\",\"name\":\"Empty phone\",\"ecid\":\"1234ABCD\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200001,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Self\",\"ownerAudience\":\"self\",\"permissionAcknowledgedAt\":0},\"importHistory\":{\"count\":0,\"lastCompletedAt\":null}}"
+    },
+    {
+      "name": "detail populated",
+      "op": "detail",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000},\"importHistory\":{\"count\":3,\"lastCompletedAt\":1789459199990}}"
+    },
+    {
+      "name": "detail missing",
+      "op": "detail",
+      "id": "pt-missing-device",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 404,
+      "body": "{\"error\":\"device not found\"}"
+    },
+    {
+      "name": "detail empty",
+      "op": "detail",
+      "id": "",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 404,
+      "body": "{\"error\":\"device not found\"}"
+    },
+    {
+      "name": "detail blank",
+      "op": "detail",
+      "id": " ﻿ ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 404,
+      "body": "{\"error\":\"device not found\"}"
+    },
+    {
+      "name": "detail trimmed",
+      "op": "detail",
+      "id": "﻿ pt-device-reads-a ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 404,
+      "body": "{\"error\":\"device not found\"}"
+    },
+    {
+      "name": "detail non-JS whitespace",
+      "op": "detail",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 404,
+      "body": "{\"error\":\"device not found\"}"
+    },
+    {
+      "name": "bundles populated",
+      "op": "bundles",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[\"org.pt.shared\",\" \",\"org.pt.unique\"]}"
+    },
+    {
+      "name": "bundles missing",
+      "op": "bundles",
+      "id": "pt-missing-device",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "bundles empty",
+      "op": "bundles",
+      "id": "",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "bundles blank",
+      "op": "bundles",
+      "id": " ﻿ ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "bundles trimmed",
+      "op": "bundles",
+      "id": "﻿ pt-device-reads-a ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[\"org.pt.shared\",\" \",\"org.pt.unique\"]}"
+    },
+    {
+      "name": "bundles non-JS whitespace",
+      "op": "bundles",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "tracked_apps populated",
+      "op": "tracked_apps",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[{\"appId\":\"89998002\",\"name\":\"Alpha\",\"bundleId\":\"org.pt.shared\"},{\"appId\":\"89998003\",\"name\":\"alpha\",\"bundleId\":null},{\"appId\":\"89998005\",\"name\":\"beta\",\"bundleId\":\" \"},{\"appId\":\"89998006\",\"name\":\"Blank\",\"bundleId\":\"org.pt.unique\"},{\"appId\":\"89998001\",\"name\":\"zebra\",\"bundleId\":\"org.pt.shared\"},{\"appId\":\"89998004\",\"name\":\"Éclair\",\"bundleId\":\"\"}]}"
+    },
+    {
+      "name": "tracked_apps missing",
+      "op": "tracked_apps",
+      "id": "pt-missing-device",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "tracked_apps empty",
+      "op": "tracked_apps",
+      "id": "",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "tracked_apps blank",
+      "op": "tracked_apps",
+      "id": " ﻿ ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "tracked_apps trimmed",
+      "op": "tracked_apps",
+      "id": "﻿ pt-device-reads-a ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[{\"appId\":\"89998002\",\"name\":\"Alpha\",\"bundleId\":\"org.pt.shared\"},{\"appId\":\"89998003\",\"name\":\"alpha\",\"bundleId\":null},{\"appId\":\"89998005\",\"name\":\"beta\",\"bundleId\":\" \"},{\"appId\":\"89998006\",\"name\":\"Blank\",\"bundleId\":\"org.pt.unique\"},{\"appId\":\"89998001\",\"name\":\"zebra\",\"bundleId\":\"org.pt.shared\"},{\"appId\":\"89998004\",\"name\":\"Éclair\",\"bundleId\":\"\"}]}"
+    },
+    {
+      "name": "tracked_apps non-JS whitespace",
+      "op": "tracked_apps",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "for_app populated",
+      "op": "for_app",
+      "id": "89998001",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[{\"id\":\"pt-device-reads-b\",\"name\":\"Alpha tablet\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Leo\",\"ownerAudience\":\"guardian\",\"permissionAcknowledgedAt\":null},{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000}]}"
+    },
+    {
+      "name": "for_app missing",
+      "op": "for_app",
+      "id": "pt-missing-device",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "for_app empty",
+      "op": "for_app",
+      "id": "",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 400,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "for_app blank",
+      "op": "for_app",
+      "id": " ﻿ ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 400,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "for_app trimmed",
+      "op": "for_app",
+      "id": "﻿ 89998001 ",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[{\"id\":\"pt-device-reads-b\",\"name\":\"Alpha tablet\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Leo\",\"ownerAudience\":\"guardian\",\"permissionAcknowledgedAt\":null},{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000}]}"
+    },
+    {
+      "name": "for_app non-JS whitespace",
+      "op": "for_app",
+      "id": "89998001",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "detail no imports",
+      "op": "detail",
+      "id": "pt-device-reads-empty",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-empty\",\"name\":\"Empty phone\",\"ecid\":\"1234ABCD\",\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200001,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Self\",\"ownerAudience\":\"self\",\"permissionAcknowledgedAt\":0},\"importHistory\":{\"count\":0,\"lastCompletedAt\":null}}"
+    },
+    {
+      "name": "detail another device's imports",
+      "op": "detail",
+      "id": "pt-device-reads-b",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-b\",\"name\":\"Alpha tablet\",\"ecid\":null,\"model\":null,\"iosVersion\":null,\"deviceClass\":null,\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Leo\",\"ownerAudience\":\"guardian\",\"permissionAcknowledgedAt\":null},\"importHistory\":{\"count\":1,\"lastCompletedAt\":1789459200100}}"
+    },
+    {
+      "name": "bundles existing empty device",
+      "op": "bundles",
+      "id": "pt-device-reads-empty",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "tracked existing empty device",
+      "op": "tracked_apps",
+      "id": "pt-device-reads-empty",
+      "query": [],
+      "changes": [],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "devices empty database",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": true,
+      "status": 200,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "detail empty database",
+      "op": "detail",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": true,
+      "status": 404,
+      "body": "{\"error\":\"device not found\"}"
+    },
+    {
+      "name": "bundles empty database",
+      "op": "bundles",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": true,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "tracked_apps empty database",
+      "op": "tracked_apps",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": true,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "for_app empty database",
+      "op": "for_app",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": true,
+      "status": 200,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "list missing devices",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 500,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "ECID missing devices",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "0xAbCd1234"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "DROP TABLE devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 500,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "list missing junction",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE app_devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 500,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "detail missing devices",
+      "op": "detail",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 500,
+      "body": "{\"error\":\"internal\"}"
+    },
+    {
+      "name": "detail missing imports",
+      "op": "detail",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE imports",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000},\"importHistory\":{\"count\":0,\"lastCompletedAt\":null}}"
+    },
+    {
+      "name": "ECID missing imports",
+      "op": "devices",
+      "id": "pt-device-reads-a",
+      "query": [
+        [
+          "ecid",
+          "0xAbCd1234"
+        ]
+      ],
+      "changes": [
+        {
+          "sql": "DROP TABLE imports",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"device\":{\"id\":\"pt-device-reads-a\",\"name\":\"Zulu phone\",\"ecid\":\"0xAbCd1234\",\"model\":\"iPhone16,1\",\"iosVersion\":\"18.5\",\"deviceClass\":\"iPhone\",\"createdAt\":1789459199900,\"lastSyncedAt\":1789459200000,\"isUnknownPlaceholder\":false,\"ownerLabel\":\"Mum\",\"ownerAudience\":\"loved_one\",\"permissionAcknowledgedAt\":1789459200000},\"importHistory\":{\"count\":0,\"lastCompletedAt\":null}}"
+    },
+    {
+      "name": "bundles missing junction",
+      "op": "bundles",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE app_devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "tracked_apps missing junction",
+      "op": "tracked_apps",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE app_devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "for_app missing junction",
+      "op": "for_app",
+      "id": "89998001",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE app_devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 500,
+      "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "bundles missing apps",
+      "op": "bundles",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE apps",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"bundleIds\":[]}"
+    },
+    {
+      "name": "tracked_apps missing apps",
+      "op": "tracked_apps",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE apps",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"apps\":[]}"
+    },
+    {
+      "name": "for-app missing devices",
+      "op": "for_app",
+      "id": "89998001",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 500,
+      "body": "{\"devices\":[]}"
+    }
+  ]
+}

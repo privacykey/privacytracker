@@ -36,12 +36,11 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import BetterSqlite3 from "better-sqlite3";
-
+import { applyDevicesFixture, probeDeviceReads } from "./devices-fixture.mjs";
 import {
   validateErrorLog,
   validateRuntimeDiagnostics,
 } from "./diagnostics-envelope.mjs";
-
 import {
   applySinceInstallFixture,
   BRIDGED_IDS,
@@ -55,7 +54,6 @@ import {
   TIMELINE_ID,
   TREND_ID,
 } from "./since-install-fixture.mjs";
-
 import { applyStatsFixture, probeStatsReads } from "./stats-fixture.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -83,6 +81,11 @@ if (!(args.node && args["node-data"])) {
 // so an unimplemented route can never silently drop out of the comparison —
 // adding a route to the server means adding it here in the same commit.
 const BATCH_1 = [
+  "/api/devices",
+  "/api/devices/[id]",
+  "/api/devices/[id]/bundles",
+  "/api/devices/[id]/tracked-apps",
+  "/api/devices/for-app/[appId]",
   // Database-backed fleet analysis (live Apple reads wait for Phase 3).
   "/api/stats",
   "/api/stats/matrix",
@@ -1483,6 +1486,7 @@ async function main() {
   // seed cannot cover this route.
   const fixture = applySinceInstallFixture(nodeData);
   applyStatsFixture(nodeData);
+  applyDevicesFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
   );
@@ -1607,10 +1611,12 @@ async function main() {
   );
   const errorRingOk = await probeErrorRing(rustBase, args.node);
 
+  const devicesOk = await probeDeviceReads(args.node, rustBase, TOKEN);
   const statsOk = await probeStatsReads(args.node, rustBase, TOKEN);
 
   cleanup();
   const ok =
+    devicesOk &&
     statsOk &&
     authOk &&
     slashOk &&
