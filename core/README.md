@@ -179,7 +179,7 @@ PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented (47).** `/api/health`, `/api/auth/admin-token/status`,
+**Routes implemented (54).** `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
 
@@ -1040,8 +1040,8 @@ Docker and Tauri still do not import, compile or run the Rust core.
 slots scrape live HTML, and related-apps' default mode fetches Apple feeds.
 They require the Phase 3 fetch/parser work even though their HTTP verb is
 GET. Registering only their library/cached branches would claim incomplete
-routes as finished. Of the handoff's 65 compared reads, 42 are now ported;
-23 remain, including these two. Device reads are the next independent unit.
+routes as finished. This batch brought coverage to 42 of the handoff's 65
+compared reads; the user-content batch below brings this branch to 54.
 
 **Shared code.** `scope.rs` mirrors request-only device selection: unknown
 ids fall back to the full fleet, overlapping links never duplicate an app,
@@ -1190,5 +1190,58 @@ crate tests, so Node route drift cannot silently leave a stale oracle green.
 The negative control changes the ECID SQL to `COLLATE NOCASE`; the live gate
 must fail its case-sensitive lookup case and raw-response probe. Normal
 shipping builds remain protected by the unchanged `rust-core-inert` test.
-Phase 2 now has 18 compared reads left; `/api/compare` and `/api/related-apps`
-still need Phase 3's live scraper support before all branches can be ported.
+This batch left 18 compared reads; the user-content batch below leaves 11.
+`/api/compare` and `/api/related-apps` still need Phase 3's live scraper
+support before all branches can be ported.
+
+### User content (+7 routes, 54 total)
+
+Ports `/api/activity`, `/api/notifications`, `/api/notification-prefs`,
+`/api/user-tasks`, `/api/annotations`, `/api/shortlist` and
+`/api/shortlist/export`. Every handler branch is registered. With the five
+device reads from PR #245, coverage is now 54 of 65. Eleven compared reads
+remain. The Node app, Tauri and Docker still do not compile or start `core/`;
+`rust-core-inert.test.ts` remains unchanged.
+
+Activity retains prefix-tolerant integer parsing, the route's unclamped
+pagination echoes, SQL's clamps, inclusive time filters, null ordering and
+arbitrary JSON details (including JavaScript number precision and key order).
+Notifications limit to 30 rows before applying the four resolved type flags,
+include synthetic rows, respect quiet-hours deferral, and count all eligible
+unread rows. Their malformed-JSON error path matches Next's empty HTTP 500.
+Preferences use the same resolver and legacy stored-boolean fallback.
+
+User tasks derive completion from existing profile, verdict, visit, history,
+sync-schedule and device-resync facts. Focus/workflow inclusion, opt-in
+candidates, prerequisite blocking, completion-before-dismissal, 14-day
+staleness and preview resets match Node. No task writers or background jobs
+are started.
+
+Annotation lists preserve private/imported notes and the existing global
+30-second soft-delete cleanup; count-only reads do not purge. Shortlists
+scope the source app while keeping the global pair lookup, preserve group
+insertion order, optional snapshots/mismatches, candidate modes and prices.
+Exports are whole-install in both JSON and Markdown, including exact download
+headers and multiline notes. List and export use separate 120/min and 30/min
+rate buckets.
+
+**Gates.** `content-fixture.mjs` adds populated activity, 35 notifications,
+private/deleted annotations and tracked/untracked alternatives before the
+Node database is copied. `content-probes.mjs` checks raw responses and headers,
+resolved flag changes, task state, cleanup side effects, malformed JSON and
+both rate limits. Only JSON export's freshly generated `exported_at` varies;
+the probe validates that timestamp and compares every remaining field.
+
+Regenerate the 109 fixed-clock Node handler scenarios with:
+
+```sh
+node --conditions=react-server --import tsx core/scripts/extract-content-meta.mjs
+node --conditions=react-server --import tsx core/scripts/extract-content-cases.mjs
+```
+
+CI requires both generated files to stay current. Rust replays the same SQL
+against fresh databases, comparing status, response bytes, content headers
+and surviving annotation IDs. Cases include empty/populated reads, query
+coercions, per-type filtering, legacy preference fallbacks, all task focus
+combinations, task timestamps, global purge boundaries, scoped/global
+shortlists, both export formats and database failures.

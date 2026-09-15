@@ -60,21 +60,17 @@ fn modes(raw: &Value) -> Vec<&'static str> {
     }
     out
 }
-fn shortlists(conn: &Connection) -> rusqlite::Result<Map<String, Value>> {
-    let rows=query(conn,"SELECT s.*, CASE WHEN t.id IS NULL THEN 0 ELSE 1 END AS candidate_is_tracked, t.priceFormatted AS candidate_price_formatted, t.priceCurrency AS candidate_price_currency, t.hasIap AS candidate_has_iap FROM shortlist_entries s JOIN apps a ON a.id = s.source_app_id LEFT JOIN apps t ON t.id = s.candidate_apple_id ORDER BY s.added_at DESC",&[])?;
-    let badges = super::grid_meta::candidate_badges(conn)?;
-    let mut out = Map::new();
-    for r in rows {
-        let tracked = r["candidate_is_tracked"] == 1;
-        let badge = if tracked {
-            badges
-                .get(text(&r["candidate_apple_id"]))
-                .cloned()
-                .unwrap_or(Value::Null)
-        } else {
-            Value::Null
-        };
-        let entry = json!({
+pub(super) fn shortlist_entry(r: &Value, badges: &Value) -> Value {
+    let tracked = r["candidate_is_tracked"] == 1;
+    let badge = if tracked {
+        badges
+            .get(text(&r["candidate_apple_id"]))
+            .cloned()
+            .unwrap_or(Value::Null)
+    } else {
+        Value::Null
+    };
+    json!({
 "id":r["id"],
 "sourceAppId":r["source_app_id"],
 "candidateAppleId":r["candidate_apple_id"],
@@ -90,7 +86,14 @@ fn shortlists(conn: &Connection) -> rusqlite::Result<Map<String, Value>> {
 "profileBadge":badge,
 "candidatePriceFormatted":r["candidate_price_formatted"],
 "candidatePriceCurrency":r["candidate_price_currency"],
-"candidateHasIap":r["candidate_has_iap"]});
+"candidateHasIap":r["candidate_has_iap"]})
+}
+fn shortlists(conn: &Connection) -> rusqlite::Result<Map<String, Value>> {
+    let rows=query(conn,"SELECT s.*, CASE WHEN t.id IS NULL THEN 0 ELSE 1 END AS candidate_is_tracked, t.priceFormatted AS candidate_price_formatted, t.priceCurrency AS candidate_price_currency, t.hasIap AS candidate_has_iap FROM shortlist_entries s JOIN apps a ON a.id = s.source_app_id LEFT JOIN apps t ON t.id = s.candidate_apple_id ORDER BY s.added_at DESC",&[])?;
+    let badges = super::grid_meta::candidate_badges(conn)?;
+    let mut out = Map::new();
+    for r in rows {
+        let entry = shortlist_entry(&r, &badges);
         out.entry(text(&r["source_app_id"]).to_owned())
             .or_insert_with(|| json!([]))
             .as_array_mut()
@@ -99,7 +102,7 @@ fn shortlists(conn: &Connection) -> rusqlite::Result<Map<String, Value>> {
     }
     Ok(out)
 }
-fn annotations(conn: &Connection, id: &str, now: i64) -> rusqlite::Result<Vec<Value>> {
+pub(super) fn annotations(conn: &Connection, id: &str, now: i64) -> rusqlite::Result<Vec<Value>> {
     let sweep = (|| -> rusqlite::Result<()> {
         let tx = conn.unchecked_transaction()?;
         tx.execute(

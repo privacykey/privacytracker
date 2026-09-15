@@ -55,6 +55,8 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust core Phase 2: seven user-content GET routes (54 read routes total), covering activity, notifications and preferences, tasks, annotations, shortlists and JSON/Markdown exports. Fixed-clock Node comparisons and live response, cleanup and rate-limit probes preserve existing behavior. Rust remains inactive in shipped builds. Developer-facing only.
+
 - Rust core Phase 2: five device GET routes (47 read routes total), preserving ownership, import history, app links and exact Node response behavior. Includes 58 Node-derived status/body cases and live parity probes. Rust remains inactive in shipped builds. Developer-facing only.
 
 - Rust core Phase 2: nine fleet statistics and analysis GET routes (42 read routes total), with device-scope parity, fixed-clock Node oracle cases and raw-response/rate-limit probes. Rust remains inactive in shipped builds. Developer-facing only.

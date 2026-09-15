@@ -316,6 +316,12 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-devices-cases.mjs
           git diff --exit-code -- core/tests/fixtures/devices-cases.json
 
+      - name: User-content metadata and fixed-clock route oracle are current
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-content-meta.mjs
+          node --conditions=react-server --import tsx core/scripts/extract-content-cases.mjs
+          git diff --exit-code -- core/src/server/content_meta.json core/tests/fixtures/content-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 
