@@ -17,9 +17,14 @@
 //! those; each module notes the swallow/escape boundary it sits on.
 
 pub mod accessibility;
+mod activity;
 pub mod flags;
 mod js;
+mod notify;
 pub mod page;
+pub mod persist;
+#[cfg(test)]
+mod persist_tests;
 pub mod plan;
 pub mod related;
 pub mod shoebox;
@@ -27,4 +32,7 @@ pub mod shoebox;
 mod tests;
 
 pub use page::{parse_page, ParsedPage};
+pub use persist::{
+    scrape_and_persist, Ids, Outcome, RandomIds, ScrapeInput, Statement, VersionInfo,
+};
 pub use plan::{Category, PrivacyItem, SnapshotCategory, SnapshotType, WritePlan};

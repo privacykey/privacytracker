@@ -395,7 +395,7 @@ pub fn parse(raw: &str) -> Option<i64> {
     };
     (utc.abs() <= 8_640_000_000_000_000).then_some(utc)
 }
-fn days(y: i64, m: i64, d: i64) -> i64 {
+pub(crate) fn days(y: i64, m: i64, d: i64) -> i64 {
     let y = y - i64::from(m <= 2);
     let era = y.div_euclid(400);
     let yo = y - era * 400;
@@ -404,7 +404,7 @@ fn days(y: i64, m: i64, d: i64) -> i64 {
 }
 /// Local legacy/date-time strings follow the host timezone, with the earlier
 /// instant chosen on overlap and forward movement through a DST gap.
-fn local_to_utc(wall: i64) -> Option<i64> {
+pub(crate) fn local_to_utc(wall: i64) -> Option<i64> {
     let mut candidates = Vec::new();
     for delta in [-172800, 0, 172800] {
         let t = (wall.div_euclid(1000) + delta) as libc::time_t;

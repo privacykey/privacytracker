@@ -9,6 +9,72 @@
 
 mod parse;
 pub use parse::parse;
+pub(crate) use parse::{days as days_from_civil, local_to_utc};
+
+/// The local-time fields of an epoch millisecond, as `Date.prototype`'s
+/// `getFullYear`/`getMonth`/`getDate`/`getHours`/… report them in the
+/// process timezone. `month` is 1-based here (JavaScript's is 0-based).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalTime {
+    pub year: i64,
+    pub month: u32,
+    pub day: u32,
+    pub hour: u32,
+    pub minute: u32,
+    pub second: u32,
+    pub millisecond: u32,
+}
+
+/// `new Date(ms)` read through the local-time getters, via `localtime_r`.
+pub fn local_time(ms: i64) -> Option<LocalTime> {
+    let seconds = ms.div_euclid(1000) as libc::time_t;
+    let mut tm = std::mem::MaybeUninit::<libc::tm>::uninit();
+    // SAFETY: both pointers refer to correctly aligned, live storage;
+    // localtime_r initializes tm on success and retains neither pointer.
+    if unsafe { libc::localtime_r(&seconds, tm.as_mut_ptr()) }.is_null() {
+        return None;
+    }
+    // SAFETY: successful localtime_r initialized every tm field.
+    let tm = unsafe { tm.assume_init() };
+    Some(LocalTime {
+        year: i64::from(tm.tm_year) + 1900,
+        month: (tm.tm_mon + 1) as u32,
+        day: tm.tm_mday as u32,
+        hour: tm.tm_hour as u32,
+        minute: tm.tm_min as u32,
+        second: tm.tm_sec as u32,
+        millisecond: ms.rem_euclid(1000) as u32,
+    })
+}
+
+/// `date.setHours(h, m, 0, 0)` (optionally after `setDate(getDate() + days)`)
+/// on a `Date` holding `ms`: the same local calendar day, the given wall
+/// time, converted back to UTC by the rules `Date.parse` uses for local
+/// input.
+pub fn at_local_time(ms: i64, hour: u32, minute: u32, days_ahead: i64) -> Option<i64> {
+    let local = local_time(ms)?;
+    let day =
+        days_from_civil(local.year, i64::from(local.month), i64::from(local.day)) + days_ahead;
+    let wall = day * 86_400_000 + i64::from(hour) * 3_600_000 + i64::from(minute) * 60_000;
+    local_to_utc(wall)
+}
+
+/// `new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short",
+/// year: "numeric" }).format(new Date(ms))` in the process timezone. The
+/// en-AU short months are the ICU ones Node ships, which spell June, July
+/// and Sept in full.
+pub fn en_au_short_date(ms: i64) -> Option<String> {
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec",
+    ];
+    let local = local_time(ms)?;
+    Some(format!(
+        "{} {} {}",
+        local.day,
+        MONTHS[(local.month - 1) as usize],
+        local.year
+    ))
+}
 
 /// `new Date(ms).toISOString()`: `YYYY-MM-DDTHH:MM:SS.mmmZ`, always UTC,
 /// always three fraction digits. Years outside `0..=9999` take the
@@ -84,5 +150,42 @@ mod tests {
         // so the listing falls back to mtime for those files.
         assert_eq!(parse("2026-09-15T10-20-44-123Z-2"), None);
         assert_eq!(parse("bad"), None);
+    }
+
+    #[test]
+    fn local_helpers_match_node_in_utc() {
+        use super::{at_local_time, en_au_short_date, local_time};
+        let _env = crate::server::trust::env_lock();
+        let previous = std::env::var("TZ").ok();
+        std::env::set_var("TZ", "UTC");
+        extern "C" {
+            fn tzset();
+        }
+        // SAFETY: tzset takes no pointers; the env lock serializes the edit.
+        unsafe { tzset() };
+        // Every value is from node -e with TZ=UTC.
+        let noon = 1_789_473_600_000; // 2026-09-15T12:00:00Z
+        let t = local_time(noon).unwrap();
+        assert_eq!(
+            (t.year, t.month, t.day, t.hour, t.minute),
+            (2026, 9, 15, 12, 0)
+        );
+        assert_eq!(at_local_time(noon, 23, 59, 0), Some(1_789_516_740_000));
+        assert_eq!(at_local_time(noon, 6, 0, 1), Some(1_789_538_400_000));
+        assert_eq!(en_au_short_date(noon).as_deref(), Some("15 Sept 2026"));
+        assert_eq!(
+            en_au_short_date(1_767_322_800_000).as_deref(),
+            Some("2 Jan 2026")
+        );
+        assert_eq!(
+            en_au_short_date(1_780_531_200_000).as_deref(),
+            Some("4 June 2026")
+        );
+        match previous {
+            Some(v) => std::env::set_var("TZ", v),
+            None => std::env::remove_var("TZ"),
+        }
+        // SAFETY: restore the original timezone before releasing the env lock.
+        unsafe { tzset() };
     }
 }
