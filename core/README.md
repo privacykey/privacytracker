@@ -1590,10 +1590,11 @@ parse, the iTunes lookup with its storefront normalisation (`region.rs`),
 and then the persist path. Three stages — `prepare` (validation, cooldown,
 storefront), `perform` (no database: pacer, fetch, checks, parse, lookup)
 and `complete` (cooldown record, persist, error row) — because a rusqlite
-connection must not be held across an await in a `Send` future; the
-Phase 4 routes will chain them around the lock, and `fetch_and_parse_app`
-chains them for callers that can hold it. Search and bundle-id lookup are
-the next batch.
+connection must not be held across an await in a `Send` future.
+`fetch_and_parse_app` chains them through the `DbAccess` accessor the
+Phase 4 routes hand it: the lock for `prepare`, released for `perform`,
+taken again for `complete` (see "The lock is taken per section" under
+Phase 4, batch 3). Search and bundle-id lookup are the next batch.
 
 **The transport runs over a hop.** Node's `safeFetch` loops over the raw
 `fetch` — redirects, the content-length and body caps, decoding — and the
@@ -1974,18 +1975,42 @@ suffix but echoed blank rather than null. And the queue drain's `finally`
 — the mutex release and the last-run stamp land whether the tick was
 skipped, drained or threw.
 
-**Holding the lock across the fetch.** The Phase 3 entry points take the
-connection for the whole scrape, search or archive walk, so their route
-wrappers cannot release the mutex around the network as the batch-1 and
-batch-2 wrappers do around the body read. A `MutexGuard` cannot cross an
-await on the runtime's worker threads either, so these twelve handlers
-run on a blocking thread that drives their future itself
-(`routes_writes::run`). Every other request waits for the lock meanwhile
-— for a scrape that is a second or two, for a Wayback run it can be
-longer, where Node interleaves. This is a known gap of the inert crate,
-not of the parity: staging `prepare`/`perform`/`complete` around the lock
-(the pieces already exist for the scrape) is deferred to the cutover
-work, and the per-request `sqlite.lockWait` diagnostic will show it.
+**The lock is taken per section, never across a fetch.** The Phase 3
+entry points — `fetch_and_parse_app`, `scrape_initial_urls`,
+`search_apps_by_name`, `lookup_apps_by_bundle_id`, `import_app_history`
+— no longer take a `&Connection`. They take a `DbAccess`
+(`core/src/scrape/persist.rs`), whose one method runs a closure with a
+`Writer` and nothing else: the route's implementation (`Locked`, handed
+out by `AppState::db_access`) locks the mutex for the closure and drops
+the guard when it returns, timing the wait into `sqlite.lockWait`
+exactly as `AppState::db` does; the replay's is the same type over a
+test mutex with the recording attached. A section is what Node runs
+synchronously between two awaits, so the staging reproduces Node's
+interleaving points rather than inventing its own. The scrape's
+`prepare` (validation, the cooldown read, the storefront) is one section
+and its `complete` — the commit or the error row, together with the
+import-row update Node makes the moment `fetchAndParseApp` returns
+(`settle_import_scrape`) — is another, with the pacer, the page fetch
+and the version lookup between them and the lock released. The search
+takes the lock for the storefront read, each cooldown read and each
+cooldown record; the Wayback run for the two reads before the CDX
+listing, each back-dated row's transaction and the Save Page Now attempt
+entry; the queue drain for its fences, mutex and claim before the first
+scrape and for its `finally` and status after the last. The handlers
+that never fetch are one section each — the lock for exactly the
+handler, as the batch-1 and batch-2 wrappers hold it. `Ids` gained a
+`Send` bound so the id source rides across the awaits (an id is only
+ever minted inside a section). The guard therefore never crosses an
+await, the handler futures are `Send`, and `routes_writes::run` awaits
+them on the runtime like every other route: the blocking-thread detour
+and its `#[allow(clippy::await_holding_lock)]` are gone. The recorded
+behaviour is unchanged by construction — the four replays drive the same
+entry points through the same accessor over a mutex, and every fixture's
+write stream, fetch calls and rows are byte-identical to before. Negative
+control: holding the guard across the fetch (a `state.db()` guard kept
+live over `perform`) no longer compiles, because the handler future stops
+being `Send` and axum's `post()` refuses it — the check the allowance had
+suppressed.
 
 **What is not ported.** `summarizePolicies: true` on `/api/scrape` and
 the deferred policy-source fetch a successful import or scrape arms

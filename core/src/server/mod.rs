@@ -99,6 +99,8 @@ use axum::{
 };
 use rusqlite::Connection;
 
+use crate::scrape::persist::Locked;
+
 /// Wall-clock milliseconds since the epoch — `Date.now()`.
 ///
 /// Shared so the routes that need it cannot drift into two different
@@ -135,6 +137,17 @@ impl AppState {
         let guard = self.conn.lock().expect("db mutex poisoned");
         diag::record_lock_wait(started.elapsed());
         guard
+    }
+
+    /// The same connection for a handler that fetches: one lock per
+    /// section, each wait observed exactly as [`AppState::db`] observes it,
+    /// and nothing held across an await.
+    pub(crate) fn db_access(&self) -> Locked<'_> {
+        Locked {
+            conn: &self.conn,
+            log: None,
+            on_wait: Some(diag::record_lock_wait),
+        }
     }
 }
 

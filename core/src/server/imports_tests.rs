@@ -11,7 +11,7 @@ use super::{
 };
 use crate::scrape::{
     fetch_tests::Canned,
-    persist::{Statement, Writer},
+    persist::{Locked, Statement, Writer},
     persist_tests::{dump, to_sql, CountingIds},
 };
 use axum::{
@@ -20,7 +20,7 @@ use axum::{
 };
 use rusqlite::params_from_iter;
 use serde_json::{json, Value};
-use std::path::Path;
+use std::{path::Path, sync::Mutex};
 
 #[test]
 fn import_writes_match_node_wire_calls_stream_and_rows() {
@@ -73,6 +73,9 @@ fn import_writes_match_node_wire_calls_stream_and_rows() {
             .unwrap();
         }
         crate::scrape::ratelimit::reset_soft_buckets();
+        // Behind a mutex, as the server keeps it: the guard takes the lock
+        // for its check and the handler for each of its sections.
+        let conn = Mutex::new(conn);
         let method: Method = case["method"].as_str().unwrap().parse().unwrap();
         let spec = writes::lookup(case["route"].as_str().unwrap(), &method)
             .unwrap_or_else(|| panic!("{name}: no route"));
@@ -105,15 +108,17 @@ fn import_writes_match_node_wire_calls_stream_and_rows() {
         let mut stream: Vec<Statement> = vec![];
         let mut response = None;
         for _ in 0..case["repeat"].as_u64().unwrap_or(1) {
-            let mut w = Writer::new(&conn, Some(&mut stream));
-            let actor =
+            let actor = {
+                let guard = conn.lock().unwrap();
+                let mut w = Writer::new(&guard, Some(&mut stream));
                 match writes::precheck(&mut w, &mut ids, &limiter, &headers, spec, param, now) {
                     Ok(actor) => actor,
                     Err(refused) => {
                         response = Some(refused);
                         continue;
                     }
-                };
+                }
+            };
             let body = match spec.body_limit {
                 Some(limit) => {
                     let body = raw_body
@@ -123,8 +128,13 @@ fn import_writes_match_node_wire_calls_stream_and_rows() {
                 }
                 None => BodyOutcome::Empty,
             };
+            let mut db = Locked {
+                conn: &conn,
+                log: Some(&mut stream),
+                on_wait: None,
+            };
             response = Some(rt.block_on(writes::perform_async(
-                &mut w,
+                &mut db,
                 &mut ids,
                 &fetcher,
                 WriteRequest {
@@ -137,6 +147,7 @@ fn import_writes_match_node_wire_calls_stream_and_rows() {
                 now,
             )));
         }
+        let conn = conn.into_inner().unwrap();
         let response = response.expect("at least one request");
         let status = response.status().as_u16();
         let header = |name: &str| {

@@ -8,13 +8,15 @@
 //! await in a `Send` future: [`prepare`] (validation, the cooldown check,
 //! the storefront read), [`perform`] (no database: pacer, fetch, status
 //! checks, parse, lookup) and [`complete`] (the cooldown record, the
-//! persist, the error row). [`fetch_and_parse_app`] chains them for a
-//! caller that can hold the connection, such as the replay.
+//! persist, the error row). [`fetch_and_parse_app`] chains them through a
+//! [`DbAccess`]: the connection for `prepare`, released for `perform`,
+//! taken again for `complete` — the two synchronous runs Node makes either
+//! side of its awaits, so the lock never crosses one.
 use super::{
     activity,
     js::{at, truthy},
     page::{parse_page, ParsedPage},
-    persist::{self, Ids, Outcome, ScrapeInput, Statement, VersionInfo, Writer},
+    persist::{self, DbAccess, Ids, Outcome, ScrapeInput, VersionInfo, Writer},
     ratelimit::{self, Category},
     region,
 };
@@ -250,18 +252,16 @@ pub async fn fetch_version_info(
 
 /// The database stage: record Apple's cooldown if it sent one, then either
 /// persist the page or write the error row — the same catch block for both.
-#[allow(clippy::too_many_arguments)]
-pub fn complete(
-    conn: &Connection,
+/// One section: the caller holds the connection for exactly this.
+pub(crate) fn complete(
+    w: &mut Writer<'_>,
     url: &str,
     resync: bool,
     trigger: &str,
     now: i64,
     fetched: Fetched,
     ids: &mut dyn Ids,
-    log: Option<&mut Vec<Statement>>,
 ) -> Result<Outcome, ScrapeError> {
-    let mut w = Writer::new(conn, log);
     let activity_type = if resync { "resync" } else { "scrape" };
     match fetched {
         Fetched::Failed {
@@ -270,20 +270,20 @@ pub fn complete(
             after_fetch,
         } => {
             if let Some((retry_after_ms, reason)) = rate_limit {
-                let _ = ratelimit::record(&mut w, Category::Scrape, retry_after_ms, &reason, now);
+                let _ = ratelimit::record(w, Category::Scrape, retry_after_ms, &reason, now);
             }
             if after_fetch {
-                if let Err(error) = ids.uuid(conn) {
+                if let Err(error) = ids.uuid(w.conn) {
                     return Err(ScrapeError::other(error));
                 }
             }
-            activity::record_error(&mut w, ids, url, now, activity_type, &error.message);
+            activity::record_error(w, ids, url, now, activity_type, &error.message);
             Err(error)
         }
         Fetched::Ready { page, version } => {
             // `let appleId: string = crypto.randomUUID();` — minted once the
             // page is in hand, then replaced by the URL's id segment.
-            if let Err(error) = ids.uuid(conn) {
+            if let Err(error) = ids.uuid(w.conn) {
                 return Err(ScrapeError::other(error));
             }
             let input = ScrapeInput {
@@ -293,10 +293,10 @@ pub fn complete(
                 version: &version,
                 now,
             };
-            match persist::persist_page(&mut w, &input, *page, ids, activity_type) {
+            match persist::persist_page(w, &input, *page, ids, activity_type) {
                 Ok(outcome) => Ok(outcome),
                 Err(message) => {
-                    activity::record_error(&mut w, ids, url, now, activity_type, &message);
+                    activity::record_error(w, ids, url, now, activity_type, &message);
                     Err(ScrapeError::other(message))
                 }
             }
@@ -304,31 +304,32 @@ pub fn complete(
     }
 }
 
-/// `fetchAndParseApp(url, resync, false, trigger)`, end to end. Holds the
-/// connection across the fetch, so not for a `Send` future.
-#[allow(clippy::too_many_arguments)]
-pub async fn fetch_and_parse_app(
-    conn: &Connection,
+/// `fetchAndParseApp(url, resync, false, trigger)`, end to end: one section
+/// for `prepare`, the network with the connection released, one section
+/// for `complete`. Node awaits nothing between its validation and cooldown
+/// read and its first pacer wait, nor between the parse and its commit, so
+/// these are exactly its interleaving points.
+pub(crate) async fn fetch_and_parse_app(
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     url: &str,
     resync: bool,
     trigger: Option<&str>,
     now: i64,
     ids: &mut dyn Ids,
-    log: Option<&mut Vec<Statement>>,
 ) -> Result<Outcome, ScrapeError> {
     let trigger = trigger.unwrap_or(if resync { "manual" } else { "import" });
-    let prepared = prepare(conn, url, now)?;
+    let prepared = db.with(|w| prepare(w.conn, url, now))?;
     let fetched = perform(fetcher, &prepared, now).await;
-    complete(conn, url, resync, trigger, now, fetched, ids, log)
+    db.with(|w| complete(w, url, resync, trigger, now, fetched, ids))
 }
 
 /// `scrapeInitialUrls`: each URL in turn; a rate limit either stops the
 /// batch (the rest are reported as queued) or, when told to continue, is
 /// recorded and the loop carries on — into the cooldown it just started.
 #[allow(clippy::too_many_arguments)]
-pub async fn scrape_initial_urls(
-    conn: &Connection,
+pub(crate) async fn scrape_initial_urls(
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     urls: &[String],
     resync: bool,
@@ -336,23 +337,11 @@ pub async fn scrape_initial_urls(
     stop_on_rate_limit: bool,
     now: i64,
     ids: &mut dyn Ids,
-    mut log: Option<&mut Vec<Statement>>,
 ) -> Vec<Value> {
     let trigger = trigger.unwrap_or(if resync { "manual" } else { "import" });
     let mut results = vec![];
     for url in urls {
-        match fetch_and_parse_app(
-            conn,
-            fetcher,
-            url,
-            resync,
-            Some(trigger),
-            now,
-            ids,
-            log.as_deref_mut(),
-        )
-        .await
-        {
+        match fetch_and_parse_app(db, fetcher, url, resync, Some(trigger), now, ids).await {
             Ok(outcome) => results.push(outcome.to_json()),
             Err(error) => match error.retry_after_ms {
                 Some(retry_after_ms) => {

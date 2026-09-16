@@ -1,7 +1,9 @@
 //! The axum wrappers over `writes.rs`: guard under the lock, read the body
 //! with the route's cap while the lock is released, then the handler
-//! under the lock again. One wrapper per route so the router reads like
-//! `mod.rs`'s other registrations.
+//! through the accessor — one section under the lock for a handler that
+//! never fetches, and for the batch-3 handlers a section either side of
+//! each network call, with the lock released in between. One wrapper per
+//! route so the router reads like `mod.rs`'s other registrations.
 use super::{
     body::{read_json, BodyOutcome},
     json::json_error,
@@ -18,9 +20,6 @@ use axum::{
     response::Response,
 };
 
-// The batch-3 handlers hold the connection across their fetches, on a
-// blocking thread that drives the future itself; see the comment below.
-#[allow(clippy::await_holding_lock)]
 async fn run(
     state: AppState,
     path: &'static str,
@@ -58,44 +57,15 @@ async fn run(
         Some(limit) => read_json(&parts.headers, body, limit).await,
         None => BodyOutcome::Empty,
     };
-    if writes::is_async(spec) {
-        // The batch-3 handlers fetch while they hold the connection, as the
-        // Phase 3 entry points they call do. A `MutexGuard` cannot cross an
-        // await on the runtime's worker threads, so the handler runs to
-        // completion on a blocking thread that drives its future itself.
-        // Every other request waits for the lock meanwhile — see the
-        // README's batch-3 notes for the staging this defers.
-        let handle = tokio::runtime::Handle::current();
-        let joined = tokio::task::spawn_blocking(move || {
-            handle.block_on(async move {
-                let conn = state.db();
-                let mut w = Writer::new(&conn, None);
-                writes::perform_async(
-                    &mut w,
-                    &mut ids,
-                    &PublicHttp,
-                    WriteRequest {
-                        spec,
-                        param: param.as_deref(),
-                        query: &query,
-                        body: outcome,
-                    },
-                    &actor,
-                    now,
-                )
-                .await
-            })
-        })
-        .await;
-        return joined.unwrap_or_else(|_| {
-            json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
-        });
-    }
-    let conn = state.db();
-    let mut w = Writer::new(&conn, None);
-    writes::perform(
-        &mut w,
+    // The handler takes the lock per section and never across an await, so
+    // its future is `Send` and runs here like any other; a scrape, a
+    // search or a Wayback run holds the connection only for the reads and
+    // writes either side of each fetch.
+    let mut db = state.db_access();
+    writes::perform_async(
+        &mut db,
         &mut ids,
+        &PublicHttp,
         WriteRequest {
             spec,
             param: param.as_deref(),
@@ -105,6 +75,7 @@ async fn run(
         &actor,
         now,
     )
+    .await
 }
 
 macro_rules! wrapper {

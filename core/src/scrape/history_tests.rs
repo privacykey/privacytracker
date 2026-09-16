@@ -8,7 +8,7 @@
 use super::{
     fetch_tests::{raw_reply, record_call},
     history::{import_app_history, AppRow, HistoryOptions, REPLAY_HOSTS},
-    persist::Statement,
+    persist::{Locked, Statement},
     persist_tests::{dump, to_sql, CountingIds},
     wayback::WAYBACK_HOSTS,
 };
@@ -173,15 +173,18 @@ fn historical_import_matches_node_calls_stream_rows_and_result() {
             next: 0,
         };
         let mut stream: Vec<Statement> = vec![];
+        // Through the accessor the routes use, so the replay locks and
+        // releases exactly as they do.
+        let conn = Mutex::new(conn);
+        let mut db = Locked {
+            conn: &conn,
+            log: Some(&mut stream),
+            on_wait: None,
+        };
         let outcome = rt.block_on(import_app_history(
-            &conn,
-            &routed,
-            &app,
-            &options,
-            now,
-            &mut ids,
-            Some(&mut stream),
+            &mut db, &routed, &app, &options, now, &mut ids,
         ));
+        let conn = conn.into_inner().unwrap();
         let actual = match outcome {
             Ok(result) => json!({"ok": true, "result": result}),
             Err(error) => json!({"ok": false, "error": error.message}),

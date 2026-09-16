@@ -9,11 +9,13 @@
 //! spells whatever was there.
 //!
 //! Gated by `core/tests/fixtures/search-cases.json` (see
-//! `search_tests.rs`). Holds the connection across awaits, like the fetch
-//! layer; the Phase 4 routes will split the stages around the lock.
+//! `search_tests.rs`). The connection comes through a [`DbAccess`] and is
+//! taken for one section at a time — the storefront read, a cooldown
+//! read, a cooldown record — and released for the pacer and the fetch
+//! between them, which is where Node awaits.
 use super::{
     js::truthy,
-    persist::{Statement, Writer},
+    persist::DbAccess,
     ratelimit::{self, Category},
     region,
 };
@@ -158,13 +160,15 @@ enum SearchOutcome {
 
 /// `runItunesSearch`: `Err` is a throw the caller's `try` catches.
 async fn run_itunes_search(
-    w: &mut Writer<'_>,
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     name: &str,
     country: &str,
     now: i64,
 ) -> Result<SearchOutcome, ()> {
-    let cooldown = ratelimit::remaining_cooldown_ms(w.conn, Category::Search, now).map_err(drop)?;
+    let cooldown = db
+        .with(|w| ratelimit::remaining_cooldown_ms(w.conn, Category::Search, now))
+        .map_err(drop)?;
     if cooldown > 0 {
         return Ok(SearchOutcome::RateLimited(cooldown));
     }
@@ -185,7 +189,8 @@ async fn run_itunes_search(
             "HTTP 429 from iTunes Search at {}{suffix}",
             js_iso_string(now)
         );
-        ratelimit::record(w, Category::Search, ms, &reason, now).map_err(drop)?;
+        db.with(|w| ratelimit::record(w, Category::Search, ms, &reason, now))
+            .map_err(drop)?;
         return Ok(SearchOutcome::RateLimited(ms));
     }
     if !reply.ok() {
@@ -238,16 +243,14 @@ fn score_developer_match(candidate_dev: Option<&Value>, hint: &str) -> Result<i6
 }
 
 /// `searchAppsByName(input, { country })`. The batch object as JSON.
-pub async fn search_apps_by_name(
-    conn: &Connection,
+pub(crate) async fn search_apps_by_name(
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     input: &[Value],
     country: Option<&str>,
     now: i64,
-    log: Option<&mut Vec<Statement>>,
 ) -> Result<Value, String> {
-    let mut w = Writer::new(conn, log);
-    let country = storefront(conn, country);
+    let country = db.with(|w| storefront(w.conn, country));
     let mut queries: Vec<SearchQuery> = vec![];
     for raw in input {
         let q = match raw {
@@ -287,24 +290,24 @@ pub async fn search_apps_by_name(
     let mut results: Vec<Value> = vec![];
     for (i, query) in queries.iter().enumerate() {
         let empty = json!({ "query": query.name, "candidates": [] });
-        let mut candidates =
-            match run_itunes_search(&mut w, fetcher, &query.name, &country, now).await {
-                Err(()) => {
-                    results.push(empty);
-                    continue;
-                }
-                Ok(SearchOutcome::RateLimited(ms)) => {
-                    return Ok(rate_limited(&results, ms, &queries[i..]))
-                }
-                Ok(SearchOutcome::Null) => {
-                    results.push(empty);
-                    continue;
-                }
-                Ok(SearchOutcome::Candidates(candidates)) => candidates,
-            };
+        let mut candidates = match run_itunes_search(db, fetcher, &query.name, &country, now).await
+        {
+            Err(()) => {
+                results.push(empty);
+                continue;
+            }
+            Ok(SearchOutcome::RateLimited(ms)) => {
+                return Ok(rate_limited(&results, ms, &queries[i..]))
+            }
+            Ok(SearchOutcome::Null) => {
+                results.push(empty);
+                continue;
+            }
+            Ok(SearchOutcome::Candidates(candidates)) => candidates,
+        };
         if candidates.is_empty() {
             tokio::time::sleep(Duration::from_millis(ITUNES_RETRY_DELAY_MS)).await;
-            match run_itunes_search(&mut w, fetcher, &query.name, &country, now).await {
+            match run_itunes_search(db, fetcher, &query.name, &country, now).await {
                 Err(()) => {
                     results.push(empty);
                     continue;
@@ -343,13 +346,12 @@ pub async fn search_apps_by_name(
 }
 
 /// `lookupAppsByBundleId(bundleIds, { country })`. The batch object as JSON.
-pub async fn lookup_apps_by_bundle_id(
-    conn: &Connection,
+pub(crate) async fn lookup_apps_by_bundle_id(
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     bundle_ids: &[Value],
     country: Option<&str>,
     now: i64,
-    log: Option<&mut Vec<Statement>>,
 ) -> Value {
     let mut seen = HashSet::new();
     let cleaned: Vec<String> = bundle_ids
@@ -363,15 +365,14 @@ pub async fn lookup_apps_by_bundle_id(
     if cleaned.is_empty() {
         return json!({ "results": [] });
     }
-    let country = storefront(conn, country);
-    let mut w = Writer::new(conn, log);
-    lookup_chunks(&mut w, fetcher, &cleaned, &country, now).await
+    let country = db.with(|w| storefront(w.conn, country));
+    lookup_chunks(db, fetcher, &cleaned, &country, now).await
 }
 
 /// The chunk loop, re-entered by the split retry with a half chunk (which
 /// is already clean and unique, so re-cleaning is the identity).
 async fn lookup_chunks(
-    w: &mut Writer<'_>,
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     cleaned: &[String],
     country: &str,
@@ -381,7 +382,9 @@ async fn lookup_chunks(
     let mut i = 0;
     while i < cleaned.len() {
         let chunk = &cleaned[i..(i + ITUNES_LOOKUP_BATCH_SIZE).min(cleaned.len())];
-        let cooldown = ratelimit::remaining_cooldown_ms(w.conn, Category::Search, now).unwrap_or(0);
+        let cooldown = db
+            .with(|w| ratelimit::remaining_cooldown_ms(w.conn, Category::Search, now))
+            .unwrap_or(0);
         if cooldown > 0 {
             return json!({
                 "results": results,
@@ -415,7 +418,10 @@ async fn lookup_chunks(
                 "HTTP 429 from iTunes Lookup at {}{suffix}",
                 js_iso_string(now)
             );
-            if ratelimit::record(w, Category::Search, ms, &reason, now).is_err() {
+            if db
+                .with(|w| ratelimit::record(w, Category::Search, ms, &reason, now))
+                .is_err()
+            {
                 nulls(&mut results);
                 i += ITUNES_LOOKUP_BATCH_SIZE;
                 continue;
@@ -428,8 +434,8 @@ async fn lookup_chunks(
         if !reply.ok() {
             if matches!(reply.status, 502..=504) && chunk.len() > 1 {
                 let half = chunk.len().div_ceil(2);
-                let a = Box::pin(lookup_chunks(w, fetcher, &chunk[..half], country, now)).await;
-                let b = Box::pin(lookup_chunks(w, fetcher, &chunk[half..], country, now)).await;
+                let a = Box::pin(lookup_chunks(db, fetcher, &chunk[..half], country, now)).await;
+                let b = Box::pin(lookup_chunks(db, fetcher, &chunk[half..], country, now)).await;
                 for part in [&a, &b] {
                     if let Some(items) = part["results"].as_array() {
                         results.extend(items.iter().cloned());

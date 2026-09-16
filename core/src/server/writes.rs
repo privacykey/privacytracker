@@ -41,7 +41,11 @@ use crate::{
     jsnum::{js_number_spelling, js_parse_float, js_parse_int, js_to_number},
     jsstr::{js_length, js_trim},
     outbound,
-    scrape::{persist::Writer, region::normalize_country, Ids},
+    scrape::{
+        persist::{DbAccess, Writer},
+        region::normalize_country,
+        Ids,
+    },
 };
 use axum::{
     http::{header, HeaderMap, HeaderValue, Method, StatusCode},
@@ -785,9 +789,12 @@ pub fn perform(
     }
 }
 
-/// `perform` for every route, awaiting the batch-3 handlers that fetch.
+/// `perform` for every route, through the accessor: one section for a
+/// handler that never fetches (the lock for exactly the handler, as
+/// `perform` under the route's own guard), and the batch-3 handlers'
+/// own sections around their network calls.
 pub async fn perform_async(
-    w: &mut Writer<'_>,
+    db: &mut dyn DbAccess,
     ids: &mut dyn Ids,
     fetcher: &dyn crate::outbound::Fetcher,
     req: WriteRequest<'_>,
@@ -795,10 +802,9 @@ pub async fn perform_async(
     now: i64,
 ) -> Response {
     if is_async(req.spec) {
-        let mut cx = Cx { w, ids, now };
-        return super::imports_writes::perform(&mut cx, fetcher, req, actor).await;
+        return super::imports_writes::perform(db, ids, now, fetcher, req, actor).await;
     }
-    perform(w, ids, req, actor, now)
+    db.with(|w| perform(w, ids, req, actor, now))
 }
 
 pub(super) struct Cx<'a, 'b> {

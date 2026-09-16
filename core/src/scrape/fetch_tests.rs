@@ -6,7 +6,7 @@
 //! stream, every touched table, and the return value or error.
 use super::{
     fetch::{fetch_and_parse_app, scrape_initial_urls},
-    persist::Statement,
+    persist::{Locked, Statement},
     persist_tests::{dump, to_sql, CountingIds},
     ratelimit,
 };
@@ -182,6 +182,14 @@ fn fetch_layer_matches_node_calls_stream_rows_and_result() {
         let mut log: Vec<Statement> = vec![];
         let now = case["now"].as_i64().unwrap();
 
+        // The entry points take the connection through the accessor the
+        // routes use, so the replay locks and releases exactly as they do.
+        let conn = Mutex::new(conn);
+        let mut db = Locked {
+            conn: &conn,
+            log: Some(&mut log),
+            on_wait: None,
+        };
         let actual = rt.block_on(async {
             if case["batch"].is_object() {
                 let batch = &case["batch"];
@@ -192,7 +200,7 @@ fn fetch_layer_matches_node_calls_stream_rows_and_result() {
                     .map(|u| u.as_str().unwrap().to_string())
                     .collect();
                 let results = scrape_initial_urls(
-                    &conn,
+                    &mut db,
                     &canned,
                     &urls,
                     batch["resync"].as_bool().unwrap_or(false),
@@ -202,20 +210,18 @@ fn fetch_layer_matches_node_calls_stream_rows_and_result() {
                         .unwrap_or(true),
                     now,
                     &mut ids,
-                    Some(&mut log),
                 )
                 .await;
                 json!({"ok": true, "results": results})
             } else {
                 match fetch_and_parse_app(
-                    &conn,
+                    &mut db,
                     &canned,
                     case["url"].as_str().unwrap(),
                     case["resync"].as_bool().unwrap(),
                     case["trigger"].as_str(),
                     now,
                     &mut ids,
-                    Some(&mut log),
                 )
                 .await
                 {
@@ -224,6 +230,8 @@ fn fetch_layer_matches_node_calls_stream_rows_and_result() {
                 }
             }
         });
+
+        let conn = conn.into_inner().unwrap();
 
         let used = canned.cursor.load(Ordering::SeqCst);
         if used != canned.replies.len() {

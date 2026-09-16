@@ -9,6 +9,15 @@
 //! callers hand the Phase 3 entry points a `Fetcher`. Gated by
 //! `core/tests/fixtures/imports-cases.json`, replayed by `imports_tests`.
 //!
+//! The connection comes through a [`DbAccess`] and is taken per section.
+//! A section is what Node runs synchronously between two awaits: a
+//! handler that never fetches is one section, and a handler that does
+//! holds the lock for the reads and writes either side of each network
+//! call — the scrape's `prepare`, then its `complete` together with the
+//! row update Node makes as soon as the scrape returns — and releases it
+//! for the fetch. Every section builds a `Cx` over the writer it is
+//! handed, so the sync helpers below are untouched by the staging.
+//!
 //! Three things the port keeps that a tidier one would lose:
 //!
 //!   * **The item upsert plans its writes before it runs any.** Every
@@ -39,9 +48,11 @@ use crate::{
     jsstr::{js_length, js_slice_prefix, js_trim},
     outbound::{self, Fetcher},
     scrape::{
-        fetch_and_parse_app, import_app_history, lookup_apps_by_bundle_id, notify,
-        persist::Outcome, region::normalize_country, scrape_initial_urls, search_apps_by_name,
-        AppRow, HistoryOptions, ScrapeError,
+        complete, import_app_history, lookup_apps_by_bundle_id, notify, perform as perform_fetch,
+        persist::{DbAccess, Ids, Outcome, Writer},
+        prepare,
+        region::normalize_country,
+        scrape_initial_urls, search_apps_by_name, AppRow, Fetched, HistoryOptions, ScrapeError,
     },
 };
 use axum::{
@@ -113,7 +124,9 @@ pub(super) fn handles(spec: &RouteSpec) -> bool {
 }
 
 pub(super) async fn perform(
-    cx: &mut Cx<'_, '_>,
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
     fetcher: &dyn Fetcher,
     req: WriteRequest<'_>,
     actor: &Actor,
@@ -121,29 +134,50 @@ pub(super) async fn perform(
     let spec = req.spec;
     let param = req.param.unwrap_or("");
     match (spec.path, &spec.method) {
-        ("/api/imports", &Method::POST) => create_import(cx, req.body),
-        ("/api/imports", &Method::DELETE) => delete_import_route(cx, req.query),
-        ("/api/imports/items", &Method::POST) => add_items(cx, req.body),
-        ("/api/imports/items/update", &Method::POST) => update_item_route(cx, req.body),
-        ("/api/imports/queue", &Method::POST) => queue_run(cx, fetcher).await,
-        ("/api/imports/complete", &Method::POST) => complete_route(cx, req.body),
-        ("/api/imports/items/retry", &Method::POST) => retry_item(cx, fetcher, req.body).await,
+        // The handlers that never fetch: one section each.
+        ("/api/imports", &Method::POST) => {
+            db.with(|w| create_import(&mut section(w, ids, now), req.body))
+        }
+        ("/api/imports", &Method::DELETE) => {
+            db.with(|w| delete_import_route(&mut section(w, ids, now), req.query))
+        }
+        ("/api/imports/items", &Method::POST) => {
+            db.with(|w| add_items(&mut section(w, ids, now), req.body))
+        }
+        ("/api/imports/items/update", &Method::POST) => {
+            db.with(|w| update_item_route(&mut section(w, ids, now), req.body))
+        }
+        ("/api/imports/complete", &Method::POST) => {
+            db.with(|w| complete_route(&mut section(w, ids, now), req.body))
+        }
+        ("/api/apps/[id]/import-history", &Method::DELETE) => {
+            db.with(|w| remove_history(&mut section(w, ids, now), param, actor))
+        }
+        // The handlers that fetch: their sections are their own.
+        ("/api/imports/queue", &Method::POST) => queue_run(db, ids, now, fetcher).await,
+        ("/api/imports/items/retry", &Method::POST) => {
+            retry_item(db, ids, now, fetcher, req.body).await
+        }
         ("/api/imports/items/change-match", &Method::POST) => {
-            change_match(cx, fetcher, req.body).await
+            change_match(db, ids, now, fetcher, req.body).await
         }
-        ("/api/search", &Method::POST) => search(cx, fetcher, req.body).await,
-        ("/api/scrape", &Method::POST) => scrape(cx, fetcher, req.body).await,
+        ("/api/search", &Method::POST) => search(db, fetcher, now, req.body).await,
+        ("/api/scrape", &Method::POST) => scrape(db, ids, now, fetcher, req.body).await,
         ("/api/apps/[id]/import-history", &Method::POST) => {
-            import_history(cx, fetcher, param, req.body, actor).await
+            import_history(db, ids, now, fetcher, param, req.body, actor).await
         }
-        ("/api/apps/[id]/import-history", &Method::DELETE) => remove_history(cx, param, actor),
         _ => json_error(StatusCode::NOT_FOUND, "Not Found"),
     }
 }
 
+/// The context a section's helpers run under.
+fn section<'a, 'b>(w: &'a mut Writer<'b>, ids: &'a mut dyn Ids, now: i64) -> Cx<'a, 'b> {
+    Cx { w, ids, now }
+}
+
 // ── Small helpers ────────────────────────────────────────────────────
 
-fn db<T>(r: rusqlite::Result<T>) -> Result<T, String> {
+fn sqlite<T>(r: rusqlite::Result<T>) -> Result<T, String> {
     r.map_err(|e| e.to_string())
 }
 
@@ -383,7 +417,7 @@ fn update_import_item(cx: &mut Cx, item_id: &str, patch: &Patch) -> Result<Optio
     };
     let (fields, mut values) = patch.assignments(cx)?;
     if fields.is_empty() {
-        return db(item_row(cx.w.conn, item_id));
+        return sqlite(item_row(cx.w.conn, item_id));
     }
     values.push(json!(item_id));
     let import_id = existing["import_id"].as_str().unwrap_or("").to_string();
@@ -394,7 +428,7 @@ fn update_import_item(cx: &mut Cx, item_id: &str, patch: &Patch) -> Result<Optio
         )?;
         recompute_counters(cx, &import_id)
     })?;
-    db(item_row(cx.w.conn, item_id))
+    sqlite(item_row(cx.w.conn, item_id))
 }
 
 /// One cleaned row of `POST /api/imports/items`. Every key the route
@@ -421,7 +455,7 @@ fn add_import_items(
     import_id: &str,
     items: &[CleanItem],
 ) -> Result<Vec<Value>, String> {
-    if db(import_row(cx.w.conn, import_id))?.is_none() {
+    if sqlite(import_row(cx.w.conn, import_id))?.is_none() {
         return Err(format!("Unknown import {import_id}"));
     }
     if items.is_empty() {
@@ -439,7 +473,7 @@ fn add_import_items(
             let existing_id = existing["id"].as_str().unwrap_or("").to_string();
             if existing["status"] == "removed" {
                 // Tombstone — the row stays as it is, and is what the caller gets.
-                if let Some(row) = db(item_row(cx.w.conn, &existing_id))? {
+                if let Some(row) = sqlite(item_row(cx.w.conn, &existing_id))? {
                     results.push(row);
                 }
                 continue;
@@ -557,7 +591,7 @@ fn claim_queued_batch(cx: &mut Cx, limit: i64) -> Result<Vec<Value>, String> {
             let id = row["id"].as_str().unwrap_or("").to_string();
             let changes = cx.w.run(CLAIM_BUMP, vec![json!(fence), json!(id)])?;
             if changes == 1 {
-                if let Some(refreshed) = db(item_row(cx.w.conn, &id))? {
+                if let Some(refreshed) = sqlite(item_row(cx.w.conn, &id))? {
                     claimed.push(refreshed);
                 }
             }
@@ -620,7 +654,7 @@ fn record_item_retry(
     retry_after_ms: Option<i64>,
     scrape_error: Option<&str>,
 ) -> Result<Option<Value>, String> {
-    let Some(existing) = db(item_row(cx.w.conn, item_id))? else {
+    let Some(existing) = sqlite(item_row(cx.w.conn, item_id))? else {
         return Ok(None);
     };
     let attempts = i64_of(&existing["attemptCount"]);
@@ -647,7 +681,7 @@ fn record_item_retry(
 /// `completeImport`: counters, the completion stamp, the device links,
 /// then the activity row and the bell notification.
 fn complete_import(cx: &mut Cx, import_id: &str) -> Result<Option<Value>, String> {
-    let Some(before) = db(import_row(cx.w.conn, import_id))? else {
+    let Some(before) = sqlite(import_row(cx.w.conn, import_id))? else {
         return Ok(None);
     };
     let device_id = before["deviceId"]
@@ -678,7 +712,7 @@ fn complete_import(cx: &mut Cx, import_id: &str) -> Result<Option<Value>, String
         }
         Ok(())
     })?;
-    let after = db(import_row(cx.w.conn, import_id))?;
+    let after = sqlite(import_row(cx.w.conn, import_id))?;
     if let Some(after) = &after {
         let imported = i64_of(&after["imported"]);
         let errored = i64_of(&after["errored"]);
@@ -777,7 +811,7 @@ fn complete_import(cx: &mut Cx, import_id: &str) -> Result<Option<Value>, String
 
 /// `completeImportIfSettled`.
 fn complete_import_if_settled(cx: &mut Cx, import_id: &str) -> Result<Option<Value>, String> {
-    let Some(row) = db(import_row(cx.w.conn, import_id))? else {
+    let Some(row) = sqlite(import_row(cx.w.conn, import_id))? else {
         return Ok(None);
     };
     if truthy(&row["completedAt"]) {
@@ -860,16 +894,16 @@ fn replace_import_item_match(
             ));
         }
     }
-    Ok((db(item_row(cx.w.conn, item_id))?, removed))
+    Ok((sqlite(item_row(cx.w.conn, item_id))?, removed))
 }
 
 /// `deleteImport`: the referenced apps when asked, then the session (the
 /// items cascade).
 fn delete_import(cx: &mut Cx, import_id: &str, remove_apps: bool) -> Result<usize, String> {
-    if db(import_row(cx.w.conn, import_id))?.is_none() {
+    if sqlite(import_row(cx.w.conn, import_id))?.is_none() {
         return Ok(0);
     }
-    let items = db(import_items(cx.w.conn, import_id))?;
+    let items = sqlite(import_items(cx.w.conn, import_id))?;
     let app_ids: Vec<String> = if remove_apps {
         items
             .iter()
@@ -1036,24 +1070,28 @@ fn mark_notifications_stale_for_app(cx: &mut Cx, app_id: &str) -> Result<usize, 
 
 // ── The scrape call every import path shares ─────────────────────────
 
-async fn scrape_for_import(
-    cx: &mut Cx<'_, '_>,
+/// `fetchAndParseApp(url, false, false, "import")` up to its commit: the
+/// preparing section, then the network with the lock released. A refusal
+/// from `prepare` (an untrusted URL) is carried as the error it throws.
+async fn fetch_for_import(
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     url: &str,
+    now: i64,
+) -> Result<Fetched, ScrapeError> {
+    let prepared = db.with(|w| prepare(w.conn, url, now))?;
+    Ok(perform_fetch(fetcher, &prepared, now).await)
+}
+
+/// The scrape's completing section, run inside the caller's own: Node
+/// updates the import row the moment `fetchAndParseApp` returns, with no
+/// await between the commit and the update, so the two share a section.
+fn settle_import_scrape(
+    cx: &mut Cx,
+    url: &str,
+    fetched: Result<Fetched, ScrapeError>,
 ) -> Result<Outcome, ScrapeError> {
-    let conn = cx.w.conn;
-    let now = cx.now;
-    fetch_and_parse_app(
-        conn,
-        fetcher,
-        url,
-        false,
-        Some("import"),
-        now,
-        &mut *cx.ids,
-        cx.w.log(),
-    )
-    .await
+    complete(cx.w, url, false, "import", cx.now, fetched?, cx.ids)
 }
 
 // ── POST / DELETE /api/imports ───────────────────────────────────────
@@ -1092,7 +1130,7 @@ fn create_import(cx: &mut Cx, body: BodyOutcome) -> Response {
                 device_id,
             ],
         )?;
-        db(import_row(cx.w.conn, &id))
+        sqlite(import_row(cx.w.conn, &id))
     })();
     match created {
         Ok(Some(row)) => json_ok(&row),
@@ -1272,37 +1310,47 @@ impl TickResult {
     }
 }
 
-/// `runImportQueueTick`: the pause fence, the running mutex with its stale
-/// override, then up to ten claimed rows until Apple says stop.
-async fn run_import_queue_tick(
-    cx: &mut Cx<'_, '_>,
-    fetcher: &dyn Fetcher,
-) -> Result<TickResult, String> {
+/// How `runImportQueueTick` opens: refused by a fence, or holding the
+/// running mutex with its claim.
+enum Opened {
+    Skipped(TickResult),
+    Claimed(Vec<Value>),
+}
+
+/// The tick's opening: the pause fence, the running mutex with its stale
+/// override, then the claim. Node runs all of it — and the forced run's
+/// resets before it — without an await, so it is one section.
+fn open_tick(cx: &mut Cx) -> Result<Opened, String> {
     let paused_until = js_parse_int(&cx.get("import_queue_paused_until", "0")).unwrap_or(0);
     if paused_until > cx.now {
-        return Ok(TickResult::skipped("paused", Some(paused_until)));
+        return Ok(Opened::Skipped(TickResult::skipped(
+            "paused",
+            Some(paused_until),
+        )));
     }
     if cx.get("import_queue_running", "") == "true" {
         let running_since = js_parse_int(&cx.get("import_queue_running_since", "0")).unwrap_or(0);
         if running_since > 0 && cx.now - running_since > RUNNING_LOCK_STALE_MS {
             cx.set("import_queue_running", "false")?;
         } else {
-            return Ok(TickResult::skipped("busy", None));
+            return Ok(Opened::Skipped(TickResult::skipped("busy", None)));
         }
     }
     cx.set("import_queue_running", "true")?;
     cx.set("import_queue_running_since", &cx.now.to_string())?;
-
-    let outcome = drain(cx, fetcher).await;
-
-    // `finally`.
-    cx.set("import_queue_running", "false")?;
-    cx.set("import_queue_last_run", &cx.now.to_string())?;
-    outcome
+    Ok(Opened::Claimed(claim_queued_batch(cx, QUEUE_BATCH_SIZE)?))
 }
 
-async fn drain(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher) -> Result<TickResult, String> {
-    let claimed = claim_queued_batch(cx, QUEUE_BATCH_SIZE)?;
+/// The claimed rows, scraped in turn until Apple says stop. Each row is
+/// the scrape's preparing section, the fetch with the lock released, and
+/// one section for its commit and the row update that follows it.
+async fn drain(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+    claimed: Vec<Value>,
+) -> Result<TickResult, String> {
     if claimed.is_empty() {
         return Ok(TickResult::skipped("empty", None));
     }
@@ -1323,58 +1371,91 @@ async fn drain(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher) -> Result<TickResult,
             .filter(|s| !s.is_empty())
             .map(String::from)
         else {
-            record_item_error(cx, &item_id, "Queued item has no URL to scrape")?;
-            complete_import_if_settled(cx, &import_id)?;
+            db.with(|w| {
+                let cx = &mut section(w, ids, now);
+                record_item_error(cx, &item_id, "Queued item has no URL to scrape")?;
+                complete_import_if_settled(cx, &import_id)
+            })?;
             result.failed += 1;
             continue;
         };
-        match scrape_for_import(cx, fetcher, &url).await {
-            Ok(scraped) => {
-                record_item_success(
-                    cx,
-                    &item_id,
-                    &SuccessApp {
-                        id: scraped.id,
-                        name: scraped.name,
-                        developer: item["developer"].clone(),
-                        url: json!(url),
-                        icon_url: item["iconUrl"].clone(),
-                    },
-                )?;
-                complete_import_if_settled(cx, &import_id)?;
-                result.succeeded += 1;
+        let fetched = fetch_for_import(db, fetcher, &url, now).await;
+        let paused = db.with(|w| -> Result<Option<i64>, String> {
+            let cx = &mut section(w, ids, now);
+            match settle_import_scrape(cx, &url, fetched) {
+                Ok(scraped) => {
+                    record_item_success(
+                        cx,
+                        &item_id,
+                        &SuccessApp {
+                            id: scraped.id,
+                            name: scraped.name,
+                            developer: item["developer"].clone(),
+                            url: json!(url),
+                            icon_url: item["iconUrl"].clone(),
+                        },
+                    )?;
+                    complete_import_if_settled(cx, &import_id)?;
+                    result.succeeded += 1;
+                    Ok(None)
+                }
+                Err(error) if error.is_rate_limited() => {
+                    let retry_after_ms = error.retry_after_ms.unwrap_or(0);
+                    result.rate_limited += 1;
+                    record_item_retry(
+                        cx,
+                        &item_id,
+                        Some(retry_after_ms),
+                        Some("Apple rate-limited the queue; will retry later"),
+                    )?;
+                    let paused = cx.now + retry_after_ms;
+                    cx.set("import_queue_paused_until", &paused.to_string())?;
+                    Ok(Some(paused))
+                }
+                Err(error) => {
+                    record_item_error(cx, &item_id, &error.message)?;
+                    complete_import_if_settled(cx, &import_id)?;
+                    result.failed += 1;
+                    Ok(None)
+                }
             }
-            Err(error) if error.is_rate_limited() => {
-                let retry_after_ms = error.retry_after_ms.unwrap_or(0);
-                result.rate_limited += 1;
-                record_item_retry(
-                    cx,
-                    &item_id,
-                    Some(retry_after_ms),
-                    Some("Apple rate-limited the queue; will retry later"),
-                )?;
-                let paused = cx.now + retry_after_ms;
-                cx.set("import_queue_paused_until", &paused.to_string())?;
-                result.paused_until = Some(paused);
-                break;
-            }
-            Err(error) => {
-                record_item_error(cx, &item_id, &error.message)?;
-                complete_import_if_settled(cx, &import_id)?;
-                result.failed += 1;
-            }
+        })?;
+        if let Some(paused) = paused {
+            result.paused_until = Some(paused);
+            break;
         }
     }
     Ok(result)
 }
 
 /// `forceImportQueueRun`, then the status the GET reports.
-async fn queue_run(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher) -> Response {
+async fn queue_run(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+) -> Response {
     let ran = async {
-        cx.set("import_queue_paused_until", "0")?;
-        cx.w.run(RESET_QUEUE_BACKOFF, vec![])?;
-        let tick = run_import_queue_tick(cx, fetcher).await?;
-        let status = db(queue_status(cx.w.conn, cx.now))?;
+        let opened = db.with(|w| {
+            let cx = &mut section(w, ids, now);
+            cx.set("import_queue_paused_until", "0")?;
+            cx.w.run(RESET_QUEUE_BACKOFF, vec![])?;
+            open_tick(cx)
+        })?;
+        let (tick, status) = match opened {
+            Opened::Skipped(tick) => (tick, db.with(|w| sqlite(queue_status(w.conn, now)))?),
+            Opened::Claimed(claimed) => {
+                let outcome = drain(db, ids, now, fetcher, claimed).await;
+                // `finally`, then the status: one run in Node.
+                db.with(|w| {
+                    let cx = &mut section(w, ids, now);
+                    cx.set("import_queue_running", "false")?;
+                    cx.set("import_queue_last_run", &cx.now.to_string())?;
+                    let tick = outcome?;
+                    Ok::<_, String>((tick, sqlite(queue_status(cx.w.conn, cx.now))?))
+                })?
+            }
+        };
         let mut out = Map::new();
         if let Some(skipped) = tick.skipped {
             out.insert("skipped".into(), json!(skipped));
@@ -1428,7 +1509,13 @@ fn complete_route(cx: &mut Cx, body: BodyOutcome) -> Response {
 
 // ── POST /api/imports/items/retry ────────────────────────────────────
 
-async fn retry_item(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -> Response {
+async fn retry_item(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+    body: BodyOutcome,
+) -> Response {
     let body = match body_strict(body) {
         Ok(v) => v,
         Err(r) => return r,
@@ -1437,7 +1524,7 @@ async fn retry_item(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcom
     if item_id.is_empty() {
         return json_error(StatusCode::BAD_REQUEST, "itemId is required");
     }
-    let item = match item_row(cx.w.conn, &item_id) {
+    let item = match db.with(|w| item_row(w.conn, &item_id)) {
         Ok(Some(item)) => item,
         Ok(None) => {
             return json_error(
@@ -1448,14 +1535,18 @@ async fn retry_item(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcom
         Err(_) => return internal_error(),
     };
     let import_id = item["importId"].as_str().unwrap_or("").to_string();
-    match retry_outcome(cx, fetcher, &item, &item_id, &import_id).await {
+    match retry_outcome(db, ids, now, fetcher, &item, &item_id, &import_id).await {
         Ok(body) => json_ok(&body),
         Err(_) => internal_error(),
     }
 }
 
+/// The row after its search or scrape: the network with the lock
+/// released, then one section for the update Node makes on the result.
 async fn retry_outcome(
-    cx: &mut Cx<'_, '_>,
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
     fetcher: &dyn Fetcher,
     item: &Value,
     item_id: &str,
@@ -1473,71 +1564,69 @@ async fn retry_outcome(
             query.insert("developer".into(), item["developer"].clone());
         }
         let country = item["country"].as_str().map(String::from);
-        let batch = {
-            let conn = cx.w.conn;
-            let now = cx.now;
-            search_apps_by_name(
-                conn,
-                fetcher,
-                std::slice::from_ref(&Value::Object(query)),
-                country.as_deref(),
-                now,
-                cx.w.log(),
-            )
-            .await?
-        };
-        let queued = batch["rateLimited"]["queued"]
-            .as_array()
-            .map_or(0, Vec::len);
-        if truthy(&batch["rateLimited"]) && queued > 0 {
-            let retry_after_ms = batch["rateLimited"]["retryAfterMs"].clone();
+        let batch = search_apps_by_name(
+            db,
+            fetcher,
+            std::slice::from_ref(&Value::Object(query)),
+            country.as_deref(),
+            now,
+        )
+        .await?;
+        return db.with(|w| {
+            let cx = &mut section(w, ids, now);
+            let queued = batch["rateLimited"]["queued"]
+                .as_array()
+                .map_or(0, Vec::len);
+            if truthy(&batch["rateLimited"]) && queued > 0 {
+                let retry_after_ms = batch["rateLimited"]["retryAfterMs"].clone();
+                let updated = update_import_item(
+                    cx,
+                    item_id,
+                    &Patch {
+                        status: Some(json!("pending_search")),
+                        next_attempt_at: Some(num(cx.now as f64 + js_to_number(&retry_after_ms))),
+                        scrape_error: Some(json!("iTunes Search rate-limited; will retry later")),
+                        ..Default::default()
+                    },
+                )?;
+                return Ok(json!({
+                    "item": updated,
+                    "status": "pending_search",
+                    "rateLimited": { "retryAfterMs": retry_after_ms },
+                }));
+            }
+            let top = batch["results"][0]["candidates"][0].clone();
+            if top.is_null() {
+                let updated = update_import_item(
+                    cx,
+                    item_id,
+                    &Patch {
+                        status: Some(json!("unmatched")),
+                        scrape_error: Some(json!("No match found in iTunes Search")),
+                        next_attempt_at: Some(Value::Null),
+                        ..Default::default()
+                    },
+                )?;
+                complete_import_if_settled(cx, import_id)?;
+                return Ok(json!({ "item": updated, "status": "unmatched" }));
+            }
             let updated = update_import_item(
                 cx,
                 item_id,
                 &Patch {
-                    status: Some(json!("pending_search")),
-                    next_attempt_at: Some(num(cx.now as f64 + js_to_number(&retry_after_ms))),
-                    scrape_error: Some(json!("iTunes Search rate-limited; will retry later")),
-                    ..Default::default()
-                },
-            )?;
-            return Ok(json!({
-                "item": updated,
-                "status": "pending_search",
-                "rateLimited": { "retryAfterMs": retry_after_ms },
-            }));
-        }
-        let top = batch["results"][0]["candidates"][0].clone();
-        if top.is_null() {
-            let updated = update_import_item(
-                cx,
-                item_id,
-                &Patch {
-                    status: Some(json!("unmatched")),
-                    scrape_error: Some(json!("No match found in iTunes Search")),
+                    status: Some(json!("matched")),
+                    app_id: Some(top["appleId"].clone()),
+                    app_name: Some(top["name"].clone()),
+                    developer: Some(top["developer"].clone()),
+                    url: Some(top["url"].clone()),
+                    icon_url: Some(top["iconUrl"].clone()),
+                    scrape_error: Some(Value::Null),
                     next_attempt_at: Some(Value::Null),
                     ..Default::default()
                 },
             )?;
-            complete_import_if_settled(cx, import_id)?;
-            return Ok(json!({ "item": updated, "status": "unmatched" }));
-        }
-        let updated = update_import_item(
-            cx,
-            item_id,
-            &Patch {
-                status: Some(json!("matched")),
-                app_id: Some(top["appleId"].clone()),
-                app_name: Some(top["name"].clone()),
-                developer: Some(top["developer"].clone()),
-                url: Some(top["url"].clone()),
-                icon_url: Some(top["iconUrl"].clone()),
-                scrape_error: Some(Value::Null),
-                next_attempt_at: Some(Value::Null),
-                ..Default::default()
-            },
-        )?;
-        return Ok(json!({ "item": updated, "status": "matched" }));
+            Ok(json!({ "item": updated, "status": "matched" }))
+        });
     }
 
     let Some(url) = item["url"]
@@ -1545,51 +1634,64 @@ async fn retry_outcome(
         .filter(|s| !s.is_empty())
         .map(String::from)
     else {
-        let errored = record_item_error(cx, item_id, "Queued item has no URL to scrape")?;
-        complete_import_if_settled(cx, import_id)?;
-        return Ok(json!({ "item": errored, "status": "error" }));
-    };
-    match scrape_for_import(cx, fetcher, &url).await {
-        Ok(scraped) => {
-            let updated = record_item_success(
-                cx,
-                item_id,
-                &SuccessApp {
-                    id: scraped.id,
-                    name: scraped.name,
-                    developer: item["developer"].clone(),
-                    url: json!(url),
-                    icon_url: item["iconUrl"].clone(),
-                },
-            )?;
-            complete_import_if_settled(cx, import_id)?;
-            Ok(json!({ "item": updated, "status": "imported" }))
-        }
-        Err(error) if error.is_rate_limited() => {
-            let retry_after_ms = error.retry_after_ms.unwrap_or(0);
-            let updated = record_item_retry(
-                cx,
-                item_id,
-                Some(retry_after_ms),
-                Some("Apple rate-limited the queue; will retry later"),
-            )?;
-            Ok(json!({
-                "item": updated,
-                "status": "queued",
-                "rateLimited": { "retryAfterMs": retry_after_ms },
-            }))
-        }
-        Err(error) => {
-            let errored = record_item_error(cx, item_id, &error.message)?;
+        return db.with(|w| {
+            let cx = &mut section(w, ids, now);
+            let errored = record_item_error(cx, item_id, "Queued item has no URL to scrape")?;
             complete_import_if_settled(cx, import_id)?;
             Ok(json!({ "item": errored, "status": "error" }))
+        });
+    };
+    let fetched = fetch_for_import(db, fetcher, &url, now).await;
+    db.with(|w| {
+        let cx = &mut section(w, ids, now);
+        match settle_import_scrape(cx, &url, fetched) {
+            Ok(scraped) => {
+                let updated = record_item_success(
+                    cx,
+                    item_id,
+                    &SuccessApp {
+                        id: scraped.id,
+                        name: scraped.name,
+                        developer: item["developer"].clone(),
+                        url: json!(url),
+                        icon_url: item["iconUrl"].clone(),
+                    },
+                )?;
+                complete_import_if_settled(cx, import_id)?;
+                Ok(json!({ "item": updated, "status": "imported" }))
+            }
+            Err(error) if error.is_rate_limited() => {
+                let retry_after_ms = error.retry_after_ms.unwrap_or(0);
+                let updated = record_item_retry(
+                    cx,
+                    item_id,
+                    Some(retry_after_ms),
+                    Some("Apple rate-limited the queue; will retry later"),
+                )?;
+                Ok(json!({
+                    "item": updated,
+                    "status": "queued",
+                    "rateLimited": { "retryAfterMs": retry_after_ms },
+                }))
+            }
+            Err(error) => {
+                let errored = record_item_error(cx, item_id, &error.message)?;
+                complete_import_if_settled(cx, import_id)?;
+                Ok(json!({ "item": errored, "status": "error" }))
+            }
         }
-    }
+    })
 }
 
 // ── POST /api/imports/items/change-match ─────────────────────────────
 
-async fn change_match(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -> Response {
+async fn change_match(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+    body: BodyOutcome,
+) -> Response {
     let body = match body_strict(body) {
         Ok(v) => v,
         Err(r) => return r,
@@ -1609,60 +1711,70 @@ async fn change_match(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutc
             "url must be a canonical apps.apple.com URL with an /id<digits> segment",
         );
     }
-    match item_row(cx.w.conn, &item_id) {
+    match db.with(|w| item_row(w.conn, &item_id)) {
         Ok(Some(_)) => {}
         Ok(None) => return json_error(StatusCode::NOT_FOUND, "Item not found"),
         Err(_) => return internal_error(),
     }
-    let scraped = match scrape_for_import(cx, fetcher, &url).await {
-        Ok(scraped) => scraped,
-        Err(error) => {
-            return json_error(
-                StatusCode::BAD_GATEWAY,
-                &format!("Failed to scrape replacement app: {}", error.message),
-            )
-        }
-    };
-    let replaced = (|| -> Result<Value, String> {
-        let app_row = read_one(
-            cx,
-            "SELECT developer, url, iconUrl FROM apps WHERE id = ?",
-            &[text(&scraped.id)],
-        )?;
-        let column = |name: &str| app_row.as_ref().map_or(Value::Null, |r| r[name].clone());
-        let new_app = NewApp {
-            id: scraped.id.clone(),
-            name: scraped.name.clone(),
-            developer: column("developer"),
-            url: column("url")
-                .as_str()
-                .map_or_else(|| url.clone(), String::from),
-            icon_url: column("iconUrl"),
+    let fetched = fetch_for_import(db, fetcher, &url, now).await;
+    // The scrape's commit and the rewiring: one run in Node.
+    db.with(|w| {
+        let cx = &mut section(w, ids, now);
+        let scraped = match settle_import_scrape(cx, &url, fetched) {
+            Ok(scraped) => scraped,
+            Err(error) => {
+                return json_error(
+                    StatusCode::BAD_GATEWAY,
+                    &format!("Failed to scrape replacement app: {}", error.message),
+                )
+            }
         };
-        let (item, previous_app_removed) = replace_import_item_match(cx, &item_id, &new_app)?;
-        // The row label follows the new match unless the caller named it.
-        let next_edited_query = edited_query.clone().unwrap_or_else(|| scraped.name.clone());
-        if item.is_some() && !next_edited_query.is_empty() {
-            cx.w.run(
-                SET_EDITED_QUERY,
-                vec![json!(next_edited_query), json!(item_id)],
+        let replaced = (|| -> Result<Value, String> {
+            let app_row = read_one(
+                cx,
+                "SELECT developer, url, iconUrl FROM apps WHERE id = ?",
+                &[text(&scraped.id)],
             )?;
+            let column = |name: &str| app_row.as_ref().map_or(Value::Null, |r| r[name].clone());
+            let new_app = NewApp {
+                id: scraped.id.clone(),
+                name: scraped.name.clone(),
+                developer: column("developer"),
+                url: column("url")
+                    .as_str()
+                    .map_or_else(|| url.clone(), String::from),
+                icon_url: column("iconUrl"),
+            };
+            let (item, previous_app_removed) = replace_import_item_match(cx, &item_id, &new_app)?;
+            // The row label follows the new match unless the caller named it.
+            let next_edited_query = edited_query.clone().unwrap_or_else(|| scraped.name.clone());
+            if item.is_some() && !next_edited_query.is_empty() {
+                cx.w.run(
+                    SET_EDITED_QUERY,
+                    vec![json!(next_edited_query), json!(item_id)],
+                )?;
+            }
+            let refreshed = sqlite(item_row(cx.w.conn, &item_id))?;
+            Ok(json!({
+                "item": refreshed.or(item),
+                "previousAppRemoved": previous_app_removed,
+            }))
+        })();
+        match replaced {
+            Ok(body) => json_ok(&body),
+            Err(_) => internal_error(),
         }
-        let refreshed = db(item_row(cx.w.conn, &item_id))?;
-        Ok(json!({
-            "item": refreshed.or(item),
-            "previousAppRemoved": previous_app_removed,
-        }))
-    })();
-    match replaced {
-        Ok(body) => json_ok(&body),
-        Err(_) => internal_error(),
-    }
+    })
 }
 
 // ── POST /api/search ─────────────────────────────────────────────────
 
-async fn search(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -> Response {
+async fn search(
+    db: &mut dyn DbAccess,
+    fetcher: &dyn Fetcher,
+    now: i64,
+    body: BodyOutcome,
+) -> Response {
     let body = match body_strict(body) {
         Ok(v) => v,
         Err(r) => return r,
@@ -1673,7 +1785,7 @@ async fn search(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -
         .and_then(Value::as_array)
         .filter(|a| !a.is_empty())
     {
-        let ids: Vec<Value> = raw_ids
+        let bundle_ids: Vec<Value> = raw_ids
             .iter()
             .filter_map(Value::as_str)
             .map(js_trim)
@@ -1681,14 +1793,11 @@ async fn search(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -
             .map(|s| json!(s))
             .take(1000)
             .collect();
-        if ids.is_empty() {
+        if bundle_ids.is_empty() {
             return json_ok(&json!({ "results": [] }));
         }
-        let batch = {
-            let conn = cx.w.conn;
-            let now = cx.now;
-            lookup_apps_by_bundle_id(conn, fetcher, &ids, country.as_deref(), now, cx.w.log()).await
-        };
+        let batch =
+            lookup_apps_by_bundle_id(db, fetcher, &bundle_ids, country.as_deref(), now).await;
         if truthy(&batch["rateLimited"]) {
             return json_ok(&json!({
                 "results": batch["results"],
@@ -1722,11 +1831,7 @@ async fn search(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -
     if queries.is_empty() {
         return json_ok(&json!({ "results": [] }));
     }
-    let batch = {
-        let conn = cx.w.conn;
-        let now = cx.now;
-        search_apps_by_name(conn, fetcher, &queries, country.as_deref(), now, cx.w.log()).await
-    };
+    let batch = search_apps_by_name(db, fetcher, &queries, country.as_deref(), now).await;
     let batch = match batch {
         Ok(batch) => batch,
         Err(_) => return internal_error(),
@@ -1745,7 +1850,13 @@ async fn search(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -
 
 // ── POST /api/scrape ─────────────────────────────────────────────────
 
-async fn scrape(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -> Response {
+async fn scrape(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+    body: BodyOutcome,
+) -> Response {
     let body = match body_strict(body) {
         Ok(v) => v,
         Err(r) => return r,
@@ -1788,22 +1899,7 @@ async fn scrape(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -
     let resync = prop(&body, "resync") == Some(&json!(true));
     let summarize_policies = prop(&body, "summarizePolicies") == Some(&json!(true));
     let trigger = str_prop(&body, "trigger").filter(|t| SCRAPE_TRIGGERS.contains(t));
-    let results = {
-        let conn = cx.w.conn;
-        let now = cx.now;
-        scrape_initial_urls(
-            conn,
-            fetcher,
-            &cleaned,
-            resync,
-            trigger,
-            true,
-            now,
-            &mut *cx.ids,
-            cx.w.log(),
-        )
-        .await
-    };
+    let results = scrape_initial_urls(db, fetcher, &cleaned, resync, trigger, true, now, ids).await;
     // `summarizePolicies` is the Phase 5 policy fetch; ignored here.
     if !summarize_policies && results.iter().any(|r| r["status"] == "success") {
         schedule_post_app_update_policy_fetch(if resync { "sync" } else { "import" });
@@ -1814,18 +1910,22 @@ async fn scrape(cx: &mut Cx<'_, '_>, fetcher: &dyn Fetcher, body: BodyOutcome) -
 // ── POST / DELETE /api/apps/[id]/import-history ──────────────────────
 
 async fn import_history(
-    cx: &mut Cx<'_, '_>,
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
     fetcher: &dyn Fetcher,
     id: &str,
     body: BodyOutcome,
     actor: &Actor,
 ) -> Response {
     // The throttle and the app checks ran in `precheck`; the row is re-read.
-    let app = match read_one(
-        cx,
-        "SELECT id, url, name FROM apps WHERE id = ?",
-        &[text(id)],
-    ) {
+    let app = match db.with(|w| {
+        read_one(
+            &section(w, ids, now),
+            "SELECT id, url, name FROM apps WHERE id = ?",
+            &[text(id)],
+        )
+    }) {
         Ok(Some(app)) => app,
         Ok(None) => return json_error(StatusCode::NOT_FOUND, "App not found"),
         Err(_) => return internal_error(),
@@ -1845,42 +1945,50 @@ async fn import_history(
         .map(f64::floor);
     let force = prop(&body, "force") == Some(&json!(true));
     let force_flag = u8::from(force);
-    let started_at = cx.now;
+    let started_at = now;
 
-    record_audit(
-        cx.w,
-        cx.ids,
-        cx.now,
-        "wayback.import.app.start",
-        actor,
-        Some(&format!("app={id} force={force_flag}")),
-        true,
-    );
-
-    let run = {
-        let conn = cx.w.conn;
-        let now = cx.now;
-        let app_row = AppRow {
-            id: id.to_string(),
-            name: name.clone(),
-            url,
-        };
-        let options = HistoryOptions {
-            force,
-            interval_months,
-            ..Default::default()
-        };
-        import_app_history(
-            conn,
-            fetcher,
-            &app_row,
-            &options,
+    db.with(|w| {
+        record_audit(
+            w,
+            ids,
             now,
-            &mut *cx.ids,
-            cx.w.log(),
+            "wayback.import.app.start",
+            actor,
+            Some(&format!("app={id} force={force_flag}")),
+            true,
         )
-        .await
+    });
+
+    let app_row = AppRow {
+        id: id.to_string(),
+        name: name.clone(),
+        url,
     };
+    let options = HistoryOptions {
+        force,
+        interval_months,
+        ..Default::default()
+    };
+    let run = import_app_history(db, fetcher, &app_row, &options, now, ids).await;
+    // What the run leaves behind — audit, activity and the response — is
+    // one synchronous tail in Node, so one section.
+    db.with(|w| {
+        let cx = &mut section(w, ids, now);
+        finish_import_history(cx, id, &name, actor, force, started_at, run)
+    })
+}
+
+/// The route after `importAppHistory` returns or throws.
+fn finish_import_history(
+    cx: &mut Cx,
+    id: &str,
+    name: &str,
+    actor: &Actor,
+    force: bool,
+    started_at: i64,
+    run: Result<Value, crate::scrape::HistoryError>,
+) -> Response {
+    let force_flag = u8::from(force);
     let result = match run {
         Ok(result) => result,
         Err(error) => {
@@ -1902,7 +2010,7 @@ async fn import_history(
                     "wayback_import",
                     "partial",
                     Some(id),
-                    Some(&name),
+                    Some(name),
                     Some(&js_slice_prefix(
                         &format!("Wayback import for {name} stopped — archive.org is rate-limiting requests"),
                         200,
@@ -1948,7 +2056,7 @@ async fn import_history(
                 "wayback_import",
                 "error",
                 Some(id),
-                Some(&name),
+                Some(name),
                 Some(&js_slice_prefix(
                     &format!("Wayback import failed: {message}"),
                     200,
@@ -1975,8 +2083,8 @@ async fn import_history(
         "wayback_import",
         status,
         Some(id),
-        Some(&name),
-        Some(&summary_line(&name, &result, force)),
+        Some(name),
+        Some(&summary_line(name, &result, force)),
         Some(&json!({ "mode": "app", "result": result, "force": force })),
         started_at,
     );
