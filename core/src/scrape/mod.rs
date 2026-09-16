@@ -22,6 +22,9 @@ pub mod fetch;
 #[cfg(test)]
 mod fetch_tests;
 pub mod flags;
+pub mod history;
+#[cfg(test)]
+mod history_tests;
 mod js;
 mod notify;
 pub mod page;
@@ -38,10 +41,14 @@ mod search_tests;
 pub mod shoebox;
 #[cfg(test)]
 mod tests;
+pub mod wayback;
 
 pub use fetch::{
     complete, fetch_and_parse_app, fetch_version_info, perform, prepare, scrape_initial_urls,
     Fetched, Prepared, ScrapeError,
+};
+pub use history::{
+    import_app_history, AppRow, HistoryError, HistoryOptions, APP_STORE_HISTORICAL_FLOOR_MS,
 };
 pub use page::{parse_page, ParsedPage};
 pub use persist::{

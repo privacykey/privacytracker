@@ -56,46 +56,54 @@ fn scrape_limits(request: &Request) {
     }
 }
 
+/// Records one raw fetch the way Node's stub saw it: the headers safeFetch
+/// set, not undici's own defaults (the transport adds two of those).
+pub(super) fn record_call(calls: &Mutex<Vec<Value>>, url: &Url, headers: &HeaderMap) {
+    let mut sent: Vec<(String, String)> = headers
+        .iter()
+        .filter(|(k, v)| {
+            !(k.as_str() == "accept-encoding" || (k.as_str() == "accept" && v.as_bytes() == b"*/*"))
+        })
+        .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
+        .collect();
+    sent.sort();
+    calls
+        .lock()
+        .unwrap()
+        .push(json!({"url": url.as_str(), "headers": sent}));
+}
+
+/// A recorded stub reply as the raw hop result the transport reads.
+pub(super) fn raw_reply(reply: &Value) -> Result<RawReply, String> {
+    if let Some(error) = reply["error"].as_str() {
+        return Err(error.to_string());
+    }
+    let mut out = HeaderMap::new();
+    if let Some(map) = reply["headers"].as_object() {
+        for (name, value) in map {
+            out.insert(
+                HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                HeaderValue::from_str(value.as_str().unwrap()).unwrap(),
+            );
+        }
+    }
+    let body = reply["body"].as_str().unwrap_or("").as_bytes().to_vec();
+    Ok(RawReply {
+        status: reply["status"].as_u64().unwrap() as u16,
+        headers: out,
+        body: Box::pin(BufReader::new(std::io::Cursor::new(body))),
+    })
+}
+
 impl Hop for Canned {
     fn hop(&self, url: Url, headers: HeaderMap) -> HopFuture<'_> {
         Box::pin(async move {
-            // Node's stub saw the headers safeFetch set, not undici's own
-            // defaults; the transport adds two of those, so drop them.
-            let mut sent: Vec<(String, String)> = headers
-                .iter()
-                .filter(|(k, v)| {
-                    !(k.as_str() == "accept-encoding"
-                        || (k.as_str() == "accept" && v.as_bytes() == b"*/*"))
-                })
-                .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
-                .collect();
-            sent.sort();
-            self.calls
-                .lock()
-                .unwrap()
-                .push(json!({"url": url.as_str(), "headers": sent}));
+            record_call(&self.calls, &url, &headers);
             let index = self.cursor.fetch_add(1, Ordering::SeqCst);
             let Some(reply) = self.replies.get(index) else {
                 return Err(format!("Missing fixture reply for {url}"));
             };
-            if let Some(error) = reply["error"].as_str() {
-                return Err(error.to_string());
-            }
-            let mut out = HeaderMap::new();
-            if let Some(map) = reply["headers"].as_object() {
-                for (name, value) in map {
-                    out.insert(
-                        HeaderName::from_bytes(name.as_bytes()).unwrap(),
-                        HeaderValue::from_str(value.as_str().unwrap()).unwrap(),
-                    );
-                }
-            }
-            let body = reply["body"].as_str().unwrap_or("").as_bytes().to_vec();
-            Ok(RawReply {
-                status: reply["status"].as_u64().unwrap() as u16,
-                headers: out,
-                body: Box::pin(BufReader::new(std::io::Cursor::new(body))),
-            })
+            raw_reply(reply)
         })
     }
 }

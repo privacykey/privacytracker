@@ -1690,3 +1690,66 @@ settings and batch, and skipping the empty-result retry failed the four
 cases that consume a retry reply (unused replies, raw fetches, batch);
 nothing else moved, and both faults were removed before the final passing
 run.
+
+### Batch 4 — historical import (no routes)
+
+`core/src/scrape/history.rs` ports `importAppHistory` from
+lib/historical-import.ts, the per-app Wayback back-fill, and
+`core/src/scrape/wayback.rs` the archive.org client under it from
+lib/wayback.ts. The import walks targets back from today by the cadence
+(`setUTCMonth` semantics: the same day and time of day, a 31st rolling
+into the next month) to the February 2021 floor, adds the install date
+once it is older than the dedupe window, and answers each target from
+the CDX index — the nearest capture, in tolerance or recorded as drift —
+or, when the index is unusable, from availability-API probes at the
+seven fallback offsets. A target already covered by a wayback row inside
+the window, or whose capture URL is already stored (http and https
+alike), is skipped; a capture that failed earlier in the run is reused
+with its earlier verdict; a usable replay is parsed by the archive
+parser (the modern chain as a whole — any throw inside it is "no
+labels" — then the shoebox, then the identifier-deduping normalisation)
+and split into no-labels against parse-failure by the product-page
+sniff. The write is one transaction: the snapshot before the capture
+from any source is the diff base, the back-dated row is inserted with
+Node's SQL byte for byte, and a wayback row after it is re-diffed
+against the new one. When the archive holds nothing within 45 days of
+today, Save Page Now is asked once through the transport's new
+manual-redirect, body-skipping mode (Location, then Content-Location,
+on the replay host only) and the request is recorded as a live row
+whose changes carry the attempt note. Throttling from the index, the
+availability API or a replay is the import's error, not a quiet
+quarter, with Retry-After in seconds or as an HTTP date; Save Page Now
+failures are a skipped target.
+
+**JavaScript arithmetic it reproduces.** `Date.UTC` overflow for the
+padded Wayback timestamps (`2021` pads to December 00, which is
+30 November), the `yyyymmdd` UTC probe dates, `Number()`-first
+Retry-After parsing so `"0"` is zero, `Math.round` and `Math.ceil` in
+the window and the message, and `URLSearchParams` form encoding for the
+CDX query (`timestamp:8` is `timestamp%3A8`, spaces are `+`).
+
+**The oracle — `core/scripts/extract-history-cases.mjs`.** Runs the REAL
+`importAppHistory` over 26 scenarios with archive.org stubbed by recorded
+replies routed by endpoint (CDX, availability by probe date, replay by
+timestamp, Save Page Now), a frozen clock and counted ids, and records
+every raw fetch (URL and headers), every write with its BEGIN/COMMIT
+markers, the snapshot and app rows, and the result or the thrown error.
+`core/src/scrape/history_tests.rs` replays each through the same
+transport loop with the request limits asserted per endpoint. Scenarios:
+index captures imported, unchanged and baseline; window and URL dedupe;
+force re-probing; index 429 and 503; the probe fallback with drift and
+no capture; availability 503 with an HTTP-date Retry-After; no-labels,
+fetch-failure and parse-failure replays with a reused unusable capture;
+replay 503 after earlier rows committed; the successor re-diff; a live
+row as the diff base; Save Page Now via Location, via Content-Location,
+rate-limited, server error, no snapshot URL, transport failure and a
+Location on another host; the install anchor probed, too fresh, and
+coinciding with a target; the monthly cadence; index parsing quirks;
+index garbage; and the target walk from a month end.
+
+Rust suite: 202 pass (187 + 15 new). Negative controls: skipping the
+successor re-diff failed only that case (stream and rows), disabling the
+product-page sniff failed only the no-labels case, dropping the HTTP-date
+Retry-After branch failed only the availability 503 case, and removing the
+Content-Location fallback failed only that Save Page Now case; nothing
+else moved, and each fault was removed before the final passing run.

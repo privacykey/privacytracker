@@ -170,7 +170,7 @@ impl<'a> Writer<'a> {
     }
 
     /// A transaction boundary in the recorded stream.
-    fn mark(&mut self, marker: &str) {
+    pub(super) fn mark(&mut self, marker: &str) {
         if let Some(log) = self.log.as_deref_mut() {
             log.push(Statement {
                 sql: marker.to_string(),

@@ -34,6 +34,24 @@ pub fn js_encode_uri_component(s: &str) -> String {
     out
 }
 
+/// One `URLSearchParams` value as `toString()` writes it
+/// (application/x-www-form-urlencoded): `*-._` and alphanumerics stay,
+/// space becomes `+`, every other UTF-8 byte is percent-encoded in
+/// uppercase hex.
+pub fn js_form_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for byte in s.bytes() {
+        if byte.is_ascii_alphanumeric() || b"*-._".contains(&byte) {
+            out.push(byte as char);
+        } else if byte == b' ' {
+            out.push('+');
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
 /// `s.trim()`: JavaScript's whitespace set, not Rust's — see
 /// [`is_js_whitespace`] for the two characters where they differ.
 pub fn js_trim(s: &str) -> &str {
@@ -417,5 +435,12 @@ mod tests {
         );
         assert_eq!(js_encode_uri_component("it's (ok)*!~"), "it's%20(ok)*!~");
         assert_eq!(js_encode_uri_component("com.a,com.b"), "com.a%2Ccom.b");
+        // URLSearchParams: `new URLSearchParams({ url: s }).toString()`.
+        assert_eq!(
+            super::js_form_encode("https://apps.apple.com/us/app/x/id1?a=b c"),
+            "https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Fx%2Fid1%3Fa%3Db+c"
+        );
+        assert_eq!(super::js_form_encode("timestamp:8"), "timestamp%3A8");
+        assert_eq!(super::js_form_encode("*-._~"), "*-._%7E");
     }
 }
