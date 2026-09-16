@@ -31,7 +31,7 @@ mod export;
 pub mod flags;
 mod forwarded;
 mod gate;
-mod grid_meta;
+pub(crate) mod grid_meta;
 mod histogram;
 mod json;
 pub mod layout;
@@ -62,7 +62,7 @@ mod routes_status;
 mod row;
 mod runtime_diag;
 mod scope;
-mod settings;
+pub(crate) mod settings;
 mod shortlist;
 mod stats;
 #[cfg(test)]

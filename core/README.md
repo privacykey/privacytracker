@@ -1517,3 +1517,65 @@ Rust suite: 192 pass (187 + 5 new). Negative controls: swallowing the
 `null`-item throw in the header chain, and making an object's `.length`
 read falsy, each failed exactly the cases that pin them; both faults were
 removed before the final passing run.
+
+### Batch 2 — persist (no routes)
+
+`core/src/scrape/persist.rs` is the rest of `fetchAndParseApp` from the
+parsed page on: the pre-commit reads (the existing row, the latest
+snapshot or the rows it is rebuilt from, the accessibility rows, the
+privacy profile), change detection (`diff_snapshots`, the accessibility
+diff, the age-rating entry), the single transactional commit, and the two
+best-effort bells after it. `notify.rs` carries the three notification
+writers with their settings-backed dedupe windows, the retention prune and
+`computeNotBefore`; `activity.rs` carries the catch block's diagnostics
+and `recordActivity`. The iTunes lookup is still the caller's (batch 3),
+so `VersionInfo` is an input.
+
+**The oracle — `core/scripts/extract-persist-cases.mjs`.** Runs the REAL
+`fetchAndParseApp` end to end over 26 scenarios and records every write it
+makes, in order — each statement's SQL and bound parameters, with
+BEGIN/COMMIT/ROLLBACK markers around the bulk write — then dumps every
+touched table (digested past 100 rows) and the return value or error.
+Three things make that reproducible: the clock is frozen per case, TZ is
+UTC, and `crypto.randomUUID` is a counter on both the global and the
+`node:crypto` module, so the Rust side mints the same ids from an `Ids`
+source — including the one Node mints for `appleId` and immediately
+overwrites, which is why every sequence starts at two. Setup for a case is
+raw SQL or an earlier scrape; either way the statements it actually ran
+are recorded and replayed verbatim. `core/src/scrape/persist_tests.rs`
+compares stream, rows and result per case; CI regenerates the fixture.
+
+The scenarios: a new app; re-syncs with no change, label changes (plural
+and singular summaries), accessibility changes, an absent accessibility
+header (rows kept, flag kept) and a header alone (rows wiped, every
+feature "removed"); a version update with and without label changes, and
+one inside the one-hour dedupe window; an age-rating change; quiet hours
+inside a same-day window, inside a window wrapping midnight, and outside;
+the parser-fallthrough bell and its 24-hour cooldown; profile mismatches
+on import, on a re-sync that adds a mismatching category, and inside the
+dedupe window; a duplicate type identifier and a duplicate related id,
+which fail the commit on a primary key, roll back and land in the activity
+log; a parse error's activity row; the activity and notification retention
+prunes over CTE-seeded tables; an app row with privacy rows but no
+snapshot; and related shelves gone on re-sync.
+
+**What the port pins.** The SQL is Node's byte for byte, whitespace and
+all, because the stream is compared as text. The version bell's date is
+`Intl.DateTimeFormat("en-AU", …)`, whose short months spell June, July and
+Sept in full. Quiet hours are local-time arithmetic (`getHours`,
+`setHours`, `setDate(+1)`), done through `jsdate::local_time` and
+`at_local_time`. Dedupe windows are read as `Number(setting) || 0` for
+the version and profile bells and `Number.parseInt` for the parser bell.
+A commit failure rolls the transaction back and the error row is written
+outside it; the post-commit bells are best effort and never fail the
+scrape. Production ids are v4 UUIDs from SQLite's `randomblob`.
+
+**Known divergences, none reachable through Node's own writes.** A corrupt
+stored `snapshot_json` fails to parse with a different message than V8's,
+and a hand-edited non-string `currentVersion` or `ageRating` is compared
+after `String()` coercion where Node compares the raw value.
+
+Rust suite: 194 pass (187 + 7 new). Negative controls: skipping the
+discarded `appleId` id shifted every later id and failed every case, and
+dropping the version bell's dedupe window made the dedupe case emit two
+extra statements; both faults were removed before the final passing run.

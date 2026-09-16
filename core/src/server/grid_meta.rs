@@ -35,10 +35,10 @@ use crate::jsstr::{js_keyed_object, js_locale_compare};
 
 /// `(category, tier)` pairs in object-insertion order — a profile, or one
 /// app's `worstByCategory` footprint.
-type TierMap = Vec<(String, String)>;
+pub(crate) type TierMap = Vec<(String, String)>;
 
 /// `TIER_RANK` — the order the profile tiers escalate in.
-fn tier_rank(tier: &str) -> Option<i64> {
+pub(crate) fn tier_rank(tier: &str) -> Option<i64> {
     match tier {
         "not_collected" => Some(0),
         "not_linked" => Some(1),
@@ -49,7 +49,7 @@ fn tier_rank(tier: &str) -> Option<i64> {
 }
 
 /// `TYPE_IDENTIFIER_TO_TIER` — which tier a privacy TYPE implies.
-fn type_to_tier(type_identifier: &str) -> Option<&'static str> {
+pub(crate) fn type_to_tier(type_identifier: &str) -> Option<&'static str> {
     match type_identifier {
         "DATA_NOT_LINKED_TO_YOU" => Some("not_linked"),
         "DATA_LINKED_TO_YOU" => Some("linked"),
@@ -96,7 +96,7 @@ fn tier_short_label_lower(tier: &str) -> &'static str {
 /// Reads `app_settings` directly rather than through `settings::get_setting`,
 /// which takes the whole `AppState` and locks the connection itself — this
 /// runs with the lock already held.
-pub(super) fn get_privacy_profile(conn: &Connection) -> rusqlite::Result<Option<TierMap>> {
+pub(crate) fn get_privacy_profile(conn: &Connection) -> rusqlite::Result<Option<TierMap>> {
     use rusqlite::OptionalExtension;
     let raw: Option<String> = conn
         .query_row(
@@ -197,23 +197,23 @@ fn build_all_footprints(
     Ok(by_app)
 }
 
-struct Mismatch {
-    category: String,
-    allowed: String,
-    observed: String,
-    severity_gap: i64,
+pub(crate) struct Mismatch {
+    pub(crate) category: String,
+    pub(crate) allowed: String,
+    pub(crate) observed: String,
+    pub(crate) severity_gap: i64,
 }
 
-struct MismatchResult {
-    mismatches: Vec<Mismatch>,
-    total_gap: i64,
-    profile_active: bool,
+pub(crate) struct MismatchResult {
+    pub(crate) mismatches: Vec<Mismatch>,
+    pub(crate) total_gap: i64,
+    pub(crate) profile_active: bool,
 }
 
 /// `computeProfileMismatch`. Inactive when there is no profile or it holds no
 /// string values. Walks the footprint in ITS order, then sorts worst-first
 /// with the `localeCompare` tie-break.
-fn compute_profile_mismatch(
+pub(crate) fn compute_profile_mismatch(
     profile: Option<&[(String, String)]>,
     footprint: &[(String, String)],
 ) -> MismatchResult {
