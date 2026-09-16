@@ -42,7 +42,10 @@
  * startup this script walks the filesystem and fails if any route.ts is
  * unlisted — the manifest previously covered 17 of 120 routes and the
  * surface grew from 110 to 120 with nothing noticing. Adding a route now
- * forces a classification decision in the same PR.
+ * forces a classification decision in the same PR. The walk itself is
+ * scripts/parity/manifest-check.mjs, which CI (`pnpm parity:manifest`) and
+ * `pnpm test` also run, because --skip-coverage (read-parity.mjs passes it)
+ * turns this gate off.
  *
  * ── Design notes ────────────────────────────────────────────────────
  * - Dual-live instead of stored goldens: goldens rot under normaliser
@@ -62,8 +65,6 @@
  *   unchanged.
  */
 
-import { readdirSync } from "node:fs";
-import path from "node:path";
 import { parseArgs } from "node:util";
 import {
   MUTATIONS,
@@ -72,6 +73,11 @@ import {
   TEARDOWN,
   VOLATILE_READS,
 } from "./manifest.mjs";
+import {
+  coverageReport,
+  diskRoutes,
+  formatCoverageFailure,
+} from "./manifest-check.mjs";
 
 const { values: args } = parseArgs({
   options: {
@@ -424,59 +430,16 @@ function firstDiff(a, b) {
 }
 
 // ── Coverage gate ────────────────────────────────────────────────────
-
-function diskRoutes(dir = "app/api", acc = new Set()) {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) {
-      diskRoutes(p, acc);
-    } else if (e.name === "route.ts") {
-      acc.add(`/${path.relative("app", path.dirname(p))}`);
-    }
-  }
-  return acc;
-}
+// The walk lives in manifest-check.mjs so CI and `pnpm test` can run it
+// with no servers; this is the same check, with this script's exit code.
 
 function checkCoverage() {
-  const disk = diskRoutes();
-  const listed = new Set();
-  for (const group of [
-    READS,
-    VOLATILE_READS,
-    MUTATIONS,
-    TEARDOWN,
-    QUARANTINE,
-  ]) {
-    for (const e of group) {
-      listed.add(e.route);
-    }
-  }
-
-  const missing = [...disk].filter((r) => !listed.has(r)).sort();
-  const phantom = [...listed].filter((r) => !disk.has(r)).sort();
-
-  if (missing.length || phantom.length) {
-    console.error("COVERAGE GATE FAILED");
-    if (missing.length) {
-      console.error(
-        `\n${missing.length} route(s) exist under app/api but are not in scripts/parity/manifest.mjs:`
-      );
-      for (const r of missing) {
-        console.error(`  ${r}`);
-      }
-      console.error(
-        "\nAdd each to READS, VOLATILE_READS, MUTATIONS, TEARDOWN or QUARANTINE."
-      );
-    }
-    if (phantom.length) {
-      console.error(`\n${phantom.length} manifest route(s) no longer exist:`);
-      for (const r of phantom) {
-        console.error(`  ${r}`);
-      }
-    }
+  const report = coverageReport();
+  if (!report.ok) {
+    console.error(formatCoverageFailure(report));
     process.exit(2);
   }
-  return disk.size;
+  return report.disk.size;
 }
 
 // ── Comparison ───────────────────────────────────────────────────────

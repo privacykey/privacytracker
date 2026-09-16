@@ -55,6 +55,8 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust-core parity harness: the manifest coverage walk — every `app/api/**/route.ts` classified in `scripts/parity/manifest.mjs`, nothing phantom — now runs on its own as `pnpm parity:manifest`, in the `core-parity` CI job and under `pnpm test` (`tests/app/parity-manifest-coverage.test.ts`). Until now only `parity-diff.mjs` ran it, and the Rust read gate invokes that with `--skip-coverage`, which is how `/api/device-scope` shipped unclassified. Developer-facing only.
+
 - Rust core Phase 2 is complete: twelve more GET routes bring the read API to all 65 routes in the Phase 2 inventory plus the newer device-scope read (66 total), covering operational status and exports, comparison previews and related apps. A bounded public HTTP client validates DNS and redirects, caps decompressed bodies and enforces deadlines. Node-derived cases and live probes preserve responses and read limits without starting jobs or persisting preview data. Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
 
 - Rust core Phase 2: seven user-content GET routes (54 read routes total), covering activity, notifications and preferences, tasks, annotations, shortlists and JSON/Markdown exports. Fixed-clock Node comparisons and live response, cleanup and rate-limit probes preserve existing behavior. Rust remains inactive in shipped builds. Developer-facing only.

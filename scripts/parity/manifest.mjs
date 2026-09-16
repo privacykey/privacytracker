@@ -6,12 +6,16 @@
  * which ones legitimately can't be replayed in a parity run. The engine
  * is mechanical; this file is the spec.
  *
- * THE COVERAGE RULE: every route.ts under app/api must appear in exactly
- * one of READS / MUTATIONS / QUARANTINE. parity-diff.mjs walks the
- * filesystem and fails if any route is unlisted or listed twice. That is
- * deliberate — the manifest previously covered 17 of 120 routes and
- * nothing noticed as the surface grew from 110 to 120. Adding a route
- * now forces a decision here, in the same PR.
+ * THE COVERAGE RULE: every route.ts under app/api must appear in at least
+ * one of READS / VOLATILE_READS / MUTATIONS / TEARDOWN / QUARANTINE (a
+ * route whose GET is a READ and whose POST is a MUTATION appears in both),
+ * and nothing may stay listed once its route.ts is gone. The walk that
+ * enforces this is scripts/parity/manifest-check.mjs: parity-diff.mjs runs
+ * it at startup, CI's core-parity job runs it as `pnpm parity:manifest`,
+ * and tests/app/parity-manifest-coverage.test.ts runs it under `pnpm test`.
+ * That is deliberate — the manifest previously covered 17 of 120 routes and
+ * nothing noticed as the surface grew from 110 to 120. Adding a route now
+ * forces a decision here, in the same PR.
  *
  * ── The four kinds ──────────────────────────────────────────────────
  *
