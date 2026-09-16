@@ -36,6 +36,9 @@ mod gate;
 pub(crate) mod grid_meta;
 mod guard;
 mod histogram;
+#[cfg(test)]
+mod imports_tests;
+mod imports_writes;
 mod json;
 pub mod layout;
 #[cfg(test)]
@@ -332,7 +335,12 @@ pub fn app(state: AppState) -> Router {
             "/api/focus",
             get(routes_focus::focus).post(routes_writes::focus_post),
         )
-        .route("/api/imports", get(routes_imports::imports))
+        .route(
+            "/api/imports",
+            get(routes_imports::imports)
+                .post(routes_writes::imports_post)
+                .delete(routes_writes::imports_delete),
+        )
         // The first PER-APP route, and the first whose body is computed
         // rather than read: it ports `diffSnapshots`. Axum 0.8 spells a path
         // parameter `{id}`, not `:id`.
@@ -361,7 +369,34 @@ pub fn app(state: AppState) -> Router {
                 .post(routes_writes::verdicts_post)
                 .delete(routes_writes::verdicts_delete),
         )
-        .route("/api/imports/queue", get(routes_status::imports_queue))
+        .route(
+            "/api/imports/queue",
+            get(routes_status::imports_queue).post(routes_writes::import_queue_post),
+        )
+        // Phase 4, batch 3: the rest of the import pipeline.
+        .route("/api/imports/items", post(routes_writes::import_items_post))
+        .route(
+            "/api/imports/items/update",
+            post(routes_writes::import_item_update_post),
+        )
+        .route(
+            "/api/imports/complete",
+            post(routes_writes::import_complete_post),
+        )
+        .route(
+            "/api/imports/items/retry",
+            post(routes_writes::import_item_retry_post),
+        )
+        .route(
+            "/api/imports/items/change-match",
+            post(routes_writes::import_item_change_match_post),
+        )
+        .route("/api/search", post(routes_writes::search_post))
+        .route("/api/scrape", post(routes_writes::scrape_post))
+        .route(
+            "/api/apps/{id}/import-history",
+            post(routes_writes::import_history_post).delete(routes_writes::import_history_delete),
+        )
         // Unblocked by the inbound rate-limiter port: both of these call
         // checkRateLimit before doing any work, so porting them without the
         // limiter would have meant shipping a route with its gate removed.

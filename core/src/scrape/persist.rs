@@ -62,6 +62,9 @@ pub struct ScrapeInput<'a> {
 /// the replay test uses a counter so the stream matches Node's recorded one.
 pub trait Ids {
     fn uuid(&mut self, conn: &Connection) -> Result<String, String>;
+    /// lib/imports.ts's `newId(prefix)`: the prefix, an underscore and nine
+    /// random bytes in base64url — twelve characters, no padding.
+    fn short_id(&mut self, conn: &Connection, prefix: &str) -> Result<String, String>;
 }
 
 /// Version-4 UUIDs from SQLite's `randomblob`, the entropy source db.rs
@@ -72,6 +75,29 @@ impl Ids for RandomIds {
     fn uuid(&mut self, conn: &Connection) -> Result<String, String> {
         random_uuid(conn).map_err(message)
     }
+    fn short_id(&mut self, conn: &Connection, prefix: &str) -> Result<String, String> {
+        let bytes: Vec<u8> = conn
+            .query_row("SELECT randomblob(9)", [], |r| r.get(0))
+            .map_err(message)?;
+        Ok(format!("{prefix}_{}", base64url(&bytes)))
+    }
+}
+
+/// Unpadded base64url, as `Buffer.toString("base64url")` spells it.
+pub fn base64url(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = chunk
+            .iter()
+            .enumerate()
+            .fold(0u32, |acc, (i, b)| acc | (u32::from(*b) << (16 - 8 * i)));
+        let chars = chunk.len() + 1;
+        for i in 0..chars {
+            out.push(ALPHABET[((n >> (18 - 6 * i)) & 63) as usize] as char);
+        }
+    }
+    out
 }
 
 /// A v4 UUID: 16 random bytes with the version and variant nibbles set.
@@ -167,6 +193,11 @@ impl<'a> Writer<'a> {
         self.conn
             .execute(sql, params_from_iter(params.iter().map(to_sql)))
             .map_err(message)
+    }
+
+    /// The recording, for the scrape entry points that take it directly.
+    pub(crate) fn log(&mut self) -> Option<&mut Vec<Statement>> {
+        self.log.as_deref_mut()
     }
 
     /// A transaction boundary in the recorded stream.
