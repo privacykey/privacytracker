@@ -22,3 +22,4 @@ pub mod server;
 
 pub use db::{migrate_file, open_and_migrate};
 pub mod outbound;
+pub mod scrape;

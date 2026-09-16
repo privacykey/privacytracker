@@ -1,0 +1,1676 @@
+{
+  "cases": [
+    {
+      "name": "clock modern page",
+      "url": "https://apps.apple.com/us/app/clock/id1584215688",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Clock on the App Store\"><meta property=\"og:image\" content=\"https://example.com/clock.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Apple\"}}</script></head><body><div id=\"notPurchasedLinks\"><a aria-label=\"Developer's Privacy Policy\" href=\"https://www.apple.com/legal/privacy/\">Privacy Policy</a></div><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Clock\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Fixture linked data\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"detail\":\"Fixture unlinked data\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]},\"accessibilityHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"accessibilityFeatures\",\"items\":[{\"features\":[{\"title\":\"VoiceOver\",\"description\":\"Navigate by spoken feedback.\",\"artwork\":{\"template\":\"systemimage://voiceover\"}},{\"title\":\"Captions\",\"description\":\"Displays captions for media.\",\"artwork\":{\"template\":\"systemimage://captions.bubble\"}}]}]}]}}}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/clock/id1584215688",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1584215688&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1584215688",
+        "name": "Clock",
+        "app": {
+          "name": "Clock",
+          "url": "https://apps.apple.com/us/app/clock/id1584215688",
+          "iconUrl": "https://example.com/clock.png",
+          "developer": "Apple",
+          "privacyPolicyUrl": "https://www.apple.com/legal/privacy/",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": 1
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Fixture tracking data",
+            "categories": [
+              {
+                "identifier": "LOCATION",
+                "title": "Location"
+              }
+            ]
+          },
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Fixture linked data",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": "Contact Info"
+              },
+              {
+                "identifier": "IDENTIFIERS",
+                "title": "Identifiers"
+              }
+            ]
+          },
+          {
+            "identifier": "DATA_NOT_LINKED_TO_YOU",
+            "title": "Data Not Linked to You",
+            "detail": "Fixture unlinked data",
+            "categories": [
+              {
+                "identifier": "DIAGNOSTICS",
+                "title": "Diagnostics"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]",
+        "accessibilityFeatures": [
+          {
+            "identifier": "voiceover",
+            "title": "VoiceOver",
+            "description": "Navigate by spoken feedback.",
+            "iconTemplate": "systemimage://voiceover"
+          },
+          {
+            "identifier": "captions",
+            "title": "Captions",
+            "description": "Displays captions for media.",
+            "iconTemplate": "systemimage://captions.bubble"
+          }
+        ],
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "modern shelves related apps and iap shelf",
+      "url": "https://apps.apple.com/us/app/instagram/id389801252",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Instagram App - App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Instagram, Inc.\"}}</script></head><body><a class=\"link\" href=\"https://help.instagram.com/privacy\" aria-label=\"Developer’s Privacy Policy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Instagram\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[null,7,{\"identifier\":5,\"title\":\"numeric identifier is dropped\"},{\"identifier\":\"NO_TITLE\",\"categories\":[]},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":9,\"categories\":[null,{\"identifier\":\"A\",\"title\":3},{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info (duplicate)\"},{\"identifier\":4,\"title\":\"numeric identifier\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":null}]},\"inAppPurchases\":{\"items\":[{\"title\":\"Pro\"},{\"title\":\"Pro+\"}]},\"accessibilityHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"other\",\"items\":[{\"features\":[{\"title\":\"Ignored\"}]}]},{\"contentType\":\"accessibilityFeatures\",\"items\":[{\"notFeatures\":[]},{\"features\":[{\"title\":\"VoiceOver\",\"description\":\"Spoken feedback.\",\"artwork\":{\"template\":\"systemimage://voiceover\"}},{\"title\":\"Captions \",\"description\":\"  \",\"artwork\":{\"template\":\"\"}},{\"title\":\"captions\",\"description\":\"duplicate slug\"},{\"title\":\"   \"},{\"title\":12},null,{\"title\":\"Larger Text\",\"description\":\"Scales\",\"artwork\":{}}]},{\"features\":[{\"title\":\"Second item is never read\"}]}]}]}}},\"customersAlsoBoughtAppsCollection\":{\"items\":[{\"id\":90000101,\"name\":\"Related 1\",\"url\":\"https://apps.apple.com/us/app/related-1/id90000101\",\"artistName\":\"Dev 1\",\"artwork\":{\"url\":\"https://example.com/1/{w}x{h}bb.png\"}},{\"id\":90000102,\"name\":\"Related 2\",\"url\":\"https://apps.apple.com/us/app/related-2/id90000102\",\"artistName\":\"Dev 2\",\"artwork\":{\"url\":\"https://example.com/2/{w}x{h}bb.png\"}},{\"id\":90000103,\"name\":\"Related 3\",\"url\":\"https://apps.apple.com/us/app/related-3/id90000103\",\"artistName\":\"Dev 3\",\"artwork\":{\"url\":\"https://example.com/3/{w}x{h}bb.png\"}},{\"id\":90000104,\"name\":\"Related 4\",\"url\":\"https://apps.apple.com/us/app/related-4/id90000104\",\"artistName\":\"Dev 4\",\"artwork\":{\"url\":\"https://example.com/4/{w}x{h}bb.png\"}},{\"id\":90000105,\"name\":\"Related 5\",\"url\":\"https://apps.apple.com/us/app/related-5/id90000105\",\"artistName\":\"Dev 5\",\"artwork\":{\"url\":\"https://example.com/5/{w}x{h}bb.png\"}},{\"id\":90000106,\"name\":\"Related 6\",\"url\":\"https://apps.apple.com/us/app/related-6/id90000106\",\"artistName\":\"Dev 6\",\"artwork\":{\"url\":\"https://example.com/6/{w}x{h}bb.png\"}},{\"id\":90000107,\"name\":\"Related 7\",\"url\":\"https://apps.apple.com/us/app/related-7/id90000107\",\"artistName\":\"Dev 7\",\"artwork\":{\"url\":\"https://example.com/7/{w}x{h}bb.png\"}},{\"id\":90000108,\"name\":\"Related 8\",\"url\":\"https://apps.apple.com/us/app/related-8/id90000108\",\"artistName\":\"Dev 8\",\"artwork\":{\"url\":\"https://example.com/8/{w}x{h}bb.png\"}},{\"id\":90000109,\"name\":\"Related 9\",\"url\":\"https://apps.apple.com/us/app/related-9/id90000109\",\"artistName\":\"Dev 9\",\"artwork\":{\"url\":\"https://example.com/9/{w}x{h}bb.png\"}},{\"id\":90000110,\"name\":\"Related 10\",\"url\":\"https://apps.apple.com/us/app/related-10/id90000110\",\"artistName\":\"Dev 10\",\"artwork\":{\"url\":\"https://example.com/10/{w}x{h}bb.png\"}},{\"id\":90000111,\"name\":\"Related 11\",\"url\":\"https://apps.apple.com/us/app/related-11/id90000111\",\"artistName\":\"Dev 11\",\"artwork\":{\"url\":\"https://example.com/11/{w}x{h}bb.png\"}},{\"id\":90000112,\"name\":\"Related 12\",\"url\":\"https://apps.apple.com/us/app/related-12/id90000112\",\"artistName\":\"Dev 12\",\"artwork\":{\"url\":\"https://example.com/12/{w}x{h}bb.png\"}},{\"id\":90000199,\"name\":\"Related 99\",\"url\":\"https://apps.apple.com/us/app/related-99/id90000199\",\"artistName\":\"Dev 99\",\"artwork\":{\"url\":\"https://example.com/99/{w}x{h}bb.png\"}}]},\"moreByThisDeveloperCollection\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"items\":[{\"id\":90000301,\"name\":\"Related 201\",\"url\":\"https://apps.apple.com/us/app/related-201/id90000301\",\"artistName\":\"\",\"artwork\":{\"template\":\"https://example.com/t/{w}x{h}.png\"},\"subtitle\":\"Sub Dev\"}]},{\"notItems\":true},{\"items\":[{\"name\":\"Related 202\",\"artistName\":\"Dev 202\",\"artwork\":{\"url\":\"https://example.com/202/{w}x{h}bb.png\"},\"appleId\":90000302,\"appLink\":\"https://apps.apple.com/app/id90000302\"}]}]}}}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/instagram/id389801252",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=389801252&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "389801252",
+        "name": "Instagram",
+        "app": {
+          "name": "Instagram",
+          "url": "https://apps.apple.com/us/app/instagram/id389801252",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "Instagram, Inc.",
+          "privacyPolicyUrl": "https://help.instagram.com/privacy",
+          "hasPrivacyDetails": 1,
+          "hasIap": 1,
+          "hasAccessibilityLabels": 1
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": "Contact Info"
+              },
+              {
+                "identifier": "IDENTIFIERS",
+                "title": "Identifiers"
+              }
+            ]
+          },
+          {
+            "identifier": "DATA_NOT_LINKED_TO_YOU",
+            "title": "Data Not Linked to You",
+            "detail": "",
+            "categories": []
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[]}]",
+        "accessibilityFeatures": [
+          {
+            "identifier": "voiceover",
+            "title": "VoiceOver",
+            "description": "Spoken feedback.",
+            "iconTemplate": "systemimage://voiceover"
+          },
+          {
+            "identifier": "captions",
+            "title": "Captions",
+            "description": null,
+            "iconTemplate": null
+          },
+          {
+            "identifier": "larger_text",
+            "title": "Larger Text",
+            "description": "Scales",
+            "iconTemplate": null
+          }
+        ],
+        "relatedApps": [
+          {
+            "relatedAppleId": "90000101",
+            "relatedName": "Related 1",
+            "relatedDeveloper": "Dev 1",
+            "relatedIconUrl": "https://example.com/1/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-1/id90000101",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000102",
+            "relatedName": "Related 2",
+            "relatedDeveloper": "Dev 2",
+            "relatedIconUrl": "https://example.com/2/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-2/id90000102",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000103",
+            "relatedName": "Related 3",
+            "relatedDeveloper": "Dev 3",
+            "relatedIconUrl": "https://example.com/3/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-3/id90000103",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000104",
+            "relatedName": "Related 4",
+            "relatedDeveloper": "Dev 4",
+            "relatedIconUrl": "https://example.com/4/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-4/id90000104",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000105",
+            "relatedName": "Related 5",
+            "relatedDeveloper": "Dev 5",
+            "relatedIconUrl": "https://example.com/5/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-5/id90000105",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000106",
+            "relatedName": "Related 6",
+            "relatedDeveloper": "Dev 6",
+            "relatedIconUrl": "https://example.com/6/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-6/id90000106",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000107",
+            "relatedName": "Related 7",
+            "relatedDeveloper": "Dev 7",
+            "relatedIconUrl": "https://example.com/7/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-7/id90000107",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000108",
+            "relatedName": "Related 8",
+            "relatedDeveloper": "Dev 8",
+            "relatedIconUrl": "https://example.com/8/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-8/id90000108",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000109",
+            "relatedName": "Related 9",
+            "relatedDeveloper": "Dev 9",
+            "relatedIconUrl": "https://example.com/9/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-9/id90000109",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000110",
+            "relatedName": "Related 10",
+            "relatedDeveloper": "Dev 10",
+            "relatedIconUrl": "https://example.com/10/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-10/id90000110",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000301",
+            "relatedName": "Related 201",
+            "relatedDeveloper": "Sub Dev",
+            "relatedIconUrl": "https://example.com/t/{w}x{h}.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-201/id90000301",
+            "shelfType": "more_by_developer"
+          },
+          {
+            "relatedAppleId": "90000302",
+            "relatedName": "Related 202",
+            "relatedDeveloper": "Dev 202",
+            "relatedIconUrl": "https://example.com/202/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/app/id90000302",
+            "shelfType": "more_by_developer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "privacy header nested purposes",
+      "url": "https://apps.apple.com/us/app/todoist/id572688855",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Todoist: To-Do List & Planner - App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Doist Inc.\"}}</script></head><body><div id=\"notPurchasedLinks\"><a class=\"we-link\" href=\"https://doist.com/privacy\">Privacy Policy</a></div><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"other\",\"items\":[{\"identifier\":\"IGNORED\",\"title\":\"Ignored\",\"categories\":[{\"identifier\":\"X\",\"title\":\"x\"}]}]},{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Linked detail\",\"purposes\":[{\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]},{\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location (second purpose)\"},{\"identifier\":\"PURCHASES\",\"title\":\"Purchases\"}]},{\"categories\":null}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}],\"purposes\":[{\"categories\":[{\"identifier\":\"IGNORED_PURPOSE\",\"title\":\"ignored\"}]}]},{\"identifier\":\"EMPTY\",\"title\":\"Neither categories nor purposes\"}]}]}}},\"accessibilityFeatures\":{\"items\":[{\"features\":[{\"title\":\"VoiceOver\"},{\"title\":\"Switch Control\"}]}]}},\"additionalAttributes\":{\"attributes\":[{\"attributeKey\":\"in_app_purchases\",\"value\":false}]}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/todoist/id572688855",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=572688855&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "572688855",
+        "name": "Todoist: To-Do List & Planner",
+        "app": {
+          "name": "Todoist: To-Do List & Planner",
+          "url": "https://apps.apple.com/us/app/todoist/id572688855",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "Doist Inc.",
+          "privacyPolicyUrl": "https://doist.com/privacy",
+          "hasPrivacyDetails": 1,
+          "hasIap": 0,
+          "hasAccessibilityLabels": 1
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Linked detail",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": "Contact Info"
+              },
+              {
+                "identifier": "LOCATION",
+                "title": "Location"
+              },
+              {
+                "identifier": "PURCHASES",
+                "title": "Purchases"
+              }
+            ]
+          },
+          {
+            "identifier": "DATA_NOT_LINKED_TO_YOU",
+            "title": "Data Not Linked to You",
+            "detail": "",
+            "categories": [
+              {
+                "identifier": "DIAGNOSTICS",
+                "title": "Diagnostics"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"LOCATION\",\"title\":\"Location\"},{\"identifier\":\"PURCHASES\",\"title\":\"Purchases\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]",
+        "accessibilityFeatures": [
+          {
+            "identifier": "voiceover",
+            "title": "VoiceOver",
+            "description": null,
+            "iconTemplate": null
+          },
+          {
+            "identifier": "switch_control",
+            "title": "Switch Control",
+            "description": null,
+            "iconTemplate": null
+          }
+        ],
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "generic page data shelves",
+      "url": "https://apps.apple.com/us/app/weather/id1069513131",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Weather on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><p>Offers In-App Purchases</p><a class=\"link\" href=\"https://weather.example/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"shelfMapping\":{\"accessibilityHeader\":{}},\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]},{\"contentType\":\"privacyType\",\"items\":null},{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Fixture linked data\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"detail\":\"Fixture unlinked data\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]},{\"contentType\":\"other\",\"items\":[{\"identifier\":\"IGNORED\",\"title\":\"Ignored\"}]}]}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/weather/id1069513131",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1069513131&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1069513131",
+        "name": "Weather",
+        "app": {
+          "name": "Weather",
+          "url": "https://apps.apple.com/us/app/weather/id1069513131",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "https://weather.example/privacy",
+          "hasPrivacyDetails": null,
+          "hasIap": 1,
+          "hasAccessibilityLabels": 0
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Fixture tracking data",
+            "categories": [
+              {
+                "identifier": "LOCATION",
+                "title": "Location"
+              }
+            ]
+          },
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Fixture linked data",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": "Contact Info"
+              },
+              {
+                "identifier": "IDENTIFIERS",
+                "title": "Identifiers"
+              }
+            ]
+          },
+          {
+            "identifier": "DATA_NOT_LINKED_TO_YOU",
+            "title": "Data Not Linked to You",
+            "detail": "Fixture unlinked data",
+            "categories": [
+              {
+                "identifier": "DIAGNOSTICS",
+                "title": "Diagnostics"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]",
+        "accessibilityFeatures": [],
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "shoebox media api cache",
+      "url": "https://apps.apple.com/us/app/whatsapp-messenger/id310633997",
+      "html": "<!doctype html><html><head><script type=\"fastboot/shoebox\" id=\"shoebox-language-code\">\"en-US\"</script><script type=\"fastboot/shoebox\" id=\"shoebox-media-api-cache-apps\">{&quot;fixture.cache.key.us.apps.not-json&quot;:&quot;{not json&quot;,&quot;fixture.cache.key.us.apps.no-privacy&quot;:&quot;{\\&quot;d\\&quot;:[{\\&quot;attributes\\&quot;:{\\&quot;name\\&quot;:\\&quot;No privacy\\&quot;}}]}&quot;,&quot;fixture.cache.key.us.apps.310633997&quot;:&quot;{\\&quot;d\\&quot;:[{\\&quot;attributes\\&quot;:{\\&quot;name\\&quot;:\\&quot;WhatsApp Messenger\\&quot;,\\&quot;privacy\\&quot;:{\\&quot;privacyTypes\\&quot;:[{\\&quot;identifier\\&quot;:\\&quot;DATA_LINKED_TO_YOU\\&quot;,\\&quot;privacyType\\&quot;:\\&quot;Data Linked to You\\&quot;,\\&quot;dataCategories\\&quot;:[{\\&quot;identifier\\&quot;:\\&quot;PURCHASES\\&quot;,\\&quot;dataCategory\\&quot;:\\&quot;Purchases\\&quot;},{\\&quot;identifier\\&quot;:7,\\&quot;dataCategory\\&quot;:\\&quot;numeric identifier\\&quot;},{\\&quot;identifier\\&quot;:\\&quot;LOCATION\\&quot;,\\&quot;title\\&quot;:\\&quot;Location via title\\&quot;},{\\&quot;identifier\\&quot;:\\&quot;USAGE_DATA\\&quot;}]},{\\&quot;identifier\\&quot;:\\&quot;DATA_NOT_LINKED_TO_YOU\\&quot;,\\&quot;title\\&quot;:\\&quot;Title fallback\\&quot;},{\\&quot;identifier\\&quot;:\\&quot;DATA_USED_TO_TRACK_YOU\\&quot;},\\&quot;not an object\\&quot;,{\\&quot;privacyType\\&quot;:\\&quot;No identifier\\&quot;}]}}}]}&quot;}</script></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"WhatsApp Messenger\"}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/whatsapp-messenger/id310633997",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=310633997&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "310633997",
+        "name": "WhatsApp Messenger",
+        "app": {
+          "name": "WhatsApp Messenger",
+          "url": "https://apps.apple.com/us/app/whatsapp-messenger/id310633997",
+          "iconUrl": "",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": null,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "",
+            "categories": [
+              {
+                "identifier": "PURCHASES",
+                "title": "Purchases"
+              },
+              {
+                "identifier": "LOCATION",
+                "title": "Location via title"
+              },
+              {
+                "identifier": "USAGE_DATA",
+                "title": "USAGE_DATA"
+              }
+            ]
+          },
+          {
+            "identifier": "DATA_NOT_LINKED_TO_YOU",
+            "title": "Title fallback",
+            "detail": "",
+            "categories": []
+          },
+          {
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "DATA_USED_TO_TRACK_YOU",
+            "detail": "",
+            "categories": []
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"PURCHASES\",\"title\":\"Purchases\"},{\"identifier\":\"LOCATION\",\"title\":\"Location via title\"},{\"identifier\":\"USAGE_DATA\",\"title\":\"USAGE_DATA\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Title fallback\",\"categories\":[]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"DATA_USED_TO_TRACK_YOU\",\"categories\":[]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "shoebox ember data store",
+      "url": "https://apps.apple.com/us/app/signal/id874139669",
+      "html": "<!doctype html><html><head><script type=\"fastboot/shoebox\" id=\"shoebox-media-api-cache-apps\">{&quot;broken&quot;: </script><script type=\"fastboot/shoebox\" id=\"shoebox-ember-data-store\">{&quot;apps.874139669&quot;:{&quot;data&quot;:{&quot;attributes&quot;:{&quot;privacy&quot;:{&quot;privacyTypes&quot;:[{&quot;identifier&quot;:&quot;DATA_NOT_LINKED_TO_YOU&quot;,&quot;privacyType&quot;:&quot;Data Not Linked to You&quot;,&quot;dataCategories&quot;:[{&quot;identifier&quot;:&quot;CONTACT_INFO&quot;,&quot;dataCategory&quot;:&quot;Contact Info&quot;}]}]}}}}}</script></head><body><script id=\"serialized-server-data\" type=\"application/json\">[{\"data\":{\"title\":\"Signal - Private Messenger\"}}]</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/signal/id874139669",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=874139669&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "874139669",
+        "name": "Signal - Private Messenger",
+        "app": {
+          "name": "Signal - Private Messenger",
+          "url": "https://apps.apple.com/us/app/signal/id874139669",
+          "iconUrl": "",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": null,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_NOT_LINKED_TO_YOU",
+            "title": "Data Not Linked to You",
+            "detail": "",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": "Contact Info"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "no details provided",
+      "url": "https://apps.apple.com/us/app/newapp/id6450000001",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"NewApp on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"New Dev\"}}</script></head><body><h2>No Details Provided</h2><p>The developer will be required to provide privacy details when they submit their next app update.</p><a aria-label=\"Developer’s Privacy Policy\" class=\"link\" href=\"https://newapp.example/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"NewApp\",\"shelfMapping\":{\"information\":{\"items\":[{\"title\":\"Size\"},{\"title\":\"In‑App Purchases\"}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/newapp/id6450000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=6450000001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "6450000001",
+        "name": "NewApp",
+        "app": {
+          "name": "NewApp",
+          "url": "https://apps.apple.com/us/app/newapp/id6450000001",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "New Dev",
+          "privacyPolicyUrl": "https://newapp.example/privacy",
+          "hasPrivacyDetails": 0,
+          "hasIap": 1,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [],
+        "snapshot": "[]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "no serialized script",
+      "url": "https://apps.apple.com/us/app/broken/id1000000001",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Broken on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><p>nothing here</p></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/broken/id1000000001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "No serialized-server-data script found in App Store page"
+      }
+    },
+    {
+      "name": "unparseable serialized json",
+      "url": "https://apps.apple.com/us/app/broken/id1000000002",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Broken on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{not json</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/broken/id1000000002",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "Failed to parse serialized-server-data JSON"
+      }
+    },
+    {
+      "name": "plain array payload and attribute variants",
+      "url": "https://apps.apple.com/us/app/signal-private-messenger/id874139670",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Signal - Private Messenger App - App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script id=\"serialized-server-data-v2\">{\"data\":[{\"data\":{\"title\":\"Decoy\"}}]}</script></head><body><script type=\"application/json\" id='serialized-server-data' data-x=\"1\">[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}]</script ></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/signal-private-messenger/id874139670",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=874139670&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "874139670",
+        "name": "Signal - Private Messenger",
+        "app": {
+          "name": "Signal - Private Messenger",
+          "url": "https://apps.apple.com/us/app/signal-private-messenger/id874139670",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Fixture tracking data",
+            "categories": [
+              {
+                "identifier": "LOCATION",
+                "title": "Location"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "related shelf fallbacks and iap shelf without items",
+      "url": "https://apps.apple.com/us/app/fallbacks/id1000000003",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Fallbacks on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Fallbacks\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Fixture linked data\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]}]},\"inAppPurchases\":{\"items\":\"not an array\"},\"customersAlsoBoughtAppsCollection\":{\"items\":[]},\"customersAlsoBoughtApps\":{\"items\":[{\"id\":0,\"name\":\"Related 1\",\"url\":\"https://apps.apple.com/us/app/related-1/id90000101\",\"artistName\":\"Dev 1\",\"artwork\":{\"url\":\"https://example.com/1/{w}x{h}bb.png\"}},{\"id\":null,\"name\":\"Related 2\",\"url\":\"https://apps.apple.com/us/app/related-2/id90000102\",\"artistName\":\"Dev 2\",\"artwork\":{\"url\":\"https://example.com/2/{w}x{h}bb.png\"},\"appleId\":null,\"adamId\":\"77\"},{\"id\":null,\"name\":\"Related 3\",\"url\":\"https://apps.apple.com/us/app/related-3/id90000103\",\"artistName\":\"Dev 3\",\"artwork\":{\"url\":\"https://example.com/3/{w}x{h}bb.png\"}},{\"id\":90000104,\"name\":\"\",\"url\":\"https://apps.apple.com/us/app/related-4/id90000104\",\"artistName\":\"Dev 4\",\"artwork\":{\"url\":\"https://example.com/4/{w}x{h}bb.png\"},\"title\":\" Titled \"},{\"id\":90000105,\"name\":\"   \",\"url\":\"https://apps.apple.com/us/app/related-5/id90000105\",\"artistName\":\"Dev 5\",\"artwork\":{\"url\":\"https://example.com/5/{w}x{h}bb.png\"}},{\"id\":90000106,\"name\":\"Related 6\",\"url\":\"\",\"artistName\":\"\",\"artwork\":{\"url\":\"https://example.com/6/{w}x{h}bb.png\"},\"appLink\":\"\",\"storeUrl\":\"\",\"attributes\":{\"url\":\"https://apps.apple.com/app/id90000106\",\"artistName\":\"Attr Dev\"},\"developerName\":\"\",\"subtitle\":\"\"},{\"id\":90000107,\"name\":\"Related 7\",\"url\":\"  \",\"artistName\":\"Dev 7\",\"artwork\":{\"url\":\"https://example.com/7/{w}x{h}bb.png\"}},{\"id\":90000108,\"name\":\"Related 8\",\"url\":\"https://apps.apple.com/us/app/related-8/id90000108\",\"artistName\":\"Dev 8\",\"artwork\":\"https://not-an-object\",\"iconUrl\":\"https://example.com/8.png\"},{\"id\":90000109,\"name\":\"Related 9\",\"url\":\"https://apps.apple.com/us/app/related-9/id90000109\",\"artistName\":5,\"artwork\":{},\"imageUrl\":\"https://example.com/9.png\",\"developerName\":\"Dev Name 9\"},{\"id\":true,\"name\":\"Related 10\",\"url\":\"https://apps.apple.com/us/app/related-10/id90000110\",\"artistName\":\"Dev 10\",\"artwork\":{\"url\":\"https://example.com/10/{w}x{h}bb.png\"}},{\"id\":[1,2],\"name\":\"Related 11\",\"url\":\"https://apps.apple.com/us/app/related-11/id90000111\",\"artistName\":\"Dev 11\",\"artwork\":{\"url\":\"https://example.com/11/{w}x{h}bb.png\"}},{\"id\":{\"nested\":true},\"name\":\"Related 12\",\"url\":\"https://apps.apple.com/us/app/related-12/id90000112\",\"artistName\":\"Dev 12\",\"artwork\":{\"url\":\"https://example.com/12/{w}x{h}bb.png\"}}]},\"moreByDeveloper\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"items\":[{\"id\":90000401,\"name\":\"Related 301\",\"url\":\"https://apps.apple.com/us/app/related-301/id90000401\",\"artistName\":\"Dev 301\",\"artwork\":{\"url\":\"https://example.com/301/{w}x{h}bb.png\"}}]},{\"items\":\"not iterable\"},{\"items\":[{\"id\":90000402,\"name\":\"Related 302\",\"url\":\"https://apps.apple.com/us/app/related-302/id90000402\",\"artistName\":\"Dev 302\",\"artwork\":{\"url\":\"https://example.com/302/{w}x{h}bb.png\"}}]}]}}}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/fallbacks/id1000000003",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000003&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000003",
+        "name": "Fallbacks",
+        "app": {
+          "name": "Fallbacks",
+          "url": "https://apps.apple.com/us/app/fallbacks/id1000000003",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Fixture linked data",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": "Contact Info"
+              },
+              {
+                "identifier": "IDENTIFIERS",
+                "title": "Identifiers"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": [
+          {
+            "relatedAppleId": "0",
+            "relatedName": "Related 1",
+            "relatedDeveloper": "Dev 1",
+            "relatedIconUrl": "https://example.com/1/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-1/id90000101",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "77",
+            "relatedName": "Related 2",
+            "relatedDeveloper": "Dev 2",
+            "relatedIconUrl": "https://example.com/2/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-2/id90000102",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000104",
+            "relatedName": "Titled",
+            "relatedDeveloper": "Dev 4",
+            "relatedIconUrl": "https://example.com/4/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-4/id90000104",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000106",
+            "relatedName": "Related 6",
+            "relatedDeveloper": "Attr Dev",
+            "relatedIconUrl": "https://example.com/6/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/app/id90000106",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000108",
+            "relatedName": "Related 8",
+            "relatedDeveloper": "Dev 8",
+            "relatedIconUrl": "https://example.com/8.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-8/id90000108",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000109",
+            "relatedName": "Related 9",
+            "relatedDeveloper": "Dev Name 9",
+            "relatedIconUrl": "https://example.com/9.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-9/id90000109",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "true",
+            "relatedName": "Related 10",
+            "relatedDeveloper": "Dev 10",
+            "relatedIconUrl": "https://example.com/10/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-10/id90000110",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "1,2",
+            "relatedName": "Related 11",
+            "relatedDeveloper": "Dev 11",
+            "relatedIconUrl": "https://example.com/11/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-11/id90000111",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "[object Object]",
+            "relatedName": "Related 12",
+            "relatedDeveloper": "Dev 12",
+            "relatedIconUrl": "https://example.com/12/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-12/id90000112",
+            "shelfType": "may_also_like"
+          },
+          {
+            "relatedAppleId": "90000401",
+            "relatedName": "Related 301",
+            "relatedDeveloper": "Dev 301",
+            "relatedIconUrl": "https://example.com/301/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-301/id90000401",
+            "shelfType": "more_by_developer"
+          },
+          {
+            "relatedAppleId": "90000402",
+            "relatedName": "Related 302",
+            "relatedDeveloper": "Dev 302",
+            "relatedIconUrl": "https://example.com/302/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-302/id90000402",
+            "shelfType": "more_by_developer"
+          }
+        ]
+      }
+    },
+    {
+      "name": "categories not iterable number",
+      "url": "https://apps.apple.com/us/app/hard-error/id1000000004",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Hard Error on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Hard Error\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"T\",\"title\":\"t\",\"categories\":5}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/hard-error/id1000000004",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000004&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "number 5 is not iterable (cannot read property Symbol(Symbol.iterator))"
+      }
+    },
+    {
+      "name": "categories not iterable object",
+      "url": "https://apps.apple.com/us/app/hard-error/id1000000004",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Hard Error on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Hard Error\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"T\",\"title\":\"t\",\"categories\":{}}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/hard-error/id1000000004",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000004&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "object is not iterable (cannot read property Symbol(Symbol.iterator))"
+      }
+    },
+    {
+      "name": "categories not iterable boolean",
+      "url": "https://apps.apple.com/us/app/hard-error/id1000000004",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Hard Error on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Hard Error\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"T\",\"title\":\"t\",\"categories\":true}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/hard-error/id1000000004",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000004&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "boolean true is not iterable (cannot read property Symbol(Symbol.iterator))"
+      }
+    },
+    {
+      "name": "header chain throws after first item",
+      "url": "https://apps.apple.com/us/app/partial/id1000000005",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Partial on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Partial\",\"shelfMapping\":{\"privacyHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Tracking\",\"purposes\":[{\"categories\":[null]}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Never reached\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]}]}}}},\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Fixture linked data\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"detail\":\"Fixture unlinked data\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]}]}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/partial/id1000000005",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000005&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000005",
+        "name": "Partial",
+        "app": {
+          "name": "Partial",
+          "url": "https://apps.apple.com/us/app/partial/id1000000005",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": "Contact Info"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "header chain throws on first item",
+      "url": "https://apps.apple.com/us/app/partial-empty/id1000000006",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Partial Empty on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Partial Empty\",\"shelfMapping\":{\"privacyHeader\":{\"seeAllAction\":{\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[null,{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}]}}}},\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]},{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Fixture linked data\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]},{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"detail\":\"Fixture unlinked data\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]}]}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/partial-empty/id1000000006",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000006&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000006",
+        "name": "Partial Empty",
+        "app": {
+          "name": "Partial Empty",
+          "url": "https://apps.apple.com/us/app/partial-empty/id1000000006",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [],
+        "snapshot": "[]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "page data spread throws after partial push",
+      "url": "https://apps.apple.com/us/app/partial-page-data/id1000000007",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Partial Page Data on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Partial Page Data\",\"shelfMapping\":{},\"pageData\":{\"shelves\":[{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]},{\"contentType\":\"privacyType\",\"items\":5},{\"contentType\":\"privacyType\",\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Fixture linked data\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"IDENTIFIERS\",\"title\":\"Identifiers\"}]}]}]}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/partial-page-data/id1000000007",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000007&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000007",
+        "name": "Partial Page Data",
+        "app": {
+          "name": "Partial Page Data",
+          "url": "https://apps.apple.com/us/app/partial-page-data/id1000000007",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": null,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Fixture tracking data",
+            "categories": [
+              {
+                "identifier": "LOCATION",
+                "title": "Location"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "wrapped payload without data",
+      "url": "https://apps.apple.com/us/app/unknown-thing/id1000000008",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Unknown Thing on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"userTokenHash\":\"x\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/unknown-thing/id1000000008",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000008&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000008",
+        "name": "Unknown Thing",
+        "app": {
+          "name": "Unknown Thing",
+          "url": "https://apps.apple.com/us/app/unknown-thing/id1000000008",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": null,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [],
+        "snapshot": "[]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "unicode trims and slugs",
+      "url": "https://apps.apple.com/us/app/notes/id1110145103",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\" Notes on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\" Notes﻿ \",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\" Data Linked to You \",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\" Contact Info \"}]}]},\"accessibilityFeatures\":{\"items\":[{\"features\":[{\"title\":\"Zoom‑In\"},{\"title\":\"Éclair Mode\",\"description\":\" \"},{\"title\":\" Captions \",\"description\":\" Shows captions \"},{\"title\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"},{\"title\":\"İstanbul Kit\"},{\"title\":\" ﻿\"}]}]},\"customersAlsoBoughtApps\":{\"items\":[{\"id\":90000101,\"name\":\" Foo \",\"url\":\"https://apps.apple.com/us/app/related-1/id90000101\",\"artistName\":\"\",\"artwork\":{\"url\":\"https://example.com/1/{w}x{h}bb.png\"},\"subtitle\":\" Dev﻿\"}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/notes/id1110145103",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1110145103&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1110145103",
+        "name": "Notes",
+        "app": {
+          "name": "Notes",
+          "url": "https://apps.apple.com/us/app/notes/id1110145103",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": 1
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": " Data Linked to You ",
+            "detail": "",
+            "categories": [
+              {
+                "identifier": "CONTACT_INFO",
+                "title": " Contact Info "
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\" Data Linked to You \",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\" Contact Info \"}]}]",
+        "accessibilityFeatures": [
+          {
+            "identifier": "zoom_in",
+            "title": "Zoom‑In",
+            "description": null,
+            "iconTemplate": null
+          },
+          {
+            "identifier": "clair_mode",
+            "title": "Éclair Mode",
+            "description": null,
+            "iconTemplate": null
+          },
+          {
+            "identifier": "captions",
+            "title": "Captions",
+            "description": "Shows captions",
+            "iconTemplate": null
+          },
+          {
+            "identifier": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "title": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "description": null,
+            "iconTemplate": null
+          },
+          {
+            "identifier": "i_stanbul_kit",
+            "title": "İstanbul Kit",
+            "description": null,
+            "iconTemplate": null
+          }
+        ],
+        "relatedApps": [
+          {
+            "relatedAppleId": "90000101",
+            "relatedName": "Foo",
+            "relatedDeveloper": "Dev",
+            "relatedIconUrl": "https://example.com/1/{w}x{h}bb.png",
+            "relatedStoreUrl": "https://apps.apple.com/us/app/related-1/id90000101",
+            "shelfType": "may_also_like"
+          }
+        ]
+      }
+    },
+    {
+      "name": "privacy types items is a string",
+      "url": "https://apps.apple.com/us/app/stringy/id1000000009",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Stringy on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Stringy\",\"shelfMapping\":{\"privacyTypes\":{\"items\":\"abc\"}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/stringy/id1000000009",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000009&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000009",
+        "name": "Stringy",
+        "app": {
+          "name": "Stringy",
+          "url": "https://apps.apple.com/us/app/stringy/id1000000009",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [],
+        "snapshot": "[]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "privacy types items is an object with length",
+      "url": "https://apps.apple.com/us/app/lengthy/id1000000011",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Lengthy on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Lengthy\",\"shelfMapping\":{\"privacyTypes\":{\"items\":{\"length\":1}}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/lengthy/id1000000011",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000011&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "items is not iterable"
+      }
+    },
+    {
+      "name": "json title is a number",
+      "url": "https://apps.apple.com/us/app/numeric-title/id1000000012",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Numeric on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":5,\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/numeric-title/id1000000012",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "jsonTitle.trim is not a function"
+      }
+    },
+    {
+      "name": "unknown app name",
+      "url": "https://apps.apple.com/us/app/nameless/id1000000010",
+      "html": "<!doctype html><html><head></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"detail\":\"Fixture unlinked data\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/nameless/id1000000010",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000010&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000010",
+        "name": "Unknown App",
+        "app": {
+          "name": "Unknown App",
+          "url": "https://apps.apple.com/us/app/nameless/id1000000010",
+          "iconUrl": "",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_NOT_LINKED_TO_YOU",
+            "title": "Data Not Linked to You",
+            "detail": "Fixture unlinked data",
+            "categories": [
+              {
+                "identifier": "DIAGNOSTICS",
+                "title": "Diagnostics"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_NOT_LINKED_TO_YOU\",\"title\":\"Data Not Linked to You\",\"categories\":[{\"identifier\":\"DIAGNOSTICS\",\"title\":\"Diagnostics\"}]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "shoebox null candidate aborts",
+      "url": "https://apps.apple.com/us/app/null-shoebox/id1000000013",
+      "html": "<!doctype html><html><head><script type=\"fastboot/shoebox\" id=\"shoebox-media-api-cache-apps\">null</script><script type=\"fastboot/shoebox\" id=\"shoebox-ember-data-store\">{&quot;apps.1&quot;:{&quot;data&quot;:{&quot;attributes&quot;:{&quot;privacy&quot;:{&quot;privacyTypes&quot;:[{&quot;identifier&quot;:&quot;DATA_LINKED_TO_YOU&quot;,&quot;privacyType&quot;:&quot;Data Linked to You&quot;,&quot;dataCategories&quot;:[{&quot;identifier&quot;:&quot;CONTACT_INFO&quot;,&quot;dataCategory&quot;:&quot;Contact Info&quot;}]}]}}}}}</script></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Null Shoebox\"}}],\"userTokenHash\":\"fixture\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/null-shoebox/id1000000013",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000013&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000013",
+        "name": "Null Shoebox",
+        "app": {
+          "name": "Null Shoebox",
+          "url": "https://apps.apple.com/us/app/null-shoebox/id1000000013",
+          "iconUrl": "",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": null,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [],
+        "snapshot": "[]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "serialized json is null",
+      "url": "https://apps.apple.com/us/app/null-json/id1000000014",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Null on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">null</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/null-json/id1000000014",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": false,
+        "error": "Failed to parse serialized-server-data JSON"
+      }
+    },
+    {
+      "name": "wrapped data is a string",
+      "url": "https://apps.apple.com/us/app/stringy-data/id1000000015",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Stringy Data on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":\"abc\"}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/stringy-data/id1000000015",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000015&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000015",
+        "name": "Stringy Data",
+        "app": {
+          "name": "Stringy Data",
+          "url": "https://apps.apple.com/us/app/stringy-data/id1000000015",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": null,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [],
+        "snapshot": "[]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    },
+    {
+      "name": "wrapped data is an object keyed by index",
+      "url": "https://apps.apple.com/us/app/keyed-data/id1000000016",
+      "html": "<!doctype html><html><head><meta property=\"og:title\" content=\"Keyed on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":{\"0\":{\"data\":{\"title\":\"Keyed\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Fixture tracking data\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}}}</script></body></html>",
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/keyed-data/id1000000016",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1000000016&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "ok": true,
+        "id": "1000000016",
+        "name": "Keyed",
+        "app": {
+          "name": "Keyed",
+          "url": "https://apps.apple.com/us/app/keyed-data/id1000000016",
+          "iconUrl": "https://example.com/icon.png",
+          "developer": "",
+          "privacyPolicyUrl": "",
+          "hasPrivacyDetails": 1,
+          "hasIap": null,
+          "hasAccessibilityLabels": null
+        },
+        "privacyItems": [
+          {
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Fixture tracking data",
+            "categories": [
+              {
+                "identifier": "LOCATION",
+                "title": "Location"
+              }
+            ]
+          }
+        ],
+        "snapshot": "[{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+        "accessibilityFeatures": null,
+        "relatedApps": []
+      }
+    }
+  ]
+}

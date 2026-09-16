@@ -19,6 +19,39 @@ pub fn is_js_whitespace(c: char) -> bool {
     }
 }
 
+/// `s.trim()`: JavaScript's whitespace set, not Rust's — see
+/// [`is_js_whitespace`] for the two characters where they differ.
+pub fn js_trim(s: &str) -> &str {
+    s.trim_matches(is_js_whitespace)
+}
+
+/// `String(v)` for a value that came out of `JSON.parse`.
+///
+/// Numbers take JavaScript's spelling, arrays are joined with commas the
+/// way `Array.prototype.join` does it — a `null` element renders as the
+/// empty string, at top level as `null` — and any object is
+/// `[object Object]`.
+pub fn js_string(v: &Value) -> String {
+    match v {
+        Value::Null => "null".to_string(),
+        Value::Bool(b) => b.to_string(),
+        Value::Number(n) => crate::jsnum::js_number_spelling(n.as_f64().unwrap_or(f64::NAN)),
+        Value::String(s) => s.clone(),
+        Value::Array(items) => items
+            .iter()
+            .map(|item| {
+                if item.is_null() {
+                    String::new()
+                } else {
+                    js_string(item)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Value::Object(_) => "[object Object]".to_string(),
+    }
+}
+
 /// `typeof v !== "string" ? "" : v.replace(/\s+/g, " ").trim()` — the
 /// `cleanSentence` helper that every free-text field in the policy summary
 /// passes through.
@@ -341,5 +374,19 @@ mod tests {
             serde_json::to_string(&v).unwrap(),
             r#"{"2":3,"10":2,"pt-x":1}"#
         );
+    }
+
+    #[test]
+    fn js_trim_and_js_string_follow_javascript() {
+        use super::{js_string, js_trim};
+        use serde_json::json;
+        // Every value is from node -e.
+        assert_eq!(js_trim("\u{00a0}Notes\u{feff} "), "Notes");
+        assert_eq!(js_trim("\u{0085}x"), "\u{0085}x");
+        assert_eq!(js_string(&json!([null, 1, [2, null]])), ",1,2,");
+        assert_eq!(js_string(&json!(true)), "true");
+        assert_eq!(js_string(&json!(1e21)), "1e+21");
+        assert_eq!(js_string(&json!({"nested": true})), "[object Object]");
+        assert_eq!(js_string(&json!(null)), "null");
     }
 }

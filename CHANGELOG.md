@@ -55,6 +55,8 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Rust core Phase 3, batch 1: the App Store page parser (`core/src/scrape/`) — page metadata, the `serialized-server-data` extraction and name rules, the privacy-type fallback chain with its swallowed-versus-escaping error boundary, both 2021 shoebox shapes, the accessibility shelf, the related-app shelves and the two three-state flags. Gated by a new Node-derived oracle: the real `fetchAndParseApp` run over 27 synthetic pages with the result projected from the rows it writes, regenerated in CI. No fetch, persistence or routes yet; Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
+
 - Rust-core parity harness: the manifest coverage walk — every `app/api/**/route.ts` classified in `scripts/parity/manifest.mjs`, nothing phantom — now runs on its own as `pnpm parity:manifest`, in the `core-parity` CI job and under `pnpm test` (`tests/app/parity-manifest-coverage.test.ts`). Until now only `parity-diff.mjs` ran it, and the Rust read gate invokes that with `--skip-coverage`, which is how `/api/device-scope` shipped unclassified. Developer-facing only.
 
 - Rust core Phase 2 is complete: twelve more GET routes bring the read API to all 65 routes in the Phase 2 inventory plus the newer device-scope read (66 total), covering operational status and exports, comparison previews and related apps. A bounded public HTTP client validates DNS and redirects, caps decompressed bodies and enforces deadlines. Node-derived cases and live probes preserve responses and read limits without starting jobs or persisting preview data. Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
