@@ -1,10 +1,8 @@
-//! Replays `core/tests/fixtures/writes-cases.json`: every recorded request
-//! through the same body reader, guard and handler the axum wrappers use,
-//! against a fresh migrated database, a fresh rate limiter and counted
-//! ids. Compared per case: status, and unless the status is Node's generic
-//! 500, the body, content-type, Retry-After and Set-Cookie; the ordered
-//! write stream with its transaction markers; and the four tables a
-//! settings write can touch.
+//! Replays `core/tests/fixtures/library-cases.json` the way `writes_tests`
+//! replays the settings writes, with foreign keys ON (the device delete's
+//! cascade and the verdict and annotation refusals depend on it) and the
+//! fifteen tables a library write can touch compared from the fixture's
+//! own row map.
 use super::{
     body::{read_json, BodyOutcome},
     ratelimit::RateLimiter,
@@ -22,15 +20,8 @@ use rusqlite::params_from_iter;
 use serde_json::{json, Value};
 use std::path::Path;
 
-const TABLES: [&str; 4] = [
-    "app_settings",
-    "feature_flag_overrides",
-    "activity_log",
-    "audit_log",
-];
-
 #[test]
-fn settings_writes_match_node_wire_stream_and_rows() {
+fn library_writes_match_node_wire_stream_and_rows() {
     let _env = crate::server::trust::env_lock();
     std::env::set_var("PRIVACYTRACKER_TRUST_PROXY", "1");
     std::env::set_var("PRIVACYTRACKER_BIND_HOST", "127.0.0.1");
@@ -43,7 +34,7 @@ fn settings_writes_match_node_wire_stream_and_rows() {
     }
 
     let fixture: Value =
-        serde_json::from_str(include_str!("../../tests/fixtures/writes-cases.json")).unwrap();
+        serde_json::from_str(include_str!("../../tests/fixtures/library-cases.json")).unwrap();
     let now = fixture["now"].as_i64().unwrap();
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -57,7 +48,6 @@ fn settings_writes_match_node_wire_stream_and_rows() {
             None => std::env::remove_var("AUDITOR_ADMIN_TOKEN"),
         }
         let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
-        conn.pragma_update(None, "foreign_keys", false).unwrap();
         let tables: Vec<String> = conn
             .prepare(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -67,10 +57,13 @@ fn settings_writes_match_node_wire_stream_and_rows() {
             .unwrap()
             .collect::<Result<_, _>>()
             .unwrap();
+        // Parents last so the cascades never trip a constraint mid-wipe.
+        conn.pragma_update(None, "foreign_keys", false).unwrap();
         for table in &tables {
             conn.execute(&format!("DELETE FROM \"{table}\""), [])
                 .unwrap();
         }
+        conn.pragma_update(None, "foreign_keys", true).unwrap();
         for s in case["setup"].as_array().unwrap() {
             conn.execute(
                 s["sql"].as_str().unwrap(),
@@ -100,6 +93,7 @@ fn settings_writes_match_node_wire_stream_and_rows() {
             })
             .collect();
         let raw_body = case["body"].as_str().map(str::to_string);
+        let param = case["param"].as_str();
         let limiter = RateLimiter::new();
         let mut ids = CountingIds {
             prefix: "00000000-0000-4000-8000-",
@@ -110,7 +104,7 @@ fn settings_writes_match_node_wire_stream_and_rows() {
         for _ in 0..case["repeat"].as_u64().unwrap_or(1) {
             let mut w = Writer::new(&conn, Some(&mut stream));
             let actor =
-                match writes::precheck(&mut w, &mut ids, &limiter, &headers, spec, None, now) {
+                match writes::precheck(&mut w, &mut ids, &limiter, &headers, spec, param, now) {
                     Ok(actor) => actor,
                     Err(refused) => {
                         response = Some(refused);
@@ -131,7 +125,7 @@ fn settings_writes_match_node_wire_stream_and_rows() {
                 &mut ids,
                 WriteRequest {
                     spec,
-                    param: case["param"].as_str(),
+                    param,
                     query: &query,
                     body,
                 },
@@ -149,7 +143,6 @@ fn settings_writes_match_node_wire_stream_and_rows() {
         };
         let content_type = header("content-type");
         let retry_after = header("retry-after");
-        let set_cookie = header("set-cookie");
         let body = rt.block_on(async {
             String::from_utf8(
                 axum::body::to_bytes(response.into_body(), usize::MAX)
@@ -160,16 +153,15 @@ fn settings_writes_match_node_wire_stream_and_rows() {
             .unwrap()
         });
         let expected = &case["expected"];
-        // Node's generic 500 for a thrown handler is contractual only by
-        // status; the oracle records it with an empty body.
-        let actual = if status == 500 && expected["status"] == 500 {
-            json!({"status": 500, "body": "", "type": null, "retryAfter": null, "setCookie": null})
+        let actual = if status == 500 && expected["status"] == 500 && expected["thrown"].is_string()
+        {
+            json!({"status": 500, "body": "", "type": null, "retryAfter": null})
         } else {
-            json!({"status": status, "body": body, "type": content_type, "retryAfter": retry_after, "setCookie": set_cookie})
+            json!({"status": status, "body": body, "type": content_type, "retryAfter": retry_after})
         };
         let expected_wire = json!({
             "status": expected["status"], "body": expected["body"], "type": expected["type"],
-            "retryAfter": expected["retryAfter"], "setCookie": expected["setCookie"],
+            "retryAfter": expected["retryAfter"],
         });
         let stream_json = Value::Array(
             stream
@@ -177,7 +169,13 @@ fn settings_writes_match_node_wire_stream_and_rows() {
                 .map(|s| json!({"sql": s.sql, "params": s.params}))
                 .collect(),
         );
-        let rows = dump(&conn, &TABLES);
+        let table_names: Vec<&str> = case["rows"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+        let rows = dump(&conn, &table_names);
         let mut diffs = vec![];
         if actual != expected_wire {
             diffs.push(format!(
@@ -205,7 +203,7 @@ fn settings_writes_match_node_wire_stream_and_rows() {
     std::env::remove_var("PRIVACYTRACKER_BIND_HOST");
     assert!(
         failures.is_empty(),
-        "{} write-route parity failures:\n{}",
+        "{} library-write parity failures:\n{}",
         failures.len(),
         failures.join("\n\n")
     );

@@ -232,6 +232,25 @@ const WRITE_ROUTES = [
   "/api/dev-menu-state",
   "/api/welcomed-at",
   "/api/migration-flow/consume",
+  // Phase 4, batch 2: the library writers.
+  "/api/shortlist",
+  "/api/verdicts",
+  "/api/verdicts/bulk",
+  "/api/notifications",
+  "/api/annotations",
+  "/api/annotations/[id]",
+  "/api/apps/[id]/acknowledge",
+  "/api/apps/[id]/acknowledge/undo",
+  "/api/user-tasks",
+  "/api/user-tasks/visit",
+  "/api/activity/queue-session",
+  "/api/devices",
+  "/api/devices/[id]",
+  "/api/device-scope",
+  "/api/manual-apps",
+  "/api/manual-apps/[id]",
+  "/api/manual-apps/bulk",
+  "/api/manual-apps/[id]/restore",
 ];
 
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -1707,6 +1726,7 @@ async function main() {
     "\n── inbound rate limiter (the differ never trips a 120/min limit) ──"
   );
   const rateOk = await probeRateLimiter(rustBase, args.node);
+  const limiterBurnedAt = Date.now();
 
   // After the limiter, so both error rings hold its DENY warnings.
   console.log(
@@ -1740,6 +1760,15 @@ async function main() {
   // not on the port.
   let mutateOk = true;
   if (args.mutate) {
+    // The limiter probe spent the read buckets the placeholder resolvers
+    // need (`/api/manual-apps`); the window is a minute, so wait it out.
+    const remaining = 61_000 - (Date.now() - limiterBurnedAt);
+    if (remaining > 0) {
+      console.log(
+        `\n── waiting ${Math.ceil(remaining / 1000)}s for the read rate window to clear ──`
+      );
+      await new Promise((resolve) => setTimeout(resolve, remaining));
+    }
     const writesRe = `^(${WRITE_ROUTES.map(escapeForRegex).join("|")})$`;
     console.log(`\n── dual-live mutations, --only ${writesRe} ──`);
     try {
@@ -1754,10 +1783,9 @@ async function main() {
           "--skip-seed",
           "--skip-coverage",
           "--mutate",
+          "--skip-reads",
           "--only",
           writesRe,
-          "--ids-from",
-          "a",
           "--token",
           TOKEN,
         ],

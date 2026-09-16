@@ -1851,3 +1851,80 @@ switch providers; treating an empty `?surface=` as a surface failed only
 that case; and dropping the layout activity row failed exactly the four
 cases that cross a preset boundary; each fault was removed before the
 final passing run.
+
+### Batch 2 — the library writers (+23 handlers)
+
+`core/src/server/library_writes.rs` ports the `POST`, `PUT`, `PATCH` and
+`DELETE` exports of eighteen route files: `/api/annotations` and
+`/api/annotations/[id]` (create, edit, soft-delete, restore inside the
+30 s window), `/api/verdicts` and `/api/verdicts/bulk` (set, clear, the
+one-transaction bulk), `/api/shortlist` (add or refresh by pair, remove
+by id, pair or all), `/api/apps/[id]/acknowledge` and its undo,
+`/api/notifications` (mark read, mark unread by ids capped at 200),
+`/api/user-tasks` and `/api/user-tasks/visit`,
+`/api/activity/queue-session`, `/api/devices` and `/api/devices/[id]`
+(create or find by ECID, rename, ownership and the permission
+acknowledgement, merge, delete with the orphan sweep),
+`/api/device-scope` (save, reset) and `/api/manual-apps`,
+`/api/manual-apps/[id]`, `/api/manual-apps/bulk` and
+`/api/manual-apps/[id]/restore`. Each is the Node route in order over the
+lib module it calls — `lib/annotations.ts`, `lib/verdicts.ts`,
+`lib/shortlist.ts`, `lib/changelog.ts`'s review actions,
+`lib/notifications.ts`, `lib/tasks-server.ts`, `lib/devices.ts`,
+`lib/device-scope-server.ts`, `lib/manual-apps-server.ts` and
+`lib/manual-app-history.ts` — with Node's SQL byte for byte, the
+activity rows those modules write for user actions (`annotation_*`,
+`verdict_set`, `verdict_cleared`, `bulk_verdict_set`,
+`queue_session_completed`) and the audit rows the routes write.
+
+**What this batch adds to the settings batch.** Rows read back after the
+write (the annotation, the device, the shortlist entry with its profile
+badge through the single-footprint path, where a tracked candidate with
+no privacy rows still gets a badge). Transactions that answer `false`
+without rolling back (the undo's missing action) and transactions that
+roll back on a foreign-key refusal (the bulk verdict with an unknown app,
+answered with the route's own 500; the review action on an unknown app,
+answered with Next's generic one). The routes whose `catch` turns a
+`TypeError` on a `null` body into a 400 carrying V8's message (`Cannot
+read properties of null (reading 'sourceAppId')`). The task blob
+re-emerging from its sanitiser in a fixed key order, and a `NaN` decided
+count serialising as `null` in the activity detail. The device delete's
+orphan sweep, which relies on the cascade (so foreign keys stay ON) and
+on a probe Node gets wrong: its shortlist check queries a column the
+table does not have, is swallowed, and so a shortlist entry never keeps
+an app alive — reproduced, and pinned by a negative control that "fixes"
+it. The pre-body checks a route makes after its guard: the device 404
+and the manual-app id length answer before the body is read, so an
+oversized body to a missing device is a 404, not a 413.
+
+**The oracle — `core/scripts/extract-library-cases.mjs`.** Runs the REAL
+handlers over 354 requests with foreign keys ON, a frozen clock, counted
+ids (the `node:crypto` counter synced into the builtin ESM facade,
+because `lib/devices.ts` imports `randomUUID` by name), a distinct
+forwarded address per case and a write recorder; it records the request,
+the setup rows, every write with BEGIN/COMMIT/ROLLBACK markers, the
+fifteen tables a library write can touch, and the wire response.
+`core/src/server/library_tests.rs` replays each through `precheck` and
+`perform` exactly as the wrappers call them. Scenarios per route: the
+success paths and every validation branch, the five body-reader
+outcomes (empty, unparseable, whitespace, declared and streamed too
+large), the non-object and `null` bodies, the admin-token refusal and
+acceptance where the route has one, and the burst past the limit.
+
+Live: `read-parity.mjs --mutate` — 178 read checks, then the 37 manifest
+mutations for the batch-1 and batch-2 routes with their `after` reads (37
+checks), PARITY OK. The runner's mutate pass now skips reads
+(`parity-diff.mjs --skip-reads`), waits out the read rate window the
+limiter probe spends, and resolves `{annotation}` per app, so the
+per-id annotation and manual-app mutations are exercised rather than
+skipped.
+
+Rust suite: 206 pass (205 + 1 new). Negative controls: dropping the
+rule that clears the permission acknowledgement when a device's owner
+becomes self or none failed exactly the three cases that take that
+path; mislabelling the annotation-edit activity failed exactly the five
+edits; and "fixing" the orphan sweep's shortlist probe failed exactly
+the one case where a shortlist entry would then have protected its app.
+Each fault was removed before the final passing run — and one of them,
+built into the server binary by a concurrent step, was caught by the
+live gate on its first run.

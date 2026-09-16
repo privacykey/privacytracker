@@ -64,8 +64,8 @@ pub(super) fn normalize_ai_provider(value: &str) -> &'static str {
 // ── getUnacknowledgedChanges ─────────────────────────────────────────
 
 #[derive(Serialize)]
-struct UnacknowledgedEvent {
-    id: Value,
+pub(super) struct UnacknowledgedEvent {
+    pub(super) id: Value,
     scraped_at: Value,
     changes: Vec<Value>,
 }
@@ -74,11 +74,11 @@ struct UnacknowledgedEvent {
 /// snoozedUntil` — and the route's `EMPTY_UNACKNOWLEDGED` fallback uses the
 /// same order, so one struct serves both.
 #[derive(Serialize)]
-struct Unacknowledged {
+pub(super) struct Unacknowledged {
     since: Value,
-    events: Vec<UnacknowledgedEvent>,
+    pub(super) events: Vec<UnacknowledgedEvent>,
     #[serde(rename = "totalCount")]
-    total_count: i64,
+    pub(super) total_count: i64,
     #[serde(rename = "addedCount")]
     added_count: i64,
     #[serde(rename = "removedCount")]
@@ -106,7 +106,10 @@ fn empty_unacknowledged() -> Unacknowledged {
 /// clock: anything not strictly in the future reads as 0. Events parse
 /// `changes_summary` with a try/catch (unlike `getChangelog`), so a bad
 /// blob is an event with no changes rather than a 500.
-fn get_unacknowledged_changes(conn: &Connection, app_id: &str) -> rusqlite::Result<Unacknowledged> {
+pub(super) fn get_unacknowledged_changes(
+    conn: &Connection,
+    app_id: &str,
+) -> rusqlite::Result<Unacknowledged> {
     let ack: Option<(Value, Value)> = conn
         .query_row(
             "SELECT changes_acknowledged_at, changes_snoozed_until FROM apps WHERE id = ?",

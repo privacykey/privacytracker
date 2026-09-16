@@ -22,6 +22,9 @@ pub enum BodyOutcome {
     Empty,
     /// `Invalid JSON body`.
     Invalid,
+    /// Bytes that are only whitespace: `JSON.parse` fails, but the optional
+    /// reader treats it as no body at all.
+    Whitespace,
     /// `Request body too large (limit N bytes)` — a 413.
     TooLarge(usize),
     /// `Request body timed out` — a 408.
@@ -53,8 +56,10 @@ pub async fn read_json(headers: &HeaderMap, body: Body, max_bytes: usize) -> Bod
         return BodyOutcome::Empty;
     }
     // `body.toString("utf8")` is lossy, then `JSON.parse`.
-    match serde_json::from_str::<Value>(&String::from_utf8_lossy(&bytes)) {
+    let text = String::from_utf8_lossy(&bytes);
+    match serde_json::from_str::<Value>(&text) {
         Ok(value) => BodyOutcome::Json(value),
+        Err(_) if crate::jsstr::js_trim(&text).is_empty() => BodyOutcome::Whitespace,
         Err(_) => BodyOutcome::Invalid,
     }
 }
