@@ -1,7 +1,7 @@
 Copyright 2011, the V8 project authors. All rights reserved.
 Copyright 2014, the V8 project authors. All rights reserved.
 
-The date parser in src/server/snapshot_time.rs adapts the parsing rules in
+The date parser in src/jsdate/parse.rs adapts the parsing rules in
 https://github.com/v8/v8/tree/main/src/date (dateparser.h, dateparser-inl.h,
 dateparser.cc). V8's license for those files follows:
 

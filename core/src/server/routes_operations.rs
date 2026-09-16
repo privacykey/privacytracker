@@ -2,7 +2,7 @@
 //! admin requirement before the route's independent 60/minute read bucket.
 use super::{
     backup_snapshots, csp_reports, export,
-    json::{js_value_ok as json_ok, json_error},
+    json::{json_error, json_ok},
     operations::{self, Job},
     routes_manual::rate_gate,
     routes_stats::{get, Params},

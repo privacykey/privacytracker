@@ -43,7 +43,7 @@ pub(super) fn csv(conn: &Connection) -> Result<String> {
     for r in rows {
         let date = if truthy(&r["lastSynced"]) {
             let ms = if let Some(raw) = r["lastSynced"].as_str() {
-                super::snapshot_time::parse(raw).ok_or("invalid export date")? as f64
+                crate::jsdate::parse(raw).ok_or("invalid export date")? as f64
             } else {
                 r["lastSynced"].as_f64().ok_or("invalid export date")?
             };

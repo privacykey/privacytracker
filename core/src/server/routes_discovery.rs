@@ -1,7 +1,7 @@
 //! Final two Phase 2 reads: library/preview comparison and related candidates.
 //! Copy database inputs before awaiting the public-only outbound transport.
 use super::{
-    json::{js_value_ok, json_error},
+    json::{json_error, json_ok},
     preview,
     routes_stats::{get, Params},
     stats::{query, truthy},
@@ -184,7 +184,7 @@ pub(super) async fn compare_with(
         }
     }
     match tokio::try_join!(slot(state, a, fetcher), slot(state, b, fetcher)) {
-        Ok((a, b)) => js_value_ok(&json!({"a":a,"b":b})),
+        Ok((a, b)) => json_ok(&json!({"a":a,"b":b})),
         Err(e) => failed(e),
     }
 }
@@ -383,7 +383,7 @@ pub(super) async fn related_with(state: &AppState, q: &Params, fetcher: &dyn Fet
             out["reason"] = json!("not_scraped_yet");
         }
         out["sourceAppUrl"] = row["url"].clone();
-        return js_value_ok(&out);
+        return json_ok(&out);
     }
     let country = {
         let conn = state.db();
@@ -420,7 +420,7 @@ pub(super) async fn related_with(state: &AppState, q: &Params, fetcher: &dyn Fet
         }
     }
     if genre.is_null() {
-        return js_value_ok(
+        return json_ok(
             &json!({"mode":mode,"genreId":null,"genreName":null,"free":null,"candidates":[],"sourceAppUrl":row["url"]}),
         );
     }
@@ -452,7 +452,7 @@ pub(super) async fn related_with(state: &AppState, q: &Params, fetcher: &dyn Fet
         Ok(r) if r.ok() => candidates(&r.body, id, limit).unwrap_or_default(),
         _ => vec![],
     };
-    js_value_ok(
+    json_ok(
         &json!({"mode":mode,"genreId":genre,"genreName":genre_name,"free":free,"candidates":candidates,"sourceAppUrl":row["url"]}),
     )
 }

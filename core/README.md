@@ -44,6 +44,13 @@ disturb `src-tauri`'s cargo build; and it adds no npm dependency. Merging
 it into `main` therefore costs `main` nothing, while giving every phase
 continuous CI (`core-parity`) and small, reviewable PRs.
 
+**Batches stack while the previous one is in review.** A batch that
+depends on an unmerged batch branches from that batch's branch and targets
+it, not `main`, and stays in draft. Merge the oldest first, rebase its
+child onto the updated `main`, retarget the child and let its checks rerun
+before marking it ready; repeat down the stack. Never merge a dependent PR
+into an already-merged feature branch.
+
 That inertness is **enforced, not assumed**:
 `tests/app/rust-core-inert.test.ts` fails if any shipping path
 (`app/`, `lib/`, `proxy.ts`, `next.config.js`, `instrumentation.ts`,
@@ -82,7 +89,9 @@ harnesses) landed on `main` for the same reason and remains there.
 6. **(this branch)** Desktop cutover (embed axum, drop the Node sidecar),
    then Docker after burn-in. The first phase that is NOT inert, and the
    one PR allowed to delete
-   `tests/app/rust-core-inert.test.ts`.
+   `tests/app/rust-core-inert.test.ts`. Its binaries must ship the
+   third-party notice in `core/V8-LICENSE` (the `Date.parse` port in
+   `jsdate`) alongside `NOTICE`.
 
 ## The gates (how the two implementations are compared)
 
@@ -179,7 +188,7 @@ PRIVACYTRACKER_DATA_DIR=<dir> pt-core serve [--port N]   # else <cwd>/data; port
 just parity-read http://127.0.0.1:3001 <nodeDataDir>
 ```
 
-**Routes implemented: all 65 handoff reads plus the newer `/api/device-scope` read (66 total).** The sections below record
+**Routes implemented: all 65 reads in the Phase 2 inventory plus the newer `/api/device-scope` read (66 total).** The sections below record
 each batch and its verification. The initial nine were `/api/health`, `/api/auth/admin-token/status`,
 `/api/locale`, `/api/date-format`, `/api/preferences`, `/api/coachmark-state`,
 `/api/dev-menu-state`, `/api/privacy-profile`, `/api/accessibility-profile`.
@@ -1041,7 +1050,7 @@ Docker and Tauri still do not import, compile or run the Rust core.
 slots scrape live HTML, and related-apps' default mode fetches Apple feeds.
 They require outbound HTTP and preview parsing even though their HTTP verb is
 GET; the final Phase 2 batch below adds those dependencies. Registering only their library/cached branches would claim incomplete
-routes as finished. This batch brought coverage to 42 of the handoff's 65
+routes as finished. This batch brought coverage to 42 of the Phase 2 inventory's 65
 compared reads; the user-content batch below brings this branch to 54.
 
 **Shared code.** `scope.rs` mirrors request-only device selection: unknown
@@ -1254,14 +1263,6 @@ Ports `/api/tasks/active`, the GETs on `/api/wayback/import-all` and
 `/api/manual-apps/[id]`. This initially left two reads; the final batch
 below completes them in the same PR. All shipping paths remain inert.
 
-**Stacking.** Migration batches now branch from and target the preceding
-unmerged migration PR, as requested by the maintainer. Dependent PRs stay
-in draft. Merge the oldest into `main`, then rebase its child onto updated
-`main`, retarget that PR and rerun its checks before marking it ready.
-Update descendant bases and dependency links as the stack advances; do not
-merge a dependent PR into an already-merged feature branch. This replaces
-the older handoff's independent/main-only workflow.
-
 The job reads project existing state without clearing locks, upgrading
 persisted blobs or starting/resuming work. Wayback accepts v1/v2 state and
 normalizes its pause/cancel status in memory. Its `running` value requires
@@ -1286,7 +1287,8 @@ behind the existing authentication gate. No AI call or policy fetch occurs.
 
 Cooldowns retain prefix integer parsing and hide expired reasons. Operational
 JSON uses JS number spelling even at the decimal/exponent boundaries and
-beyond i64; the new value serializer is scoped to this batch. JSON exports
+beyond i64, through the one response serializer in `json.rs` (see
+`jsnum::js_number_spelling`) rather than a writer of its own. JSON exports
 reuse the existing full-app reader and ignore device scope. CSV defaults on
 anything except the exact first `format=json`; quoting, formula prefixes,
 newlines, UTC dates and attachment headers follow Node. Both formats retain
@@ -1295,10 +1297,16 @@ the existing in-memory response construction.
 Backup settings preserve exact boolean parsing, clamps and nullable run
 times. Listing includes every matching filename, follows symlinks, uses
 parsed filename dates or the exact file mtime, and sorts newest first.
-The filename date parser follows the ISO/legacy rules of
+Filenames go through `jsdate::parse`, a port of `Date.parse` that follows
+the ISO/legacy rules of
 [V8's date parser](https://github.com/v8/v8/tree/main/src/date), including
-local timezone/DST interpretation; its attribution is in `core/V8-LICENSE`.
-Phase 6 must carry that notice with any binary distribution of the core.
+local timezone/DST interpretation. Every filename this app writes is either
+the strict ISO shape or, with the collision suffix, `NaN` in Node too, so
+the legacy rules only matter for hand-renamed files; the port still lives
+at crate level beside `jsnum` and `jsstr` because Node also parses date
+strings in the scraper, the Wayback importer and the stats views, which
+Phases 3–5 port. Its attribution is in `core/V8-LICENSE`; the Phase 6
+bullet above records that binaries must carry the notice.
 The database lock is released before filesystem work. Missing directories
 return an empty list; a non-directory or broken matching symlink causes the
 same empty HTTP 500 as Node. No snapshot is created or pruned.
@@ -1388,7 +1396,7 @@ Live success parity does not depend on mutable Apple pages or feeds.
 
 
 The complete inventory check also found `/api/device-scope`, introduced after
-the handoff and previously absent from the manifest. Its GET now returns the
+the Phase 2 inventory was drawn up and previously absent from the manifest. Its GET now returns the
 reconciled saved selection, picker device counts and normalized ownership.
 Malformed/stale selections fall back to all devices without overwriting the
 stored setting. The device oracle now contains 73 cases, including subset

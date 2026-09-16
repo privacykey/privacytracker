@@ -143,7 +143,7 @@ fn nine_operational_handlers_match_node_wire_and_do_not_write() {
         unsafe {
             tzset();
         }
-        let actual = json!(super::snapshot_time::parse(text(&date["input"])));
+        let actual = json!(crate::jsdate::parse(text(&date["input"])));
         if actual != date["expected"] {
             failures.push(format!(
                 "date {} {} expected={} actual={}",

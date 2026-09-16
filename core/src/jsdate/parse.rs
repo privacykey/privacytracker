@@ -1,4 +1,13 @@
-//! Backup filenames use V8's Date.parse, including legacy date spellings.
+//! `Date.parse` / `new Date(string)` as V8 implements it: the ISO format
+//! first, then the legacy free-form rules (month names, am/pm, the US zone
+//! abbreviations, parenthesised comments), with local-time inputs resolved
+//! through the process timezone exactly as Node resolves them.
+//!
+//! Phase 2 needs it for backup filenames and the CSV export; Node also
+//! parses date strings in the scraper, the Wayback importer and the stats
+//! views, which later phases port — hence crate level, beside `jsnum` and
+//! `jsstr`, rather than a route helper.
+//!
 //! Scanner/composition rules adapted from V8 src/date/dateparser{,-inl}.{h,cc}.
 //! Copyright 2011 the V8 project authors. BSD license: ../../V8-LICENSE.
 use crate::jsstr::is_js_whitespace;
@@ -248,7 +257,8 @@ fn iso(s: &mut Scanner, p: &mut Parts) -> Option<Token> {
     Some(Token::End)
 }
 
-pub(super) fn parse(raw: &str) -> Option<i64> {
+/// `Date.parse(raw)`: epoch milliseconds, or `None` where JavaScript yields `NaN`.
+pub fn parse(raw: &str) -> Option<i64> {
     let mut s = Scanner::new(raw);
     let mut p = Parts::default();
     let mut token = iso(&mut s, &mut p)?;

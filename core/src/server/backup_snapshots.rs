@@ -53,7 +53,7 @@ fn timestamp(filename: &str) -> Option<i64> {
         bytes[16] = b':';
         bytes[19] = b'.';
     }
-    super::snapshot_time::parse(std::str::from_utf8(&bytes).ok()?)
+    crate::jsdate::parse(std::str::from_utf8(&bytes).ok()?)
 }
 pub(super) fn payload_at(settings: Value, directory: &Path) -> Result<Value> {
     let mut snapshots = Vec::new();

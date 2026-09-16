@@ -64,7 +64,6 @@ mod runtime_diag;
 mod scope;
 mod settings;
 mod shortlist;
-mod snapshot_time;
 mod stats;
 #[cfg(test)]
 mod stats_tests;
