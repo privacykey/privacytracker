@@ -10,7 +10,12 @@
 //! from an [`Ids`] source in the order Node mints them, and the clock is an
 //! input, so the stream is reproducible.
 use super::{
-    accessibility::Feature, activity, js::truthy, notify, page::parse_page, plan::SnapshotType,
+    accessibility::Feature,
+    activity,
+    js::truthy,
+    notify,
+    page::{parse_page, ParsedPage},
+    plan::SnapshotType,
 };
 use crate::{
     jsnum::js_number,
@@ -38,12 +43,11 @@ pub struct VersionInfo {
     pub whats_new: Option<String>,
 }
 
-/// One scrape, from the fetched HTML on.
+/// One scrape's context: everything but the page itself.
 #[derive(Debug)]
 pub struct ScrapeInput<'a> {
     /// The validated App Store URL that was fetched.
     pub url: &'a str,
-    pub html: &'a str,
     /// `resync`: the activity type (`resync` versus `scrape`).
     pub resync: bool,
     /// `triggered_by` on the snapshot row: `import`, `manual` or `scheduled`.
@@ -149,7 +153,10 @@ pub(super) struct Writer<'a> {
     log: Option<&'a mut Vec<Statement>>,
 }
 
-impl Writer<'_> {
+impl<'a> Writer<'a> {
+    pub(super) fn new(conn: &'a Connection, log: Option<&'a mut Vec<Statement>>) -> Self {
+        Self { conn, log }
+    }
     pub(super) fn run(&mut self, sql: &str, params: Vec<Value>) -> Result<usize, String> {
         if let Some(log) = self.log.as_deref_mut() {
             log.push(Statement {
@@ -215,36 +222,38 @@ pub(super) fn json_of(v: Sql) -> Value {
 
 /// `fetchAndParseApp` from the fetched HTML to the committed rows and the
 /// return value; on any failure the error activity row is written and the
-/// message returned, as Node's catch block does.
+/// message returned, as Node's catch block does. The fetch layer in
+/// `fetch.rs` reaches the same code through [`persist_page`].
 pub fn scrape_and_persist(
     conn: &Connection,
     input: &ScrapeInput,
+    html: &str,
     ids: &mut dyn Ids,
     log: Option<&mut Vec<Statement>>,
 ) -> Result<Outcome, String> {
-    let mut w = Writer { conn, log };
+    let mut w = Writer::new(conn, log);
     let activity_type = if input.resync { "resync" } else { "scrape" };
     // `let appleId: string = crypto.randomUUID();` — minted, then replaced
     // by the URL's id segment, so the sequence starts one later.
     ids.uuid(conn)?;
-    match persist(&mut w, input, ids, activity_type) {
-        Ok(outcome) => Ok(outcome),
-        Err(error) => {
-            activity::record_error(&mut w, ids, input, activity_type, &error);
-            Err(error)
-        }
+    let result = parse_page(input.url, html)
+        .and_then(|page| persist_page(&mut w, input, page, ids, activity_type));
+    if let Err(error) = &result {
+        activity::record_error(&mut w, ids, input.url, input.now, activity_type, error);
     }
+    result
 }
 
-fn persist(
+/// From the parsed page to the committed rows and the bells after them.
+pub(super) fn persist_page(
     w: &mut Writer,
     input: &ScrapeInput,
+    page: ParsedPage,
     ids: &mut dyn Ids,
     activity_type: &str,
 ) -> Result<Outcome, String> {
     let conn = w.conn;
     let now = input.now;
-    let page = parse_page(input.url, input.html)?;
     let id = page.apple_id.clone();
 
     // ── The pre-commit reads ──

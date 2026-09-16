@@ -64,6 +64,7 @@ impl Fetcher for Replay {
             Ok(Reply {
                 status: reply["status"].as_u64().unwrap() as u16,
                 body: text(&reply["body"]).as_bytes().to_vec(),
+                headers: vec![],
             })
         })
     }

@@ -1579,3 +1579,63 @@ Rust suite: 194 pass (187 + 7 new). Negative controls: skipping the
 discarded `appleId` id shifted every later id and failed every case, and
 dropping the version bell's dedupe window made the dedupe case emit two
 extra statements; both faults were removed before the final passing run.
+
+### Batch 3 — the fetch layer (no routes)
+
+With `core/src/scrape/fetch.rs` the whole of `fetchAndParseApp` runs here,
+plus `scrapeInitialUrls` over it: URL refusal, the scrape cooldown and the
+soft pacer (`ratelimit.rs`), the page fetch through `outbound.rs`, Apple's
+rate-limit signal and the cooldown it records, the status checks, the
+parse, the iTunes lookup with its storefront normalisation (`region.rs`),
+and then the persist path. Three stages — `prepare` (validation, cooldown,
+storefront), `perform` (no database: pacer, fetch, checks, parse, lookup)
+and `complete` (cooldown record, persist, error row) — because a rusqlite
+connection must not be held across an await in a `Send` future; the
+Phase 4 routes will chain them around the lock, and `fetch_and_parse_app`
+chains them for callers that can hold it. Search and bundle-id lookup are
+the next batch.
+
+**The transport runs over a hop.** Node's `safeFetch` loops over the raw
+`fetch` — redirects, the content-length and body caps, decoding — and the
+oracle stubs that raw layer. So `outbound.rs` now runs the same loop over
+a `Hop`: reqwest in production, recorded replies in the replay. Both sides
+therefore exercise the real redirect and cap logic against the same
+replies, and `Reply` carries the final response's headers, which is how
+Retry-After reaches the scraper. The existing transport oracle (22 real
+local HTTP cases) still passes over the refactor.
+
+**The oracle — `core/scripts/extract-fetch-cases.mjs`.** Runs the REAL
+`fetchAndParseApp` and `scrapeInitialUrls` over 36 scenarios with the raw
+`fetch` replaced by recorded replies, and records every raw fetch Node
+made (URL and the headers the scraper set), every write in order with
+transaction markers, every touched table, and the return value or error.
+`core/src/scrape/fetch_tests.rs` replays each case through the real
+transport loop and compares all four. Scenarios: the page-then-lookup
+happy path; the storefront setting trimmed, invalid and alpha-3; the
+cooldown active (no fetch at all), expired and unparseable; 429 with
+Retry-After in seconds, absent, past the ten-minute cap, zero (which
+`Date.parse` reads as the year 2000 and so discards), junk, or as an HTTP
+date; 403 treated as the same signal (and reported as 429, as Node's
+message does); a stored negative cooldown kept in the max; 404 and 503
+with their diagnostics hints; a transport failure and a timeout; redirects
+followed within the allowlist, rejected outside it, one too many, and a
+3xx without Location returned as the response; a declared content-length
+past the cap; the lookup non-OK, unparseable, empty, failing, with every
+field coerced, and with `results` not an array; two refused URLs, which
+never reach the activity boundary; a re-sync through the fetch layer; and
+two `scrapeInitialUrls` batches — one stopping at the first rate limit
+with the rest reported as queued, one told to continue, which runs into
+the cooldown the 429 just started and short-circuits every URL after it.
+
+**What the port pins that the persist batch could not.** The error
+diagnostics hints for HTTP statuses, timeouts and network failures; the
+cooldown settings written on Apple's signal, with the reason's ISO
+timestamp; and the throwaway `appleId` UUID, which Node mints once the
+HTML is in hand — so a page that fetches but fails to parse consumes an
+id before its error row, while a 404 does not.
+
+Rust suite: 197 pass (187 + 10 new). Negative controls: treating 403 as a
+plain HTTP error failed the 403 case on its stream, both tables and its
+result, and dropping the post-fetch throwaway id failed the continuing
+batch on its stream and both tables; nothing else moved, and both faults
+were removed before the final passing run.
