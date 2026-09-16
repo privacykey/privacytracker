@@ -48,8 +48,7 @@ pub use fetch::{
     Fetched, Prepared, ScrapeError,
 };
 pub use history::{
-    import_app_history, remove_imported_history, AppRow, HistoryError, HistoryOptions,
-    APP_STORE_HISTORICAL_FLOOR_MS,
+    import_app_history, AppRow, HistoryError, HistoryOptions, APP_STORE_HISTORICAL_FLOOR_MS,
 };
 pub use page::{parse_page, ParsedPage};
 pub use persist::{

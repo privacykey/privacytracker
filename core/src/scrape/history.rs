@@ -994,26 +994,6 @@ pub async fn import_app_history(
     }))
 }
 
-/// `removeImportedHistory(appId?)`: the wayback rows and the importer's
-/// own notes. Returns the rows removed.
-pub fn remove_imported_history(conn: &Connection, app_id: Option<&str>) -> Result<usize, String> {
-    let condition = "(source = 'wayback' OR (source = 'live' AND triggered_by = 'wayback'))";
-    match app_id {
-        Some(id) => conn
-            .execute(
-                &format!("DELETE FROM privacy_snapshots WHERE {condition} AND app_id = ?"),
-                [id],
-            )
-            .map_err(message),
-        None => conn
-            .execute(
-                &format!("DELETE FROM privacy_snapshots WHERE {condition}"),
-                [],
-            )
-            .map_err(message),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
