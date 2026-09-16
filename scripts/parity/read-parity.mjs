@@ -77,12 +77,15 @@ const { values: args } = parseArgs({
     only: { type: "string" },
     token: { type: "string" },
     keep: { type: "boolean", default: false },
+    // Phase 4: also replay the manifest's mutations for the write routes
+    // the Rust core implements. Opt-in because it mutates BOTH databases.
+    mutate: { type: "boolean", default: false },
   },
 });
 
 if (!(args.node && args["node-data"])) {
   console.error(
-    "usage: read-parity.mjs --node <baseUrl> --node-data <dataDir> [--only <regex>] [--pt-core <bin>]"
+    "usage: read-parity.mjs --node <baseUrl> --node-data <dataDir> [--only <regex>] [--pt-core <bin>] [--mutate]"
   );
   process.exit(2);
 }
@@ -206,6 +209,31 @@ const BATCH_1 = [
  * entry silently dropped out of the run, and the gate reported PARITY OK
  * having never compared it.
  */
+// The write routes the Rust core implements (Phase 4, batch 1). The
+// `--mutate` pass selects the manifest's mutations for exactly these, so a
+// mutation on a route whose write is still Node-only cannot fail the run
+// on a 405 — and, like BATCH_1, a route is added here in the commit that
+// implements it, never inferred.
+const WRITE_ROUTES = [
+  "/api/date-format",
+  "/api/locale",
+  "/api/preferences",
+  "/api/settings",
+  "/api/settings/desktop",
+  "/api/notification-prefs",
+  "/api/focus",
+  "/api/accessibility-profile",
+  "/api/privacy-profile",
+  "/api/feature-flags/overrides",
+  "/api/feature-flags/overrides/[key]",
+  "/api/dashboard/layout",
+  "/api/dashboard/layout/preset",
+  "/api/coachmark-state",
+  "/api/dev-menu-state",
+  "/api/welcomed-at",
+  "/api/migration-flow/consume",
+];
+
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 const onlyRe = args.only ?? `^(${BATCH_1.map(escapeForRegex).join("|")})$`;
@@ -1705,6 +1733,41 @@ async function main() {
   );
 
   const discoveryOk = await probeDiscoveryReads(args.node, rustBase, TOKEN);
+  // The write routes, live: the manifest's mutation entries with their
+  // `after` reads, on both servers. LAST, because every mutation lands on
+  // BOTH databases with each server's own ids and clock — a probe that
+  // reads the activity log afterwards would diff on rows this pass wrote,
+  // not on the port.
+  let mutateOk = true;
+  if (args.mutate) {
+    const writesRe = `^(${WRITE_ROUTES.map(escapeForRegex).join("|")})$`;
+    console.log(`\n── dual-live mutations, --only ${writesRe} ──`);
+    try {
+      execFileSync(
+        process.execPath,
+        [
+          path.join(here, "parity-diff.mjs"),
+          "--a",
+          args.node,
+          "--b",
+          rustBase,
+          "--skip-seed",
+          "--skip-coverage",
+          "--mutate",
+          "--only",
+          writesRe,
+          "--ids-from",
+          "a",
+          "--token",
+          TOKEN,
+        ],
+        { stdio: "inherit" }
+      );
+    } catch {
+      mutateOk = false;
+    }
+  }
+
   cleanup();
   const ok =
     discoveryOk &&
@@ -1727,6 +1790,7 @@ async function main() {
     errorRingOk &&
     runtimeOk &&
     rateOk &&
+    mutateOk &&
     diffOk;
   console.log(
     ok

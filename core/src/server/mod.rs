@@ -11,10 +11,12 @@
 //! could observe different database states, which the Node server is
 //! structurally incapable of doing. Matching the weaker model is the point.
 
+mod activity_log;
 mod analysis;
 mod apps;
 pub mod auth;
 mod backup_snapshots;
+mod body;
 mod changelog;
 #[cfg(test)]
 mod content_tests;
@@ -32,6 +34,7 @@ pub mod flags;
 mod forwarded;
 mod gate;
 pub(crate) mod grid_meta;
+mod guard;
 mod histogram;
 mod json;
 pub mod layout;
@@ -59,6 +62,7 @@ mod routes_runtime;
 mod routes_settings;
 mod routes_stats;
 mod routes_status;
+mod routes_writes;
 mod row;
 mod runtime_diag;
 mod scope;
@@ -74,13 +78,19 @@ pub mod trust;
 mod user_content;
 mod user_tasks;
 pub mod webhook;
+mod writes;
+#[cfg(test)]
+mod writes_tests;
 
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
 
-use axum::{routing::get, Router};
+use axum::{
+    routing::{delete, get, post},
+    Router,
+};
 use rusqlite::Connection;
 
 /// Wall-clock milliseconds since the epoch — `Date.now()`.
@@ -237,7 +247,7 @@ pub fn app(state: AppState) -> Router {
         .route("/api/notifications", get(routes_content::notifications))
         .route(
             "/api/notification-prefs",
-            get(routes_content::notification_prefs),
+            get(routes_content::notification_prefs).put(routes_writes::notification_prefs_put),
         )
         .route("/api/user-tasks", get(routes_content::user_tasks))
         .route("/api/annotations", get(routes_content::annotations))
@@ -250,22 +260,43 @@ pub fn app(state: AppState) -> Router {
             "/api/auth/admin-token/status",
             get(routes::admin_token_status),
         )
-        .route("/api/locale", get(routes::locale))
-        .route("/api/date-format", get(routes::date_format))
-        .route("/api/preferences", get(routes::preferences))
-        .route("/api/coachmark-state", get(routes::coachmark_state))
-        .route("/api/dev-menu-state", get(routes::dev_menu_state))
-        .route("/api/privacy-profile", get(routes::privacy_profile))
+        .route(
+            "/api/locale",
+            get(routes::locale).post(routes_writes::locale_post),
+        )
+        .route(
+            "/api/date-format",
+            get(routes::date_format).post(routes_writes::date_format_post),
+        )
+        .route(
+            "/api/preferences",
+            get(routes::preferences).put(routes_writes::preferences_put),
+        )
+        .route(
+            "/api/coachmark-state",
+            get(routes::coachmark_state).post(routes_writes::coachmark_state_post),
+        )
+        .route(
+            "/api/dev-menu-state",
+            get(routes::dev_menu_state).post(routes_writes::dev_menu_state_post),
+        )
+        .route(
+            "/api/privacy-profile",
+            get(routes::privacy_profile).put(routes_writes::privacy_profile_put),
+        )
         .route(
             "/api/accessibility-profile",
-            get(routes::accessibility_profile),
+            get(routes::accessibility_profile).put(routes_writes::accessibility_profile_put),
         )
         // Batch 2. Adds the two shapes batch 1 did not cover: a derived
         // multi-key object, and a bare array with a 404 branch.
         // One path, five responses, all-or-nothing: axum routes by path, so
         // this lands only once every branch exists. See routes_apps.rs.
         .route("/api/apps", get(routes_apps::apps))
-        .route("/api/focus", get(routes_focus::focus))
+        .route(
+            "/api/focus",
+            get(routes_focus::focus).post(routes_writes::focus_post),
+        )
         .route("/api/imports", get(routes_imports::imports))
         // The first PER-APP route, and the first whose body is computed
         // rather than read: it ports `diffSnapshots`. Axum 0.8 spells a path
@@ -308,16 +339,38 @@ pub fn app(state: AppState) -> Router {
         // generated from the Node source (flag_rules.json) rather than
         // transcribed. /api/settings/desktop is the first GET here that can
         // WRITE — the runtime marker Node also writes on this request.
-        .route("/api/settings", get(routes_settings::settings))
+        .route(
+            "/api/settings",
+            get(routes_settings::settings).post(routes_writes::settings_post),
+        )
         .route(
             "/api/settings/desktop",
-            get(routes_settings::desktop_settings),
+            get(routes_settings::desktop_settings).post(routes_writes::desktop_settings_post),
         )
         .route(
             "/api/dashboard/layout",
-            get(routes_settings::dashboard_layout),
+            get(routes_settings::dashboard_layout)
+                .put(routes_writes::dashboard_layout_put)
+                .delete(routes_writes::dashboard_layout_delete),
         )
         .route("/api/feature-flags", get(routes_settings::feature_flags))
+        .route(
+            "/api/feature-flags/overrides",
+            post(routes_writes::overrides_post).delete(routes_writes::overrides_delete),
+        )
+        .route(
+            "/api/feature-flags/overrides/{key}",
+            delete(routes_writes::override_delete_one),
+        )
+        .route(
+            "/api/dashboard/layout/preset",
+            post(routes_writes::dashboard_layout_preset_post),
+        )
+        .route("/api/welcomed-at", post(routes_writes::welcomed_at_post))
+        .route(
+            "/api/migration-flow/consume",
+            post(routes_writes::migration_flow_consume_post),
+        )
         // The deployment-facing reads: facts about the database file, its
         // directory, the env and the request — portable exactly, unlike the
         // process-introspection diagnostics. See routes_diag.rs.

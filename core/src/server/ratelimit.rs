@@ -151,6 +151,12 @@ fn client_ip(x_forwarded_for: Option<&str>, x_real_ip: Option<&str>) -> Option<S
     x_real_ip.map(|r| r.trim().to_lowercase())
 }
 
+/// `requestActorIp`: the trusted client address, else the literal
+/// `local` — an honest constant beats a spoofed address in the audit trail.
+pub fn actor_ip(x_forwarded_for: Option<&str>, x_real_ip: Option<&str>) -> String {
+    client_ip(x_forwarded_for, x_real_ip).unwrap_or_else(|| "local".to_string())
+}
+
 /// Port of `rateLimitKeyForRequest`: `"{prefix}:{ip}"`, collapsing to a shared
 /// `"local"` suffix when no trusted proxy is configured. The prefix still
 /// namespaces each route, so routes stay isolated from one another even while

@@ -113,6 +113,29 @@ pub(crate) fn civil_from_days(z: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
+/// `Date.prototype.toUTCString()`: `Wed, 15 Sep 2027 12:00:00 GMT`.
+pub fn js_utc_string(ms: i64) -> String {
+    const DAYS: [&str; 7] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MONTHS: [&str; 12] = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+    let days = ms.div_euclid(86_400_000);
+    let rem = ms.rem_euclid(86_400_000);
+    let (year, month, day) = civil_from_days(days);
+    // Day 0 (1970-01-01) was a Thursday.
+    let weekday = (days + 4).rem_euclid(7) as usize;
+    format!(
+        "{}, {:02} {} {:04} {:02}:{:02}:{:02} GMT",
+        DAYS[weekday],
+        day,
+        MONTHS[(month - 1) as usize],
+        year,
+        rem / 3_600_000,
+        (rem / 60_000) % 60,
+        (rem / 1000) % 60
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::js_iso_string;

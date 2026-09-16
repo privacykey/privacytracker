@@ -86,6 +86,17 @@ pub fn is_private(ip: IpAddr) -> bool {
     }
 }
 pub fn validate(raw: &str, allowed: &[&str], max: usize) -> Result<Url, ValidationError> {
+    validate_with(raw, allowed, max, false)
+}
+
+/// `validateExternalUrl` with `allowPrivateHosts`: loopback and RFC-1918
+/// hosts pass (a self-hosted AI endpoint), metadata hosts never do.
+pub fn validate_with(
+    raw: &str,
+    allowed: &[&str],
+    max: usize,
+    allow_private_hosts: bool,
+) -> Result<Url, ValidationError> {
     if raw.trim_matches(is_js_whitespace).is_empty() {
         return Err(invalid("invalid_url", "URL is empty or not a string"));
     }
@@ -116,20 +127,21 @@ pub fn validate(raw: &str, allowed: &[&str], max: usize) -> Result<Url, Validati
             format!("Metadata host {host} is always blocked"),
         ));
     }
-    if [
-        "localhost",
-        "localhost.localdomain",
-        "ip6-localhost",
-        "ip6-loopback",
-    ]
-    .contains(&host.as_str())
+    if !allow_private_hosts
+        && [
+            "localhost",
+            "localhost.localdomain",
+            "ip6-localhost",
+            "ip6-loopback",
+        ]
+        .contains(&host.as_str())
     {
         return Err(invalid(
             "private_host",
             format!("Hostname {host} is blocked"),
         ));
     }
-    if bare(&host).parse::<IpAddr>().is_ok_and(is_private) {
+    if !allow_private_hosts && bare(&host).parse::<IpAddr>().is_ok_and(is_private) {
         return Err(invalid(
             "private_host",
             format!("Hostname {host} is a private/loopback IP"),

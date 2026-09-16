@@ -148,16 +148,16 @@ pub(super) const SET_SETTING: &str =
 
 /// Runs statements and, when asked, records them — one path for the
 /// production write and the replay, so the recording cannot lie.
-pub(super) struct Writer<'a> {
-    pub(super) conn: &'a Connection,
+pub(crate) struct Writer<'a> {
+    pub(crate) conn: &'a Connection,
     log: Option<&'a mut Vec<Statement>>,
 }
 
 impl<'a> Writer<'a> {
-    pub(super) fn new(conn: &'a Connection, log: Option<&'a mut Vec<Statement>>) -> Self {
+    pub(crate) fn new(conn: &'a Connection, log: Option<&'a mut Vec<Statement>>) -> Self {
         Self { conn, log }
     }
-    pub(super) fn run(&mut self, sql: &str, params: Vec<Value>) -> Result<usize, String> {
+    pub(crate) fn run(&mut self, sql: &str, params: Vec<Value>) -> Result<usize, String> {
         if let Some(log) = self.log.as_deref_mut() {
             log.push(Statement {
                 sql: sql.to_string(),
@@ -170,7 +170,7 @@ impl<'a> Writer<'a> {
     }
 
     /// A transaction boundary in the recorded stream.
-    pub(super) fn mark(&mut self, marker: &str) {
+    pub(crate) fn mark(&mut self, marker: &str) {
         if let Some(log) = self.log.as_deref_mut() {
             log.push(Statement {
                 sql: marker.to_string(),

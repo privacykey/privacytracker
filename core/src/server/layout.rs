@@ -309,16 +309,21 @@ pub struct LayoutWithMatch {
 /// JSON is the default (left in place for an operator to salvage), and
 /// anything else is reconciled — including a JSON literal that is not an
 /// object, which `reconcileLayout` maps to the default itself.
-pub fn read_layout_with_match(conn: &Connection) -> rusqlite::Result<LayoutWithMatch> {
+pub fn read_layout(conn: &Connection) -> rusqlite::Result<Layout> {
     let raw = get_setting_with(conn, "dashboard.layout", "")?;
-    let layout = if raw.is_empty() {
+    Ok(if raw.is_empty() {
         default_layout()
     } else {
         match serde_json::from_str::<Value>(&raw) {
             Ok(parsed) => reconcile_layout(&parsed),
             Err(_) => default_layout(),
         }
-    };
+    })
+}
+
+/// `readDashboardLayoutWithMatch()`.
+pub fn read_layout_with_match(conn: &Connection) -> rusqlite::Result<LayoutWithMatch> {
+    let layout = read_layout(conn)?;
     let matched_preset = match_dashboard_preset(&layout);
     Ok(LayoutWithMatch {
         layout,

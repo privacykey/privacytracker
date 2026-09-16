@@ -7,9 +7,9 @@ use rusqlite::{params_from_iter, types::Value as Sql, Connection};
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
-pub(super) struct CountingIds {
-    pub(super) prefix: &'static str,
-    pub(super) next: u64,
+pub(crate) struct CountingIds {
+    pub(crate) prefix: &'static str,
+    pub(crate) next: u64,
 }
 
 impl Ids for CountingIds {
@@ -19,7 +19,7 @@ impl Ids for CountingIds {
     }
 }
 
-pub(super) fn to_sql(v: &Value) -> Sql {
+pub(crate) fn to_sql(v: &Value) -> Sql {
     match v {
         Value::Null => Sql::Null,
         Value::Number(n) => n
@@ -46,7 +46,7 @@ const DUMPED: [&str; 10] = [
 ];
 
 /// The oracle's dump: rows in rowid order, digested past 100 rows.
-pub(super) fn dump(conn: &Connection, tables: &[&str]) -> Value {
+pub(crate) fn dump(conn: &Connection, tables: &[&str]) -> Value {
     let mut out = Map::new();
     for &table in tables {
         let mut stmt = conn
