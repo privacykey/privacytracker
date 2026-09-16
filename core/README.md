@@ -1413,3 +1413,107 @@ comparison and the fractional-limit probe; all other live checks passed. The
 fault was removed before the final passing run. Production build, TypeScript,
 lint, schema parity, 193 Rust tests and the Node suite (715 pass, 4 skip) pass.
 The `rust-core-inert` guard is unchanged.
+
+## Status — Phase 3 (scraper + diff + persist)
+
+Phase 3 ports what happens between "the HTML arrived" and "the rows are
+committed": the page parser, the write plan, the snapshot diff and the
+persist path of `fetchAndParseApp` in `lib/scraper.ts`, plus the
+per-capture historical chain in `lib/historical-import.ts`. The diff half
+already exists — `diff.rs` is gated by the diffSnapshots oracle — and
+`outbound.rs` already knows the Apple hosts. Everything stays inert: no
+shipping path calls the Rust scraper, and `rust-core-inert.test.ts` is
+unchanged.
+
+**The gate is the write plan, not the wire.** `fetchAndParseApp` is
+already split into a pure parse (a `ScrapeWritePlan`), a statement builder
+and one transactional commit, so each batch records what the real Node
+code produces at its boundary and replays it in Rust:
+
+1. **Page parser (this batch).** HTML in, the pre-commit parse out. Gated
+   by `core/tests/fixtures/scrape-cases.json`, below.
+2. **Persist.** The statement list `commitScrapedAppToDb` builds — apps
+   upsert, privacy rows, accessibility and related rows, the snapshot row,
+   the notification and the activity row — compared statement by
+   statement, then applied to identical database copies and diffed table
+   by table. Both sides need an injectable clock for that.
+3. **Fetch.** Apple's rate-limit signal and Retry-After, the scrape
+   cooldown, the iTunes lookup, search and bundle-id lookup, through the
+   recorded-reply mechanism the discovery oracle already uses.
+4. **Historical import.** The per-capture Wayback chain: targets, CDX,
+   capture fetch, shoebox parse and the wayback snapshot writer. The bulk
+   runner, its mutex and its resume state are Phase 4.
+
+Two page shapes the batch-1 fixtures avoid until batch 2 pins them: a page
+whose privacy types repeat an identifier, or whose related shelf repeats an
+id, fails Node's commit on a primary key rather than its parser.
+
+### Batch 1 — the page parser (no routes)
+
+`core/src/scrape/` is `fetchAndParseApp` from the fetched HTML to the write
+plan: the metadata regexes, the `serialized-server-data` extraction and
+the name rules (`page.rs`), the two three-state flags (`flags.rs`), the
+privacy-type fallback chain and normaliser (`plan.rs`), the historical
+shoebox (`shoebox.rs`), the accessibility shelf (`accessibility.rs`) and
+the related-app shelves (`related.rs`). Nothing fetches, diffs or writes.
+
+**The oracle — `core/scripts/extract-scrape-cases.mjs`.** Runs the REAL
+`fetchAndParseApp` over 27 synthetic pages with a stubbed `fetch`, the
+bulk write held inline (`WORKER_DISABLED=1`) and a fresh database per
+case, then projects what the page alone determined out of the rows Node
+wrote: the apps row's page-derived columns, the privacy types and
+categories in insertion order, the exact `snapshot_json` string, the
+accessibility rows and the related-app rows — or, for the eight pages that
+make Node throw, the error message. `core/src/scrape/tests.rs` replays
+every case; CI regenerates the fixture and fails on drift. No shipping
+code changed: because the projection reads rows, the oracle exercises the
+handler end to end rather than an exported helper.
+
+The pages cover the Clock fixture from the Node suite verbatim, every
+shelf shape (product-page items, the privacyHeader fallback with nested
+purposes, generic pageData shelves, both 2021-era shoebox shapes), all
+four IAP paths, both accessibility variants and the header-only signal,
+Apple's "No Details Provided" copy, the two extraction failures,
+single-quoted and spaced script tags beside a decoy id, related-shelf key
+fallback and nested shelves, the ten-per-shelf cap, and JavaScript's trim
+and slug rules on non-ASCII input.
+
+**What the port is mostly about.** The Node parser is written against
+`any`, so the fidelity work is JavaScript semantics rather than App Store
+knowledge, and the oracle pins the ones that bite:
+
+- The fallback chain sits inside one `try`; a throw keeps what was pushed
+  and skips every later fallback. A `null` item after a good one leaves
+  one item; a `null` first item leaves nothing — and the pageData shelves
+  beneath are never consulted, while the details flag, reading the same
+  shelf, still says `1`.
+- The normaliser runs after that `try`. A `categories` that is not
+  iterable escapes as a hard error with V8's type-specific message
+  (`number 5 is not iterable (cannot read property Symbol(Symbol.iterator))`);
+  an `items` that is not escapes with the identifier-rendered one
+  (`items is not iterable`); a truthy non-string JSON title escapes as
+  `jsonTitle.trim is not a function`.
+- `?.length` is truthy for a non-empty string and for an object that says
+  so; `for…of` walks a string's characters. A `privacyTypes.items` of
+  `"abc"` therefore reaches the normaliser and yields nothing, with the
+  details flag at `1`.
+- `String(id)` spells `0` as `"0"`, `true` as `"true"`, an array joined
+  by commas and an object as `[object Object]`; `trim()` strips U+FEFF and
+  NBSP but not U+0085; the slug lowercases with Unicode rules before
+  collapsing non-`[a-z0-9]` runs, so `İstanbul Kit` is `i_stanbul_kit`.
+- The shoebox decode undoes six entities in Node's order, reads an
+  object's values in JavaScript key order, and a candidate whose JSON is
+  `null` ends the whole extraction (`Object.values(null)` throws inside
+  the one `catch`).
+
+**Known divergences, none reachable from a real page.** The JSON
+extraction is `serde_json`, which rejects lone-surrogate escapes and
+nesting past 128 levels that `JSON.parse` accepts, and `(?i)` folds a few
+non-ASCII letters that JavaScript's flag does not. Node also mints a
+random UUID when the URL has no `/id<digits>` segment; every caller
+validates the URL first, so the port refuses instead.
+
+Rust suite: 192 pass (187 + 5 new). Negative controls: swallowing the
+`null`-item throw in the header chain, and making an object's `.length`
+read falsy, each failed exactly the cases that pin them; both faults were
+removed before the final passing run.

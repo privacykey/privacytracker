@@ -341,6 +341,15 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-discovery-cases.mjs
           git diff --exit-code -- core/tests/fixtures/outbound-cases.json core/tests/fixtures/discovery-cases.json
 
+      - name: Scrape page-parse oracle is current
+        # Runs the real fetchAndParseApp over synthetic App Store pages and
+        # records what the page alone determined (rows + snapshot_json, or
+        # the error). A diff means the Node parser changed and
+        # core/src/scrape/ has not been ported to match.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-scrape-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/scrape-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 
