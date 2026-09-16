@@ -322,6 +322,17 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-content-cases.mjs
           git diff --exit-code -- core/src/server/content_meta.json core/tests/fixtures/content-cases.json
 
+      - name: Operational GET and filename-date oracle is current
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-operations-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/operations-cases.json
+
+      - name: Outbound transport and discovery route oracles are current
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-outbound-cases.mjs
+          node --conditions=react-server --import tsx core/scripts/extract-discovery-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/outbound-cases.json core/tests/fixtures/discovery-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

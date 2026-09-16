@@ -60,6 +60,49 @@ export const PLACEHOLDERS = [
 // ── READS ────────────────────────────────────────────────────────────
 
 export const READS = [
+  {
+    route: "/api/device-scope",
+    name: "stored device scope",
+    path: "/api/device-scope",
+  },
+  ...["json", "JSON", "", "unknown"].map((format) => ({
+    route: "/api/export",
+    name: `export format ${format || "empty"}`,
+    path: `/api/export?format=${format}`,
+  })),
+  {
+    route: "/api/export",
+    name: "whole-install JSON ignores device scope",
+    path: "/api/export?format=json&devices=unattached",
+  },
+  {
+    route: "/api/export",
+    name: "first repeated export format wins",
+    path: "/api/export?format=json&format=csv",
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail populated operations history",
+    path: "/api/manual-apps/pt-ops-manual",
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail missing",
+    path: "/api/manual-apps/pt-ops-missing",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail invalid length",
+    path: `/api/manual-apps/${"a".repeat(129)}`,
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/manual-apps/[id]",
+    name: "manual detail keeps whitespace",
+    path: "/api/manual-apps/%20pt-ops-manual",
+    allowErrorStatus: true,
+  },
   // -- core collections
   { route: "/api/apps", name: "apps (bare array)", path: "/api/apps" },
   // The three remaining GET shapes and both error branches of /api/apps.
@@ -587,6 +630,24 @@ export const READS = [
     name: "compare",
     path: "/api/compare?a=id:{app}&b=id:{app2}",
   },
+  ...[
+    ["missing specs", "/api/compare"],
+    ["missing library row", "/api/compare?a=id:missing&b=id:{app}"],
+    ["invalid spec", "/api/compare?a=invalid&b=id:{app}"],
+    [
+      "preview private host",
+      "/api/compare?a=url:http://127.0.0.1/id1&b=id:{app}",
+    ],
+    [
+      "preview rejected host",
+      "/api/compare?a=url:https://example.com/id1&b=id:{app}",
+    ],
+  ].map(([name, path]) => ({
+    route: "/api/compare",
+    name: `compare ${name}`,
+    path,
+    allowErrorStatus: true,
+  })),
   { route: "/api/triage", name: "triage", path: "/api/triage" },
   {
     route: "/api/review-queue",
@@ -595,9 +656,23 @@ export const READS = [
   },
   {
     route: "/api/related-apps",
-    name: "related apps",
-    path: "/api/related-apps?sourceAppId={app}",
+    name: "related apps stored shelf",
+    path: "/api/related-apps?sourceAppId={app}&mode=may_also_like",
   },
+  ...[
+    ["missing source", "/api/related-apps"],
+    ["unknown source", "/api/related-apps?sourceAppId=missing"],
+    ["empty genre", "/api/related-apps?sourceAppId=pt-discovery-empty"],
+    [
+      "populated shelf",
+      "/api/related-apps?sourceAppId=89995001&mode=may_also_like&limit=2.9",
+    ],
+  ].map(([name, path]) => ({
+    route: "/api/related-apps",
+    name: `related ${name}`,
+    path,
+    allowErrorStatus: true,
+  })),
   {
     route: "/api/age-rating/summary",
     name: "age-rating summary",
@@ -642,7 +717,7 @@ export const READS = [
   {
     route: "/api/annotations",
     name: "private and imported notes",
-    path: "/api/annotations?appId=89997001",
+    path: "/api/annotations?appId=89995001",
   },
   {
     route: "/api/annotations",
@@ -653,7 +728,7 @@ export const READS = [
   {
     route: "/api/annotations",
     name: "empty first app id",
-    path: "/api/annotations?appId=&appId=89997001",
+    path: "/api/annotations?appId=&appId=89995001",
     allowErrorStatus: true,
   },
   {

@@ -43,6 +43,14 @@ import {
   validateErrorLog,
   validateRuntimeDiagnostics,
 } from "./diagnostics-envelope.mjs";
+import { applyDiscoveryFixture } from "./discovery-fixture.mjs";
+import { probeDiscoveryReads } from "./discovery-probes.mjs";
+import { QUARANTINE, READS, VOLATILE_READS } from "./manifest.mjs";
+import {
+  applyOperationsFixture,
+  primeOperationsAfterBoot,
+} from "./operations-fixture.mjs";
+import { probeOperationsReads } from "./operations-probes.mjs";
 import {
   applySinceInstallFixture,
   BRIDGED_IDS,
@@ -83,6 +91,18 @@ if (!(args.node && args["node-data"])) {
 // so an unimplemented route can never silently drop out of the comparison —
 // adding a route to the server means adding it here in the same commit.
 const BATCH_1 = [
+  "/api/device-scope",
+  "/api/compare",
+  "/api/related-apps",
+  "/api/tasks/active",
+  "/api/wayback/import-all",
+  "/api/policy/sync-all",
+  "/api/backup/snapshots",
+  "/api/rate-limit/status",
+  "/api/ai/debug-log",
+  "/api/csp-report",
+  "/api/export",
+  "/api/manual-apps/[id]",
   "/api/devices",
   "/api/devices/[id]",
   "/api/devices/[id]/bundles",
@@ -96,7 +116,7 @@ const BATCH_1 = [
   "/api/shortlist",
   "/api/shortlist/export",
 
-  // Database-backed fleet analysis (live Apple reads wait for Phase 3).
+  // Database-backed fleet analysis.
   "/api/stats",
   "/api/stats/matrix",
   "/api/stats/radar",
@@ -563,14 +583,29 @@ async function probeRateLimiter(rustBase, nodeBase) {
   // bake that in and break the moment the manifest reads the route twice.
   const rust = await burstManualApps(rustBase);
   const node = await burstManualApps(nodeBase);
+  // --ids-from=a resolves both sides' placeholders through Node. Each
+  // selected manualApp placeholder therefore spends two extra Node list
+  // reads; account for actual manifest traffic instead of masking a limit.
+  const resolverReads =
+    2 *
+    [...READS, ...VOLATILE_READS, ...QUARANTINE].filter(
+      (entry) =>
+        new RegExp(onlyRe).test(entry.route) &&
+        [
+          entry.path,
+          JSON.stringify(entry.body ?? null),
+          entry.after ?? "",
+        ].some((s) => s?.includes("{manualApp}"))
+    ).length;
   const ok =
     rust.firstDenyAt !== null &&
-    rust.firstDenyAt === node.firstDenyAt &&
+    node.firstDenyAt !== null &&
+    rust.firstDenyAt === node.firstDenyAt + resolverReads &&
     rust.contiguous &&
     node.contiguous;
   console.log(
     ok
-      ? `  ✔ rate limiter: /api/manual-apps denied from request ${rust.firstDenyAt} on both backends`
+      ? `  ✔ rate limiter: /api/manual-apps denied at Rust ${rust.firstDenyAt}, Node ${node.firstDenyAt} (${resolverReads} extra Node placeholder reads accounted for)`
       : `  ✘ rate limiter: node first-429 at ${node.firstDenyAt} (contiguous=${node.contiguous}), rust at ${rust.firstDenyAt} (contiguous=${rust.contiguous})`
   );
   return ok;
@@ -1490,6 +1525,32 @@ async function main() {
 
   console.log(`read-parity: node=${args.node} data=${nodeData}`);
 
+  // Startup recovery, import draining, backups and the initial health check
+  // run 8–60 seconds after Node boots. Let those timers finish BEFORE writing
+  // simulated unfinished jobs; otherwise Node resumes the fixture while Rust
+  // reads its copy, and the gate measures a race instead of route parity.
+  for (;;) {
+    const response = await fetch(`${args.node}/api/diagnostics/runtime`, {
+      headers: { "x-auditor-admin-token": TOKEN },
+    });
+    if (!response.ok) {
+      throw new Error(`Cannot check Node startup: HTTP ${response.status}`);
+    }
+    const { uptimeSeconds } = await response.json();
+    if (!Number.isFinite(uptimeSeconds)) {
+      throw new Error("Node diagnostics omitted uptimeSeconds");
+    }
+    if (uptimeSeconds >= 65) {
+      break;
+    }
+    console.log(
+      `Waiting for Node startup timers before seeding (${uptimeSeconds}s / 65s)`
+    );
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(15_000, (65 - uptimeSeconds) * 1000))
+    );
+  }
+
   // Applied BEFORE the checkpoint/copy so the Rust side starts on a byte
   // copy holding the same rows: both backends then compute their own answer
   // from identical input. See since-install-fixture.mjs for why the canned
@@ -1498,6 +1559,8 @@ async function main() {
   applyStatsFixture(nodeData);
   applyDevicesFixture(nodeData);
   applyContentFixture(nodeData);
+  applyOperationsFixture(nodeData);
+  applyDiscoveryFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
   );
@@ -1521,6 +1584,7 @@ async function main() {
   cpSync(nodeData, rustData, { recursive: true });
 
   const rustBase = await startRust(rustData);
+  primeOperationsAfterBoot(nodeData, rustData);
   console.log(`rust=${rustBase}`);
 
   console.log(
@@ -1632,8 +1696,19 @@ async function main() {
     rustData
   );
 
+  const operationsOk = await probeOperationsReads(
+    args.node,
+    rustBase,
+    TOKEN,
+    nodeData,
+    rustData
+  );
+
+  const discoveryOk = await probeDiscoveryReads(args.node, rustBase, TOKEN);
   cleanup();
   const ok =
+    discoveryOk &&
+    operationsOk &&
     devicesOk &&
     contentOk &&
     statsOk &&

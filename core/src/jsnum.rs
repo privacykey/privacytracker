@@ -252,28 +252,67 @@ pub fn js_normalise_value(value: serde_json::Value) -> serde_json::Value {
     }
 }
 
+/// `Number.prototype.toString()` — the spelling JavaScript gives a double,
+/// which `JSON.stringify` and template literals share for every finite
+/// value. Rust and `serde_json` disagree with it at both ends: `serde_json`
+/// (via `ryu`) writes `1e16` and `1e-6` where JS writes the digits out
+/// (`10000000000000000`, `0.000001`), and `1e21` where JS writes `1e+21`.
+///
+/// The digits come from Rust's shortest round-trip formatter — the same
+/// "shortest, then closest" digit string V8 produces — and only the layout
+/// is JavaScript's: plain digits up to 1e21, a leading `0.` down to 1e-6,
+/// and `d.ddde±x` outside that window. `-0` is `0`, as in JS.
+pub fn js_number_spelling(f: f64) -> String {
+    if f.is_nan() {
+        return "NaN".to_string();
+    }
+    if f.is_infinite() {
+        return if f > 0.0 { "Infinity" } else { "-Infinity" }.to_string();
+    }
+    if f == 0.0 {
+        return "0".to_string();
+    }
+    if f < 0.0 {
+        return format!("-{}", js_number_spelling(-f));
+    }
+    // `{:e}` is `d[.ddd]e[-]x` with the shortest round-trip digits.
+    let sci = format!("{f:e}");
+    let (mantissa, exponent) = sci
+        .split_once('e')
+        .expect("LowerExp always writes an exponent");
+    let digits: String = mantissa.chars().filter(|c| *c != '.').collect();
+    let k = digits.len() as i64;
+    // ECMA-262 Number::toString: value = 0.d1…dk × 10^n.
+    let n = exponent
+        .parse::<i64>()
+        .expect("LowerExp exponent is an integer")
+        + 1;
+    if (k..=21).contains(&n) {
+        format!("{digits}{}", "0".repeat((n - k) as usize))
+    } else if (1..=21).contains(&n) {
+        format!("{}.{}", &digits[..n as usize], &digits[n as usize..])
+    } else if (-5..=0).contains(&n) {
+        format!("0.{}{digits}", "0".repeat((-n) as usize))
+    } else {
+        let e = n - 1;
+        let sign = if e < 0 { '-' } else { '+' };
+        let e = e.abs();
+        if k == 1 {
+            format!("{digits}e{sign}{e}")
+        } else {
+            format!("{}.{}e{sign}{e}", &digits[..1], &digits[1..])
+        }
+    }
+}
+
 /// Render a JSON number the way a JavaScript TEMPLATE LITERAL would.
 ///
 /// Not the same function as [`js_number`]: `${NaN}` is `NaN` and
 /// `${Infinity}` is `Infinity`, where `JSON.stringify` writes `null` for
-/// both. They share the integral rule, which is the half that actually
-/// bites.
+/// both. Finite values share [`js_number_spelling`]; an integer past 2^53
+/// goes through f64 first because JavaScript never held it exactly.
 pub fn js_number_to_string(n: &serde_json::Number) -> String {
-    match n.as_f64() {
-        Some(f) if f.is_nan() => "NaN".to_string(),
-        Some(f) if f.is_infinite() => {
-            if f > 0.0 {
-                "Infinity".to_string()
-            } else {
-                "-Infinity".to_string()
-            }
-        }
-        Some(f) => match js_integral(f) {
-            Some(i) => i.to_string(),
-            None => n.to_string(),
-        },
-        None => n.to_string(),
-    }
+    js_number_spelling(n.as_f64().unwrap_or(f64::NAN))
 }
 
 #[cfg(test)]
@@ -482,5 +521,41 @@ mod tests {
         // `${NaN}` is "NaN" while JSON.stringify(NaN) is "null" — the one
         // place these two helpers must NOT agree.
         assert_eq!(js_number(f64::NAN), Value::Null);
+    }
+
+    #[test]
+    fn number_spelling_matches_javascript_at_both_exponent_boundaries() {
+        use super::js_number_spelling;
+        // Every pair is `JSON.stringify(n)` from node -e.
+        let cases: &[(f64, &str)] = &[
+            (1.5, "1.5"),
+            (100.0, "100"),
+            (0.1, "0.1"),
+            (0.1 + 0.2, "0.30000000000000004"),
+            (-1234.5, "-1234.5"),
+            (-0.0, "0"),
+            // serde_json writes 1e16 and 1e-6 here; JS spells both out.
+            (1e16, "10000000000000000"),
+            (1e19, "10000000000000000000"),
+            (1.2345678901234568e20, "123456789012345680000"),
+            (9.999999999999999e20, "999999999999999900000"),
+            (0.000001, "0.000001"),
+            (0.00001, "0.00001"),
+            // …and switches to exponent form exactly where JS does, with JS's
+            // explicit `+`.
+            (1e21, "1e+21"),
+            (2.5e21, "2.5e+21"),
+            (1e300, "1e+300"),
+            (f64::MAX, "1.7976931348623157e+308"),
+            (1e-7, "1e-7"),
+            (-1e-7, "-1e-7"),
+            (1.5e-7, "1.5e-7"),
+            (5e-324, "5e-324"),
+        ];
+        for (f, expected) in cases {
+            assert_eq!(js_number_spelling(*f), *expected, "{f:?}");
+        }
+        assert_eq!(js_number_spelling(f64::NAN), "NaN");
+        assert_eq!(js_number_spelling(f64::NEG_INFINITY), "-Infinity");
     }
 }

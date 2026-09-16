@@ -14,15 +14,20 @@
 mod analysis;
 mod apps;
 pub mod auth;
+mod backup_snapshots;
 mod changelog;
 #[cfg(test)]
 mod content_tests;
+mod csp_reports;
 mod deployment;
 #[cfg(test)]
 mod devices_tests;
 pub(crate) mod diag;
 mod diagnostics;
 pub mod diff;
+#[cfg(test)]
+mod discovery_tests;
+mod export;
 pub mod flags;
 mod forwarded;
 mod gate;
@@ -30,8 +35,12 @@ mod grid_meta;
 mod histogram;
 mod json;
 pub mod layout;
+mod operations;
+#[cfg(test)]
+mod operations_tests;
 mod osinfo;
 mod policy;
+mod preview;
 mod ratelimit;
 mod review;
 mod routes;
@@ -41,9 +50,11 @@ mod routes_content;
 mod routes_detail;
 mod routes_devices;
 mod routes_diag;
+mod routes_discovery;
 mod routes_focus;
 mod routes_imports;
 mod routes_manual;
+mod routes_operations;
 mod routes_runtime;
 mod routes_settings;
 mod routes_stats;
@@ -184,6 +195,20 @@ pub fn app(state: AppState) -> Router {
         // Batch 1. Each of these is a GET the client shell fetches on first
         // paint, a container/auth probe, or both.
         .route("/api/health", get(routes::health))
+        // Final Phase 2 reads: public network access without persistence.
+        .route("/api/compare", get(routes_discovery::compare))
+        .route("/api/related-apps", get(routes_discovery::related))
+        // Operational reads project durable job state without starting or
+        // healing jobs; exports stay whole-install and CSP remains a GET.
+        .route("/api/tasks/active", get(routes_operations::tasks))
+        .route("/api/wayback/import-all", get(routes_operations::wayback))
+        .route("/api/policy/sync-all", get(routes_operations::policy))
+        .route("/api/backup/snapshots", get(routes_operations::backups))
+        .route("/api/rate-limit/status", get(routes_operations::cooldowns))
+        .route("/api/ai/debug-log", get(routes_operations::ai_debug))
+        .route("/api/csp-report", get(routes_operations::csp))
+        .route("/api/export", get(routes_operations::export))
+        .route("/api/manual-apps/{id}", get(routes_operations::manual))
         // Fleet analysis: scoped summaries, UTC buckets and entry-level filters.
         .route("/api/stats", get(routes_stats::summary))
         .route("/api/stats/matrix", get(routes_stats::matrix))
@@ -200,6 +225,7 @@ pub fn app(state: AppState) -> Router {
         // Stored device reads: ownership, exact ECID lookup, import history
         // and app links. No cfgutil calls or mutation handlers are enabled.
         .route("/api/devices", get(routes_devices::devices))
+        .route("/api/device-scope", get(routes_devices::device_scope))
         .route("/api/devices/{id}", get(routes_devices::detail))
         .route("/api/devices/{id}/bundles", get(routes_devices::bundles))
         .route(

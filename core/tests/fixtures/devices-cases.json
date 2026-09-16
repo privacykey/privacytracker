@@ -813,6 +813,16 @@
       "body": "{\"devices\":[]}"
     },
     {
+      "name": "scope empty database",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [],
+      "empty": true,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[]}"
+    },
+    {
       "name": "detail empty database",
       "op": "detail",
       "id": "pt-device-reads-a",
@@ -1041,6 +1051,240 @@
       "empty": false,
       "status": 500,
       "body": "{\"devices\":[]}"
+    },
+    {
+      "name": "scope stored \"\"",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            ""
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored \"bad\"",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "bad"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored \"null\"",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored \"[]\"",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "[]"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored \"0\"",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "0"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored {\"mode\":\"all\"}",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "{\"mode\":\"all\"}"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored {\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-b\",\"pt-device-reads-a\",\"pt-device-reads-a\",\"stale\",1],\"includeUnattached\":false}",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "{\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-b\",\"pt-device-reads-a\",\"pt-device-reads-a\",\"stale\",1],\"includeUnattached\":false}"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-a\",\"pt-device-reads-b\"],\"includeUnattached\":false},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored {\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-a\"],\"includeUnattached\":true}",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "{\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-a\"],\"includeUnattached\":true}"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-a\"],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored {\"mode\":\"subset\",\"deviceIds\":[],\"includeUnattached\":true}",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "{\"mode\":\"subset\",\"deviceIds\":[],\"includeUnattached\":true}"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"subset\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored {\"mode\":\"subset\",\"deviceIds\":[],\"includeUnattached\":false}",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "{\"mode\":\"subset\",\"deviceIds\":[],\"includeUnattached\":false}"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored {\"mode\":\"subset\",\"deviceIds\":[\"stale\"],\"includeUnattached\":\"true\"}",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "{\"mode\":\"subset\",\"deviceIds\":[\"stale\"],\"includeUnattached\":\"true\"}"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope stored {\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-a\",\"pt-device-reads-b\",\"pt-device-reads-empty\",\"pt-device-reads-c\",\"pt-device-reads-unknown\"],\"includeUnattached\":true}",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES ('device.scope',?)",
+          "params": [
+            "{\"mode\":\"subset\",\"deviceIds\":[\"pt-device-reads-a\",\"pt-device-reads-b\",\"pt-device-reads-empty\",\"pt-device-reads-c\",\"pt-device-reads-unknown\"],\"includeUnattached\":true}"
+          ]
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-empty\",\"model\":null,\"name\":\"Empty phone\",\"ownerAudience\":\"self\",\"ownerLabel\":\"Self\"},{\"appCount\":2,\"deviceClass\":null,\"id\":\"pt-device-reads-b\",\"model\":null,\"name\":\"Alpha tablet\",\"ownerAudience\":\"guardian\",\"ownerLabel\":\"Leo\"},{\"appCount\":6,\"deviceClass\":\"iPhone\",\"id\":\"pt-device-reads-a\",\"model\":\"iPhone16,1\",\"name\":\"Zulu phone\",\"ownerAudience\":\"loved_one\",\"ownerLabel\":\"Mum\"},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-c\",\"model\":null,\"name\":\"alpha tablet\",\"ownerAudience\":null,\"ownerLabel\":null},{\"appCount\":0,\"deviceClass\":null,\"id\":\"pt-device-reads-unknown\",\"model\":null,\"name\":\"Unknown device\",\"ownerAudience\":null,\"ownerLabel\":null}]}"
+    },
+    {
+      "name": "scope missing devices",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[]}"
+    },
+    {
+      "name": "scope missing junction",
+      "op": "scope",
+      "id": "pt-device-reads-a",
+      "query": [],
+      "changes": [
+        {
+          "sql": "DROP TABLE app_devices",
+          "params": []
+        }
+      ],
+      "empty": false,
+      "status": 200,
+      "body": "{\"scope\":{\"v\":1,\"mode\":\"all\",\"deviceIds\":[],\"includeUnattached\":true},\"devices\":[]}"
     }
   ]
 }

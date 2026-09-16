@@ -1,10 +1,14 @@
-//! `Date.prototype.toISOString` — the one date formatter the read API
-//! needs, and the only reason a date helper exists here at all.
+//! JavaScript `Date` semantics the read API needs: `toISOString` here, and
+//! `Date.parse` in the `parse` submodule — a port of V8's parser, attributed
+//! in `core/V8-LICENSE`.
 //!
 //! Sibling of `jsnum.rs` and `jsstr.rs`. No calendar crate: the civil-date
 //! arithmetic is Howard Hinnant's `civil_from_days`, twenty lines that are
 //! exact for every epoch millisecond JavaScript can hold, and the test
 //! constants below were read out of `node -e` rather than derived here.
+
+mod parse;
+pub use parse::parse;
 
 /// `new Date(ms).toISOString()`: `YYYY-MM-DDTHH:MM:SS.mmmZ`, always UTC,
 /// always three fraction digits. Years outside `0..=9999` take the
@@ -64,5 +68,21 @@ mod tests {
         for (ms, expected) in cases {
             assert_eq!(js_iso_string(*ms), *expected, "{ms}");
         }
+    }
+
+    #[test]
+    fn parse_matches_node_date_parse() {
+        use super::parse;
+        // Every pair is `Date.parse(s)` from node -e. These inputs carry
+        // their own zone (or are date-only, which ISO reads as UTC) so the
+        // process timezone cannot leak in; the 180-case oracle in
+        // `server/operations_tests.rs` covers the local-time branches.
+        assert_eq!(parse("2026-09-15T10:20:44.123Z"), Some(1_789_467_644_123));
+        assert_eq!(parse("2026-09-15"), Some(1_789_430_400_000));
+        assert_eq!(parse("September 15, 2026 GMT"), Some(1_789_430_400_000));
+        // The collision suffix the backup writer appends is NaN in Node too,
+        // so the listing falls back to mtime for those files.
+        assert_eq!(parse("2026-09-15T10-20-44-123Z-2"), None);
+        assert_eq!(parse("bad"), None);
     }
 }

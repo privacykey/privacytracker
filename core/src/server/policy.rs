@@ -464,7 +464,8 @@ fn parse_run_log(col: &Value) -> Option<Vec<Value>> {
                     .and_then(Value::as_str)
                     .filter(|p| !p.is_empty())?;
                 // `Number(entry.at)`, then Number.isFinite.
-                let at = js_to_number(entry.get("at").unwrap_or(&Value::Null));
+                // Missing is undefined -> NaN; an explicit null is 0.
+                let at = entry.get("at").map(js_to_number).unwrap_or(f64::NAN);
                 if !at.is_finite() {
                     return None;
                 }
