@@ -1928,3 +1928,108 @@ the one case where a shortlist entry would then have protected its app.
 Each fault was removed before the final passing run — and one of them,
 built into the server binary by a concurrent step, was caught by the
 live gate on its first run.
+
+### Batch 3 — the import pipeline (+12 handlers)
+
+`core/src/server/imports_writes.rs` ports the `POST` and `DELETE` exports
+of ten route files: `/api/imports` (create a session; delete it, with or
+without its apps), `/api/imports/items` (the upsert that plans every
+write from the reads first, then runs the plan in chunks of 200, then
+recomputes the counters), `/api/imports/items/update`,
+`/api/imports/queue` (the forced drain: clear the pause fence and every
+row's backoff, take the running mutex or override a stale one, claim up
+to ten rows untracked-first, scrape each until Apple says stop),
+`/api/imports/complete` (counters, the completion stamp, the device
+links, the activity row, the completion notification, then the route's
+own manual-apps nudge with its one-a-day fence),
+`/api/imports/items/retry` (the inline iTunes search for a
+`pending_search` row, the scrape for anything with a URL, the error for
+anything without), `/api/imports/items/change-match` (scrape first, then
+rewire the row, garbage-collect the previous app when nothing else
+references it, mark its notifications stale, relabel the row),
+`/api/search` (bundle ids first, else rows, else names, each through the
+`lib/app-import.ts` sanitisers), `/api/scrape` and
+`/api/apps/[id]/import-history` (the per-app Wayback run with its audit
+pair and activity row; the remove with its own). Under them sit
+`lib/imports.ts`, `lib/import-queue.ts`, the two import notifications
+in `lib/notifications.ts` and the name sanitisers, with Node's SQL byte
+for byte. The network routes hand the Phase 3 scrape, search and
+history entry points a `Fetcher`; the Phase 3 modules' writes land in
+the same recorded stream as the route's own.
+
+**What this batch adds to the library batch.** Ids that are not UUIDs:
+`imp_`/`iti_` plus nine random bytes in base64url (`Ids::short_id`).
+A counter that is a JavaScript number, not an integer — `total: 2.5` is
+stored and read back as 2.5, and the counter recompute takes
+`Math.max` over it. An upsert whose existence checks all run before its
+first write, so two rows with one query in one batch both insert, and
+whose tombstoned rows (`removed`) are returned untouched. Inline rate
+limits with the route's own phrasing and a `Retry-After`
+(`Guard::Rate`), one of them keyed per app. A body reader whose
+unparseable case is a `null` body rather than a 400 (the Wayback
+import). Routes that scrape and then read the fresh `apps` row for what
+the scrape result lacks. The `| 0` clamp on every count in the
+completion notification, and a source label that is trimmed for the
+suffix but echoed blank rather than null. And the queue drain's `finally`
+— the mutex release and the last-run stamp land whether the tick was
+skipped, drained or threw.
+
+**Holding the lock across the fetch.** The Phase 3 entry points take the
+connection for the whole scrape, search or archive walk, so their route
+wrappers cannot release the mutex around the network as the batch-1 and
+batch-2 wrappers do around the body read. A `MutexGuard` cannot cross an
+await on the runtime's worker threads either, so these twelve handlers
+run on a blocking thread that drives their future itself
+(`routes_writes::run`). Every other request waits for the lock meanwhile
+— for a scrape that is a second or two, for a Wayback run it can be
+longer, where Node interleaves. This is a known gap of the inert crate,
+not of the parity: staging `prepare`/`perform`/`complete` around the lock
+(the pieces already exist for the scrape) is deferred to the cutover
+work, and the per-request `sqlite.lockWait` diagnostic will show it.
+
+**What is not ported.** `summarizePolicies: true` on `/api/scrape` and
+the deferred policy-source fetch a successful import or scrape arms
+(`schedulePostAppUpdatePolicyFetch`) are the Phase 5 policy pipeline;
+the flag is read and ignored, the hook is a no-op. The oracle holds the
+`policy_sync_running` mutex in every case so Node's timer, when it
+fires, finds the runner busy and writes nothing.
+
+**The oracle — `core/scripts/extract-imports-cases.mjs`.** Runs the REAL
+handlers over 167 requests with foreign keys ON, a frozen clock, counted
+ids (now including `randomBytes(9)`: twelve base64url characters
+round-trip to nine bytes, so a zero-padded counter decodes and re-encodes
+to itself), the soft pacers reset per case, a distinct forwarded address
+per case, and the network canned — each case lists its replies in the
+order the handler asks for them (an App Store page then its version
+lookup; an iTunes search or lookup; the CDX index, a replay, Save Page
+Now), and a reply left unused fails the run. It records the request, the
+setup rows, every raw fetch, every write with transaction markers, the
+fourteen tables an import write can touch (abbreviated past 100 rows, as
+the Rust dump is), and the wire response. `core/src/server/imports_tests.rs`
+replays each through `precheck` and `perform_async` with the Phase 3
+canned fetcher and compares the calls too. Scenarios: every route's
+success paths and validation branches, the five body-reader outcomes,
+the `null`, array and string bodies, tombstones and duplicates in one
+batch, the two-chunk batch, the busy, stale and empty drains, a drain
+that pauses on a 429 with the rest of the claim untouched, completion
+across every status derivation and the notification headline each one
+produces, searches by names, rows and bundle ids with their rate-limited
+envelopes, a scrape batch that stops on a 429 with the tail queued, the
+Wayback run forced and unforced, throttled by archive.org with and
+without a `Retry-After`, and the bursts past every limit.
+
+Live: `read-parity.mjs --mutate` — the five local import routes
+(`/api/imports`, `/api/imports/items`, `/api/imports/items/update`,
+`/api/imports/queue`, `/api/imports/complete`) join the mutate pass; the
+routes that reach Apple or archive.org stay quarantined in the manifest
+and are gated by the oracle alone.
+
+Rust suite: 211 pass (206 + 5 new). Negative controls, each predicted
+from the fixture before it ran: honouring a tombstoned row's upsert
+failed exactly the one case that lands on one; de-duplicating queries
+within a batch failed exactly the one case with two rows of one query;
+dropping the untracked-first claim order failed exactly the one drain
+that mixes tracked and untracked rows; and dropping the `Retry-After`
+from the inline rate limits failed exactly the four bursts on those
+routes. Each fault was removed before the final passing run.
+

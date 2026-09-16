@@ -17,6 +17,12 @@ impl Ids for CountingIds {
         self.next += 1;
         Ok(format!("{}{:012}", self.prefix, self.next))
     }
+    // One counter for both shapes: the oracle's `randomBytes(9)` stub shares
+    // its counter with `randomUUID`, so the interleaving is what is pinned.
+    fn short_id(&mut self, _conn: &Connection, prefix: &str) -> Result<String, String> {
+        self.next += 1;
+        Ok(format!("{prefix}_{:012}", self.next))
+    }
 }
 
 pub(crate) fn to_sql(v: &Value) -> Sql {

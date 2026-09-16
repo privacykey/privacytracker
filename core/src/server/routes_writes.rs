@@ -8,13 +8,19 @@ use super::{
     writes::{self, WriteRequest},
     AppState,
 };
-use crate::scrape::{persist::Writer, RandomIds};
+use crate::{
+    outbound::PublicHttp,
+    scrape::{persist::Writer, RandomIds},
+};
 use axum::{
     extract::{Path, Request, State},
     http::{Method, StatusCode},
     response::Response,
 };
 
+// The batch-3 handlers hold the connection across their fetches, on a
+// blocking thread that drives the future itself; see the comment below.
+#[allow(clippy::await_holding_lock)]
 async fn run(
     state: AppState,
     path: &'static str,
@@ -52,6 +58,39 @@ async fn run(
         Some(limit) => read_json(&parts.headers, body, limit).await,
         None => BodyOutcome::Empty,
     };
+    if writes::is_async(spec) {
+        // The batch-3 handlers fetch while they hold the connection, as the
+        // Phase 3 entry points they call do. A `MutexGuard` cannot cross an
+        // await on the runtime's worker threads, so the handler runs to
+        // completion on a blocking thread that drives its future itself.
+        // Every other request waits for the lock meanwhile — see the
+        // README's batch-3 notes for the staging this defers.
+        let handle = tokio::runtime::Handle::current();
+        let joined = tokio::task::spawn_blocking(move || {
+            handle.block_on(async move {
+                let conn = state.db();
+                let mut w = Writer::new(&conn, None);
+                writes::perform_async(
+                    &mut w,
+                    &mut ids,
+                    &PublicHttp,
+                    WriteRequest {
+                        spec,
+                        param: param.as_deref(),
+                        query: &query,
+                        body: outcome,
+                    },
+                    &actor,
+                    now,
+                )
+                .await
+            })
+        })
+        .await;
+        return joined.unwrap_or_else(|_| {
+            json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+        });
+    }
     let conn = state.db();
     let mut w = Writer::new(&conn, None);
     writes::perform(
@@ -161,3 +200,26 @@ wrapper_with_id!(manual_put, "/api/manual-apps/[id]", PUT);
 wrapper_with_id!(manual_delete, "/api/manual-apps/[id]", DELETE);
 wrapper!(manual_bulk_post, "/api/manual-apps/bulk", POST);
 wrapper_with_id!(manual_restore_post, "/api/manual-apps/[id]/restore", POST);
+
+// ── Phase 4, batch 3 ─────────────────────────────────────────────────
+
+wrapper!(imports_post, "/api/imports", POST);
+wrapper!(imports_delete, "/api/imports", DELETE);
+wrapper!(import_items_post, "/api/imports/items", POST);
+wrapper!(import_item_update_post, "/api/imports/items/update", POST);
+wrapper!(import_queue_post, "/api/imports/queue", POST);
+wrapper!(import_complete_post, "/api/imports/complete", POST);
+wrapper!(import_item_retry_post, "/api/imports/items/retry", POST);
+wrapper!(
+    import_item_change_match_post,
+    "/api/imports/items/change-match",
+    POST
+);
+wrapper!(search_post, "/api/search", POST);
+wrapper!(scrape_post, "/api/scrape", POST);
+wrapper_with_id!(import_history_post, "/api/apps/[id]/import-history", POST);
+wrapper_with_id!(
+    import_history_delete,
+    "/api/apps/[id]/import-history",
+    DELETE
+);

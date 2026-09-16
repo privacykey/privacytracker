@@ -409,6 +409,19 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-library-cases.mjs
           git diff --exit-code -- core/tests/fixtures/library-cases.json
 
+      - name: Import write-route oracle is current
+        # Runs the real handlers of the twelve import-pipeline writes — the
+        # import session and its items, the item update, the queue drain,
+        # the completion, the per-item retry and match change, the iTunes
+        # search, the App Store scrape and the per-app Wayback import — with
+        # the network canned per case, foreign keys on, a frozen clock and
+        # counted ids, and records every request, raw fetch, write, touched
+        # table and wire response. A diff means a Node handler on that path
+        # changed and core/src/server/imports_writes.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-imports-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/imports-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

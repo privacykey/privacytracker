@@ -24,16 +24,16 @@ use std::{
 use tokio::io::BufReader;
 use url::Url;
 
-pub(super) struct Canned {
-    pub(super) replies: Vec<Value>,
-    pub(super) cursor: AtomicUsize,
-    pub(super) calls: Mutex<Vec<Value>>,
+pub(crate) struct Canned {
+    pub(crate) replies: Vec<Value>,
+    pub(crate) cursor: AtomicUsize,
+    pub(crate) calls: Mutex<Vec<Value>>,
     /// Asserts the limits each scraper call must carry.
     check: fn(&Request),
 }
 
 impl Canned {
-    pub(super) fn new(replies: Vec<Value>, check: fn(&Request)) -> Self {
+    pub(crate) fn new(replies: Vec<Value>, check: fn(&Request)) -> Self {
         Self {
             replies,
             cursor: AtomicUsize::new(0),

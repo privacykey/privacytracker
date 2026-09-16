@@ -20,13 +20,13 @@ pub mod accessibility;
 mod activity;
 pub mod fetch;
 #[cfg(test)]
-mod fetch_tests;
+pub(crate) mod fetch_tests;
 pub mod flags;
 pub mod history;
 #[cfg(test)]
 mod history_tests;
 mod js;
-mod notify;
+pub(crate) mod notify;
 pub mod page;
 pub mod persist;
 #[cfg(test)]

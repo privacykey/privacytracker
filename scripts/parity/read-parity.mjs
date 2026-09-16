@@ -251,6 +251,14 @@ const WRITE_ROUTES = [
   "/api/manual-apps/[id]",
   "/api/manual-apps/bulk",
   "/api/manual-apps/[id]/restore",
+  // Phase 4, batch 3: the import pipeline's local half. The routes that
+  // reach Apple or archive.org stay quarantined and are gated by the
+  // oracle alone.
+  "/api/imports",
+  "/api/imports/items",
+  "/api/imports/items/update",
+  "/api/imports/queue",
+  "/api/imports/complete",
 ];
 
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
