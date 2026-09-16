@@ -1,0 +1,3271 @@
+{
+  "cases": [
+    {
+      "name": "search maps candidates",
+      "now": 1789473661000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "Clock",
+        {
+          "name": "Weather"
+        }
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":3,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"Dev 2\",\"trackViewUrl\":\"https://apps.apple.com/us/app/two/id2\",\"bundleId\":\"com.example.app2\",\"trackContentRating\":\"12+\"},{\"trackId\":\"3\",\"artistName\":\"Dev 3\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":null,\"contentAdvisoryRating\":null,\"trackContentRating\":null}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000104,\"trackName\":\"App 4\",\"artistName\":\"Dev 4\",\"artworkUrl100\":\"https://example.com/4/100x100bb.png?100x100bb=again\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-4/id90000104?uo=4\",\"bundleId\":\"com.example.app4\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Clock&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Weather&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "Clock",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Clock"
+              },
+              {
+                "appleId": "90000102",
+                "name": "App 2",
+                "developer": "Dev 2",
+                "iconUrl": "",
+                "url": "https://apps.apple.com/us/app/two/id2",
+                "bundleId": "com.example.app2",
+                "contentAdvisoryRating": "12+",
+                "searchQuery": "Clock"
+              },
+              {
+                "appleId": "3",
+                "developer": "Dev 3",
+                "iconUrl": "https://example.com/3/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-3/id90000103",
+                "bundleId": null,
+                "contentAdvisoryRating": "",
+                "searchQuery": "Clock"
+              }
+            ]
+          },
+          {
+            "query": "Weather",
+            "candidates": [
+              {
+                "appleId": "90000104",
+                "name": "App 4",
+                "developer": "Dev 4",
+                "iconUrl": "https://example.com/4/200x200bb.png?100x100bb=again",
+                "url": "https://apps.apple.com/us/app/app-4/id90000104",
+                "bundleId": "com.example.app4",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Weather"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "developer hint reorders candidates",
+      "now": 1789473722000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        {
+          "name": "Notes",
+          "developer": "Acme Labs"
+        }
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":7,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Other Co\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"acme labs\",\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.example.app2\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000103,\"trackName\":\"App 3\",\"artistName\":\"Acme Labs Inc\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":\"com.example.app3\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000104,\"trackName\":\"App 4\",\"artistName\":\"Labs of Acme\",\"artworkUrl100\":\"https://example.com/4/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-4/id90000104?uo=4\",\"bundleId\":\"com.example.app4\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000105,\"trackName\":\"App 5\",\"artistName\":\"Zed\",\"artworkUrl100\":\"https://example.com/5/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-5/id90000105?uo=4\",\"bundleId\":\"com.example.app5\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000106,\"trackName\":\"App 6\",\"artworkUrl100\":\"https://example.com/6/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-6/id90000106?uo=4\",\"bundleId\":\"com.example.app6\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000107,\"trackName\":\"App 7\",\"artistName\":\"Acme Labs\",\"artworkUrl100\":\"https://example.com/7/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-7/id90000107?uo=4\",\"bundleId\":\"com.example.app7\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Notes&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "Notes",
+            "candidates": [
+              {
+                "appleId": "90000102",
+                "name": "App 2",
+                "developer": "acme labs",
+                "iconUrl": "https://example.com/2/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-2/id90000102",
+                "bundleId": "com.example.app2",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Notes"
+              },
+              {
+                "appleId": "90000107",
+                "name": "App 7",
+                "developer": "Acme Labs",
+                "iconUrl": "https://example.com/7/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-7/id90000107",
+                "bundleId": "com.example.app7",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Notes"
+              },
+              {
+                "appleId": "90000103",
+                "name": "App 3",
+                "developer": "Acme Labs Inc",
+                "iconUrl": "https://example.com/3/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-3/id90000103",
+                "bundleId": "com.example.app3",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Notes"
+              },
+              {
+                "appleId": "90000104",
+                "name": "App 4",
+                "developer": "Labs of Acme",
+                "iconUrl": "https://example.com/4/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-4/id90000104",
+                "bundleId": "com.example.app4",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Notes"
+              },
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Other Co",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Notes"
+              },
+              {
+                "appleId": "90000105",
+                "name": "App 5",
+                "developer": "Zed",
+                "iconUrl": "https://example.com/5/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-5/id90000105",
+                "bundleId": "com.example.app5",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Notes"
+              },
+              {
+                "appleId": "90000106",
+                "name": "App 6",
+                "iconUrl": "https://example.com/6/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-6/id90000106",
+                "bundleId": "com.example.app6",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Notes"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "developer hint with one candidate and with a non-string developer",
+      "now": 1789473783000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        {
+          "name": "One",
+          "developer": "Acme"
+        },
+        {
+          "name": "Bad",
+          "developer": "Acme"
+        }
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Someone Else\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":2,\"results\":[{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":42,\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.example.app2\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000103,\"trackName\":\"App 3\",\"artistName\":\"Dev 3\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":\"com.example.app3\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=One&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Bad&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "One",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Someone Else",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "One"
+              }
+            ]
+          },
+          {
+            "query": "Bad",
+            "candidates": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "query normalisation",
+      "now": 1789473844000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "  Clock  ",
+        "",
+        "   ",
+        42,
+        null,
+        {
+          "name": "Weather",
+          "developer": "  "
+        },
+        {
+          "name": 5
+        },
+        {
+          "name": " Mail ",
+          "developer": " Apple "
+        }
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"Dev 2\",\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.example.app2\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":2,\"results\":[{\"trackId\":90000103,\"trackName\":\"App 3\",\"artistName\":\"Apple\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":\"com.example.app3\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000104,\"trackName\":\"App 4\",\"artistName\":\"Dev 4\",\"artworkUrl100\":\"https://example.com/4/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-4/id90000104?uo=4\",\"bundleId\":\"com.example.app4\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Clock&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Weather&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Mail&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "Clock",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Clock"
+              }
+            ]
+          },
+          {
+            "query": "Weather",
+            "candidates": [
+              {
+                "appleId": "90000102",
+                "name": "App 2",
+                "developer": "Dev 2",
+                "iconUrl": "https://example.com/2/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-2/id90000102",
+                "bundleId": "com.example.app2",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Weather"
+              }
+            ]
+          },
+          {
+            "query": "Mail",
+            "candidates": [
+              {
+                "appleId": "90000103",
+                "name": "App 3",
+                "developer": "Apple",
+                "iconUrl": "https://example.com/3/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-3/id90000103",
+                "bundleId": "com.example.app3",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Mail"
+              },
+              {
+                "appleId": "90000104",
+                "name": "App 4",
+                "developer": "Dev 4",
+                "iconUrl": "https://example.com/4/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-4/id90000104",
+                "bundleId": "com.example.app4",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Mail"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "search country from option",
+      "now": 1789473905000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "app_country",
+            "au"
+          ]
+        }
+      ],
+      "kind": "search",
+      "input": [
+        "Clock"
+      ],
+      "options": {
+        "country": "GB"
+      },
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Clock&entity=software&country=gb&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [
+        {
+          "key": "app_country",
+          "value": "au"
+        }
+      ],
+      "expected": {
+        "results": [
+          {
+            "query": "Clock",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Clock"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "search country from setting",
+      "now": 1789473966000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "app_country",
+            "au"
+          ]
+        }
+      ],
+      "kind": "search",
+      "input": [
+        "Clock"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Clock&entity=software&country=au&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [
+        {
+          "key": "app_country",
+          "value": "au"
+        }
+      ],
+      "expected": {
+        "results": [
+          {
+            "query": "Clock",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Clock"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty results retried once",
+      "now": 1789474027000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "Rare"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":0,\"results\":[]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Rare&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Rare&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "Rare",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Rare"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty results twice",
+      "now": 1789474088000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "Rarer",
+        "After"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":0,\"results\":[]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":0,\"results\":[]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"Dev 2\",\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.example.app2\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Rarer&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Rarer&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=After&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "Rarer",
+            "candidates": []
+          },
+          {
+            "query": "After",
+            "candidates": [
+              {
+                "appleId": "90000102",
+                "name": "App 2",
+                "developer": "Dev 2",
+                "iconUrl": "https://example.com/2/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-2/id90000102",
+                "bundleId": "com.example.app2",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "After"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty results then rate limited on retry",
+      "now": 1789474149000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "First",
+        "Rare",
+        "Third"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":0,\"results\":[]}"
+        },
+        {
+          "status": 429,
+          "headers": {
+            "retry-after": "45"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=First&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Rare&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Rare&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474194000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Search at 2026-09-15T12:09:09.000Z (Retry-After: 45)"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474194000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Search at 2026-09-15T12:09:09.000Z (Retry-After: 45)"
+        }
+      ],
+      "expected": {
+        "results": [
+          {
+            "query": "First",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "First"
+              }
+            ]
+          }
+        ],
+        "rateLimited": {
+          "retryAfterMs": 45000,
+          "queued": [
+            {
+              "name": "Rare"
+            },
+            {
+              "name": "Third"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "rate limited on the first query",
+      "now": 1789474210000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "A",
+        {
+          "name": "B",
+          "developer": "Dev"
+        }
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after": "120"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=A&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474330000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Search at 2026-09-15T12:10:10.000Z (Retry-After: 120)"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474330000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Search at 2026-09-15T12:10:10.000Z (Retry-After: 120)"
+        }
+      ],
+      "expected": {
+        "results": [],
+        "rateLimited": {
+          "retryAfterMs": 120000,
+          "queued": [
+            {
+              "name": "A"
+            },
+            {
+              "name": "B",
+              "developer": "Dev"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "rate limited on the second query",
+      "now": 1789474271000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "A",
+        "B",
+        "C"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 429,
+          "headers": {},
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=A&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=B&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474341000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Search at 2026-09-15T12:11:11.000Z"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474341000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Search at 2026-09-15T12:11:11.000Z"
+        }
+      ],
+      "expected": {
+        "results": [
+          {
+            "query": "A",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "A"
+              }
+            ]
+          }
+        ],
+        "rateLimited": {
+          "retryAfterMs": 70000,
+          "queued": [
+            {
+              "name": "B"
+            },
+            {
+              "name": "C"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "retry-after at the cap falls back",
+      "now": 1789474332000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "A"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after": "600"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=A&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474402000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Search at 2026-09-15T12:12:12.000Z (Retry-After: 600)"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474402000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Search at 2026-09-15T12:12:12.000Z (Retry-After: 600)"
+        }
+      ],
+      "expected": {
+        "results": [],
+        "rateLimited": {
+          "retryAfterMs": 70000,
+          "queued": [
+            {
+              "name": "A"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "retry-after junk falls back",
+      "now": 1789474393000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "A"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after": "soon"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=A&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474463000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Search at 2026-09-15T12:13:13.000Z (Retry-After: soon)"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474463000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Search at 2026-09-15T12:13:13.000Z (Retry-After: soon)"
+        }
+      ],
+      "expected": {
+        "results": [],
+        "rateLimited": {
+          "retryAfterMs": 70000,
+          "queued": [
+            {
+              "name": "A"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "search cooldown active",
+      "now": 1789474454000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474484000"
+          ]
+        }
+      ],
+      "kind": "search",
+      "input": [
+        "A",
+        "B"
+      ],
+      "options": {},
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474484000"
+        }
+      ],
+      "expected": {
+        "results": [],
+        "rateLimited": {
+          "retryAfterMs": 30000,
+          "queued": [
+            {
+              "name": "A"
+            },
+            {
+              "name": "B"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "per-query failures are isolated",
+      "now": 1789474515000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "Five",
+        "Json",
+        "Missing",
+        "Str",
+        "Null",
+        "Art",
+        "Net",
+        "Fine"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 500,
+          "headers": {},
+          "body": ""
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{not json"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"results\":\"abc\"}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":2,\"results\":[null,{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"Dev 2\",\"artworkUrl100\":7,\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.example.app2\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "error": "fetch failed"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000103,\"trackName\":\"App 3\",\"artistName\":\"Dev 3\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":\"com.example.app3\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Five&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Json&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Missing&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Missing&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Str&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Null&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Art&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Net&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=Fine&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "Five",
+            "candidates": []
+          },
+          {
+            "query": "Json",
+            "candidates": []
+          },
+          {
+            "query": "Missing",
+            "candidates": []
+          },
+          {
+            "query": "Str",
+            "candidates": []
+          },
+          {
+            "query": "Null",
+            "candidates": []
+          },
+          {
+            "query": "Art",
+            "candidates": []
+          },
+          {
+            "query": "Net",
+            "candidates": []
+          },
+          {
+            "query": "Fine",
+            "candidates": [
+              {
+                "appleId": "90000103",
+                "name": "App 3",
+                "developer": "Dev 3",
+                "iconUrl": "https://example.com/3/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-3/id90000103",
+                "bundleId": "com.example.app3",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Fine"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "search terms are uri-encoded",
+      "now": 1789474576000,
+      "setup": [],
+      "kind": "search",
+      "input": [
+        "Hello World",
+        "A&B=C",
+        "café ☕",
+        "it's (ok)*!~",
+        "日本語"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.app1\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"Dev 2\",\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.example.app2\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000103,\"trackName\":\"App 3\",\"artistName\":\"Dev 3\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":\"com.example.app3\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000104,\"trackName\":\"App 4\",\"artistName\":\"Dev 4\",\"artworkUrl100\":\"https://example.com/4/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-4/id90000104?uo=4\",\"bundleId\":\"com.example.app4\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000105,\"trackName\":\"App 5\",\"artistName\":\"Dev 5\",\"artworkUrl100\":\"https://example.com/5/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-5/id90000105?uo=4\",\"bundleId\":\"com.example.app5\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/search?term=Hello%20World&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=A%26B%3DC&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=caf%C3%A9%20%E2%98%95&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=it%27s%20(ok)*!~&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/search?term=%E6%97%A5%E6%9C%AC%E8%AA%9E&entity=software&country=us&limit=5",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "query": "Hello World",
+            "candidates": [
+              {
+                "appleId": "90000101",
+                "name": "App 1",
+                "developer": "Dev 1",
+                "iconUrl": "https://example.com/1/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-1/id90000101",
+                "bundleId": "com.example.app1",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "Hello World"
+              }
+            ]
+          },
+          {
+            "query": "A&B=C",
+            "candidates": [
+              {
+                "appleId": "90000102",
+                "name": "App 2",
+                "developer": "Dev 2",
+                "iconUrl": "https://example.com/2/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-2/id90000102",
+                "bundleId": "com.example.app2",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "A&B=C"
+              }
+            ]
+          },
+          {
+            "query": "café ☕",
+            "candidates": [
+              {
+                "appleId": "90000103",
+                "name": "App 3",
+                "developer": "Dev 3",
+                "iconUrl": "https://example.com/3/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-3/id90000103",
+                "bundleId": "com.example.app3",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "café ☕"
+              }
+            ]
+          },
+          {
+            "query": "it's (ok)*!~",
+            "candidates": [
+              {
+                "appleId": "90000104",
+                "name": "App 4",
+                "developer": "Dev 4",
+                "iconUrl": "https://example.com/4/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-4/id90000104",
+                "bundleId": "com.example.app4",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "it's (ok)*!~"
+              }
+            ]
+          },
+          {
+            "query": "日本語",
+            "candidates": [
+              {
+                "appleId": "90000105",
+                "name": "App 5",
+                "developer": "Dev 5",
+                "iconUrl": "https://example.com/5/200x200bb.png",
+                "url": "https://apps.apple.com/us/app/app-5/id90000105",
+                "bundleId": "com.example.app5",
+                "contentAdvisoryRating": "4+",
+                "searchQuery": "日本語"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup matches in input order",
+      "now": 1789474637000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.b",
+        "Com.A.App",
+        "com.missing"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":2,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.a.app\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"Dev 2\",\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.b\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.b%2CCom.A.App%2Ccom.missing&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.b",
+            "match": {
+              "appleId": "90000102",
+              "name": "App 2",
+              "developer": "Dev 2",
+              "iconUrl": "https://example.com/2/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-2/id90000102",
+              "bundleId": "com.b",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.b"
+            }
+          },
+          {
+            "bundleId": "Com.A.App",
+            "match": {
+              "appleId": "90000101",
+              "name": "App 1",
+              "developer": "Dev 1",
+              "iconUrl": "https://example.com/1/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-1/id90000101",
+              "bundleId": "com.a.app",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.a.app"
+            }
+          },
+          {
+            "bundleId": "com.missing",
+            "match": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup dedupes and trims",
+      "now": 1789474698000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.x",
+        " com.x ",
+        "",
+        7,
+        null,
+        "com.y",
+        "COM.X"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":2,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.x\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000102,\"trackName\":\"App 2\",\"artistName\":\"Dev 2\",\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.y\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.x%2Ccom.y%2CCOM.X&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.x",
+            "match": {
+              "appleId": "90000101",
+              "name": "App 1",
+              "developer": "Dev 1",
+              "iconUrl": "https://example.com/1/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-1/id90000101",
+              "bundleId": "com.x",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.x"
+            }
+          },
+          {
+            "bundleId": "com.y",
+            "match": {
+              "appleId": "90000102",
+              "name": "App 2",
+              "developer": "Dev 2",
+              "iconUrl": "https://example.com/2/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-2/id90000102",
+              "bundleId": "com.y",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.y"
+            }
+          },
+          {
+            "bundleId": "COM.X",
+            "match": {
+              "appleId": "90000101",
+              "name": "App 1",
+              "developer": "Dev 1",
+              "iconUrl": "https://example.com/1/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-1/id90000101",
+              "bundleId": "com.x",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.x"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup empty input",
+      "now": 1789474759000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "",
+        "  ",
+        3
+      ],
+      "options": {},
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": []
+      }
+    },
+    {
+      "name": "lookup rate limited",
+      "now": 1789474820000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a",
+        "com.b"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after": "30"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a%2Ccom.b&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474850000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Lookup at 2026-09-15T12:20:20.000Z (Retry-After: 30)"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474850000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Lookup at 2026-09-15T12:20:20.000Z (Retry-After: 30)"
+        }
+      ],
+      "expected": {
+        "results": [],
+        "rateLimited": {
+          "retryAfterMs": 30000,
+          "queued": [
+            "com.a",
+            "com.b"
+          ]
+        }
+      }
+    },
+    {
+      "name": "lookup rate limited without retry-after",
+      "now": 1789474881000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 429,
+          "headers": {},
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474951000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Lookup at 2026-09-15T12:21:21.000Z"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474951000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Lookup at 2026-09-15T12:21:21.000Z"
+        }
+      ],
+      "expected": {
+        "results": [],
+        "rateLimited": {
+          "retryAfterMs": 70000,
+          "queued": [
+            "com.a"
+          ]
+        }
+      }
+    },
+    {
+      "name": "lookup cooldown active",
+      "now": 1789474942000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789474972000"
+          ]
+        }
+      ],
+      "kind": "lookup",
+      "input": [
+        "com.a",
+        "com.b"
+      ],
+      "options": {},
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789474972000"
+        }
+      ],
+      "expected": {
+        "results": [],
+        "rateLimited": {
+          "retryAfterMs": 30000,
+          "queued": [
+            "com.a",
+            "com.b"
+          ]
+        }
+      }
+    },
+    {
+      "name": "lookup non-ok chunk",
+      "now": 1789475003000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a",
+        "com.b"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 500,
+          "headers": {},
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a%2Ccom.b&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.a",
+            "match": null
+          },
+          {
+            "bundleId": "com.b",
+            "match": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup 503 splits the chunk",
+      "now": 1789475064000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a",
+        "com.b",
+        "com.c",
+        "com.d",
+        "com.e",
+        "com.f"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 503,
+          "headers": {},
+          "body": ""
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":2,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.a\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000103,\"trackName\":\"App 3\",\"artistName\":\"Dev 3\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":\"com.c\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000105,\"trackName\":\"App 5\",\"artistName\":\"Dev 5\",\"artworkUrl100\":\"https://example.com/5/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-5/id90000105?uo=4\",\"bundleId\":\"com.e\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a%2Ccom.b%2Ccom.c%2Ccom.d%2Ccom.e%2Ccom.f&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a%2Ccom.b%2Ccom.c&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.d%2Ccom.e%2Ccom.f&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.a",
+            "match": {
+              "appleId": "90000101",
+              "name": "App 1",
+              "developer": "Dev 1",
+              "iconUrl": "https://example.com/1/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-1/id90000101",
+              "bundleId": "com.a",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.a"
+            }
+          },
+          {
+            "bundleId": "com.b",
+            "match": null
+          },
+          {
+            "bundleId": "com.c",
+            "match": {
+              "appleId": "90000103",
+              "name": "App 3",
+              "developer": "Dev 3",
+              "iconUrl": "https://example.com/3/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-3/id90000103",
+              "bundleId": "com.c",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.c"
+            }
+          },
+          {
+            "bundleId": "com.d",
+            "match": null
+          },
+          {
+            "bundleId": "com.e",
+            "match": {
+              "appleId": "90000105",
+              "name": "App 5",
+              "developer": "Dev 5",
+              "iconUrl": "https://example.com/5/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-5/id90000105",
+              "bundleId": "com.e",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.e"
+            }
+          },
+          {
+            "bundleId": "com.f",
+            "match": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup 503 split then rate limited",
+      "now": 1789475125000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a",
+        "com.b",
+        "com.c"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 503,
+          "headers": {},
+          "body": ""
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.a\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 429,
+          "headers": {
+            "retry-after": "20"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a%2Ccom.b%2Ccom.c&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a%2Ccom.b&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.c&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_until",
+            "1789475145000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "rate_limit_search_reason",
+            "HTTP 429 from iTunes Lookup at 2026-09-15T12:25:25.000Z (Retry-After: 20)"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "key": "rate_limit_search_until",
+          "value": "1789475145000"
+        },
+        {
+          "key": "rate_limit_search_reason",
+          "value": "HTTP 429 from iTunes Lookup at 2026-09-15T12:25:25.000Z (Retry-After: 20)"
+        }
+      ],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.a",
+            "match": {
+              "appleId": "90000101",
+              "name": "App 1",
+              "developer": "Dev 1",
+              "iconUrl": "https://example.com/1/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-1/id90000101",
+              "bundleId": "com.a",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.a"
+            }
+          },
+          {
+            "bundleId": "com.b",
+            "match": null
+          }
+        ],
+        "rateLimited": {
+          "retryAfterMs": 20000,
+          "queued": [
+            "com.c"
+          ]
+        }
+      }
+    },
+    {
+      "name": "lookup 503 with a single id",
+      "now": 1789475186000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 503,
+          "headers": {},
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.a",
+            "match": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup invalid json and non-array results",
+      "now": 1789475247000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{not json"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.a",
+            "match": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup results not an array",
+      "now": 1789475308000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.a"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"results\":\"abc\"}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.a",
+            "match": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup 150 ids in two chunks",
+      "now": 1789475369000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.example.chunked.app1",
+        "com.example.chunked.app2",
+        "com.example.chunked.app3",
+        "com.example.chunked.app4",
+        "com.example.chunked.app5",
+        "com.example.chunked.app6",
+        "com.example.chunked.app7",
+        "com.example.chunked.app8",
+        "com.example.chunked.app9",
+        "com.example.chunked.app10",
+        "com.example.chunked.app11",
+        "com.example.chunked.app12",
+        "com.example.chunked.app13",
+        "com.example.chunked.app14",
+        "com.example.chunked.app15",
+        "com.example.chunked.app16",
+        "com.example.chunked.app17",
+        "com.example.chunked.app18",
+        "com.example.chunked.app19",
+        "com.example.chunked.app20",
+        "com.example.chunked.app21",
+        "com.example.chunked.app22",
+        "com.example.chunked.app23",
+        "com.example.chunked.app24",
+        "com.example.chunked.app25",
+        "com.example.chunked.app26",
+        "com.example.chunked.app27",
+        "com.example.chunked.app28",
+        "com.example.chunked.app29",
+        "com.example.chunked.app30",
+        "com.example.chunked.app31",
+        "com.example.chunked.app32",
+        "com.example.chunked.app33",
+        "com.example.chunked.app34",
+        "com.example.chunked.app35",
+        "com.example.chunked.app36",
+        "com.example.chunked.app37",
+        "com.example.chunked.app38",
+        "com.example.chunked.app39",
+        "com.example.chunked.app40",
+        "com.example.chunked.app41",
+        "com.example.chunked.app42",
+        "com.example.chunked.app43",
+        "com.example.chunked.app44",
+        "com.example.chunked.app45",
+        "com.example.chunked.app46",
+        "com.example.chunked.app47",
+        "com.example.chunked.app48",
+        "com.example.chunked.app49",
+        "com.example.chunked.app50",
+        "com.example.chunked.app51",
+        "com.example.chunked.app52",
+        "com.example.chunked.app53",
+        "com.example.chunked.app54",
+        "com.example.chunked.app55",
+        "com.example.chunked.app56",
+        "com.example.chunked.app57",
+        "com.example.chunked.app58",
+        "com.example.chunked.app59",
+        "com.example.chunked.app60",
+        "com.example.chunked.app61",
+        "com.example.chunked.app62",
+        "com.example.chunked.app63",
+        "com.example.chunked.app64",
+        "com.example.chunked.app65",
+        "com.example.chunked.app66",
+        "com.example.chunked.app67",
+        "com.example.chunked.app68",
+        "com.example.chunked.app69",
+        "com.example.chunked.app70",
+        "com.example.chunked.app71",
+        "com.example.chunked.app72",
+        "com.example.chunked.app73",
+        "com.example.chunked.app74",
+        "com.example.chunked.app75",
+        "com.example.chunked.app76",
+        "com.example.chunked.app77",
+        "com.example.chunked.app78",
+        "com.example.chunked.app79",
+        "com.example.chunked.app80",
+        "com.example.chunked.app81",
+        "com.example.chunked.app82",
+        "com.example.chunked.app83",
+        "com.example.chunked.app84",
+        "com.example.chunked.app85",
+        "com.example.chunked.app86",
+        "com.example.chunked.app87",
+        "com.example.chunked.app88",
+        "com.example.chunked.app89",
+        "com.example.chunked.app90",
+        "com.example.chunked.app91",
+        "com.example.chunked.app92",
+        "com.example.chunked.app93",
+        "com.example.chunked.app94",
+        "com.example.chunked.app95",
+        "com.example.chunked.app96",
+        "com.example.chunked.app97",
+        "com.example.chunked.app98",
+        "com.example.chunked.app99",
+        "com.example.chunked.app100",
+        "com.example.chunked.app101",
+        "com.example.chunked.app102",
+        "com.example.chunked.app103",
+        "com.example.chunked.app104",
+        "com.example.chunked.app105",
+        "com.example.chunked.app106",
+        "com.example.chunked.app107",
+        "com.example.chunked.app108",
+        "com.example.chunked.app109",
+        "com.example.chunked.app110",
+        "com.example.chunked.app111",
+        "com.example.chunked.app112",
+        "com.example.chunked.app113",
+        "com.example.chunked.app114",
+        "com.example.chunked.app115",
+        "com.example.chunked.app116",
+        "com.example.chunked.app117",
+        "com.example.chunked.app118",
+        "com.example.chunked.app119",
+        "com.example.chunked.app120",
+        "com.example.chunked.app121",
+        "com.example.chunked.app122",
+        "com.example.chunked.app123",
+        "com.example.chunked.app124",
+        "com.example.chunked.app125",
+        "com.example.chunked.app126",
+        "com.example.chunked.app127",
+        "com.example.chunked.app128",
+        "com.example.chunked.app129",
+        "com.example.chunked.app130",
+        "com.example.chunked.app131",
+        "com.example.chunked.app132",
+        "com.example.chunked.app133",
+        "com.example.chunked.app134",
+        "com.example.chunked.app135",
+        "com.example.chunked.app136",
+        "com.example.chunked.app137",
+        "com.example.chunked.app138",
+        "com.example.chunked.app139",
+        "com.example.chunked.app140",
+        "com.example.chunked.app141",
+        "com.example.chunked.app142",
+        "com.example.chunked.app143",
+        "com.example.chunked.app144",
+        "com.example.chunked.app145",
+        "com.example.chunked.app146",
+        "com.example.chunked.app147",
+        "com.example.chunked.app148",
+        "com.example.chunked.app149",
+        "com.example.chunked.app150"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":2,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.example.chunked.app1\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000200,\"trackName\":\"App 100\",\"artistName\":\"Dev 100\",\"artworkUrl100\":\"https://example.com/100/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-100/id90000200?uo=4\",\"bundleId\":\"com.example.chunked.app100\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000250,\"trackName\":\"App 150\",\"artistName\":\"Dev 150\",\"artworkUrl100\":\"https://example.com/150/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-150/id90000250?uo=4\",\"bundleId\":\"com.example.chunked.app150\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.example.chunked.app1%2Ccom.example.chunked.app2%2Ccom.example.chunked.app3%2Ccom.example.chunked.app4%2Ccom.example.chunked.app5%2Ccom.example.chunked.app6%2Ccom.example.chunked.app7%2Ccom.example.chunked.app8%2Ccom.example.chunked.app9%2Ccom.example.chunked.app10%2Ccom.example.chunked.app11%2Ccom.example.chunked.app12%2Ccom.example.chunked.app13%2Ccom.example.chunked.app14%2Ccom.example.chunked.app15%2Ccom.example.chunked.app16%2Ccom.example.chunked.app17%2Ccom.example.chunked.app18%2Ccom.example.chunked.app19%2Ccom.example.chunked.app20%2Ccom.example.chunked.app21%2Ccom.example.chunked.app22%2Ccom.example.chunked.app23%2Ccom.example.chunked.app24%2Ccom.example.chunked.app25%2Ccom.example.chunked.app26%2Ccom.example.chunked.app27%2Ccom.example.chunked.app28%2Ccom.example.chunked.app29%2Ccom.example.chunked.app30%2Ccom.example.chunked.app31%2Ccom.example.chunked.app32%2Ccom.example.chunked.app33%2Ccom.example.chunked.app34%2Ccom.example.chunked.app35%2Ccom.example.chunked.app36%2Ccom.example.chunked.app37%2Ccom.example.chunked.app38%2Ccom.example.chunked.app39%2Ccom.example.chunked.app40%2Ccom.example.chunked.app41%2Ccom.example.chunked.app42%2Ccom.example.chunked.app43%2Ccom.example.chunked.app44%2Ccom.example.chunked.app45%2Ccom.example.chunked.app46%2Ccom.example.chunked.app47%2Ccom.example.chunked.app48%2Ccom.example.chunked.app49%2Ccom.example.chunked.app50%2Ccom.example.chunked.app51%2Ccom.example.chunked.app52%2Ccom.example.chunked.app53%2Ccom.example.chunked.app54%2Ccom.example.chunked.app55%2Ccom.example.chunked.app56%2Ccom.example.chunked.app57%2Ccom.example.chunked.app58%2Ccom.example.chunked.app59%2Ccom.example.chunked.app60%2Ccom.example.chunked.app61%2Ccom.example.chunked.app62%2Ccom.example.chunked.app63%2Ccom.example.chunked.app64%2Ccom.example.chunked.app65%2Ccom.example.chunked.app66%2Ccom.example.chunked.app67%2Ccom.example.chunked.app68%2Ccom.example.chunked.app69%2Ccom.example.chunked.app70%2Ccom.example.chunked.app71%2Ccom.example.chunked.app72%2Ccom.example.chunked.app73%2Ccom.example.chunked.app74%2Ccom.example.chunked.app75%2Ccom.example.chunked.app76%2Ccom.example.chunked.app77%2Ccom.example.chunked.app78%2Ccom.example.chunked.app79%2Ccom.example.chunked.app80%2Ccom.example.chunked.app81%2Ccom.example.chunked.app82%2Ccom.example.chunked.app83%2Ccom.example.chunked.app84%2Ccom.example.chunked.app85%2Ccom.example.chunked.app86%2Ccom.example.chunked.app87%2Ccom.example.chunked.app88%2Ccom.example.chunked.app89%2Ccom.example.chunked.app90%2Ccom.example.chunked.app91%2Ccom.example.chunked.app92%2Ccom.example.chunked.app93%2Ccom.example.chunked.app94%2Ccom.example.chunked.app95%2Ccom.example.chunked.app96%2Ccom.example.chunked.app97%2Ccom.example.chunked.app98%2Ccom.example.chunked.app99%2Ccom.example.chunked.app100&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.example.chunked.app101%2Ccom.example.chunked.app102%2Ccom.example.chunked.app103%2Ccom.example.chunked.app104%2Ccom.example.chunked.app105%2Ccom.example.chunked.app106%2Ccom.example.chunked.app107%2Ccom.example.chunked.app108%2Ccom.example.chunked.app109%2Ccom.example.chunked.app110%2Ccom.example.chunked.app111%2Ccom.example.chunked.app112%2Ccom.example.chunked.app113%2Ccom.example.chunked.app114%2Ccom.example.chunked.app115%2Ccom.example.chunked.app116%2Ccom.example.chunked.app117%2Ccom.example.chunked.app118%2Ccom.example.chunked.app119%2Ccom.example.chunked.app120%2Ccom.example.chunked.app121%2Ccom.example.chunked.app122%2Ccom.example.chunked.app123%2Ccom.example.chunked.app124%2Ccom.example.chunked.app125%2Ccom.example.chunked.app126%2Ccom.example.chunked.app127%2Ccom.example.chunked.app128%2Ccom.example.chunked.app129%2Ccom.example.chunked.app130%2Ccom.example.chunked.app131%2Ccom.example.chunked.app132%2Ccom.example.chunked.app133%2Ccom.example.chunked.app134%2Ccom.example.chunked.app135%2Ccom.example.chunked.app136%2Ccom.example.chunked.app137%2Ccom.example.chunked.app138%2Ccom.example.chunked.app139%2Ccom.example.chunked.app140%2Ccom.example.chunked.app141%2Ccom.example.chunked.app142%2Ccom.example.chunked.app143%2Ccom.example.chunked.app144%2Ccom.example.chunked.app145%2Ccom.example.chunked.app146%2Ccom.example.chunked.app147%2Ccom.example.chunked.app148%2Ccom.example.chunked.app149%2Ccom.example.chunked.app150&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.example.chunked.app1",
+            "match": {
+              "appleId": "90000101",
+              "name": "App 1",
+              "developer": "Dev 1",
+              "iconUrl": "https://example.com/1/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-1/id90000101",
+              "bundleId": "com.example.chunked.app1",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.example.chunked.app1"
+            }
+          },
+          {
+            "bundleId": "com.example.chunked.app2",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app3",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app4",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app5",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app6",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app7",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app8",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app9",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app10",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app11",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app12",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app13",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app14",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app15",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app16",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app17",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app18",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app19",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app20",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app21",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app22",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app23",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app24",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app25",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app26",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app27",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app28",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app29",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app30",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app31",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app32",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app33",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app34",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app35",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app36",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app37",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app38",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app39",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app40",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app41",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app42",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app43",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app44",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app45",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app46",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app47",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app48",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app49",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app50",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app51",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app52",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app53",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app54",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app55",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app56",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app57",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app58",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app59",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app60",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app61",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app62",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app63",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app64",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app65",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app66",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app67",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app68",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app69",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app70",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app71",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app72",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app73",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app74",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app75",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app76",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app77",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app78",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app79",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app80",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app81",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app82",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app83",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app84",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app85",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app86",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app87",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app88",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app89",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app90",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app91",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app92",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app93",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app94",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app95",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app96",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app97",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app98",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app99",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app100",
+            "match": {
+              "appleId": "90000200",
+              "name": "App 100",
+              "developer": "Dev 100",
+              "iconUrl": "https://example.com/100/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-100/id90000200",
+              "bundleId": "com.example.chunked.app100",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.example.chunked.app100"
+            }
+          },
+          {
+            "bundleId": "com.example.chunked.app101",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app102",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app103",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app104",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app105",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app106",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app107",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app108",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app109",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app110",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app111",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app112",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app113",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app114",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app115",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app116",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app117",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app118",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app119",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app120",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app121",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app122",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app123",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app124",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app125",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app126",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app127",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app128",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app129",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app130",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app131",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app132",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app133",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app134",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app135",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app136",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app137",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app138",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app139",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app140",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app141",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app142",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app143",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app144",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app145",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app146",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app147",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app148",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app149",
+            "match": null
+          },
+          {
+            "bundleId": "com.example.chunked.app150",
+            "match": {
+              "appleId": "90000250",
+              "name": "App 150",
+              "developer": "Dev 150",
+              "iconUrl": "https://example.com/150/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-150/id90000250",
+              "bundleId": "com.example.chunked.app150",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.example.chunked.app150"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup reply quirks",
+      "now": 1789475430000,
+      "setup": [],
+      "kind": "lookup",
+      "input": [
+        "com.dup",
+        "com.nostring"
+      ],
+      "options": {},
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":5,\"results\":[{\"trackId\":90000101,\"trackName\":\"First\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.dup\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000102,\"trackName\":\"Last\",\"artistName\":\"Dev 2\",\"artworkUrl100\":\"https://example.com/2/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-2/id90000102?uo=4\",\"bundleId\":\"com.dup\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000103,\"trackName\":\"App 3\",\"artistName\":\"Dev 3\",\"artworkUrl100\":\"https://example.com/3/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-3/id90000103?uo=4\",\"bundleId\":7,\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000104,\"trackName\":\"App 4\",\"artistName\":\"Dev 4\",\"artworkUrl100\":\"https://example.com/4/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-4/id90000104?uo=4\",\"bundleId\":\"\",\"contentAdvisoryRating\":\"4+\"},{\"trackId\":90000105,\"trackName\":\"App 5\",\"artistName\":\"Dev 5\",\"bundleId\":\"com.nostring\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.dup%2Ccom.nostring&country=us&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.dup",
+            "match": {
+              "appleId": "90000102",
+              "name": "Last",
+              "developer": "Dev 2",
+              "iconUrl": "https://example.com/2/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-2/id90000102",
+              "bundleId": "com.dup",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.dup"
+            }
+          },
+          {
+            "bundleId": "com.nostring",
+            "match": {
+              "appleId": "90000105",
+              "name": "App 5",
+              "developer": "Dev 5",
+              "iconUrl": "",
+              "url": "",
+              "bundleId": "com.nostring",
+              "contentAdvisoryRating": "",
+              "searchQuery": "com.nostring"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "lookup country from option and setting",
+      "now": 1789475491000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "app_country",
+            "nz"
+          ]
+        }
+      ],
+      "kind": "lookup",
+      "input": [
+        "com.a"
+      ],
+      "options": {
+        "country": " De "
+      },
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"trackId\":90000101,\"trackName\":\"App 1\",\"artistName\":\"Dev 1\",\"artworkUrl100\":\"https://example.com/1/100x100bb.png\",\"trackViewUrl\":\"https://apps.apple.com/us/app/app-1/id90000101?uo=4\",\"bundleId\":\"com.a\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/lookup?bundleId=com.a&country=de&limit=100",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "settings": [
+        {
+          "key": "app_country",
+          "value": "nz"
+        }
+      ],
+      "expected": {
+        "results": [
+          {
+            "bundleId": "com.a",
+            "match": {
+              "appleId": "90000101",
+              "name": "App 1",
+              "developer": "Dev 1",
+              "iconUrl": "https://example.com/1/200x200bb.png",
+              "url": "https://apps.apple.com/us/app/app-1/id90000101",
+              "bundleId": "com.a",
+              "contentAdvisoryRating": "4+",
+              "searchQuery": "com.a"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

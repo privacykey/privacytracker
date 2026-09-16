@@ -19,6 +19,21 @@ pub fn is_js_whitespace(c: char) -> bool {
     }
 }
 
+/// `encodeURIComponent(s)`: every UTF-8 byte percent-encoded in uppercase
+/// hex except the unreserved set JavaScript leaves alone, `A-Z a-z 0-9`
+/// and `- _ . ! ~ * ' ( )`.
+pub fn js_encode_uri_component(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for byte in s.bytes() {
+        if byte.is_ascii_alphanumeric() || b"-_.!~*'()".contains(&byte) {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
 /// `s.trim()`: JavaScript's whitespace set, not Rust's — see
 /// [`is_js_whitespace`] for the two characters where they differ.
 pub fn js_trim(s: &str) -> &str {
@@ -388,5 +403,19 @@ mod tests {
         assert_eq!(js_string(&json!(1e21)), "1e+21");
         assert_eq!(js_string(&json!({"nested": true})), "[object Object]");
         assert_eq!(js_string(&json!(null)), "null");
+    }
+
+    #[test]
+    fn encode_uri_component_matches_javascript() {
+        use super::js_encode_uri_component;
+        // Every pair is encodeURIComponent from node -e.
+        assert_eq!(js_encode_uri_component("Hello World"), "Hello%20World");
+        assert_eq!(js_encode_uri_component("A&B=C"), "A%26B%3DC");
+        assert_eq!(
+            js_encode_uri_component("caf\u{e9} \u{2615}"),
+            "caf%C3%A9%20%E2%98%95"
+        );
+        assert_eq!(js_encode_uri_component("it's (ok)*!~"), "it's%20(ok)*!~");
+        assert_eq!(js_encode_uri_component("com.a,com.b"), "com.a%2Ccom.b");
     }
 }

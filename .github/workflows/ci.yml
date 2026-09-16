@@ -368,6 +368,15 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-fetch-cases.mjs
           git diff --exit-code -- core/tests/fixtures/fetch-cases.json
 
+      - name: Scrape search oracle is current
+        # Runs the real searchAppsByName and lookupAppsByBundleId with the raw
+        # fetch stubbed by recorded iTunes replies and records every raw fetch,
+        # every write and the batch returned. A diff means the Node search
+        # layer changed and core/src/scrape/search.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-search-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/search-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

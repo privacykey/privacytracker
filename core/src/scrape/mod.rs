@@ -32,6 +32,9 @@ pub mod plan;
 pub mod ratelimit;
 pub mod region;
 pub mod related;
+pub mod search;
+#[cfg(test)]
+mod search_tests;
 pub mod shoebox;
 #[cfg(test)]
 mod tests;
@@ -45,3 +48,4 @@ pub use persist::{
     scrape_and_persist, Ids, Outcome, RandomIds, ScrapeInput, Statement, VersionInfo,
 };
 pub use plan::{Category, PrivacyItem, SnapshotCategory, SnapshotType, WritePlan};
+pub use search::{lookup_apps_by_bundle_id, search_apps_by_name, SearchQuery};
