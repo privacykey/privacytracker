@@ -339,7 +339,7 @@ Two things that break the hash model silently, both learned the hard way: (1) **
 
 ### API surface (`app/api/*/route.ts`)
 
-Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://docs.privacytracker.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing.
+Each route is a thin wrapper over `lib/`. Routes that read mutable state use `export const dynamic = 'force-dynamic'`. The public contract is documented at https://docs.privacytracker.privacykey.org/api-reference/introduction — keep those request/response shapes stable when editing. **Every route must also be classified in `scripts/parity/manifest.mjs`** (READS / VOLATILE_READS / MUTATIONS / TEARDOWN / QUARANTINE — the coverage rule at the top of that file): `pnpm parity:manifest`, the `core-parity` CI job and `tests/app/parity-manifest-coverage.test.ts` all walk `app/api/**/route.ts` and fail on an unclassified or phantom route, so add the manifest entry in the same PR as the route.
 
 ### Apps grid pagination (large fleets)
 

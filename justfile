@@ -102,6 +102,14 @@ parity-read node data:
     # `--node` as a positional argument and refuses to start.
     pnpm run parity:read --node {{node}} --node-data {{data}}
 
+# Walks app/api/**/route.ts and fails if scripts/parity/manifest.mjs leaves a
+# route unclassified or lists one that is gone. Needs no servers; CI's
+# core-parity job and `pnpm test` run the same check.
+# Coverage gate: every API route is classified in the parity manifest
+[group("rust-core")]
+parity-manifest:
+    pnpm run parity:manifest
+
 # Runs the REAL lib/changelog.ts diffSnapshots over a table of snapshot pairs
 # and records its output as core/tests/fixtures/diff-cases.json. The parity
 # differ cannot see that function at all (every seeded app diffs to nothing),
