@@ -1,0 +1,4917 @@
+{
+  "cases": [
+    {
+      "name": "index captures imported",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210215120000\",\"200\"],[\"20210501120000\",\"200\"],[\"20210810120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210215120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script type=\"fastboot/shoebox\" id=\"shoebox-media-api-cache-apps\">{&quot;cache.key&quot;:&quot;{\\&quot;d\\&quot;:[{\\&quot;attributes\\&quot;:{\\&quot;privacy\\&quot;:{\\&quot;privacyTypes\\&quot;:[{\\&quot;identifier\\&quot;:\\&quot;DATA_LINKED_TO_YOU\\&quot;,\\&quot;privacyType\\&quot;:\\&quot;Data Linked to You\\&quot;,\\&quot;dataCategories\\&quot;:[{\\&quot;identifier\\&quot;:\\&quot;CONTACT_INFO\\&quot;,\\&quot;dataCategory\\&quot;:\\&quot;CONTACT_INFO\\&quot;}]}]}}}]}&quot;}</script></head><body></body></html>"
+          },
+          "20210501120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script type=\"fastboot/shoebox\" id=\"shoebox-ember-data-store\">{&quot;555000111&quot;:{&quot;data&quot;:{&quot;attributes&quot;:{&quot;privacy&quot;:{&quot;privacyTypes&quot;:[{&quot;identifier&quot;:&quot;DATA_LINKED_TO_YOU&quot;,&quot;privacyType&quot;:&quot;Data Linked to You&quot;,&quot;dataCategories&quot;:[{&quot;identifier&quot;:&quot;CONTACT_INFO&quot;,&quot;dataCategory&quot;:&quot;CONTACT_INFO&quot;}]}]}}}}}</script></head><body></body></html>"
+          },
+          "20210810120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210215120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210501120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210810120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1613390400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1619870400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            1628596800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            "wayback",
+            "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1613390400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1619870400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "scraped_at": 1628596800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 2,
+          "unchanged": 1,
+          "skipped": 0,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "imported",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "unchanged",
+              "captureDate": 1619870400000,
+              "waybackUrl": "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "imported",
+              "captureDate": 1628596800000,
+              "waybackUrl": "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "existing rows inside the window are skipped",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "w1",
+            "555000111",
+            1613779200000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210220120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "w2",
+            "555000111",
+            1620172800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210505120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "w3",
+            "555000111",
+            1627948800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210803120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback"
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210220120000\",\"200\"],[\"20210505120000\",\"200\"],[\"20210803120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "w1",
+            "app_id": "555000111",
+            "scraped_at": 1613779200000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210220120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "w2",
+            "app_id": "555000111",
+            "scraped_at": 1620172800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210505120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "w3",
+            "app_id": "555000111",
+            "scraped_at": 1627948800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210803120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_existing"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_existing"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_existing"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "force re-probes but the capture url still dedupes",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "w1",
+            "555000111",
+            1613390400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "http://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback"
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {
+        "force": true
+      },
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210215120000\",\"200\"],[\"20210501120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210501120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]}}}}]}</script></head><body></body></html>"
+          },
+          "20211020120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210501120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1619870400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            "wayback",
+            "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "w1",
+            "app_id": "555000111",
+            "scraped_at": 1613390400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "http://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1619870400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 1,
+          "unchanged": 0,
+          "skipped": 2,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_existing",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "imported",
+              "captureDate": 1619870400000,
+              "waybackUrl": "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 2
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "index rate limited throws",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 429,
+          "headers": {
+            "retry-after": "120"
+          },
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": false,
+        "error": "archive.org rate-limited for CDX index — retry after 120s"
+      }
+    },
+    {
+      "name": "index unavailable throws",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 503,
+          "headers": {},
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": false,
+        "error": "archive.org unavailable (HTTP 503) for CDX index"
+      }
+    },
+    {
+      "name": "index missing falls back to availability probes",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 404,
+          "headers": {},
+          "body": ""
+        },
+        "availability": {
+          "20210201": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210220120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210220120000\",\"status\":\"200\"}}}"
+          },
+          "20210320": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210901120000\",\"status\":\"200\"}}}"
+          },
+          "20210403": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210901120000\",\"status\":\"200\"}}}"
+          },
+          "20210417": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210901120000\",\"status\":\"200\"}}}"
+          },
+          "20210501": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210901120000\",\"status\":\"200\"}}}"
+          },
+          "20210515": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210901120000\",\"status\":\"200\"}}}"
+          },
+          "20210529": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210901120000\",\"status\":\"200\"}}}"
+          },
+          "20210612": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{\"closest\":{\"available\":true,\"url\":\"http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111\",\"timestamp\":\"20210901120000\",\"status\":\"200\"}}}"
+          },
+          "default": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{}}"
+          }
+        },
+        "replay": {
+          "20210220120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        },
+        "save": {
+          "status": 302,
+          "headers": {
+            "location": "https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111"
+          },
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210220120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210501",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210417",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210515",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210403",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210529",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210320",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210612",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210801",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210718",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210815",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210704",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210829",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210620",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210912",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1613822400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "http://web.archive.org/web/20210220120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1635768000000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1635768000000}]"
+          ]
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1613822400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "http://web.archive.org/web/20210220120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1635768000000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1635768000000}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 1,
+          "unchanged": 0,
+          "skipped": 2,
+          "failed": 0,
+          "snapshotsRequested": 1,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "imported",
+              "captureDate": 1613822400000,
+              "waybackUrl": "http://web.archive.org/web/20210220120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_drift",
+              "captureDate": 1630497600000,
+              "waybackUrl": "http://web.archive.org/web/20210901120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "requested_snapshot",
+              "saveNowUrl": "https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "captureDate": 1635768000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "availability unavailable throws",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 404,
+          "headers": {},
+          "body": ""
+        },
+        "availability": {
+          "default": {
+            "status": 503,
+            "headers": {
+              "retry-after": "Mon, 01 Nov 2021 12:02:00 GMT"
+            },
+            "body": ""
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": false,
+        "error": "archive.org unavailable (HTTP 503) for availability API — retry after 120s"
+      }
+    },
+    {
+      "name": "replay outcomes and a reused unusable capture",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210317120000\",\"200\"],[\"20210801120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210317120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{}}}]}</script></head><body>No privacy section</body></html>"
+          },
+          "20210801120000": {
+            "error": "fetch failed"
+          }
+        },
+        "save": {
+          "status": 429,
+          "headers": {
+            "retry-after": "60"
+          },
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210317120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210801120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 1,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_labels",
+              "captureDate": 1615982400000,
+              "waybackUrl": "https://web.archive.org/web/20210317120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_labels",
+              "captureDate": 1615982400000,
+              "waybackUrl": "https://web.archive.org/web/20210317120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_fetch_failure",
+              "captureDate": 1627819200000,
+              "waybackUrl": "https://web.archive.org/web/20210801120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "errorMessage": "fetch failed"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "Save Page Now rate-limited; retry after 60s"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "replay not found and not a product page",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210215120000\",\"200\"],[\"20210501120000\",\"200\"],[\"20210810120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210215120000": {
+            "status": 404,
+            "headers": {},
+            "body": ""
+          },
+          "20210501120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><body>Wayback Machine has not archived that URL.</body></html>"
+          },
+          "20210810120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210215120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210501120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210810120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1628596800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1628596800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 1,
+          "unchanged": 0,
+          "skipped": 0,
+          "failed": 2,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_fetch_failure",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "errorMessage": "archive replay returned HTTP 404"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_parse_failure",
+              "captureDate": 1619870400000,
+              "waybackUrl": "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "imported",
+              "captureDate": 1628596800000,
+              "waybackUrl": "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "replay unavailable throws after earlier rows committed",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210215120000\",\"200\"],[\"20210501120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210215120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          },
+          "20210501120000": {
+            "status": 503,
+            "headers": {},
+            "body": ""
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210215120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210501120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1613390400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1613390400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": false,
+        "error": "archive.org unavailable (HTTP 503) for replay"
+      }
+    },
+    {
+      "name": "successor wayback row is re-diffed",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "aug",
+            "555000111",
+            1628553600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "live",
+            "555000111",
+            1633392000000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            0,
+            "[]",
+            "live",
+            null,
+            "manual"
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210215120000\",\"200\"],[\"20210501120000\",\"200\"],[\"20210810120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210215120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          },
+          "20210501120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210215120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210501120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1613390400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_snapshots\n        SET changes_summary = ?, changes_detected = ?\n      WHERE id = ?",
+          "params": [
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            1,
+            "aug"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1619870400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_snapshots\n        SET changes_summary = ?, changes_detected = ?\n      WHERE id = ?",
+          "params": [
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            1,
+            "aug"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "aug",
+            "app_id": "555000111",
+            "scraped_at": 1628553600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "live",
+            "app_id": "555000111",
+            "scraped_at": 1633392000000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "manual",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1613390400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1619870400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 1,
+          "unchanged": 1,
+          "skipped": 1,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "imported",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "unchanged",
+              "captureDate": 1619870400000,
+              "waybackUrl": "https://web.archive.org/web/20210501120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_existing"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "live row before the capture is the diff base",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "live",
+            "555000111",
+            1610668800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            0,
+            "[]",
+            "live",
+            null,
+            "manual"
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210215120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210215120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210215120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1613390400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            1,
+            "[{\"type\":\"removed\",\"description\":\"Removed privacy label: \\\"Data Used to Track You\\\"\"},{\"type\":\"removed\",\"description\":\"\\\"Data Linked to You\\\" no longer collects: LOCATION\"}]",
+            "wayback",
+            "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "live",
+            "app_id": "555000111",
+            "scraped_at": 1610668800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "manual",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1613390400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"removed\",\"description\":\"Removed privacy label: \\\"Data Used to Track You\\\"\"},{\"type\":\"removed\",\"description\":\"\\\"Data Linked to You\\\" no longer collects: LOCATION\"}]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 1,
+          "unchanged": 0,
+          "skipped": 2,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "imported",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 2
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_drift",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "save now via location",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "status": 302,
+          "headers": {
+            "location": "/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111"
+          },
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1635768000000,
+            "[]",
+            "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1635768000000}]"
+          ]
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1635768000000,
+            "snapshot_json": "[]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1635768000000}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 0,
+          "snapshotsRequested": 1,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "requested_snapshot",
+              "saveNowUrl": "https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "captureDate": 1635768000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "save now via content-location",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "status": 200,
+          "headers": {
+            "content-location": "https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111"
+          },
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1635768000000,
+            "[]",
+            "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1635768000000}]"
+          ]
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1635768000000,
+            "snapshot_json": "[]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1635768000000}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 0,
+          "snapshotsRequested": 1,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "requested_snapshot",
+              "saveNowUrl": "https://web.archive.org/web/20211101120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "captureDate": 1635768000000
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "save now rate limited",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "status": 429,
+          "headers": {},
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 4,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "Save Page Now rate-limited"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "save now server error",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "status": 500,
+          "headers": {},
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 4,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "Save Page Now returned HTTP 500"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "save now without a snapshot url",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "status": 200,
+          "headers": {},
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 4,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "Save Page Now returned 200 without a snapshot URL"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "save now transport failure",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "error": "fetch failed"
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 4,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "fetch failed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "save now location on another host",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "status": 302,
+          "headers": {
+            "location": "https://example.com/web/20211101120000/x"
+          },
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 4,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "Save Page Now returned 302 without a snapshot URL"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "install anchor is probed",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1623747600000,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210615120000\",\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210615120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210615120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1623758400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210615120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1623758400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210615120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1623747600000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 4,
+          "imported": 1,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_drift",
+              "captureDate": 1623758400000,
+              "waybackUrl": "https://web.archive.org/web/20210615120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "imported",
+              "captureDate": 1623758400000,
+              "waybackUrl": "https://web.archive.org/web/20210615120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1623747600000,
+              "outcome": "skipped_existing"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_drift",
+              "captureDate": 1623758400000,
+              "waybackUrl": "https://web.archive.org/web/20210615120000/https://apps.apple.com/us/app/fixture/id555000111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "fresh install anchor is not probed",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1634688000000,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20211020120000\",\"200\"]]"
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1634688000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "anchor coinciding with a target is deduped",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1619848800000,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20211020120000\",\"200\"]]"
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1619848800000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1619848800000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_drift",
+              "captureDate": 1634731200000,
+              "waybackUrl": "https://web.archive.org/web/20211020120000/https://apps.apple.com/us/app/fixture/id555000111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "monthly cadence",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {
+        "intervalMonths": 1
+      },
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210601120000\",\"200\"],[\"20211015120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210601120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          },
+          "20211015120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210601120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20211015120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1622548800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1634299200000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            "wayback",
+            "https://web.archive.org/web/20211015120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1622548800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1634299200000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"},{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"LOCATION\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"LOCATION\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: LOCATION\"}]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20211015120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 9,
+          "imported": 2,
+          "unchanged": 0,
+          "skipped": 7,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_drift",
+              "captureDate": 1622548800000,
+              "waybackUrl": "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1614600000000,
+              "outcome": "skipped_drift",
+              "captureDate": 1622548800000,
+              "waybackUrl": "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1617278400000,
+              "outcome": "skipped_drift",
+              "captureDate": 1622548800000,
+              "waybackUrl": "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "imported",
+              "captureDate": 1622548800000,
+              "waybackUrl": "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1622548800000,
+              "outcome": "skipped_existing"
+            },
+            {
+              "targetDate": 1625140800000,
+              "outcome": "skipped_existing",
+              "captureDate": 1622548800000,
+              "waybackUrl": "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_drift",
+              "captureDate": 1622548800000,
+              "waybackUrl": "https://web.archive.org/web/20210601120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1630497600000,
+              "outcome": "imported",
+              "captureDate": 1634299200000,
+              "waybackUrl": "https://web.archive.org/web/20211015120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 2
+            },
+            {
+              "targetDate": 1633089600000,
+              "outcome": "skipped_existing"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "index parsing quirks",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"2021\",\"200\"],[\"20210810120000\",\"200\"],[\"20210810120000\",\"200\"],[\"20210215120000\",\"200\"],\"junk\",[42,\"200\"],[\"20211020120000\",\"200\"]]"
+        },
+        "replay": {
+          "20210215120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          },
+          "20210810120000": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html"
+            },
+            "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]}}}}]}</script></head><body></body></html>"
+          }
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210215120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210810120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "555000111",
+            1613390400000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1628596800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "555000111",
+            "scraped_at": 1613390400000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1628596800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"CONTACT_INFO\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 1,
+          "unchanged": 1,
+          "skipped": 1,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "imported",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_drift",
+              "captureDate": 1613390400000,
+              "waybackUrl": "https://web.archive.org/web/20210215120000/https://apps.apple.com/us/app/fixture/id555000111"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "unchanged",
+              "captureDate": 1628596800000,
+              "waybackUrl": "https://web.archive.org/web/20210810120000/https://apps.apple.com/us/app/fixture/id555000111",
+              "changeCount": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "index garbage falls back to probes",
+      "now": 1635768000000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{not json"
+        },
+        "availability": {
+          "default": {
+            "status": 200,
+            "headers": {
+              "content-type": "application/json"
+            },
+            "body": "{\"archived_snapshots\":{}}"
+          }
+        },
+        "save": {
+          "status": 500,
+          "headers": {},
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210118",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210215",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210104",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210301",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20201221",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210315",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210501",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210417",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210515",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210403",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210529",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210320",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210612",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210801",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210718",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210815",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210704",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210829",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210620",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&timestamp=20210912",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 3,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 4,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1619870400000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1627819200000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1635768000000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "Save Page Now returned HTTP 500"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "target walk from a month end",
+      "now": 1622462400000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "555000111",
+            "Fixture",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            0,
+            1600000000000
+          ]
+        }
+      ],
+      "app": {
+        "id": "555000111",
+        "name": "Fixture",
+        "url": "https://apps.apple.com/us/app/fixture/id555000111"
+      },
+      "options": {},
+      "replies": {
+        "cdx": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[]"
+        },
+        "save": {
+          "status": 500,
+          "headers": {},
+          "body": ""
+        }
+      },
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "privacy_snapshots": [],
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 0,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "appId": "555000111",
+          "attempted": 2,
+          "imported": 0,
+          "unchanged": 0,
+          "skipped": 3,
+          "failed": 0,
+          "snapshotsRequested": 0,
+          "targets": [
+            {
+              "targetDate": 1612137600000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1614772800000,
+              "outcome": "skipped_no_capture"
+            },
+            {
+              "targetDate": 1622462400000,
+              "outcome": "skipped_save_now_failed",
+              "errorMessage": "Save Page Now returned HTTP 500"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

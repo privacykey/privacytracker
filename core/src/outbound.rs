@@ -182,9 +182,20 @@ pub struct Request {
     /// (the bundle-id lookup allows 16 KiB for its hundred-id query).
     #[serde(default = "default_max_url_length")]
     pub max_url_length: usize,
+    /// `redirect: "follow"` (the default) versus `"manual"`, which hands the
+    /// 3xx back with its headers.
+    #[serde(default = "default_true")]
+    pub follow_redirects: bool,
+    /// Whether to read the body at all. Save Page Now cancels it and reads
+    /// only the headers.
+    #[serde(default = "default_true")]
+    pub read_body: bool,
 }
 fn default_max_url_length() -> usize {
     2048
+}
+fn default_true() -> bool {
+    true
 }
 impl Request {
     pub fn apple(url: String, hosts: &[&str], max_bytes: usize, timeout_ms: u64) -> Self {
@@ -196,6 +207,8 @@ impl Request {
             timeout_ms,
             max_redirects: 5,
             max_url_length: 2048,
+            follow_redirects: true,
+            read_body: true,
         }
     }
 }
@@ -351,7 +364,7 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
             headers: reply_headers,
             body: mut reader,
         } = hop.hop(url.clone(), headers.clone()).await?;
-        if (300..400).contains(&status) {
+        if request.follow_redirects && (300..400).contains(&status) {
             if let Some(location) = reply_headers.get("location") {
                 let location = location.to_str().map_err(|_| "fetch failed")?;
                 redirects += 1;
@@ -372,6 +385,16 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
                 url = next;
                 continue;
             }
+        }
+        if !request.read_body {
+            return Ok(Reply {
+                status,
+                body: Vec::new(),
+                headers: reply_headers
+                    .iter()
+                    .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
+                    .collect(),
+            });
         }
         let declared = reply_headers
             .get("content-length")

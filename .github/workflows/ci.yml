@@ -377,6 +377,16 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-search-cases.mjs
           git diff --exit-code -- core/tests/fixtures/search-cases.json
 
+      - name: Scrape history oracle is current
+        # Runs the real importAppHistory with archive.org stubbed by recorded
+        # CDX, availability, replay and Save Page Now replies and records
+        # every raw fetch, every write with its transaction markers, the
+        # snapshot rows and the result. A diff means the Node historical
+        # import changed and core/src/scrape/history.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-history-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/history-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 
