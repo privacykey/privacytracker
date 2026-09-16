@@ -24,10 +24,36 @@ use std::{
 use tokio::io::BufReader;
 use url::Url;
 
-struct Canned {
-    replies: Vec<Value>,
-    cursor: AtomicUsize,
-    calls: Mutex<Vec<Value>>,
+pub(super) struct Canned {
+    pub(super) replies: Vec<Value>,
+    pub(super) cursor: AtomicUsize,
+    pub(super) calls: Mutex<Vec<Value>>,
+    /// Asserts the limits each scraper call must carry.
+    check: fn(&Request),
+}
+
+impl Canned {
+    pub(super) fn new(replies: Vec<Value>, check: fn(&Request)) -> Self {
+        Self {
+            replies,
+            cursor: AtomicUsize::new(0),
+            calls: Mutex::new(vec![]),
+            check,
+        }
+    }
+}
+
+fn scrape_limits(request: &Request) {
+    assert_eq!(request.max_redirects, 5);
+    assert_eq!(request.allowed_hosts, outbound::APPLE_HOSTS);
+    if request.url.contains("/lookup?") {
+        assert_eq!((request.max_bytes, request.timeout_ms), (1024 * 1024, 8000));
+    } else {
+        assert_eq!(
+            (request.max_bytes, request.timeout_ms),
+            (4 * 1024 * 1024, 15_000)
+        );
+    }
 }
 
 impl Hop for Canned {
@@ -77,16 +103,7 @@ impl Hop for Canned {
 impl Fetcher for Canned {
     fn fetch(&self, request: Request) -> FetchFuture<'_> {
         Box::pin(async move {
-            assert_eq!(request.max_redirects, 5);
-            assert_eq!(request.allowed_hosts, outbound::APPLE_HOSTS);
-            if request.url.contains("/lookup?") {
-                assert_eq!((request.max_bytes, request.timeout_ms), (1024 * 1024, 8000));
-            } else {
-                assert_eq!(
-                    (request.max_bytes, request.timeout_ms),
-                    (4 * 1024 * 1024, 15_000)
-                );
-            }
+            (self.check)(&request);
             fetch_via(self, request).await
         })
     }
@@ -149,11 +166,7 @@ fn fetch_layer_matches_node_calls_stream_rows_and_result() {
             .unwrap_or_else(|e| panic!("{name}: setup failed: {e}"));
         }
         ratelimit::reset_soft_buckets();
-        let canned = Canned {
-            replies: case["replies"].as_array().unwrap().clone(),
-            cursor: AtomicUsize::new(0),
-            calls: Mutex::new(vec![]),
-        };
+        let canned = Canned::new(case["replies"].as_array().unwrap().clone(), scrape_limits);
         let mut ids = CountingIds {
             prefix: "00000000-0000-4000-8000-",
             next: 0,

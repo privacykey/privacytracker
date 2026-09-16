@@ -1639,3 +1639,54 @@ plain HTTP error failed the 403 case on its stream, both tables and its
 result, and dropping the post-fetch throwaway id failed the continuing
 batch on its stream and both tables; nothing else moved, and both faults
 were removed before the final passing run.
+
+### Batch 3b — search and bundle-id lookup (no routes)
+
+`core/src/scrape/search.rs` ports the two iTunes API calls the import flow
+makes: `searchAppsByName` — query normalisation (strings and objects,
+blank names dropped, blank developers forgotten), the search URL with an
+`encodeURIComponent` port, the once-only retry after an empty result, and
+the developer-hint reordering (exact 100, containment 50, twelve per
+shared ASCII word to 40, ties by position) — and `lookupAppsByBundleId`:
+trim and dedupe, chunks of a hundred over a 16 KiB URL allowance, the
+5xx split-in-half retry that recurses, case-insensitive matching with the
+last duplicate winning, and nulls for whatever a chunk cannot answer.
+Both share the "search" cooldown a 429 records (seconds only, under ten
+minutes, else 70 s; the raw header in the reason) and both return the
+batch object as JSON, because the candidate shape is JavaScript's: a field
+Apple did not send is absent, a `null` one stays null, `String(trackId)`
+spells whatever was there, and the first `100x100bb` becomes `200x200bb`.
+
+**Where the throws go.** Neither function throws to its caller. Inside a
+query or a chunk, a transport failure, a non-OK status, malformed JSON, a
+`results` that is not an array, a `null` entry, a non-string
+`artworkUrl100` or `trackViewUrl`, or a non-string candidate developer
+under a hint all land in Node's per-query `try` — empty candidates, or
+null matches for the chunk — and the next query carries on. The oracle
+pins each of those against its neighbours in one batch.
+
+**The oracle — `core/scripts/extract-search-cases.mjs`.** Runs the REAL
+functions over 31 scenarios with recorded iTunes replies and records every
+raw fetch (URL and headers), every write, the app_settings rows and the
+batch returned. `core/src/scrape/search_tests.rs` replays each through the
+same transport loop the fetch batch introduced, with the request limits
+asserted per call. Scenarios: candidate mapping with every field variant,
+the developer reorder, a single candidate under a hint, query
+normalisation, the storefront from the option and from the setting, the
+empty-result retry (used, exhausted, and rate-limited on the retry), 429
+on the first and on a later query with Retry-After honoured, at the cap
+and as junk, the cooldown short-circuit, eight failure modes isolated in
+one batch, URI encoding of spaces, ampersands, accents and CJK; and for
+the lookup, input-order matching, dedupe and trim, empty input, 429 with
+and without Retry-After, the cooldown, a non-OK chunk, the 5xx split with
+and without a rate limit inside it, a 5xx on a single id, malformed JSON,
+non-array results, 150 ids across two chunks, reply quirks (duplicate and
+non-string bundle ids, absent fields) and the storefront from both
+sources.
+
+Rust suite: 199 pass (187 + 12 new). Negative controls: making the
+Retry-After cap inclusive failed the at-the-cap case on its stream,
+settings and batch, and skipping the empty-result retry failed the four
+cases that consume a retry reply (unused replies, raw fetches, batch);
+nothing else moved, and both faults were removed before the final passing
+run.

@@ -178,6 +178,13 @@ pub struct Request {
     pub max_bytes: usize,
     pub timeout_ms: u64,
     pub max_redirects: usize,
+    /// `maxUrlLength`: the validator's cap, 2048 unless a caller raises it
+    /// (the bundle-id lookup allows 16 KiB for its hundred-id query).
+    #[serde(default = "default_max_url_length")]
+    pub max_url_length: usize,
+}
+fn default_max_url_length() -> usize {
+    2048
 }
 impl Request {
     pub fn apple(url: String, hosts: &[&str], max_bytes: usize, timeout_ms: u64) -> Self {
@@ -188,6 +195,7 @@ impl Request {
             max_bytes,
             timeout_ms,
             max_redirects: 5,
+            max_url_length: 2048,
         }
     }
 }
@@ -316,7 +324,7 @@ async fn bounded(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
 }
 async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Reply, String> {
     let hosts: Vec<_> = request.allowed_hosts.iter().map(String::as_str).collect();
-    let mut url = validate(&request.url, &hosts, 2048)
+    let mut url = validate(&request.url, &hosts, request.max_url_length)
         .map_err(|e| format!("Blocked URL: {} — {}", e.error, e.detail))?;
     let mut headers = HeaderMap::new();
     for (k, v) in request.headers {
