@@ -30,7 +30,7 @@ mod notify;
 pub mod page;
 pub mod persist;
 #[cfg(test)]
-mod persist_tests;
+pub(crate) mod persist_tests;
 pub mod plan;
 pub mod ratelimit;
 pub mod region;

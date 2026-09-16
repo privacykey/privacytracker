@@ -156,7 +156,7 @@ pub async fn settings(State(state): State<AppState>) -> Response {
 // alias, after the short names, in the same order.
 
 #[derive(Serialize)]
-struct DesktopBody {
+pub(super) struct DesktopBody {
     hide_dock: bool,
     launch_hidden: bool,
     autostart: bool,
@@ -247,8 +247,16 @@ pub async fn desktop_settings(State(state): State<AppState>, headers: HeaderMap)
         return internal_error();
     }
 
-    let body = (|| -> rusqlite::Result<DesktopBody> {
-        let get = |key: &str| get_setting_with(&conn, key, "");
+    match read_desktop(&conn) {
+        Ok(body) => json_ok(&body),
+        Err(_) => internal_error(),
+    }
+}
+
+/// `serialise(readAll())`: the eleven rows decoded, then aliased.
+pub(super) fn read_desktop(conn: &rusqlite::Connection) -> rusqlite::Result<DesktopBody> {
+    (|| -> rusqlite::Result<DesktopBody> {
+        let get = |key: &str| get_setting_with(conn, key, "");
         let hide_dock = desktop_bool(&get("desktop_hide_dock")?, false);
         let launch_hidden = desktop_bool(&get("desktop_launch_hidden")?, false);
         let autostart = desktop_bool(&get("desktop_autostart")?, false);
@@ -291,11 +299,7 @@ pub async fn desktop_settings(State(state): State<AppState>, headers: HeaderMap)
             desktop_tray_visible: tray_visible,
             desktop_zoom_level: zoom_level,
         })
-    })();
-    match body {
-        Ok(body) => json_ok(&body),
-        Err(_) => internal_error(),
-    }
+    })()
 }
 
 // ── /api/dashboard/layout ────────────────────────────────────────────

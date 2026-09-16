@@ -57,7 +57,7 @@ struct FocusBody {
 
 /// Port of `inferFocusWorkflow`. Note `accessibility` is deliberately NOT
 /// considered, and `minimal` short-circuits to "custom".
-fn infer_focus_workflow(
+pub(super) fn infer_focus_workflow(
     audience: &str,
     monitor: bool,
     cleanup: bool,

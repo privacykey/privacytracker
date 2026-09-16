@@ -1753,3 +1753,101 @@ product-page sniff failed only the no-labels case, dropping the HTTP-date
 Retry-After branch failed only the availability 503 case, and removing the
 Content-Location fallback failed only that Save Page Now case; nothing
 else moved, and each fault was removed before the final passing run.
+
+## Status — Phase 4 (writers, runners, health)
+
+Phase 3 closed with the scraper, the diff, the persist path and the
+Wayback import in Rust and 202 tests gating them. Phase 4 is the write
+side of the API and the background work behind it, in five batches:
+the settings-style writers and the plumbing every write shares (batch
+1), the library writers (2), the import pipeline (3), the bulk runners
+and the scheduler (4), and the health check, diagnostics, backup and
+teardown routes (5). The cfgutil device actions belong with the desktop
+cutover, and the AI routes with Phase 5.
+
+**The gate changes shape.** Phase 2's reads were compared live against
+Node by `read-parity.mjs`; Phase 3's modules were gated by Node oracles
+replayed in the crate. The writes need both. `read-parity.mjs --mutate`
+(`just parity-write`) now runs a second differ pass after every read
+probe: the manifest's mutation entries for the write routes the core
+implements (`WRITE_ROUTES`, kept by hand like `BATCH_1`), each compared
+on its response and then on its `after` read, live against both servers.
+It runs last because every mutation lands on both databases with each
+server's own ids and clock. And each batch also records the real
+handlers in an oracle so CI compares the write stream and the rows — the
+differ only sees a write through its `after` read, and a write that
+returns the right envelope but persists differently is exactly the bug a
+port produces.
+
+### Batch 1 — the settings-style writes (+20 handlers)
+
+`core/src/server/writes.rs` ports the `POST`, `PUT` and `DELETE`
+exports of seventeen route files: `/api/date-format`, `/api/locale`,
+`/api/preferences`, `/api/settings`, `/api/settings/desktop`,
+`/api/notification-prefs`, `/api/focus`, `/api/privacy-profile`,
+`/api/accessibility-profile`, `/api/feature-flags/overrides` (set,
+bulk import, clear all or a surface, clear one), `/api/dashboard/layout`
+(save, reset, preset), `/api/coachmark-state`, `/api/dev-menu-state`,
+`/api/welcomed-at` and `/api/migration-flow/consume`. Each handler is the
+Node source in order: its guard, its body read with the route's own cap
+and its own 400 phrasing, its validation branches, its writes with
+Node's SQL byte for byte, and its response literal. Under them sit three
+modules every later write batch reuses: `body.rs` (`readBoundedJson` —
+the declared Content-Length refused first, the stream capped as it
+arrives, empty and unparseable distinct, a 30 s clock), `guard.rs`
+(`requireMutationGuard` — the inbound rate limit, then the admin token,
+each refusal an audit row; and `recordAudit` with its column
+truncation) and `activity_log.rs` (`recordActivity` with the
+2000-row retention cap). `routes_writes.rs` wires them into axum: the
+guard under the lock, the body read with the lock released, the handler
+under the lock again.
+
+**What the port has to get right that the route shapes do not show.**
+Bodies are `any` in Node, so the handlers are JavaScript semantics over
+`serde_json::Value`: a present key against an absent one (`null` is
+present), truthiness for the boolean settings (`"no"` stores `true`),
+`String()` and `Number()` coercions, `Object.keys` order for the audit
+detail (a string body audits as `0,1`), and which routes throw on a
+`null` body (Next's generic 500) against which check for an object
+first. `/api/settings` writes as it validates, so a body with a valid
+`sync_schedule` and an invalid `ai_provider` stores the schedule and
+answers 400 with no audit row; its rate limit is a bare 429 without
+Retry-After or audit, unlike the guard's. A provider switch clears the
+API key; a masked webhook value round-trips untouched, and `configured`
+with nothing stored is an invalid URL. The desktop route applies both
+the short and the legacy key when a body carries both, and skips a value
+it will not store rather than refusing. `/api/notification-prefs`
+projects four booleans onto flag overrides and, when the resolver throws
+on a garbage audience, answers from the legacy blob instead. The focus
+write is one transaction of seven rows; the profile and layout writes
+record an activity row only across a preset boundary, with the previous
+state read before the write. The override clear with `?surface=` (empty)
+clears everything and reports scope `""`. The locale cookie carries the
+`Expires` Next derives from `Max-Age`.
+
+**The oracle — `core/scripts/extract-writes-cases.mjs`.** Runs the REAL
+handlers over 255 requests with a frozen clock, counted ids, a distinct
+forwarded address per case behind `PRIVACYTRACKER_TRUST_PROXY=1` (so
+Node's process-wide limiter keeps one bucket per case), the admin token
+set per case, and a write recorder; it records the request, the setup
+rows, every write with BEGIN/COMMIT markers, the `app_settings`,
+`feature_flag_overrides`, `activity_log` and `audit_log` tables, and the
+wire response with Retry-After and Set-Cookie. Every manifest mutation
+body for these routes is among the cases. `core/src/server/writes_tests.rs`
+replays each through `precheck` and `perform` exactly as the wrappers
+call them, with a fresh limiter per case and limit+1 requests for the
+twelve burst cases. Scenarios per route: the success paths and every
+validation branch, the empty, unparseable, declared-too-large and
+streamed-too-large bodies, the non-object and `null` bodies, the
+admin-token refusal and acceptance, and the burst past the limit.
+
+Live: `read-parity.mjs --mutate` against a seeded production Node server
+— 178 read checks, then the 17 manifest mutations for these routes with
+their `after` reads (29 checks), PARITY OK.
+
+Rust suite: 205 pass (202 + 3 new). Negative controls: dropping the
+API-key clear on a provider switch failed exactly the two cases that
+switch providers; treating an empty `?surface=` as a surface failed only
+that case; and dropping the layout activity row failed exactly the four
+cases that cross a preset boundary; each fault was removed before the
+final passing run.

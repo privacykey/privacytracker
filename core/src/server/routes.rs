@@ -80,7 +80,7 @@ const SUPPORTED_LOCALES: [&str; 2] = ["en", "zh"];
 const DEFAULT_LOCALE: &str = "en";
 const LOCALE_COOKIE: &str = "NEXT_LOCALE";
 
-fn is_supported_locale(v: Option<&str>) -> bool {
+pub(super) fn is_supported_locale(v: Option<&str>) -> bool {
     matches!(v, Some(v) if SUPPORTED_LOCALES.contains(&v))
 }
 
@@ -128,7 +128,7 @@ struct DateFormatBody {
 }
 
 /// Port of `normaliseDateFormat`: exact, case-sensitive, no trimming.
-fn normalise_date_format(raw: &str) -> &'static str {
+pub(super) fn normalise_date_format(raw: &str) -> &'static str {
     match raw {
         "dmy" => "dmy",
         "mdy" => "mdy",

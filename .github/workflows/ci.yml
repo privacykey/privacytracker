@@ -387,6 +387,16 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-history-cases.mjs
           git diff --exit-code -- core/tests/fixtures/history-cases.json
 
+      - name: Settings write-route oracle is current
+        # Runs the real POST/PUT/DELETE handlers of the twenty settings-style
+        # writes with a frozen clock and counted ids and records every
+        # request, every write with its transaction markers, the touched
+        # tables and the wire response. A diff means a Node write handler
+        # changed and core/src/server/writes.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-writes-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/writes-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

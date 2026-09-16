@@ -102,6 +102,13 @@ parity-read node data:
     # `--node` as a positional argument and refuses to start.
     pnpm run parity:read --node {{node}} --node-data {{data}}
 
+# Write gate: the read gate plus the manifest's mutations for the write
+# routes the Rust core implements, replayed live against both servers last.
+# Mutates both databases — re-seed the Node server before running it again.
+[group("rust-core")]
+parity-write node data:
+    pnpm run parity:read --node {{node}} --node-data {{data}} --mutate
+
 # Walks app/api/**/route.ts and fails if scripts/parity/manifest.mjs leaves a
 # route unclassified or lists one that is gone. Needs no servers; CI's
 # core-parity job and `pnpm test` run the same check.
