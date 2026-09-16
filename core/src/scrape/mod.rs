@@ -18,6 +18,9 @@
 
 pub mod accessibility;
 mod activity;
+pub mod fetch;
+#[cfg(test)]
+mod fetch_tests;
 pub mod flags;
 mod js;
 mod notify;
@@ -26,11 +29,17 @@ pub mod persist;
 #[cfg(test)]
 mod persist_tests;
 pub mod plan;
+pub mod ratelimit;
+pub mod region;
 pub mod related;
 pub mod shoebox;
 #[cfg(test)]
 mod tests;
 
+pub use fetch::{
+    complete, fetch_and_parse_app, fetch_version_info, perform, prepare, scrape_initial_urls,
+    Fetched, Prepared, ScrapeError,
+};
 pub use page::{parse_page, ParsedPage};
 pub use persist::{
     scrape_and_persist, Ids, Outcome, RandomIds, ScrapeInput, Statement, VersionInfo,

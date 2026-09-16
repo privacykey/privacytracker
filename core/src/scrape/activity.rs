@@ -4,7 +4,7 @@
 //! swallows a failure here, so this never returns one.
 use super::{
     js::js_regex,
-    persist::{Ids, ScrapeInput, Writer},
+    persist::{Ids, Writer},
 };
 use crate::jsstr::js_slice_prefix;
 use serde_json::{json, Value};
@@ -55,7 +55,8 @@ fn diagnostics(url: &str, message: &str) -> Value {
 pub(super) fn record_error(
     w: &mut Writer,
     ids: &mut dyn Ids,
-    input: &ScrapeInput,
+    url: &str,
+    now: i64,
     activity_type: &str,
     error: &str,
 ) {
@@ -63,9 +64,9 @@ pub(super) fn record_error(
         return;
     };
     let detail = json!({
-        "url": input.url,
+        "url": url,
         "errorMessage": error,
-        "fetchDiagnostics": diagnostics(input.url, error),
+        "fetchDiagnostics": diagnostics(url, error),
     });
     if w.run(
         INSERT_ACTIVITY,
@@ -77,8 +78,8 @@ pub(super) fn record_error(
             Value::Null,
             json!(js_slice_prefix(error, 200)),
             json!(detail.to_string()),
-            json!(input.now),
-            json!(input.now),
+            json!(now),
+            json!(now),
             json!(0),
         ],
     )

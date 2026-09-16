@@ -195,11 +195,57 @@ impl Request {
 pub struct Reply {
     pub status: u16,
     pub body: Vec<u8>,
+    /// The final response's headers, names lowercased.
+    pub headers: Vec<(String, String)>,
 }
 impl Reply {
     pub fn ok(&self) -> bool {
         (200..300).contains(&self.status)
     }
+    /// `response.headers.get(name)`: the first header of that name.
+    pub fn header(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(k, _)| k == name)
+            .map(|(_, v)| v.as_str())
+    }
+}
+
+/// One raw round trip below the redirect, size-cap and decoding loop — what
+/// `fetch` is to Node's `safeFetch`. `PublicHttp` hops through reqwest; the
+/// scrape replay hops through recorded replies, so both run the same loop.
+pub struct RawReply {
+    pub status: u16,
+    pub headers: HeaderMap,
+    pub body: Pin<Box<dyn AsyncBufRead + Send>>,
+}
+pub type HopFuture<'a> = Pin<Box<dyn Future<Output = Result<RawReply, String>> + Send + 'a>>;
+pub trait Hop: Send + Sync {
+    fn hop(&self, url: Url, headers: HeaderMap) -> HopFuture<'_>;
+}
+impl Hop for Client {
+    fn hop(&self, url: Url, headers: HeaderMap) -> HopFuture<'_> {
+        Box::pin(async move {
+            let response = self
+                .get(url)
+                .headers(headers)
+                .send()
+                .await
+                .map_err(|_| "fetch failed".to_string())?;
+            let status = response.status().as_u16();
+            let headers = response.headers().clone();
+            let stream = response.bytes_stream().map_err(std::io::Error::other);
+            Ok(RawReply {
+                status,
+                headers,
+                body: Box::pin(BufReader::new(tokio_util::io::StreamReader::new(stream))),
+            })
+        })
+    }
+}
+/// `safeFetch` over any hop, without the DNS preflight: the replay's entry.
+pub async fn fetch_via(hop: &dyn Hop, request: Request) -> Result<Reply, String> {
+    bounded(hop, request, false).await
 }
 pub type FetchFuture<'a> = Pin<Box<dyn Future<Output = Result<Reply, String>> + Send + 'a>>;
 pub trait Fetcher: Send + Sync {
@@ -241,7 +287,7 @@ impl Fetcher for PublicHttp {
         Box::pin(async move {
             static CLIENT: OnceLock<Client> = OnceLock::new();
             let client = CLIENT.get_or_init(|| builder().build().expect("Rust TLS client"));
-            bounded(client, request, true).await
+            bounded(client as &dyn Hop, request, true).await
         })
     }
 }
@@ -260,15 +306,15 @@ async fn preflight(u: &Url) -> Result<(), String> {
         "Blocked URL: host {host} did not resolve to a public address"
     ))
 }
-async fn bounded(client: &Client, request: Request, check_dns: bool) -> Result<Reply, String> {
+async fn bounded(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Reply, String> {
     tokio::time::timeout(
         Duration::from_millis(request.timeout_ms),
-        perform(client, request, check_dns),
+        perform(hop, request, check_dns),
     )
     .await
     .map_err(|_| "The operation was aborted due to timeout".to_string())?
 }
-async fn perform(client: &Client, request: Request, check_dns: bool) -> Result<Reply, String> {
+async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Reply, String> {
     let hosts: Vec<_> = request.allowed_hosts.iter().map(String::as_str).collect();
     let mut url = validate(&request.url, &hosts, 2048)
         .map_err(|e| format!("Blocked URL: {} — {}", e.error, e.detail))?;
@@ -292,15 +338,13 @@ async fn perform(client: &Client, request: Request, check_dns: bool) -> Result<R
         if check_dns {
             preflight(&url).await?;
         }
-        let response = client
-            .get(url.clone())
-            .headers(headers.clone())
-            .send()
-            .await
-            .map_err(|_| "fetch failed".to_string())?;
-        let status = response.status().as_u16();
+        let RawReply {
+            status,
+            headers: reply_headers,
+            body: mut reader,
+        } = hop.hop(url.clone(), headers.clone()).await?;
         if (300..400).contains(&status) {
-            if let Some(location) = response.headers().get("location") {
+            if let Some(location) = reply_headers.get("location") {
                 let location = location.to_str().map_err(|_| "fetch failed")?;
                 redirects += 1;
                 if redirects > request.max_redirects {
@@ -321,8 +365,7 @@ async fn perform(client: &Client, request: Request, check_dns: bool) -> Result<R
                 continue;
             }
         }
-        let declared = response
-            .headers()
+        let declared = reply_headers
             .get("content-length")
             .and_then(|v| v.to_str().ok())
             .map(|s| crate::jsnum::js_to_number(&serde_json::Value::String(s.into())));
@@ -332,15 +375,11 @@ async fn perform(client: &Client, request: Request, check_dns: bool) -> Result<R
                 request.max_bytes
             ));
         }
-        let encoding = response
-            .headers()
+        let encoding = reply_headers
             .get("content-encoding")
             .and_then(|h| h.to_str().ok())
             .unwrap_or("")
             .to_string();
-        let stream = response.bytes_stream().map_err(std::io::Error::other);
-        let mut reader: Pin<Box<dyn AsyncBufRead + Send>> =
-            Box::pin(BufReader::new(tokio_util::io::StreamReader::new(stream)));
         // Preserve Content-Length before decompressing; reqwest's automatic
         // decoder drops it. Cap the decoded stream, including compressed bombs.
         for coding in encoding.split(',').rev().map(str::trim) {
@@ -383,7 +422,14 @@ async fn perform(client: &Client, request: Request, check_dns: bool) -> Result<R
                 request.max_bytes
             ));
         }
-        return Ok(Reply { status, body });
+        return Ok(Reply {
+            status,
+            body,
+            headers: reply_headers
+                .iter()
+                .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
+                .collect(),
+        });
     }
 }
 

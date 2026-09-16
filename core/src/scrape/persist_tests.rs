@@ -7,9 +7,9 @@ use rusqlite::{params_from_iter, types::Value as Sql, Connection};
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
-struct CountingIds {
-    prefix: &'static str,
-    next: u64,
+pub(super) struct CountingIds {
+    pub(super) prefix: &'static str,
+    pub(super) next: u64,
 }
 
 impl Ids for CountingIds {
@@ -19,7 +19,7 @@ impl Ids for CountingIds {
     }
 }
 
-fn to_sql(v: &Value) -> Sql {
+pub(super) fn to_sql(v: &Value) -> Sql {
     match v {
         Value::Null => Sql::Null,
         Value::Number(n) => n
@@ -46,9 +46,9 @@ const DUMPED: [&str; 10] = [
 ];
 
 /// The oracle's dump: rows in rowid order, digested past 100 rows.
-fn dump(conn: &Connection) -> Value {
+pub(super) fn dump(conn: &Connection, tables: &[&str]) -> Value {
     let mut out = Map::new();
-    for table in DUMPED {
+    for &table in tables {
         let mut stmt = conn
             .prepare(&format!("SELECT * FROM {table} ORDER BY rowid"))
             .unwrap();
@@ -133,7 +133,6 @@ fn persist_matches_node_stream_rows_and_result() {
         let version = version_info(&case["version"]);
         let input = ScrapeInput {
             url: case["url"].as_str().unwrap(),
-            html: case["html"].as_str().unwrap(),
             resync: case["resync"].as_bool().unwrap(),
             trigger: case["trigger"].as_str().unwrap(),
             version: &version,
@@ -144,7 +143,13 @@ fn persist_matches_node_stream_rows_and_result() {
             next: 0,
         };
         let mut log: Vec<Statement> = vec![];
-        let outcome = scrape_and_persist(&conn, &input, &mut ids, Some(&mut log));
+        let outcome = scrape_and_persist(
+            &conn,
+            &input,
+            case["html"].as_str().unwrap(),
+            &mut ids,
+            Some(&mut log),
+        );
 
         let stream: Vec<Value> = log
             .iter()
@@ -165,7 +170,7 @@ fn persist_matches_node_stream_rows_and_result() {
                 expected_stream.get(first).map_or("<none>".to_string(), Value::to_string),
             ));
         }
-        let rows = dump(&conn);
+        let rows = dump(&conn, &DUMPED);
         if rows != case["rows"] {
             for table in DUMPED {
                 if rows[table] != case["rows"][table] {
