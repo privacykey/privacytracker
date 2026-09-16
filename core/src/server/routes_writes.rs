@@ -41,6 +41,7 @@ async fn run(
             &state.rate_limiter,
             &parts.headers,
             spec,
+            param.as_deref(),
             now,
         ) {
             Ok(actor) => actor,
@@ -116,3 +117,47 @@ pub async fn override_delete_one(
     )
     .await
 }
+
+// ── Phase 4, batch 2 ─────────────────────────────────────────────────
+
+macro_rules! wrapper_with_id {
+    ($name:ident, $path:literal, $method:ident) => {
+        pub async fn $name(
+            State(state): State<AppState>,
+            Path(id): Path<String>,
+            req: Request,
+        ) -> Response {
+            run(state, $path, Method::$method, Some(id), req).await
+        }
+    };
+}
+
+wrapper!(shortlist_post, "/api/shortlist", POST);
+wrapper!(shortlist_delete, "/api/shortlist", DELETE);
+wrapper!(verdicts_post, "/api/verdicts", POST);
+wrapper!(verdicts_delete, "/api/verdicts", DELETE);
+wrapper!(verdicts_bulk_post, "/api/verdicts/bulk", POST);
+wrapper!(notifications_post, "/api/notifications", POST);
+wrapper!(annotations_post, "/api/annotations", POST);
+wrapper_with_id!(annotation_patch, "/api/annotations/[id]", PATCH);
+wrapper_with_id!(annotation_delete, "/api/annotations/[id]", DELETE);
+wrapper_with_id!(annotation_put, "/api/annotations/[id]", PUT);
+wrapper_with_id!(acknowledge_post, "/api/apps/[id]/acknowledge", POST);
+wrapper_with_id!(
+    acknowledge_undo_post,
+    "/api/apps/[id]/acknowledge/undo",
+    POST
+);
+wrapper!(user_tasks_post, "/api/user-tasks", POST);
+wrapper!(user_tasks_visit_post, "/api/user-tasks/visit", POST);
+wrapper!(queue_session_post, "/api/activity/queue-session", POST);
+wrapper!(devices_post, "/api/devices", POST);
+wrapper_with_id!(device_patch, "/api/devices/[id]", PATCH);
+wrapper_with_id!(device_delete, "/api/devices/[id]", DELETE);
+wrapper!(device_scope_put, "/api/device-scope", PUT);
+wrapper!(device_scope_delete, "/api/device-scope", DELETE);
+wrapper!(manual_apps_post, "/api/manual-apps", POST);
+wrapper_with_id!(manual_put, "/api/manual-apps/[id]", PUT);
+wrapper_with_id!(manual_delete, "/api/manual-apps/[id]", DELETE);
+wrapper!(manual_bulk_post, "/api/manual-apps/bulk", POST);
+wrapper_with_id!(manual_restore_post, "/api/manual-apps/[id]/restore", POST);

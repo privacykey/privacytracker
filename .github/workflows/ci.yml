@@ -397,6 +397,18 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-writes-cases.mjs
           git diff --exit-code -- core/tests/fixtures/writes-cases.json
 
+      - name: Library write-route oracle is current
+        # Runs the real handlers of the twenty-three library writes —
+        # annotations, verdicts, shortlist, review actions, notifications,
+        # user tasks, queue sessions, devices, the device scope and manual
+        # apps — with foreign keys on, a frozen clock and counted ids, and
+        # records every request, write, touched table and wire response. A
+        # diff means a Node write handler changed and
+        # core/src/server/library_writes.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-library-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/library-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

@@ -38,6 +38,9 @@ mod guard;
 mod histogram;
 mod json;
 pub mod layout;
+#[cfg(test)]
+mod library_tests;
+mod library_writes;
 mod operations;
 #[cfg(test)]
 mod operations_tests;
@@ -88,7 +91,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Instant;
 
 use axum::{
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use rusqlite::Connection;
@@ -218,7 +221,12 @@ pub fn app(state: AppState) -> Router {
         .route("/api/ai/debug-log", get(routes_operations::ai_debug))
         .route("/api/csp-report", get(routes_operations::csp))
         .route("/api/export", get(routes_operations::export))
-        .route("/api/manual-apps/{id}", get(routes_operations::manual))
+        .route(
+            "/api/manual-apps/{id}",
+            get(routes_operations::manual)
+                .put(routes_writes::manual_put)
+                .delete(routes_writes::manual_delete),
+        )
         // Fleet analysis: scoped summaries, UTC buckets and entry-level filters.
         .route("/api/stats", get(routes_stats::summary))
         .route("/api/stats/matrix", get(routes_stats::matrix))
@@ -234,9 +242,22 @@ pub fn app(state: AppState) -> Router {
         .route("/api/changelog", get(routes_stats::changelog))
         // Stored device reads: ownership, exact ECID lookup, import history
         // and app links. No cfgutil calls or mutation handlers are enabled.
-        .route("/api/devices", get(routes_devices::devices))
-        .route("/api/device-scope", get(routes_devices::device_scope))
-        .route("/api/devices/{id}", get(routes_devices::detail))
+        .route(
+            "/api/devices",
+            get(routes_devices::devices).post(routes_writes::devices_post),
+        )
+        .route(
+            "/api/device-scope",
+            get(routes_devices::device_scope)
+                .put(routes_writes::device_scope_put)
+                .delete(routes_writes::device_scope_delete),
+        )
+        .route(
+            "/api/devices/{id}",
+            get(routes_devices::detail)
+                .patch(routes_writes::device_patch)
+                .delete(routes_writes::device_delete),
+        )
         .route("/api/devices/{id}/bundles", get(routes_devices::bundles))
         .route(
             "/api/devices/{id}/tracked-apps",
@@ -244,14 +265,28 @@ pub fn app(state: AppState) -> Router {
         )
         .route("/api/devices/for-app/{appId}", get(routes_devices::for_app))
         .route("/api/activity", get(routes_content::activity))
-        .route("/api/notifications", get(routes_content::notifications))
+        .route(
+            "/api/notifications",
+            get(routes_content::notifications).post(routes_writes::notifications_post),
+        )
         .route(
             "/api/notification-prefs",
             get(routes_content::notification_prefs).put(routes_writes::notification_prefs_put),
         )
-        .route("/api/user-tasks", get(routes_content::user_tasks))
-        .route("/api/annotations", get(routes_content::annotations))
-        .route("/api/shortlist", get(routes_content::shortlist))
+        .route(
+            "/api/user-tasks",
+            get(routes_content::user_tasks).post(routes_writes::user_tasks_post),
+        )
+        .route(
+            "/api/annotations",
+            get(routes_content::annotations).post(routes_writes::annotations_post),
+        )
+        .route(
+            "/api/shortlist",
+            get(routes_content::shortlist)
+                .post(routes_writes::shortlist_post)
+                .delete(routes_writes::shortlist_delete),
+        )
         .route(
             "/api/shortlist/export",
             get(routes_content::shortlist_export),
@@ -320,12 +355,20 @@ pub fn app(state: AppState) -> Router {
         // Batch 3. Adds a query-scoped read with a 400 branch, a nested list
         // inside an envelope, and interval arithmetic over stored epochs.
         .route("/api/sync/status", get(routes_status::sync_status))
-        .route("/api/verdicts", get(routes_status::verdicts))
+        .route(
+            "/api/verdicts",
+            get(routes_status::verdicts)
+                .post(routes_writes::verdicts_post)
+                .delete(routes_writes::verdicts_delete),
+        )
         .route("/api/imports/queue", get(routes_status::imports_queue))
         // Unblocked by the inbound rate-limiter port: both of these call
         // checkRateLimit before doing any work, so porting them without the
         // limiter would have meant shipping a route with its gate removed.
-        .route("/api/manual-apps", get(routes_manual::manual_apps))
+        .route(
+            "/api/manual-apps",
+            get(routes_manual::manual_apps).post(routes_writes::manual_apps_post),
+        )
         .route(
             "/api/import/audit-bundle/recent",
             get(routes_manual::audit_bundle_recent),
@@ -367,6 +410,40 @@ pub fn app(state: AppState) -> Router {
             post(routes_writes::dashboard_layout_preset_post),
         )
         .route("/api/welcomed-at", post(routes_writes::welcomed_at_post))
+        .route(
+            "/api/verdicts/bulk",
+            post(routes_writes::verdicts_bulk_post),
+        )
+        .route(
+            "/api/annotations/{id}",
+            patch(routes_writes::annotation_patch)
+                .delete(routes_writes::annotation_delete)
+                .put(routes_writes::annotation_put),
+        )
+        .route(
+            "/api/apps/{id}/acknowledge",
+            post(routes_writes::acknowledge_post),
+        )
+        .route(
+            "/api/apps/{id}/acknowledge/undo",
+            post(routes_writes::acknowledge_undo_post),
+        )
+        .route(
+            "/api/user-tasks/visit",
+            post(routes_writes::user_tasks_visit_post),
+        )
+        .route(
+            "/api/activity/queue-session",
+            post(routes_writes::queue_session_post),
+        )
+        .route(
+            "/api/manual-apps/bulk",
+            post(routes_writes::manual_bulk_post),
+        )
+        .route(
+            "/api/manual-apps/{id}/restore",
+            post(routes_writes::manual_restore_post),
+        )
         .route(
             "/api/migration-flow/consume",
             post(routes_writes::migration_flow_consume_post),

@@ -194,8 +194,13 @@ pub struct RouteSpec {
 
 enum Guard {
     None,
-    /// `/api/settings` inlines its own: a bare 429 and no audit on it.
-    SettingsWrite,
+    /// The routes that inline their own guard: a bare 429 with no audit,
+    /// then the admin token with an audit row named by the route.
+    Inline {
+        prefix: &'static str,
+        limit: i64,
+        unauthorised: &'static str,
+    },
     Mutation(GuardOptions),
 }
 
@@ -213,7 +218,7 @@ const fn guarded(action: &'static str, limit: i64, admin: AdminRule) -> Guard {
 pub fn routes() -> &'static [RouteSpec] {
     static ROUTES: OnceLock<Vec<RouteSpec>> = OnceLock::new();
     ROUTES.get_or_init(|| {
-        vec![
+        let mut routes = vec![
             RouteSpec {
                 path: "/api/date-format",
                 method: Method::POST,
@@ -236,7 +241,11 @@ pub fn routes() -> &'static [RouteSpec] {
                 path: "/api/settings",
                 method: Method::POST,
                 body_limit: Some(16 * 1024),
-                guard: Guard::SettingsWrite,
+                guard: Guard::Inline {
+                    prefix: "settings.write",
+                    limit: 30,
+                    unauthorised: "settings.write.unauthorised",
+                },
             },
             RouteSpec {
                 path: "/api/settings/desktop",
@@ -328,8 +337,160 @@ pub fn routes() -> &'static [RouteSpec] {
                 body_limit: None,
                 guard: guarded("migration-flow.consume", 60, AdminRule::NotRequired),
             },
-        ]
+        ];
+        routes.extend(library_routes());
+        routes
     })
+}
+
+/// Phase 4, batch 2 — see `library_writes.rs`.
+fn library_routes() -> Vec<RouteSpec> {
+    const fn inline(prefix: &'static str, limit: i64, unauthorised: &'static str) -> Guard {
+        Guard::Inline {
+            prefix,
+            limit,
+            unauthorised,
+        }
+    }
+    let spec =
+        |path: &'static str, method: Method, body_limit: Option<usize>, guard: Guard| RouteSpec {
+            path,
+            method,
+            body_limit,
+            guard,
+        };
+    vec![
+        spec(
+            "/api/shortlist",
+            Method::POST,
+            Some(8 * 1024),
+            inline("shortlist.write", 60, "shortlist.create.unauthorised"),
+        ),
+        spec(
+            "/api/shortlist",
+            Method::DELETE,
+            None,
+            inline("shortlist.write", 60, "shortlist.delete.unauthorised"),
+        ),
+        spec("/api/verdicts", Method::POST, Some(8 * 1024), Guard::None),
+        spec("/api/verdicts", Method::DELETE, None, Guard::None),
+        spec(
+            "/api/verdicts/bulk",
+            Method::POST,
+            Some(64 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/notifications",
+            Method::POST,
+            Some(32 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/annotations",
+            Method::POST,
+            Some(8 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/annotations/[id]",
+            Method::PATCH,
+            Some(8 * 1024),
+            Guard::None,
+        ),
+        spec("/api/annotations/[id]", Method::DELETE, None, Guard::None),
+        spec("/api/annotations/[id]", Method::PUT, None, Guard::None),
+        spec(
+            "/api/apps/[id]/acknowledge",
+            Method::POST,
+            Some(2 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/apps/[id]/acknowledge/undo",
+            Method::POST,
+            Some(4 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/user-tasks",
+            Method::POST,
+            Some(4 * 1024),
+            guarded("user-tasks.write", 60, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/user-tasks/visit",
+            Method::POST,
+            Some(1024),
+            guarded("user-tasks.visit", 60, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/activity/queue-session",
+            Method::POST,
+            Some(4 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/devices",
+            Method::POST,
+            Some(4 * 1024),
+            guarded("devices.create", 20, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/devices/[id]",
+            Method::PATCH,
+            Some(4 * 1024),
+            guarded("devices.update", 30, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/devices/[id]",
+            Method::DELETE,
+            None,
+            guarded("devices.delete", 15, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/device-scope",
+            Method::PUT,
+            Some(8 * 1024),
+            guarded("device.scope.save", 60, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/device-scope",
+            Method::DELETE,
+            None,
+            guarded("device.scope.reset", 20, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/manual-apps",
+            Method::POST,
+            Some(8 * 1024),
+            inline("manual-apps.write", 30, "manual-apps.create.unauthorised"),
+        ),
+        spec(
+            "/api/manual-apps/[id]",
+            Method::PUT,
+            Some(8 * 1024),
+            inline("manual-apps.write", 30, "manual-apps.update.unauthorised"),
+        ),
+        spec(
+            "/api/manual-apps/[id]",
+            Method::DELETE,
+            None,
+            inline("manual-apps.write", 30, "manual-apps.delete.unauthorised"),
+        ),
+        spec(
+            "/api/manual-apps/bulk",
+            Method::POST,
+            Some(256 * 1024),
+            inline("manual-apps.bulk", 10, "manual-apps.bulk.unauthorised"),
+        ),
+        spec(
+            "/api/manual-apps/[id]/restore",
+            Method::POST,
+            Some(8 * 1024),
+            inline("manual-apps.write", 30, "manual-apps.restore.unauthorised"),
+        ),
+    ]
 }
 
 pub fn lookup(path: &str, method: &Method) -> Option<&'static RouteSpec> {
@@ -355,20 +516,54 @@ pub fn precheck(
     limiter: &RateLimiter,
     headers: &HeaderMap,
     spec: &RouteSpec,
+    param: Option<&str>,
+    now: i64,
+) -> Result<Actor, Response> {
+    let actor = guard_only(w, ids, limiter, headers, spec, now)?;
+    // The checks a route makes after its guard and BEFORE reading the body.
+    match (spec.path, &spec.method) {
+        ("/api/devices/[id]", &Method::PATCH) | ("/api/devices/[id]", &Method::DELETE) => {
+            let exists = super::routes_devices::by_id(w.conn, param.unwrap_or(""))
+                .map_err(|e| e.to_string())
+                .map(|d| d.is_some());
+            match exists {
+                Ok(true) => {}
+                Ok(false) => return Err(json_error(StatusCode::NOT_FOUND, "device not found")),
+                Err(_) => return Err(json_error(StatusCode::BAD_REQUEST, "device lookup failed")),
+            }
+        }
+        ("/api/manual-apps/[id]", _) | ("/api/manual-apps/[id]/restore", _) => {
+            let id = param.unwrap_or("");
+            if id.is_empty() || js_length(id) > 128 {
+                return Err(json_error(StatusCode::BAD_REQUEST, "Invalid id"));
+            }
+        }
+        _ => {}
+    }
+    Ok(actor)
+}
+
+fn guard_only(
+    w: &mut Writer,
+    ids: &mut dyn Ids,
+    limiter: &RateLimiter,
+    headers: &HeaderMap,
+    spec: &RouteSpec,
     now: i64,
 ) -> Result<Actor, Response> {
     match &spec.guard {
         Guard::None => Ok(actor_from(headers)),
         Guard::Mutation(opts) => require_mutation_guard(w, ids, limiter, headers, opts, now),
-        Guard::SettingsWrite => {
+        Guard::Inline {
+            prefix,
+            limit,
+            unauthorised,
+        } => {
             let actor = actor_from(headers);
             let head = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
-            let key = ratelimit::key_for_request(
-                head("x-forwarded-for"),
-                head("x-real-ip"),
-                "settings.write",
-            );
-            if !limiter.check(&key, 30, 60_000, now).allowed {
+            let key =
+                ratelimit::key_for_request(head("x-forwarded-for"), head("x-real-ip"), prefix);
+            if !limiter.check(&key, *limit, 60_000, now).allowed {
                 return Err(json_error(
                     StatusCode::TOO_MANY_REQUESTS,
                     "Rate limit exceeded",
@@ -380,15 +575,7 @@ pub fn precheck(
                     head(header::COOKIE.as_str()),
                 )
             {
-                record_audit(
-                    w,
-                    ids,
-                    now,
-                    "settings.write.unauthorised",
-                    &actor,
-                    None,
-                    false,
-                );
+                record_audit(w, ids, now, unauthorised, &actor, None, false);
                 return Err(json_error(StatusCode::UNAUTHORIZED, "Admin token required"));
             }
             Ok(actor)
@@ -405,7 +592,8 @@ pub fn perform(
     now: i64,
 ) -> Response {
     let mut cx = Cx { w, ids, now };
-    match (req.spec.path, &req.spec.method) {
+    let spec = req.spec;
+    match (spec.path, &spec.method) {
         ("/api/date-format", &Method::POST) => date_format(&mut cx, req.body),
         ("/api/locale", &Method::POST) => locale(req.body, now),
         ("/api/preferences", &Method::PUT) => preferences(&mut cx, req.body),
@@ -431,21 +619,22 @@ pub fn perform(
         }
         ("/api/welcomed-at", &Method::POST) => welcomed_at(&mut cx, req.body),
         ("/api/migration-flow/consume", &Method::POST) => migration_flow_consume(&mut cx),
-        _ => json_error(StatusCode::NOT_FOUND, "Not Found"),
+        _ => super::library_writes::perform(&mut cx, req, actor)
+            .unwrap_or_else(|| json_error(StatusCode::NOT_FOUND, "Not Found")),
     }
 }
 
-struct Cx<'a, 'b> {
-    w: &'a mut Writer<'b>,
-    ids: &'a mut dyn Ids,
-    now: i64,
+pub(super) struct Cx<'a, 'b> {
+    pub(super) w: &'a mut Writer<'b>,
+    pub(super) ids: &'a mut dyn Ids,
+    pub(super) now: i64,
 }
 
 impl Cx<'_, '_> {
-    fn get(&self, key: &str, default: &str) -> String {
+    pub(super) fn get(&self, key: &str, default: &str) -> String {
         get_setting_with(self.w.conn, key, default).unwrap_or_else(|_| default.to_string())
     }
-    fn set(&mut self, key: &str, value: &str) -> Result<(), String> {
+    pub(super) fn set(&mut self, key: &str, value: &str) -> Result<(), String> {
         self.w
             .run(SET_SETTING, vec![json!(key), json!(value)])
             .map(drop)
@@ -456,12 +645,12 @@ impl Cx<'_, '_> {
 
 /// `body.key`, distinguishing `undefined` (`None`) from `null`. A
 /// non-object body has no named properties, so every read is undefined.
-fn prop<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
+pub(super) fn prop<'a>(v: &'a Value, key: &str) -> Option<&'a Value> {
     v.as_object().and_then(|o| o.get(key))
 }
 
 /// `!body || typeof body !== "object"`, negated: an object or an array.
-fn is_object_like(v: &Value) -> bool {
+pub(super) fn is_object_like(v: &Value) -> bool {
     matches!(v, Value::Object(_) | Value::Array(_))
 }
 
@@ -477,7 +666,7 @@ fn array_index(key: &str) -> Option<u32> {
 }
 
 /// `Object.entries(o)` in JavaScript's property order.
-fn js_entries(o: &Map<String, Value>) -> Vec<(&String, &Value)> {
+pub(super) fn js_entries(o: &Map<String, Value>) -> Vec<(&String, &Value)> {
     let mut indices: Vec<(u32, &String, &Value)> = Vec::new();
     let mut named: Vec<(&String, &Value)> = Vec::new();
     for (k, v) in o {
@@ -506,7 +695,7 @@ fn js_object_keys(v: &Value) -> Vec<String> {
 }
 
 /// `String(v ?? fallback)`.
-fn string_or(v: &Value, fallback: &str) -> String {
+pub(super) fn string_or(v: &Value, fallback: &str) -> String {
     if v.is_null() {
         fallback.to_string()
     } else {
@@ -514,14 +703,14 @@ fn string_or(v: &Value, fallback: &str) -> String {
     }
 }
 
-fn internal_error() -> Response {
+pub(super) fn internal_error() -> Response {
     json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
 }
 
 /// The body read's outcome as the route phrases it: `invalid` for both the
 /// empty and the unparseable body (they share a catch), the 413 and 408
 /// shared.
-fn body_json(outcome: BodyOutcome, invalid: &str) -> Result<Value, Response> {
+pub(super) fn body_json(outcome: BodyOutcome, invalid: &str) -> Result<Value, Response> {
     if let Some(response) = body_error_response(&outcome) {
         return Err(response);
     }
@@ -1248,6 +1437,7 @@ fn save_privacy_profile(cx: &mut Cx, next: Option<&Map<String, Value>>) -> Resul
             cx.now,
             "profile_preset_applied",
             "ok",
+            None,
             Some(&summary),
             Some(&detail),
             started_at,
@@ -1457,6 +1647,7 @@ fn save_layout_with_log(cx: &mut Cx, next: &Layout) -> Result<(), String> {
             cx.now,
             "dashboard_layout_applied",
             "ok",
+            None,
             Some(&format!("Dashboard layout set to {label}")),
             Some(&json!({ "from": from, "to": to })),
             started_at,

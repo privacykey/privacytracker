@@ -88,6 +88,9 @@ const { values: args } = parseArgs({
     "skip-seed": { type: "boolean", default: false },
     "no-normalize": { type: "boolean", default: false },
     "skip-coverage": { type: "boolean", default: false },
+    // Mutations only: for a second pass over a pair of servers whose reads
+    // were already compared (and whose read rate buckets may be spent).
+    "skip-reads": { type: "boolean", default: false },
     // Opt-in route filter, for comparing a backend that only implements
     // SOME routes yet (the Rust core lands them in batches). Without it
     // every unimplemented route fails on "HTTP 200 vs 404" and drowns the
@@ -116,7 +119,11 @@ const runMutations = args.mutate || args.teardown;
 /** Filter a manifest group by the --only regex, when one was given. */
 const onlyRe = args.only ? new RegExp(args.only) : null;
 const selected = (entries) =>
-  onlyRe ? entries.filter((e) => onlyRe.test(e.route)) : entries;
+  args["skip-reads"] && (entries === READS || entries === VOLATILE_READS)
+    ? []
+    : onlyRe
+      ? entries.filter((e) => onlyRe.test(e.route))
+      : entries;
 
 const TOKEN =
   args.token ??
@@ -357,7 +364,16 @@ const RESOLVERS = {
     return list.length ? String(list[0].id) : null;
   },
   "{annotation}": async (base) => {
-    const { status, text } = await call(base, "GET", "/api/annotations");
+    // The list is per app; without `appId` the route is a 400.
+    const app = await RESOLVERS["{app}"](base);
+    if (!app) {
+      return null;
+    }
+    const { status, text } = await call(
+      base,
+      "GET",
+      `/api/annotations?appId=${encodeURIComponent(app)}`
+    );
     if (status !== 200) {
       return null;
     }

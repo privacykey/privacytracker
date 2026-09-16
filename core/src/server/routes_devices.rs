@@ -43,7 +43,7 @@ fn device(row: &Row<'_>) -> rusqlite::Result<Value> {
     }))
 }
 
-fn by_id(conn: &Connection, id: &str) -> rusqlite::Result<Option<Value>> {
+pub(super) fn by_id(conn: &Connection, id: &str) -> rusqlite::Result<Option<Value>> {
     conn.query_row("SELECT * FROM devices WHERE id = ?", [id], device)
         .optional()
 }
@@ -138,23 +138,47 @@ pub async fn device_scope(State(state): State<AppState>) -> Response {
         }
     };
     let parsed = super::user_content::parse(&raw).unwrap_or(Value::Null);
-    let known = super::stats::query(&conn, "SELECT id FROM devices", &[]).unwrap_or_default();
-    let requested = parsed["deviceIds"].as_array().cloned().unwrap_or_default();
-    let ids = known
+    let known: Vec<String> = super::stats::query(&conn, "SELECT id FROM devices", &[])
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|r| r["id"].as_str().map(str::to_string))
+        .collect();
+    let scope = reconcile_scope(&parsed, &known);
+    json_ok(&json!({"scope":scope,"devices":picker_devices(&conn)}))
+}
+
+/// `SCOPE_ALL`.
+pub(super) fn scope_all() -> Value {
+    json!({"v":1,"mode":"all","deviceIds":[],"includeUnattached":true})
+}
+
+/// `reconcileScope(stored, knownDeviceIds)`: only string ids that exist,
+/// in the known order; an empty subset, and a subset naming every device
+/// plus the unattached bucket, collapse to "all".
+pub(super) fn reconcile_scope(parsed: &Value, known: &[String]) -> Value {
+    if parsed["mode"] != "subset" {
+        return scope_all();
+    }
+    let requested: Vec<&str> = parsed["deviceIds"]
+        .as_array()
+        .map(|a| a.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    let ids: Vec<&str> = known
         .iter()
-        .filter(|r| requested.contains(&r["id"]))
-        .map(|r| r["id"].clone())
-        .collect::<Vec<_>>();
+        .map(String::as_str)
+        .filter(|id| requested.contains(id))
+        .collect();
     let unattached = parsed["includeUnattached"] == true;
-    let scope = if parsed["mode"] != "subset"
-        || (ids.is_empty() && !unattached)
-        || (ids.len() == known.len() && unattached)
-    {
-        json!({"v":1,"mode":"all","deviceIds":[],"includeUnattached":true})
-    } else {
-        json!({"v":1,"mode":"subset","deviceIds":ids,"includeUnattached":unattached})
-    };
-    let devices = match list(&conn, None) {
+    if (ids.is_empty() && !unattached) || (ids.len() == known.len() && unattached) {
+        return scope_all();
+    }
+    json!({"v":1,"mode":"subset","deviceIds":ids,"includeUnattached":unattached})
+}
+
+/// `pickerDevices()`: the minimal rows the picker renders, or nothing when
+/// the list cannot be read.
+pub(super) fn picker_devices(conn: &Connection) -> Vec<Value> {
+    match list(conn, None) {
         Ok(value) => value["devices"]
             .as_array()
             .unwrap()
@@ -175,8 +199,7 @@ pub async fn device_scope(State(state): State<AppState>) -> Response {
             super::diag::log_warn(format!("[device-scope] device list failed: {error}"));
             vec![]
         }
-    };
-    json_ok(&json!({"scope":scope,"devices":devices}))
+    }
 }
 
 pub async fn detail(State(state): State<AppState>, Path(id): Path<String>) -> Response {
