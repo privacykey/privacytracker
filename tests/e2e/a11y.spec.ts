@@ -142,13 +142,15 @@ const DARK_MODE_KNOWN_ISSUES: KnownIssue[] = [
 ];
 
 /**
- * Switch the page to `theme` for its next navigation. The OS scheme is
- * emulated; high contrast is the app's own theme, which the
- * pre-hydration bootstrap in app/layout.tsx reads from localStorage on
- * load, so the caller must navigate after this. Needs a page already on
- * the app's origin (localStorage is per origin).
+ * Load `path` in `theme`. The OS scheme is emulated; high contrast is the
+ * app's own theme, which the pre-hydration bootstrap in app/layout.tsx
+ * reads from localStorage on load, so the key is written first (on the
+ * app's origin, where localStorage lives) and the page loaded after.
  */
-async function applyTheme(page: Page, theme: Theme) {
+async function gotoInTheme(page: Page, path: string, theme: Theme) {
+  if (!page.url().startsWith("http")) {
+    await page.goto(path);
+  }
   await page.emulateMedia({
     colorScheme: theme === "light" ? "light" : "dark",
   });
@@ -159,6 +161,14 @@ async function applyTheme(page: Page, theme: Theme) {
       localStorage.removeItem("a11y-quick-theme");
     }
   }, theme);
+  await page.goto(path);
+  // Guard against scanning the wrong palette and passing for it.
+  const html = page.locator("html");
+  if (theme === "high-contrast") {
+    await expect(html).toHaveAttribute("data-theme-override", "high-contrast");
+  } else {
+    await expect(html).not.toHaveAttribute("data-theme-override");
+  }
 }
 
 async function setDefaultFocus(request: APIRequestContext) {
@@ -384,10 +394,8 @@ browserFlow(
     await expect(profile).toBeOK();
 
     try {
-      await page.goto("/dashboard/stats");
       for (const theme of THEMES) {
-        await applyTheme(page, theme);
-        await page.goto("/dashboard/stats");
+        await gotoInTheme(page, "/dashboard/stats", theme);
         // Client shell: wait for the fetched charts, not just the
         // wrapper. The bar counts sit on the card, the matrix and its
         // preference bars arrive on their own fetches.
@@ -434,10 +442,8 @@ browserFlow(
     await setDefaultFocus(request);
     await seedCannedApps(request);
 
-    await page.goto("/dashboard/privacy");
     for (const theme of THEMES) {
-      await applyTheme(page, theme);
-      await page.goto("/dashboard/privacy");
+      await gotoInTheme(page, "/dashboard/privacy", theme);
       // The "not linked" badge is the one that failed in light mode.
       await expect(
         page.locator(".severity-badge.severity-unlinked").first()
