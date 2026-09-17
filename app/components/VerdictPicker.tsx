@@ -550,9 +550,15 @@ export default function VerdictPicker({
         aria-labelledby="verdict-picker-heading"
         className="verdict-picker verdict-picker-collapsed"
       >
-        <h3 className="sr-only" id="verdict-picker-heading">
+        {/*
+          h2 in every full-mode step: the only full-mode caller is App
+          Detail, where the picker is a top-level section directly under
+          the page's h1 (a sibling of the change-review panel's h2). An h3
+          skipped a level (axe heading-order). Compact mode has no heading.
+        */}
+        <h2 className="sr-only" id="verdict-picker-heading">
           {tPicker("title", { appName })}
-        </h3>
+        </h2>
 
         {undoFlash && (
           <div
@@ -613,9 +619,9 @@ export default function VerdictPicker({
         className="verdict-picker"
       >
         <header className="verdict-picker-header">
-          <h3 className="verdict-picker-title" id="verdict-picker-heading">
+          <h2 className="verdict-picker-title" id="verdict-picker-heading">
             {tPicker("reason_title")}
-          </h3>
+          </h2>
         </header>
 
         {undoFlash && (
@@ -712,9 +718,9 @@ export default function VerdictPicker({
       className="verdict-picker"
     >
       <header className="verdict-picker-header">
-        <h3 className="verdict-picker-title" id="verdict-picker-heading">
+        <h2 className="verdict-picker-title" id="verdict-picker-heading">
           {tPicker("title", { appName })}
-        </h3>
+        </h2>
         <p className="verdict-picker-sub">{tPicker("sub")}</p>
       </header>
 

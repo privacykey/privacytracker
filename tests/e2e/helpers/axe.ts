@@ -8,8 +8,13 @@ import type { Page } from "@playwright/test";
  * Policy: violations with `serious` or
  * `critical` impact FAIL the suite; `minor`/`moderate` findings are
  * logged to the Playwright report but don't block. Scans run against
- * the WCAG 2.x A/AA rule tags only — best-practice rules stay
- * advisory in the Storybook a11y addon.
+ * the WCAG 2.x A/AA rule tags only, 2.2 included — best-practice rules
+ * stay advisory in the Storybook a11y addon.
+ *
+ * `wcag22aa` is what pulls in axe's `target-size` rule (SC 2.5.8, and
+ * in axe-core 4.12 the only rule carrying that tag). Without it, a 20px
+ * button laid over a larger link, like the info tooltip on the app
+ * detail category cards, passed this gate while failing WCAG 2.2.
  *
  * Known-issue allowlist: defects that are already tracked for fixing
  * are filtered per rule + selector so the gate stays green while
@@ -19,7 +24,7 @@ import type { Page } from "@playwright/test";
  * same PR.
  */
 
-const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
 
@@ -74,7 +79,7 @@ function formatViolations(label: string, violations: Violation[]): string {
 }
 
 /**
- * Run an axe scan and throw on serious/critical WCAG A/AA violations
+ * Run an axe scan and throw on serious/critical WCAG 2.2 A/AA violations
  * that aren't covered by `knownIssues`.
  *
  * @param label surface name used in failure output, e.g. "welcome".

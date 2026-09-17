@@ -98,6 +98,13 @@
      the vignette ad slot / highlighted tab). Translucent so it reads as
      a dark navy tint over dark backgrounds while light text stays AA. */
   --blue-soft: rgba(10, 132, 255, 0.22);
+  /* Solid blue fill behind a white label (.btn-primary). Not --blue: the
+     dark accent is tuned to read as TEXT on near-black, and white on
+     #0a84ff is only 3.6:1. #0a6cd6 is the same hue at 5.1:1; the hover
+     step #0071e3 stays lighter, as dark hovers do, at 4.7:1. Re-pinned in
+     every theme block below. */
+  --blue-fill: #0a6cd6;
+  --blue-fill-hover: #0071e3;
 
   /* Privacy severity */
   --red: #ff453a;
@@ -221,6 +228,10 @@
     --blue: #0066cc;
     --blue-hover: #0077ed;
     --blue-soft: #dbeafe;
+    /* White-label fill: --blue itself (5.57:1). The hover step can't be
+       --blue-hover, which is 4.3:1 under white; #0071e3 is 4.7:1. */
+    --blue-fill: #0066cc;
+    --blue-fill-hover: #0071e3;
     --cream: #7a643b;
     --cream-dim: rgba(122, 100, 59, 0.12);
     /* Severity / accent palette, light variants. The dark-theme brights
@@ -286,6 +297,8 @@ html[data-theme-override="light"] {
   --blue: #0066cc;
   --blue-hover: #0077ed;
   --blue-soft: #dbeafe;
+  --blue-fill: #0066cc;
+  --blue-fill-hover: #0071e3;
   --cream: #7a643b;
   --cream-dim: rgba(122, 100, 59, 0.12);
   /* Light severity / accent palette — see the @media light block above. */
@@ -331,6 +344,8 @@ html[data-theme-override="dark"] {
   --blue: #0a84ff;
   --blue-hover: #409cff;
   --blue-soft: rgba(10, 132, 255, 0.22);
+  --blue-fill: #0a6cd6;
+  --blue-fill-hover: #0071e3;
   /* Re-pin the severity / accent palette to the dark defaults. Without
      these, a light-OS user who pins the app to Dark inherits the light
      palette from the @media block above — dark golds and greens painted
@@ -1032,10 +1047,10 @@ html[data-theme-override="high-contrast"] .nav {
 
 .btn-primary {
   color: #fff;
-  background: var(--blue);
+  background: var(--blue-fill);
 }
 .btn-primary:hover {
-  background: var(--blue-hover);
+  background: var(--blue-fill-hover);
   box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
   transform: translateY(-1px);
 }
@@ -8561,11 +8576,6 @@ body.review-rec-print-active .review-rec-print a {
   .stats-panel {
     padding: 22px 18px;
   }
-  .info-tooltip-trigger {
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
-  }
   .info-tooltip-bubble {
     max-width: min(280px, calc(100vw - 24px));
     font-size: 13.5px;
@@ -10795,12 +10805,20 @@ body.review-rec-print-active .review-rec-print a {
    layout sat in the same approximate spot.
 
    Tweak these if the visual drift becomes noticeable on your build —
-   they're calibrated for the default `.category-card` padding. */
+   they're calibrated for the default `.category-card` padding.
+
+   Geometry: the trigger is a 24x24 box (target size, see
+   .info-tooltip-trigger), with its inline -2px margin zeroed here. `flex`
+   drops the line box an inline child would sit in, so the overlay's box IS
+   the trigger's box: 42-66 across, 16-40 down, centred within half a pixel
+   of where the old 20px disc sat (54, 28.5). Anything placed to its right
+   in the header row must start at 66px or later, or the targets overlap. */
 .category-card-info-overlay {
   position: absolute;
-  top: 14px;
-  left: 44px;
+  top: 16px;
+  left: 42px;
   z-index: 2;
+  display: flex;
   /* The InfoTooltip's button captures pointer events; the surrounding
      overlay span is invisible and must not intercept clicks intended
      for the Link beneath it (otherwise hovering the area to the right
@@ -10812,6 +10830,10 @@ body.review-rec-print-active .review-rec-print a {
   /* Re-enable pointer events on the actual tooltip trigger so
      clicks still open the tooltip. */
   pointer-events: auto;
+}
+
+.category-card-info-overlay .info-tooltip-trigger {
+  margin: 0;
 }
 
 .category-card-icon {
@@ -10873,7 +10895,11 @@ body.review-rec-print-active .review-rec-print a {
 /* Shelf-level chip — a compact hint on the accordion header so the row
    still reads as "problem inside" even when collapsed. Rose to match
    the per-card treatment; the colour alone is the signal since the
-   accordion body keeps the neutral spacing of any other shelf. */
+   accordion body keeps the neutral spacing of any other shelf.
+   Text is --rose nudged toward the theme text colour: plain --rose on
+   its own 14% tint over the dark accordion surface is ~4.4:1, just
+   under AA. The 20% admixture clears 5:1 in dark and only darkens the
+   light-theme rose, the same trick as .detail-a11y-chip. */
 .accordion-mismatch-chip {
   display: inline-flex;
   gap: 4px;
@@ -10881,7 +10907,7 @@ body.review-rec-print-active .review-rec-print a {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--rose);
+  color: color-mix(in srgb, var(--rose) 80%, var(--text));
   white-space: nowrap;
   background: var(--rose-dim);
   border-radius: 999px;
@@ -10899,15 +10925,23 @@ body.review-rec-print-active .review-rec-print a {
    via createPortal so it is never clipped by parent `overflow: hidden`
    and can't overlap sibling cards in unpredictable ways. */
 
+/* The box itself is 24x24 for WCAG 2.2 target size (2.5.8). An invisible
+   ::after hit area used to supply the extra room, but axe measures the
+   element's own box, and the spacing exception can't apply when the
+   trigger sits on top of a larger target (the category card's link). The
+   -2px margins hand the old 20px footprint back to inline rows (accordion
+   and Privacy Map headers, the Stats bar labels), so nothing around them
+   reflows. Absolutely placed triggers zero the margin instead; see
+   .category-card-info-overlay. */
 .info-tooltip-trigger {
-  position: relative;
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 11px;
+  width: 24px;
+  height: 24px;
+  margin: -2px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   color: var(--text-2);
@@ -10921,16 +10955,6 @@ body.review-rec-print-active .review-rec-print a {
     background 0.15s,
     border-color 0.15s,
     color 0.15s;
-}
-
-/* WCAG 2.2 SC 2.5.8 — invisible hit-area extension. The painted disc
-   stays 20px; the pseudo-element grows the clickable box to 24×24.
-   -3px, not -2px: absolute positioning resolves against the padding
-   box, which sits 1px (the border) inside the visible 20px disc. */
-.info-tooltip-trigger::after {
-  position: absolute;
-  inset: -3px;
-  content: "";
 }
 
 .info-tooltip-trigger:hover,
@@ -25307,6 +25331,10 @@ html[data-theme-override="high-contrast"] {
   --blue-dim: rgba(255, 255, 0, 0.18);
   --blue-hover: #ffff66;
   --blue-soft: rgba(255, 255, 0, 0.18);
+  /* HC primaries are yellow with a forced black label (see the
+     .btn-primary override below). */
+  --blue-fill: #ffff00;
+  --blue-fill-hover: #ffff66;
   --red: #ff5a4d;
   --red-dim: rgba(255, 90, 77, 0.12);
   --orange: #ffb84d;
@@ -25364,13 +25392,17 @@ html[data-theme-override="high-contrast"] .kbd-hint-anchor {
    white-on-yellow drops to ~1.07:1 contrast — well below WCAG AA. Force the
    label + any contained icons to pure black so the 19.5:1 black-on-yellow
    combination Windows HC mode uses for links/buttons still applies here.
-   Same logic for the filled accessibility chip and other "primary" surfaces
-   that paint --blue as their background. */
+   Same logic for the other "primary" surfaces that paint --blue as their
+   background.
+
+   .detail-a11y-chip is deliberately NOT in this list. It used to be a filled
+   pill, but it is now a 12% tint, which in HC is near-black (#1f1f00), so
+   forcing black text there dropped the "Accessibility" label to 1.25:1. Its
+   own colour-mix of --blue and --text already resolves to bright yellow on
+   that tint. */
 html[data-theme-override="high-contrast"] .btn-primary,
 html[data-theme-override="high-contrast"] .btn-primary:hover,
 html[data-theme-override="high-contrast"] .btn-primary svg,
-html[data-theme-override="high-contrast"] .detail-a11y-chip,
-html[data-theme-override="high-contrast"] .detail-a11y-chip svg,
 html[data-theme-override="high-contrast"] .sort-tab.active,
 html[data-theme-override="high-contrast"] .sort-tab.active:hover {
   color: #000000 !important;
@@ -25382,7 +25414,7 @@ html[data-theme-override="high-contrast"] .sort-tab.active:hover {
    border and white text, which is unreadable. Solid yellow fill with
    pure-black text brings it up to 19.5:1 contrast, matching the Windows
    HC language used for the other primary surfaces (btn-primary,
-   sort-tab.active, detail-a11y-chip). */
+   sort-tab.active). */
 html[data-theme-override="high-contrast"] .nav-link.active {
   color: #000000 !important;
   background: #ffff00 !important;
