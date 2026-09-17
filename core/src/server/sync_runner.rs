@@ -39,7 +39,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 /// `Date.now()` as the runner sees it: live on the server, frozen in the
 /// replay. Every stamp the runner writes comes from here.
@@ -62,11 +62,11 @@ impl Clock for Fixed {
 /// The clock a route handler hands the runner: the request's frozen
 /// instant in the replay, the wall clock on the server, where a run
 /// outlives the request time by minutes.
-pub(super) fn clock_for(now: i64) -> Box<dyn Clock> {
+pub(super) fn clock_for(now: i64) -> Arc<dyn Clock> {
     if cfg!(test) {
-        Box::new(Fixed(now))
+        Arc::new(Fixed(now))
     } else {
-        Box::new(Live)
+        Arc::new(Live)
     }
 }
 
@@ -816,12 +816,26 @@ pub(crate) async fn resume_app_store_sync(
     Ok(())
 }
 
-/// The boot writes now, then the three tickers `register()` arms: the
-/// sync resume once at 10 s, the scheduler check at 15 s and every 30
-/// minutes, the import-queue drain at 20 s and every minute.
+/// The boot writes now, then the tickers `register()` arms: the Wayback
+/// resume once at 8 s, the sync resume once at 10 s, the scheduler check
+/// at 15 s and every 30 minutes, the import-queue drain at 20 s and every
+/// minute.
 pub(crate) fn start_background(state: AppState) {
     let desktop = std::env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
     boot(&mut state.db_access(), Live.now(), desktop);
+
+    let wayback_state = state.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(8)).await;
+        let mut ids = RandomIds;
+        let mut db = wayback_state.db_access();
+        if let Err(e) =
+            super::wayback_runner::resume_wayback_import(&mut db, &PublicHttp, &mut ids, &Live)
+                .await
+        {
+            super::diag::log_error(format!("[WaybackResume] Startup check failed: {e}"));
+        }
+    });
 
     let resume_state = state.clone();
     tokio::spawn(async move {

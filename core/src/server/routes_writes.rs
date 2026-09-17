@@ -12,7 +12,10 @@ use super::{
 };
 use crate::{
     outbound::PublicHttp,
-    scrape::{persist::Writer, RandomIds},
+    scrape::{
+        persist::{Shared, Writer},
+        RandomIds,
+    },
 };
 use axum::{
     extract::{Path, Request, State},
@@ -61,7 +64,14 @@ async fn run(
     // its future is `Send` and runs here like any other; a scrape, a
     // search or a Wayback run holds the connection only for the reads and
     // writes either side of each fetch.
-    let mut db = state.db_access();
+    // `Shared` rather than `Locked`: the runs that outlive the request
+    // (batch 4b's streaming and resumed Wayback imports) detach an owned
+    // copy of it.
+    let mut db = Shared {
+        conn: state.conn.clone(),
+        log: None,
+        on_wait: Some(super::diag::record_lock_wait),
+    };
     writes::perform_async(
         &mut db,
         &mut ids,
@@ -201,3 +211,9 @@ wrapper!(sync_trigger_post, "/api/sync/trigger", POST);
 wrapper!(dev_sync_stop_post, "/api/dev/sync-stop", POST);
 wrapper!(rate_limit_status_delete, "/api/rate-limit/status", DELETE);
 wrapper!(apps_delete, "/api/apps", DELETE);
+
+// ── Phase 4, batch 4b ────────────────────────────────────────────────
+
+wrapper!(wayback_import_all_post, "/api/wayback/import-all", POST);
+wrapper!(wayback_import_all_patch, "/api/wayback/import-all", PATCH);
+wrapper!(wayback_import_all_delete, "/api/wayback/import-all", DELETE);

@@ -182,7 +182,7 @@ fn historical_import_matches_node_calls_stream_rows_and_result() {
             on_wait: None,
         };
         let outcome = rt.block_on(import_app_history(
-            &mut db, &routed, &app, &options, now, &mut ids,
+            &mut db, &routed, &app, &options, now, &mut ids, None,
         ));
         let conn = conn.into_inner().unwrap();
         let actual = match outcome {

@@ -740,6 +740,24 @@ async fn request_fresh_capture(
 
 /// `importAppHistory(app, options)`: the result object as JSON, or the
 /// error the import throws.
+/// `onProgress`: each target's outcome as `{ appId, ...info }`, in the
+/// order the result's `targets` carries them. The bulk runner turns them
+/// into its `target` frames.
+pub(crate) type Progress<'a> = Option<&'a mut (dyn FnMut(Value) + Send)>;
+
+fn report(progress: &mut Progress<'_>, app_id: &str, info: &Value) {
+    if let Some(sink) = progress.as_mut() {
+        let mut event = serde_json::Map::new();
+        event.insert("appId".into(), json!(app_id));
+        if let Some(fields) = info.as_object() {
+            for (k, v) in fields {
+                event.insert(k.clone(), v.clone());
+            }
+        }
+        sink(Value::Object(event));
+    }
+}
+
 pub(crate) async fn import_app_history(
     db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
@@ -747,6 +765,7 @@ pub(crate) async fn import_app_history(
     options: &HistoryOptions,
     now: i64,
     ids: &mut dyn Ids,
+    mut progress: Progress<'_>,
 ) -> Result<Value, HistoryError> {
     let today_ms = options.today.unwrap_or(now);
     let interval_months = options
@@ -809,7 +828,9 @@ pub(crate) async fn import_app_history(
             if is_newest {
                 newest_covered = true;
             }
-            target_results.push(json!({"targetDate": target_ms, "outcome": "skipped_existing"}));
+            let info = json!({"targetDate": target_ms, "outcome": "skipped_existing"});
+            report(&mut progress, &app.id, &info);
+            target_results.push(info);
             skipped += 1;
             continue;
         }
@@ -830,8 +851,9 @@ pub(crate) async fn import_app_history(
         };
         let (snapshot, capture_ms) = match walk {
             Walk::None => {
-                target_results
-                    .push(json!({"targetDate": target_ms, "outcome": "skipped_no_capture"}));
+                let info = json!({"targetDate": target_ms, "outcome": "skipped_no_capture"});
+                report(&mut progress, &app.id, &info);
+                target_results.push(info);
                 skipped += 1;
                 continue;
             }
@@ -839,12 +861,14 @@ pub(crate) async fn import_app_history(
                 snapshot,
                 capture_ms,
             } => {
-                target_results.push(json!({
+                let info = json!({
                     "targetDate": target_ms,
                     "outcome": "skipped_drift",
                     "captureDate": capture_ms,
                     "waybackUrl": snapshot.url,
-                }));
+                });
+                report(&mut progress, &app.id, &info);
+                target_results.push(info);
                 skipped += 1;
                 continue;
             }
@@ -861,22 +885,26 @@ pub(crate) async fn import_app_history(
             if is_newest {
                 newest_covered = true;
             }
-            target_results.push(json!({
+            let info = json!({
                 "targetDate": target_ms,
                 "outcome": "skipped_existing",
                 "captureDate": capture_ms,
                 "waybackUrl": snapshot.url,
-            }));
+            });
+            report(&mut progress, &app.id, &info);
+            target_results.push(info);
             skipped += 1;
             continue;
         }
         if let Some(prior) = lookup_key.as_ref().and_then(|k| unusable.get(k)).copied() {
-            target_results.push(json!({
+            let info = json!({
                 "targetDate": target_ms,
                 "outcome": prior,
                 "captureDate": capture_ms,
                 "waybackUrl": snapshot.url,
-            }));
+            });
+            report(&mut progress, &app.id, &info);
+            target_results.push(info);
             if prior == "skipped_no_labels" {
                 skipped += 1;
             } else {
@@ -892,13 +920,15 @@ pub(crate) async fn import_app_history(
                 if let Some(key) = &lookup_key {
                     unusable.insert(key.clone(), "skipped_fetch_failure");
                 }
-                target_results.push(json!({
+                let info = json!({
                     "targetDate": target_ms,
                     "outcome": "skipped_fetch_failure",
                     "captureDate": capture_ms,
                     "waybackUrl": snapshot.url,
                     "errorMessage": error,
-                }));
+                });
+                report(&mut progress, &app.id, &info);
+                target_results.push(info);
                 failed += 1;
                 continue;
             }
@@ -913,12 +943,14 @@ pub(crate) async fn import_app_history(
             if let Some(key) = &lookup_key {
                 unusable.insert(key.clone(), outcome);
             }
-            target_results.push(json!({
+            let info = json!({
                 "targetDate": target_ms,
                 "outcome": outcome,
                 "captureDate": capture_ms,
                 "waybackUrl": snapshot.url,
-            }));
+            });
+            report(&mut progress, &app.id, &info);
+            target_results.push(info);
             if no_labels {
                 skipped += 1;
             } else {
@@ -943,13 +975,15 @@ pub(crate) async fn import_app_history(
             unchanged += 1;
             "unchanged"
         };
-        target_results.push(json!({
+        let info = json!({
             "targetDate": target_ms,
             "outcome": outcome,
             "captureDate": capture_ms,
             "waybackUrl": snapshot.url,
             "changeCount": changes.len(),
-        }));
+        });
+        report(&mut progress, &app.id, &info);
+        target_results.push(info);
     }
 
     let has_recent_capture = match &captures {
@@ -965,6 +999,7 @@ pub(crate) async fn import_app_history(
         } else {
             skipped += 1;
         }
+        report(&mut progress, &app.id, &info);
         target_results.push(info);
     }
 
