@@ -377,8 +377,30 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(maintenance_routes());
         routes.extend(backup_routes());
         routes.extend(bundle_routes());
+        routes.extend(seed_routes());
         routes
     })
+}
+
+/// Phase 4, batch 5d — see `seed_writes.rs`. No body is read. The guard is
+/// the strict one: an admin token has to be CONFIGURED for this route to
+/// run at all, loopback or not, because it rewrites the library. Thirty
+/// in ten minutes, not six: the e2e suite calls it from several specs a
+/// run, and same-origin plus the audit log are the real guardrails.
+fn seed_routes() -> Vec<RouteSpec> {
+    vec![RouteSpec {
+        path: "/api/dev/seed-sample-data",
+        method: Method::POST,
+        body_limit: None,
+        guard: Guard::Mutation(GuardOptions {
+            action: "dev.seed_sample_data",
+            key_prefix: "dev.seed_sample_data",
+            limit: 30,
+            window_ms: 10 * 60_000,
+            message: Some("Rate limit exceeded for dev sample seeding. Try again later."),
+            admin: AdminRule::Configured,
+        }),
+    }]
 }
 
 /// Phase 4, batch 5c — see `bundle_writes.rs`. The export takes the shared
@@ -819,7 +841,9 @@ fn imports_routes() -> Vec<RouteSpec> {
 
 /// The routes whose handlers await the network; `perform_async` runs them.
 pub fn is_async(spec: &RouteSpec) -> bool {
-    super::imports_writes::handles(spec) || super::runner_writes::handles(spec)
+    super::imports_writes::handles(spec)
+        || super::runner_writes::handles(spec)
+        || super::seed_writes::handles(spec)
 }
 
 /// Phase 4, batch 2 — see `library_writes.rs`.
@@ -1205,6 +1229,9 @@ pub async fn perform_async(
 ) -> Response {
     if super::runner_writes::handles(req.spec) {
         return super::runner_writes::perform(db, ids, now, fetcher, req, actor).await;
+    }
+    if super::seed_writes::handles(req.spec) {
+        return super::seed_writes::perform(db, ids, now, fetcher, req, actor).await;
     }
     if is_async(req.spec) {
         return super::imports_writes::perform(db, ids, now, fetcher, req, actor).await;

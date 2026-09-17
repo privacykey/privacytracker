@@ -498,6 +498,22 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-bundles-cases.mjs
           git diff --exit-code -- core/tests/fixtures/bundles-cases.json
 
+      - name: Seed oracle is current
+        # Runs the real POST /api/dev/seed-sample-data — the canned demo set
+        # and the live top-charts walk, the network a stub that serves each
+        # case's replies in order — against a scratch database with a frozen
+        # clock and counted ids, and records every request, raw fetch, write,
+        # the rows of the twelve tables a seed can touch and the wire
+        # response. It also writes core/src/server/sample_apps.json, the demo
+        # set the core embeds as data. A diff in the fixture means the route
+        # changed and core/src/server/seed_writes.rs has not been ported; a
+        # diff in sample_apps.json means lib/sample-apps.ts, the lens list or
+        # the accessibility catalogue changed and the core would seed a
+        # different demo library than Node does.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-seed-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/seed-cases.json core/src/server/sample_apps.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

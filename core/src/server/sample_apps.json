@@ -1,0 +1,995 @@
+{
+  "lensOrder": [
+    "collection_scope",
+    "product_use",
+    "ads_marketing",
+    "third_party_sharing",
+    "tracking_analytics",
+    "user_controls",
+    "data_retention",
+    "children_minors"
+  ],
+  "lensNotes": {
+    "favorable": "The sampled policy reads as protective in this area.",
+    "mixed": "The sampled policy mixes protective and permissive language here.",
+    "concerning": "The sampled policy reads as broad and permissive in this area.",
+    "unclear": "The sampled policy does not address this area clearly."
+  },
+  "accessibility": [
+    {
+      "identifier": "voiceover",
+      "title": "VoiceOver",
+      "fallbackDescription": "Navigate and explore the app using gestures, braille, and speech output.",
+      "iconTemplate": "systemimage://voiceover"
+    },
+    {
+      "identifier": "voice_control",
+      "title": "Voice Control",
+      "fallbackDescription": "Navigate and interact with the app using your voice to tap, swipe, type, and more.",
+      "iconTemplate": "systemimage://voice.control"
+    },
+    {
+      "identifier": "larger_text",
+      "title": "Larger Text",
+      "fallbackDescription": "Increase the text size in the app to 200% or more.",
+      "iconTemplate": "systemimage://textformat.size"
+    },
+    {
+      "identifier": "dark_interface",
+      "title": "Dark Interface",
+      "fallbackDescription": "Apply a dark color scheme to the screens, menus, and controls to reduce eye strain.",
+      "iconTemplate": "systemimage://appearance.darkmode"
+    },
+    {
+      "identifier": "differentiate_without_color_alone",
+      "title": "Differentiate Without Color Alone",
+      "fallbackDescription": "Use shapes or text, in addition to or instead of color, to distinguish key information.",
+      "iconTemplate": "systemimage://xmark.triangle.circle.square.fill"
+    },
+    {
+      "identifier": "sufficient_contrast",
+      "title": "Sufficient Contrast",
+      "fallbackDescription": "Increase or adjust the contrast between text or iconography and background.",
+      "iconTemplate": "systemimage://circle.lefthalf.filled.inverse"
+    },
+    {
+      "identifier": "reduced_motion",
+      "title": "Reduced Motion",
+      "fallbackDescription": "Modify or reduce certain types of animation that may cause motion sickness or discomfort.",
+      "iconTemplate": "systemimage://circle.dotted.and.circle"
+    },
+    {
+      "identifier": "captions",
+      "title": "Captions",
+      "fallbackDescription": "Display captions for dialogue and significant sound effects in video content.",
+      "iconTemplate": "systemimage://captions.bubble"
+    },
+    {
+      "identifier": "audio_descriptions",
+      "title": "Audio Descriptions",
+      "fallbackDescription": "Describe important visual content in video via an audio narration track.",
+      "iconTemplate": "systemimage://ear"
+    }
+  ],
+  "apps": [
+    {
+      "id": "sample-instagram",
+      "name": "Instagram",
+      "developer": "Meta Platforms, Inc.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "larger_text",
+        "dark_interface",
+        "captions",
+        "reduced_motion"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_USED_TO_TRACK_YOU",
+          "title": "Data Used to Track You",
+          "categories": [
+            "IDENTIFIERS",
+            "LOCATION",
+            "PURCHASES",
+            "SEARCH_HISTORY",
+            "CONTACT_INFO",
+            "OTHER"
+          ]
+        },
+        {
+          "identifier": "DATA_LINKED_TO_YOU",
+          "title": "Data Linked to You",
+          "categories": [
+            "HEALTH_AND_FITNESS",
+            "FINANCIAL_INFO",
+            "SENSITIVE_INFO",
+            "USER_CONTENT"
+          ]
+        },
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS",
+            "USAGE_DATA"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Instagram collects an extensive range of personal data — identifiers, location, browsing and search history — and uses much of it to track users across other companies’ apps and websites. The privacy policy permits sharing with Meta’s ad partners and acknowledges that some data may be retained after account deletion.",
+        "highlights": [
+          "Tracks users across third-party apps for advertising",
+          "Collects precise location and contact information",
+          "Shares data with Meta’s broader advertising network",
+          "Account deletion does not immediately remove all data"
+        ],
+        "lenses": {
+          "collection_scope": "concerning",
+          "ads_marketing": "concerning",
+          "third_party_sharing": "concerning",
+          "tracking_analytics": "concerning",
+          "data_retention": "mixed",
+          "user_controls": "mixed"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": {
+        "paragraph": "Instagram collects a broad range of personal data and uses much of it for advertising across Meta’s network. An earlier revision of the policy described shorter retention windows for deactivated accounts.",
+        "highlights": [
+          "Tracks users across third-party apps for advertising",
+          "Collects precise location and contact information",
+          "Shorter stated retention windows for deactivated accounts"
+        ],
+        "lenses": {
+          "collection_scope": "concerning",
+          "ads_marketing": "concerning",
+          "third_party_sharing": "concerning",
+          "tracking_analytics": "concerning",
+          "data_retention": "favorable",
+          "user_controls": "mixed"
+        },
+        "promptVersion": 1
+      },
+      "history": [
+        {
+          "daysAgo": 180,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_USED_TO_TRACK_YOU",
+              "title": "Data Used to Track You",
+              "categories": [
+                "IDENTIFIERS",
+                "LOCATION",
+                "PURCHASES",
+                "CONTACT_INFO"
+              ]
+            },
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "FINANCIAL_INFO",
+                "USER_CONTENT"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS",
+                "USAGE_DATA"
+              ]
+            }
+          ],
+          "version": "329.0",
+          "waybackUrl": "https://web.archive.org/web/20251028000000id_/https://apps.apple.com/us/app/instagram/id389801252"
+        },
+        {
+          "daysAgo": 120,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_USED_TO_TRACK_YOU",
+              "title": "Data Used to Track You",
+              "categories": [
+                "IDENTIFIERS",
+                "LOCATION",
+                "PURCHASES",
+                "SEARCH_HISTORY",
+                "CONTACT_INFO"
+              ]
+            },
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "FINANCIAL_INFO",
+                "SENSITIVE_INFO",
+                "USER_CONTENT"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS",
+                "USAGE_DATA"
+              ]
+            }
+          ],
+          "version": "335.0",
+          "waybackUrl": null
+        },
+        {
+          "daysAgo": 21,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_USED_TO_TRACK_YOU",
+              "title": "Data Used to Track You",
+              "categories": [
+                "IDENTIFIERS",
+                "LOCATION",
+                "PURCHASES",
+                "SEARCH_HISTORY",
+                "CONTACT_INFO",
+                "OTHER"
+              ]
+            },
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "HEALTH_AND_FITNESS",
+                "FINANCIAL_INFO",
+                "SENSITIVE_INFO",
+                "USER_CONTENT"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS",
+                "USAGE_DATA"
+              ]
+            }
+          ],
+          "version": "341.2",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-tiktok",
+      "name": "TikTok",
+      "developer": "TikTok Ltd.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": false,
+      "accessibilityFeatures": null,
+      "privacyTypes": [
+        {
+          "identifier": "DATA_USED_TO_TRACK_YOU",
+          "title": "Data Used to Track You",
+          "categories": [
+            "IDENTIFIERS",
+            "LOCATION",
+            "USAGE_DATA",
+            "BROWSING_HISTORY"
+          ]
+        },
+        {
+          "identifier": "DATA_LINKED_TO_YOU",
+          "title": "Data Linked to You",
+          "categories": [
+            "CONTACT_INFO",
+            "USER_CONTENT",
+            "IDENTIFIERS",
+            "LOCATION",
+            "SEARCH_HISTORY"
+          ]
+        },
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS",
+            "OTHER"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "TikTok’s privacy practices are wide-ranging: it collects identifiers, location, viewing patterns, and content interactions, and uses much of this for cross-app tracking and ad targeting. The policy describes complex data flows including overseas transfers that some regulators have flagged.",
+        "highlights": [
+          "Builds detailed engagement profiles from viewing behaviour",
+          "Tracks across third-party apps and websites",
+          "Transfers data internationally including outside the EU/US",
+          "Limited control over algorithmic content personalisation"
+        ],
+        "lenses": {
+          "collection_scope": "concerning",
+          "ads_marketing": "concerning",
+          "third_party_sharing": "concerning",
+          "data_retention": "mixed",
+          "user_controls": "mixed"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 90,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_USED_TO_TRACK_YOU",
+              "title": "Data Used to Track You",
+              "categories": [
+                "IDENTIFIERS",
+                "USAGE_DATA"
+              ]
+            },
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "CONTACT_INFO",
+                "USER_CONTENT",
+                "IDENTIFIERS",
+                "LOCATION"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "32.5",
+          "waybackUrl": null
+        },
+        {
+          "daysAgo": 30,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_USED_TO_TRACK_YOU",
+              "title": "Data Used to Track You",
+              "categories": [
+                "IDENTIFIERS",
+                "LOCATION",
+                "USAGE_DATA",
+                "BROWSING_HISTORY"
+              ]
+            },
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "CONTACT_INFO",
+                "USER_CONTENT",
+                "IDENTIFIERS",
+                "LOCATION",
+                "SEARCH_HISTORY"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS",
+                "OTHER"
+              ]
+            }
+          ],
+          "version": "34.1",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-spotify",
+      "name": "Spotify",
+      "developer": "Spotify AB",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "larger_text",
+        "dark_interface",
+        "differentiate_without_color_alone"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_USED_TO_TRACK_YOU",
+          "title": "Data Used to Track You",
+          "categories": [
+            "IDENTIFIERS",
+            "USAGE_DATA"
+          ]
+        },
+        {
+          "identifier": "DATA_LINKED_TO_YOU",
+          "title": "Data Linked to You",
+          "categories": [
+            "PURCHASES",
+            "CONTACT_INFO",
+            "USER_CONTENT",
+            "LOCATION"
+          ]
+        },
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Spotify collects listening behaviour, identifiers, and contact info to personalise recommendations and serve advertising on the free tier. Premium users see less ad-related processing. The policy is clear about what’s collected and why.",
+        "highlights": [
+          "Listening data drives personalised recommendations",
+          "Free-tier users have ad data shared with partners",
+          "Clear opt-outs available for marketing communications",
+          "Standard 30-day deletion window after account closure"
+        ],
+        "lenses": {
+          "collection_scope": "mixed",
+          "ads_marketing": "mixed",
+          "third_party_sharing": "mixed",
+          "data_retention": "favorable",
+          "user_controls": "favorable"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 75,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_USED_TO_TRACK_YOU",
+              "title": "Data Used to Track You",
+              "categories": [
+                "IDENTIFIERS",
+                "USAGE_DATA"
+              ]
+            },
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "PURCHASES",
+                "CONTACT_INFO",
+                "LOCATION"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "8.9.30",
+          "waybackUrl": null
+        },
+        {
+          "daysAgo": 14,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_USED_TO_TRACK_YOU",
+              "title": "Data Used to Track You",
+              "categories": [
+                "IDENTIFIERS",
+                "USAGE_DATA"
+              ]
+            },
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "PURCHASES",
+                "CONTACT_INFO",
+                "USER_CONTENT",
+                "LOCATION"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "9.0.10",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-whatsapp",
+      "name": "WhatsApp",
+      "developer": "Meta Platforms, Inc.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "larger_text",
+        "captions"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_LINKED_TO_YOU",
+          "title": "Data Linked to You",
+          "categories": [
+            "CONTACT_INFO",
+            "IDENTIFIERS",
+            "USAGE_DATA",
+            "USER_CONTENT"
+          ]
+        },
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "WhatsApp uses end-to-end encryption for message content, but collects metadata — who you talk to, how often, from where. Phone number and contacts are linked to your identity and shared with Meta’s broader infrastructure for ad personalisation outside the message stream itself.",
+        "highlights": [
+          "Message content end-to-end encrypted",
+          "Metadata (contacts, frequency, location) shared with Meta",
+          "Phone numbers linked across Meta’s ad platforms",
+          "Limited data retention policies for metadata"
+        ],
+        "lenses": {
+          "collection_scope": "mixed",
+          "ads_marketing": "mixed",
+          "third_party_sharing": "concerning",
+          "data_retention": "mixed",
+          "user_controls": "mixed"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 100,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "CONTACT_INFO",
+                "IDENTIFIERS",
+                "USAGE_DATA"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "24.4",
+          "waybackUrl": null
+        },
+        {
+          "daysAgo": 35,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "CONTACT_INFO",
+                "IDENTIFIERS",
+                "USAGE_DATA",
+                "USER_CONTENT"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "24.18",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-gmail",
+      "name": "Gmail",
+      "developer": "Google LLC",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "larger_text",
+        "dark_interface",
+        "sufficient_contrast"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_LINKED_TO_YOU",
+          "title": "Data Linked to You",
+          "categories": [
+            "CONTACT_INFO",
+            "USER_CONTENT",
+            "IDENTIFIERS",
+            "USAGE_DATA",
+            "LOCATION"
+          ]
+        },
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Gmail processes email content for spam filtering, security threat detection, and feature suggestions like Smart Compose. Google has stated it does not use email content for advertising, though metadata around your account is part of the broader Google ad-targeting profile.",
+        "highlights": [
+          "Email content processed for spam and security",
+          "Smart Compose / Smart Reply use ML on your messages",
+          "Google does not target ads based on email content",
+          "Google account profile incorporates Gmail usage signals"
+        ],
+        "lenses": {
+          "collection_scope": "mixed",
+          "ads_marketing": "favorable",
+          "third_party_sharing": "mixed",
+          "data_retention": "mixed",
+          "user_controls": "favorable"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 60,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "CONTACT_INFO",
+                "USER_CONTENT",
+                "IDENTIFIERS",
+                "USAGE_DATA",
+                "LOCATION"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "6.0.241201",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-apple-music",
+      "name": "Apple Music",
+      "developer": "Apple, Inc.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "voice_control",
+        "larger_text",
+        "dark_interface",
+        "reduced_motion",
+        "audio_descriptions"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_LINKED_TO_YOU",
+          "title": "Data Linked to You",
+          "categories": [
+            "PURCHASES",
+            "IDENTIFIERS",
+            "USER_CONTENT"
+          ]
+        },
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Apple Music collects only listening behaviour, library content, and identifiers needed for the service. No third-party tracking, no ad targeting. Standard Apple privacy posture.",
+        "highlights": [
+          "No data used for cross-app tracking",
+          "No third-party advertising",
+          "Listening history kept on-device where possible",
+          "Standard Apple ID deletion controls"
+        ],
+        "lenses": {
+          "collection_scope": "favorable",
+          "ads_marketing": "favorable",
+          "third_party_sharing": "favorable",
+          "data_retention": "favorable",
+          "user_controls": "favorable"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 45,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_LINKED_TO_YOU",
+              "title": "Data Linked to You",
+              "categories": [
+                "PURCHASES",
+                "IDENTIFIERS",
+                "USER_CONTENT"
+              ]
+            },
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "4.6",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-maps",
+      "name": "Apple Maps",
+      "developer": "Apple, Inc.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "voice_control",
+        "larger_text",
+        "dark_interface",
+        "sufficient_contrast"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "LOCATION",
+            "SEARCH_HISTORY",
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Apple Maps processes location and search queries with random rotating identifiers — your searches are not tied to your Apple ID and are stripped of identifiers within 24 hours. One of the more privacy-preserving mapping options.",
+        "highlights": [
+          "Searches not linked to Apple ID",
+          "Identifiers rotated to avoid long-term profiling",
+          "Location data processed locally where possible",
+          "Personalised features available without identification"
+        ],
+        "lenses": {
+          "collection_scope": "favorable",
+          "ads_marketing": "favorable",
+          "third_party_sharing": "favorable",
+          "data_retention": "favorable",
+          "user_controls": "favorable"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 30,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "LOCATION",
+                "SEARCH_HISTORY",
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "7.0",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-notes",
+      "name": "Notes",
+      "developer": "Apple, Inc.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "voice_control",
+        "larger_text",
+        "dark_interface"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Notes stores content on-device by default, with end-to-end encrypted iCloud sync as opt-in. No advertising data, no analytics on note content, no third-party processors.",
+        "highlights": [
+          "Note content stored on-device or end-to-end encrypted",
+          "No content analysis or advertising",
+          "Sync requires explicit iCloud opt-in"
+        ],
+        "lenses": {
+          "collection_scope": "favorable",
+          "ads_marketing": "favorable",
+          "third_party_sharing": "favorable",
+          "data_retention": "favorable",
+          "user_controls": "favorable"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 14,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "4.10",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-calendar",
+      "name": "Calendar",
+      "developer": "Apple, Inc.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "larger_text",
+        "dark_interface",
+        "sufficient_contrast",
+        "reduced_motion"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Calendar stores events locally with optional iCloud sync. No event-content analysis, no advertising. Suggested events from email use on-device parsing only.",
+        "highlights": [
+          "On-device storage with optional encrypted sync",
+          "Event content not analysed for advertising",
+          "Email-based suggestions processed locally"
+        ],
+        "lenses": {
+          "collection_scope": "favorable",
+          "ads_marketing": "favorable",
+          "third_party_sharing": "favorable",
+          "data_retention": "favorable",
+          "user_controls": "favorable"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 14,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "17.0",
+          "waybackUrl": null
+        }
+      ]
+    },
+    {
+      "id": "sample-weather",
+      "name": "Weather",
+      "developer": "Apple, Inc.",
+      "hasPrivacyDetails": true,
+      "hasAccessibilityLabels": true,
+      "accessibilityFeatures": [
+        "voiceover",
+        "larger_text",
+        "dark_interface",
+        "reduced_motion"
+      ],
+      "privacyTypes": [
+        {
+          "identifier": "DATA_NOT_LINKED_TO_YOU",
+          "title": "Data Not Linked to You",
+          "categories": [
+            "LOCATION",
+            "DIAGNOSTICS"
+          ]
+        }
+      ],
+      "aiSummary": {
+        "paragraph": "Weather requests current location for forecasts but does not link the location to your Apple ID. The forecast service uses rotating tokens to ensure your location queries are not traceable to you.",
+        "highlights": [
+          "Location used only for the current forecast",
+          "No persistent location history retained",
+          "Queries not linked to Apple ID"
+        ],
+        "lenses": {
+          "collection_scope": "favorable",
+          "ads_marketing": "favorable",
+          "third_party_sharing": "favorable",
+          "data_retention": "favorable",
+          "user_controls": "favorable"
+        },
+        "promptVersion": 1
+      },
+      "aiSummaryPrevious": null,
+      "history": [
+        {
+          "daysAgo": 14,
+          "privacyTypes": [
+            {
+              "identifier": "DATA_NOT_LINKED_TO_YOU",
+              "title": "Data Not Linked to You",
+              "categories": [
+                "LOCATION",
+                "DIAGNOSTICS"
+              ]
+            }
+          ],
+          "version": "5.0",
+          "waybackUrl": null
+        }
+      ]
+    }
+  ]
+}

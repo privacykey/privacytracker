@@ -88,6 +88,9 @@ mod runner_writes;
 mod runners_tests;
 mod runtime_diag;
 mod scope;
+#[cfg(test)]
+mod seed_tests;
+mod seed_writes;
 pub(crate) mod settings;
 mod shortlist;
 mod stats;
@@ -297,6 +300,12 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/api/deployment/support-bundle",
             get(routes_operations::support_bundle),
+        )
+        // Phase 4, batch 5d: the dev seed — the canned demo set, or a
+        // live walk of the top-free chart.
+        .route(
+            "/api/dev/seed-sample-data",
+            post(routes_writes::seed_sample_data_post),
         )
         .route(
             "/api/rate-limit/status",

@@ -49,7 +49,7 @@ pub const REPLAY_HOSTS: &[&str] = &["web.archive.org", "archive.org"];
 const REPLAY_USER_AGENT: &str =
     "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)";
 
-const INSERT_SNAPSHOT: &str = "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ";
+pub(crate) const INSERT_SNAPSHOT: &str = "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ";
 const INSERT_ATTEMPT: &str = "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ";
 const UPDATE_SUCCESSOR: &str = "UPDATE privacy_snapshots\n        SET changes_summary = ?, changes_detected = ?\n      WHERE id = ?";
 
@@ -476,7 +476,7 @@ fn push(items: &mut Value, item: Value) {
 }
 
 /// `JSON.stringify` of a `PrivacyTypeSnapshot[]`.
-fn snapshot_json(snapshot: &[TypeSnapshot]) -> String {
+pub(crate) fn snapshot_json(snapshot: &[TypeSnapshot]) -> String {
     let value = Value::Array(
         snapshot
             .iter()
