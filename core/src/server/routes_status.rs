@@ -194,7 +194,7 @@ struct QueueItem {
 }
 
 #[derive(Serialize)]
-struct QueueStatus {
+pub(super) struct QueueStatus {
     queued: i64,
     #[serde(rename = "soonestNextAttemptAt")]
     soonest_next_attempt_at: Option<i64>,
@@ -208,81 +208,81 @@ struct QueueStatus {
     last_run_at: Option<i64>,
 }
 
+/// `getImportQueueStatus()` over one connection, so the queue drain can
+/// append it to its own response.
+pub(super) fn queue_status(conn: &rusqlite::Connection, now: i64) -> rusqlite::Result<QueueStatus> {
+    let setting = |key: &str, default: &str| -> String {
+        super::settings::get_setting_with(conn, key, default).unwrap_or_default()
+    };
+    let paused_raw = js_parse_int(&setting("import_queue_paused_until", "0")).unwrap_or(0);
+    let last_run_raw = js_parse_int(&setting("import_queue_last_run", "0")).unwrap_or(0);
+    let running = setting("import_queue_running", "false") == "true";
+
+    // MIN/MAX over an empty set are NULL, and COUNT is 0 — matching
+    // Node's `counts.soonest ?? null` / `counts.queued ?? 0`.
+    let (queued, soonest, oldest) = conn.query_row(
+        "SELECT COUNT(*) AS queued, MIN(next_attempt_at) AS soonest, MAX(next_attempt_at) AS oldest \
+         FROM import_items WHERE status = 'queued'",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, i64>("queued")?,
+                row.get::<_, Option<i64>>("soonest")?,
+                row.get::<_, Option<i64>>("oldest")?,
+            ))
+        },
+    )?;
+
+    let mut stmt = conn.prepare(
+        "SELECT * FROM import_items WHERE status = 'queued' \
+         ORDER BY next_attempt_at ASC, rowid ASC LIMIT 25",
+    )?;
+    let items = stmt
+        .query_map([], |row| {
+            Ok(QueueItem {
+                id: row.get("id")?,
+                import_id: row.get("import_id")?,
+                query: row.get("query")?,
+                edited_query: row.get("edited_query")?,
+                status: row.get("status")?,
+                app_id: row.get("app_id")?,
+                app_name: row.get("app_name")?,
+                developer: row.get("developer")?,
+                url: row.get("url")?,
+                icon_url: row.get("icon_url")?,
+                country: row.get("country")?,
+                scrape_error: row.get("scrape_error")?,
+                removed_app_id: row.get("removed_app_id")?,
+                next_attempt_at: row.get("next_attempt_at")?,
+                attempt_count: row.get::<_, Option<i64>>("attempt_count")?.unwrap_or(0),
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    Ok(QueueStatus {
+        queued,
+        soonest_next_attempt_at: soonest,
+        oldest_next_attempt_at: oldest,
+        items,
+        // Only a FUTURE fence counts; a stale one reads as null.
+        paused_until: if paused_raw > now {
+            Some(paused_raw)
+        } else {
+            None
+        },
+        running,
+        // `lastRunRaw || null` — a stored 0 becomes null, not 0.
+        last_run_at: if last_run_raw != 0 {
+            Some(last_run_raw)
+        } else {
+            None
+        },
+    })
+}
+
 pub async fn imports_queue(State(state): State<AppState>) -> Response {
-    let paused_raw =
-        js_parse_int(&get_setting(&state, "import_queue_paused_until", "0").unwrap_or_default())
-            .unwrap_or(0);
-    let last_run_raw =
-        js_parse_int(&get_setting(&state, "import_queue_last_run", "0").unwrap_or_default())
-            .unwrap_or(0);
-    let running =
-        get_setting(&state, "import_queue_running", "false").unwrap_or_default() == "true";
-
     let conn = state.db();
-    let built = (|| -> rusqlite::Result<QueueStatus> {
-        // MIN/MAX over an empty set are NULL, and COUNT is 0 — matching
-        // Node's `counts.soonest ?? null` / `counts.queued ?? 0`.
-        let (queued, soonest, oldest) = conn.query_row(
-            "SELECT COUNT(*) AS queued, MIN(next_attempt_at) AS soonest, MAX(next_attempt_at) AS oldest \
-             FROM import_items WHERE status = 'queued'",
-            [],
-            |row| {
-                Ok((
-                    row.get::<_, i64>("queued")?,
-                    row.get::<_, Option<i64>>("soonest")?,
-                    row.get::<_, Option<i64>>("oldest")?,
-                ))
-            },
-        )?;
-
-        let mut stmt = conn.prepare(
-            "SELECT * FROM import_items WHERE status = 'queued' \
-             ORDER BY next_attempt_at ASC, rowid ASC LIMIT 25",
-        )?;
-        let items = stmt
-            .query_map([], |row| {
-                Ok(QueueItem {
-                    id: row.get("id")?,
-                    import_id: row.get("import_id")?,
-                    query: row.get("query")?,
-                    edited_query: row.get("edited_query")?,
-                    status: row.get("status")?,
-                    app_id: row.get("app_id")?,
-                    app_name: row.get("app_name")?,
-                    developer: row.get("developer")?,
-                    url: row.get("url")?,
-                    icon_url: row.get("icon_url")?,
-                    country: row.get("country")?,
-                    scrape_error: row.get("scrape_error")?,
-                    removed_app_id: row.get("removed_app_id")?,
-                    next_attempt_at: row.get("next_attempt_at")?,
-                    attempt_count: row.get::<_, Option<i64>>("attempt_count")?.unwrap_or(0),
-                })
-            })?
-            .collect::<rusqlite::Result<Vec<_>>>()?;
-
-        Ok(QueueStatus {
-            queued,
-            soonest_next_attempt_at: soonest,
-            oldest_next_attempt_at: oldest,
-            items,
-            // Only a FUTURE fence counts; a stale one reads as null.
-            paused_until: if paused_raw > now_ms() {
-                Some(paused_raw)
-            } else {
-                None
-            },
-            running,
-            // `lastRunRaw || null` — a stored 0 becomes null, not 0.
-            last_run_at: if last_run_raw != 0 {
-                Some(last_run_raw)
-            } else {
-                None
-            },
-        })
-    })();
-
-    match built {
+    match queue_status(&conn, now_ms()) {
         Ok(status) => json_ok(&status),
         Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"),
     }

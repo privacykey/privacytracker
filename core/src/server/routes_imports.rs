@@ -21,10 +21,13 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 use super::json::{json_error, json_ok};
+use super::row::column;
 use super::AppState;
+use rusqlite::{Connection, OptionalExtension};
+use serde_json::Value;
 
 pub(super) const IMPORT_SOURCES: [&str; 3] = ["screenshots", "file", "manual"];
-const IMPORT_ITEM_STATUSES: [&str; 8] = [
+pub(super) const IMPORT_ITEM_STATUSES: [&str; 8] = [
     "matched",
     "unmatched",
     "skipped",
@@ -63,7 +66,9 @@ struct ImportRow {
     source: String,
     #[serde(rename = "sourceLabel")]
     source_label: Option<String>,
-    total: i64,
+    /// Whatever number the creator sent: `total: 2.5` is stored and read
+    /// back as 2.5, so this is not an integer.
+    total: Value,
     matched: i64,
     unmatched: i64,
     imported: i64,
@@ -131,7 +136,7 @@ fn hydrate_import(row: &Row<'_>) -> rusqlite::Result<ImportRow> {
         completed_at: row.get("completed_at")?,
         source: normalize(&row.get::<_, String>("source")?, &IMPORT_SOURCES, "manual"),
         source_label: row.get("source_label")?,
-        total: row.get("total")?,
+        total: column(row, "total")?,
         matched: row.get("matched")?,
         unmatched: row.get("unmatched")?,
         imported: row.get("imported")?,
@@ -166,6 +171,40 @@ pub(super) fn hydrate_item(row: &Row<'_>) -> rusqlite::Result<ImportItemRow> {
         // NULL → 0 here, but next_attempt_at above stays null. Deliberate.
         attempt_count: row.get::<_, Option<i64>>("attempt_count")?.unwrap_or(0),
     })
+}
+
+/// `getImportRow`: one import with its live counters, as JSON.
+pub(super) fn import_row(conn: &Connection, id: &str) -> rusqlite::Result<Option<Value>> {
+    let sql = format!(
+        "SELECT i.*, {COUNTER_JOIN}
+            WHERE import_id = ?1
+            GROUP BY import_id
+         ) s ON s.import_id = i.id
+        WHERE i.id = ?2"
+    );
+    conn.query_row(&sql, rusqlite::params![id, id], hydrate_import)
+        .optional()
+        .map(|row| row.map(|r| serde_json::to_value(r).unwrap_or(Value::Null)))
+}
+
+/// `getImportItemById`, as JSON.
+pub(super) fn item_row(conn: &Connection, id: &str) -> rusqlite::Result<Option<Value>> {
+    conn.query_row(
+        "SELECT * FROM import_items WHERE id = ?",
+        [id],
+        hydrate_item,
+    )
+    .optional()
+    .map(|row| row.map(|r| serde_json::to_value(r).unwrap_or(Value::Null)))
+}
+
+/// The items of one import in row order, as JSON.
+pub(super) fn import_items(conn: &Connection, import_id: &str) -> rusqlite::Result<Vec<Value>> {
+    let mut stmt =
+        conn.prepare("SELECT * FROM import_items WHERE import_id = ? ORDER BY rowid ASC")?;
+    let rows = stmt.query_map([import_id], hydrate_item)?;
+    rows.map(|r| r.map(|row| serde_json::to_value(row).unwrap_or(Value::Null)))
+        .collect()
 }
 
 pub async fn imports(

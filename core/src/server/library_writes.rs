@@ -152,7 +152,7 @@ fn first<'a>(query: &'a [(String, String)], name: &str) -> Option<&'a str> {
 
 /// The body for the routes whose reader is `readBoundedJson` with the
 /// settings phrasing: an empty body and an unparseable one are distinct.
-fn body_strict(body: BodyOutcome) -> Result<Value, Response> {
+pub(super) fn body_strict(body: BodyOutcome) -> Result<Value, Response> {
     match body {
         BodyOutcome::Json(v) => Ok(v),
         BodyOutcome::Empty => Err(bad("Request body is empty")),

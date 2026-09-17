@@ -1,14 +1,19 @@
 //! The axum wrappers over `writes.rs`: guard under the lock, read the body
 //! with the route's cap while the lock is released, then the handler
-//! under the lock again. One wrapper per route so the router reads like
-//! `mod.rs`'s other registrations.
+//! through the accessor — one section under the lock for a handler that
+//! never fetches, and for the batch-3 handlers a section either side of
+//! each network call, with the lock released in between. One wrapper per
+//! route so the router reads like `mod.rs`'s other registrations.
 use super::{
     body::{read_json, BodyOutcome},
     json::json_error,
     writes::{self, WriteRequest},
     AppState,
 };
-use crate::scrape::{persist::Writer, RandomIds};
+use crate::{
+    outbound::PublicHttp,
+    scrape::{persist::Writer, RandomIds},
+};
 use axum::{
     extract::{Path, Request, State},
     http::{Method, StatusCode},
@@ -52,11 +57,15 @@ async fn run(
         Some(limit) => read_json(&parts.headers, body, limit).await,
         None => BodyOutcome::Empty,
     };
-    let conn = state.db();
-    let mut w = Writer::new(&conn, None);
-    writes::perform(
-        &mut w,
+    // The handler takes the lock per section and never across an await, so
+    // its future is `Send` and runs here like any other; a scrape, a
+    // search or a Wayback run holds the connection only for the reads and
+    // writes either side of each fetch.
+    let mut db = state.db_access();
+    writes::perform_async(
+        &mut db,
         &mut ids,
+        &PublicHttp,
         WriteRequest {
             spec,
             param: param.as_deref(),
@@ -66,6 +75,7 @@ async fn run(
         &actor,
         now,
     )
+    .await
 }
 
 macro_rules! wrapper {
@@ -161,3 +171,26 @@ wrapper_with_id!(manual_put, "/api/manual-apps/[id]", PUT);
 wrapper_with_id!(manual_delete, "/api/manual-apps/[id]", DELETE);
 wrapper!(manual_bulk_post, "/api/manual-apps/bulk", POST);
 wrapper_with_id!(manual_restore_post, "/api/manual-apps/[id]/restore", POST);
+
+// ── Phase 4, batch 3 ─────────────────────────────────────────────────
+
+wrapper!(imports_post, "/api/imports", POST);
+wrapper!(imports_delete, "/api/imports", DELETE);
+wrapper!(import_items_post, "/api/imports/items", POST);
+wrapper!(import_item_update_post, "/api/imports/items/update", POST);
+wrapper!(import_queue_post, "/api/imports/queue", POST);
+wrapper!(import_complete_post, "/api/imports/complete", POST);
+wrapper!(import_item_retry_post, "/api/imports/items/retry", POST);
+wrapper!(
+    import_item_change_match_post,
+    "/api/imports/items/change-match",
+    POST
+);
+wrapper!(search_post, "/api/search", POST);
+wrapper!(scrape_post, "/api/scrape", POST);
+wrapper_with_id!(import_history_post, "/api/apps/[id]/import-history", POST);
+wrapper_with_id!(
+    import_history_delete,
+    "/api/apps/[id]/import-history",
+    DELETE
+);

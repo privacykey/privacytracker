@@ -41,7 +41,11 @@ use crate::{
     jsnum::{js_number_spelling, js_parse_float, js_parse_int, js_to_number},
     jsstr::{js_length, js_trim},
     outbound,
-    scrape::{persist::Writer, region::normalize_country, Ids},
+    scrape::{
+        persist::{DbAccess, Writer},
+        region::normalize_country,
+        Ids,
+    },
 };
 use axum::{
     http::{header, HeaderMap, HeaderValue, Method, StatusCode},
@@ -202,6 +206,15 @@ enum Guard {
         unauthorised: &'static str,
     },
     Mutation(GuardOptions),
+    /// `checkRateLimit` inline with the route's own phrasing and a
+    /// `Retry-After`, and no admin check at all. `per_param` appends the
+    /// path id to the key, as the wayback import does.
+    Rate {
+        prefix: &'static str,
+        limit: i64,
+        message: &'static str,
+        per_param: bool,
+    },
 }
 
 const fn guarded(action: &'static str, limit: i64, admin: AdminRule) -> Guard {
@@ -339,8 +352,109 @@ pub fn routes() -> &'static [RouteSpec] {
             },
         ];
         routes.extend(library_routes());
+        routes.extend(imports_routes());
         routes
     })
+}
+
+/// Phase 4, batch 3 — see `imports_writes.rs`.
+fn imports_routes() -> Vec<RouteSpec> {
+    const fn rate(prefix: &'static str, limit: i64, message: &'static str) -> Guard {
+        Guard::Rate {
+            prefix,
+            limit,
+            message,
+            per_param: false,
+        }
+    }
+    let spec =
+        |path: &'static str, method: Method, body_limit: Option<usize>, guard: Guard| RouteSpec {
+            path,
+            method,
+            body_limit,
+            guard,
+        };
+    vec![
+        spec("/api/imports", Method::POST, Some(8 * 1024), Guard::None),
+        spec("/api/imports", Method::DELETE, None, Guard::None),
+        spec(
+            "/api/imports/items",
+            Method::POST,
+            Some(512 * 1024),
+            guarded("imports.items.add", 30, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/imports/items/update",
+            Method::POST,
+            Some(32 * 1024),
+            Guard::None,
+        ),
+        spec("/api/imports/queue", Method::POST, None, Guard::None),
+        spec(
+            "/api/imports/complete",
+            Method::POST,
+            Some(4 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/imports/items/retry",
+            Method::POST,
+            Some(4 * 1024),
+            rate(
+                "imports-retry-item",
+                30,
+                "Rate limit exceeded for /api/imports/items/retry. Try again shortly.",
+            ),
+        ),
+        spec(
+            "/api/imports/items/change-match",
+            Method::POST,
+            Some(16 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/search",
+            Method::POST,
+            Some(256 * 1024),
+            rate(
+                "search",
+                60,
+                "Rate limit exceeded for /api/search. Try again shortly.",
+            ),
+        ),
+        spec(
+            "/api/scrape",
+            Method::POST,
+            Some(256 * 1024),
+            rate(
+                "scrape",
+                30,
+                "Rate limit exceeded for /api/scrape. Try again shortly.",
+            ),
+        ),
+        spec(
+            "/api/apps/[id]/import-history",
+            Method::POST,
+            Some(4 * 1024),
+            Guard::Rate {
+                prefix: "wayback.import",
+                limit: 3,
+                message: "Import throttled — wait before retrying.",
+                per_param: true,
+            },
+        ),
+        spec(
+            "/api/apps/[id]/import-history",
+            Method::DELETE,
+            None,
+            Guard::None,
+        ),
+    ]
+}
+
+/// The routes whose handlers await the network; `perform_async` runs them.
+pub fn is_async(spec: &RouteSpec) -> bool {
+    super::imports_writes::handles(spec)
 }
 
 /// Phase 4, batch 2 — see `library_writes.rs`.
@@ -519,9 +633,32 @@ pub fn precheck(
     param: Option<&str>,
     now: i64,
 ) -> Result<Actor, Response> {
-    let actor = guard_only(w, ids, limiter, headers, spec, now)?;
+    let actor = guard_only(w, ids, limiter, headers, spec, param, now)?;
     // The checks a route makes after its guard and BEFORE reading the body.
     match (spec.path, &spec.method) {
+        ("/api/apps/[id]/import-history", &Method::POST) => {
+            let id = param.unwrap_or("");
+            if id.is_empty() {
+                return Err(json_error(StatusCode::BAD_REQUEST, "Missing id"));
+            }
+            let app = super::stats::query(
+                w.conn,
+                "SELECT id, url, name FROM apps WHERE id = ?",
+                &[rusqlite::types::Value::Text(id.to_string())],
+            )
+            .map(|rows| rows.into_iter().next());
+            match app {
+                Ok(None) => return Err(json_error(StatusCode::NOT_FOUND, "App not found")),
+                Ok(Some(row)) if !truthy(&row["url"]) => {
+                    return Err(json_error(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        "App has no App Store URL to import history from.",
+                    ))
+                }
+                Ok(Some(_)) => {}
+                Err(_) => return Err(internal_error()),
+            }
+        }
         ("/api/devices/[id]", &Method::PATCH) | ("/api/devices/[id]", &Method::DELETE) => {
             let exists = super::routes_devices::by_id(w.conn, param.unwrap_or(""))
                 .map_err(|e| e.to_string())
@@ -549,11 +686,39 @@ fn guard_only(
     limiter: &RateLimiter,
     headers: &HeaderMap,
     spec: &RouteSpec,
+    param: Option<&str>,
     now: i64,
 ) -> Result<Actor, Response> {
     match &spec.guard {
         Guard::None => Ok(actor_from(headers)),
         Guard::Mutation(opts) => require_mutation_guard(w, ids, limiter, headers, opts, now),
+        Guard::Rate {
+            prefix,
+            limit,
+            message,
+            per_param,
+        } => {
+            let head = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
+            let prefix = if *per_param {
+                format!("{prefix}.{}", param.unwrap_or(""))
+            } else {
+                prefix.to_string()
+            };
+            let key =
+                ratelimit::key_for_request(head("x-forwarded-for"), head("x-real-ip"), &prefix);
+            let rate = limiter.check(&key, *limit, 60_000, now);
+            if !rate.allowed {
+                let mut response =
+                    json_response(StatusCode::TOO_MANY_REQUESTS, &json!({ "error": message }));
+                // `String(Math.ceil(rate.retryAfterMs / 1000))`.
+                let seconds = (rate.retry_after_ms.max(0) + 999) / 1000;
+                if let Ok(value) = HeaderValue::from_str(&seconds.to_string()) {
+                    response.headers_mut().insert(header::RETRY_AFTER, value);
+                }
+                return Err(response);
+            }
+            Ok(actor_from(headers))
+        }
         Guard::Inline {
             prefix,
             limit,
@@ -622,6 +787,24 @@ pub fn perform(
         _ => super::library_writes::perform(&mut cx, req, actor)
             .unwrap_or_else(|| json_error(StatusCode::NOT_FOUND, "Not Found")),
     }
+}
+
+/// `perform` for every route, through the accessor: one section for a
+/// handler that never fetches (the lock for exactly the handler, as
+/// `perform` under the route's own guard), and the batch-3 handlers'
+/// own sections around their network calls.
+pub async fn perform_async(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    fetcher: &dyn crate::outbound::Fetcher,
+    req: WriteRequest<'_>,
+    actor: &Actor,
+    now: i64,
+) -> Response {
+    if is_async(req.spec) {
+        return super::imports_writes::perform(db, ids, now, fetcher, req, actor).await;
+    }
+    db.with(|w| perform(w, ids, req, actor, now))
 }
 
 pub(super) struct Cx<'a, 'b> {

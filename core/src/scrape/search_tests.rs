@@ -3,7 +3,7 @@
 //! made, every write, the app_settings rows and the batch object.
 use super::{
     fetch_tests::Canned,
-    persist::{json_of, Statement},
+    persist::{json_of, Locked, Statement},
     persist_tests::to_sql,
     ratelimit,
     search::{lookup_apps_by_bundle_id, search_apps_by_name},
@@ -11,7 +11,10 @@ use super::{
 use crate::outbound::{self, Request};
 use rusqlite::{params_from_iter, types::Value as Sql};
 use serde_json::{json, Map, Value};
-use std::{path::Path, sync::atomic::Ordering};
+use std::{
+    path::Path,
+    sync::{atomic::Ordering, Mutex},
+};
 
 fn expect_limits(request: &Request) {
     assert_eq!(request.max_redirects, 5);
@@ -79,15 +82,24 @@ fn search_and_lookup_match_node_calls_writes_and_batches() {
         let now = case["now"].as_i64().unwrap();
         let input = case["input"].as_array().unwrap();
         let country = case["options"]["country"].as_str();
+        // Through the accessor the routes use, so the replay locks and
+        // releases exactly as they do.
+        let conn = Mutex::new(conn);
+        let mut db = Locked {
+            conn: &conn,
+            log: Some(&mut log),
+            on_wait: None,
+        };
         let actual = rt.block_on(async {
             if case["kind"] == "search" {
-                search_apps_by_name(&conn, &canned, input, country, now, Some(&mut log))
+                search_apps_by_name(&mut db, &canned, input, country, now)
                     .await
                     .unwrap_or_else(|e| json!({ "error": e }))
             } else {
-                lookup_apps_by_bundle_id(&conn, &canned, input, country, now, Some(&mut log)).await
+                lookup_apps_by_bundle_id(&mut db, &canned, input, country, now).await
             }
         });
+        let conn = conn.into_inner().unwrap();
 
         let used = canned.cursor.load(Ordering::SeqCst);
         if used != canned.replies.len() {

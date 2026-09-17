@@ -26,7 +26,7 @@ const PROFILE_MISMATCH_NOTIFY_WINDOW_MS: f64 = 24.0 * 60.0 * 60_000.0;
 
 /// `pruneNotifications`: read rows past the retention cap go, oldest first.
 /// Its own failures are swallowed, as in Node.
-fn prune_notifications(w: &mut Writer) {
+pub(crate) fn prune_notifications(w: &mut Writer) {
     let count: Result<i64, _> =
         w.conn
             .query_row("SELECT COUNT(*) AS n FROM notifications", [], |r| r.get(0));

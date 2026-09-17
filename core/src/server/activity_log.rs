@@ -20,6 +20,25 @@ pub fn record_activity(
     detail: Option<&Value>,
     started_at: i64,
 ) {
+    record_activity_named(
+        w, ids, now, kind, status, app_id, None, summary, detail, started_at,
+    );
+}
+
+/// `recordActivity` with an `appName`, which the wayback rows carry.
+#[allow(clippy::too_many_arguments)]
+pub fn record_activity_named(
+    w: &mut Writer,
+    ids: &mut dyn Ids,
+    now: i64,
+    kind: &str,
+    status: &str,
+    app_id: Option<&str>,
+    app_name: Option<&str>,
+    summary: Option<&str>,
+    detail: Option<&Value>,
+    started_at: i64,
+) {
     // The id is minted before the try, so a failed insert still consumes it.
     let id = match ids.uuid(w.conn) {
         Ok(id) => id,
@@ -38,7 +57,7 @@ pub fn record_activity(
                 json!(kind),
                 json!(status),
                 app_id.map_or(Value::Null, |a| json!(a)),
-                Value::Null,
+                app_name.map_or(Value::Null, |a| json!(a)),
                 summary.map_or(Value::Null, |s| json!(s)),
                 detail.map_or(Value::Null, |d| json!(d.to_string())),
                 json!(started_at),

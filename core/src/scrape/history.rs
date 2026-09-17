@@ -9,11 +9,14 @@
 //! asked once. Throttling anywhere is the import's error, not a quiet
 //! quarter. Gated by `core/tests/fixtures/history-cases.json`.
 //!
-//! Holds the connection across awaits like the other scrape entry points;
-//! the Phase 4 routes will stage it around the lock.
+//! The connection comes through a [`DbAccess`] and is taken for one
+//! section at a time — the two reads before the index listing, each
+//! back-dated row's transaction, the Save Page Now attempt entry — and
+//! released for every archive request between them, which is where Node
+//! awaits.
 use super::{
     js::{at, has_length, iterate, truthy},
-    persist::{json_of, message, Ids, Statement, Writer},
+    persist::{json_of, message, DbAccess, Ids, Writer},
     shoebox,
     wayback::{self, Capture, Snapshot, Unavailable},
 };
@@ -694,9 +697,10 @@ fn append_wayback_attempt_entry(
     Ok(())
 }
 
-/// `requestFreshCapture`.
+/// `requestFreshCapture`: Save Page Now with the connection released, then
+/// the attempt entry in one section.
 async fn request_fresh_capture(
-    w: &mut Writer<'_>,
+    db: &mut dyn DbAccess,
     ids: &mut dyn Ids,
     fetcher: &dyn Fetcher,
     app: &AppRow,
@@ -715,15 +719,18 @@ async fn request_fresh_capture(
             if let Some(ms) = wayback::parse_timestamp_ms(snapshot.timestamp.as_deref()) {
                 info["captureDate"] = json!(ms);
             }
-            match append_wayback_attempt_entry(
-                w,
-                ids,
-                &app.id,
-                now,
-                "Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.",
-                &snapshot.url,
-                today_ms,
-            ) {
+            let appended = db.with(|w| {
+                append_wayback_attempt_entry(
+                    w,
+                    ids,
+                    &app.id,
+                    now,
+                    "Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.",
+                    &snapshot.url,
+                    today_ms,
+                )
+            });
+            match appended {
                 Ok(()) => info,
                 Err(error) => failed(error),
             }
@@ -733,17 +740,14 @@ async fn request_fresh_capture(
 
 /// `importAppHistory(app, options)`: the result object as JSON, or the
 /// error the import throws.
-#[allow(clippy::too_many_arguments)]
-pub async fn import_app_history(
-    conn: &Connection,
+pub(crate) async fn import_app_history(
+    db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     app: &AppRow,
     options: &HistoryOptions,
     now: i64,
     ids: &mut dyn Ids,
-    log: Option<&mut Vec<Statement>>,
 ) -> Result<Value, HistoryError> {
-    let mut w = Writer::new(conn, log);
     let today_ms = options.today.unwrap_or(now);
     let interval_months = options
         .interval_months
@@ -755,13 +759,9 @@ pub async fn import_app_history(
         .unwrap_or(dedupe_window_for_interval(interval_months as f64) as f64);
 
     // `Number(row?.firstSeen) || 0`, then the anchor once the install is
-    // older than the window.
-    let first_seen: Option<Value> = conn
-        .query_row("SELECT firstSeen FROM apps WHERE id = ?", [&app.id], |r| {
-            Ok(json_of(r.get::<_, Sql>(0)?))
-        })
-        .optional()
-        .map_err(message)?;
+    // older than the window. This read and the wayback-row listing below
+    // are one section: Node runs both before its first await.
+    let (first_seen, mut existing) = db.with(|w| before_the_index(w.conn, &app.id))?;
     let first_seen_ms = js_to_number(&first_seen.unwrap_or(Value::Null));
     let first_seen_ms = if first_seen_ms.is_nan() {
         0.0
@@ -779,21 +779,6 @@ pub async fn import_app_history(
         &anchors,
     );
 
-    let mut existing: Vec<(f64, Option<String>)> = conn
-        .prepare("SELECT scraped_at, wayback_snapshot_url\n         FROM privacy_snapshots\n        WHERE app_id = ? AND source = 'wayback'")
-        .map_err(message)?
-        .query_map([&app.id], |r| {
-            Ok((
-                js_to_number(&json_of(r.get::<_, Sql>(0)?)),
-                match json_of(r.get::<_, Sql>(1)?) {
-                    Value::String(s) => Some(s),
-                    _ => None,
-                },
-            ))
-        })
-        .map_err(message)?
-        .collect::<rusqlite::Result<_>>()
-        .map_err(message)?;
     let mut existing_urls: HashSet<String> = existing
         .iter()
         .filter_map(|(_, url)| url.as_deref().and_then(normalise_wayback_url))
@@ -941,8 +926,9 @@ pub async fn import_app_history(
             }
             continue;
         };
-        let (changes, is_baseline) =
-            write_wayback_snapshot(&mut w, ids, &app.id, &parsed, capture_ms, &snapshot.url)?;
+        let (changes, is_baseline) = db.with(|w| {
+            write_wayback_snapshot(w, ids, &app.id, &parsed, capture_ms, &snapshot.url)
+        })?;
         existing.push((capture_ms as f64, Some(snapshot.url.clone())));
         if let Some(key) = &lookup_key {
             existing_urls.insert(key.clone());
@@ -973,7 +959,7 @@ pub async fn import_app_history(
         None => newest_covered,
     };
     if !has_recent_capture {
-        let info = request_fresh_capture(&mut w, ids, fetcher, app, today_ms, now).await;
+        let info = request_fresh_capture(db, ids, fetcher, app, today_ms, now).await;
         if info["outcome"] == "requested_snapshot" {
             snapshots_requested += 1;
         } else {
@@ -992,6 +978,38 @@ pub async fn import_app_history(
         "snapshotsRequested": snapshots_requested,
         "targets": target_results,
     }))
+}
+
+/// The two reads Node makes before the index listing: the install date
+/// and the wayback rows already held, as `(scrapedAt, waybackUrl)`.
+type ExistingRows = Vec<(f64, Option<String>)>;
+
+fn before_the_index(
+    conn: &Connection,
+    app_id: &str,
+) -> Result<(Option<Value>, ExistingRows), String> {
+    let first_seen: Option<Value> = conn
+        .query_row("SELECT firstSeen FROM apps WHERE id = ?", [app_id], |r| {
+            Ok(json_of(r.get::<_, Sql>(0)?))
+        })
+        .optional()
+        .map_err(message)?;
+    let existing: ExistingRows = conn
+        .prepare("SELECT scraped_at, wayback_snapshot_url\n         FROM privacy_snapshots\n        WHERE app_id = ? AND source = 'wayback'")
+        .map_err(message)?
+        .query_map([app_id], |r| {
+            Ok((
+                js_to_number(&json_of(r.get::<_, Sql>(0)?)),
+                match json_of(r.get::<_, Sql>(1)?) {
+                    Value::String(s) => Some(s),
+                    _ => None,
+                },
+            ))
+        })
+        .map_err(message)?
+        .collect::<rusqlite::Result<_>>()
+        .map_err(message)?;
+    Ok((first_seen, existing))
 }
 
 #[cfg(test)]

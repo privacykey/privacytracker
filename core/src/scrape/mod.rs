@@ -20,13 +20,13 @@ pub mod accessibility;
 mod activity;
 pub mod fetch;
 #[cfg(test)]
-mod fetch_tests;
+pub(crate) mod fetch_tests;
 pub mod flags;
 pub mod history;
 #[cfg(test)]
 mod history_tests;
 mod js;
-mod notify;
+pub(crate) mod notify;
 pub mod page;
 pub mod persist;
 #[cfg(test)]
@@ -43,16 +43,14 @@ pub mod shoebox;
 mod tests;
 pub mod wayback;
 
-pub use fetch::{
-    complete, fetch_and_parse_app, fetch_version_info, perform, prepare, scrape_initial_urls,
-    Fetched, Prepared, ScrapeError,
-};
-pub use history::{
-    import_app_history, AppRow, HistoryError, HistoryOptions, APP_STORE_HISTORICAL_FLOOR_MS,
-};
+pub(crate) use fetch::{complete, scrape_initial_urls};
+pub use fetch::{fetch_version_info, perform, prepare, Fetched, Prepared, ScrapeError};
+pub(crate) use history::import_app_history;
+pub use history::{AppRow, HistoryError, HistoryOptions, APP_STORE_HISTORICAL_FLOOR_MS};
 pub use page::{parse_page, ParsedPage};
 pub use persist::{
     scrape_and_persist, Ids, Outcome, RandomIds, ScrapeInput, Statement, VersionInfo,
 };
 pub use plan::{Category, PrivacyItem, SnapshotCategory, SnapshotType, WritePlan};
-pub use search::{lookup_apps_by_bundle_id, search_apps_by_name, SearchQuery};
+pub use search::SearchQuery;
+pub(crate) use search::{lookup_apps_by_bundle_id, search_apps_by_name};

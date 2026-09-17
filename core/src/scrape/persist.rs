@@ -27,6 +27,10 @@ use crate::{
 };
 use rusqlite::{params_from_iter, types::Value as Sql, Connection, OptionalExtension};
 use serde_json::{json, Value};
+use std::{
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 
 /// What `fetchVersionInfo` derives from the iTunes lookup. Batch 3 ports the
 /// lookup; until then the caller supplies it (all `None` on a lookup miss).
@@ -60,8 +64,13 @@ pub struct ScrapeInput<'a> {
 
 /// Where `crypto.randomUUID()` comes from. Production uses [`RandomIds`];
 /// the replay test uses a counter so the stream matches Node's recorded one.
-pub trait Ids {
+/// `Send`, because the async entry points carry the source across their
+/// awaits (an id is only ever minted inside a locked section).
+pub trait Ids: Send {
     fn uuid(&mut self, conn: &Connection) -> Result<String, String>;
+    /// lib/imports.ts's `newId(prefix)`: the prefix, an underscore and nine
+    /// random bytes in base64url — twelve characters, no padding.
+    fn short_id(&mut self, conn: &Connection, prefix: &str) -> Result<String, String>;
 }
 
 /// Version-4 UUIDs from SQLite's `randomblob`, the entropy source db.rs
@@ -72,6 +81,29 @@ impl Ids for RandomIds {
     fn uuid(&mut self, conn: &Connection) -> Result<String, String> {
         random_uuid(conn).map_err(message)
     }
+    fn short_id(&mut self, conn: &Connection, prefix: &str) -> Result<String, String> {
+        let bytes: Vec<u8> = conn
+            .query_row("SELECT randomblob(9)", [], |r| r.get(0))
+            .map_err(message)?;
+        Ok(format!("{prefix}_{}", base64url(&bytes)))
+    }
+}
+
+/// Unpadded base64url, as `Buffer.toString("base64url")` spells it.
+pub fn base64url(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = chunk
+            .iter()
+            .enumerate()
+            .fold(0u32, |acc, (i, b)| acc | (u32::from(*b) << (16 - 8 * i)));
+        let chars = chunk.len() + 1;
+        for i in 0..chars {
+            out.push(ALPHABET[((n >> (18 - 6 * i)) & 63) as usize] as char);
+        }
+    }
+    out
 }
 
 /// A v4 UUID: 16 random bytes with the version and variant nibbles set.
@@ -183,6 +215,53 @@ impl<'a> Writer<'a> {
     pub(super) fn set_setting(&mut self, key: &str, value: &str) -> Result<(), String> {
         self.run(SET_SETTING, vec![json!(key), json!(value)])
             .map(drop)
+    }
+}
+
+/// Exclusive, short-lived access to the connection for the entry points
+/// that fetch. A section is the synchronous run Node does between two
+/// awaits: the route takes the lock for exactly that and releases it around
+/// every fetch, so a scrape, a search or an archive walk no longer holds
+/// every other request; the replay hands out its one connection the same
+/// way and records the stream. `with_writer` runs `f` exactly once, and
+/// nothing borrowed from the section — the guard, the writer, a statement —
+/// can outlive it, which is what keeps the handler futures `Send`.
+pub(crate) trait DbAccess: Send {
+    fn with_writer(&mut self, f: &mut dyn FnMut(&mut Writer<'_>));
+}
+
+impl<'a> dyn DbAccess + 'a {
+    /// One section, with its result handed back out.
+    pub(crate) fn with<R>(&mut self, f: impl FnOnce(&mut Writer<'_>) -> R) -> R {
+        let mut f = Some(f);
+        let mut out = None;
+        self.with_writer(&mut |w| {
+            let f = f.take().expect("with_writer runs its section once");
+            out = Some(f(w));
+        });
+        out.expect("with_writer ran its section")
+    }
+}
+
+/// The accessor over a mutex: the server's connection (through
+/// `AppState::db_access`, which observes each wait as `AppState::db` does)
+/// or the replay's, with the recording attached. The guard lives for one
+/// section and is dropped when it returns.
+pub(crate) struct Locked<'a> {
+    pub(crate) conn: &'a Mutex<Connection>,
+    pub(crate) log: Option<&'a mut Vec<Statement>>,
+    /// Told how long each section waited for the lock.
+    pub(crate) on_wait: Option<fn(Duration)>,
+}
+
+impl DbAccess for Locked<'_> {
+    fn with_writer(&mut self, f: &mut dyn FnMut(&mut Writer<'_>)) {
+        let started = Instant::now();
+        let conn = self.conn.lock().expect("db mutex poisoned");
+        if let Some(on_wait) = self.on_wait {
+            on_wait(started.elapsed());
+        }
+        f(&mut Writer::new(&conn, self.log.as_deref_mut()));
     }
 }
 
