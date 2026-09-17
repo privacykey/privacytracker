@@ -9,7 +9,7 @@ they live. Companion to the prose in [AGENTS.md](../AGENTS.md) and the hosted do
 row in the [improvement backlog](#7--improvement-backlog) at the bottom. When you fix one,
 update its row and the diagram label in the same PR.
 
-*Device backup flow reviewed against source on 2026-09-05; other flows retain their earlier review notes.*
+*Device backup flow reviewed against source on 2026-09-05; device import, device scope and the delete gates reviewed on 2026-09-17; other flows retain their earlier review notes.*
 
 ---
 
@@ -92,7 +92,13 @@ matches → import progress → policy summaries) accepts four sources: screensh
 CSV/TXT upload, manual typing, and — on macOS with Apple Configurator — a live `cfgutil`
 export. The cfgutil path is **read-only against the device**. There is no scheduled device
 re-sync: a USB plug-in event (IOKit watcher → `DeviceConnectedToast`) re-opens this flow
-on demand. Files: `src-tauri/src/cfgutil.rs`, `lib/desktop.ts`, `src-tauri/src/usb_watcher.rs`.
+on demand. From the install's second device onward, step 3 also asks **whose device this
+is** (mine / someone I'm helping / a child I look after) and, for anyone else's, will not
+continue until the user confirms they have that person's permission. The answer is written
+onto the device row when the import starts, including a device already known by its ECID.
+The first device of an install is never asked and is created with no owner. Files:
+`src-tauri/src/cfgutil.rs`, `lib/desktop.ts`, `src-tauri/src/usb_watcher.rs`,
+`lib/use-onboard-wizard.ts`, `lib/devices.ts`.
 
 ```mermaid
 sequenceDiagram
@@ -114,6 +120,8 @@ sequenceDiagram
   WIZ->>API: POST /api/search with bundleIds
   API->>AP: iTunes lookup — canonical track per bundle id
   WIZ->>WIZ: step 3 — name-search fallback for unlisted/sideloaded
+  Note over WIZ: step 3 — second device onward: "Whose device is this?"<br/>someone else's → permission confirmation required to continue
+  WIZ->>API: step 4 — POST /api/devices — find-or-create by ECID,<br/>then, if asked, owner type · owner name · permission (audit-logged)
   Note over API: ⚠ §2·1 step 4 — scrape each URL (§1 flow) ·<br/>Apple 429s park rows in the import queue (60s drain)
   WIZ->>API: step 5 — optional policy summaries (flag-gated)
 ```
@@ -125,11 +133,15 @@ Non-Mac alternative: `scripts/ios-app-import/export_ios_apps.py` (stdlib-only) p
 
 ## 3 · Back up, then delete apps off the phone
 
-The only destructive flow in the product, so it runs the deepest gate stack: audience must
-be `self`, an off-by-default Developer Options flag, a fresh backup (≤24h) or an explicit
-typed acknowledgement, two confirm modals, a server-side pre-flight, and finally a native
-Touch ID prompt per app that JavaScript cannot bypass. One cfgutil call per app — there is
-deliberately no batch primitive. Files: `app/components/ReviewRecommendationsView.tsx`,
+The only destructive flow in the product, so it runs the deepest gate stack: the target
+device's recorded owner must match the active mode (a device with no recorded owner keeps
+the original rule — the mode must be `self`), anyone else's device also needs the user's
+recorded confirmation that they have that person's permission, an off-by-default Developer
+Options flag, a fresh backup (≤24h) or an explicit typed acknowledgement, two confirm
+modals, a server-side pre-flight, and finally a native Touch ID prompt per app that
+JavaScript cannot bypass. One cfgutil call per app — there is deliberately no batch
+primitive. Ownership refusals name the device and its owner where the row records them,
+rather than citing a rule. Files: `app/components/ReviewRecommendationsView.tsx`,
 `lib/device-actions.ts`, `app/api/device-actions/*`, `src-tauri/src/cfgutil.rs`,
 `src-tauri/src/touch_id.rs`.
 
@@ -141,7 +153,7 @@ sequenceDiagram
   participant SH as Rust shell
   participant PH as iPhone (USB)
 
-  Note over WIZ: ◆ entry gate — audience=self ∧ flag on ∧ desktop build
+  Note over WIZ: ◆ entry gate — flag on ∧ desktop build ∧ (mode = self, or the device<br/>menu narrowed to one owner whose type matches the mode)
   WIZ->>WIZ: steps 1–3 — own "uninstall" verdicts only ·<br/>imported recommendations never execute
   WIZ->>WIZ: step 4 — pick device · warn when ECID ≠ app's source device
   WIZ->>SH: invoke run_cfgutil_backup(ecid)
@@ -151,15 +163,17 @@ sequenceDiagram
   Note over API: ✅ §3·6 normalizeEcid (0x-prefixed ECIDs) → stamp + activity row
   WIZ->>WIZ: step 5 — "Delete N apps" → modal 1 (list) → modal 2 (type DELETE)
   Note over WIZ: ✅ §3·5 modal + audit use the revalidated server stamp
-  WIZ->>API: GET gate pre-flight — audience ∧ flag ∧ backup ≤24h (or acknowledged)
+  WIZ->>API: GET gate pre-flight — ownership ∧ permission ∧ flag ∧ backup ≤24h (or acknowledged)
+  Note over API: ◆ owner type must match the mode — no recorded owner → mode must be self<br/>someone else's device → permission confirmed at import or in Settings → Devices<br/>acknowledgeNoBackup relaxes the backup check only
   Note over API: ✅ §3·7 pre-flight BEFORE first removal, fail closed
   loop one app at a time
     WIZ->>SH: invoke run_cfgutil_remove_app(ecid, bundleId)
     Note over SH: ◆ Touch ID / password per app — native LAContext,<br/>JS cannot bypass · fails closed without biometrics+password
     SH->>PH: cfgutil remove-app (45s timeout)
-    Note over PH: ⚠ §3·3 timed-out child is orphaned, not killed —<br/>removal may still complete after a reported failure
+    Note over PH: ✅ §3·3 timeout kills and reaps the whole subprocess group —<br/>check device state after an interrupted removal
     WIZ->>API: POST record outcome — cfgutil_uninstall row (ok/error + ack flag)
   end
+  Note over WIZ,PH: ⚠ §3·8 no end-to-end test drives this loop —<br/>needs the desktop build and a real device
 ```
 
 ---
@@ -258,9 +272,28 @@ flowchart LR
 
 Kill-switch: `flag.devopts.feature_flag_system.enabled=off` collapses everything to hard
 defaults without a code rollback. The delete flow's `flag.devopts.cfgutil_uninstall`
-defaults to **off**, and the audience gate is enforced in code — flipping the flag on
-under `guardian` still shows nothing. Modules: `lib/feature-flag-rules.ts`,
-`lib/feature-flags*.ts` (see AGENTS.md for the five-module split).
+defaults to **off**, and the ownership gate is enforced in code, outside this chain —
+flipping the flag on does not unlock a device whose recorded owner doesn't match the active
+mode, someone else's device without confirmed permission, or an owner-less device outside
+`self`. Modules: `lib/feature-flag-rules.ts`, `lib/feature-flags*.ts` (see AGENTS.md for
+the four-module split).
+
+### Alongside the chain: device scope
+
+Which devices' apps a surface counts is a separate **preference** axis, not a gate. The nav
+picker stores a scope in `app_settings` (`device.scope`), and each library read opts into it
+with `?devices=`. It narrows what is shown, never what is permitted — anyone who can open the
+app can pick any device. Files: `lib/device-scope.ts`, `lib/device-scope-server.ts`,
+`app/components/DeviceScopeProvider.tsx`.
+
+```mermaid
+flowchart LR
+  picker["nav device picker<br/>multi-select · grouped by owner"] --> scope[("device.scope<br/>app_settings")]
+  scope -->|"?devices= (opt-in)"| reads["library reads<br/>apps · triage · stats · review queue<br/>shortlist · profile mismatches"]
+  bare["request without ?devices="] -->|"whole library, whatever is picked"| reads
+  picker -.->|"suggests a mode switch · never switches"| focus["focus audience"]
+  exports["exports<br/>CSV/JSON · shortlist · audit bundle · DB backup"] -->|"never scoped · UI says so while scoped"| install["whole install"]
+```
 
 ---
 
@@ -278,6 +311,7 @@ flip rows as they land, and update the diagram label in the same PR.
 | §3·5 | Delete UX / audit | ✅ fixed | Backup-step status, Act banner, final modal, and `acknowledgeNoBackup` now derive from the durable server stamp returned by the GET gate. Reopening the wizard preserves truth; moved/deleted manifests downgrade immediately. | — |
 | §3·6 | Device actions | ✅ fixed | ECID normalisation (`0x`-prefixed) across stamp store, gate, and routes; pinned by tests with real-format ECIDs. | — |
 | §3·7 | Device actions | ✅ fixed | Server gate pre-flights before the first removal (fail closed); recording failures surface in the UI. | — |
+| §3·8 | Device delete | open | No end-to-end test drives the removal loop — it needs the desktop build and a real connected device. The ownership and permission gate is covered by unit and HTTP tests and the subprocess handling by Rust tests, but never together. Candidate: a scripted hardware smoke run before each release. | L |
 | §1·1 | Scraper | open | No parser canary. Add fixture tests against recorded App Store HTML + an alert/activity row when a scrape parses zero privacy types for an app that previously had them. | M |
 | §1·2 | AI summaries | idea | Summarisation silently degrades without a provider; chunking for local models is heuristic. Consider a visible "summary stale/unavailable" state. | S |
 | §2·1 / §4·1 | Rate limiting | open | On 429 the bulk sync abandons the run and restarts the whole fleet next tick. Resume from the state blob's cursor instead; consider shared per-app backoff with the import queue. | M |
