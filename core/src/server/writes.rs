@@ -353,8 +353,64 @@ pub fn routes() -> &'static [RouteSpec] {
         ];
         routes.extend(library_routes());
         routes.extend(imports_routes());
+        routes.extend(runner_routes());
         routes
     })
+}
+
+/// Phase 4, batch 4a — see `runner_writes.rs`.
+fn runner_routes() -> Vec<RouteSpec> {
+    let spec =
+        |path: &'static str, method: Method, body_limit: Option<usize>, guard: Guard| RouteSpec {
+            path,
+            method,
+            body_limit,
+            guard,
+        };
+    vec![
+        spec(
+            "/api/sync/trigger",
+            Method::POST,
+            None,
+            Guard::Mutation(GuardOptions {
+                action: "sync.trigger",
+                key_prefix: "sync.trigger",
+                limit: 10,
+                window_ms: 10 * 60_000,
+                message: Some("Rate limit exceeded for manual sync. Try again later."),
+                admin: AdminRule::NotRequired,
+            }),
+        ),
+        spec(
+            "/api/dev/sync-stop",
+            Method::POST,
+            None,
+            Guard::Mutation(GuardOptions {
+                action: "dev.sync_stop",
+                key_prefix: "dev.sync_stop",
+                limit: 10,
+                window_ms: 10 * 60_000,
+                message: Some("Rate limit exceeded for sync stop. Try again later."),
+                admin: AdminRule::Configured,
+            }),
+        ),
+        spec(
+            "/api/rate-limit/status",
+            Method::DELETE,
+            Some(1024),
+            guarded("rate_limit.clear", 10, AdminRule::NotRequired),
+        ),
+        spec(
+            "/api/apps",
+            Method::DELETE,
+            None,
+            Guard::Inline {
+                prefix: "apps.delete",
+                limit: 60,
+                unauthorised: "app.delete.unauthorised",
+            },
+        ),
+    ]
 }
 
 /// Phase 4, batch 3 — see `imports_writes.rs`.
@@ -454,7 +510,7 @@ fn imports_routes() -> Vec<RouteSpec> {
 
 /// The routes whose handlers await the network; `perform_async` runs them.
 pub fn is_async(spec: &RouteSpec) -> bool {
-    super::imports_writes::handles(spec)
+    super::imports_writes::handles(spec) || super::runner_writes::handles(spec)
 }
 
 /// Phase 4, batch 2 — see `library_writes.rs`.
@@ -801,6 +857,9 @@ pub async fn perform_async(
     actor: &Actor,
     now: i64,
 ) -> Response {
+    if super::runner_writes::handles(req.spec) {
+        return super::runner_writes::perform(db, ids, now, fetcher, req, actor).await;
+    }
     if is_async(req.spec) {
         return super::imports_writes::perform(db, ids, now, fetcher, req, actor).await;
     }

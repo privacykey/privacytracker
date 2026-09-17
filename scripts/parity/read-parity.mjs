@@ -259,6 +259,11 @@ const WRITE_ROUTES = [
   "/api/imports/items/update",
   "/api/imports/queue",
   "/api/imports/complete",
+  // Phase 4, batch 4a: the sync runner's stop and the cooldown clear. The
+  // trigger re-scrapes the fleet and stays quarantined; the app delete is
+  // a teardown entry, gated by the oracle alone.
+  "/api/dev/sync-stop",
+  "/api/rate-limit/status",
 ];
 
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");

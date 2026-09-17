@@ -422,6 +422,20 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-imports-cases.mjs
           git diff --exit-code -- core/tests/fixtures/imports-cases.json
 
+      - name: Runner oracle is current
+        # Runs the real bulk App Store sync through the sync trigger route,
+        # the scheduler's check and the boot-time resume (the startup hook's
+        # own closures, captured from register()), the boot lock clears, the
+        # import-queue drain tick, the sync stop and the rate-limit and app
+        # deletes — network canned per case, foreign keys on, frozen clock —
+        # and records every request, fetch, write, touched table and wire
+        # response. A diff means a Node runner or route changed and
+        # core/src/server/sync_runner.rs or runner_writes.rs has not been
+        # ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-runners-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/runners-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

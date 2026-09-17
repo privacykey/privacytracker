@@ -258,7 +258,7 @@ fn i64_of(v: &Value) -> i64 {
     v.as_i64().unwrap_or(0)
 }
 
-fn transaction<'a, 'b, T>(
+pub(super) fn transaction<'a, 'b, T>(
     cx: &mut Cx<'a, 'b>,
     body: impl FnOnce(&mut Cx<'a, 'b>) -> Result<T, String>,
 ) -> Result<T, String> {
@@ -298,7 +298,7 @@ fn resolve_safe_app_id(cx: &Cx, v: &Value) -> Result<Value, String> {
 }
 
 /// `recomputeImportCounters`.
-fn recompute_counters(cx: &mut Cx, import_id: &str) -> Result<(), String> {
+pub(super) fn recompute_counters(cx: &mut Cx, import_id: &str) -> Result<(), String> {
     let counts = read_one(
         cx,
         "SELECT
@@ -1288,7 +1288,7 @@ fn update_item_route(cx: &mut Cx, body: BodyOutcome) -> Response {
 
 // ── POST /api/imports/queue ──────────────────────────────────────────
 
-struct TickResult {
+pub(super) struct TickResult {
     skipped: Option<&'static str>,
     processed: i64,
     succeeded: i64,
@@ -1426,6 +1426,29 @@ async fn drain(
         }
     }
     Ok(result)
+}
+
+/// `runImportQueueTick` as the drain ticker calls it: the opening
+/// section, the drain, then the `finally` stamps in one section.
+pub(super) async fn run_import_queue_tick(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+) -> Result<TickResult, String> {
+    let opened = db.with(|w| open_tick(&mut section(w, ids, now)))?;
+    match opened {
+        Opened::Skipped(tick) => Ok(tick),
+        Opened::Claimed(claimed) => {
+            let outcome = drain(db, ids, now, fetcher, claimed).await;
+            db.with(|w| {
+                let cx = &mut section(w, ids, now);
+                cx.set("import_queue_running", "false")?;
+                cx.set("import_queue_last_run", &cx.now.to_string())?;
+                outcome
+            })
+        }
+    }
 }
 
 /// `forceImportQueueRun`, then the status the GET reports.

@@ -41,7 +41,7 @@ struct SyncStatus {
 
 /// `INTERVALS_MS`. An unrecognised stored schedule yields 0 via the `?? 0`
 /// fallback in Node, which is the same as "manual".
-fn interval_ms(schedule: &str) -> i64 {
+pub(super) fn interval_ms(schedule: &str) -> i64 {
     match schedule {
         "daily" => 24 * 60 * 60 * 1000,
         "weekly" => 7 * 24 * 60 * 60 * 1000,
@@ -53,7 +53,7 @@ fn interval_ms(schedule: &str) -> i64 {
 /// The due rule, extracted so it can be asserted against a fixed clock.
 /// `interval > 0` guards it, so a manual schedule is NEVER due however old
 /// `lastRun` is — that guard is the whole of the manual-schedule behaviour.
-fn compute_is_due(interval: i64, last_run: i64, now: i64) -> bool {
+pub(super) fn compute_is_due(interval: i64, last_run: i64, now: i64) -> bool {
     interval > 0 && now >= last_run + interval
 }
 
