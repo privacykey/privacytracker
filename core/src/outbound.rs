@@ -283,6 +283,11 @@ pub async fn fetch_via(hop: &dyn Hop, request: Request) -> Result<Reply, String>
 pub type FetchFuture<'a> = Pin<Box<dyn Future<Output = Result<Reply, String>> + Send + 'a>>;
 pub trait Fetcher: Send + Sync {
     fn fetch(&self, request: Request) -> FetchFuture<'_>;
+    /// An owned handle for a run spawned off the request, when this
+    /// fetcher can hand one out.
+    fn shared(&self) -> Option<Arc<dyn Fetcher>> {
+        None
+    }
 }
 
 fn allowed_answers(addrs: &[SocketAddr]) -> bool {
@@ -316,6 +321,9 @@ fn builder() -> reqwest::ClientBuilder {
 }
 pub struct PublicHttp;
 impl Fetcher for PublicHttp {
+    fn shared(&self) -> Option<Arc<dyn Fetcher>> {
+        Some(Arc::new(PublicHttp))
+    }
     fn fetch(&self, request: Request) -> FetchFuture<'_> {
         Box::pin(async move {
             static CLIENT: OnceLock<Client> = OnceLock::new();

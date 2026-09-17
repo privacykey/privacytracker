@@ -228,13 +228,15 @@ export function operationsStatements(now) {
   );
   return sql;
 }
-export function applyOperationsFixture(dataDir) {
+export function applyOperationsFixture(dataDir, now = Date.now()) {
   const db = new BetterSqlite3(path.join(dataDir, "privacy.db"));
   // The existing disk probe owns its backup count and last-run fixture.
   // Operational backup settings/files are applied later by our raw probe.
+  // `now` is shared across the two sides so the simulated jobs carry one
+  // set of timestamps.
   try {
     db.transaction(() => {
-      for (const s of operationsStatements(Date.now())) {
+      for (const s of operationsStatements(now)) {
         if (
           typeof s.params[0] === "string" &&
           s.params[0].startsWith("backup_snapshot_")

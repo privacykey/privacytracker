@@ -289,6 +289,48 @@ function cleanup() {
   }
 }
 
+/**
+ * The core's import-queue drain fires 20 s after boot and stamps
+ * `import_queue_last_run`; once that exists every boot-time healer has
+ * had its turn. Bounded so a core without the tickers still gates.
+ */
+async function waitForRustBootTimers(dataDir, bootAt) {
+  const deadline = Date.now() + 45_000;
+  for (;;) {
+    const db = new BetterSqlite3(path.join(dataDir, "privacy.db"), {
+      readonly: true,
+    });
+    let stampedAt = 0;
+    try {
+      // The copy carries Node's own stamp; only one newer than the core's
+      // boot is the core's.
+      stampedAt = Number.parseInt(
+        db
+          .prepare(
+            "SELECT value FROM app_settings WHERE key = 'import_queue_last_run'"
+          )
+          .get()?.value ?? "0",
+        10
+      );
+    } finally {
+      db.close();
+    }
+    if (stampedAt >= bootAt) {
+      return;
+    }
+    if (Date.now() > deadline) {
+      console.log(
+        "  the core never stamped its import-queue drain; continuing without the boot-timer wait"
+      );
+      return;
+    }
+    console.log(
+      "  waiting for the core's boot timers before seeding unfinished jobs…"
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+}
+
 /** Settle the Node side's WAL so the copy is a complete database. */
 function checkpoint(dataDir) {
   const db = new BetterSqlite3(path.join(dataDir, "privacy.db"));
@@ -1619,7 +1661,6 @@ async function main() {
   applyStatsFixture(nodeData);
   applyDevicesFixture(nodeData);
   applyContentFixture(nodeData);
-  applyOperationsFixture(nodeData);
   applyDiscoveryFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
@@ -1643,9 +1684,20 @@ async function main() {
   const rustData = path.join(work, "rust-data");
   cpSync(nodeData, rustData, { recursive: true });
 
+  const rustBootAt = Date.now();
   const rustBase = await startRust(rustData);
-  primeOperationsAfterBoot(nodeData, rustData);
   console.log(`rust=${rustBase}`);
+
+  // The core boots the same healers Node does — the Wayback and sync
+  // resumes at 8 s and 10 s, the scheduler check at 15 s, the import-queue
+  // drain at 20 s — and, like Node's, they must run on a clean database
+  // before the simulated unfinished jobs go in, or the core heals a
+  // fixture Node never saw at boot. The drain's stamp is the last of them.
+  await waitForRustBootTimers(rustData, rustBootAt);
+  const opsNow = Date.now();
+  applyOperationsFixture(nodeData, opsNow);
+  applyOperationsFixture(rustData, opsNow);
+  primeOperationsAfterBoot(nodeData, rustData);
 
   console.log(
     "\n── auth gate (the differ cannot see this: it always authenticates) ──"

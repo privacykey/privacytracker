@@ -436,6 +436,19 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-runners-cases.mjs
           git diff --exit-code -- core/tests/fixtures/runners-cases.json
 
+      - name: Wayback runner oracle is current
+        # Runs the real bulk Wayback import through POST (buffered and
+        # streamed), PATCH (pause, cancel, resume) and DELETE, and the
+        # startup hook's own 8 s resume, with mid-run controls issued from
+        # the network stub — network canned per case, foreign keys on,
+        # frozen clock — and records every request, fetch, write, touched
+        # table and wire response (the NDJSON frames included). A diff means
+        # a Node runner or route changed and core/src/server/wayback_runner.rs
+        # has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-wayback-runner-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/wayback-runner-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

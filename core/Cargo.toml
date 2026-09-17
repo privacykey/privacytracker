@@ -39,7 +39,7 @@ axum = "0.8"
 # what actually binds the listener.
 # `time` for the scheduler-lag sampler (the tokio analogue of Node's
 # event-loop-delay monitor).
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time", "io-util"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync", "time", "io-util"] }
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` is REQUIRED, not a preference: it backs serde_json's
 # Map with an IndexMap instead of a BTreeMap. Without it, every stored

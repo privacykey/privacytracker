@@ -87,6 +87,9 @@ mod trend;
 pub mod trust;
 mod user_content;
 mod user_tasks;
+mod wayback_runner;
+#[cfg(test)]
+mod wayback_runner_tests;
 pub mod webhook;
 mod writes;
 #[cfg(test)]
@@ -234,7 +237,13 @@ pub fn app(state: AppState) -> Router {
         // Operational reads project durable job state without starting or
         // healing jobs; exports stay whole-install and CSP remains a GET.
         .route("/api/tasks/active", get(routes_operations::tasks))
-        .route("/api/wayback/import-all", get(routes_operations::wayback))
+        .route(
+            "/api/wayback/import-all",
+            get(routes_operations::wayback)
+                .post(routes_writes::wayback_import_all_post)
+                .patch(routes_writes::wayback_import_all_patch)
+                .delete(routes_writes::wayback_import_all_delete),
+        )
         .route("/api/policy/sync-all", get(routes_operations::policy))
         .route("/api/backup/snapshots", get(routes_operations::backups))
         .route(

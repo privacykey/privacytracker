@@ -410,6 +410,30 @@ fn runner_routes() -> Vec<RouteSpec> {
                 unauthorised: "app.delete.unauthorised",
             },
         ),
+        // Phase 4, batch 4b — see `wayback_runner.rs`.
+        spec(
+            "/api/wayback/import-all",
+            Method::POST,
+            None,
+            Guard::Rate {
+                prefix: "wayback.import-all",
+                limit: 2,
+                message: "Bulk import throttled — wait before retrying.",
+                per_param: false,
+            },
+        ),
+        spec(
+            "/api/wayback/import-all",
+            Method::PATCH,
+            Some(4 * 1024),
+            Guard::Rate {
+                prefix: "wayback.import-all.control",
+                limit: 20,
+                message: "Wayback import controls are throttled — wait before retrying.",
+                per_param: false,
+            },
+        ),
+        spec("/api/wayback/import-all", Method::DELETE, None, Guard::None),
     ]
 }
 

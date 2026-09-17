@@ -2135,3 +2135,94 @@ and silencing the resume notification failed exactly the four resume
 cases that raise one. Each fault was removed before the final passing
 run.
 
+### Batch 4b — the bulk Wayback import (+3 handlers, 1 ticker)
+
+`core/src/server/wayback_runner.rs` ports `lib/wayback-bulk-runner.ts`
+and `lib/wayback-bulk-state.ts`: the `wayback_bulk_state` blob (v1 blobs
+upgraded on read), the `wayback_import_running` mutex, `buildInitialQueue`,
+and `runBulkWaybackImport` — each app marked in flight and persisted
+before any work, its row re-read at dequeue time, the archive walk with
+a `target` frame per outcome, the app row and frame on completion; on a
+throttling archive the entry put back to pending and un-counted, one
+backoff (the archive's Retry-After bounded to 1–120 s) and a retry of the
+same app, a second strike parking the queue with `pauseCause:
+"rate_limited"`; the pause and the cancel a PATCH wrote, read back from
+disk at every app boundary; the clean completion with its summary frame,
+row and audit; and the outer catch that leaves state and mutex for the
+next boot. Over it, the routes in `runner_writes.rs` — `POST
+/api/wayback/import-all` buffered and streamed, with `?force=1`
+discarding a paused queue or a stale lock first; `PATCH` with `pause`
+(requested while a run holds the mutex, immediate otherwise), `cancel`
+(requested and the run told to stop, or the queue cleared) and `resume`
+(the run spawned off the request); `DELETE` for every wayback row — and
+the boot-time `resumeWaybackImport`: a paused queue left for the user (a
+pending pause settled), a cancelled or finished queue cleared, a stale
+lock healed with a `__wayback_resume__` notification, pending work
+resumed with a resume notification and the run itself.
+
+**What this batch adds.** A run that outlives its request and streams:
+the streamed POST and the resumed run are spawned as tasks that own an
+accessor, fetcher, id source and clock detached from the request's
+(`DbAccess::detach`, `Fetcher::shared`, `Ids::detach`), and the frames go
+down an unbounded channel the response body streams as NDJSON. Node
+starts such a run synchronously inside the request up to its first
+fetch, so the spawn yields once before the handler carries on — which is
+also why the resume's response summarises the persisted blob rather than
+the route's copy: Node summarises the very object the runner has begun
+mutating. Cancellation as a token per run: the PATCH cancels it, and the
+runner selects on it around the archive walk and the backoff sleep,
+dropping the in-flight request the way the abort controller does. A state
+blob Node mutates key by key, where `undefined` assignments create keys
+that `JSON.stringify` omits: kept as a `Value` with an undefined sentinel
+and stripped on write, so every path's key order — resumed blobs
+included — falls out of the same operations. Progress frames from the
+history import: `import_app_history` takes an optional sink fed from the
+same array its result carries.
+
+**A Node behaviour pinned rather than fixed.** A pause requested while an
+app is in flight is written to disk, then overwritten by the runner's
+own post-app state write before the boundary check reads it back, so the
+run carries on; the pause that takes effect is one that lands during the
+backoff sleep. The oracle records both, and the port reproduces both.
+
+**The oracle — `core/scripts/extract-wayback-runner-cases.mjs`.** Runs
+the REAL handlers and, as batch 4a did, the startup hook's own 8 s
+closure. Cooperative control mid-run is exercised through the network
+stub: a case's `hooks` name a fetch at which the stub first calls the
+PATCH route — a cancel then aborts that request, reported the way `fetch`
+reports an aborted one — or, with `afterMs`, a moment after the reply is
+served, during the backoff sleep. 45 cases: the POST busy on the mutex
+and on a leftover blob, over no apps, over two apps, throttled once
+(backoff, retry) and twice (paused), with one app failing, forced over a
+paused queue, a stale lock and a running one, cancelled mid-run, the
+overwritten pause and the backoff-window pause, and the burst; the same
+run streamed, streamed and cancelled, streamed and throttled; every PATCH
+branch; the DELETE; and the resume over nothing, a paused queue, a
+pending pause, a cancelled queue, a stale lock, a finished queue, a
+crashed run (the in-flight app redone) and a queue naming a deleted app.
+`core/src/server/wayback_runner_tests.rs` replays each through a shared
+id counter and a hooked fetcher that issues the same PATCH at the same
+fetch (stalling a cancelled request as an aborted one never returns) and
+yields once per fetch, as Node's stub resolves on the next turn.
+
+Live: the POST is quarantined in the manifest (it crawls archive.org),
+and the PATCH and DELETE have no manifest entries; all three are gated
+by the oracle alone. The gate itself changed shape for this batch: the
+core now boots the same healers Node does, and its first run against
+the harness healed a "broken blob, held mutex" fixture the operations
+probes plant — a row Node never writes, because its healer ran at its
+own boot, before the fixture existed. `read-parity.mjs` therefore waits
+for the core's boot timers (the import-queue drain's stamp at 20 s)
+before seeding the simulated unfinished jobs, and seeds them on both
+sides with one clock, as it already waited out Node's timers.
+
+Rust suite: 217 pass (214 + 3 new). Negative controls, each predicted
+from the fixture before it ran: dropping the frame for a target with no
+capture failed exactly the one streamed run over an empty index; not
+reading the control status back from disk failed exactly the three runs
+a mid-run cancel or backoff-window pause controls; resuming a paused
+queue at boot failed exactly the two boot cases with one; and pausing
+on the archive's first strike instead of the second failed exactly the
+four throttled runs. Each fault was removed before the final passing
+run.
+

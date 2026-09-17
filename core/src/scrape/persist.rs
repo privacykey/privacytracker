@@ -28,7 +28,7 @@ use crate::{
 use rusqlite::{params_from_iter, types::Value as Sql, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use std::{
-    sync::Mutex,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
@@ -71,6 +71,12 @@ pub trait Ids: Send {
     /// lib/imports.ts's `newId(prefix)`: the prefix, an underscore and nine
     /// random bytes in base64url — twelve characters, no padding.
     fn short_id(&mut self, conn: &Connection, prefix: &str) -> Result<String, String>;
+    /// An owned source for a run spawned off the request, when this one
+    /// can hand one out (the random source always can; a replay counter
+    /// only if it is shared).
+    fn detach(&self) -> Option<Box<dyn Ids>> {
+        None
+    }
 }
 
 /// Version-4 UUIDs from SQLite's `randomblob`, the entropy source db.rs
@@ -86,6 +92,9 @@ impl Ids for RandomIds {
             .query_row("SELECT randomblob(9)", [], |r| r.get(0))
             .map_err(message)?;
         Ok(format!("{prefix}_{}", base64url(&bytes)))
+    }
+    fn detach(&self) -> Option<Box<dyn Ids>> {
+        Some(Box::new(RandomIds))
     }
 }
 
@@ -228,6 +237,11 @@ impl<'a> Writer<'a> {
 /// can outlive it, which is what keeps the handler futures `Send`.
 pub(crate) trait DbAccess: Send {
     fn with_writer(&mut self, f: &mut dyn FnMut(&mut Writer<'_>));
+    /// An owned accessor for a run spawned off the request, when this one
+    /// can hand one out: `Shared` can, a borrowing `Locked` cannot.
+    fn detach(&self) -> Option<Box<dyn DbAccess>> {
+        None
+    }
 }
 
 impl<'a> dyn DbAccess + 'a {
@@ -262,6 +276,40 @@ impl DbAccess for Locked<'_> {
             on_wait(started.elapsed());
         }
         f(&mut Writer::new(&conn, self.log.as_deref_mut()));
+    }
+}
+
+/// The accessor a spawned run owns: the server's connection by `Arc`, and
+/// in the replay the recording behind its own mutex, so the run's writes
+/// land in the same stream as the request's. One section per `with`, as
+/// `Locked`.
+pub(crate) struct Shared {
+    pub(crate) conn: Arc<Mutex<Connection>>,
+    pub(crate) log: Option<Arc<Mutex<Vec<Statement>>>>,
+    pub(crate) on_wait: Option<fn(Duration)>,
+}
+
+impl DbAccess for Shared {
+    fn detach(&self) -> Option<Box<dyn DbAccess>> {
+        Some(Box::new(Shared {
+            conn: self.conn.clone(),
+            log: self.log.clone(),
+            on_wait: self.on_wait,
+        }))
+    }
+    fn with_writer(&mut self, f: &mut dyn FnMut(&mut Writer<'_>)) {
+        let started = Instant::now();
+        let conn = self.conn.lock().expect("db mutex poisoned");
+        if let Some(on_wait) = self.on_wait {
+            on_wait(started.elapsed());
+        }
+        match &self.log {
+            Some(log) => {
+                let mut log = log.lock().expect("recording mutex poisoned");
+                f(&mut Writer::new(&conn, Some(&mut log)));
+            }
+            None => f(&mut Writer::new(&conn, None)),
+        }
     }
 }
 

@@ -6,12 +6,18 @@
 //! route in order, gated by `core/tests/fixtures/runners-cases.json`.
 #![allow(clippy::result_large_err)] // `Err` is the response the route returns.
 use super::{
+    activity_log::record_activity,
     body::{body_error_response, BodyOutcome},
     guard::{record_audit, Actor},
     imports_writes::{recompute_counters, transaction},
-    json::{json_error, json_ok},
+    json::{json_error, json_ok, json_response},
     operations::cooldowns,
     sync_runner::{clock_for, run_scheduled_sync},
+    wayback_runner::{
+        self, build_initial_queue, clear_bulk_state, get, has_pending_work, mutex_held,
+        read_bulk_state, release_mutex, request_active_cancel, run_bulk_wayback_import, set,
+        summarise, undefined, write_bulk_state, zero_totals, RunOptions,
+    },
     writes::{internal_error, prop, Cx, RouteSpec, WriteRequest},
 };
 use crate::{
@@ -19,6 +25,7 @@ use crate::{
     scrape::persist::{DbAccess, Ids},
 };
 use axum::{
+    body::Body,
     http::{Method, StatusCode},
     response::Response,
 };
@@ -35,7 +42,11 @@ const RATE_LIMIT_CATEGORIES: [&str; 3] = ["search", "scrape", "all"];
 pub(super) fn handles(spec: &RouteSpec) -> bool {
     matches!(
         spec.path,
-        "/api/sync/trigger" | "/api/dev/sync-stop" | "/api/rate-limit/status" | "/api/apps"
+        "/api/sync/trigger"
+            | "/api/dev/sync-stop"
+            | "/api/rate-limit/status"
+            | "/api/apps"
+            | "/api/wayback/import-all"
     )
 }
 
@@ -58,6 +69,15 @@ pub(super) async fn perform(
         }
         ("/api/apps", &Method::DELETE) => {
             db.with(|w| app_delete(&mut Cx { w, ids, now }, req.query, actor))
+        }
+        ("/api/wayback/import-all", &Method::POST) => {
+            wayback_import_all(db, ids, now, fetcher, req.query, actor).await
+        }
+        ("/api/wayback/import-all", &Method::PATCH) => {
+            wayback_control(db, ids, now, fetcher, req.body, actor).await
+        }
+        ("/api/wayback/import-all", &Method::DELETE) => {
+            db.with(|w| wayback_remove_all(&mut Cx { w, ids, now }, actor))
         }
         _ => json_error(StatusCode::NOT_FOUND, "Not Found"),
     }
@@ -266,4 +286,457 @@ fn mark_import_items_removed_for_app(cx: &mut Cx, app_id: &str) -> Result<Vec<St
         recompute_counters(cx, import_id)?;
     }
     Ok(import_ids)
+}
+
+// ── POST /api/wayback/import-all ─────────────────────────────────────
+
+const REMOVE_ALL_IMPORTED_HISTORY: &str = "DELETE FROM privacy_snapshots WHERE (source = 'wayback' OR (source = 'live' AND triggered_by = 'wayback'))";
+
+fn flag(query: &[(String, String)], name: &str) -> bool {
+    query
+        .iter()
+        .find(|(k, _)| k == name)
+        .is_some_and(|(_, v)| v == "1" || v == "true")
+}
+
+/// The run spawned off the request: an owned accessor, fetcher, id source
+/// and clock, or nothing when one of them cannot be detached.
+struct Detached {
+    db: Box<dyn DbAccess>,
+    fetcher: std::sync::Arc<dyn Fetcher>,
+    ids: Box<dyn Ids>,
+    clock: std::sync::Arc<dyn super::sync_runner::Clock>,
+}
+
+fn detach(db: &dyn DbAccess, fetcher: &dyn Fetcher, ids: &dyn Ids, now: i64) -> Option<Detached> {
+    Some(Detached {
+        db: db.detach()?,
+        fetcher: fetcher.shared()?,
+        ids: ids.detach()?,
+        clock: clock_for(now),
+    })
+}
+
+/// A spawned run, as Node starts it synchronously inside the request: one
+/// yield so the run reaches its first fetch before the handler carries on.
+async fn spawn_run(detached: Detached, options: RunOptions) {
+    let Detached {
+        mut db,
+        fetcher,
+        mut ids,
+        clock,
+    } = detached;
+    tokio::spawn(async move {
+        let _ = run_bulk_wayback_import(&mut *db, &*fetcher, &mut *ids, &*clock, options).await;
+    });
+    tokio::task::yield_now().await;
+}
+
+async fn wayback_import_all(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+    query: &[(String, String)],
+    actor: &Actor,
+) -> Response {
+    let want_stream = flag(query, "stream");
+    let force = flag(query, "force");
+    // The force restart, the pre-flight and the audit: no await in Node.
+    let opened = db.with(|w| -> Result<Result<usize, Response>, String> {
+        let cx = &mut Cx { w, ids, now };
+        if force {
+            let state = read_bulk_state(cx);
+            let held = mutex_held(cx);
+            let stale = held && !has_pending_work(state.as_ref());
+            if held && !stale {
+                return Ok(Err(json_error(
+                    StatusCode::CONFLICT,
+                    "A Wayback import is already running. Pause or cancel it before forcing a fresh import.",
+                )));
+            }
+            if state.is_some() || held {
+                clear_bulk_state(cx)?;
+                release_mutex(cx)?;
+                let run_id = state
+                    .as_ref()
+                    .and_then(|s| get(s, "runId"))
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                record_audit(
+                    cx.w,
+                    cx.ids,
+                    cx.now,
+                    "wayback.import.bulk.force_restart",
+                    actor,
+                    Some(&match run_id.as_str() {
+                        Some(id) => format!("discardedRunId={id}"),
+                        None => "discarded stale mutex".to_string(),
+                    }),
+                    true,
+                );
+                record_activity(
+                    cx.w,
+                    cx.ids,
+                    cx.now,
+                    "wayback_import",
+                    "cancelled",
+                    None,
+                    Some("Discarded paused Wayback import queue before starting a fresh import"),
+                    Some(&json!({ "mode": "bulk-force-restart", "discardedRunId": run_id })),
+                    cx.now,
+                );
+            }
+        }
+        if mutex_held(cx) || read_bulk_state(cx).is_some() {
+            return Ok(Err(json_error(
+                StatusCode::CONFLICT,
+                "A Wayback import is already running. Wait for it to finish before starting another.",
+            )));
+        }
+        let app_count = build_initial_queue(cx)?.len();
+        if app_count == 0 {
+            return Ok(Err(json_ok(&json!({
+                "error": "No apps to import history for.",
+                "totals": zero_totals(),
+            }))));
+        }
+        record_audit(
+            cx.w,
+            cx.ids,
+            cx.now,
+            "wayback.import.bulk.start",
+            actor,
+            Some(&format!(
+                "apps={app_count} stream={}",
+                if want_stream { 1 } else { 0 }
+            )),
+            true,
+        );
+        Ok(Ok(app_count))
+    });
+    match opened {
+        Err(_) => return internal_error(),
+        Ok(Err(response)) => return response,
+        Ok(Ok(_)) => {}
+    }
+    let options = |writer| RunOptions {
+        initiator: "manual",
+        resume_state: None,
+        stream_requested: want_stream,
+        writer,
+        actor_ip: Some(actor.ip.clone()),
+        user_agent: actor.user_agent.clone(),
+    };
+    if want_stream {
+        let Some(detached) = detach(db, fetcher, ids, now) else {
+            return internal_error();
+        };
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Value>();
+        spawn_run(detached, options(Some(tx))).await;
+        let stream = futures_util::stream::unfold(rx, |mut rx| async move {
+            rx.recv()
+                .await
+                .map(|frame| (Ok::<_, std::convert::Infallible>(format!("{frame}\n")), rx))
+        });
+        return Response::builder()
+            .status(StatusCode::OK)
+            .header("content-type", "application/x-ndjson; charset=utf-8")
+            .header("cache-control", "no-store, no-transform")
+            .body(Body::from_stream(stream))
+            .unwrap_or_else(|_| internal_error());
+    }
+    let clock = clock_for(now);
+    match run_bulk_wayback_import(db, fetcher, ids, &*clock, options(None)).await {
+        Ok(result) => {
+            json_ok(&json!({ "totals": result.totals, "durationMs": result.duration_ms }))
+        }
+        Err(message) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &json!({ "error": message, "totals": zero_totals() }),
+        ),
+    }
+}
+
+// ── PATCH /api/wayback/import-all ────────────────────────────────────
+
+async fn wayback_control(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    now: i64,
+    fetcher: &dyn Fetcher,
+    body: BodyOutcome,
+    actor: &Actor,
+) -> Response {
+    // `readOptionalBoundedJson(request, 4096, null)`: unparseable is null.
+    let body = match body {
+        BodyOutcome::Json(v) => v,
+        BodyOutcome::Empty | BodyOutcome::Whitespace | BodyOutcome::Invalid => Value::Null,
+        other => return body_error_response(&other).unwrap_or_else(internal_error),
+    };
+    let action = prop(&body, "action")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    // Everything but the resumed run is synchronous in Node.
+    let outcome = db.with(|w| -> Result<Result<Response, Value>, String> {
+        let cx = &mut Cx { w, ids, now };
+        match action.as_str() {
+            "pause" => {
+                let Some(state) = read_bulk_state(cx) else {
+                    return Ok(Ok(json_error(
+                        StatusCode::NOT_FOUND,
+                        "No Wayback import queue is available to pause.",
+                    )));
+                };
+                if get(&state, "status").and_then(Value::as_str) == Some("paused") {
+                    return Ok(Ok(json_ok(&json!({
+                        "ok": true,
+                        "status": "paused",
+                        "summary": summarise(&state),
+                    }))));
+                }
+                let held = mutex_held(cx);
+                let mut next = state.clone();
+                set(
+                    &mut next,
+                    "status",
+                    json!(if held { "pause_requested" } else { "paused" }),
+                );
+                set(&mut next, "pauseRequestedAt", json!(cx.now));
+                set(
+                    &mut next,
+                    "pausedAt",
+                    if held {
+                        get(&state, "pausedAt").cloned().unwrap_or_else(undefined)
+                    } else {
+                        json!(cx.now)
+                    },
+                );
+                set(
+                    &mut next,
+                    "currentAppId",
+                    if held {
+                        get(&state, "currentAppId")
+                            .cloned()
+                            .unwrap_or_else(undefined)
+                    } else {
+                        Value::Null
+                    },
+                );
+                write_bulk_state(cx, &next)?;
+                if !held {
+                    release_mutex(cx)?;
+                }
+                record_audit(
+                    cx.w,
+                    cx.ids,
+                    cx.now,
+                    "wayback.import.bulk.pause_requested",
+                    actor,
+                    Some(&format!(
+                        "runId={}",
+                        get(&state, "runId").and_then(Value::as_str).unwrap_or("")
+                    )),
+                    true,
+                );
+                Ok(Ok(json_ok(&json!({
+                    "ok": true,
+                    "status": next["status"],
+                    "summary": summarise(&next),
+                }))))
+            }
+            "cancel" => {
+                let state = read_bulk_state(cx);
+                let held = mutex_held(cx);
+                if state.is_none() && !held {
+                    return Ok(Ok(json_ok(&json!({ "ok": true, "status": "idle" }))));
+                }
+                if let (Some(state), true) = (&state, held) {
+                    let mut next = state.clone();
+                    set(&mut next, "status", json!("cancel_requested"));
+                    set(&mut next, "cancelRequestedAt", json!(cx.now));
+                    write_bulk_state(cx, &next)?;
+                    let run_id = get(state, "runId").and_then(Value::as_str).unwrap_or("");
+                    let aborted = request_active_cancel(Some(run_id));
+                    record_audit(
+                        cx.w,
+                        cx.ids,
+                        cx.now,
+                        "wayback.import.bulk.cancel_requested",
+                        actor,
+                        Some(&format!("runId={run_id} aborted={}", i32::from(aborted))),
+                        true,
+                    );
+                    return Ok(Ok(json_ok(&json!({
+                        "ok": true,
+                        "status": "cancel_requested",
+                        "aborted": aborted,
+                        "summary": summarise(&next),
+                    }))));
+                }
+                let summary = state.as_ref().map(summarise).unwrap_or(Value::Null);
+                let started_at = cx.now;
+                clear_bulk_state(cx)?;
+                release_mutex(cx)?;
+                let run_id = state.as_ref().and_then(|s| get(s, "runId")).cloned();
+                record_audit(
+                    cx.w,
+                    cx.ids,
+                    cx.now,
+                    "wayback.import.bulk.cancelled",
+                    actor,
+                    Some(&match run_id.as_ref().and_then(Value::as_str) {
+                        Some(id) => format!("runId={id}"),
+                        None => "stale mutex".to_string(),
+                    }),
+                    true,
+                );
+                let remaining = summary["remaining"].as_i64().unwrap_or(0);
+                let total = summary["total"].as_i64().unwrap_or(0);
+                record_activity(
+                    cx.w,
+                    cx.ids,
+                    cx.now,
+                    "wayback_import",
+                    "cancelled",
+                    None,
+                    Some(&if state.is_some() {
+                        format!(
+                            "Cancelled Wayback import queue — {remaining} app{} not processed",
+                            if remaining == 1 { "" } else { "s" }
+                        )
+                    } else {
+                        "Cleared stale Wayback import lock".to_string()
+                    }),
+                    Some(&json!({
+                        "mode": "bulk",
+                        "cancelled": true,
+                        "runId": run_id.unwrap_or(Value::Null),
+                        "remaining": remaining,
+                        "total": total,
+                    })),
+                    started_at,
+                );
+                Ok(Ok(json_ok(&json!({
+                    "ok": true,
+                    "status": "cancelled",
+                    "summary": summary,
+                }))))
+            }
+            "resume" => {
+                let state = read_bulk_state(cx);
+                if !has_pending_work(state.as_ref()) {
+                    return Ok(Ok(json_error(
+                        StatusCode::NOT_FOUND,
+                        "No paused Wayback import queue is available to resume.",
+                    )));
+                }
+                let state = state.expect("pending work needs a blob");
+                if get(&state, "status").and_then(Value::as_str) == Some("cancel_requested") {
+                    return Ok(Ok(json_error(
+                        StatusCode::CONFLICT,
+                        "This Wayback import is already cancelling.",
+                    )));
+                }
+                if mutex_held(cx) {
+                    return Ok(Ok(json_error(
+                        StatusCode::CONFLICT,
+                        "A Wayback import is already running.",
+                    )));
+                }
+                let mut resume_state = state.clone();
+                set(&mut resume_state, "status", json!("running"));
+                set(&mut resume_state, "pausedAt", undefined());
+                set(&mut resume_state, "pauseCause", undefined());
+                set(&mut resume_state, "pauseRequestedAt", undefined());
+                set(&mut resume_state, "cancelRequestedAt", undefined());
+                write_bulk_state(cx, &resume_state)?;
+                Ok(Err(resume_state))
+            }
+            _ => Ok(Ok(json_error(
+                StatusCode::BAD_REQUEST,
+                "Unknown Wayback control action.",
+            ))),
+        }
+    });
+    let resume_state = match outcome {
+        Err(_) => return internal_error(),
+        Ok(Ok(response)) => return response,
+        Ok(Err(resume_state)) => resume_state,
+    };
+    // The resumed run starts here, synchronously up to its first fetch in
+    // Node, then the audit row and the response.
+    let Some(detached) = detach(db, fetcher, ids, now) else {
+        return internal_error();
+    };
+    let run_id = get(&resume_state, "runId")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    spawn_run(
+        detached,
+        RunOptions {
+            initiator: "manual",
+            resume_state: Some(resume_state),
+            stream_requested: false,
+            writer: None,
+            actor_ip: Some(actor.ip.clone()),
+            user_agent: actor.user_agent.clone(),
+        },
+    )
+    .await;
+    // Node summarises the very object the runner has started mutating, so
+    // the summary already shows the first app in flight: the persisted
+    // blob is that object, written before the run's first await.
+    let summary = db.with(|w| {
+        let cx = &mut Cx { w, ids, now };
+        let summary = summarise(&read_bulk_state(cx).unwrap_or_else(|| json!({ "queue": [] })));
+        record_audit(
+            cx.w,
+            cx.ids,
+            cx.now,
+            "wayback.import.bulk.resume_requested",
+            actor,
+            Some(&format!("runId={run_id}")),
+            true,
+        );
+        summary
+    });
+    json_ok(&json!({ "ok": true, "status": "running", "summary": summary }))
+}
+
+// ── DELETE /api/wayback/import-all ───────────────────────────────────
+
+fn wayback_remove_all(cx: &mut Cx, actor: &Actor) -> Response {
+    let started_at = cx.now;
+    let deleted = match cx.w.run(REMOVE_ALL_IMPORTED_HISTORY, vec![]) {
+        Ok(deleted) => deleted,
+        Err(_) => return internal_error(),
+    };
+    record_audit(
+        cx.w,
+        cx.ids,
+        cx.now,
+        "wayback.import.bulk.remove",
+        actor,
+        Some(&format!("deleted={deleted}")),
+        true,
+    );
+    record_activity(
+        cx.w,
+        cx.ids,
+        cx.now,
+        "wayback_import",
+        "ok",
+        None,
+        Some(&format!(
+            "Removed {deleted} imported history row{}",
+            if deleted == 1 { "" } else { "s" }
+        )),
+        Some(&json!({ "mode": "bulk", "removed": true, "deleted": deleted })),
+        started_at,
+    );
+    let _ = wayback_runner::STATE_KEY;
+    json_ok(&json!({ "deleted": deleted }))
 }

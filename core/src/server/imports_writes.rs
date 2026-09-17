@@ -1992,7 +1992,7 @@ async fn import_history(
         interval_months,
         ..Default::default()
     };
-    let run = import_app_history(db, fetcher, &app_row, &options, now, ids).await;
+    let run = import_app_history(db, fetcher, &app_row, &options, now, ids, None).await;
     // What the run leaves behind — audit, activity and the response — is
     // one synchronous tail in Node, so one section.
     db.with(|w| {
@@ -2130,7 +2130,7 @@ fn finish_import_history(
 }
 
 /// `buildSummaryLine`.
-fn summary_line(app_name: &str, result: &Value, force: bool) -> String {
+pub(super) fn summary_line(app_name: &str, result: &Value, force: bool) -> String {
     let count = |key: &str| i64_of(&result[key]);
     let mut parts = vec![];
     if count("imported") != 0 {
