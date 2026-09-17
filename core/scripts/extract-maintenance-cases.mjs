@@ -14,10 +14,13 @@
  * and the wire response with its Set-Cookie.
  *
  * The health check reads this process and this database file — RSS,
- * heap, event-loop lag, page counts, file sizes — so those numbers are
- * recorded as Node saw them and the replay blanks them on both sides
- * before comparing; the counts, the heals, the warnings that derive from
- * rows, and the status stay exact. The event-loop monitor is reset
+ * heap, event-loop lag, page counts, file sizes, the path — so those keys
+ * are blanked as they are recorded, wherever they appear (the wire, the
+ * persisted blob, the activity detail), and the replay blanks the same
+ * keys on its own side; the counts, the heals, the warnings that derive
+ * from rows, and the status stay exact. The runtime envelope the two
+ * runtime writes answer is this process's own and is compared by status
+ * alone, so its body is not recorded. The event-loop monitor is reset
  * before each case so its severity never colours a run.
  *
  * Determinism as before: frozen clock, counted ids, foreign keys ON, a
@@ -542,6 +545,49 @@ const SAME_ORIGIN = {
   host: "127.0.0.1:3000",
 };
 
+// ── Volatile figures ─────────────────────────────────────────────────
+// The keys that belong to the process and the file. Mirrors
+// `VOLATILE` in core/src/server/maintenance_tests.rs; the two blankers
+// must agree so the replay's pass over the recorded side is a no-op.
+const VOLATILE = new Set([
+  "rssMb",
+  "heapFractionUsed",
+  "eventLoopP99Ms",
+  "walBytes",
+  "fileBytes",
+  "shmBytes",
+  "pageCount",
+  "freelistCount",
+  "utilisationPct",
+  "fragmented",
+  "path",
+  "journalMode",
+]);
+
+/** Blank the volatile keys in place, following JSON embedded in strings. */
+function blank(value) {
+  if (Array.isArray(value)) {
+    return value.map(blank);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, VOLATILE.has(k) ? 0 : blank(v)])
+    );
+  }
+  if (typeof value === "string" && value.startsWith("{")) {
+    let inner = null;
+    try {
+      inner = JSON.parse(value);
+    } catch {
+      return value;
+    }
+    return inner && typeof inner === "object" && !Array.isArray(inner)
+      ? JSON.stringify(blank(inner))
+      : value;
+  }
+  return value;
+}
+
 // ── The runner ───────────────────────────────────────────────────────
 const cases = [];
 let ipCounter = 0;
@@ -649,7 +695,7 @@ async function run(name, spec) {
           ? { count: all.length, head: all.slice(0, 3), tail: all.slice(-3) }
           : all;
     }
-    cases.push({
+    const record = {
       name,
       kind,
       delay,
@@ -668,7 +714,17 @@ async function run(name, spec) {
       rows,
       csp: [...cspRing()],
       expected,
-    });
+    };
+    if (compare === "health" || compare === "database") {
+      record.stream = blank(stream);
+      record.rows = blank(rows);
+      if (expected) {
+        record.expected = { ...expected, body: blank(expected.body) };
+      }
+    } else if (compare === "status" && expected) {
+      record.expected = { ...expected, body: null };
+    }
+    cases.push(record);
   } finally {
     recording = null;
     db.exec("ROLLBACK TO maintenance_case; RELEASE maintenance_case");

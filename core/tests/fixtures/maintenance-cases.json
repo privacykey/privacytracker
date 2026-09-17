@@ -276,7 +276,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1141272,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":110.58,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -295,7 +295,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1141272,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":110.58,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -576,7 +576,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1141272,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":110.58,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -608,7 +608,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1141272,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":110.58,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -623,7 +623,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1141272,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":110.58,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -932,7 +932,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1145392,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.09,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -951,7 +951,7 @@
             null,
             null,
             "Health check partial — healed stale_lock_sync",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1145392,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.09,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -1232,7 +1232,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed stale_lock_sync",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1145392,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.09,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -1268,7 +1268,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1145392,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.09,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -1283,7 +1283,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1145392,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.09,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -1599,7 +1599,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1149512,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -1618,7 +1618,7 @@
             null,
             null,
             "Health check partial — healed stale_lock_sync",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1149512,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -1899,7 +1899,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed stale_lock_sync",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1149512,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -1935,7 +1935,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1149512,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -1950,7 +1950,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1149512,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":111.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -2266,7 +2266,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1153632,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.06,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -2285,7 +2285,7 @@
             null,
             null,
             "Health check partial — healed stale_lock_sync",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1153632,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.06,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -2566,7 +2566,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed stale_lock_sync",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1153632,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.06,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -2602,7 +2602,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1153632,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.06,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -2617,7 +2617,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1153632,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.06,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -2906,7 +2906,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1157752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.61,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           ]
         },
         {
@@ -2925,7 +2925,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1157752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.61,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             1789473600000,
             1789473600000,
             0
@@ -3206,7 +3206,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1157752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.61,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -3246,7 +3246,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1157752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.61,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -3261,7 +3261,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1157752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":112.61,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -3550,7 +3550,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1161872,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.13,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           ]
         },
         {
@@ -3569,7 +3569,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1161872,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.13,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             1789473600000,
             1789473600000,
             0
@@ -3850,7 +3850,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1161872,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.13,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -3890,7 +3890,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1161872,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.13,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -3905,7 +3905,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1161872,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.13,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -4221,7 +4221,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1165992,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.67,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -4240,7 +4240,7 @@
             null,
             null,
             "Health check partial — healed stale_lock_wayback",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1165992,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.67,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -4521,7 +4521,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed stale_lock_wayback",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1165992,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.67,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -4557,7 +4557,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1165992,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.67,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -4572,7 +4572,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1165992,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":113.67,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_wayback\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -4881,7 +4881,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1170112,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.23,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -4900,7 +4900,7 @@
             null,
             null,
             "Health check partial — healed stale_lock_policy",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1170112,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.23,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -5181,7 +5181,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed stale_lock_policy",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1170112,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.23,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -5217,7 +5217,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1170112,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.23,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -5232,7 +5232,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1170112,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.23,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_policy\",\"detail\":\"cleared dead job lock\"}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -5534,7 +5534,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1174232,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.8,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -5553,7 +5553,7 @@
             null,
             null,
             "Health check partial — healed stale_lock_import_queue",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1174232,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.8,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -5834,7 +5834,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed stale_lock_import_queue",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1174232,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.8,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -5874,7 +5874,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1174232,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.8,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -5889,7 +5889,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1174232,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":114.8,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_import_queue\",\"detail\":\"lock 7h old\"}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -6178,7 +6178,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1178352,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":115.66,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           ]
         },
         {
@@ -6197,7 +6197,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1178352,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":115.66,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             1789473600000,
             1789473600000,
             0
@@ -6478,7 +6478,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1178352,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":115.66,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -6518,7 +6518,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1178352,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":115.66,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -6533,7 +6533,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1178352,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":115.66,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -6863,7 +6863,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1182472,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":116.17,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -6882,7 +6882,7 @@
             null,
             null,
             "Health check partial — healed policy_run_status_reset",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1182472,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":116.17,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -7265,7 +7265,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed policy_run_status_reset",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1182472,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":116.17,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -7297,7 +7297,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1182472,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":116.17,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -7312,7 +7312,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1182472,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":116.17,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -7600,7 +7600,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1186592,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":117,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -7619,7 +7619,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1186592,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":117,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -7900,7 +7900,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1186592,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":117,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -7936,7 +7936,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1186592,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":117,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -7951,7 +7951,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1186592,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":117,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0,\"fresh\":true}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -8246,7 +8246,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1190712,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":117.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -8265,7 +8265,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1190712,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":117.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -8546,7 +8546,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1190712,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":117.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -8586,7 +8586,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1190712,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":117.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -8601,7 +8601,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1190712,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":117.48,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"too-large\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -8909,7 +8909,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1194832,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":117.98,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           ]
         },
         {
@@ -8928,7 +8928,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1194832,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":117.98,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             1789473600000,
             1789473600000,
             0
@@ -9235,7 +9235,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1194832,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":117.98,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -9279,7 +9279,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1194832,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":117.98,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -9294,7 +9294,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1194832,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":117.98,\"heapFractionUsed\":0.007,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"bulk-active\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[{\"kind\":\"policy_run_status_reset\",\"reason\":\"bulk-active\"}]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -10401,7 +10401,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1198952,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":118.81,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -10420,7 +10420,7 @@
             null,
             null,
             "Health check partial — 1 orphan manual-app rows (not auto-deleted); ai_debug_log over cap (52)",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1198952,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":118.81,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -11371,7 +11371,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — 1 orphan manual-app rows (not auto-deleted); ai_debug_log over cap (52)",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1198952,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":118.81,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -11403,7 +11403,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1198952,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":118.81,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -11418,7 +11418,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1198952,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":118.81,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":52},\"orphans\":{\"manualAppEvents\":1,\"manualAppPolicyVersions\":0},\"warnings\":[\"1 orphan manual-app rows (not auto-deleted)\",\"ai_debug_log over cap (52)\"]},\"heals\":[],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -11767,7 +11767,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1203072,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":119.44,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -11786,7 +11786,7 @@
             null,
             null,
             "Health check partial — healed stale_lock_sync, policy_run_status_reset",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1203072,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":119.44,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -12093,7 +12093,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check partial — healed stale_lock_sync, policy_run_status_reset",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1203072,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":119.44,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -12141,7 +12141,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1203072,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":119.44,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -12156,7 +12156,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1203072,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":119.44,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":false,\"status\":\"partial\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[{\"kind\":\"stale_lock_sync\",\"detail\":\"cleared dead job lock\"},{\"kind\":\"policy_run_status_reset\",\"affected\":1}],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -12721,7 +12721,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"skipped\":\"busy\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":null},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":0,\"privacySnapshots\":0,\"activityLog\":0,\"aiDebugLog\":0},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"skipped\":\"busy\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":null},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":0,\"privacySnapshots\":0,\"activityLog\":0,\"aiDebugLog\":0},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -13016,7 +13016,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1211312,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.33,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -13035,7 +13035,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1211312,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.33,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -13316,7 +13316,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1211312,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.33,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -13348,7 +13348,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1211312,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.33,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -13363,7 +13363,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1211312,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.33,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -13741,7 +13741,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1219552,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.98,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -13760,7 +13760,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1219552,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.98,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -14041,7 +14041,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1219552,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.98,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -14073,7 +14073,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1219552,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.98,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",
@@ -14088,7 +14088,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1219552,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":120.98,\"heapFractionUsed\":0.008,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+        "body": "{\"version\":1,\"trigger\":\"manual\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -14812,7 +14812,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"path\":\"/var/folders/jf/dhhwy80s16l5x9htl05psr180000gn/T/pt-maintenance-oracle-ammkis/privacy.db\",\"fileBytes\":4096,\"walBytes\":1227792,\"shmBytes\":32768,\"pageCount\":99,\"pageSize\":4096,\"freelistCount\":0,\"utilisationPct\":100,\"journalMode\":\"wal\",\"busyTimeoutMs\":5000,\"foreignKeysEnabled\":1,\"walAutocheckpoint\":1000,\"integrityCheck\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0},\"justRan\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0}}",
+        "body": "{\"path\":0,\"fileBytes\":0,\"walBytes\":0,\"shmBytes\":0,\"pageCount\":0,\"pageSize\":4096,\"freelistCount\":0,\"utilisationPct\":0,\"journalMode\":0,\"busyTimeoutMs\":5000,\"foreignKeysEnabled\":1,\"walAutocheckpoint\":1000,\"integrityCheck\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0},\"justRan\":{\"status\":\"ok\",\"checkedAt\":1789473600000,\"durationMs\":0}}",
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -16113,7 +16113,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"backend\":\"node\",\"schemaVersion\":2,\"generatedAt\":\"2026-09-15T12:00:00.000Z\",\"uptimeSeconds\":0,\"process\":{\"pid\":350,\"rssMb\":129.31,\"peakRssMb\":129.31,\"virtualMb\":null,\"threads\":null,\"openFds\":null,\"userCpuSeconds\":0.3,\"systemCpuSeconds\":0.04,\"minorPageFaults\":8616,\"majorPageFaults\":87,\"voluntaryContextSwitches\":4,\"involuntaryContextSwitches\":1309},\"heap\":{\"kind\":\"v8\",\"heapTotalMb\":46.86,\"heapUsedMb\":37.14,\"externalMb\":7.52,\"arrayBuffersMb\":3.34,\"totalHeapSizeMb\":46.86,\"usedHeapSizeMb\":37.14,\"heapSizeLimitMb\":4192,\"mallocedMemoryMb\":0.52,\"externalMemoryMb\":7.52,\"heapFractionUsed\":0.009},\"sqlite\":{\"engine\":\"better-sqlite3\",\"version\":\"3.53.2\",\"connectionModel\":\"single-sync\",\"memory\":null,\"cache\":null,\"lockWait\":null},\"scheduler\":{\"kind\":\"event-loop\",\"lag\":{\"windowSeconds\":0,\"samples\":0,\"minMs\":0,\"meanMs\":null,\"maxMs\":0,\"stddevMs\":null,\"p50Ms\":0.000511,\"p95Ms\":0.000511,\"p99Ms\":0.000511,\"severity\":\"ok\"}},\"http\":{\"inFlight\":null,\"thresholdMs\":100,\"totalSinceStart\":0,\"slowSinceStart\":0,\"recent\":[]},\"slowQueries\":{\"thresholdMs\":50,\"totalSinceStart\":0,\"profilingEnabled\":true,\"recent\":[]},\"dbWorker\":{\"totalSinceStart\":0,\"failedSinceStart\":0,\"inlineSinceStart\":0,\"pendingRequests\":0,\"workerEnabled\":false,\"workerCached\":false,\"workerDisabled\":false,\"recent\":[]},\"scrapeActivity\":{\"totalSinceStart\":0,\"inProgress\":[],\"recent\":[]},\"rateLimiter\":{\"trackedKeys\":35,\"denialsSinceStart\":3}}",
+        "body": null,
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -16494,7 +16494,7 @@
       "csp": [],
       "expected": {
         "status": 429,
-        "body": "{\"error\":\"Rate limit exceeded. Try again shortly.\"}",
+        "body": null,
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -16590,7 +16590,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"backend\":\"node\",\"schemaVersion\":2,\"generatedAt\":\"2026-09-15T12:00:00.000Z\",\"uptimeSeconds\":0,\"process\":{\"pid\":350,\"rssMb\":130.39,\"peakRssMb\":130.39,\"virtualMb\":null,\"threads\":null,\"openFds\":null,\"userCpuSeconds\":0.31,\"systemCpuSeconds\":0.04,\"minorPageFaults\":8685,\"majorPageFaults\":87,\"voluntaryContextSwitches\":4,\"involuntaryContextSwitches\":1323},\"heap\":{\"kind\":\"v8\",\"heapTotalMb\":47.36,\"heapUsedMb\":37.98,\"externalMb\":7.56,\"arrayBuffersMb\":3.38,\"totalHeapSizeMb\":47.36,\"usedHeapSizeMb\":37.98,\"heapSizeLimitMb\":4192,\"mallocedMemoryMb\":0.52,\"externalMemoryMb\":7.56,\"heapFractionUsed\":0.009},\"sqlite\":{\"engine\":\"better-sqlite3\",\"version\":\"3.53.2\",\"connectionModel\":\"single-sync\",\"memory\":null,\"cache\":null,\"lockWait\":null},\"scheduler\":{\"kind\":\"event-loop\",\"lag\":{\"windowSeconds\":0,\"samples\":0,\"minMs\":0,\"meanMs\":null,\"maxMs\":0,\"stddevMs\":null,\"p50Ms\":0.000511,\"p95Ms\":0.000511,\"p99Ms\":0.000511,\"severity\":\"ok\"}},\"http\":{\"inFlight\":null,\"thresholdMs\":100,\"totalSinceStart\":0,\"slowSinceStart\":0,\"recent\":[]},\"slowQueries\":{\"thresholdMs\":50,\"totalSinceStart\":0,\"profilingEnabled\":false,\"recent\":[]},\"dbWorker\":{\"totalSinceStart\":0,\"failedSinceStart\":0,\"inlineSinceStart\":0,\"pendingRequests\":0,\"workerEnabled\":false,\"workerCached\":false,\"workerDisabled\":false,\"recent\":[]},\"scrapeActivity\":{\"totalSinceStart\":0,\"inProgress\":[],\"recent\":[]},\"rateLimiter\":{\"trackedKeys\":38,\"denialsSinceStart\":4}}",
+        "body": null,
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -16686,7 +16686,7 @@
       "csp": [],
       "expected": {
         "status": 200,
-        "body": "{\"backend\":\"node\",\"schemaVersion\":2,\"generatedAt\":\"2026-09-15T12:00:00.000Z\",\"uptimeSeconds\":0,\"process\":{\"pid\":350,\"rssMb\":130.61,\"peakRssMb\":130.61,\"virtualMb\":null,\"threads\":null,\"openFds\":null,\"userCpuSeconds\":0.31,\"systemCpuSeconds\":0.04,\"minorPageFaults\":8699,\"majorPageFaults\":87,\"voluntaryContextSwitches\":4,\"involuntaryContextSwitches\":1323},\"heap\":{\"kind\":\"v8\",\"heapTotalMb\":47.36,\"heapUsedMb\":37.81,\"externalMb\":7.56,\"arrayBuffersMb\":3.39,\"totalHeapSizeMb\":47.36,\"usedHeapSizeMb\":37.81,\"heapSizeLimitMb\":4192,\"mallocedMemoryMb\":0.52,\"externalMemoryMb\":7.56,\"heapFractionUsed\":0.009},\"sqlite\":{\"engine\":\"better-sqlite3\",\"version\":\"3.53.2\",\"connectionModel\":\"single-sync\",\"memory\":null,\"cache\":null,\"lockWait\":null},\"scheduler\":{\"kind\":\"event-loop\",\"lag\":{\"windowSeconds\":0,\"samples\":0,\"minMs\":0,\"meanMs\":null,\"maxMs\":0,\"stddevMs\":null,\"p50Ms\":0.000511,\"p95Ms\":0.000511,\"p99Ms\":0.000511,\"severity\":\"ok\"}},\"http\":{\"inFlight\":null,\"thresholdMs\":100,\"totalSinceStart\":0,\"slowSinceStart\":0,\"recent\":[]},\"slowQueries\":{\"thresholdMs\":50,\"totalSinceStart\":0,\"profilingEnabled\":true,\"recent\":[]},\"dbWorker\":{\"totalSinceStart\":0,\"failedSinceStart\":0,\"inlineSinceStart\":0,\"pendingRequests\":0,\"workerEnabled\":false,\"workerCached\":false,\"workerDisabled\":false,\"recent\":[]},\"scrapeActivity\":{\"totalSinceStart\":0,\"inProgress\":[],\"recent\":[]},\"rateLimiter\":{\"trackedKeys\":39,\"denialsSinceStart\":4}}",
+        "body": null,
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
@@ -28039,7 +28039,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "health_check_last_result",
-            "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1569752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":153.03,\"heapFractionUsed\":0.009,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           ]
         },
         {
@@ -28058,7 +28058,7 @@
             null,
             null,
             "Health check ok",
-            "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1569752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":153.03,\"heapFractionUsed\":0.009,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             1789473600000,
             1789473600000,
             0
@@ -28327,7 +28327,7 @@
             "app_id": null,
             "app_name": null,
             "summary": "Health check ok",
-            "detail": "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1569752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":153.03,\"heapFractionUsed\":0.009,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
+            "detail": "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -28349,7 +28349,7 @@
           },
           {
             "key": "health_check_last_result",
-            "value": "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":100,\"freelistCount\":0,\"walBytes\":1569752,\"fileBytes\":4096,\"foreignKeysEnabled\":1,\"fragmented\":false,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":153.03,\"heapFractionUsed\":0.009,\"heapBreach\":false,\"eventLoopP99Ms\":0.000511,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
+            "value": "{\"version\":1,\"trigger\":\"scheduled\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"durationMs\":0,\"healthy\":true,\"status\":\"ok\",\"checks\":{\"database\":{\"utilisationPct\":0,\"freelistCount\":0,\"walBytes\":0,\"fileBytes\":0,\"foreignKeysEnabled\":1,\"fragmented\":0,\"integrity\":{\"skipped\":\"disabled\"}},\"runtime\":{\"rssMb\":0,\"heapFractionUsed\":0,\"heapBreach\":false,\"eventLoopP99Ms\":0,\"eventLoopSeverity\":\"ok\"},\"counts\":{\"notifications\":1,\"privacySnapshots\":2,\"activityLog\":0,\"aiDebugLog\":1},\"orphans\":{\"manualAppEvents\":0,\"manualAppPolicyVersions\":0},\"warnings\":[]},\"heals\":[],\"skippedHeals\":[]}"
           },
           {
             "key": "health_check_last_run_at",

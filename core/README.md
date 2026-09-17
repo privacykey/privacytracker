@@ -2270,10 +2270,12 @@ diagnostics routes'. The login and the CSP report run their guards in
 headers and the process to the handler: the cookie takes the scheme the
 request arrived on, and the two runtime writes answer this server's own
 envelope. Figures that belong to the process and the file: the oracle
-records Node's, and the replay blanks the same keys on both sides
-wherever they appear — the wire, the persisted blob, the activity detail
-— so the counts, the heals, the warnings that derive from rows and the
-status are compared exactly. Process state Node keeps in modules — the
+blanks them as it records, wherever they appear — the wire, the
+persisted blob, the activity detail — so regenerating the fixture on
+another machine is byte-identical, and the replay blanks the same keys
+on its own side; the counts, the heals, the warnings that derive from
+rows and the status are compared exactly. The runtime envelope the two
+runtime writes answer is compared by status alone and is not recorded. Process state Node keeps in modules — the
 integrity cache, the profiling flag, the login-failure window — lives in
 the same globals, with test hooks that reset them per case as the oracle
 reset Node's.
