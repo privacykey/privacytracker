@@ -28,6 +28,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import db from "../../../lib/db";
+import { rssEntries } from "../../../lib/itunes-rss";
 import { getMayAlsoLike } from "../../../lib/related-apps-observed";
 import { getSetting } from "../../../lib/scheduler";
 import { safeFetch } from "../../../lib/security";
@@ -163,20 +164,22 @@ async function fetchTopInGenre(opts: {
     if (!response.ok) {
       return [];
     }
+    interface ChartEntry {
+      id?: { attributes?: { "im:id"?: string } };
+      "im:artist"?: { label?: string };
+      "im:image"?: Array<{ label?: string }>;
+      "im:name"?: { label?: string };
+      link?:
+        | { attributes?: { href?: string } }
+        | Array<{ attributes?: { href?: string } }>;
+    }
     const parsed = JSON.parse(body.toString("utf8")) as {
-      feed?: {
-        entry?: Array<{
-          "im:name"?: { label?: string };
-          "im:artist"?: { label?: string };
-          "im:image"?: Array<{ label?: string }>;
-          id?: { attributes?: { "im:id"?: string } };
-          link?:
-            | { attributes?: { href?: string } }
-            | Array<{ attributes?: { href?: string } }>;
-        }>;
-      };
+      feed?: { entry?: ChartEntry | ChartEntry[] };
     };
-    const entries = parsed.feed?.entry ?? [];
+    // A genre with ONE free app carries it as a bare object, not a
+    // one-element array; iterating that threw, and the catch below turned
+    // the genre's only candidate into none. See lib/itunes-rss.ts.
+    const entries = rssEntries(parsed.feed?.entry);
     const out: RelatedCandidate[] = [];
     for (const e of entries) {
       const appleId = e.id?.attributes?.["im:id"];

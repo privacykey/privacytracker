@@ -31,6 +31,7 @@ use super::{
     guard::{record_audit, Actor},
     imports_writes::transaction,
     json::{json_ok, json_response},
+    routes_discovery::rss_entries,
     settings::get_setting_with,
     sync_runner::clock_for,
     writes::{Cx, RouteSpec, WriteRequest},
@@ -581,11 +582,10 @@ async fn fetch_top_free_apps(
     let data: Value = serde_json::from_str(&String::from_utf8_lossy(&reply.body))
         .map_err(|_| "iTunes RSS returned non-JSON body".to_string())?;
     let label = |v: &Value| v["label"].as_str().unwrap_or("").to_string();
-    let apps = data["feed"]["entry"]
-        .as_array()
-        .map(Vec::as_slice)
-        .unwrap_or(&[])
-        .iter()
+    // A chart of ONE app — what Apple answers to `limit=1` — carries its
+    // entry as a bare object, not a one-element array.
+    let apps = rss_entries(&data["feed"]["entry"])
+        .into_iter()
         .filter_map(|entry| {
             let id = entry["id"]["attributes"]["im:id"]
                 .as_str()

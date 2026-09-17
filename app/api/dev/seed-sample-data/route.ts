@@ -37,6 +37,7 @@ import {
   saveSnapshot,
 } from "@/lib/changelog";
 import db from "@/lib/db";
+import { rssEntries } from "@/lib/itunes-rss";
 import { CATEGORY_META } from "@/lib/privacy-meta";
 import { normalizeCountry } from "@/lib/region";
 import {
@@ -130,14 +131,16 @@ async function fetchTopFreeApps(
     );
   }
 
-  let data: { feed?: { entry?: RssEntry[] } };
+  let data: { feed?: { entry?: RssEntry | RssEntry[] } };
   try {
     data = JSON.parse(bodyBuf.toString("utf8"));
   } catch {
     throw new Error("iTunes RSS returned non-JSON body");
   }
 
-  const entries = data.feed?.entry ?? [];
+  // A chart of ONE app carries it as a bare object, not a one-element
+  // array — so `?limit=1` used to throw here. See lib/itunes-rss.ts.
+  const entries = rssEntries(data.feed?.entry);
   const apps: RssFetchOutcome["apps"] = [];
   for (const entry of entries) {
     const trackId = entry.id?.attributes?.["im:id"] ?? "";

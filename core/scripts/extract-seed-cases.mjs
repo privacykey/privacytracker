@@ -715,11 +715,39 @@ try {
     ],
   });
   await run("live in another region", {
-    search: "?country=gb&limit=1",
+    search: "?country=gb&limit=2",
     replies: [
-      rss([entry("7120", "British", { country: "gb" })]),
+      rss([
+        entry("7120", "British", { country: "gb" }),
+        entry("7121", "Also British", { country: "gb" }),
+      ]),
       ...scrapeOf("British", [linked(CONTACT, LOCATION)]),
+      ...scrapeOf("Also British", [linked(CONTACT)]),
     ],
+  });
+  // The feed is XML converted to JSON: a chart of ONE app carries its
+  // entry as a bare object, not a one-element array. This is what Apple
+  // really answers to `limit=1`, and it used to be a 502.
+  await run("live chart of one app carries it as an object", {
+    search: "?limit=1",
+    replies: [
+      json({ feed: { entry: entry("7122", "Only One") } }),
+      ...scrapeOf("Only One", [linked(CONTACT, LOCATION)]),
+    ],
+  });
+  await run("live chart of one app, already tracked", {
+    search: "?limit=1",
+    setup: [app("7123", "Only And Tracked")],
+    replies: [json({ feed: { entry: entry("7123", "Only And Tracked") } })],
+  });
+  await run("live chart entry that is a string is no entries", {
+    replies: [json({ feed: { entry: "not an entry" } })],
+  });
+  await run("live chart entry that is a number is no entries", {
+    replies: [json({ feed: { entry: 7 } })],
+  });
+  await run("live chart entry that is null is no entries", {
+    replies: [json({ feed: { entry: null } })],
   });
 } finally {
   db.close();
