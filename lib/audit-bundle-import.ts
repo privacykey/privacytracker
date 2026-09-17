@@ -825,13 +825,20 @@ function upsertPolicySummary(app: BundleApp): void {
   // The bundle ships an excerpt of the source text rather than the full
   // doc (see lib/audit-bundle.ts); we store the excerpt as-is so the
   // existing UI's "preview policy text" affordance has something to show.
+  //
+  // The bundle's `generated_at` is NOT stored: it is the exporter's
+  // `updated_at` under another name (see buildPolicySummary), and this
+  // table has no column for it. The statement used to name one anyway,
+  // so `prepare` threw "no column named generated_at" and rolled back the
+  // whole import for any bundle whose apps carried a policy summary.
+  // `updated_at` stays "when this install received it".
   const now = Date.now();
   db.prepare(
     `INSERT INTO privacy_policy_analyses
        (app_id, policy_url, status, source_text, source_word_count,
         analysis_mode, summary_json, model, error, updated_at,
-        source_fetched_at, generated_at)
-     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?, ?)
+        source_fetched_at)
+     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)
      ON CONFLICT(app_id) DO UPDATE SET
        policy_url        = excluded.policy_url,
        status            = excluded.status,
@@ -841,8 +848,7 @@ function upsertPolicySummary(app: BundleApp): void {
        summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),
        model             = excluded.model,
        updated_at        = excluded.updated_at,
-       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at),
-       generated_at      = COALESCE(excluded.generated_at, privacy_policy_analyses.generated_at)`
+       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)`
   ).run(
     app.id,
     policyUrl,
@@ -852,8 +858,7 @@ function upsertPolicySummary(app: BundleApp): void {
       : 0,
     summary.summary_json ?? null,
     now,
-    summary.fetched_at ?? null,
-    summary.generated_at ?? null
+    summary.fetched_at ?? null
   );
 }
 
