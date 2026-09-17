@@ -100,6 +100,33 @@ pub async fn backups(State(state): State<AppState>) -> Response {
 pub async fn backup_snapshot_download(Path(filename): Path<String>) -> Response {
     super::backup_writes::download(&filename)
 }
+/// `GET /api/diagnostics/bundle` (Phase 4, batch 5c): every diagnostics
+/// snapshot in one object, each section failing on its own.
+pub async fn diagnostics_bundle(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    json_ok(&super::bundle_writes::diagnostics_bundle(
+        &state,
+        &headers,
+        super::now_ms(),
+    ))
+}
+/// `GET /api/deployment/support-bundle` (Phase 4, batch 5c): the
+/// deployment diagnostics and the recent errors, safe to paste.
+pub async fn support_bundle(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    match super::bundle_writes::support_bundle(&state, &headers, super::now_ms()) {
+        Ok(bundle) => {
+            let mut response = json_ok(&bundle);
+            response.headers_mut().insert(
+                axum::http::header::CACHE_CONTROL,
+                axum::http::HeaderValue::from_static("no-store"),
+            );
+            response
+        }
+        Err(e) => {
+            super::diag::log_error(format!("[support-bundle] {e}"));
+            Response::builder().status(500).body(Body::empty()).unwrap()
+        }
+    }
+}
 route!(
     ai_debug,
     "/api/ai/debug-log",

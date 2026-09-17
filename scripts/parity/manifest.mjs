@@ -950,6 +950,17 @@ export const blankMeasurements = (value) => {
   return value;
 };
 
+/** The deployment diagnostics payload, wherever it is embedded: numbers
+ * and measurements blanked, and `app.node` masked — it is
+ * `process.version`, which names the serving runtime rather than the
+ * deployment, and the Rust core answers with its own identity there. */
+const blankDeployment = (v) =>
+  v && typeof v === "object"
+    ? blankNumbers(
+        blankMeasurements({ ...v, app: { ...v.app, node: "~runtime" } })
+      )
+    : v;
+
 export const VOLATILE_READS = [
   {
     route: "/api/diagnostics/database",
@@ -1005,10 +1016,37 @@ export const VOLATILE_READS = [
     // answers with its own identity. It is the one field in this payload
     // that names the process rather than the deployment, so it is masked
     // like `pid` — and it is the ONLY field masked for that reason.
-    transform: (v) =>
-      blankNumbers(
-        blankMeasurements({ ...v, app: { ...v.app, node: "~runtime" } })
-      ),
+    transform: (v) => blankDeployment(v),
+  },
+  // The support bundle is that payload plus the recent failed activity
+  // rows — which are rows, and compare as they are.
+  {
+    route: "/api/deployment/support-bundle",
+    name: "deployment support bundle",
+    path: "/api/deployment/support-bundle",
+    transform: (v) => ({ ...v, diagnostics: blankDeployment(v?.diagnostics) }),
+  },
+  // Every diagnostics snapshot in one object, so each section is treated
+  // as its own route treats it: `app` and `host` name the process and the
+  // machine, the embedded runtime envelope names the backend and is held
+  // to its contract on each side instead, the error ring is per process,
+  // the database and disk figures are measurements. What is compared as it
+  // is: the background-job descriptions, the cooldowns and the flag diff.
+  {
+    route: "/api/diagnostics/bundle",
+    name: "diagnostics bundle",
+    path: "/api/diagnostics/bundle",
+    transform: (v) => ({
+      ...v,
+      app: blankScalars(v?.app),
+      host: blankScalars(v?.host),
+      runtime: v?.runtime ? "~envelope" : v?.runtime,
+      database: blankNumbers(blankMeasurements(v?.database)),
+      disk: blankNumbers(v?.disk),
+      errorLog: blankScalars(v?.errorLog),
+      deployment: blankDeployment(v?.deployment),
+    }),
+    validate: (v) => validateRuntimeDiagnostics(v?.runtime),
   },
   // Same reasoning: the embedded envelope names the backend. The DB
   // counts and settings it also carries ARE comparable, and read-parity
@@ -1716,8 +1754,9 @@ export const QUARANTINE = [
   },
 
   // -- file downloads and uploads, sized by host state. The differ cannot
-  //    hold them; for the backup family, read-parity's probeBackupRoutes
-  //    does (scripts/parity/backup-probes.mjs), after every other pass.
+  //    hold them; read-parity's probes do, after every other pass:
+  //    probeBundleRoutes (scripts/parity/bundles-probes.mjs) for the audit
+  //    bundle, then probeBackupRoutes (scripts/parity/backup-probes.mjs).
   {
     route: "/api/backup/export",
     method: "GET",
@@ -1736,17 +1775,7 @@ export const QUARANTINE = [
   {
     route: "/api/import/audit-bundle",
     method: "POST",
-    why: "needs a multipart bundle upload; covered by the e2e suite",
-  },
-  {
-    route: "/api/diagnostics/bundle",
-    method: "GET",
-    why: "zip of machine state (logs, RSS, disk) — nothing stable to compare",
-  },
-  {
-    route: "/api/deployment/support-bundle",
-    method: "GET",
-    why: "zip of machine state — nothing stable to compare",
+    why: "takes an uploaded bundle, multipart from the real client; probeBundleRoutes uploads each server's own export to both, as JSON and as a form",
   },
 
   // -- per-id reads with no canned fixture rows
@@ -1803,6 +1832,6 @@ export const QUARANTINE = [
   {
     route: "/api/export/audit-bundle",
     method: "POST",
-    why: "403 under the seeded focus — the export is a focus-gated surface",
+    why: "403 under the seeded focus, and a download stamped with the clock once allowed; probeBundleRoutes turns the flag on and compares the two exports",
   },
 ];

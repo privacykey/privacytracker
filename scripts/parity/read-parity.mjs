@@ -37,6 +37,7 @@ import { parseArgs } from "node:util";
 
 import BetterSqlite3 from "better-sqlite3";
 import { primeBackupKey, probeBackupRoutes } from "./backup-probes.mjs";
+import { probeBundleRoutes } from "./bundles-probes.mjs";
 import { applyContentFixture } from "./content-fixture.mjs";
 import { probeContentReads } from "./content-probes.mjs";
 import { applyDevicesFixture, probeDeviceReads } from "./devices-fixture.mjs";
@@ -198,6 +199,11 @@ const BATCH_1 = [
   "/api/diagnostics/runtime",
   "/api/desktop/diagnostics",
   "/api/diagnostics/errors",
+  // Phase 4, batch 5c: the two support bundles. Machine state, so the
+  // manifest blanks what is each process's own and compares the rest —
+  // the keys, the jobs, the rate limits, the flag overrides, the errors.
+  "/api/diagnostics/bundle",
+  "/api/deployment/support-bundle",
 ];
 
 /**
@@ -282,6 +288,10 @@ const WRITE_ROUTES = [
   // quarantined — they move files, and the restore replaces the database —
   // and are held live by probeBackupRoutes instead, after this pass.
   "/api/backup/snapshots",
+  // Phase 4, batch 5c: the audit bundle's export and import are
+  // quarantined too — a download stamped with the clock, an upload — and
+  // are held live by probeBundleRoutes, between this pass and the backup
+  // probe.
 ];
 
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -1945,6 +1955,16 @@ async function main() {
     }
   }
 
+  // The audit bundle: each server's own export, previewed and imported on
+  // both, as JSON and as the multipart upload the real client sends.
+  let bundlesOk = true;
+  if (args.mutate) {
+    console.log(
+      "\n── audit bundle (an export each backend must be able to read, and merge, from the other) ──"
+    );
+    bundlesOk = await probeBundleRoutes(args.node, rustBase, TOKEN);
+  }
+
   // The backup family, which the differ cannot hold: files out, files in,
   // and a restore that replaces the database. After everything else,
   // because it ends by doing exactly that on both servers.
@@ -1966,6 +1986,7 @@ async function main() {
   cleanup();
   const ok =
     backupOk &&
+    bundlesOk &&
     discoveryOk &&
     operationsOk &&
     devicesOk &&

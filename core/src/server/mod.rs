@@ -14,6 +14,7 @@
 mod activity_log;
 mod analysis;
 mod apps;
+mod audit_bundle;
 pub mod auth;
 mod backup;
 mod backup_snapshots;
@@ -21,6 +22,9 @@ mod backup_snapshots;
 mod backup_tests;
 mod backup_writes;
 mod body;
+mod bundle_writes;
+#[cfg(test)]
+mod bundles_tests;
 mod changelog;
 #[cfg(test)]
 mod content_tests;
@@ -52,6 +56,7 @@ mod library_writes;
 #[cfg(test)]
 mod maintenance_tests;
 mod maintenance_writes;
+mod multipart;
 mod operations;
 #[cfg(test)]
 mod operations_tests;
@@ -274,6 +279,24 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/api/backup/restore",
             post(routes_writes::backup_restore_post),
+        )
+        // Phase 4, batch 5c: the audit bundle out and in, and the two
+        // support bundles, which are reads over snapshots served above.
+        .route(
+            "/api/export/audit-bundle",
+            post(routes_writes::export_audit_bundle_post),
+        )
+        .route(
+            "/api/import/audit-bundle",
+            post(routes_writes::import_audit_bundle_post),
+        )
+        .route(
+            "/api/diagnostics/bundle",
+            get(routes_operations::diagnostics_bundle),
+        )
+        .route(
+            "/api/deployment/support-bundle",
+            get(routes_operations::support_bundle),
         )
         .route(
             "/api/rate-limit/status",

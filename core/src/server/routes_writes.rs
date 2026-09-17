@@ -5,7 +5,7 @@
 //! each network call, with the lock released in between. One wrapper per
 //! route so the router reads like `mod.rs`'s other registrations.
 use super::{
-    body::{read_json, BodyOutcome},
+    body::{read_json, read_raw, BodyOutcome},
     json::json_error,
     writes::{self, WriteRequest},
     AppState,
@@ -57,6 +57,11 @@ async fn run(
         }
     };
     let outcome = match spec.body_limit {
+        // The audit-bundle import takes a multipart upload and parses it
+        // itself; everything else is JSON.
+        Some(limit) if super::bundle_writes::takes_raw_body(spec, &parts.headers) => {
+            read_raw(&parts.headers, body, limit).await
+        }
         Some(limit) => read_json(&parts.headers, body, limit).await,
         None => BodyOutcome::Empty,
     };
@@ -256,3 +261,8 @@ wrapper!(backup_snapshots_post, "/api/backup/snapshots", POST);
 wrapper!(backup_export_get, "/api/backup/export", GET);
 wrapper!(backup_preview_post, "/api/backup/preview", POST);
 wrapper!(backup_restore_post, "/api/backup/restore", POST);
+
+// ── Phase 4, batch 5c ────────────────────────────────────────────────
+
+wrapper!(export_audit_bundle_post, "/api/export/audit-bundle", POST);
+wrapper!(import_audit_bundle_post, "/api/import/audit-bundle", POST);
