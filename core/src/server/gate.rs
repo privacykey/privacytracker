@@ -224,11 +224,28 @@ mod tests {
             .layer(axum::middleware::from_fn(gate))
     }
 
-    /// A request with no admin token. The gate's env inputs are left alone:
-    /// `PRIVACYTRACKER_BIND_HOST` is unset in the test binary, so
-    /// `is_network_exposed()` fails closed to true and auth is required
-    /// regardless of what the `auth` module's tests do to
-    /// `AUDITOR_ADMIN_TOKEN` on another thread.
+    /// Run one gate scenario under the env lock. The gate reads the process
+    /// environment on every request, and these tests rely on
+    /// `PRIVACYTRACKER_BIND_HOST` being UNSET — `is_network_exposed()` then
+    /// fails closed to true, so auth is required whatever the `auth`
+    /// module's tests do to `AUDITOR_ADMIN_TOKEN`. That held only while
+    /// nothing else set the bind host. The write-route replays do, to
+    /// loopback, with the admin token cleared, for as long as they run —
+    /// under this same lock — and a gate test that overlapped one saw a
+    /// loopback server needing no token and got a 200 where it expected a
+    /// 401. Every replay removes what it set before releasing the lock, so
+    /// holding it here is what makes "unset" true. A plain `#[test]` driving
+    /// a current-thread runtime, rather than `#[tokio::test]`, so the lock is
+    /// held by the synchronous frame and never across an `.await`.
+    fn scenario(f: impl std::future::Future<Output = ()>) {
+        let _env = super::super::trust::env_lock();
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("runtime")
+            .block_on(f);
+    }
+
+    /// A request with no admin token. Call it inside [`scenario`].
     async fn send(method: Method, uri: &str, headers: &[(&str, &str)]) -> Response {
         let mut builder = Request::builder().method(method).uri(uri);
         for (name, value) in headers {
@@ -308,120 +325,132 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn trailing_slash_is_a_308_with_a_relative_location() {
-        let res = get_("/api/health/").await;
-        assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-        // Relative, not absolute: Next serialises the middleware redirect back
-        // to a path, so `http://127.0.0.1:3000/api/health` would diverge.
-        assert_eq!(location(&res), Some("/api/health"));
-        assert_eq!(cache_control(&res), Some("no-store"));
+    #[test]
+    fn trailing_slash_is_a_308_with_a_relative_location() {
+        scenario(async {
+            let res = get_("/api/health/").await;
+            assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+            // Relative, not absolute: Next serialises the middleware redirect back
+            // to a path, so `http://127.0.0.1:3000/api/health` would diverge.
+            assert_eq!(location(&res), Some("/api/health"));
+            assert_eq!(cache_control(&res), Some("no-store"));
+        });
     }
 
-    #[tokio::test]
-    async fn trailing_slash_redirect_keeps_the_query() {
-        let res = get_("/api/health/?x=1&y=2").await;
-        assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
-        assert_eq!(location(&res), Some("/api/health?x=1&y=2"));
+    #[test]
+    fn trailing_slash_redirect_keeps_the_query() {
+        scenario(async {
+            let res = get_("/api/health/?x=1&y=2").await;
+            assert_eq!(res.status(), StatusCode::PERMANENT_REDIRECT);
+            assert_eq!(location(&res), Some("/api/health?x=1&y=2"));
+        });
     }
 
-    #[tokio::test]
-    async fn canonical_paths_are_not_redirected() {
-        assert_eq!(get_("/api/health").await.status(), StatusCode::OK);
-        // `/` is below the length guard, so it is never redirected. It falls
-        // through to step 1 and 401s — Node answers a 307 to /login there,
-        // the page branch this API-only server deliberately does not port.
-        let root = get_("/").await;
-        assert_eq!(root.status(), StatusCode::UNAUTHORIZED);
-        assert_eq!(location(&root), None);
+    #[test]
+    fn canonical_paths_are_not_redirected() {
+        scenario(async {
+            assert_eq!(get_("/api/health").await.status(), StatusCode::OK);
+            // `/` is below the length guard, so it is never redirected. It falls
+            // through to step 1 and 401s — Node answers a 307 to /login there,
+            // the page branch this API-only server deliberately does not port.
+            let root = get_("/").await;
+            assert_eq!(root.status(), StatusCode::UNAUTHORIZED);
+            assert_eq!(location(&root), None);
+        });
     }
 
-    #[tokio::test]
-    async fn trailing_slash_redirect_runs_before_the_auth_gate() {
-        // The canonical path is gated…
-        let gated = get_("/api/date-format").await;
-        assert_eq!(gated.status(), StatusCode::UNAUTHORIZED);
-        // …but its trailing-slash form still redirects rather than 401ing,
-        // because step 0.5 sits above step 1 in proxy.ts.
-        let redirected = get_("/api/date-format/").await;
-        assert_eq!(redirected.status(), StatusCode::PERMANENT_REDIRECT);
-        assert_eq!(location(&redirected), Some("/api/date-format"));
+    #[test]
+    fn trailing_slash_redirect_runs_before_the_auth_gate() {
+        scenario(async {
+            // The canonical path is gated…
+            let gated = get_("/api/date-format").await;
+            assert_eq!(gated.status(), StatusCode::UNAUTHORIZED);
+            // …but its trailing-slash form still redirects rather than 401ing,
+            // because step 0.5 sits above step 1 in proxy.ts.
+            let redirected = get_("/api/date-format/").await;
+            assert_eq!(redirected.status(), StatusCode::PERMANENT_REDIRECT);
+            assert_eq!(location(&redirected), Some("/api/date-format"));
+        });
     }
 
-    #[tokio::test]
-    async fn trailing_slash_redirect_runs_before_the_csrf_gate() {
-        let cross = [("host", LOOPBACK), ("origin", "http://evil.example")];
-        let blocked = post_login(&cross).await;
-        assert_eq!(blocked.status(), StatusCode::FORBIDDEN);
-        let redirected = send(Method::POST, "/api/auth/admin-token/login/", &cross).await;
-        assert_eq!(redirected.status(), StatusCode::PERMANENT_REDIRECT);
+    #[test]
+    fn trailing_slash_redirect_runs_before_the_csrf_gate() {
+        scenario(async {
+            let cross = [("host", LOOPBACK), ("origin", "http://evil.example")];
+            let blocked = post_login(&cross).await;
+            assert_eq!(blocked.status(), StatusCode::FORBIDDEN);
+            let redirected = send(Method::POST, "/api/auth/admin-token/login/", &cross).await;
+            assert_eq!(redirected.status(), StatusCode::PERMANENT_REDIRECT);
+        });
     }
 
-    #[tokio::test]
-    async fn host_allowlist_runs_before_the_trailing_slash_redirect() {
-        let res = send(Method::GET, "/api/health/", &[("host", "evil.example")]).await;
-        assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-        assert_eq!(location(&res), None);
+    #[test]
+    fn host_allowlist_runs_before_the_trailing_slash_redirect() {
+        scenario(async {
+            let res = send(Method::GET, "/api/health/", &[("host", "evil.example")]).await;
+            assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+            assert_eq!(location(&res), None);
+        });
     }
 
     /// proxy.ts is not uniform about `Cache-Control`, and the differences are
     /// observable. Verified against a running Node server: 400 and 403 carry
     /// no Cache-Control at all, 401 and the pass-through carry `no-store`.
-    #[tokio::test]
-    async fn cache_control_matches_node_branch_for_branch() {
-        let host_rejected = send(Method::GET, "/api/health", &[("host", "evil.example")]).await;
-        assert_eq!(host_rejected.status(), StatusCode::BAD_REQUEST);
-        assert_eq!(cache_control(&host_rejected), None);
+    #[test]
+    fn cache_control_matches_node_branch_for_branch() {
+        scenario(async {
+            let host_rejected = send(Method::GET, "/api/health", &[("host", "evil.example")]).await;
+            assert_eq!(host_rejected.status(), StatusCode::BAD_REQUEST);
+            assert_eq!(cache_control(&host_rejected), None);
 
-        let unauthorised = get_("/api/date-format").await;
-        assert_eq!(unauthorised.status(), StatusCode::UNAUTHORIZED);
-        assert_eq!(cache_control(&unauthorised), Some("no-store"));
+            let unauthorised = get_("/api/date-format").await;
+            assert_eq!(unauthorised.status(), StatusCode::UNAUTHORIZED);
+            assert_eq!(cache_control(&unauthorised), Some("no-store"));
 
-        let cross_origin =
-            post_login(&[("host", LOOPBACK), ("origin", "http://evil.example")]).await;
-        assert_eq!(cross_origin.status(), StatusCode::FORBIDDEN);
-        assert_eq!(cache_control(&cross_origin), None);
+            let cross_origin =
+                post_login(&[("host", LOOPBACK), ("origin", "http://evil.example")]).await;
+            assert_eq!(cross_origin.status(), StatusCode::FORBIDDEN);
+            assert_eq!(cache_control(&cross_origin), None);
 
-        let passed = get_("/api/health").await;
-        assert_eq!(passed.status(), StatusCode::OK);
-        assert_eq!(cache_control(&passed), Some("no-store"));
+            let passed = get_("/api/health").await;
+            assert_eq!(passed.status(), StatusCode::OK);
+            assert_eq!(cache_control(&passed), Some("no-store"));
+        });
     }
 
     /// Every outcome here was verified against a running Node server: the
     /// exact origin reaches the route, and each of the others is a 403.
-    #[tokio::test]
-    async fn csrf_origin_comparison_is_scheme_and_serialisation_exact() {
-        let exact = post_login(&[("host", LOOPBACK), ("origin", "http://127.0.0.1:3000")]).await;
-        assert_eq!(exact.status(), StatusCode::OK);
-        for origin in [
-            "https://127.0.0.1:3000", // scheme
-            "http://127.0.0.1:3000/", // not the canonical serialisation
-            "HTTP://127.0.0.1:3000",
-            "http://127.0.0.1", // a different port
-            "null",
-        ] {
-            let res = post_login(&[("host", LOOPBACK), ("origin", origin)]).await;
-            assert_eq!(res.status(), StatusCode::FORBIDDEN, "{origin}");
-        }
-        // The expected side is normalised: an uppercase Host still matches.
-        let upper = post_login(&[
-            ("host", "LOCALHOST:3000"),
-            ("origin", "http://localhost:3000"),
-        ])
-        .await;
-        assert_eq!(upper.status(), StatusCode::OK);
+    #[test]
+    fn csrf_origin_comparison_is_scheme_and_serialisation_exact() {
+        scenario(async {
+            let exact =
+                post_login(&[("host", LOOPBACK), ("origin", "http://127.0.0.1:3000")]).await;
+            assert_eq!(exact.status(), StatusCode::OK);
+            for origin in [
+                "https://127.0.0.1:3000", // scheme
+                "http://127.0.0.1:3000/", // not the canonical serialisation
+                "HTTP://127.0.0.1:3000",
+                "http://127.0.0.1", // a different port
+                "null",
+            ] {
+                let res = post_login(&[("host", LOOPBACK), ("origin", origin)]).await;
+                assert_eq!(res.status(), StatusCode::FORBIDDEN, "{origin}");
+            }
+            // The expected side is normalised: an uppercase Host still matches.
+            let upper = post_login(&[
+                ("host", "LOCALHOST:3000"),
+                ("origin", "http://localhost:3000"),
+            ])
+            .await;
+            assert_eq!(upper.status(), StatusCode::OK);
+        });
     }
 
-    /// The bypass the first cut had. A plain `#[test]` driving a
-    /// current-thread runtime, rather than `#[tokio::test]`, so the env lock
-    /// is held by the synchronous frame and never across an `.await`.
+    /// The bypass the first cut had. It needs `PRIVACYTRACKER_TRUST_PROXY`
+    /// unset for its whole duration, which the env lock guarantees.
     #[test]
     fn forwarded_host_is_untrusted_by_default() {
-        let _env = super::super::trust::env_lock();
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .expect("runtime");
-        rt.block_on(async {
+        scenario(async {
             // A forged forwarded host cannot rescue a disallowed real Host…
             let spoofed = send(
                 Method::GET,

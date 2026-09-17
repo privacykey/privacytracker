@@ -2486,6 +2486,17 @@ these next: restoring a source file with an older mtime does not make
 cargo rebuild, so the last control's binary survives until a file is
 touched.)
 
+**What CI found that the local runs did not.** Every replay sets
+`PRIVACYTRACKER_BIND_HOST` to loopback and clears the admin token for as
+long as it runs, under `trust::env_lock()`. The gate's own tests rely on
+the bind host being UNSET — exposure then forces auth — and did not hold
+that lock, so one that overlapped a replay saw a loopback server needing
+no token and got a 200 where it expected a 401. Six replays had been
+racing them already; the seventh made the overlap certain on CI's
+four-core runner, twice out of twice, and never locally. The gate tests
+now run under the lock (`scenario` in `gate.rs`). A new test module that
+reads the environment owes the same.
+
 **One divergence, chosen.** On a case-insensitive volume Node finds a
 snapshot whose requested name differs from the file's only in case, and
 serves it under the requested spelling; the core compares names exactly
