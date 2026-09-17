@@ -36,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import BetterSqlite3 from "better-sqlite3";
+import { primeBackupKey, probeBackupRoutes } from "./backup-probes.mjs";
 import { applyContentFixture } from "./content-fixture.mjs";
 import { probeContentReads } from "./content-probes.mjs";
 import { applyDevicesFixture, probeDeviceReads } from "./devices-fixture.mjs";
@@ -276,6 +277,11 @@ const WRITE_ROUTES = [
   "/api/auth/admin-token/login",
   "/api/auth/admin-token/logout",
   "/api/dev/reset-changelog",
+  // Phase 4, batch 5b: the snapshot settings write and the manual
+  // snapshot. The export, the download, the preview and the restore stay
+  // quarantined — they move files, and the restore replaces the database —
+  // and are held live by probeBackupRoutes instead, after this pass.
+  "/api/backup/snapshots",
 ];
 
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -1726,6 +1732,17 @@ async function main() {
   );
   const primedOk = await primeHealthCheck(args.node);
 
+  // The backup probe needs both servers to hold ONE signing key, and the
+  // key is a file in the data directory: have Node mint it now, so the
+  // copy carries it. Only the --mutate pass runs that probe.
+  let backupKeyOk = true;
+  if (args.mutate) {
+    console.log(
+      "\n── backup key primer (the signing key must exist before the copy) ──"
+    );
+    backupKeyOk = await primeBackupKey(args.node, TOKEN);
+  }
+
   console.log(
     "checkpointing the Node database and copying it for the Rust side…"
   );
@@ -1928,8 +1945,27 @@ async function main() {
     }
   }
 
+  // The backup family, which the differ cannot hold: files out, files in,
+  // and a restore that replaces the database. After everything else,
+  // because it ends by doing exactly that on both servers.
+  let backupOk = backupKeyOk;
+  if (args.mutate) {
+    console.log(
+      "\n── backup routes (export, preview, snapshots, and a restore each backend must trust from the other) ──"
+    );
+    backupOk =
+      (await probeBackupRoutes(
+        args.node,
+        rustBase,
+        TOKEN,
+        nodeData,
+        rustData
+      )) && backupOk;
+  }
+
   cleanup();
   const ok =
+    backupOk &&
     discoveryOk &&
     operationsOk &&
     devicesOk &&

@@ -63,6 +63,12 @@ tokio-util = { version = "0.7", features = ["io"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 url = "2"
 regex = "1"
+# The backup envelope's signature: HMAC-SHA256 under a per-install key,
+# and the OS CSPRNG that key is minted from. A backup signed by the Node
+# server has to verify here and the other way round, so the primitive is
+# fixed by lib/backup.ts, not chosen. Already in the lockfile — it is the
+# crypto provider under reqwest's rustls — so this adds no new crate.
+ring = "0.17"
 
 [dev-dependencies]
 # Router-level gate tests drive the axum `Router` as a plain tower service

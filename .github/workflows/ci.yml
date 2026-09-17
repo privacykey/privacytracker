@@ -463,6 +463,23 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-maintenance-cases.mjs
           git diff --exit-code -- core/tests/fixtures/maintenance-cases.json
 
+      - name: Backup oracle is current
+        # Runs the real backup routes — the snapshot settings and the manual
+        # snapshot, the snapshot download, the export, the preview and the
+        # restore — and the startup hook's own 35 s snapshot closure, each
+        # against a wiped database and a data directory holding a fixed
+        # signing key and seeded snapshot files — foreign keys on, frozen
+        # clock — and records every request, write, table a backup carries,
+        # the snapshot directory and key file afterwards (each file by its
+        # SHA-256) and the wire response with its download headers. A diff
+        # means a Node route, lib/backup.ts or lib/backup-snapshots.ts
+        # changed and core/src/server/backup.rs, backup_snapshots.rs or
+        # backup_writes.rs has not been ported — and, for lib/backup.ts, that
+        # a backup signed by one backend may no longer verify on the other.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-backup-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/backup-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

@@ -375,8 +375,74 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(imports_routes());
         routes.extend(runner_routes());
         routes.extend(maintenance_routes());
+        routes.extend(backup_routes());
         routes
     })
+}
+
+/// Phase 4, batch 5b — see `backup_writes.rs`. The two snapshot writes
+/// take the shared mutation guard; the export and the restore inline
+/// theirs, each with its own rate-limit audit row and its own words; the
+/// preview has no guard at all. The restore's "a sync is running" answer
+/// comes before its body is read, so it is in `precheck`.
+fn backup_routes() -> Vec<RouteSpec> {
+    const UNAUTHORISED: Option<&str> = Some("admin token required but missing or invalid");
+    let upload = Some(super::backup_writes::MAX_BACKUP_BYTES);
+    vec![
+        RouteSpec {
+            path: "/api/backup/snapshots",
+            method: Method::PUT,
+            body_limit: Some(4 * 1024),
+            guard: guarded("backup.snapshot.settings", 20, AdminRule::Required),
+        },
+        RouteSpec {
+            path: "/api/backup/snapshots",
+            method: Method::POST,
+            body_limit: None,
+            guard: Guard::Mutation(GuardOptions {
+                action: "backup.snapshot.create",
+                key_prefix: "backup.snapshot.create",
+                limit: 5,
+                window_ms: 10 * 60_000,
+                message: Some("Too many backup snapshots. Try again later."),
+                admin: AdminRule::Required,
+            }),
+        },
+        RouteSpec {
+            path: "/api/backup/export",
+            method: Method::GET,
+            body_limit: None,
+            guard: Guard::Inline(InlineGuard {
+                prefix: "backup.export",
+                limit: 12,
+                window_ms: 60_000,
+                message: "Too many export requests. Try again shortly.",
+                rate_audit: Some("backup.export.rate_limited"),
+                unauthorised: "backup.export.unauthorised",
+                unauthorised_detail: UNAUTHORISED,
+            }),
+        },
+        RouteSpec {
+            path: "/api/backup/preview",
+            method: Method::POST,
+            body_limit: upload,
+            guard: Guard::None,
+        },
+        RouteSpec {
+            path: "/api/backup/restore",
+            method: Method::POST,
+            body_limit: upload,
+            guard: Guard::Inline(InlineGuard {
+                prefix: "backup.restore",
+                limit: 3,
+                window_ms: 10 * 60_000,
+                message: "Too many restore attempts. Try again later.",
+                rate_audit: Some("backup.restore.rate_limited"),
+                unauthorised: "backup.restore.unauthorised",
+                unauthorised_detail: UNAUTHORISED,
+            }),
+        },
+    ]
 }
 
 /// Phase 4, batch 4a — see `runner_writes.rs`.
@@ -961,6 +1027,11 @@ pub fn precheck(
         ("/api/auth/admin-token/logout", &Method::POST) => {
             super::maintenance_writes::logout_precheck(headers)?;
         }
+        // Phase 4, batch 5b: the restore refuses while a sync runs, and
+        // says so before it reads a body that may be a hundred megabytes.
+        ("/api/backup/restore", &Method::POST) => {
+            super::backup_writes::restore_precheck(w)?;
+        }
         _ => {}
     }
     Ok(actor)
@@ -1059,6 +1130,9 @@ pub fn perform(
     let spec = req.spec;
     if super::maintenance_writes::handles(spec) {
         return super::maintenance_writes::perform(&mut cx, req, actor);
+    }
+    if super::backup_writes::handles(spec) {
+        return super::backup_writes::perform(&mut cx, req, actor);
     }
     match (spec.path, &spec.method) {
         ("/api/date-format", &Method::POST) => date_format(&mut cx, req.body),

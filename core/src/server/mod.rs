@@ -15,7 +15,11 @@ mod activity_log;
 mod analysis;
 mod apps;
 pub mod auth;
+mod backup;
 mod backup_snapshots;
+#[cfg(test)]
+mod backup_tests;
+mod backup_writes;
 mod body;
 mod changelog;
 #[cfg(test)]
@@ -249,7 +253,28 @@ pub fn app(state: AppState) -> Router {
                 .delete(routes_writes::wayback_import_all_delete),
         )
         .route("/api/policy/sync-all", get(routes_operations::policy))
-        .route("/api/backup/snapshots", get(routes_operations::backups))
+        // Phase 4, batch 5b: the backup routes. The export is a GET that
+        // guards itself and writes an audit row, so it runs through the
+        // write framework; the download reads one file and nothing else.
+        .route(
+            "/api/backup/snapshots",
+            get(routes_operations::backups)
+                .put(routes_writes::backup_snapshots_put)
+                .post(routes_writes::backup_snapshots_post),
+        )
+        .route(
+            "/api/backup/snapshots/{filename}",
+            get(routes_operations::backup_snapshot_download),
+        )
+        .route("/api/backup/export", get(routes_writes::backup_export_get))
+        .route(
+            "/api/backup/preview",
+            post(routes_writes::backup_preview_post),
+        )
+        .route(
+            "/api/backup/restore",
+            post(routes_writes::backup_restore_post),
+        )
         .route(
             "/api/rate-limit/status",
             get(routes_operations::cooldowns).delete(routes_writes::rate_limit_status_delete),

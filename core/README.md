@@ -2330,3 +2330,180 @@ report with a longer one; and leaving `app_settings` out of Start Over
 failed exactly its four cases, the burst included. Each fault was
 removed before the final passing run.
 
+### Batch 5b — the backup routes (+6 handlers, 1 ticker)
+
+`core/src/server/backup.rs` ports `lib/backup.ts`: the export — every
+table of the insert order that exists, read in one transaction, the AI
+key and the webhook destination blanked at the source — signed with the
+install's key; `parseEnvelope` with its errors in Node's order and its
+tolerance (an array for a payload or for `tables`, a table that is not
+an object, columns derived from the first row); `summarizeBackup` with
+unknown tables warned about and sorted last by `localeCompare`; and
+`restoreBackup` — the signature verified before anything is touched, the
+prior counts taken, foreign keys turned off AROUND one transaction that
+wipes children-first and inserts parents-first, only the columns that
+still exist, every row through the sanitiser whatever the envelope's
+trust (the `flag.devopts.` and `AUDITOR_` settings dropped and counted,
+every stored URL through `sanitizePolicyUrl`), `foreign_key_check`
+vetoing the commit, enforcement put back as it was found.
+`backup_snapshots.rs` grows the rest of `lib/backup-snapshots.ts`: the
+settings save with its coercions and clamps, the snapshot written 0600
+to a temp name and renamed into place, the collision suffix, the
+last-run stamp, the prune past the retention count, the activity row,
+and the "is one due yet?" check. Over them, `backup_writes.rs` — the
+Node routes in order: `PUT` and `POST /api/backup/snapshots`, `GET
+/api/backup/snapshots/[filename]`, `GET /api/backup/export` with its
+audit row on every outcome, `POST /api/backup/preview`, and `POST
+/api/backup/restore` with its own: rate limited, unauthorised, bad
+request, untrusted, format error, failed, and the success row that
+carries the prior counts. The server runs the 35 s snapshot tick and the
+30-minute cadence `register()` arms.
+
+**The signature is the contract.** An install changes backend and keeps
+its data directory, `backup-signing.key` included, so a backup signed by
+one server has to verify on the other or every existing backup turns
+"untrusted" at the cutover. The MAC is HMAC-SHA256 over
+`canonicalize(envelope)`: object keys in `Array.prototype.sort` order —
+UTF-16 code units, which is not code-point order past the BMP — arrays
+in place, every scalar as `JSON.stringify` spells it. The Rust side
+feeds the same bytes to the MAC a row at a time, so a hundred-megabyte
+backup is never copied whole, and spells numbers through the one
+serializer every response already uses. The key file is read the way
+`Buffer.from(s, "base64")` reads it (either alphabet, strays skipped,
+the first `=` ends it) and minted from the OS CSPRNG, 0600, only when a
+signature is actually about to be made or checked: an unsigned upload
+mints nothing. `ring` is the one new direct dependency and adds no
+crate — it is already the crypto provider under reqwest's rustls.
+
+**What this batch adds.** A second serializer, because a person opens
+these files: `JSON.stringify(v, null, 2)` is `serde_json`'s pretty
+layout with the JavaScript number spelling, and the replay holds the
+snapshot files to Node's bytes by SHA-256. better-sqlite3 binds every
+JavaScript number as a DOUBLE, so a number restored into a TEXT column
+reads `34.0` on Node; the restore binds doubles too, and an INTEGER
+column takes an integral one back by affinity. Two places where uploaded
+or requested text would otherwise reach a sink are written so that it
+cannot: the download never joins the requested name onto a path — it
+compares it with what `backups/` lists and opens the entry it found —
+and the restore's INSERT is built from the live schema's own column
+strings, the backup choosing only which and in what order. The restore's
+"a sync is running" answer is a `precheck`, because Node gives it before
+reading a body that may be a hundred megabytes. The data directory and
+the key source come from `backup::env()`, which the replay points at a
+directory of its own per case.
+
+**The oracle — `core/scripts/extract-backup-cases.mjs`.** Runs the REAL
+handlers and the startup hook's own 35 s closure. Unlike the other
+oracles it does not wrap a case in a SAVEPOINT: `PRAGMA foreign_keys` is
+a no-op inside a transaction, so under one the restore would run with
+enforcement ON and a bad backup would fail on its INSERT instead of at
+`foreign_key_check` — not what production does. Each case wipes every
+table and the data directory instead, writes a fixed signing key (or
+none, where minting it is the case, with `randomBytes(32)` counted), and
+seeds snapshot files with fixed mtimes. 101 cases: the settings saved,
+clamped both ways, rounded, from strings, junk, `null`, a boolean and an
+array, partial, over a directory with a hand-named file and a stranger,
+and the body refusals; the snapshot over an empty install and the
+corpus, minting the key, replacing one too short, reading one with stray
+whitespace, pruning, ranking a hand-named file by its mtime, colliding
+within a millisecond, and bursting; the download, its attachment name
+sanitised per UTF-16 unit, and each refusal including two traversals;
+the export, its audit detail counting UTF-16 units; the preview over an
+export, unknown and malformed tables, and each format error; the restore
+trusted, tampered, unsigned, under another algorithm, with a MAC only
+`Buffer.from` would read, signed elsewhere, allowed by query and by
+header and not by another spelling, sanitising a hostile backup (signed
+by the oracle, and asserted trusted by the real verifier), aborting on a
+foreign-key violation, a missing column and a duplicate key, emptying
+the install, refusing during a sync before it reads the body; and the
+tick disabled, due, not yet due, due to the millisecond, and over an
+unreadable last run. Every case records the wire response with its
+download headers, the write stream, all twenty-eight tables, the
+`backups/` directory afterwards by name, size and SHA-256, the key file,
+and that enforcement is back on. `core/src/server/backup_tests.rs`
+replays each. Two figures cannot be pinned and are handled on both
+sides: the data directory is spelled `<DATA_DIR>`, and a snapshot named
+by a collision lists by its real mtime.
+
+Live: the snapshot settings write and the manual snapshot join
+`read-parity.mjs --mutate`. The other four stay quarantined in the
+manifest — they move files, and the restore replaces the database — and
+are held by `scripts/parity/backup-probes.mjs` instead, after every
+other pass because it is destructive. Node mints the signing key BEFORE
+the data directory is copied, so both servers hold one key; then each
+server's export is compared for headers, tables and columns, the Rust
+bytes are held to `JSON.stringify(v, null, 2)` of themselves, each
+export and seven hand-made uploads (one of them 3 MiB) are previewed on
+both servers and must answer identically, a snapshot is created and
+downloaded on each, and four missing and traversing names must be the
+same 404. Then the restore, which allows three attempts in ten minutes,
+so three is what the probe spends. The parity fixtures plant a
+deliberate orphan — a verdict for an app that does not exist — so an
+export of that install is a backup the restore must refuse: uploaded to
+both, it has to get PAST the signature gate on each (an untrusted backup
+is a 409 and never reaches the check) and abort identically at
+`foreign_key_check`, with nothing written. With the orphan removed from
+both databases, **each server's export is restored into both**, and must
+come back `trusted` from the backend that did not sign it, with the same
+per-table counts. Last, both servers export again and every table but
+the audit log must hold the same rows. (The refusals of a tampered,
+unsigned or foreign-signed backup are pure functions of the upload and
+the key; the oracle holds those.) Latest pass: READ PARITY OK — 178
+read, 57 mutation and 26 backup checks. The probe's first run is worth
+recording: it failed, on BOTH servers alike, because nobody had asked
+whether the parity install was restorable — Node's own restore refuses
+its own export of it, for that orphan. And one live negative control,
+because the fixture cannot show that the PROBE can fail: with the
+canonical keys left unsorted in the core and nothing else changed, the
+gate failed exactly the four checks predicted — the orphan check (Node
+answered `untrusted_backup` to the core's export instead of reaching the
+foreign-key check), both trusted restores (each backend refused the
+other's signature and accepted its own) and the round trip — while all
+178 reads, all 57 mutations and the other 23 backup checks passed.
+
+Rust suite: 223 pass (218 + 5 new). Sixteen negative controls, each
+predicted from the fixture before it ran. Leaving the canonical keys
+unsorted failed the fifteen cases whose rows are not already in key
+order — every signed export over the corpus and every trusted restore —
+and none of the empty-install ones, whose only rows are `key`, `value`.
+Binding restored numbers as integers, restoring the denied settings and
+switching the URL sanitiser off each failed exactly the one hostile
+restore; leaving foreign keys on failed exactly the foreign-key abort;
+removing the precheck failed exactly the restore during a sync; a base64
+reader that stops at a stray failed exactly the `Buffer.from` MAC;
+minting a key for an unsigned upload failed exactly that case; accepting
+any `allowUntrusted` failed exactly the other-spelling refusal; a
+strictly-after due check failed exactly the to-the-millisecond tick;
+replacing the attachment name per character failed exactly the download
+with an emoji in its name; counting the export's bytes failed exactly
+the three exports over the corpus, which holds an emoji and a snowman;
+not blanking the secrets failed the six exports and snapshots over the
+corpus; never pruning failed the four retention cases; not warning about
+unknown tables failed the two previews that have one; and writing the
+snapshot compact failed all fourteen cases that write one. Each fault
+was removed before the final passing run. (One trap for whoever runs
+these next: restoring a source file with an older mtime does not make
+cargo rebuild, so the last control's binary survives until a file is
+touched.)
+
+**What CI found that the local runs did not.** Every replay sets
+`PRIVACYTRACKER_BIND_HOST` to loopback and clears the admin token for as
+long as it runs, under `trust::env_lock()`. The gate's own tests rely on
+the bind host being UNSET — exposure then forces auth — and did not hold
+that lock, so one that overlapped a replay saw a loopback server needing
+no token and got a 200 where it expected a 401. Six replays had been
+racing them already; the seventh made the overlap certain on CI's
+four-core runner, twice out of twice, and never locally. The gate tests
+now run under the lock (`scenario` in `gate.rs`). A new test module that
+reads the environment owes the same.
+
+**One divergence, chosen.** On a case-insensitive volume Node finds a
+snapshot whose requested name differs from the file's only in case, and
+serves it under the requested spelling; the core compares names exactly
+and answers 404. Names are generated, upper-case `T` and `Z` included,
+and the UI downloads the name the listing gave it.
+
+**Left in batch 5:** the audit-bundle import and export, the two support
+bundles (`/api/diagnostics/bundle`, `/api/deployment/support-bundle`)
+and `POST /api/dev/seed-sample-data`.
+
