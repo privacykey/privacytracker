@@ -36,6 +36,11 @@ import { useTranslations } from "next-intl";
  *     profile" toggle is on.
  *   - Pure HTML/CSS — ECharts would be overkill for a matrix of coloured
  *     squares and would cost us a canvas per app.
+ *   - ARIA table semantics (table / rowgroup / row / columnheader /
+ *     rowheader / cell) so a screen reader can walk the matrix with its
+ *     table commands and hear the app and category for each cell. Each
+ *     cell's severity is visually hidden text rather than an aria-label:
+ *     a plain div cannot be named, and axe flags aria-label on one.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CATEGORY_META } from "../../../lib/privacy-meta";
@@ -88,7 +93,12 @@ interface HoverState {
   sev: string | null;
 }
 
-export default function SmallMultiples() {
+export default function SmallMultiples({
+  labelledBy,
+}: {
+  /** id of the heading that names the matrix table. */
+  labelledBy?: string;
+} = {}) {
   const tCharts = useTranslations("stats.charts");
   const tTier = useTranslations("privacy_profile_tier_short");
   const [data, setData] = useState<MatrixData | null>(null);
@@ -205,98 +215,268 @@ export default function SmallMultiples() {
           cells, so moving the mouse between adjacent cells doesn't blink
           the row/column highlight off and on again. */}
       <div className="sm-matrix-col" onMouseLeave={() => setHover(null)}>
-        {/* Sticky category icon header. Pinned below the site nav so
-            column headers stay visible while scanning the rows below. */}
-        <div className="sm-sticky-stack">
-          <div
-            className="sm-header"
-            style={{
-              display: "grid",
-              gridTemplateColumns: gridTemplate,
-              gap: 2,
-              alignItems: "center",
-              paddingBottom: 4,
-            }}
-          >
-            {/* First grid cell: matrix-size caption so it aligns with the
-                app-name column below. */}
+        {/* The table wraps only the header and the rows. The "everything
+            filtered out" message sits after it, so the table never owns a
+            child that isn't a row. The sticky header's containing block is
+            this wrapper, which spans the rows, so it pins exactly as it did
+            when it sat directly in .sm-matrix-col. */}
+        <div aria-labelledby={labelledBy} role="table">
+          {/* Sticky category icon header. Pinned below the site nav so
+            column headers stay visible while scanning the rows below.
+
+            The useFocusableInteractive suppressions in this table: Biome
+            counts row / columnheader / rowheader as widget roles, which
+            they are only inside role="grid". In a static role="table"
+            they are structure, and making each one a tab stop would bury
+            the app links among ~150 inert stops. */}
+          <div className="sm-sticky-stack" role="rowgroup">
+            {/* biome-ignore lint/a11y/useFocusableInteractive: static table row, see above */}
             <div
-              className="sm-legend-count"
-              title={
-                hiddenCount > 0
-                  ? tCharts("matrix_hidden_by_filter", { count: hiddenCount })
-                  : undefined
-              }
+              className="sm-header"
+              role="row"
+              style={{
+                display: "grid",
+                gridTemplateColumns: gridTemplate,
+                gap: 2,
+                alignItems: "center",
+                paddingBottom: 4,
+              }}
             >
-              {tCharts("matrix_size", {
-                shown: sorted.length,
-                total: data.apps.length,
-                cols,
-              })}
-            </div>
-            {data.categories.map((cat) => {
-              const meta = CATEGORY_META[cat.identifier];
-              const isHoverCol = hover?.catId === cat.identifier;
-              const pref = profile?.[cat.identifier];
-              // Tooltip gets an extra line about the user's preference when
-              // one is set — keeps the in-cell hover explanatory without
-              // needing a separate on-hover popover for the header.
-              const prefTitle = prefOverlay
-                ? pref
-                  ? `\n${tCharts("matrix_pref_line", { label: tTier(pref) })}`
-                  : `\n${tCharts("matrix_no_pref_line")}`
-                : "";
-              return (
-                <div
-                  className={`sm-category-cell ${isHoverCol ? "sm-category-cell--hover" : ""}`}
-                  key={cat.identifier}
-                  onMouseEnter={() =>
-                    setHover({
-                      app: "",
-                      catId: cat.identifier,
-                      catLabel: cat.label,
-                      sev: null,
-                    })
-                  }
-                  title={`${cat.label}${meta?.description ? ` — ${meta.description}` : ""}\n${tCharts("matrix_collect_count", { count: cat.appCount })}${prefTitle}`}
-                >
-                  <div className="sm-category-icon">{meta?.icon ?? "•"}</div>
-                  {/* Preference bar directly below the icon. Renders only
+              {/* First grid cell: matrix-size caption so it aligns with the
+                app-name column below. It heads the app-name column. */}
+              {/* biome-ignore lint/a11y/useFocusableInteractive: static table header, see above */}
+              <div
+                className="sm-legend-count"
+                role="columnheader"
+                title={
+                  hiddenCount > 0
+                    ? tCharts("matrix_hidden_by_filter", { count: hiddenCount })
+                    : undefined
+                }
+              >
+                {tCharts("matrix_size", {
+                  shown: sorted.length,
+                  total: data.apps.length,
+                  cols,
+                })}
+              </div>
+              {data.categories.map((cat) => {
+                const meta = CATEGORY_META[cat.identifier];
+                const isHoverCol = hover?.catId === cat.identifier;
+                const pref = profile?.[cat.identifier];
+                // Tooltip gets an extra line about the user's preference when
+                // one is set — keeps the in-cell hover explanatory without
+                // needing a separate on-hover popover for the header.
+                const prefTitle = prefOverlay
+                  ? pref
+                    ? `\n${tCharts("matrix_pref_line", { label: tTier(pref) })}`
+                    : `\n${tCharts("matrix_no_pref_line")}`
+                  : "";
+                return (
+                  // biome-ignore lint/a11y/useFocusableInteractive: static table header, see the note above the header row
+                  <div
+                    className={`sm-category-cell ${isHoverCol ? "sm-category-cell--hover" : ""}`}
+                    key={cat.identifier}
+                    onMouseEnter={() =>
+                      setHover({
+                        app: "",
+                        catId: cat.identifier,
+                        catLabel: cat.label,
+                        sev: null,
+                      })
+                    }
+                    role="columnheader"
+                    title={`${cat.label}${meta?.description ? ` — ${meta.description}` : ""}\n${tCharts("matrix_collect_count", { count: cat.appCount })}${prefTitle}`}
+                  >
+                    {/* The emoji and the bar are drawings; the header's
+                        name is the visually hidden label (plus the
+                        preference, while the overlay is on). */}
+                    <span className="sr-only">
+                      {cat.label}
+                      {prefOverlay &&
+                        `, ${
+                          pref
+                            ? tCharts("matrix_pref_line", {
+                                label: tTier(pref),
+                              })
+                            : tCharts("no_pref_aria")
+                        }`}
+                    </span>
+                    <div aria-hidden="true" className="sm-category-icon">
+                      {meta?.icon ?? "•"}
+                    </div>
+                    {/* Preference bar directly below the icon. Renders only
                       when the overlay toggle is on; when the category has
                       no explicit preference we still reserve the slot with
                       a faint empty marker so the grid height doesn't
                       shift column by column. */}
-                  {prefOverlay &&
-                    (pref ? (
-                      <div
-                        aria-label={tCharts("matrix_pref_line", {
-                          label: tTier(pref),
-                        })}
-                        className="sm-category-pref"
-                        // `data-tier` is what the shape-mode CSS hooks
-                        // onto when `html[data-a11y-shapes="on"]` is set;
-                        // the per-tier gradient overlays the flat colour
-                        // so colour-blind users get a texture cue on
-                        // each preference bar.
-                        data-tier={pref}
-                        style={{ backgroundColor: PREF_COLOR[pref] }}
-                      />
-                    ) : (
-                      <div
-                        aria-label={tCharts("no_pref_aria")}
-                        className="sm-category-pref sm-category-pref--none"
-                      />
-                    ))}
-                </div>
-              );
-            })}
+                    {prefOverlay &&
+                      (pref ? (
+                        <div
+                          aria-hidden="true"
+                          className="sm-category-pref"
+                          // `data-tier` is what the shape-mode CSS hooks
+                          // onto when `html[data-a11y-shapes="on"]` is set;
+                          // the per-tier gradient overlays the flat colour
+                          // so colour-blind users get a texture cue on
+                          // each preference bar.
+                          data-tier={pref}
+                          style={{ backgroundColor: PREF_COLOR[pref] }}
+                        />
+                      ) : (
+                        <div
+                          aria-hidden="true"
+                          className="sm-category-pref sm-category-pref--none"
+                        />
+                      ))}
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Body rows. When filters hid everything this is omitted and the
+            empty-state below the table takes its place; the sticky header
+            and sidebar stay rendered so the user can always reach the
+            toggle to reverse their filter. */}
+          {sorted.length > 0 && (
+            <div
+              className="sm-body"
+              role="rowgroup"
+              style={{ display: "grid", gap: 3 }}
+            >
+              {sorted.map((app) => {
+                const row = data.cells[app.id] ?? {};
+                const isHoverRow = hover?.app === app.name;
+                return (
+                  // biome-ignore lint/a11y/useFocusableInteractive: static table row, see the note above the header row
+                  <div
+                    key={app.id}
+                    role="row"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: gridTemplate,
+                      gap: 2,
+                      alignItems: "center",
+                      padding: "3px 0",
+                    }}
+                  >
+                    {/* App label is a link to /apps/[id] so the strip doubles as
+                    a nav jump — users were hovering the name expecting a
+                    click target. Highlighted when any cell in this row is
+                    under the cursor (crosshair-left). The wrapper carries
+                    the rowheader role, since a role on the link itself
+                    would replace its link semantics. The link inside is
+                    the row's focus stop. */}
+                    {/* biome-ignore lint/a11y/useFocusableInteractive: static table header, see the note above the header row */}
+                    <div className="sm-app-cell" role="rowheader">
+                      <Link
+                        className={`sm-app-link ${isHoverRow ? "sm-app-link--hover" : ""}`}
+                        href={`/apps/${app.id}`}
+                        onMouseEnter={() =>
+                          setHover({
+                            app: app.name,
+                            catId: "",
+                            catLabel: "",
+                            sev: null,
+                          })
+                        }
+                        title={tCharts("matrix_open_app_title", {
+                          name: app.name,
+                        })}
+                      >
+                        <span className="sm-app-link-name">{app.name}</span>
+                        <span className="sm-app-link-count">
+                          {app.categoryCount}
+                        </span>
+                      </Link>
+                    </div>
+                    {data.categories.map((cat) => {
+                      const sev = row[cat.identifier];
+                      const bg = sev ? SEV_COLOR[sev] : EMPTY;
+                      // Mismatch border — cell severity exceeds the user's
+                      // stated preference for this category. Uses inset
+                      // box-shadow instead of `border` so enabling the overlay
+                      // doesn't change the cell's layout size.
+                      const pref = profile?.[cat.identifier];
+                      const observedTier = sev
+                        ? TYPE_IDENTIFIER_TO_TIER[
+                            sev as keyof typeof TYPE_IDENTIFIER_TO_TIER
+                          ]
+                        : undefined;
+                      const isMismatch = !!(
+                        prefOverlay &&
+                        pref &&
+                        observedTier &&
+                        TIER_RANK[observedTier] > TIER_RANK[pref]
+                      );
+                      return (
+                        <div
+                          className="sm-cell"
+                          // `data-sev` exposes the severity tier to the
+                          // shape-mode CSS so colour-blind users get a
+                          // per-tier gradient overlay (diagonal stripes /
+                          // dots / cross-hatch) on top of the existing
+                          // red / orange / cream fill. Omitted on empty
+                          // cells so the no-data styling stays untouched.
+                          data-sev={sev || undefined}
+                          key={cat.identifier}
+                          onMouseEnter={() =>
+                            setHover({
+                              app: app.name,
+                              catId: cat.identifier,
+                              catLabel: cat.label,
+                              sev: sev ?? null,
+                            })
+                          }
+                          role="cell"
+                          style={{
+                            aspectRatio: "1",
+                            borderRadius: 3,
+                            // `backgroundColor` (not the `background`
+                            // shorthand) so the shape-mode CSS rule can
+                            // layer `background-image: <gradient>` on top
+                            // without the inline declaration nuking it.
+                            backgroundColor: bg,
+                            // Hairline on empty cells derived from the text
+                            // token (3% tint) so it stays a faint outline in
+                            // light mode too — matches the old white 3% in
+                            // dark mode exactly.
+                            border: sev
+                              ? "none"
+                              : "1px solid color-mix(in srgb, var(--text, #f0f0f5) 3%, transparent)",
+                            boxShadow: isMismatch
+                              ? "inset 0 0 0 2px #fff"
+                              : "none",
+                            cursor: "default",
+                          }}
+                          title={
+                            sev
+                              ? `${app.name} — ${cat.label}: ${tCharts(SEV_LABEL_KEY[sev])}`
+                              : `${app.name} — ${cat.label}: ${tCharts("tooltip_not_collected")}`
+                          }
+                        >
+                          {/* The colour says the severity to sighted users;
+                            this says it to everyone else. The row and
+                            column headers supply the app and category. */}
+                          <span className="sr-only">
+                            {sev
+                              ? tCharts(SEV_LABEL_KEY[sev])
+                              : tCharts("tooltip_not_collected")}
+                            {isMismatch &&
+                              `, ${tCharts("matrix_exceeds_pref")}`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Body rows — or an inline empty-state when filters hid everything.
-            We keep the sticky header and sidebar rendered above so the user
-            can always reach the toggle to reverse their filter. */}
-        {sorted.length === 0 ? (
+        {sorted.length === 0 && (
           <div className="empty-state" style={{ padding: 24 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
             <div>{tCharts("no_apps_match")}</div>
@@ -305,118 +485,6 @@ export default function SmallMultiples() {
                 label: tCharts("filter_hide_no_categories"),
               })}
             </div>
-          </div>
-        ) : (
-          <div className="sm-body" style={{ display: "grid", gap: 3 }}>
-            {sorted.map((app) => {
-              const row = data.cells[app.id] ?? {};
-              const isHoverRow = hover?.app === app.name;
-              return (
-                <div
-                  key={app.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: gridTemplate,
-                    gap: 2,
-                    alignItems: "center",
-                    padding: "3px 0",
-                  }}
-                >
-                  {/* App label is a link to /apps/[id] so the strip doubles as
-                    a nav jump — users were hovering the name expecting a
-                    click target. Highlighted when any cell in this row is
-                    under the cursor (crosshair-left). */}
-                  <Link
-                    className={`sm-app-link ${isHoverRow ? "sm-app-link--hover" : ""}`}
-                    href={`/apps/${app.id}`}
-                    onMouseEnter={() =>
-                      setHover({
-                        app: app.name,
-                        catId: "",
-                        catLabel: "",
-                        sev: null,
-                      })
-                    }
-                    title={tCharts("matrix_open_app_title", {
-                      name: app.name,
-                    })}
-                  >
-                    <span className="sm-app-link-name">{app.name}</span>
-                    <span className="sm-app-link-count">
-                      {app.categoryCount}
-                    </span>
-                  </Link>
-                  {data.categories.map((cat) => {
-                    const sev = row[cat.identifier];
-                    const bg = sev ? SEV_COLOR[sev] : EMPTY;
-                    const meta = CATEGORY_META[cat.identifier];
-                    // Mismatch border — cell severity exceeds the user's
-                    // stated preference for this category. Uses inset
-                    // box-shadow instead of `border` so enabling the overlay
-                    // doesn't change the cell's layout size.
-                    const pref = profile?.[cat.identifier];
-                    const observedTier = sev
-                      ? TYPE_IDENTIFIER_TO_TIER[
-                          sev as keyof typeof TYPE_IDENTIFIER_TO_TIER
-                        ]
-                      : undefined;
-                    const isMismatch = !!(
-                      prefOverlay &&
-                      pref &&
-                      observedTier &&
-                      TIER_RANK[observedTier] > TIER_RANK[pref]
-                    );
-                    return (
-                      <div
-                        aria-label={`${app.name}, ${cat.label}${meta?.description ? `, ${meta.description}` : ""}${isMismatch ? `, ${tCharts("matrix_exceeds_pref")}` : ""}`}
-                        className="sm-cell"
-                        // `data-sev` exposes the severity tier to the
-                        // shape-mode CSS so colour-blind users get a
-                        // per-tier gradient overlay (diagonal stripes /
-                        // dots / cross-hatch) on top of the existing
-                        // red / orange / cream fill. Omitted on empty
-                        // cells so the no-data styling stays untouched.
-                        data-sev={sev || undefined}
-                        key={cat.identifier}
-                        onMouseEnter={() =>
-                          setHover({
-                            app: app.name,
-                            catId: cat.identifier,
-                            catLabel: cat.label,
-                            sev: sev ?? null,
-                          })
-                        }
-                        style={{
-                          aspectRatio: "1",
-                          borderRadius: 3,
-                          // `backgroundColor` (not the `background`
-                          // shorthand) so the shape-mode CSS rule can
-                          // layer `background-image: <gradient>` on top
-                          // without the inline declaration nuking it.
-                          backgroundColor: bg,
-                          // Hairline on empty cells derived from the text
-                          // token (3% tint) so it stays a faint outline in
-                          // light mode too — matches the old white 3% in
-                          // dark mode exactly.
-                          border: sev
-                            ? "none"
-                            : "1px solid color-mix(in srgb, var(--text, #f0f0f5) 3%, transparent)",
-                          boxShadow: isMismatch
-                            ? "inset 0 0 0 2px #fff"
-                            : "none",
-                          cursor: "default",
-                        }}
-                        title={
-                          sev
-                            ? `${app.name} — ${cat.label}: ${tCharts(SEV_LABEL_KEY[sev])}`
-                            : `${app.name} — ${cat.label}: ${tCharts("tooltip_not_collected")}`
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              );
-            })}
           </div>
         )}
       </div>

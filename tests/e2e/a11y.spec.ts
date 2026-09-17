@@ -4,19 +4,25 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { expectNoBlockingViolations } from "./helpers/axe";
+import { expectNoBlockingViolations, type KnownIssue } from "./helpers/axe";
 
 /**
  * Blocking accessibility gate.
  *
- * Axe-core scans of the five highest-traffic surfaces: /welcome, the
+ * Axe-core scans of the highest-traffic surfaces: /welcome, the
  * onboarding import-matching step, /dashboard, the app detail page,
- * and the mobile navigation drawer. Serious/critical WCAG 2.2 A/AA
- * violations, target size included, fail CI (this file runs inside
+ * the mobile navigation drawer, and the Stats and Privacy Map pages.
+ * Serious/critical WCAG 2.2 A/AA violations, target size included,
+ * fail CI (this file runs inside
  * the `quality` job's Playwright step like every other spec here).
  *
- * The known-issue allowlist (see `helpers/axe.ts`) is EMPTY: every
- * defect it tracked has been fixed. If a new violation must ship
+ * Most scans run in light mode only. Stats and Privacy Map are also
+ * scanned in dark and high-contrast mode, because their failures were
+ * theme-specific: text on chart fills and severity tints that passed
+ * in one palette and not another.
+ *
+ * The known-issue allowlist (see `helpers/axe.ts`) has one entry,
+ * `DARK_MODE_KNOWN_ISSUES` below. If a new violation must ship
  * temporarily, add a per-surface entry whose reason names the pending
  * fix — and delete it in the same PR as that fix.
  *
@@ -118,6 +124,41 @@ async function seedCannedApps(request: APIRequestContext): Promise<string> {
     "expected the canned Instagram app to seed"
   ).toBeTruthy();
   return String(instagram?.id);
+}
+
+type Theme = "light" | "dark" | "high-contrast";
+
+const THEMES: Theme[] = ["light", "dark", "high-contrast"];
+
+/** Dark-mode-only failures shared by every page, via the nav. */
+const DARK_MODE_KNOWN_ISSUES: KnownIssue[] = [
+  {
+    rule: "color-contrast",
+    match: "nav-add-apps-label",
+    reason:
+      "white '+ Add Apps' label on the dark-mode --blue fill is 3.6:1; " +
+      "fix/detail-page-axe-findings moves primary buttons onto --blue-fill",
+  },
+];
+
+/**
+ * Switch the page to `theme` for its next navigation. The OS scheme is
+ * emulated; high contrast is the app's own theme, which the
+ * pre-hydration bootstrap in app/layout.tsx reads from localStorage on
+ * load, so the caller must navigate after this. Needs a page already on
+ * the app's origin (localStorage is per origin).
+ */
+async function applyTheme(page: Page, theme: Theme) {
+  await page.emulateMedia({
+    colorScheme: theme === "light" ? "light" : "dark",
+  });
+  await page.evaluate((t) => {
+    if (t === "high-contrast") {
+      localStorage.setItem("a11y-quick-theme", "high-contrast");
+    } else {
+      localStorage.removeItem("a11y-quick-theme");
+    }
+  }, theme);
 }
 
 async function setDefaultFocus(request: APIRequestContext) {
@@ -312,5 +353,100 @@ browserFlow(
     await expectNoBlockingViolations(page, "mobile-nav", {
       include: "nav.nav",
     });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 6. /dashboard/stats — every theme, plus the matrix hover panel
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: /dashboard/stats has no blocking violations in any theme",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    // A partial privacy profile, so the matrix renders both kinds of
+    // preference bar (set and "no preference") and at least one cell
+    // that exceeds its category's preference, which is what puts the
+    // mismatch warning in the hover panel. Instagram collects location.
+    const profile = await request.put("/api/privacy-profile", {
+      headers: sameOriginHeaders,
+      data: {
+        profile: {
+          CONTACT_INFO: "not_linked",
+          LOCATION: "not_collected",
+          IDENTIFIERS: "linked",
+          USAGE_DATA: "tracking",
+        },
+      },
+    });
+    await expect(profile).toBeOK();
+
+    try {
+      await page.goto("/dashboard/stats");
+      for (const theme of THEMES) {
+        await applyTheme(page, theme);
+        await page.goto("/dashboard/stats");
+        // Client shell: wait for the fetched charts, not just the
+        // wrapper. The bar counts sit on the card, the matrix and its
+        // preference bars arrive on their own fetches.
+        await expect(page.locator(".bar-count").first()).toBeVisible();
+        await expect(page.locator(".sm-cell").first()).toBeVisible();
+        await expect(page.locator(".sm-category-pref").first()).toBeVisible();
+        await page.waitForTimeout(600);
+
+        await expectNoBlockingViolations(page, `stats-${theme}`, {
+          knownIssues: theme === "dark" ? DARK_MODE_KNOWN_ISSUES : [],
+        });
+
+        // The hover panel only renders its severity, preference and
+        // mismatch lines while a cell is hovered, so the page scan
+        // above never sees them.
+        await page
+          .locator(".sm-cell", { hasText: "exceeds your preference" })
+          .first()
+          .hover();
+        await expect(page.locator(".sm-tooltip-mismatch")).toBeVisible();
+        await expectNoBlockingViolations(page, `stats-${theme}-hover`, {
+          include: ".sm-sidebar",
+        });
+        await page.mouse.move(0, 0);
+      }
+    } finally {
+      // The suite shares one DB; don't leave a profile behind that
+      // would change what later specs render.
+      await request.put("/api/privacy-profile", {
+        headers: sameOriginHeaders,
+        data: { profile: null },
+      });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 7. /dashboard/privacy (Privacy Map) — every theme
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: /dashboard/privacy has no blocking violations in any theme",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    await page.goto("/dashboard/privacy");
+    for (const theme of THEMES) {
+      await applyTheme(page, theme);
+      await page.goto("/dashboard/privacy");
+      // The "not linked" badge is the one that failed in light mode.
+      await expect(
+        page.locator(".severity-badge.severity-unlinked").first()
+      ).toBeVisible();
+      await page.waitForTimeout(600);
+
+      await expectNoBlockingViolations(page, `privacy-map-${theme}`, {
+        knownIssues: theme === "dark" ? DARK_MODE_KNOWN_ISSUES : [],
+      });
+    }
   }
 );

@@ -33,6 +33,34 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Accessibility on the Stats and Privacy Map pages, found by an axe scan
+  across light, dark and high-contrast mode:
+  - The per-app severity matrix on the Stats page is now a table for
+    screen readers. Each cell announces its severity ("Used to track
+    you", "Not collected", plus "exceeds your preference" where it does),
+    with the app and category as its row and column headers. Before, the
+    cells and preference bars carried labels that assistive technology
+    ignores, so the matrix read as nothing at all.
+  - The "N apps" counts in the "Most Collected Data" and "Accessibility
+    Features" charts now sit after each bar instead of inside the coloured
+    fill. White on the fills was as low as 1.9:1 in dark mode and 1.05:1
+    on high-contrast yellow, and on short bars the count ran off the fill
+    onto the track. Bars are also drawn to scale now: a one-app bar used to
+    be stretched wide enough to hold its label.
+  - On phones those charts put each label on its own line, left-aligned,
+    with a full-height bar below. The phone layout rules had been
+    overridden by the desktop ones, which left labels centred and the bars
+    squashed.
+  - The matrix's hover panel reaches AA contrast in dark mode (its hint,
+    "Not collected" and "No preference" lines, and the red severity
+    label), and its "Exceeds your preference" warning is readable in light
+    mode (1.48:1 before).
+  - The "Not linked" severity badge reaches AA contrast in light mode:
+    the light cream is a shade deeper (4.34:1 before, 4.73:1 now).
+  - The CI accessibility gate (`tests/e2e/a11y.spec.ts`) now scans both
+    pages in light, dark and high-contrast mode, including the matrix's
+    hover panel.
+
 - A one-app iTunes chart is read correctly. Apple's legacy RSS charts are
   an Atom feed converted to JSON, and a chart of exactly one app carries
   its entry as a bare object rather than a one-element array. Both readers
