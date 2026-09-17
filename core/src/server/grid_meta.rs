@@ -60,7 +60,7 @@ pub(crate) fn type_to_tier(type_identifier: &str) -> Option<&'static str> {
 
 /// `CATEGORY_META[key].label` — the fourteen real keys. Note `OTHER`, not
 /// `OTHER_DATA`.
-fn category_label(key: &str) -> Option<&'static str> {
+pub(super) fn category_label(key: &str) -> Option<&'static str> {
     Some(match key {
         "CONTACT_INFO" => "Contact Info",
         "HEALTH_AND_FITNESS" => "Health & Fitness",

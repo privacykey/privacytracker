@@ -806,7 +806,7 @@ fn latest_snapshot(conn: &Connection, app_id: &str) -> Result<Option<Vec<TypeSna
 }
 
 /// `buildSnapshot`: the privacy rows in insertion order.
-fn build_snapshot(conn: &Connection, app_id: &str) -> Result<Vec<TypeSnapshot>, String> {
+pub(crate) fn build_snapshot(conn: &Connection, app_id: &str) -> Result<Vec<TypeSnapshot>, String> {
     let mut types = conn
         .prepare("SELECT id, identifier, title FROM privacy_types WHERE app_id = ?")
         .map_err(message)?;

@@ -1677,7 +1677,7 @@ export const QUARANTINE = [
   {
     route: "/api/dev/seed-sample-data",
     method: "POST",
-    why: "already run identically by the seeder; ?source=live would scrape",
+    why: "its live mode scrapes Apple, and its canned mode mints random ids under each server's own clock; probeSeedRoute empties both servers, has each seed itself and compares the two libraries",
   },
 
   // -- outbound to archive.org

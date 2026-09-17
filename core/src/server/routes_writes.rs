@@ -266,3 +266,7 @@ wrapper!(backup_restore_post, "/api/backup/restore", POST);
 
 wrapper!(export_audit_bundle_post, "/api/export/audit-bundle", POST);
 wrapper!(import_audit_bundle_post, "/api/import/audit-bundle", POST);
+
+// ── Phase 4, batch 5d ────────────────────────────────────────────────
+
+wrapper!(seed_sample_data_post, "/api/dev/seed-sample-data", POST);

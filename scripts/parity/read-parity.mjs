@@ -53,6 +53,7 @@ import {
   primeOperationsAfterBoot,
 } from "./operations-fixture.mjs";
 import { probeOperationsReads } from "./operations-probes.mjs";
+import { probeSeedRoute } from "./seed-probes.mjs";
 import {
   applySinceInstallFixture,
   BRIDGED_IDS,
@@ -292,6 +293,9 @@ const WRITE_ROUTES = [
   // quarantined too — a download stamped with the clock, an upload — and
   // are held live by probeBundleRoutes, between this pass and the backup
   // probe.
+  // Phase 4, batch 5d: the dev seed is quarantined as well — its live
+  // mode scrapes Apple — and its canned mode is held by probeSeedRoute,
+  // after the backup probe, because it begins with a reset.
 ];
 
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -1983,10 +1987,22 @@ async function main() {
       )) && backupOk;
   }
 
+  // The dev seed. Every pass above served ONE seeded database, copied
+  // from Node; here both are emptied and each seeds itself. Last of all,
+  // because it starts with a reset.
+  let seedOk = true;
+  if (args.mutate) {
+    console.log(
+      "\n── dev seed (both servers emptied, each seeding itself, and the two libraries compared) ──"
+    );
+    seedOk = await probeSeedRoute(args.node, rustBase, TOKEN);
+  }
+
   cleanup();
   const ok =
     backupOk &&
     bundlesOk &&
+    seedOk &&
     discoveryOk &&
     operationsOk &&
     devicesOk &&

@@ -2665,5 +2665,124 @@ The duplicate message: Node formats it in the HOST's locale and, by ICU
 version, with a narrow no-break space before `AM`; the core always
 writes en-US with a plain space, and the oracle pins Node to that.
 
-**Left in batch 5:** `POST /api/dev/seed-sample-data`.
+### Batch 5d — the dev seed (+1 handler)
+
+`core/src/server/seed_writes.rs` ports `POST /api/dev/seed-sample-data`,
+the route that gives a fresh install something to look at, in its two
+modes. **Canned** (`?source=canned`) writes the ten-app demo set in one
+transaction: each app under an id derived from its slug (SHA-1, as Node
+mints it, behind a leading 9 no real track id has), its declared
+accessibility features resolved against the catalogue, its hand-written
+policy summary stored as a real `ready` analysis — the source text, its
+SHA-256, its word count, the lenses in canonical order — and, where the
+fixture has an earlier summary, the two policy versions that make the
+change banner render; then the labels, and a back-dated timeline walked
+oldest first, each step diffed against the last by the same
+`diff_snapshots` a scrape uses and saved as `triggered_by = 'sample'`,
+Wayback steps as Wayback rows. All ten or none. **Live** asks the iTunes
+top-free chart for a region — `?country=`, else a stored `app_country`
+that was actually set, else `au` — and `?limit=` apps of it, read as
+`parseInt` reads it, ten by default and twenty-five at most; drops the
+entries with no track id or no product link; skips what is already
+tracked; runs each of the rest through the `fetch_and_parse_app` an
+import uses; adds two back-dated snapshots, sixty and thirty days ago,
+with two and then one category trimmed off the FIRST type; and waits
+250 ms before the next. Apple's rate limit stops the walk and keeps what
+it has. Both modes close with the `reset` activity row and the audit
+row. The guard is the strict one: an admin token has to be CONFIGURED
+for the route to run at all, loopback or not.
+
+**The demo set is data; what is done with it is ported.**
+`core/src/server/sample_apps.json` is written by the oracle from
+`lib/sample-apps.ts` — the ten apps, the accessibility catalogue, the
+lens order and the lens sentences — and embedded, as `flag_rules.json`
+is. CI regenerates it with the fixture and fails on a diff in either, so
+a demo app added on the Node side cannot leave the core seeding a
+different library. `ring`, already a dependency, supplies both hashes.
+
+**Not here: the policy pipeline.** Node's live walk scrapes with
+`summarizePolicies` on, so each new app then has its developer's policy
+page fetched, hashed and summarised. That pipeline is Phase 5. The one
+branch of it that is a plain write is ported — an app with NO policy
+link has its analysis row deleted, Node's first line — and every page
+the oracle serves is such a page. An app that has a link gets nothing
+further from the core, where Node goes on to fetch it; `POST
+/api/scrape` has carried the same gap for `summarizePolicies` since
+batch 3. Until Phase 5 a live seed from the core leaves the AI Policy
+tab empty for those apps. The canned seed is unaffected: its analyses
+are fixture rows, not fetches.
+
+**The oracle — `core/scripts/extract-seed-cases.mjs`.** Runs the REAL
+handler, each case in a SAVEPOINT, the network a stub that serves the
+case's replies in order and refuses a run that leaves one unused. 50
+cases. Canned: onto an empty install, twice, topping up a part-seeded
+one, with the region from the query, from a stored setting, from a blank
+one and from an unknown one, and failing part-way — a row already
+holding the id the seed will mint for its first label, found by running
+the seed once — which rolls back and answers 500 in SQLite's words;
+`source=CANNED` is not canned. The guard: no token configured (with and
+without one sent), none presented, the wrong one, and the thirty-first
+seed in ten minutes. The chart request: the default ten, a limit from
+the query, capped, zero, negative, not a number and `7.9apps`; the
+region from the query, unknown, empty, and from the setting. What the
+chart can answer: a rate limit with a `Retry-After`, without, not a
+number, zero and fractional; a 503 and a 404; not JSON; no feed; no
+entries; a refused connection; entries with no id or no link. The walk:
+two apps with history; one category per type (no history); a first type
+smaller than the second (trimmed to nothing); no labels; already
+tracked, one and all; a chart id that differs from the link's (the
+history is read back under the chart's id, finds nothing, writes
+nothing); a 404 and a non-App-Store link, each an error row the walk
+carries on past; Apple's rate limit mid-walk and a cooldown already
+running; a page that cannot be parsed; another region. Each records the
+wire response, the raw fetches, the write stream and twelve tables.
+`seed_tests.rs` replays them through the same reader, guard and handler
+the axum wrapper uses. The 250 ms wait is real time the recording never
+sees, and the replay does not take it.
+
+Live: the route stays quarantined in the manifest — its live mode
+scrapes Apple — and its canned mode is held by
+`scripts/parity/seed-probes.mjs`, which runs LAST because it begins with
+a reset. Every other pass serves ONE seeded database, copied from Node,
+so the core's own seed was the one write the gate had never watched run.
+Here both servers are emptied and each seeds ITSELF. The two libraries
+cannot match byte for byte — every label, feature, snapshot and version
+has a random id and every app its own clock — so each is reduced to what
+the seed DECIDED: every column that is not a random id, every timestamp
+as its distance from the app's own `lastSynced`, every category under
+its type's natural key. The probe checks the refusal without a token,
+the reset, the two responses (the duration aside), that the core's seed
+wrote a whole library and a timeline reaching back past thirty days —
+two empty libraries would agree perfectly — that the two agree in all
+seven tables, and that a second seed inserts nothing. Latest pass: READ
+PARITY OK — 180 read, 57 mutation, 23 bundle, 26 backup and 6 seed
+checks; 10 apps, 19 types, 52 categories, 40 features, 10 analyses, 2
+versions and 25 snapshots on each side. It is also the first time the
+gate has run `POST /api/reset` against the core, which until now only
+the maintenance oracle held.
+
+Rust suite: 233 pass (229 + 4 new). Fourteen negative controls, each
+predicted from the fixture before it ran, and each failing exactly its
+prediction. Walking the history newest first, and giving the canned
+response a `stoppedEarly`, failed the seven canned cases that insert
+(the second also the rate-limit burst, through its thirty activity
+rows). Skipping the policy step failed the ten live cases with a
+successful scrape. Trimming the last type failed the two cases whose
+types differ in size; a walk that carries on past a rate limit failed
+the two that stop; a skipped app that says nothing failed the two with
+one; a guard that only wants a token when one is configured failed the
+two unconfigured refusals. A cap of fifty, a `Retry-After` of zero
+honoured, a blank region not defaulted, history read under the scraped
+id, `source` matched without case, thirty-one seeds allowed and an entry
+kept without its link each failed exactly their one case. And one live
+control, the newest-first walk again: the gate failed exactly the one
+check predicted — the library comparison, naming `privacy_snapshots`
+alone — while the two responses still agreed (the counts do not change)
+and all 180 reads, 57 mutations, 23 bundle, 26 backup and the other 5
+seed checks passed. Each fault was removed before the final passing run.
+
+**Batch 5 is complete**, and with it the write side of the API outside
+the two groups set aside at the start of the phase: the cfgutil device
+actions, which belong with the desktop cutover, and the AI routes —
+with the policy pipeline behind `summarizePolicies` — which are Phase 5.
 
