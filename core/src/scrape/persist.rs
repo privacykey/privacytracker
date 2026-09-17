@@ -71,6 +71,9 @@ pub trait Ids: Send {
     /// lib/imports.ts's `newId(prefix)`: the prefix, an underscore and nine
     /// random bytes in base64url — twelve characters, no padding.
     fn short_id(&mut self, conn: &Connection, prefix: &str) -> Result<String, String>;
+    /// lib/audit-bundle-import.ts's ids: the prefix, then `bytes` random
+    /// bytes in lowercase hex (`pt-` + 8 bytes, `imp-` + 12, …).
+    fn hex_id(&mut self, conn: &Connection, prefix: &str, bytes: usize) -> Result<String, String>;
     /// An owned source for a run spawned off the request, when this one
     /// can hand one out (the random source always can; a replay counter
     /// only if it is shared).
@@ -92,6 +95,14 @@ impl Ids for RandomIds {
             .query_row("SELECT randomblob(9)", [], |r| r.get(0))
             .map_err(message)?;
         Ok(format!("{prefix}_{}", base64url(&bytes)))
+    }
+    fn hex_id(&mut self, conn: &Connection, prefix: &str, bytes: usize) -> Result<String, String> {
+        let hex: String = conn
+            .query_row("SELECT lower(hex(randomblob(?)))", [bytes as i64], |r| {
+                r.get(0)
+            })
+            .map_err(message)?;
+        Ok(format!("{prefix}{hex}"))
     }
     fn detach(&self) -> Option<Box<dyn Ids>> {
         Some(Box::new(RandomIds))
@@ -208,6 +219,19 @@ impl<'a> Writer<'a> {
         self.conn
             .execute(sql, params_from_iter(params.iter().map(to_sql)))
             .map_err(message)
+    }
+
+    /// Record a statement WITHOUT running it. better-sqlite3 refuses some
+    /// JavaScript values at bind time — a boolean, a plain object — after
+    /// the caller's `run` was entered and before SQLite saw anything: the
+    /// stream shows the attempt, the database does not.
+    pub(crate) fn refuse(&mut self, sql: &str, params: Vec<Value>) {
+        if let Some(log) = self.log.as_deref_mut() {
+            log.push(Statement {
+                sql: sql.to_string(),
+                params,
+            });
+        }
     }
 
     /// A transaction boundary in the recorded stream.

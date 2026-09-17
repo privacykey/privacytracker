@@ -595,7 +595,7 @@ fn sanitise_row(table: &str, row: &Map<String, Value>) -> Option<Vec<(&'static s
 
 /// A copy with every object's keys in JavaScript's property order, which
 /// is the order `JSON.parse` then `JSON.stringify` replays.
-fn js_ordered(v: &Value) -> Value {
+pub(super) fn js_ordered(v: &Value) -> Value {
     match v {
         Value::Array(items) => Value::Array(items.iter().map(js_ordered).collect()),
         Value::Object(map) => Value::Object(

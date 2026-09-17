@@ -2503,7 +2503,167 @@ serves it under the requested spelling; the core compares names exactly
 and answers 404. Names are generated, upper-case `T` and `Z` included,
 and the UI downloads the name the listing gave it.
 
-**Left in batch 5:** the audit-bundle import and export, the two support
-bundles (`/api/diagnostics/bundle`, `/api/deployment/support-bundle`)
-and `POST /api/dev/seed-sample-data`.
+### Batch 5c — the audit bundle and the support bundles (+4 handlers)
+
+`core/src/server/audit_bundle.rs` ports `lib/audit-bundle.ts` and
+`lib/audit-bundle-import.ts`. The export: every app with its labels, its
+accessibility features and its policy summary, the annotations — private
+notes excluded in the SQL itself, as on Node, with no path that includes
+them — the verdicts, and the recommender's profile with the preset it
+matches, under a file name slugged from the recommender's name and
+stamped in LOCAL time. The import: `validateBundle` with its errors in
+Node's order, the duplicate lookup, and one transaction that upserts
+each app unless this install's copy was synced at least as recently,
+replaces its labels, keeps an earlier policy summary where the bundle
+has none (`COALESCE`), adds the annotations, upserts the verdicts it
+recognises, stashes the recommender's profile as a suggestion — never
+applying it — and writes the import-history row. Every URL a bundle
+carries goes through the same sanitisers as on Node before it is stored.
+`bundle_writes.rs` is the four routes in order: `POST
+/api/export/audit-bundle` (admin token, rate limited, allowed when the
+flag resolves on OR the focus workflow is the hand-off one, the body
+optional, `audit_bundle_last_exported_at` stamped), `POST
+/api/import/audit-bundle` (a preview unless `?confirm=1`, a 409 naming
+when the earlier import landed unless `allowDuplicate=1`, the
+`bundle_imported` activity row), and the two reads a person attaches to
+a bug report, `GET /api/diagnostics/bundle` and `GET
+/api/deployment/support-bundle`.
+
+**An upload is a form.** The real client posts the bundle as
+`multipart/form-data`, which no route before this one took, so the body
+reader grows `BodyOutcome::Raw` and `multipart.rs` parses it — by hand,
+following the steps of the parser Node itself bundles (undici's), so
+that the two agree on what a malformed form is: a preamble and an
+epilogue ignored, a body that ends where the next boundary starts, a
+part that is a file only if it says `filename`, a file's byte-order mark
+dropped before it is read as JSON. No dependency was added for it.
+
+**What this batch adds.** better-sqlite3's binding rules, where a bundle
+can reach them: a bundle is a stranger's JSON, and the importer binds
+its values as they come. A number binds as a DOUBLE, so
+`"current_version": 3` reads `3.0` from its TEXT column on both;
+`undefined` and `null` bind NULL;
+a boolean is a `TypeError` and an object is read as named parameters —
+each rolls the import back with Node's words, and the write stream
+records the statement that was refused (`Writer::refuse`). The `Ids`
+trait grows `hex_id`, the `randomBytes(n).toString("hex")` ids the
+importer mints, counted in the replay like every other id. The 409's
+sentence carries `toLocaleString()` of the earlier import, spelled here
+as en-US writes it — `1/5/2026, 12:05:09 AM` — by hand, since nothing in
+the crate formats a 12-hour clock. And the diagnostics bundle reports
+each bulk job as the runners' own `describeCurrentRun()` does — the
+whole state blob, not the trimmed projection the job routes serve
+(`operations::describe_run`).
+
+**The oracle — `core/scripts/extract-bundles-cases.mjs`.** Runs the REAL
+handlers, each case in a SAVEPOINT, under a frozen clock, UTC and
+counted ids. 94 cases. The export: refused under the default focus,
+allowed for a loved one, a guardian, the hand-off workflow and a user
+override, refused by an override; an empty install; no body, a
+whitespace body, an array, a number, a string, `null` (a 500) and
+invalid JSON; names plain, slugged, slugging to nothing, accented, empty
+and `null`, and one that is not text (Node throws; an empty 500); the
+profile left out, matching a preset, custom; the migration flag; the
+size limit declared and streamed; the admin token; the sixth export in a
+window. The import: previewed as JSON and as a form, over an earlier
+import, of a bare version-1 bundle; committed onto an empty install, as
+a form, merging by last sync, twice in a row, refused as a duplicate in
+the morning and in the afternoon, allowed again (and not by
+`allowDuplicate=true`); a bundle from a newer app refused, with and
+without an app version, and forced past; eighteen validation errors; a
+bundle crafted against the sanitisers — a `javascript:` store URL, a
+link-local icon, an `ftp:` policy link and the summary that is dropped
+with it, a date that is not one, a blank recommender, an empty profile,
+a verdict that is not a verdict, and notes and verdicts for an app
+nobody has; an earlier recommendation from the same person replaced; the
+profile and the migration marker stashed; an app carrying only the
+required fields; an object and a boolean where a value binds; numbers
+where text was expected; and forms with no file field, a text field
+named `file`, two files (the first wins), a file that is not JSON, a
+byte-order mark, nothing but the closing boundary, no closing boundary,
+no boundary parameter, another boundary, a quoted one, and one declared
+too large. Each records
+the wire response with its download headers, the write stream and the
+rows of the eleven tables an import can touch. The two support bundles
+are machine state, so the oracle records a PROJECTION of them — the
+keys at every level, the jobs, the rate limits, the flag overrides, the
+redacted errors — over a quiet install and a busy one: a sync mid-run
+with its whole queue, one cooldown live and one expired, three
+overrides of which one equals its default, failed activity rows whose
+fetch diagnostics come back as six named fields with no URL and no
+body, and ten failures of which the eight newest come back.
+`bundles_tests.rs` replays all of
+it; the two support bundles are called directly and projected the same
+way.
+
+Live: the two support bundles join `BATCH_1` as volatile reads — the
+manifest blanks what is each process's own and compares the rest. The
+export and the import stay quarantined, one a download stamped with the
+clock and the other an upload, and are held by
+`scripts/parity/bundles-probes.mjs` instead, between the mutation pass
+and the backup probe: the export refused identically, then the flag
+overridden on, each server's export compared for headers and — clock and
+per-server ids aside — content, the Rust bytes held to
+`JSON.stringify(v, null, 2)` of themselves; then **each server's bundle
+is previewed, as JSON and as a form, and imported on both**, refused as
+a duplicate in the same words with the clock masked, and imported again
+on purpose, the summaries equal throughout; then seven uploads that are
+not bundles, each refused identically. Latest pass: READ PARITY OK — 180
+read, 57 mutation, 23 bundle and 26 backup checks.
+
+The probe passed on its first run, which says nothing about whether it
+can fail, so one live negative control: the core letting an equally new
+bundle overwrite (`<=` made `<`) and nothing else changed. The first
+prediction was six failed checks and the gate failed ONE, and the
+prediction was what was wrong. The importer dates an app that has no
+policy summary by the bundle's `exported_at`, not by a sync time of its
+own, so an install importing its own fresh export legitimately UPDATES
+those apps, on both servers alike, and only the re-import meets the
+equal-timestamp rule. The other bundle never met it at all: the core had
+answered the export first, its bundle was the older of the two, and
+imported second every app in it was already older than what the first
+had written. What the second import exercised depended on which server
+was quicker. The probe now imports the OLDER export first, and holds
+each import to the rule rather than to agreement alone: a bundle newer
+than the last must update apps on both servers, and its re-import must
+add nothing, update nothing and skip every app. Against that probe the
+same fault failed exactly the two checks predicted — each bundle's
+re-import — while all 180 reads, all 57 mutations, the other 21 bundle
+checks and all 26 backup checks passed.
+
+Rust suite: 229 pass (223 + 6 new). Eighteen negative controls, each
+predicted from the fixture before it ran. Exporting private notes, and
+cutting no policy excerpt, each failed the twenty-one exports over the
+seeded install and none over the empty one. Binding integers failed
+exactly the numbers case; letting an equally new bundle overwrite failed
+exactly the import twice in a row; unsanitised icon URLs, unknown
+verdicts kept, an empty profile stashed and words counted without the
+empty ends each failed exactly the crafted bundle; a text field counted
+as a file, the byte-order mark kept, `allowDuplicate=true` accepted and
+a 24-hour duplicate message each failed exactly their one case; a gate
+that ignores the workflow failed the hand-off and the guardian exports;
+keeping a fetch's URL failed the busy support bundle; ten errors instead
+of eight failed the eight-newest case; dropping overrides equal to their
+default, and describing jobs by the routes' projection, each failed the
+busy diagnostics bundle; and an export needing no admin token failed
+exactly that refusal. Each fault was removed before the final passing
+run.
+
+**What the oracle found in Node.** The importer's policy-summary upsert
+named a `generated_at` column `privacy_policy_analyses` never had, so
+any bundle whose apps carried a summary and a policy URL — which is to
+say this app's own export of a summarised library — rolled back with a
+500. Fixed on the Node side first, with its own regression tests; the
+port is of the fixed statement.
+
+**Divergences, chosen.** An ARRAY where a value binds: better-sqlite3
+spreads it into the parameter list, and what happens next depends on its
+length; the core refuses it as it refuses an object. A
+`recommender_name` that is not text: Node's `TypeError` wording belongs
+to the engine build, so the core answers the same 500 in plain words.
+The duplicate message: Node formats it in the HOST's locale and, by ICU
+version, with a narrow no-break space before `AM`; the core always
+writes en-US with a plain space, and the oracle pins Node to that.
+
+**Left in batch 5:** `POST /api/dev/seed-sample-data`.
 

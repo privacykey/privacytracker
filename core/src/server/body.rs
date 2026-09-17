@@ -29,10 +29,18 @@ pub enum BodyOutcome {
     TooLarge(usize),
     /// `Request body timed out` — a 408.
     Timeout,
+    /// The bytes as they arrived, for the one route that takes a
+    /// `multipart/form-data` upload and parses it itself.
+    Raw(Vec<u8>),
 }
 
-/// Read and parse a JSON body under `max_bytes`.
-pub async fn read_json(headers: &HeaderMap, body: Body, max_bytes: usize) -> BodyOutcome {
+/// `readBoundedBody`: the declared length refused first, then the stream
+/// under the cap and the clock. `Err` is the 413 or the 408.
+async fn read_bytes(
+    headers: &HeaderMap,
+    body: Body,
+    max_bytes: usize,
+) -> Result<axum::body::Bytes, BodyOutcome> {
     // `Number(request.headers.get("content-length") ?? "")`: an absent or
     // empty header is 0, junk is NaN, and only a finite excess refuses.
     if let Some(declared) = headers
@@ -41,17 +49,32 @@ pub async fn read_json(headers: &HeaderMap, body: Body, max_bytes: usize) -> Bod
     {
         let n = js_to_number(&Value::String(declared.to_string()));
         if n.is_finite() && n > max_bytes as f64 {
-            return BodyOutcome::TooLarge(max_bytes);
+            return Err(BodyOutcome::TooLarge(max_bytes));
         }
     }
-    let bytes =
-        match tokio::time::timeout(BODY_TIMEOUT, axum::body::to_bytes(body, max_bytes)).await {
-            Err(_) => return BodyOutcome::Timeout,
-            // The only error the capped reader raises on a live connection is
-            // the cap itself; a reset mid-body is reported the same way.
-            Ok(Err(_)) => return BodyOutcome::TooLarge(max_bytes),
-            Ok(Ok(bytes)) => bytes,
-        };
+    match tokio::time::timeout(BODY_TIMEOUT, axum::body::to_bytes(body, max_bytes)).await {
+        Err(_) => Err(BodyOutcome::Timeout),
+        // The only error the capped reader raises on a live connection is
+        // the cap itself; a reset mid-body is reported the same way.
+        Ok(Err(_)) => Err(BodyOutcome::TooLarge(max_bytes)),
+        Ok(Ok(bytes)) => Ok(bytes),
+    }
+}
+
+/// The body unparsed, under `max_bytes`.
+pub async fn read_raw(headers: &HeaderMap, body: Body, max_bytes: usize) -> BodyOutcome {
+    match read_bytes(headers, body, max_bytes).await {
+        Ok(bytes) => BodyOutcome::Raw(bytes.to_vec()),
+        Err(refused) => refused,
+    }
+}
+
+/// Read and parse a JSON body under `max_bytes`.
+pub async fn read_json(headers: &HeaderMap, body: Body, max_bytes: usize) -> BodyOutcome {
+    let bytes = match read_bytes(headers, body, max_bytes).await {
+        Ok(bytes) => bytes,
+        Err(refused) => return refused,
+    };
     if bytes.is_empty() {
         return BodyOutcome::Empty;
     }

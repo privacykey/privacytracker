@@ -118,6 +118,24 @@ fn copy_fields(out: &mut Map<String, Value>, state: &Value, keys: &[&str]) {
     }
 }
 
+/// `describeCurrentRun()` as it is, the whole state blob included — what
+/// the diagnostics bundle embeds. The job routes answer a projection of
+/// this ([`job_status`]); a support ticket gets the queue too.
+pub(super) fn describe_run(conn: &Connection, job: Job) -> Result<Value> {
+    let info = describe(conn, job)?;
+    let mut out = Map::new();
+    out.insert("running".into(), json!(info.running));
+    out.insert("mutexHeld".into(), json!(info.mutex_held));
+    if matches!(job, Job::Wayback) {
+        out.insert("status".into(), json!(info.status));
+    }
+    out.insert("state".into(), info.state.unwrap_or(Value::Null));
+    out.insert("summary".into(), info.summary);
+    out.insert("currentAppName".into(), info.current_app_name);
+    out.insert("stale".into(), json!(info.stale));
+    Ok(Value::Object(out))
+}
+
 pub(super) fn job_status(conn: &Connection, job: Job) -> Result<Value> {
     let info = describe(conn, job)?;
     let wayback = matches!(job, Job::Wayback);

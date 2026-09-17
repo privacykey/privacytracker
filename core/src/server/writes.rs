@@ -376,8 +376,31 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(runner_routes());
         routes.extend(maintenance_routes());
         routes.extend(backup_routes());
+        routes.extend(bundle_routes());
         routes
     })
+}
+
+/// Phase 4, batch 5c — see `bundle_writes.rs`. The export takes the shared
+/// mutation guard: the flag that gates it can be flipped by an override,
+/// so the flag alone must not be what stands in front of every tracked
+/// app. The import has no guard of its own; the gate's origin check is
+/// what stands in front of it.
+fn bundle_routes() -> Vec<RouteSpec> {
+    vec![
+        RouteSpec {
+            path: "/api/export/audit-bundle",
+            method: Method::POST,
+            body_limit: Some(4 * 1024),
+            guard: guarded("export.audit_bundle", 5, AdminRule::Required),
+        },
+        RouteSpec {
+            path: "/api/import/audit-bundle",
+            method: Method::POST,
+            body_limit: Some(super::bundle_writes::MAX_AUDIT_BUNDLE_BYTES),
+            guard: Guard::None,
+        },
+    ]
 }
 
 /// Phase 4, batch 5b — see `backup_writes.rs`. The two snapshot writes
@@ -1133,6 +1156,9 @@ pub fn perform(
     }
     if super::backup_writes::handles(spec) {
         return super::backup_writes::perform(&mut cx, req, actor);
+    }
+    if super::bundle_writes::handles(spec) {
+        return super::bundle_writes::perform(&mut cx, req);
     }
     match (spec.path, &spec.method) {
         ("/api/date-format", &Method::POST) => date_format(&mut cx, req.body),
@@ -1916,7 +1942,7 @@ fn sanitize_profile(input: &Value, keys: &[&str], values: &[&str]) -> Map<String
 }
 
 /// `matchPreset`: a complete profile equal to one of the four presets.
-fn match_profile_preset(profile: Option<&Map<String, Value>>) -> Option<&'static str> {
+pub(super) fn match_profile_preset(profile: Option<&Map<String, Value>>) -> Option<&'static str> {
     let profile = profile?;
     let complete = profile.values().filter(|v| v.is_string()).count();
     if complete != PROFILE_CATEGORY_KEYS.len() {

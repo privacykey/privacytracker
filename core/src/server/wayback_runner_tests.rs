@@ -51,6 +51,11 @@ impl Ids for SharedIds {
         *n += 1;
         Ok(format!("{prefix}_{:012}", *n))
     }
+    fn hex_id(&mut self, _conn: &Connection, prefix: &str, bytes: usize) -> Result<String, String> {
+        let mut n = self.0.lock().unwrap();
+        *n += 1;
+        Ok(format!("{prefix}{:0width$}", *n, width = bytes * 2))
+    }
     fn detach(&self) -> Option<Box<dyn Ids>> {
         Some(Box::new(self.clone()))
     }

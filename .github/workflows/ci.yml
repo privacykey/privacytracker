@@ -480,6 +480,24 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-backup-cases.mjs
           git diff --exit-code -- core/tests/fixtures/backup-cases.json
 
+      - name: Bundles oracle is current
+        # Runs the real audit-bundle export and import routes and the two
+        # support bundles against a seeded install — frozen clock, counted
+        # ids, UTC, the en-US duplicate message pinned to a plain space —
+        # and records every request (JSON and multipart), write, the rows
+        # of the eleven tables an import can touch and the wire response
+        # with its download headers. The two support bundles are machine
+        # state, so they are recorded as a projection: the keys, the jobs,
+        # the rate limits, the flag overrides and the redacted errors. A
+        # diff means a Node route, lib/audit-bundle.ts,
+        # lib/audit-bundle-import.ts or lib/deployment-diagnostics.ts changed and
+        # core/src/server/audit_bundle.rs or bundle_writes.rs has not been
+        # ported — and that a bundle written by one backend may no longer
+        # import on the other.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-bundles-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/bundles-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

@@ -23,6 +23,12 @@ impl Ids for CountingIds {
         self.next += 1;
         Ok(format!("{prefix}_{:012}", self.next))
     }
+    // The bundles oracle spells `randomBytes(n)` as the same counter,
+    // zero-padded to the 2n digits the hex would have had.
+    fn hex_id(&mut self, _conn: &Connection, prefix: &str, bytes: usize) -> Result<String, String> {
+        self.next += 1;
+        Ok(format!("{prefix}{:0width$}", self.next, width = bytes * 2))
+    }
 }
 
 pub(crate) fn to_sql(v: &Value) -> Sql {
