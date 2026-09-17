@@ -142,6 +142,8 @@ fn import_writes_match_node_wire_calls_stream_and_rows() {
                     param,
                     query: &query,
                     body,
+                    headers: &headers,
+                    state: None,
                 },
                 &actor,
                 now,

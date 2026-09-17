@@ -81,6 +81,8 @@ async fn run(
             param: param.as_deref(),
             query: &query,
             body: outcome,
+            headers: &parts.headers,
+            state: Some(&state),
         },
         &actor,
         now,
@@ -217,3 +219,32 @@ wrapper!(apps_delete, "/api/apps", DELETE);
 wrapper!(wayback_import_all_post, "/api/wayback/import-all", POST);
 wrapper!(wayback_import_all_patch, "/api/wayback/import-all", PATCH);
 wrapper!(wayback_import_all_delete, "/api/wayback/import-all", DELETE);
+
+// ── Phase 4, batch 5a ────────────────────────────────────────────────
+
+wrapper!(diagnostics_health_post, "/api/diagnostics/health", POST);
+wrapper!(diagnostics_database_post, "/api/diagnostics/database", POST);
+wrapper!(diagnostics_errors_delete, "/api/diagnostics/errors", DELETE);
+wrapper!(
+    diagnostics_runtime_delete,
+    "/api/diagnostics/runtime",
+    DELETE
+);
+wrapper!(diagnostics_runtime_post, "/api/diagnostics/runtime", POST);
+wrapper!(ai_debug_log_delete, "/api/ai/debug-log", DELETE);
+wrapper!(admin_token_login_post, "/api/auth/admin-token/login", POST);
+wrapper!(
+    admin_token_logout_post,
+    "/api/auth/admin-token/logout",
+    POST
+);
+wrapper!(csp_report_post, "/api/csp-report", POST);
+wrapper!(dev_reset_changelog_post, "/api/dev/reset-changelog", POST);
+wrapper!(
+    dev_seed_notification_post,
+    "/api/dev/seed-notification",
+    POST
+);
+wrapper!(dev_wipe_apps_post, "/api/dev/wipe-apps", POST);
+wrapper!(reset_post, "/api/reset", POST);
+wrapper!(admin_start_over_post, "/api/admin/start-over", POST);

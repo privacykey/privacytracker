@@ -68,11 +68,69 @@ pub struct DatabaseHealth {
     pub foreign_keys_enabled: i64,
     #[serde(rename = "walAutocheckpoint")]
     pub wal_autocheckpoint: i64,
-    /// The in-process cache of the last manual integrity check. This
-    /// server has no `POST` yet, so it is always the initial `null` —
-    /// which is also what Node answers until the button is pressed.
+    /// The in-process cache of the last manual integrity check
+    /// (`last_integrity_check`), which the routes fold in; the bare
+    /// snapshot carries the initial `null`.
     #[serde(rename = "integrityCheck")]
     pub integrity_check: Option<Value>,
+}
+
+fn integrity_cache() -> &'static std::sync::Mutex<Option<Value>> {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<Option<Value>>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(None))
+}
+
+/// `lastIntegrityCheck`: the latest manual run's outcome, lost on restart.
+pub fn last_integrity_check() -> Option<Value> {
+    integrity_cache().lock().ok().and_then(|c| c.clone())
+}
+
+#[cfg(test)]
+pub fn reset_integrity_cache_for_test() {
+    if let Ok(mut c) = integrity_cache().lock() {
+        *c = None;
+    }
+}
+
+/// `runIntegrityCheck()`: `PRAGMA integrity_check`, a single `ok` row on
+/// success and one row per problem otherwise (the first five joined),
+/// cached for the snapshots that follow. `now` stamps `checkedAt`.
+pub fn run_integrity_check(conn: &Connection, now: i64) -> Value {
+    let rows = conn.prepare("PRAGMA integrity_check").and_then(|mut stmt| {
+        stmt.query_map([], |r| r.get::<_, String>(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()
+    });
+    let (status, detail) = match rows {
+        Ok(rows) => {
+            let messages: Vec<String> = rows.into_iter().filter(|m| !m.is_empty()).collect();
+            if messages.is_empty() || (messages.len() == 1 && messages[0] == "ok") {
+                ("ok", None)
+            } else {
+                (
+                    "error",
+                    Some(
+                        messages
+                            .iter()
+                            .take(5)
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join("; "),
+                    ),
+                )
+            }
+        }
+        Err(e) => ("error", Some(e.to_string())),
+    };
+    let mut result = serde_json::json!({ "status": status });
+    if let Some(detail) = detail {
+        result["detail"] = Value::String(detail);
+    }
+    result["checkedAt"] = Value::from(now);
+    result["durationMs"] = Value::from(0);
+    if let Ok(mut c) = integrity_cache().lock() {
+        *c = Some(result.clone());
+    }
+    result
 }
 
 /// `snapshotDatabaseHealth()`. `path` is the file the connection opened.

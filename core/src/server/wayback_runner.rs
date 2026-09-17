@@ -200,11 +200,11 @@ pub(crate) fn has_pending_work(state: Option<&Value>) -> bool {
     })
 }
 
-fn is_paused(state: Option<&Value>) -> bool {
+pub(crate) fn is_paused(state: Option<&Value>) -> bool {
     state.is_some_and(|s| matches!(str_of(s, "status"), "paused" | "pause_requested"))
 }
 
-fn is_cancel_requested(state: Option<&Value>) -> bool {
+pub(crate) fn is_cancel_requested(state: Option<&Value>) -> bool {
     state.is_some_and(|s| str_of(s, "status") == "cancel_requested")
 }
 

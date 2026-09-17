@@ -35,6 +35,7 @@ mod forwarded;
 mod gate;
 pub(crate) mod grid_meta;
 mod guard;
+mod health_check;
 mod histogram;
 #[cfg(test)]
 mod imports_tests;
@@ -44,6 +45,9 @@ pub mod layout;
 #[cfg(test)]
 mod library_tests;
 mod library_writes;
+#[cfg(test)]
+mod maintenance_tests;
+mod maintenance_writes;
 mod operations;
 #[cfg(test)]
 mod operations_tests;
@@ -256,8 +260,40 @@ pub fn app(state: AppState) -> Router {
             "/api/dev/sync-stop",
             post(routes_writes::dev_sync_stop_post),
         )
-        .route("/api/ai/debug-log", get(routes_operations::ai_debug))
-        .route("/api/csp-report", get(routes_operations::csp))
+        // Phase 4, batch 5a: the maintenance writes.
+        .route(
+            "/api/auth/admin-token/login",
+            post(routes_writes::admin_token_login_post),
+        )
+        .route(
+            "/api/auth/admin-token/logout",
+            post(routes_writes::admin_token_logout_post),
+        )
+        .route(
+            "/api/dev/reset-changelog",
+            post(routes_writes::dev_reset_changelog_post),
+        )
+        .route(
+            "/api/dev/seed-notification",
+            post(routes_writes::dev_seed_notification_post),
+        )
+        .route(
+            "/api/dev/wipe-apps",
+            post(routes_writes::dev_wipe_apps_post),
+        )
+        .route("/api/reset", post(routes_writes::reset_post))
+        .route(
+            "/api/admin/start-over",
+            post(routes_writes::admin_start_over_post),
+        )
+        .route(
+            "/api/ai/debug-log",
+            get(routes_operations::ai_debug).delete(routes_writes::ai_debug_log_delete),
+        )
+        .route(
+            "/api/csp-report",
+            get(routes_operations::csp).post(routes_writes::csp_report_post),
+        )
         .route("/api/export", get(routes_operations::export))
         .route(
             "/api/manual-apps/{id}",
@@ -531,21 +567,29 @@ pub fn app(state: AppState) -> Router {
         )
         .route(
             "/api/diagnostics/database",
-            get(routes_diag::diagnostics_database),
+            get(routes_diag::diagnostics_database).post(routes_writes::diagnostics_database_post),
         )
         .route("/api/diagnostics/disk", get(routes_diag::diagnostics_disk))
         .route(
             "/api/diagnostics/health",
-            get(routes_diag::diagnostics_health),
+            get(routes_diag::diagnostics_health).post(routes_writes::diagnostics_health_post),
         )
         // The process-introspection reads, re-specified as one backend-
         // tagged envelope rather than ported (see routes_runtime.rs).
-        .route("/api/diagnostics/runtime", get(routes_runtime::runtime))
+        .route(
+            "/api/diagnostics/runtime",
+            get(routes_runtime::runtime)
+                .delete(routes_writes::diagnostics_runtime_delete)
+                .post(routes_writes::diagnostics_runtime_post),
+        )
         .route(
             "/api/desktop/diagnostics",
             get(routes_runtime::desktop_diagnostics),
         )
-        .route("/api/diagnostics/errors", get(routes_runtime::errors))
+        .route(
+            "/api/diagnostics/errors",
+            get(routes_runtime::errors).delete(routes_writes::diagnostics_errors_delete),
+        )
         // Request timing, INSIDE the gate: a request the gate refuses never
         // reaches Node's ring either. Runs after routing, so the matched
         // path pattern is available as the route label.

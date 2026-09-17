@@ -264,6 +264,18 @@ const WRITE_ROUTES = [
   // a teardown entry, gated by the oracle alone.
   "/api/dev/sync-stop",
   "/api/rate-limit/status",
+  // Phase 4, batch 5a: the maintenance writes. The wipe, the start-over
+  // and the reset are teardown entries, gated by the oracle alone.
+  "/api/dev/seed-notification",
+  "/api/csp-report",
+  "/api/diagnostics/health",
+  "/api/diagnostics/database",
+  "/api/diagnostics/runtime",
+  "/api/diagnostics/errors",
+  "/api/ai/debug-log",
+  "/api/auth/admin-token/login",
+  "/api/auth/admin-token/logout",
+  "/api/dev/reset-changelog",
 ];
 
 const escapeForRegex = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
@@ -291,36 +303,39 @@ function cleanup() {
 
 /**
  * The core's import-queue drain fires 20 s after boot and stamps
- * `import_queue_last_run`; once that exists every boot-time healer has
- * had its turn. Bounded so a core without the tickers still gates.
+ * `import_queue_last_run`, and its health check fires at 60 s and stamps
+ * `health_check_last_run_at`; once both exist every boot-time healer has
+ * had its turn — the same 65 s the Node side is given. Bounded so a core
+ * without the tickers still gates.
  */
 async function waitForRustBootTimers(dataDir, bootAt) {
-  const deadline = Date.now() + 45_000;
+  const deadline = Date.now() + 90_000;
+  const stamps = ["import_queue_last_run", "health_check_last_run_at"];
   for (;;) {
     const db = new BetterSqlite3(path.join(dataDir, "privacy.db"), {
       readonly: true,
     });
-    let stampedAt = 0;
+    let pending = [];
     try {
-      // The copy carries Node's own stamp; only one newer than the core's
-      // boot is the core's.
-      stampedAt = Number.parseInt(
-        db
-          .prepare(
-            "SELECT value FROM app_settings WHERE key = 'import_queue_last_run'"
-          )
-          .get()?.value ?? "0",
-        10
-      );
+      // The copy carries Node's own stamps; only one newer than the
+      // core's boot is the core's.
+      pending = stamps.filter((key) => {
+        const stampedAt = Number.parseInt(
+          db.prepare("SELECT value FROM app_settings WHERE key = ?").get(key)
+            ?.value ?? "0",
+          10
+        );
+        return stampedAt < bootAt;
+      });
     } finally {
       db.close();
     }
-    if (stampedAt >= bootAt) {
+    if (pending.length === 0) {
       return;
     }
     if (Date.now() > deadline) {
       console.log(
-        "  the core never stamped its import-queue drain; continuing without the boot-timer wait"
+        `  the core never stamped ${pending.join(", ")}; continuing without the boot-timer wait`
       );
       return;
     }
@@ -1292,13 +1307,53 @@ async function probeDiagnosticsReads(rustBase, nodeBase) {
   };
 
   const health = await both("/api/diagnostics/health");
+  // Each side stores its own manual run (primed after the core's boot
+  // timers): the figures that belong to the process and the file, the
+  // clock, and the activity count (the core's scheduled tick left a row
+  // of its own) are blanked; the verdict, heals, warnings, counts and
+  // orphans that derive from the same rows must agree.
+  const OWN_FIGURES = new Set([
+    "rssMb",
+    "heapFractionUsed",
+    "eventLoopP99Ms",
+    "walBytes",
+    "fileBytes",
+    "shmBytes",
+    "pageCount",
+    "freelistCount",
+    "utilisationPct",
+    "fragmented",
+    "startedAt",
+    "finishedAt",
+    "durationMs",
+    "activityLog",
+  ]);
+  const blankOwnFigures = (v) => {
+    if (Array.isArray(v)) {
+      return v.map(blankOwnFigures);
+    }
+    if (v && typeof v === "object") {
+      return Object.fromEntries(
+        Object.entries(v).map(([k, val]) => [
+          k,
+          OWN_FIGURES.has(k) ? "~" : blankOwnFigures(val),
+        ])
+      );
+    }
+    return v;
+  };
+  const realResult = (side) =>
+    side.status === 200 && side.j?.neverRun !== true && side.j?.version === 1;
+  const comparable = (side) =>
+    realResult(side) ? JSON.stringify(blankOwnFigures(side.j)) : side.body;
   check(
-    "health: a real stored result (version 1, not {neverRun:true}), byte-identical on both sides",
-    health.node.status === 200 &&
-      health.node.body === health.rust.body &&
-      health.node.j?.neverRun !== true &&
-      health.node.j?.version === 1,
-    `HTTP ${health.node.status} vs ${health.rust.status}\n      node: ${health.node.body.slice(0, 200)}\n      rust: ${health.rust.body.slice(0, 200)}`
+    "health: a real stored result on both sides (version 1, not {neverRun:true}), each server's own manual run, identical once the process's own figures are blanked",
+    realResult(health.node) &&
+      realResult(health.rust) &&
+      health.node.j?.trigger === "manual" &&
+      health.rust.j?.trigger === "manual" &&
+      comparable(health.node) === comparable(health.rust),
+    `HTTP ${health.node.status} vs ${health.rust.status}\n      node: ${comparable(health.node).slice(0, 300)}\n      rust: ${comparable(health.rust).slice(0, 300)}`
   );
 
   const db = await both("/api/diagnostics/database");
@@ -1694,6 +1749,18 @@ async function main() {
   // before the simulated unfinished jobs go in, or the core heals a
   // fixture Node never saw at boot. The drain's stamp is the last of them.
   await waitForRustBootTimers(rustData, rustBootAt);
+
+  // The core's own 60 s health check has now overwritten the copied
+  // result with a scheduled run of its own, as Node's did at its boot.
+  // A manual run on each side, before the simulated unfinished jobs go
+  // in, leaves each server its own result over the same rows at the same
+  // moment — the stored-result probe compares those with each process's
+  // own figures blanked.
+  console.log(
+    "\n── health check primer, both sides (each server's own result over the same rows) ──"
+  );
+  const primedBothOk =
+    (await primeHealthCheck(args.node)) && (await primeHealthCheck(rustBase));
   const opsNow = Date.now();
   applyOperationsFixture(nodeData, opsNow);
   applyOperationsFixture(rustData, opsNow);
@@ -1878,6 +1945,7 @@ async function main() {
     detailOk &&
     settingsOk &&
     primedOk &&
+    primedBothOk &&
     diagOk &&
     envelopeOk &&
     errorRingOk &&

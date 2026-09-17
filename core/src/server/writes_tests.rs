@@ -134,6 +134,8 @@ fn settings_writes_match_node_wire_stream_and_rows() {
                     param: case["param"].as_str(),
                     query: &query,
                     body,
+                    headers: &headers,
+                    state: None,
                 },
                 &actor,
                 now,

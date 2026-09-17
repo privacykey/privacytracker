@@ -2226,3 +2226,107 @@ on the archive's first strike instead of the second failed exactly the
 four throttled runs. Each fault was removed before the final passing
 run.
 
+### Batch 5a — the health check and the maintenance writes (+13 handlers, 1 ticker)
+
+`core/src/server/health_check.rs` ports `lib/health-check.ts`: the
+`health_check_running` lock with its five-minute stale takeover; the
+three bulk-job locks cleared only when provably dead — held, and with no
+state blob, no pending work, or no progress in longer than the stale
+margin, never a paused or cancel-requested queue — each release and
+clear in one transaction; the import-queue lock cleared by its own age;
+the PASSIVE WAL checkpoint past the configured cap and the reset of
+policy runs stuck longer than the configured hours, both skipped while a
+bulk job is active; the read-only figures (the database snapshot, the
+opt-in size-gated integrity scan, the process, the row counts, the
+orphan counts); the warnings and the status they derive; the persisted
+result and its `health_check` activity row, written last so the row
+count never includes it. Over it, `core/src/server/maintenance_writes.rs`
+— the Node routes in order: `POST /api/diagnostics/health` with its
+completion audit; `POST /api/diagnostics/database` running the integrity
+scan and answering the snapshot with the cached outcome folded in;
+`DELETE /api/diagnostics/errors`; `DELETE /api/diagnostics/runtime`
+(the slow-query ring, the lag histograms and the HTTP timings cleared)
+and `POST` (the profiling toggle, now live in the envelope and in the
+profile hook); `DELETE /api/ai/debug-log`; `POST
+/api/auth/admin-token/login` — same-origin, the global brute-force
+backstop skipped for a caller already holding a valid token, the
+per-address limit, the constant-time compare, the eight-hour HttpOnly
+cookie marked Secure when the request arrived over HTTPS — and `logout`;
+`POST /api/csp-report`, both the legacy and the Reporting API shapes
+summarised into the ring, newest first, fifty kept; `POST
+/api/dev/reset-changelog`, `seed-notification` (the quiet-hours deferral
+included) and `wipe-apps`; `POST /api/reset` and `POST
+/api/admin/start-over`. The server runs the 60 s tick and the daily
+cadence `register()` arms, gated by `health_check_enabled` as the
+scheduled run is and the manual one is not.
+
+**What this batch adds.** The inline guard generalised: the batch-1
+shape (a bare `Rate limit exceeded`, no audit on the 429) becomes one
+case of a guard that carries the route's own window, message, optional
+429 audit and 401 detail, which is how `/api/reset`'s inline pair —
+audited on the 429, no `Retry-After` — sits in the same table as the
+diagnostics routes'. The login and the CSP report run their guards in
+`precheck`, where the headers are, and the request now carries its
+headers and the process to the handler: the cookie takes the scheme the
+request arrived on, and the two runtime writes answer this server's own
+envelope. Figures that belong to the process and the file: the oracle
+blanks them as it records, wherever they appear — the wire, the
+persisted blob, the activity detail — so regenerating the fixture on
+another machine is byte-identical, and the replay blanks the same keys
+on its own side; the counts, the heals, the warnings that derive from
+rows and the status are compared exactly. The runtime envelope the two
+runtime writes answer is compared by status alone and is not recorded. Process state Node keeps in modules — the
+integrity cache, the profiling flag, the login-failure window — lives in
+the same globals, with test hooks that reset them per case as the oracle
+reset Node's.
+
+**The oracle — `core/scripts/extract-maintenance-cases.mjs`.** Runs the
+REAL handlers and the startup hook's own 60 s closure captured from
+`register()`, with the CSP and error rings, the login counter and the
+event-loop monitor reset before each case and a distinct forwarded
+address per case. 106 cases: the health check clean, over each dead lock
+(orphaned, finished, silent for seven hours), over a live run, a paused
+Wayback queue and a fresh import-queue lock, resetting stuck policy runs
+while leaving the live and the never-started ones, with the integrity
+scan enabled and size-refused, skipping its heals while a policy run is
+live, warning on caps and orphans, under custom thresholds, busy on a
+fresh lock and taking over a stale one, plus the admin and rate-limit
+refusals; the database scan with its flag missing and the body refusals
+every bounded reader shares; the error clear seeded and empty; the
+runtime clear and both profiling toggles; the AI-log clear; the login
+without and with a foreign origin, unconfigured, succeeding over HTTP and
+HTTPS, with a wrong, blank and non-string token, and rate limited; the
+logout; the CSP report in each shape, bare, bodiless, non-object,
+unparseable, oversized and throttled; each dev helper over the corpus
+and empty, without a configured token, and bursting; the reset and the
+start-over over the corpus, during a sync, and refused. Every case
+records the wire response with its `Set-Cookie`, the write stream,
+nineteen tables and the CSP ring. `core/src/server/maintenance_tests.rs`
+replays each under the oracle's timezone through a shared recording, a
+process state built for the case, and the volatile-key blanking above.
+
+Live: `read-parity.mjs --mutate` now covers the seed, the CSP report,
+the four diagnostics writes, the AI-log clear, the login, the logout and
+the changelog reset; the wipe, the start-over and the reset are teardown
+entries in the manifest, gated by the oracle alone. The core now runs
+the 60 s health tick Node runs, which would heal the operations probes'
+"broken blob, held mutex" fixture the way the batch-4b resume did, so
+the gate's boot-timer wait covers the health check's stamp as well as
+the drain's — the same 65 s the Node side is given. And the stored
+result the health GET serves is no longer the one blob copied to both
+sides: the core's tick overwrites its copy with a run of its own, so the
+gate primes a manual run on each side after the boot timers and before
+the unfinished jobs go in, and compares the two results with each
+process's own figures, its clock and its activity count blanked — the
+verdict, heals, warnings and row counts must agree. Latest pass: PARITY
+OK, 178 read and 55 mutation checks.
+
+Rust suite: 218 pass (217 + 1 new). Negative controls, each predicted
+from the fixture before it ran: clearing a paused Wayback queue as dead
+failed exactly the one health check over a paused queue; never marking
+the login cookie Secure failed exactly the one login over HTTPS; cutting
+a CSP report's document URI at 64 characters failed exactly the one
+report with a longer one; and leaving `app_settings` out of Start Over
+failed exactly its four cases, the burst included. Each fault was
+removed before the final passing run.
+
