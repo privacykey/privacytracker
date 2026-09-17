@@ -33,6 +33,18 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Importing an audit bundle no longer fails when its apps carry a privacy
+  policy summary. The importer's upsert named a `generated_at` column that
+  `privacy_policy_analyses` has never had, so SQLite refused the statement
+  ("no column named generated_at") and the whole import rolled back with a
+  500 — for every bundle from a recommender who had fetched at least one
+  privacy policy, which is most of them. The summary, the policy excerpt
+  and its fetch time now import; `updated_at` stays "when this install
+  received it". Bundles without policy summaries were unaffected, which is
+  how the end-to-end suite missed it; `tests/app/audit-bundle-import-policy-summary.test.ts`
+  now covers the path, including "what this install exports, it can
+  import".
+
 - Rust core: the data directory and database path are process-wide
   configuration (a `OnceLock`, resolved once from `PRIVACYTRACKER_DATA_DIR`
   or `<cwd>/data` exactly as `lib/db.ts` resolves them at module scope),
