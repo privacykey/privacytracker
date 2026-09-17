@@ -329,6 +329,9 @@ fn slow_ring() -> &'static Mutex<SlowRing> {
 /// captured state, hence the statics. Runs on whichever thread executed
 /// the statement, inside SQLite's call, so it does the minimum.
 pub fn on_statement_profiled(sql: &str, elapsed: Duration) {
+    if !PROFILING_ENABLED.load(Ordering::Relaxed) {
+        return;
+    }
     let ms = elapsed.as_secs_f64() * 1000.0;
     if ms < SLOW_QUERY_THRESHOLD_MS {
         return;
@@ -367,6 +370,14 @@ pub struct SlowQueriesSnapshot {
     pub recent: Vec<SlowQueryRecord>,
 }
 
+/// `profilingEnabled` — on unless the runtime POST turned it off.
+static PROFILING_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+/// `setProfilingEnabled`.
+pub fn set_profiling_enabled(enabled: bool) {
+    PROFILING_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
 pub fn slow_queries_snapshot(limit: usize) -> SlowQueriesSnapshot {
     let (total, recent) = match slow_ring().lock() {
         Ok(r) => (r.total, ring_oldest_first(&r.ring, r.write_index, limit)),
@@ -375,9 +386,7 @@ pub fn slow_queries_snapshot(limit: usize) -> SlowQueriesSnapshot {
     SlowQueriesSnapshot {
         threshold_ms: SLOW_QUERY_THRESHOLD_MS as i64,
         total_since_start: total,
-        // The hook is installed at open and there is no toggle yet (the
-        // POST that flips Node's flag is a write route).
-        profiling_enabled: true,
+        profiling_enabled: PROFILING_ENABLED.load(Ordering::Relaxed),
         recent,
     }
 }

@@ -80,6 +80,7 @@ const MAX_CONSECUTIVE_FAILURES: u32 = 3;
 const BACKOFF_STEPS_MS: [i64; 3] = [15 * 60_000, 60 * 60_000, 6 * 60 * 60_000];
 const CHECK_INTERVAL: Duration = Duration::from_secs(30 * 60);
 const IMPORT_QUEUE_INTERVAL: Duration = Duration::from_secs(60);
+const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
 
 // ── lib/sync-bulk-state.ts ───────────────────────────────────────────
 
@@ -147,7 +148,7 @@ pub(crate) struct Summary {
 
 /// `readSyncBulkState`: absent, unparseable, the wrong version or missing
 /// fields all read as nothing to resume.
-fn read_state(cx: &Cx) -> Option<SyncState> {
+pub(super) fn read_state(cx: &Cx) -> Option<SyncState> {
     let raw = cx.get(STATE_KEY, "");
     if raw.is_empty() {
         return None;
@@ -171,11 +172,11 @@ fn write_state(cx: &mut Cx, state: &mut SyncState) -> Result<(), String> {
     cx.set(STATE_KEY, &payload)
 }
 
-fn clear_state(cx: &mut Cx) -> Result<(), String> {
+pub(super) fn clear_state(cx: &mut Cx) -> Result<(), String> {
     cx.w.run(CLEAR_STATE, vec![json!(STATE_KEY)]).map(drop)
 }
 
-fn mutex_held(cx: &Cx) -> bool {
+pub(super) fn mutex_held(cx: &Cx) -> bool {
     cx.get(MUTEX_KEY, "") == "true"
 }
 
@@ -189,7 +190,7 @@ fn acquire_mutex(cx: &mut Cx) -> Result<bool, String> {
     Ok(true)
 }
 
-fn release_mutex(cx: &mut Cx) -> Result<(), String> {
+pub(super) fn release_mutex(cx: &mut Cx) -> Result<(), String> {
     cx.set(MUTEX_KEY, "false")
 }
 
@@ -819,7 +820,7 @@ pub(crate) async fn resume_app_store_sync(
 /// The boot writes now, then the tickers `register()` arms: the Wayback
 /// resume once at 8 s, the sync resume once at 10 s, the scheduler check
 /// at 15 s and every 30 minutes, the import-queue drain at 20 s and every
-/// minute.
+/// minute, the health check at 60 s and daily.
 pub(crate) fn start_background(state: AppState) {
     let desktop = std::env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
     boot(&mut state.db_access(), Live.now(), desktop);
@@ -856,6 +857,19 @@ pub(crate) fn start_background(state: AppState) {
             let mut db = scheduler_state.db_access();
             scheduled_check(&mut sched, &mut db, &PublicHttp, &mut ids, &Live).await;
             tokio::time::sleep(CHECK_INTERVAL).await;
+        }
+    });
+
+    let health_state = state.clone();
+    tokio::spawn(async move {
+        // After the resume healers, so a freshly-resumed run is never
+        // mistaken for a dead lock.
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        loop {
+            let mut ids = RandomIds;
+            let mut db = health_state.db_access();
+            super::health_check::tick_health_check(&mut db, &mut ids, Live.now());
+            tokio::time::sleep(HEALTH_CHECK_INTERVAL).await;
         }
     });
 

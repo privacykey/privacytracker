@@ -198,13 +198,9 @@ pub struct RouteSpec {
 
 enum Guard {
     None,
-    /// The routes that inline their own guard: a bare 429 with no audit,
-    /// then the admin token with an audit row named by the route.
-    Inline {
-        prefix: &'static str,
-        limit: i64,
-        unauthorised: &'static str,
-    },
+    /// The routes that inline their own guard: the rate limit first, then
+    /// the admin token with an audit row named by the route.
+    Inline(InlineGuard),
     Mutation(GuardOptions),
     /// `checkRateLimit` inline with the route's own phrasing and a
     /// `Retry-After`, and no admin check at all. `per_param` appends the
@@ -215,6 +211,34 @@ enum Guard {
         message: &'static str,
         per_param: bool,
     },
+}
+
+/// An inlined `checkRateLimit` + `adminTokenRequiredForRequest` pair, in
+/// the route's own words: a 429 with `message` (and an audit row when the
+/// route records one), then a 401 whose audit row is `unauthorised` with
+/// `unauthorised_detail`. Neither carries a `Retry-After`.
+pub struct InlineGuard {
+    pub prefix: &'static str,
+    pub limit: i64,
+    pub window_ms: i64,
+    pub message: &'static str,
+    pub rate_audit: Option<&'static str>,
+    pub unauthorised: &'static str,
+    pub unauthorised_detail: Option<&'static str>,
+}
+
+/// The batch-1 shape: a bare `Rate limit exceeded` a minute wide, no audit
+/// on the 429 and none of the detail on the 401.
+const fn inline(prefix: &'static str, limit: i64, unauthorised: &'static str) -> Guard {
+    Guard::Inline(InlineGuard {
+        prefix,
+        limit,
+        window_ms: 60_000,
+        message: "Rate limit exceeded",
+        rate_audit: None,
+        unauthorised,
+        unauthorised_detail: None,
+    })
 }
 
 const fn guarded(action: &'static str, limit: i64, admin: AdminRule) -> Guard {
@@ -254,11 +278,7 @@ pub fn routes() -> &'static [RouteSpec] {
                 path: "/api/settings",
                 method: Method::POST,
                 body_limit: Some(16 * 1024),
-                guard: Guard::Inline {
-                    prefix: "settings.write",
-                    limit: 30,
-                    unauthorised: "settings.write.unauthorised",
-                },
+                guard: inline("settings.write", 30, "settings.write.unauthorised"),
             },
             RouteSpec {
                 path: "/api/settings/desktop",
@@ -354,6 +374,7 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(library_routes());
         routes.extend(imports_routes());
         routes.extend(runner_routes());
+        routes.extend(maintenance_routes());
         routes
     })
 }
@@ -404,11 +425,7 @@ fn runner_routes() -> Vec<RouteSpec> {
             "/api/apps",
             Method::DELETE,
             None,
-            Guard::Inline {
-                prefix: "apps.delete",
-                limit: 60,
-                unauthorised: "app.delete.unauthorised",
-            },
+            inline("apps.delete", 60, "app.delete.unauthorised"),
         ),
         // Phase 4, batch 4b — see `wayback_runner.rs`.
         spec(
@@ -434,6 +451,185 @@ fn runner_routes() -> Vec<RouteSpec> {
             },
         ),
         spec("/api/wayback/import-all", Method::DELETE, None, Guard::None),
+    ]
+}
+
+/// Phase 4, batch 5a — see `maintenance_writes.rs`. The diagnostics
+/// routes, the reset and the AI log inline their guards in their own
+/// words; the CSP report, the login and the logout run theirs in
+/// `precheck`, where the headers are.
+fn maintenance_routes() -> Vec<RouteSpec> {
+    const SHORTLY: &str = "Rate limit exceeded. Try again shortly.";
+    const fn diagnostics(
+        prefix: &'static str,
+        limit: i64,
+        unauthorised: &'static str,
+        unauthorised_detail: Option<&'static str>,
+    ) -> Guard {
+        Guard::Inline(InlineGuard {
+            prefix,
+            limit,
+            window_ms: 60_000,
+            message: SHORTLY,
+            rate_audit: None,
+            unauthorised,
+            unauthorised_detail,
+        })
+    }
+    const fn dev(action: &'static str, limit: i64, message: &'static str) -> Guard {
+        Guard::Mutation(GuardOptions {
+            action,
+            key_prefix: action,
+            limit,
+            window_ms: 10 * 60_000,
+            message: Some(message),
+            admin: AdminRule::Configured,
+        })
+    }
+    let spec =
+        |path: &'static str, method: Method, body_limit: Option<usize>, guard: Guard| RouteSpec {
+            path,
+            method,
+            body_limit,
+            guard,
+        };
+    vec![
+        spec(
+            "/api/diagnostics/health",
+            Method::POST,
+            None,
+            diagnostics(
+                "diagnostics.health.run",
+                4,
+                "diagnostics.health.run.unauthorised",
+                None,
+            ),
+        ),
+        spec(
+            "/api/diagnostics/database",
+            Method::POST,
+            Some(1024),
+            diagnostics(
+                "diagnostics.database.check",
+                4,
+                "diagnostics.database.check.unauthorised",
+                None,
+            ),
+        ),
+        spec(
+            "/api/diagnostics/errors",
+            Method::DELETE,
+            None,
+            diagnostics(
+                "diagnostics.errors.clear",
+                10,
+                "diagnostics.errors.clear.unauthorised",
+                None,
+            ),
+        ),
+        spec(
+            "/api/diagnostics/runtime",
+            Method::DELETE,
+            None,
+            diagnostics(
+                "diagnostics.runtime.clear",
+                10,
+                "diagnostics.runtime.clear.unauthorised",
+                Some("admin token required but missing or invalid"),
+            ),
+        ),
+        spec(
+            "/api/diagnostics/runtime",
+            Method::POST,
+            Some(1024),
+            diagnostics(
+                "diagnostics.runtime.config",
+                10,
+                "diagnostics.runtime.config.unauthorised",
+                None,
+            ),
+        ),
+        spec(
+            "/api/ai/debug-log",
+            Method::DELETE,
+            None,
+            inline("ai_debug_log.clear", 10, "ai_debug_log.unauthorised"),
+        ),
+        spec(
+            "/api/reset",
+            Method::POST,
+            None,
+            Guard::Inline(InlineGuard {
+                prefix: "reset",
+                limit: 30,
+                window_ms: 10 * 60_000,
+                message: "Rate limit exceeded for reset. Try again later.",
+                rate_audit: Some("reset.rate_limited"),
+                unauthorised: "reset.unauthorised",
+                unauthorised_detail: Some("admin token required but missing or invalid"),
+            }),
+        ),
+        spec(
+            "/api/auth/admin-token/login",
+            Method::POST,
+            Some(4 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/auth/admin-token/logout",
+            Method::POST,
+            None,
+            Guard::None,
+        ),
+        spec(
+            "/api/csp-report",
+            Method::POST,
+            Some(16 * 1024),
+            Guard::None,
+        ),
+        spec(
+            "/api/dev/reset-changelog",
+            Method::POST,
+            None,
+            dev(
+                "dev.reset_changelog",
+                6,
+                "Rate limit exceeded for dev changelog reset. Try again later.",
+            ),
+        ),
+        spec(
+            "/api/dev/seed-notification",
+            Method::POST,
+            Some(16 * 1024),
+            dev(
+                "dev.seed_notification",
+                30,
+                "Rate limit exceeded for dev notification seeding. Try again later.",
+            ),
+        ),
+        spec(
+            "/api/dev/wipe-apps",
+            Method::POST,
+            None,
+            dev(
+                "dev.wipe_apps",
+                6,
+                "Rate limit exceeded for dev wipe. Try again later.",
+            ),
+        ),
+        spec(
+            "/api/admin/start-over",
+            Method::POST,
+            None,
+            Guard::Mutation(GuardOptions {
+                action: "admin.start_over",
+                key_prefix: "admin.start_over",
+                limit: 3,
+                window_ms: 10 * 60_000,
+                message: Some("Rate limit exceeded for Start Over. Try again later."),
+                admin: AdminRule::Required,
+            }),
+        ),
     ]
 }
 
@@ -539,13 +735,6 @@ pub fn is_async(spec: &RouteSpec) -> bool {
 
 /// Phase 4, batch 2 — see `library_writes.rs`.
 fn library_routes() -> Vec<RouteSpec> {
-    const fn inline(prefix: &'static str, limit: i64, unauthorised: &'static str) -> Guard {
-        Guard::Inline {
-            prefix,
-            limit,
-            unauthorised,
-        }
-    }
     let spec =
         |path: &'static str, method: Method, body_limit: Option<usize>, guard: Guard| RouteSpec {
             path,
@@ -701,6 +890,12 @@ pub struct WriteRequest<'a> {
     /// The query in wire order; the first occurrence of a name wins.
     pub query: &'a [(String, String)],
     pub body: BodyOutcome,
+    /// The request headers, for the handlers that read them after the
+    /// body: the login's cookie takes the scheme the request arrived on.
+    pub headers: &'a HeaderMap,
+    /// The process, for the two runtime-diagnostics writes whose response
+    /// is this server's own envelope. `None` in a replay that never asks.
+    pub state: Option<&'a super::AppState>,
 }
 
 /// The guard, ahead of the body read, exactly where Node runs it.
@@ -755,6 +950,17 @@ pub fn precheck(
                 return Err(json_error(StatusCode::BAD_REQUEST, "Invalid id"));
             }
         }
+        // Phase 4, batch 5a: the guards that read the headers, ahead of
+        // the body as Node runs them.
+        ("/api/csp-report", &Method::POST) => {
+            super::maintenance_writes::csp_report_precheck(limiter, headers, now)?;
+        }
+        ("/api/auth/admin-token/login", &Method::POST) => {
+            super::maintenance_writes::login_precheck(w, ids, limiter, headers, &actor, now)?;
+        }
+        ("/api/auth/admin-token/logout", &Method::POST) => {
+            super::maintenance_writes::logout_precheck(headers)?;
+        }
         _ => {}
     }
     Ok(actor)
@@ -799,20 +1005,25 @@ fn guard_only(
             }
             Ok(actor_from(headers))
         }
-        Guard::Inline {
-            prefix,
-            limit,
-            unauthorised,
-        } => {
+        Guard::Inline(g) => {
             let actor = actor_from(headers);
             let head = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
             let key =
-                ratelimit::key_for_request(head("x-forwarded-for"), head("x-real-ip"), prefix);
-            if !limiter.check(&key, *limit, 60_000, now).allowed {
-                return Err(json_error(
-                    StatusCode::TOO_MANY_REQUESTS,
-                    "Rate limit exceeded",
-                ));
+                ratelimit::key_for_request(head("x-forwarded-for"), head("x-real-ip"), g.prefix);
+            let rate = limiter.check(&key, g.limit, g.window_ms, now);
+            if !rate.allowed {
+                if let Some(action) = g.rate_audit {
+                    record_audit(
+                        w,
+                        ids,
+                        now,
+                        action,
+                        &actor,
+                        Some(&format!("retryAfterMs={}", rate.retry_after_ms)),
+                        false,
+                    );
+                }
+                return Err(json_error(StatusCode::TOO_MANY_REQUESTS, g.message));
             }
             if (admin_token_configured() || is_network_exposed())
                 && !request_has_valid_admin_token(
@@ -820,7 +1031,15 @@ fn guard_only(
                     head(header::COOKIE.as_str()),
                 )
             {
-                record_audit(w, ids, now, unauthorised, &actor, None, false);
+                record_audit(
+                    w,
+                    ids,
+                    now,
+                    g.unauthorised,
+                    &actor,
+                    g.unauthorised_detail,
+                    false,
+                );
                 return Err(json_error(StatusCode::UNAUTHORIZED, "Admin token required"));
             }
             Ok(actor)
@@ -838,6 +1057,9 @@ pub fn perform(
 ) -> Response {
     let mut cx = Cx { w, ids, now };
     let spec = req.spec;
+    if super::maintenance_writes::handles(spec) {
+        return super::maintenance_writes::perform(&mut cx, req, actor);
+    }
     match (spec.path, &spec.method) {
         ("/api/date-format", &Method::POST) => date_format(&mut cx, req.body),
         ("/api/locale", &Method::POST) => locale(req.body, now),

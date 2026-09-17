@@ -1,17 +1,25 @@
-//! Replays `core/tests/fixtures/runners-cases.json`: the four routes the
-//! way `imports_tests` replays the import routes, and the startup hook's
-//! closures — the boot writes, the scheduler check, the import-queue
-//! drain and the sync resume — called directly with the same accessor,
-//! canned network and frozen clock the oracle gave Node's.
+//! Replays `core/tests/fixtures/maintenance-cases.json`: the thirteen
+//! routes the way `runners_tests` replays the runner routes, and the
+//! startup hook's 60 s health-check closure called directly, each with
+//! the in-process rings, the login counter, the histograms and the
+//! integrity cache reset first, as the oracle reset Node's.
+//!
+//! The health check and the database check report figures that belong
+//! to the process and the file — RSS, heap, lag, page and byte counts,
+//! the path — so those keys are blanked on both sides wherever they
+//! appear (the wire, the persisted blob, the activity detail) before the
+//! comparison; the counts, heals, warnings and status stay exact.
 use super::{
+    auth,
     body::{read_json, BodyOutcome},
+    csp_reports, diag, diagnostics, health_check,
     ratelimit::RateLimiter,
-    sync_runner::{self, Fixed, Scheduler},
     writes::{self, WriteRequest},
+    AppState,
 };
 use crate::scrape::{
     fetch_tests::Canned,
-    persist::{Locked, Statement, Writer},
+    persist::{Shared, Statement, Writer},
     persist_tests::{dump, to_sql, CountingIds},
 };
 use axum::{
@@ -20,11 +28,67 @@ use axum::{
 };
 use rusqlite::params_from_iter;
 use serde_json::{json, Value};
-use std::{path::Path, sync::Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+    time::Instant,
+};
+
+/// The figures that are the process's and the file's own.
+const VOLATILE: [&str; 12] = [
+    "rssMb",
+    "heapFractionUsed",
+    "eventLoopP99Ms",
+    "walBytes",
+    "fileBytes",
+    "shmBytes",
+    "pageCount",
+    "freelistCount",
+    "utilisationPct",
+    "fragmented",
+    "path",
+    "journalMode",
+];
+
+/// Blank the volatile keys in place, following JSON embedded in strings
+/// (the persisted result, the activity detail) and re-serialising it so
+/// both sides come out of the same printer.
+fn blank(v: &mut Value) {
+    match v {
+        Value::Object(map) => {
+            for (k, val) in map.iter_mut() {
+                if VOLATILE.contains(&k.as_str()) {
+                    *val = json!(0);
+                } else {
+                    blank(val);
+                }
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(blank),
+        Value::String(s) if s.starts_with('{') => {
+            if let Ok(mut inner) = serde_json::from_str::<Value>(s) {
+                if inner.is_object() {
+                    blank(&mut inner);
+                    *s = inner.to_string();
+                }
+            }
+        }
+        _ => {}
+    }
+}
 
 #[test]
-fn runner_paths_match_node_wire_calls_stream_and_rows() {
+fn maintenance_paths_match_node_wire_stream_rows_and_ring() {
     let _env = crate::server::trust::env_lock();
+    // The oracle ran under TZ=UTC; the quiet-hours deferral the seed
+    // route computes is in the process timezone.
+    let previous_tz = std::env::var_os("TZ");
+    extern "C" {
+        fn tzset();
+    }
+    std::env::set_var("TZ", "UTC");
+    // SAFETY: tzset takes no pointers; the env lock serialises the edit.
+    unsafe { tzset() };
     std::env::set_var("PRIVACYTRACKER_TRUST_PROXY", "1");
     std::env::set_var("PRIVACYTRACKER_BIND_HOST", "127.0.0.1");
     for var in [
@@ -36,7 +100,7 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
     }
 
     let fixture: Value =
-        serde_json::from_str(include_str!("../../tests/fixtures/runners-cases.json")).unwrap();
+        serde_json::from_str(include_str!("../../tests/fixtures/maintenance-cases.json")).unwrap();
     let now = fixture["now"].as_i64().unwrap();
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -72,52 +136,41 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
             )
             .unwrap();
         }
+        // The process state the routes read or write, reset so each case
+        // stands alone — as the oracle reset Node's.
         crate::scrape::ratelimit::reset_soft_buckets();
-        let conn = Mutex::new(conn);
+        auth::reset_login_failures();
+        diag::clear_error_log();
+        csp_reports::replace_for_test(vec![]);
+        diag::reset_histograms();
+        diagnostics::reset_integrity_cache_for_test();
+        for i in 0..case["seedErrors"].as_u64().unwrap_or(0) {
+            diag::log_error(format!("seeded error {}", i + 1));
+        }
+        let conn = Arc::new(Mutex::new(conn));
+        let state = AppState {
+            conn: conn.clone(),
+            rate_limiter: Arc::new(RateLimiter::new()),
+            started_at: Instant::now(),
+            bound_port: 0,
+        };
+        let log: Arc<Mutex<Vec<Statement>>> = Arc::new(Mutex::new(vec![]));
         let mut ids = CountingIds {
             prefix: "00000000-0000-4000-8000-",
             next: 0,
         };
-        let fetcher = Canned::new(case["replies"].as_array().unwrap().clone(), |_| {});
-        let mut stream: Vec<Statement> = vec![];
+        let fetcher = Canned::new(vec![], |_| {});
+        let mut db = Shared {
+            conn: conn.clone(),
+            log: Some(log.clone()),
+            on_wait: None,
+        };
         let mut wire = None;
         match case["kind"].as_str().unwrap() {
-            "boot" => {
-                let mut db = Locked {
-                    conn: &conn,
-                    log: Some(&mut stream),
-                    on_wait: None,
-                };
-                sync_runner::boot(&mut db, now, false);
-            }
-            "callback" => {
-                let mut db = Locked {
-                    conn: &conn,
-                    log: Some(&mut stream),
-                    on_wait: None,
-                };
-                let clock = Fixed(now);
-                match case["delay"].as_i64().unwrap() {
-                    15_000 => {
-                        let mut sched = Scheduler::default();
-                        rt.block_on(sync_runner::scheduled_check(
-                            &mut sched, &mut db, &fetcher, &mut ids, &clock,
-                        ));
-                    }
-                    20_000 => {
-                        let _ = rt.block_on(super::imports_writes::run_import_queue_tick(
-                            &mut db, &mut ids, now, &fetcher,
-                        ));
-                    }
-                    10_000 => {
-                        rt.block_on(sync_runner::resume_app_store_sync(
-                            &mut db, &fetcher, &mut ids, &clock,
-                        ))
-                        .unwrap();
-                    }
-                    other => panic!("{name}: no callback for a {other} ms timer"),
-                }
-            }
+            "callback" => match case["delay"].as_i64().unwrap() {
+                60_000 => health_check::tick_health_check(&mut db, &mut ids, now),
+                other => panic!("{name}: no callback for a {other} ms timer"),
+            },
             _ => {
                 let method: Method = case["method"].as_str().unwrap().parse().unwrap();
                 let spec = writes::lookup(case["route"].as_str().unwrap(), &method)
@@ -141,14 +194,20 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
                     })
                     .collect();
                 let raw_body = case["body"].as_str().map(str::to_string);
-                let limiter = RateLimiter::new();
                 let mut response = None;
                 for _ in 0..case["repeat"].as_u64().unwrap_or(1) {
                     let actor = {
                         let guard = conn.lock().unwrap();
+                        let mut stream = log.lock().unwrap();
                         let mut w = Writer::new(&guard, Some(&mut stream));
                         match writes::precheck(
-                            &mut w, &mut ids, &limiter, &headers, spec, None, now,
+                            &mut w,
+                            &mut ids,
+                            &state.rate_limiter,
+                            &headers,
+                            spec,
+                            None,
+                            now,
                         ) {
                             Ok(actor) => actor,
                             Err(refused) => {
@@ -166,11 +225,6 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
                         }
                         None => BodyOutcome::Empty,
                     };
-                    let mut db = Locked {
-                        conn: &conn,
-                        log: Some(&mut stream),
-                        on_wait: None,
-                    };
                     response = Some(rt.block_on(writes::perform_async(
                         &mut db,
                         &mut ids,
@@ -181,7 +235,7 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
                             query: &query,
                             body,
                             headers: &headers,
-                            state: None,
+                            state: Some(&state),
                         },
                         &actor,
                         now,
@@ -197,6 +251,7 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
                 };
                 let content_type = header("content-type");
                 let retry_after = header("retry-after");
+                let set_cookie = header("set-cookie");
                 let body = rt.block_on(async {
                     String::from_utf8(
                         axum::body::to_bytes(response.into_body(), usize::MAX)
@@ -207,56 +262,82 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
                     .unwrap()
                 });
                 wire = Some(json!({
-                    "status": status, "body": body, "type": content_type, "retryAfter": retry_after
+                    "status": status, "body": body, "type": content_type,
+                    "retryAfter": retry_after, "setCookie": set_cookie,
                 }));
             }
         }
-        let conn = conn.into_inner().unwrap();
+        drop(db);
+        drop(state);
+        let conn = Arc::try_unwrap(conn).unwrap().into_inner().unwrap();
+        let stream = Arc::try_unwrap(log).unwrap().into_inner().unwrap();
         let expected = &case["expected"];
-        let expected_wire = if expected.is_null() {
+        let compare = case["compare"].as_str().unwrap_or("exact");
+        let mut expected_wire = if expected.is_null() {
             None
+        } else if compare == "status" {
+            Some(json!({ "status": expected["status"], "type": expected["type"] }))
         } else {
             Some(json!({
                 "status": expected["status"], "body": expected["body"], "type": expected["type"],
-                "retryAfter": expected["retryAfter"],
+                "retryAfter": expected["retryAfter"], "setCookie": expected["setCookie"],
             }))
         };
-        let stream_json = Value::Array(
+        if compare == "status" {
+            wire = wire.map(|w| json!({ "status": w["status"], "type": w["type"] }));
+        }
+        let mut stream_json = Value::Array(
             stream
                 .iter()
                 .map(|s| json!({"sql": s.sql, "params": s.params}))
                 .collect(),
         );
-        let calls = Value::Array(fetcher.calls.lock().unwrap().clone());
+        let mut expected_stream = case["stream"].clone();
         let table_names: Vec<&str> = case["rows"]
             .as_object()
             .unwrap()
             .keys()
             .map(String::as_str)
             .collect();
-        let rows = dump(&conn, &table_names);
+        let mut rows = dump(&conn, &table_names);
+        let mut expected_rows = case["rows"].clone();
+        if matches!(compare, "health" | "database") {
+            for v in [
+                &mut stream_json,
+                &mut expected_stream,
+                &mut rows,
+                &mut expected_rows,
+            ] {
+                blank(v);
+            }
+            if let Some(w) = wire.as_mut() {
+                blank(w);
+            }
+            if let Some(w) = expected_wire.as_mut() {
+                blank(w);
+            }
+        }
+        let ring = csp_reports::read()["reports"].clone();
         let mut diffs = vec![];
         if wire != expected_wire {
             diffs.push(format!(
                 "wire\n  expected {expected_wire:?}\n  actual   {wire:?}"
             ));
         }
-        if calls != case["calls"] {
+        if stream_json != expected_stream {
             diffs.push(format!(
-                "calls\n  expected {}\n  actual   {calls}",
-                case["calls"]
+                "stream\n  expected {expected_stream}\n  actual   {stream_json}"
             ));
         }
-        if stream_json != case["stream"] {
+        if rows != expected_rows {
             diffs.push(format!(
-                "stream\n  expected {}\n  actual   {stream_json}",
-                case["stream"]
+                "rows\n  expected {expected_rows}\n  actual   {rows}"
             ));
         }
-        if rows != case["rows"] {
+        if ring != case["csp"] {
             diffs.push(format!(
-                "rows\n  expected {}\n  actual   {rows}",
-                case["rows"]
+                "csp ring\n  expected {}\n  actual   {ring}",
+                case["csp"]
             ));
         }
         if !diffs.is_empty() {
@@ -266,9 +347,15 @@ fn runner_paths_match_node_wire_calls_stream_and_rows() {
     std::env::remove_var("AUDITOR_ADMIN_TOKEN");
     std::env::remove_var("PRIVACYTRACKER_TRUST_PROXY");
     std::env::remove_var("PRIVACYTRACKER_BIND_HOST");
+    match previous_tz {
+        Some(v) => std::env::set_var("TZ", v),
+        None => std::env::remove_var("TZ"),
+    }
+    // SAFETY: restore the original timezone before releasing the env lock.
+    unsafe { tzset() };
     assert!(
         failures.is_empty(),
-        "{} runner parity failures:\n{}",
+        "{} maintenance parity failures:\n{}",
         failures.len(),
         failures.join("\n\n")
     );

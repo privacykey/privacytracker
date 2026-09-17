@@ -87,6 +87,47 @@ pub fn request_has_valid_admin_token(header: Option<&str>, cookie_header: Option
     false
 }
 
+// ── The global login brute-force backstop ────────────────────────────
+
+/// `LOGIN_GLOBAL_FAILURE_LIMIT` failed attempts inside
+/// `LOGIN_GLOBAL_WINDOW_MS` trip a cooldown that no source address can
+/// dodge; only failures count, and it heals itself as the window slides.
+const LOGIN_GLOBAL_FAILURE_LIMIT: usize = 100;
+const LOGIN_GLOBAL_WINDOW_MS: i64 = 15 * 60_000;
+
+fn login_failures() -> &'static std::sync::Mutex<Vec<i64>> {
+    static FAILURES: std::sync::OnceLock<std::sync::Mutex<Vec<i64>>> = std::sync::OnceLock::new();
+    FAILURES.get_or_init(|| std::sync::Mutex::new(Vec::new()))
+}
+
+/// `loginBruteForceTripped`: the cooldown left, when tripped.
+pub fn login_brute_force_tripped(now: i64) -> Option<i64> {
+    let mut failures = login_failures().lock().ok()?;
+    let cutoff = now - LOGIN_GLOBAL_WINDOW_MS;
+    while failures.first().is_some_and(|&t| t < cutoff) {
+        failures.remove(0);
+    }
+    if failures.len() >= LOGIN_GLOBAL_FAILURE_LIMIT {
+        return Some((failures[0] + LOGIN_GLOBAL_WINDOW_MS - now).max(0));
+    }
+    None
+}
+
+/// `recordLoginFailure`.
+pub fn record_login_failure(now: i64) {
+    if let Ok(mut failures) = login_failures().lock() {
+        failures.push(now);
+    }
+}
+
+/// `_resetLoginBruteForce` — the test hook.
+#[cfg(test)]
+pub fn reset_login_failures() {
+    if let Ok(mut failures) = login_failures().lock() {
+        failures.clear();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

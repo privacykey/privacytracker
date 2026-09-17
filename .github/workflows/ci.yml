@@ -449,6 +449,20 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-wayback-runner-cases.mjs
           git diff --exit-code -- core/tests/fixtures/wayback-runner-cases.json
 
+      - name: Maintenance oracle is current
+        # Runs the real health check and self-heal (the route and the
+        # startup hook's own 60 s closure), the diagnostics writes, the
+        # admin-token login and logout, the CSP report ingest, the dev
+        # helpers and the two teardowns — foreign keys on, frozen clock,
+        # the in-process rings and counters reset per case — and records
+        # every request, write, touched table, CSP ring entry and wire
+        # response. A diff means a Node route or lib/health-check.ts
+        # changed and core/src/server/maintenance_writes.rs or
+        # health_check.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-maintenance-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/maintenance-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

@@ -214,7 +214,7 @@ fn parse_hhmm(value: &str) -> Option<(u32, u32)> {
 /// `computeNotBefore(new Date(now))`: `None` unless quiet hours are on and
 /// `now` falls inside the window, else the window's end (next day when it
 /// wraps midnight), in the process timezone.
-pub(super) fn compute_not_before(conn: &rusqlite::Connection, now: i64) -> Option<i64> {
+pub(crate) fn compute_not_before(conn: &rusqlite::Connection, now: i64) -> Option<i64> {
     let quiet_hours_on = flags::context_from_db(conn)
         .ok()
         .and_then(|ctx| flags::resolve_flag("flag.notifications.quiet_hours", &ctx).ok())

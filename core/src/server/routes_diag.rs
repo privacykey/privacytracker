@@ -68,7 +68,9 @@ pub async fn deployment_diagnostics(State(state): State<AppState>, headers: Head
 
 pub async fn diagnostics_database(State(state): State<AppState>) -> Response {
     let conn = state.db();
-    json_ok(&snapshot_database_health(&conn, &data_layout().db_path))
+    let mut snapshot = snapshot_database_health(&conn, &data_layout().db_path);
+    snapshot.integrity_check = super::diagnostics::last_integrity_check();
+    json_ok(&snapshot)
 }
 
 pub async fn diagnostics_disk(State(state): State<AppState>) -> Response {
