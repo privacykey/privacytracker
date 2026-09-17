@@ -95,6 +95,11 @@ pub async fn backups(State(state): State<AppState>) -> Response {
     // Release the database lock before doing filesystem work.
     uncaught(settings.and_then(backup_snapshots::payload))
 }
+/// `GET /api/backup/snapshots/[filename]` (Phase 4, batch 5b): one file
+/// out of `backups/`, no database and no guard of its own.
+pub async fn backup_snapshot_download(Path(filename): Path<String>) -> Response {
+    super::backup_writes::download(&filename)
+}
 route!(
     ai_debug,
     "/api/ai/debug-log",

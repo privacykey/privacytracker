@@ -248,3 +248,11 @@ wrapper!(
 wrapper!(dev_wipe_apps_post, "/api/dev/wipe-apps", POST);
 wrapper!(reset_post, "/api/reset", POST);
 wrapper!(admin_start_over_post, "/api/admin/start-over", POST);
+
+// ── Phase 4, batch 5b ────────────────────────────────────────────────
+
+wrapper!(backup_snapshots_put, "/api/backup/snapshots", PUT);
+wrapper!(backup_snapshots_post, "/api/backup/snapshots", POST);
+wrapper!(backup_export_get, "/api/backup/export", GET);
+wrapper!(backup_preview_post, "/api/backup/preview", POST);
+wrapper!(backup_restore_post, "/api/backup/restore", POST);

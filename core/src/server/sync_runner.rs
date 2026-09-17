@@ -873,6 +873,19 @@ pub(crate) fn start_background(state: AppState) {
         }
     });
 
+    let snapshot_state = state.clone();
+    tokio::spawn(async move {
+        // The helper owns the interval and the retention; this only wakes
+        // up on the scheduler's cadence and asks whether one is due.
+        tokio::time::sleep(Duration::from_secs(35)).await;
+        loop {
+            let mut ids = RandomIds;
+            let mut db = snapshot_state.db_access();
+            super::backup_snapshots::tick_backup_snapshots(&mut db, &mut ids, Live.now());
+            tokio::time::sleep(CHECK_INTERVAL).await;
+        }
+    });
+
     tokio::spawn(async move {
         tokio::time::sleep(Duration::from_secs(20)).await;
         loop {

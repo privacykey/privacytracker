@@ -1471,6 +1471,20 @@ export const MUTATIONS = [
   // -- backup (local file round-trip, no network)
   {
     route: "/api/backup/snapshots",
+    name: "save backup snapshot settings",
+    method: "PUT",
+    path: "/api/backup/snapshots",
+    // Out of range on purpose: both sides must clamp 0 up to 1 and 999
+    // down to 100, and keep the snapshot schedule off.
+    body: { enabled: false, intervalHours: 0, retentionCount: 999 },
+    // The settings are compared as they are — `blankMeasurements` would
+    // blank `retentionCount` for its name — and only the listing's sizes
+    // and times are measurements.
+    transform: (v) => ({ ...v, snapshots: blankMeasurements(v?.snapshots) }),
+    after: "/api/backup/snapshots",
+  },
+  {
+    route: "/api/backup/snapshots",
     name: "create backup snapshot",
     method: "POST",
     path: "/api/backup/snapshots",
@@ -1701,12 +1715,13 @@ export const QUARANTINE = [
     why: "writes device state read from attached hardware",
   },
 
-  // -- large binary / streaming payloads. Not JSON, and sized by host
-  //    state; the e2e suite covers that they download at all.
+  // -- file downloads and uploads, sized by host state. The differ cannot
+  //    hold them; for the backup family, read-parity's probeBackupRoutes
+  //    does (scripts/parity/backup-probes.mjs), after every other pass.
   {
     route: "/api/backup/export",
     method: "GET",
-    why: "streams a binary SQLite backup sized by host state",
+    why: "downloads the whole database as a signed JSON envelope: every row, each server's own audit trail and clock",
   },
   {
     route: "/api/backup/snapshots/[filename]",
@@ -1783,7 +1798,7 @@ export const QUARANTINE = [
   {
     route: "/api/backup/preview",
     method: "POST",
-    why: "requires an uploaded backup payload; covered by the e2e suite",
+    why: "requires an uploaded backup payload; probeBackupRoutes uploads each server's own export to both",
   },
   {
     route: "/api/export/audit-bundle",

@@ -49,6 +49,69 @@ pub fn js_json_vec<T: Serialize>(value: &T) -> serde_json::Result<Vec<u8>> {
     Ok(out)
 }
 
+/// `serde_json`'s two-space pretty formatter with JavaScript's number
+/// spelling: the layout is the one `JSON.stringify(v, null, 2)` writes
+/// (an empty array or object stays on one line), so only the numbers
+/// need overriding.
+struct JsPrettyFormatter(serde_json::ser::PrettyFormatter<'static>);
+
+impl Formatter for JsPrettyFormatter {
+    fn write_f64<W: ?Sized + io::Write>(&mut self, writer: &mut W, value: f64) -> io::Result<()> {
+        JsFormatter.write_f64(writer, value)
+    }
+    fn write_i64<W: ?Sized + io::Write>(&mut self, writer: &mut W, value: i64) -> io::Result<()> {
+        JsFormatter.write_i64(writer, value)
+    }
+    fn write_u64<W: ?Sized + io::Write>(&mut self, writer: &mut W, value: u64) -> io::Result<()> {
+        JsFormatter.write_u64(writer, value)
+    }
+    fn begin_array<W: ?Sized + io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        self.0.begin_array(writer)
+    }
+    fn end_array<W: ?Sized + io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        self.0.end_array(writer)
+    }
+    fn begin_array_value<W: ?Sized + io::Write>(
+        &mut self,
+        writer: &mut W,
+        first: bool,
+    ) -> io::Result<()> {
+        self.0.begin_array_value(writer, first)
+    }
+    fn end_array_value<W: ?Sized + io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        self.0.end_array_value(writer)
+    }
+    fn begin_object<W: ?Sized + io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        self.0.begin_object(writer)
+    }
+    fn end_object<W: ?Sized + io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        self.0.end_object(writer)
+    }
+    fn begin_object_key<W: ?Sized + io::Write>(
+        &mut self,
+        writer: &mut W,
+        first: bool,
+    ) -> io::Result<()> {
+        self.0.begin_object_key(writer, first)
+    }
+    fn begin_object_value<W: ?Sized + io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        self.0.begin_object_value(writer)
+    }
+    fn end_object_value<W: ?Sized + io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        self.0.end_object_value(writer)
+    }
+}
+
+/// `JSON.stringify(value, null, 2)` — the backup download and the
+/// snapshot files, which a person may open.
+pub fn js_json_pretty_vec<T: Serialize>(value: &T) -> serde_json::Result<Vec<u8>> {
+    let mut out = Vec::with_capacity(4096);
+    let formatter = JsPrettyFormatter(serde_json::ser::PrettyFormatter::with_indent(b"  "));
+    let mut ser = serde_json::Serializer::with_formatter(&mut out, formatter);
+    value.serialize(&mut ser)?;
+    Ok(out)
+}
+
 /// `NextResponse.json(value, { status })`.
 pub fn json_response<T: Serialize>(status: StatusCode, value: &T) -> Response {
     let body = match js_json_vec(value) {
@@ -89,8 +152,22 @@ pub fn json_error(status: StatusCode, message: &str) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::js_json_vec;
+    use super::{js_json_pretty_vec, js_json_vec};
     use serde_json::json;
+
+    #[test]
+    fn the_pretty_serializer_lays_out_like_json_stringify_with_two_spaces() {
+        // `JSON.stringify(v, null, 2)` of the same object from node -e.
+        let v = json!({
+            "n": [1, 2.5, 1e21, 0.000001],
+            "empty": { "a": [], "o": {} },
+            "s": "é \"q\"\n"
+        });
+        assert_eq!(
+            String::from_utf8(js_json_pretty_vec(&v).unwrap()).unwrap(),
+            "{\n  \"n\": [\n    1,\n    2.5,\n    1e+21,\n    0.000001\n  ],\n  \"empty\": {\n    \"a\": [],\n    \"o\": {}\n  },\n  \"s\": \"é \\\"q\\\"\\n\"\n}"
+        );
+    }
 
     #[test]
     fn one_serializer_spells_numbers_like_javascript() {
