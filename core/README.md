@@ -2058,3 +2058,80 @@ that mixes tracked and untracked rows; and dropping the `Retry-After`
 from the inline rate limits failed exactly the four bursts on those
 routes. Each fault was removed before the final passing run.
 
+### Batch 4a — the sync runner and the scheduler (+4 handlers, 3 tickers)
+
+`core/src/server/sync_runner.rs` ports `lib/sync-bulk-runner.ts` and
+`lib/sync-bulk-state.ts`: the durable state blob under
+`sync_bulk_state`, the `sync_running` mutex, `buildInitialSyncQueue`,
+and `runBulkSync` — the per-app loop that marks each entry in flight and
+persists it before any work, re-reads the app row at dequeue time,
+resyncs it, and on Apple's first 429 marks that entry and every pending
+peer as rate-limited and stops, still clearing the state and the mutex
+so the next tick starts fresh; the no-op run over an empty fleet, the
+summary row with `last_auto_sync` stamped only on a real completion, and
+the outer catch that leaves the state and mutex for the next boot. Over
+it, `runScheduledSync` (busy answers `skipped`) and the three callers
+Node gives it: `POST /api/sync/trigger`, the scheduler's 30-minute
+`check` with its in-memory failure backoff, and the boot-time
+`resumeAppStoreSync` — a stale lock or a finished blob healed with a
+`__sync_resume__` notification and an activity row, pending work resumed
+with a resume notification and the run itself. Beside them, the boot
+writes `register()` makes (the runtime marker, the stale import-queue
+and health-check locks cleared) and the import-queue drain tick over
+batch 3's `runImportQueueTick`. `core/src/server/runner_writes.rs` adds
+`POST /api/dev/sync-stop`, `DELETE /api/rate-limit/status` and
+`DELETE /api/apps` (import rows tombstoned and their imports recounted
+inside the delete's transaction).
+
+**What this batch adds.** A run that outlives its request: the runner
+takes a `Clock` (live on the server, frozen in the replay) rather than
+the request's instant, and takes the lock per section — the seed and the
+mutex before the first scrape, one section per app for the in-flight
+mark and the row lookup, the scrape's preparing reads, the network with
+the lock released, then the commit and the state write together. A JSON
+blob whose key order is pinned by the code that creates it: every entry
+key is created, undefined or not, when the entry goes in flight, and
+`JSON.stringify` omits the undefined ones, which is a struct of `Option`s
+in that order (the rate-limit branch assigns `outcome` before `error`,
+yet `error` serialises first — pinned by a unit test). Background work
+on the server: `start_background` runs the boot writes before serving,
+then spawns the resume check at 10 s, the scheduler check at 15 s and
+every 30 minutes, and the drain at 20 s and every minute, each over the
+same accessor the routes use.
+
+**The oracle — `core/scripts/extract-runners-cases.mjs`.** Runs the REAL
+handlers and, new here, the startup hook as itself: `setTimeout` and
+`setInterval` are captured while `register()` runs, so the scheduler
+check, the drain and the sync resume are Node's own closures, invoked
+with the clock frozen; the resume spawns its run without awaiting it,
+and the oracle waits for the mutex to clear before it dumps. Boot cases
+run `register()` again inside the case. 52 cases: the trigger over a
+busy mutex and a leftover blob, an empty fleet, a fleet with one changed
+app, a failed app, Apple's 429 on the first and on the last app, an app
+without a URL, and the burst; the stop with and without a configured
+token; the cooldown clears and every body branch; the app delete with
+tombstones, without import rows, on an unknown id, the id validation,
+the token and the burst; and the boot and callback cases — nothing stuck,
+the two stale locks, the schedule not due, due, due but busy and not yet
+due, the drain, and the resume over nothing, a stale mutex, a finished
+blob, a crashed run (the in-flight app redone) and a queue naming a
+deleted app. `core/src/server/runners_tests.rs` replays each through the
+same accessor.
+
+Live: `read-parity.mjs --mutate` — 178 read checks, then 45 mutations
+with the stop and the cooldown clear joining the pass, PARITY OK. The
+trigger re-scrapes the fleet against Apple and stays quarantined, and
+the app delete is a teardown entry the mutate pass never runs; both are
+gated by the oracle alone. The tickers now run on the Rust server too,
+so the import-queue fields the differ already treats as tick noise move
+on both sides.
+
+Rust suite: 214 pass (211 + 3 new). Negative controls, each predicted
+from the fixture before it ran: not counting the pending peers on a 429
+failed exactly the one run with peers left; stamping `last_auto_sync` on
+a rate-limited exit failed exactly the two rate-limited runs; skipping
+the health-check lock clear failed exactly the one boot with it stuck;
+and silencing the resume notification failed exactly the four resume
+cases that raise one. Each fault was removed before the final passing
+run.
+

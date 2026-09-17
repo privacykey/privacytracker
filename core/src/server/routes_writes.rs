@@ -194,3 +194,10 @@ wrapper_with_id!(
     "/api/apps/[id]/import-history",
     DELETE
 );
+
+// ── Phase 4, batch 4a ────────────────────────────────────────────────
+
+wrapper!(sync_trigger_post, "/api/sync/trigger", POST);
+wrapper!(dev_sync_stop_post, "/api/dev/sync-stop", POST);
+wrapper!(rate_limit_status_delete, "/api/rate-limit/status", DELETE);
+wrapper!(apps_delete, "/api/apps", DELETE);

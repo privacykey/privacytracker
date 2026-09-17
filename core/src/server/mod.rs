@@ -70,6 +70,9 @@ mod routes_stats;
 mod routes_status;
 mod routes_writes;
 mod row;
+mod runner_writes;
+#[cfg(test)]
+mod runners_tests;
 mod runtime_diag;
 mod scope;
 pub(crate) mod settings;
@@ -77,6 +80,7 @@ mod shortlist;
 mod stats;
 #[cfg(test)]
 mod stats_tests;
+mod sync_runner;
 mod sysproc;
 mod timing;
 mod trend;
@@ -233,7 +237,16 @@ pub fn app(state: AppState) -> Router {
         .route("/api/wayback/import-all", get(routes_operations::wayback))
         .route("/api/policy/sync-all", get(routes_operations::policy))
         .route("/api/backup/snapshots", get(routes_operations::backups))
-        .route("/api/rate-limit/status", get(routes_operations::cooldowns))
+        .route(
+            "/api/rate-limit/status",
+            get(routes_operations::cooldowns).delete(routes_writes::rate_limit_status_delete),
+        )
+        // Phase 4, batch 4a: the sync runner's routes.
+        .route("/api/sync/trigger", post(routes_writes::sync_trigger_post))
+        .route(
+            "/api/dev/sync-stop",
+            post(routes_writes::dev_sync_stop_post),
+        )
         .route("/api/ai/debug-log", get(routes_operations::ai_debug))
         .route("/api/csp-report", get(routes_operations::csp))
         .route("/api/export", get(routes_operations::export))
@@ -343,7 +356,10 @@ pub fn app(state: AppState) -> Router {
         // multi-key object, and a bare array with a 404 branch.
         // One path, five responses, all-or-nothing: axum routes by path, so
         // this lands only once every branch exists. See routes_apps.rs.
-        .route("/api/apps", get(routes_apps::apps))
+        .route(
+            "/api/apps",
+            get(routes_apps::apps).delete(routes_writes::apps_delete),
+        )
         .route(
             "/api/focus",
             get(routes_focus::focus).post(routes_writes::focus_post),
@@ -570,6 +586,9 @@ pub async fn serve(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
     // Printed so a supervising script can wait for readiness on stdout
     // rather than polling a port it only assumes is right.
     println!("pt-core: listening on http://{bound}");
+    // instrumentation.ts's boot writes and tickers: the sync resume, the
+    // scheduler check and the import-queue drain.
+    sync_runner::start_background(state.clone());
 
     axum::serve(
         listener,
