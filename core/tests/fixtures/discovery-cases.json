@@ -3672,6 +3672,162 @@
       }
     },
     {
+      "name": "feed shape {\"feed\":{\"entry\":{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]}}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]}}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[{\"appleId\":\"001\",\"name\":\"Candidate 001\",\"developer\":\"Developer\",\"iconUrl\":\"large\",\"url\":\"https://apps.apple.com/id001\"}],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {\"feed\":{\"entry\":{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]}}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":{\"id\":{\"attributes\":{\"im:id\":\"89995001\"}},\"im:name\":{\"label\":\" Candidate 89995001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id89995001\"}},{\"attributes\":{\"href\":\"ignored\"}}]}}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {\"feed\":{\"entry\":\"text\"}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":\"text\"}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
+      "name": "feed shape {\"feed\":{\"entry\":5}}",
+      "route": "related-apps",
+      "query": [
+        [
+          "sourceAppId",
+          "89995001"
+        ],
+        [
+          "limit",
+          "10"
+        ]
+      ],
+      "changes": [],
+      "replies": [
+        {
+          "body": "{\"feed\":{\"entry\":5}}",
+          "status": 200
+        }
+      ],
+      "repeat": 1,
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/us/rss/topfreeapplications/limit=50/genre=6005/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "expected": {
+        "status": 200,
+        "body": "{\"mode\":\"top_in_category\",\"genreId\":6005,\"genreName\":\"Social\",\"free\":true,\"candidates\":[],\"sourceAppUrl\":\"https://apps.apple.com/us/app/id89995001\"}",
+        "type": "application/json",
+        "retry": null
+      }
+    },
+    {
       "name": "feed shape {\"feed\":{\"entry\":[{\"id\":{\"attributes\":{\"im:id\":\"001\"}},\"im:name\":{\"label\":\" Candidate 001 \"},\"im:artist\":{\"label\":\" Developer \"},\"im:image\":[{\"label\":\"small\"},{\"label\":\"large\"}],\"link\":[{\"attributes\":{\"href\":\"https://apps.apple.com/id001\"}},{\"attributes\":{\"href\":\"ignored\"}}]},null]}}",
       "route": "related-apps",
       "query": [

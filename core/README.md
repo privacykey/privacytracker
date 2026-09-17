@@ -2714,7 +2714,7 @@ are fixture rows, not fetches.
 
 **The oracle — `core/scripts/extract-seed-cases.mjs`.** Runs the REAL
 handler, each case in a SAVEPOINT, the network a stub that serves the
-case's replies in order and refuses a run that leaves one unused. 50
+case's replies in order and refuses a run that leaves one unused. 55
 cases. Canned: onto an empty install, twice, topping up a part-seeded
 one, with the region from the query, from a stored setting, from a blank
 one and from an unknown one, and failing part-way — a row already
@@ -2780,6 +2780,27 @@ check predicted — the library comparison, naming `privacy_snapshots`
 alone — while the two responses still agreed (the counts do not change)
 and all 180 reads, 57 mutations, 23 bundle, 26 backup and the other 5
 seed checks passed. Each fault was removed before the final passing run.
+
+**What the port found in Node, after it shipped.** Reading the port
+back against the real feed rather than the fixture: Apple's legacy RSS
+charts are an Atom feed converted to JSON, and a chart of exactly ONE
+app carries its `entry` as a bare object, not a one-element array. The
+first fixture for `?limit=1` had used an array — what the code expected,
+not what Apple sends. On the real shape Node's `for…of` throws, so the
+seed answered 502 (`entries is not iterable`) to every `limit=1`; and
+the other reader of the same feed, `/api/related-apps`, threw inside its
+`try` and told the Compare page a category had no candidates when it had
+exactly one. The core, ported faithfully, did the same. Fixed on both
+sides together, because the oracles tie them: `lib/itunes-rss.ts` and
+`routes_discovery::rss_entries` normalise the entry, the seed oracle
+gained a one-app chart (scraped, and already tracked) and entries that
+are a string, a number and `null` — a string is not a list of its
+letters — and the discovery oracle the same four shapes. The unported
+core was the control: regenerating the fixtures first failed exactly the
+two seed cases and the one discovery case predicted, and none of the
+non-object shapes, which already agreed. A fixture records what the code
+does with the reply it is given; whether Apple gives that reply is a
+question only the feed answers.
 
 **Batch 5 is complete**, and with it the write side of the API outside
 the two groups set aside at the start of the phase: the cfgutil device

@@ -263,14 +263,22 @@ async fn lookup(fetcher: &dyn Fetcher, id: &str, country: &str) -> Option<Value>
         "priceAmount":if entry["price"].is_number(){entry["price"].clone()}else{Value::Null}
     }))
 }
+/// `rssEntries` (lib/itunes-rss.ts). The legacy iTunes charts are an Atom
+/// feed converted to JSON, and a chart of exactly ONE app carries its
+/// entry as a bare object, not a one-element array. Anything that is
+/// neither is no entries at all — a string is not a list of its letters.
+pub(super) fn rss_entries(entry: &Value) -> Vec<&Value> {
+    match entry {
+        Value::Array(list) => list.iter().collect(),
+        Value::Object(_) => vec![entry],
+        _ => vec![],
+    }
+}
+
 fn candidates(body: &[u8], id: &str, limit: f64) -> Option<Vec<Value>> {
     let parsed = super::user_content::parse(&String::from_utf8_lossy(body)).ok()?;
-    let entries = &parsed["feed"]["entry"];
-    if entries.is_null() {
-        return Some(vec![]);
-    }
     let mut out = vec![];
-    for e in entries.as_array()? {
+    for e in rss_entries(&parsed["feed"]["entry"]) {
         if e.is_null() {
             return None;
         }

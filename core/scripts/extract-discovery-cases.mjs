@@ -455,6 +455,13 @@ try {
     null,
     {},
     { feed: { entry: {} } },
+    // The feed is XML converted to JSON: a genre with ONE free app carries
+    // its entry as a bare object, not a one-element array. It is that
+    // genre's only candidate, and iterating it used to throw it away.
+    { feed: { entry: entry("001") } },
+    { feed: { entry: entry(ID) } },
+    { feed: { entry: "text" } },
+    { feed: { entry: 5 } },
     { feed: { entry: [entry("001"), null] } },
     { feed: { entry: [entry("001"), entry("002", 3)] } },
     {
