@@ -59,16 +59,26 @@ Going forward, changes are recorded here as they land.
   waits for a rescrape of an imported policy: a bundle carries only the
   opening of the policy text, and a summary of that would read as a
   summary of the whole policy.
+- With "Disable policy scraping" switched on in Settings, importing apps or
+  syncing them with the App Store no longer starts a privacy-policy run in
+  the background. The setting promises no bulk runs, but the automatic
+  policy fetch that follows every import and sync still started one. It
+  fetched nothing, yet each time it added an Activity log row for every app
+  with a privacy policy link, and an app whose last fetch had failed was
+  logged and counted as failing again ("Fetch failed: ...", "Bulk policy
+  scrape: 0 ok, 1 failed"). While scraping is disabled that run is now
+  skipped, without adding anything to the Activity log. Once scraping is
+  back on, it runs again after the next import or sync.
 
 - With "Disable policy scraping" switched on in Settings, an app whose
   privacy policy had never been fetched no longer shows up as a failure.
-  Its policy run (the automatic fetch after an import or sync, for
-  example) was written to the Activity log as an error, "Policy summary
-  failed", counted as failed in the bulk policy total, and left the app's
-  AI Policy tab saying the policy was fetched but the AI summary could not
-  be generated, when nothing had been fetched at all. The run is now
-  logged as "Policy skipped: scraping disabled" and counted as skipped,
-  and the AI Policy tab says no policy analysis is stored yet.
+  Its policy run (in a bulk run already under way when scraping was
+  switched off, for example) was written to the Activity log as an error,
+  "Policy summary failed", counted as failed in the bulk policy total, and
+  left the app's AI Policy tab saying the policy was fetched but the AI
+  summary could not be generated, when nothing had been fetched at all.
+  The run is now logged as "Policy skipped: scraping disabled" and counted
+  as skipped, and the AI Policy tab says no policy analysis is stored yet.
 
 - The History tab's "Show diff from previous version" shows the change it
   is asked to show. The diff trimmed a common suffix counted from the start
