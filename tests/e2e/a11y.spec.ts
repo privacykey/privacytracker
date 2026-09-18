@@ -120,6 +120,20 @@ async function seedCannedApps(request: APIRequestContext): Promise<string> {
   return String(instagram?.id);
 }
 
+async function setDefaultFocus(request: APIRequestContext) {
+  const focus = await request.post("/api/focus", {
+    headers: sameOriginHeaders,
+    data: {
+      audience: "self",
+      monitor: true,
+      cleanup: false,
+      minimal: false,
+      accessibility: true,
+    },
+  });
+  await expect(focus).toBeOK();
+}
+
 /**
  * Make sure the install has at least one device, so the nav's device
  * picker renders (it renders nothing with zero devices, and the canned
@@ -143,20 +157,6 @@ async function ensureDevice(
   });
   await expect(created).toBeOK();
   return (await created.json()).device.id as string;
-}
-
-async function setDefaultFocus(request: APIRequestContext) {
-  const focus = await request.post("/api/focus", {
-    headers: sameOriginHeaders,
-    data: {
-      audience: "self",
-      monitor: true,
-      cleanup: false,
-      minimal: false,
-      accessibility: true,
-    },
-  });
-  await expect(focus).toBeOK();
 }
 
 // ---------------------------------------------------------------------------
