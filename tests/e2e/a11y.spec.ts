@@ -4,7 +4,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { expectNoBlockingViolations, type KnownIssue } from "./helpers/axe";
+import { expectNoBlockingViolations } from "./helpers/axe";
 
 /**
  * Blocking accessibility gate.
@@ -13,16 +13,16 @@ import { expectNoBlockingViolations, type KnownIssue } from "./helpers/axe";
  * onboarding import-matching step, /dashboard, the app detail page,
  * the mobile navigation drawer, and the Stats and Privacy Map pages.
  * Serious/critical WCAG 2.2 A/AA violations, target size included,
- * fail CI (this file runs inside
- * the `quality` job's Playwright step like every other spec here).
+ * fail CI (this file runs inside the `quality` job's Playwright step
+ * like every other spec here).
  *
  * Most scans run in light mode only. Stats and Privacy Map are also
  * scanned in dark and high-contrast mode, because their failures were
  * theme-specific: text on chart fills and severity tints that passed
  * in one palette and not another.
  *
- * The known-issue allowlist (see `helpers/axe.ts`) has one entry,
- * `DARK_MODE_KNOWN_ISSUES` below. If a new violation must ship
+ * The known-issue allowlist (see `helpers/axe.ts`) is EMPTY: every
+ * defect it tracked has been fixed. If a new violation must ship
  * temporarily, add a per-surface entry whose reason names the pending
  * fix — and delete it in the same PR as that fix.
  *
@@ -129,17 +129,6 @@ async function seedCannedApps(request: APIRequestContext): Promise<string> {
 type Theme = "light" | "dark" | "high-contrast";
 
 const THEMES: Theme[] = ["light", "dark", "high-contrast"];
-
-/** Dark-mode-only failures shared by every page, via the nav. */
-const DARK_MODE_KNOWN_ISSUES: KnownIssue[] = [
-  {
-    rule: "color-contrast",
-    match: "nav-add-apps-label",
-    reason:
-      "white '+ Add Apps' label on the dark-mode --blue fill is 3.6:1; " +
-      "fix/detail-page-axe-findings moves primary buttons onto --blue-fill",
-  },
-];
 
 /**
  * Load `path` in `theme`. The OS scheme is emulated; high contrast is the
@@ -404,9 +393,7 @@ browserFlow(
         await expect(page.locator(".sm-category-pref").first()).toBeVisible();
         await page.waitForTimeout(600);
 
-        await expectNoBlockingViolations(page, `stats-${theme}`, {
-          knownIssues: theme === "dark" ? DARK_MODE_KNOWN_ISSUES : [],
-        });
+        await expectNoBlockingViolations(page, `stats-${theme}`);
 
         // The hover panel only renders its severity, preference and
         // mismatch lines while a cell is hovered, so the page scan
@@ -450,9 +437,7 @@ browserFlow(
       ).toBeVisible();
       await page.waitForTimeout(600);
 
-      await expectNoBlockingViolations(page, `privacy-map-${theme}`, {
-        knownIssues: theme === "dark" ? DARK_MODE_KNOWN_ISSUES : [],
-      });
+      await expectNoBlockingViolations(page, `privacy-map-${theme}`);
     }
   }
 );
