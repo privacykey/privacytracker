@@ -194,18 +194,27 @@ pub fn js_to_number(value: &serde_json::Value) -> f64 {
 /// `9007199254740992.0` and `1e17`. It only reaches exponent notation past
 /// 1e21. `serde_json`'s float formatting disagrees on both counts.
 ///
-/// The bound is the i64 range rather than 2^53: an integral f64 below 2^63
-/// converts to i64 exactly, and stopping at 2^53 — the natural instinct,
-/// since that is where f64 stops representing every integer — would emit
-/// `1e17` for a value JavaScript writes out in full. Above the i64 range
-/// this gives up and lets the float formatter run, which diverges; nothing
-/// this database stores comes close.
-fn js_integral(f: f64) -> Option<i64> {
-    if f.fract() == 0.0 && f.abs() < 9.0e18 {
-        Some(f as i64)
-    } else {
-        None
+/// Up to 2^53 every integral f64 converts to the integer JavaScript prints.
+/// Past it, JavaScript prints the SHORTEST digits that round-trip, padded
+/// with zeros — `2 ** 60` is `1152921504606847000`, not the exact
+/// `1152921504606846976` — so the integer is read back out of
+/// [`js_number_spelling`] instead, which also covers `1e17` written out in
+/// full. That reaches as far as u64 does; from there to 1e21, where
+/// JavaScript turns to exponents, this gives up and lets the float formatter
+/// run, which diverges. Nothing this database stores comes close.
+fn js_integral(f: f64) -> Option<serde_json::Value> {
+    if f.fract() != 0.0 {
+        return None;
     }
+    if f.abs() <= 9_007_199_254_740_992.0 {
+        return Some(serde_json::Value::from(f as i64));
+    }
+    let spelled = js_number_spelling(f);
+    spelled
+        .parse::<i64>()
+        .map(serde_json::Value::from)
+        .or_else(|_| spelled.parse::<u64>().map(serde_json::Value::from))
+        .ok()
 }
 
 /// Render an f64 the way `JSON.stringify` renders a JavaScript number.
@@ -221,8 +230,8 @@ pub fn js_number(f: f64) -> serde_json::Value {
         // JSON.stringify(NaN) is the four characters `null`.
         return Value::Null;
     }
-    if let Some(i) = js_integral(f) {
-        return Value::from(i);
+    if let Some(integral) = js_integral(f) {
+        return integral;
     }
     serde_json::Number::from_f64(f).map_or(Value::Null, Value::Number)
 }

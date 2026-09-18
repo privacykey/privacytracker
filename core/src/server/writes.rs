@@ -202,14 +202,16 @@ enum Guard {
     /// the admin token with an audit row named by the route.
     Inline(InlineGuard),
     Mutation(GuardOptions),
-    /// `checkRateLimit` inline with the route's own phrasing and a
-    /// `Retry-After`, and no admin check at all. `per_param` appends the
-    /// path id to the key, as the wayback import does.
+    /// `checkRateLimit` inline with the route's own phrasing, and no admin
+    /// check at all. `per_param` appends the path id to the key, as the
+    /// wayback import does; `retry_after` is whether the 429 carries the
+    /// header, which the manual-app scrape's does not.
     Rate {
         prefix: &'static str,
         limit: i64,
         message: &'static str,
         per_param: bool,
+        retry_after: bool,
     },
 }
 
@@ -379,6 +381,7 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(bundle_routes());
         routes.extend(seed_routes());
         routes.extend(leftover_routes());
+        routes.extend(policy_routes());
         routes
     })
 }
@@ -549,6 +552,7 @@ fn runner_routes() -> Vec<RouteSpec> {
                 limit: 2,
                 message: "Bulk import throttled — wait before retrying.",
                 per_param: false,
+                retry_after: true,
             },
         ),
         spec(
@@ -560,6 +564,7 @@ fn runner_routes() -> Vec<RouteSpec> {
                 limit: 20,
                 message: "Wayback import controls are throttled — wait before retrying.",
                 per_param: false,
+                retry_after: true,
             },
         ),
         spec("/api/wayback/import-all", Method::DELETE, None, Guard::None),
@@ -753,6 +758,7 @@ fn imports_routes() -> Vec<RouteSpec> {
             limit,
             message,
             per_param: false,
+            retry_after: true,
         }
     }
     let spec =
@@ -829,6 +835,7 @@ fn imports_routes() -> Vec<RouteSpec> {
                 limit: 3,
                 message: "Import throttled — wait before retrying.",
                 per_param: true,
+                retry_after: true,
             },
         ),
         spec(
@@ -846,6 +853,24 @@ pub fn is_async(spec: &RouteSpec) -> bool {
         || super::runner_writes::handles(spec)
         || super::seed_writes::handles(spec)
         || super::webhook_writes::handles(spec)
+        || super::routes_policy::handles(spec)
+}
+
+/// Phase 5, batch 2 — see `routes_policy.rs`. The manual-app scrape
+/// limits itself and answers its 429 with no `Retry-After`.
+fn policy_routes() -> Vec<RouteSpec> {
+    vec![RouteSpec {
+        path: "/api/manual-apps/[id]/scrape",
+        method: Method::POST,
+        body_limit: None,
+        guard: Guard::Rate {
+            prefix: "manual-apps.scrape",
+            limit: 10,
+            message: "Rate limit exceeded",
+            per_param: false,
+            retry_after: false,
+        },
+    }]
 }
 
 /// Phase 4, batch 6 — see `webhook_writes.rs`. The webhook test has no
@@ -1115,6 +1140,7 @@ fn guard_only(
             limit,
             message,
             per_param,
+            retry_after,
         } => {
             let head = |name: &str| headers.get(name).and_then(|v| v.to_str().ok());
             let prefix = if *per_param {
@@ -1128,10 +1154,12 @@ fn guard_only(
             if !rate.allowed {
                 let mut response =
                     json_response(StatusCode::TOO_MANY_REQUESTS, &json!({ "error": message }));
-                // `String(Math.ceil(rate.retryAfterMs / 1000))`.
-                let seconds = (rate.retry_after_ms.max(0) + 999) / 1000;
-                if let Ok(value) = HeaderValue::from_str(&seconds.to_string()) {
-                    response.headers_mut().insert(header::RETRY_AFTER, value);
+                if *retry_after {
+                    // `String(Math.ceil(rate.retryAfterMs / 1000))`.
+                    let seconds = (rate.retry_after_ms.max(0) + 999) / 1000;
+                    if let Ok(value) = HeaderValue::from_str(&seconds.to_string()) {
+                        response.headers_mut().insert(header::RETRY_AFTER, value);
+                    }
                 }
                 return Err(response);
             }
@@ -1249,6 +1277,9 @@ pub async fn perform_async(
     }
     if super::webhook_writes::handles(req.spec) {
         return super::webhook_writes::perform(db, ids, now, fetcher, req, actor).await;
+    }
+    if super::routes_policy::handles(req.spec) {
+        return super::routes_policy::perform(db, ids, now, fetcher, req, actor).await;
     }
     if is_async(req.spec) {
         return super::imports_writes::perform(db, ids, now, fetcher, req, actor).await;

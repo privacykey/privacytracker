@@ -89,6 +89,73 @@ export const READS = [
     name: "manual detail populated operations history",
     path: "/api/manual-apps/pt-ops-manual",
   },
+  // Phase 5, batch 2: the policy reads, over scripts/parity/policy-fixture.mjs.
+  // The running state is the operations fixture's app, primed running on
+  // both sides after boot (see policy-fixture.mjs for why only there).
+  ...[
+    ["after a run with a mixed log", "89994001"],
+    ["ready with no run recorded", "89994002"],
+    ["an app with no analysis", "89994009"],
+    ["running, with an unreadable log and an unknown status", "89996001"],
+  ].map(([what, id]) => ({
+    route: "/api/policy/status/[appId]",
+    name: `policy status ${what}`,
+    path: `/api/policy/status/${id}`,
+  })),
+  {
+    route: "/api/policy/status/[appId]",
+    name: "policy status refuses an id that is not digits",
+    path: "/api/policy/status/abc",
+    allowErrorStatus: true,
+  },
+  ...[
+    ["with its archive link", "pt-policy-v2"],
+    ["with no archive link", "pt-policy-v1"],
+  ].map(([what, id]) => ({
+    route: "/api/policy/version/[id]",
+    name: `policy version ${what}`,
+    path: `/api/policy/version/${id}`,
+  })),
+  {
+    route: "/api/policy/version/[id]",
+    name: "policy version missing",
+    path: "/api/policy/version/pt-policy-missing",
+    allowErrorStatus: true,
+  },
+  ...[
+    ["of a one-word edit and an appended line", "pt-policy-v2"],
+    ["of a changed last line across CRLF", "pt-policy-v3"],
+  ].map(([what, id]) => ({
+    route: "/api/policy/version/[id]/diff",
+    name: `policy diff ${what}`,
+    path: `/api/policy/version/${id}/diff`,
+  })),
+  ...[
+    ["of the first version", "pt-policy-v1"],
+    ["of a missing version", "pt-policy-missing"],
+  ].map(([what, id]) => ({
+    route: "/api/policy/version/[id]/diff",
+    name: `policy diff ${what}`,
+    path: `/api/policy/version/${id}/diff`,
+    allowErrorStatus: true,
+  })),
+  {
+    route: "/api/manual-apps/[id]/policy-version/[versionId]",
+    name: "manual policy version",
+    path: "/api/manual-apps/pt-policy-manual/policy-version/pt-policy-mv1",
+  },
+  ...[
+    [
+      "asked for under another app",
+      "pt-policy-manual/policy-version/pt-policy-mv2",
+    ],
+    ["of a missing app", "pt-policy-missing/policy-version/pt-policy-mv1"],
+  ].map(([what, tail]) => ({
+    route: "/api/manual-apps/[id]/policy-version/[versionId]",
+    name: `manual policy version ${what}`,
+    path: `/api/manual-apps/${tail}`,
+    allowErrorStatus: true,
+  })),
   {
     route: "/api/manual-apps/[id]",
     name: "manual detail missing",
@@ -1695,7 +1762,7 @@ export const QUARANTINE = [
   {
     route: "/api/manual-apps/[id]/scrape",
     method: "POST",
-    why: "fetches the manual app's live policy URL",
+    why: "fetches the manual app's live policy URL; probePolicyRoutes holds its refusals and its limit on both, the policy-store oracle the fetch",
   },
   {
     route: "/api/dev/seed-sample-data",
@@ -1796,27 +1863,6 @@ export const QUARANTINE = [
     why: "takes an uploaded bundle, multipart from the real client; probeBundleRoutes uploads each server's own export to both, as JSON and as a form",
   },
 
-  // -- per-id reads with no canned fixture rows
-  {
-    route: "/api/manual-apps/[id]/policy-version/[versionId]",
-    method: "GET",
-    why: "the canned fixture creates no manual-app policy versions to address",
-  },
-  {
-    route: "/api/policy/status/[appId]",
-    method: "GET",
-    why: "policy pipeline is disabled by default; no analysis rows exist",
-  },
-  {
-    route: "/api/policy/version/[id]",
-    method: "GET",
-    why: "no policy versions exist without the AI pipeline having run",
-  },
-  {
-    route: "/api/policy/version/[id]/diff",
-    method: "GET",
-    why: "no policy versions exist without the AI pipeline having run",
-  },
   {
     route: "/api/imports/items/retry",
     method: "POST",

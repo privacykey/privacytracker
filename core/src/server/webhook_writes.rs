@@ -207,7 +207,7 @@ async fn post_immediate(db: &mut dyn DbAccess, fetcher: &dyn Fetcher, n: Notific
 /// `fireWebhookIfConfigured`, as `createNotification` calls it: detached
 /// from the response on the server, where a slow webhook must not hold
 /// the request; inline in the replay, whose fetcher cannot be shared.
-async fn fire_immediate(
+pub(super) async fn fire_immediate(
     db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     now: i64,

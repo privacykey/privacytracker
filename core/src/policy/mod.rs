@@ -5,6 +5,7 @@
 //! database; the store, the summariser and the runner follow in later
 //! batches.
 pub mod diag;
+pub mod diff;
 pub mod source;
 pub mod text;
 pub mod url;

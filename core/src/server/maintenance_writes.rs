@@ -40,7 +40,7 @@ use serde_json::{json, Value};
 
 const ADMIN_TOKEN_MAX_AGE_SECONDS: i64 = 8 * 60 * 60;
 const CLEAR_AI_DEBUG_LOG: &str = "DELETE FROM ai_debug_log";
-const INSERT_NOTIFICATION: &str = "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n    VALUES (?, ?, ?, ?, ?, 0, ?)\n  ";
+pub(super) const INSERT_NOTIFICATION: &str = "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n    VALUES (?, ?, ?, ?, ?, 0, ?)\n  ";
 const RESET_APPS_CHANGE_STATE: &str = "UPDATE apps\n             SET changeCount = 0,\n                 changes_acknowledged_at = 0,\n                 changes_snoozed_until = 0";
 /// lib/reset-tables.ts, children before parents.
 const APP_DATA_TABLES_TO_TRUNCATE: [&str; 22] = [
