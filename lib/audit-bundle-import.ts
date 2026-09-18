@@ -832,16 +832,28 @@ function upsertPolicySummary(app: BundleApp): void {
   // so `prepare` threw "no column named generated_at" and rolled back the
   // whole import for any bundle whose apps carried a policy summary.
   // `updated_at` stays "when this install received it".
+  //
+  // The status follows the summary the row ends up with: 'ready' when it
+  // has one, the bundle's or an earlier one the COALESCE below keeps, and
+  // 'source_ready' when it has only the excerpt. The importer used to
+  // write 'ok', which is not one of POLICY_ANALYSIS_STATUSES, so every
+  // imported row read back as 'analysis_error' and the AI Policy tab
+  // reported an AI run that had failed when none had run at all. lib/db.ts
+  // repairs rows stored that way.
+  //
+  // `model = 'imported'` marks the row as the bundle's: the Summarise
+  // phase refuses to summarise the excerpt (see summariseStoredPolicy).
+  const summaryJson = summary.summary_json ?? null;
   const now = Date.now();
   db.prepare(
     `INSERT INTO privacy_policy_analyses
        (app_id, policy_url, status, source_text, source_word_count,
         analysis_mode, summary_json, model, error, updated_at,
         source_fetched_at)
-     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)
+     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)
      ON CONFLICT(app_id) DO UPDATE SET
        policy_url        = excluded.policy_url,
-       status            = excluded.status,
+       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,
        source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),
        source_word_count = excluded.source_word_count,
        analysis_mode     = excluded.analysis_mode,
@@ -852,11 +864,12 @@ function upsertPolicySummary(app: BundleApp): void {
   ).run(
     app.id,
     policyUrl,
+    summaryJson === null ? "source_ready" : "ready",
     summary.source_text_excerpt ?? null,
     summary.source_text_excerpt
       ? summary.source_text_excerpt.split(/\s+/).length
       : 0,
-    summary.summary_json ?? null,
+    summaryJson,
     now,
     summary.fetched_at ?? null
   );

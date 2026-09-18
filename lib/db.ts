@@ -1101,6 +1101,21 @@ try {
   console.warn("[db] clearing stale policy run_status failed:", error);
 }
 
+// Audit-bundle imports stored status 'ok', which is not an analysis status,
+// so those rows hydrated as 'analysis_error' and the AI Policy tab reported
+// a failed AI run that never happened. Give them the status the importer
+// writes now: 'ready' with a summary, 'source_ready' with only the excerpt.
+// Idempotent: nothing writes 'ok' any more.
+try {
+  db.exec(
+    `UPDATE privacy_policy_analyses
+        SET status = CASE WHEN summary_json IS NULL THEN 'source_ready' ELSE 'ready' END
+      WHERE status = 'ok'`
+  );
+} catch (error) {
+  console.warn("[db] repairing imported policy statuses failed:", error);
+}
+
 // Migrations for privacy_policy_versions Internet-Archive columns.
 const versionCols = (
   db.prepare("PRAGMA table_info(privacy_policy_versions)").all() as {

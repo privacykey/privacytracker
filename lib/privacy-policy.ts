@@ -1525,6 +1525,19 @@ async function summariseStoredPolicy(
     return hydratePolicyAnalysis(existing);
   }
 
+  // An audit-bundle import (lib/audit-bundle-import.ts marks it with
+  // model 'imported') stores the first 4 KB of the policy, not the policy.
+  // Summarising that would store a summary of the opening paragraphs as the
+  // policy's. Rescraping clears the mark: the route forces past the cache
+  // hit, so a good fetch lands as the source-ready write, which sets
+  // `model` to null, and this runs as usual from then on.
+  if (existing.model === "imported") {
+    logger.event("skip", {
+      note: "Cannot summarise a policy from an imported audit bundle, which holds only an excerpt of the text. Rescrape the policy first.",
+    });
+    return hydratePolicyAnalysis(existing);
+  }
+
   // Can only summarise from a clean fetched source.
   const canSummariseStoredSource =
     existing.status === "source_ready" ||
