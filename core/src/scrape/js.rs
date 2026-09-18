@@ -9,14 +9,14 @@ use regex::Regex;
 use serde_json::Value;
 
 /// JavaScript `\s` without the `u` flag: WhiteSpace plus LineTerminator.
-pub(super) const WS: &str = r"[\t\n\x0b\x0c\r \u{00a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}]";
+pub(crate) const WS: &str = r"[\t\n\x0b\x0c\r \u{00a0}\u{1680}\u{2000}-\u{200a}\u{2028}\u{2029}\u{202f}\u{205f}\u{3000}\u{feff}]";
 /// JavaScript `.` without the `s` flag: anything but a LineTerminator.
 pub(super) const DOT: &str = r"[^\n\r\u{2028}\u{2029}]";
 
 /// Compile a regex written in JavaScript's dialect: `\s` and `[\s\S]` take
 /// their JavaScript meanings. Write `.` as [`DOT`] and `\b` as `(?-u:\b)`
 /// (ASCII, as JavaScript's is) at the call site — neither is rewritten.
-pub(super) fn js_regex(source: &str) -> Regex {
+pub(crate) fn js_regex(source: &str) -> Regex {
     debug_assert!(
         !source.contains(r"\."),
         "spell an escaped dot outside js_regex"
@@ -26,7 +26,7 @@ pub(super) fn js_regex(source: &str) -> Regex {
 }
 
 /// `!!v`.
-pub(super) fn truthy(v: &Value) -> bool {
+pub(crate) fn truthy(v: &Value) -> bool {
     match v {
         Value::Null => false,
         Value::Bool(b) => *b,

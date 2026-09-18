@@ -532,6 +532,17 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-leftovers-cases.mjs
           git diff --exit-code -- core/tests/fixtures/leftovers-cases.json
 
+      - name: Policy-source oracle is current
+        # Runs the real fetchPrivacyPolicySource with the raw fetch stubbed
+        # by recorded replies and records every raw fetch (one per hop),
+        # every trace event and the validated source or the error with its
+        # diagnostics. A diff means the source layer of
+        # lib/privacy-policy.ts changed and core/src/policy/ has not been
+        # ported to match.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-policy-source-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/policy-source-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

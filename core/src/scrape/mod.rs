@@ -25,7 +25,7 @@ pub mod flags;
 pub mod history;
 #[cfg(test)]
 mod history_tests;
-mod js;
+pub(crate) mod js;
 pub(crate) mod notify;
 pub mod page;
 pub mod persist;
