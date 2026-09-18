@@ -378,6 +378,7 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(backup_routes());
         routes.extend(bundle_routes());
         routes.extend(seed_routes());
+        routes.extend(leftover_routes());
         routes
     })
 }
@@ -844,6 +845,19 @@ pub fn is_async(spec: &RouteSpec) -> bool {
     super::imports_writes::handles(spec)
         || super::runner_writes::handles(spec)
         || super::seed_writes::handles(spec)
+        || super::webhook_writes::handles(spec)
+}
+
+/// Phase 4, batch 6 — see `webhook_writes.rs`. The webhook test has no
+/// guard of its own; the gate's origin check is what stands in front of
+/// it, as for the audit-bundle import.
+fn leftover_routes() -> Vec<RouteSpec> {
+    vec![RouteSpec {
+        path: "/api/notifications/webhook-test",
+        method: Method::POST,
+        body_limit: Some(2 * 1024),
+        guard: Guard::None,
+    }]
 }
 
 /// Phase 4, batch 2 — see `library_writes.rs`.
@@ -1232,6 +1246,9 @@ pub async fn perform_async(
     }
     if super::seed_writes::handles(req.spec) {
         return super::seed_writes::perform(db, ids, now, fetcher, req, actor).await;
+    }
+    if super::webhook_writes::handles(req.spec) {
+        return super::webhook_writes::perform(db, ids, now, fetcher, req, actor).await;
     }
     if is_async(req.spec) {
         return super::imports_writes::perform(db, ids, now, fetcher, req, actor).await;

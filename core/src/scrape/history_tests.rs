@@ -12,7 +12,7 @@ use super::{
     persist_tests::{dump, to_sql, CountingIds},
     wayback::WAYBACK_HOSTS,
 };
-use crate::outbound::{fetch_via, FetchFuture, Fetcher, Hop, HopFuture, Request};
+use crate::outbound::{fetch_via, FetchFuture, Fetcher, Hop, HopFuture, Outgoing, Request};
 use regex::Regex;
 use reqwest::header::HeaderMap;
 use rusqlite::params_from_iter;
@@ -59,9 +59,9 @@ impl Routed {
 }
 
 impl Hop for Routed {
-    fn hop(&self, url: Url, headers: HeaderMap) -> HopFuture<'_> {
+    fn hop(&self, url: Url, headers: HeaderMap, outgoing: Outgoing) -> HopFuture<'_> {
         Box::pin(async move {
-            record_call(&self.calls, &url, &headers);
+            record_call(&self.calls, &url, &headers, &outgoing);
             let reply = self.reply_for(url.as_str())?;
             if reply.is_null() {
                 return Err(format!("Missing fixture reply for {url}"));

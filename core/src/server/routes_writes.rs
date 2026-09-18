@@ -270,3 +270,11 @@ wrapper!(import_audit_bundle_post, "/api/import/audit-bundle", POST);
 // ── Phase 4, batch 5d ────────────────────────────────────────────────
 
 wrapper!(seed_sample_data_post, "/api/dev/seed-sample-data", POST);
+
+// ── Phase 4, batch 6 ─────────────────────────────────────────────────
+
+wrapper!(
+    notifications_webhook_test_post,
+    "/api/notifications/webhook-test",
+    POST
+);

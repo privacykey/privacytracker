@@ -136,7 +136,7 @@ pub(super) fn base64_encode(bytes: &[u8]) -> String {
 
 /// `Buffer.from(s, "base64")`: either alphabet, anything else skipped,
 /// the first `=` ends the input, and a dangling sextet is dropped.
-pub(super) fn base64_decode_lenient(s: &str) -> Vec<u8> {
+pub(crate) fn base64_decode_lenient(s: &str) -> Vec<u8> {
     let mut out = Vec::with_capacity(s.len() / 4 * 3);
     let (mut acc, mut bits) = (0u32, 0u8);
     for c in s.bytes() {
@@ -234,7 +234,7 @@ impl Envelope {
     }
 }
 
-fn utf16_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+pub(super) fn utf16_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     a.encode_utf16().cmp(b.encode_utf16())
 }
 

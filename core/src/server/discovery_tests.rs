@@ -62,6 +62,7 @@ impl Fetcher for Replay {
                 return Err(error.to_owned());
             }
             Ok(Reply {
+                final_url: request.url.clone(),
                 status: reply["status"].as_u64().unwrap() as u16,
                 body: text(&reply["body"]).as_bytes().to_vec(),
                 headers: vec![],

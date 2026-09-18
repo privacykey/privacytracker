@@ -10,7 +10,9 @@ use super::{
     persist_tests::{dump, to_sql, CountingIds},
     ratelimit,
 };
-use crate::outbound::{self, fetch_via, FetchFuture, Fetcher, Hop, HopFuture, RawReply, Request};
+use crate::outbound::{
+    self, fetch_via, FetchFuture, Fetcher, Hop, HopFuture, Outgoing, RawReply, Request,
+};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use rusqlite::params_from_iter;
 use serde_json::{json, Value};
@@ -57,8 +59,16 @@ fn scrape_limits(request: &Request) {
 }
 
 /// Records one raw fetch the way Node's stub saw it: the headers safeFetch
-/// set, not undici's own defaults (the transport adds two of those).
-pub(super) fn record_call(calls: &Mutex<Vec<Value>>, url: &Url, headers: &HeaderMap) {
+/// set, not undici's own defaults (the transport adds two of those). A
+/// method other than GET is recorded with its body, as the stubs that see
+/// a POST record it; a GET carries neither key, as the older fixtures
+/// were recorded.
+pub(super) fn record_call(
+    calls: &Mutex<Vec<Value>>,
+    url: &Url,
+    headers: &HeaderMap,
+    outgoing: &Outgoing,
+) {
     let mut sent: Vec<(String, String)> = headers
         .iter()
         .filter(|(k, v)| {
@@ -67,13 +77,19 @@ pub(super) fn record_call(calls: &Mutex<Vec<Value>>, url: &Url, headers: &Header
         .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
         .collect();
     sent.sort();
-    calls
-        .lock()
-        .unwrap()
-        .push(json!({"url": url.as_str(), "headers": sent}));
+    let mut call = json!({"url": url.as_str(), "headers": sent});
+    if outgoing.method != "GET" {
+        call["method"] = json!(outgoing.method);
+        call["body"] = outgoing
+            .body
+            .as_deref()
+            .map_or(Value::Null, |b| json!(String::from_utf8_lossy(b)));
+    }
+    calls.lock().unwrap().push(call);
 }
 
-/// A recorded stub reply as the raw hop result the transport reads.
+/// A recorded stub reply as the raw hop result the transport reads. A
+/// binary body (a favicon) is recorded as `bodyBase64`.
 pub(super) fn raw_reply(reply: &Value) -> Result<RawReply, String> {
     if let Some(error) = reply["error"].as_str() {
         return Err(error.to_string());
@@ -87,7 +103,10 @@ pub(super) fn raw_reply(reply: &Value) -> Result<RawReply, String> {
             );
         }
     }
-    let body = reply["body"].as_str().unwrap_or("").as_bytes().to_vec();
+    let body = match reply["bodyBase64"].as_str() {
+        Some(encoded) => crate::server::backup::base64_decode_lenient(encoded),
+        None => reply["body"].as_str().unwrap_or("").as_bytes().to_vec(),
+    };
     Ok(RawReply {
         status: reply["status"].as_u64().unwrap() as u16,
         headers: out,
@@ -96,9 +115,9 @@ pub(super) fn raw_reply(reply: &Value) -> Result<RawReply, String> {
 }
 
 impl Hop for Canned {
-    fn hop(&self, url: Url, headers: HeaderMap) -> HopFuture<'_> {
+    fn hop(&self, url: Url, headers: HeaderMap, outgoing: Outgoing) -> HopFuture<'_> {
         Box::pin(async move {
-            record_call(&self.calls, &url, &headers);
+            record_call(&self.calls, &url, &headers, &outgoing);
             let index = self.cursor.fetch_add(1, Ordering::SeqCst);
             let Some(reply) = self.replies.get(index) else {
                 return Err(format!("Missing fixture reply for {url}"));
