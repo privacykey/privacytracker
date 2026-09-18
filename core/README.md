@@ -2937,3 +2937,118 @@ Node hands the second the first's promise; the core has it wait and
 answer from what the first wrote, without the first's error. None of
 the three is reachable from the fixture.
 
+
+## Status — Phase 5 (the AI policy pipeline)
+
+Phase 4 closed with the write side of the API in Rust, outside the
+cfgutil device actions (the desktop cutover's) and the AI routes. Phase 5
+is the AI routes and everything behind them: `lib/privacy-policy.ts`
+(5,043 lines, the largest module in the port) and the eight modules
+around it — the policy source, its store and versions, the summariser and
+its providers, the bulk runner with its resume, and the two triggers that
+start a fetch after a scrape or an import. Four batches:
+
+1. **The policy source (this batch).** `fetchPrivacyPolicySource`: from a
+   policy URL to a validated text. No routes, no database.
+2. **The store and its reads.** `fetchAndStorePolicySource` with the
+   kill-switch, the throttle, the first/same/changed/error classification,
+   the version rows, the archive lookup, the History row and the
+   notification; `GET /api/policy/status/[appId]`, `/version/[id]`,
+   `/version/[id]/diff`, the manual-app policy version, and
+   `POST /api/manual-apps/[id]/scrape`.
+3. **The summariser.** The prompts, chunking, the OpenAI, Anthropic and
+   custom providers, the timeouts and their notification, the AI debug
+   log; `POST /api/policy/regenerate`, `/api/ai/policy-sample`,
+   `/api/ai/test` and `/api/ai/models`, with a loopback fake provider for
+   the live gate.
+4. **The bulk runner, its resume and the triggers.** `runBulkPolicySync`,
+   `POST` and `DELETE /api/policy/sync-all`, the startup resume, the
+   post-update policy fetch, and `summarizePolicies` on a scrape and an
+   import, which `imports_writes.rs` still ignores.
+
+Everything stays inert: no shipping path calls the policy module, and
+`rust-core-inert.test.ts` is unchanged.
+
+### Batch 1 — the policy source (no routes)
+
+`core/src/policy/` is `fetchPrivacyPolicySource` end to end: the locale
+rewrite of the URL and its fallback, and the Google locale pin
+(`url.rs`); the three-tier ladder — direct with the Safari UA, the
+Chrome-desktop header bundle, the newest Wayback snapshot — with its
+block codes and retryable errors, the HTML-level redirects (meta refresh,
+script location) and the Google consent wall with its bypass, the
+policy-link second hop, and validation (`source.rs`); HTML to text with
+the chrome strip, the block pass, entity decoding and whitespace
+normalisation (`text.rs`); and the structured failure with its status
+hints and network classification (`diag.rs`). Every trace event Node
+logs is emitted in the same order with the same wording, because batch 2
+persists them as the run log the AI Policy tab renders. Nothing fetches
+outside the transport, and nothing touches the database.
+
+**The oracle — `core/scripts/extract-policy-source-cases.mjs`.** Runs the
+REAL `fetchPrivacyPolicySource` over 60 scenarios with the raw `fetch`
+stubbed by recorded replies, never the network, and records every raw
+fetch Node made (URL and headers, one entry per hop), every trace event,
+and the validated source or the error with its diagnostics.
+`core/src/policy/source_tests.rs` replays every case through the same
+transport loop, so redirects and caps run for real on both sides; CI
+regenerates the fixture and fails on drift ("Policy-source oracle is
+current"). The cases: plain text (ready, too short, no policy clauses, a
+byte order mark); the `<main>`, `<article>` and `<body>` fallbacks and a
+document with no body; chrome stripped by tag, by role and by class, with
+a nested container, an unclosed one and a closing tag carrying an
+attribute; the second pass picking the longest policy-looking container
+and skipping a chrome-classed one; block tags, entities and whitespace;
+an entity past U+10FFFF (a `RangeError` on Node, spelled the same here);
+an empty, an unsupported and an XHTML content type; meta-refresh and
+script-location hops, the three-hop cap, a loop, a hop to non-HTML and a
+failed hop; the Google locale pin and the consent wall through its
+`continue`, to a non-Google host, on a Google host without one, with a
+non-HTML bypass and with a failed bypass; the locale rewrite of a path
+with and without a region, of a query (which `URLSearchParams`
+re-serialises), of an unlisted code and of a three-letter one; the
+ladder — a final 404, a 401 and a 403 into the retry, both blocked into
+the snapshot, no snapshot, an availability body that is not JSON, a
+failed snapshot fetch, a retryable and a timed-out first attempt, a
+declared length over the cap, six redirects, an HTTP redirect followed, a
+failed retry, and two URLs refused before any fetch; and the policy link
+followed, shorter, on another host, failing, rejected as too long,
+locale-normalised, absent, and pointing at the current page.
+
+**Two things the oracle taught about Node.** A reply without a
+Content-Type is read as plain text, not as HTML: `wrapResponse` puts the
+fetched bytes into a new `Response` as a string, and undici stamps
+`text/plain;charset=UTF-8` on a string body, so the "empty content type
+looks like HTML" branch never runs. The core reads such a reply the same
+way, on purpose. And a body is decoded as `Response.text()` decodes it —
+UTF-8 with a leading byte order mark removed — except on the policy-link
+hop, which reads the buffer directly and keeps one; both are mirrored.
+The stub had to learn two things for the recording to be true to
+production: a synthetic `Response` has an empty `url` where undici's
+carries the hop's request URL (which is what `finalUrl` reads after a
+redirect), and a string body gets that stamped type where a byte body
+does not.
+
+**Two of Node's patterns use a backreference** (`</\1>`) to pair a
+container with its own closing tag, which the `regex` crate does not
+support. Those two are scanners: the opening tag is matched by regex,
+the first closing tag of the same name is searched from the end of the
+opening tag, and on a miss the scan resumes one character after the
+opening `<` — what a backtracking engine does with a global regex — so
+nested, unclosed and oddly closed containers behave as they do on Node,
+and the fixture holds one of each.
+
+**Negative controls, predicted before running.** A missing Content-Type
+read as HTML: exactly the one case that has none. The browser bundle's
+`Referer` changed: exactly the fourteen cases that retry, take the
+snapshot or follow a link. Four HTML hops instead of three: exactly the
+capped chain. Source restored byte-for-byte after each, fixed tree
+green.
+
+**Divergences, chosen.** JavaScript's `i` flag folds case through
+`toUpperCase` and Rust's `(?i)` through Unicode simple folding; they
+agree on every ASCII tag and attribute these patterns look for. A
+surrogate code point in a numeric entity is a lone surrogate on Node and
+U+FFFD here; no fixture can record the former, since JSON cannot carry
+it. A hex entity past 2^53 rounds differently. None is reachable from a
+policy page anyone has published.

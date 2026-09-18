@@ -90,7 +90,7 @@ pub(super) fn record_call(
 
 /// A recorded stub reply as the raw hop result the transport reads. A
 /// binary body (a favicon) is recorded as `bodyBase64`.
-pub(super) fn raw_reply(reply: &Value) -> Result<RawReply, String> {
+pub(crate) fn raw_reply(reply: &Value) -> Result<RawReply, String> {
     if let Some(error) = reply["error"].as_str() {
         return Err(error.to_string());
     }
