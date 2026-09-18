@@ -4,7 +4,8 @@
  * Import and App Store sync should make the tracked-app rows usable first.
  * Policy pages are slower, less reliable, and can be very large, so this
  * helper coalesces "labels changed" events into one background fetch-only
- * policy run after the importing/syncing path has returned.
+ * policy run after the importing/syncing path has returned. Nothing runs
+ * while policy scraping is disabled in Settings.
  */
 
 export type PostAppUpdatePolicyReason = "import" | "sync";
@@ -49,6 +50,22 @@ async function drainPolicyFetchQueue(): Promise<void> {
   const reasonLabel = reasons.sort().join("+");
 
   try {
+    // "Disable policy scraping" promises no bulk runs, and the bulk route
+    // (409) and the startup resume already refuse one. A run started here
+    // would fetch nothing, since every app meets the store's kill-switch,
+    // but it would re-log each stored analysis, a stored fetch error as a
+    // fresh failure. Checked before the busy check so no retry is queued.
+    // The skip is the state the user chose, so it is logged to the console
+    // only: an Activity row per import or sync would be noise.
+    const { getSetting } = await import("./scheduler");
+    if (getSetting("policy_scrape_disabled", "false") === "true") {
+      busyRetries = 0;
+      console.info(
+        `[PolicyFetch] Deferred ${reasonLabel} policy fetch skipped because policy scraping is disabled in Settings`
+      );
+      return;
+    }
+
     const { canStartPolicyManualRun, runBulkPolicySync } = await import(
       "./policy-bulk-runner"
     );
@@ -91,4 +108,13 @@ async function drainPolicyFetchQueue(): Promise<void> {
       error
     );
   }
+}
+
+/** Test-only: run the pending drain now, not on its timer, and wait for it. */
+export async function __drainForTests(): Promise<void> {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  await drainPolicyFetchQueue();
 }
