@@ -33,18 +33,6 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
-- Keyboard access to the phone-width navigation menu. With at least one
-  device imported, the closed menu's device picker could still be reached
-  with Tab, so keyboard users landed on a button they couldn't see, which
-  screen readers were told didn't exist (an axe "aria-hidden-focus"
-  failure on every page at phone width). The closed menu now takes no
-  focus at all. Escape also closes one thing at a time: with the device
-  list open inside the menu, the first press closes the list and the
-  next closes the menu, returning focus to the menu button. Before, one
-  press closed both and left focus on a control that had disappeared.
-  `tests/e2e/a11y.spec.ts` now scans the closed menu with a device
-  present, and `tests/e2e/device-scope.spec.ts` covers the keyboard path.
-
 - A one-app iTunes chart is read correctly. Apple's legacy RSS charts are
   an Atom feed converted to JSON, and a chart of exactly one app carries
   its entry as a bare object rather than a one-element array. Both readers
@@ -69,6 +57,18 @@ Going forward, changes are recorded here as they land.
   how the end-to-end suite missed it; `tests/app/audit-bundle-import-policy-summary.test.ts`
   now covers the path, including "what this install exports, it can
   import".
+
+- Keyboard access to the phone-width navigation menu. With at least one
+  device imported, the closed menu's device picker could still be reached
+  with Tab, so keyboard users landed on a button they couldn't see, which
+  screen readers were told didn't exist (an axe "aria-hidden-focus"
+  failure on every page at phone width). The closed menu now takes no
+  focus at all. Escape also closes one thing at a time: with the device
+  list open inside the menu, the first press closes the list and the
+  next closes the menu, returning focus to the menu button. Before, one
+  press closed both and left focus on a control that had disappeared.
+  `tests/e2e/a11y.spec.ts` now scans the closed menu with a device
+  present, and `tests/e2e/device-scope.spec.ts` covers the keyboard path.
 
 - Accessibility on the app detail page, found by an axe scan across light,
   dark and high-contrast mode:
