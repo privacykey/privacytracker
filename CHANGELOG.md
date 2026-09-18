@@ -58,6 +58,26 @@ Going forward, changes are recorded here as they land.
   now covers the path, including "what this install exports, it can
   import".
 
+- Accessibility on the app detail page, found by an axe scan across light,
+  dark and high-contrast mode:
+  - The "i" info button next to privacy categories and severity headings
+    (also on the Privacy Map and Stats pages) is now a real 24x24px target
+    (WCAG 2.2 target size). It was 20px with an invisible larger hit area,
+    which doesn't count on the category cards, where the button sits on top
+    of the card's link. Surrounding rows keep their spacing.
+  - Primary buttons ("+ Add Apps", "Mark as reviewed" and every other
+    filled blue button) use a deeper blue in dark mode, so their white
+    labels reach AA contrast (3.6:1 before, 5.1:1 now). Their hover colour
+    passes in light mode too.
+  - The "N categories don't match your privacy profile" chips reach AA
+    contrast in dark mode.
+  - In high-contrast mode the header's Accessibility chip label was black
+    on a near-black background (1.25:1); it is bright yellow again.
+  - "What do you want to do with this app?" is now a level-2 heading, so
+    the page's heading outline no longer skips a level.
+  - The CI accessibility gate (`tests/e2e/a11y.spec.ts`) now includes the
+    WCAG 2.2 AA rules, so target-size regressions fail the build.
+
 - Rust core: the data directory and database path are process-wide
   configuration (a `OnceLock`, resolved once from `PRIVACYTRACKER_DATA_DIR`
   or `<cwd>/data` exactly as `lib/db.ts` resolves them at module scope),

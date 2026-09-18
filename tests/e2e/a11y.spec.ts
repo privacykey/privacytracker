@@ -11,9 +11,9 @@ import { expectNoBlockingViolations } from "./helpers/axe";
  *
  * Axe-core scans of the five highest-traffic surfaces: /welcome, the
  * onboarding import-matching step, /dashboard, the app detail page,
- * and the mobile navigation drawer. Serious/critical WCAG A/AA
- * violations fail CI (this file runs inside the `quality` job's
- * Playwright step like every other spec here).
+ * and the mobile navigation drawer. Serious/critical WCAG 2.2 A/AA
+ * violations, target size included, fail CI (this file runs inside
+ * the `quality` job's Playwright step like every other spec here).
  *
  * The known-issue allowlist (see `helpers/axe.ts`) is EMPTY: every
  * defect it tracked has been fixed. If a new violation must ship
