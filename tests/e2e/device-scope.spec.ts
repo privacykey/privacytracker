@@ -168,9 +168,9 @@ const trackedCards = (page: import("@playwright/test").Page) =>
  * The picker in the nav's right-hand cluster.
  *
  * Scoped to `.nav-right` because the nav ALSO renders a copy inside the
- * mobile drawer — always present in the DOM, hidden by CSS and removed
- * from the accessibility tree by the drawer's `aria-hidden` when closed,
- * exactly as the nav links are. A bare `.device-scope-trigger` therefore
+ * mobile drawer — always present in the DOM, hidden by CSS and, while
+ * the drawer is closed, removed from the accessibility tree and the tab
+ * order by its `aria-hidden` + `inert`, exactly as the nav links are. A bare `.device-scope-trigger` therefore
  * matches two elements and trips Playwright's strict mode. These specs
  * run at desktop width, where `.nav-right` is the one on screen.
  */
@@ -369,6 +369,49 @@ browserFlow(
     await page.keyboard.press("Escape");
     await expect(popover(page)).toHaveCount(0);
     await expect(trigger).toBeFocused();
+  }
+);
+
+browserFlow(
+  "phone width: the picker in the closed drawer takes no focus, and Escape unwinds one menu at a time",
+  async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/dashboard/apps");
+    const menu = page.locator(".nav-menu-trigger");
+    const drawer = page.locator("#nav-drawer");
+    const drawerPicker = drawer.locator(".device-scope-trigger");
+    await expect(menu).toBeVisible();
+    await expect(drawerPicker).toHaveCount(1);
+
+    // Closed, the drawer is still laid out (it fades rather than
+    // unmounting), and it sits right after the menu button in the DOM.
+    // Tab from the button used to land on the invisible picker in it.
+    await menu.focus();
+    await page.keyboard.press("Tab");
+    await expect(drawerPicker).not.toBeFocused();
+
+    // Open it from the keyboard: the picker is the first stop inside.
+    await menu.focus();
+    await page.keyboard.press("Enter");
+    await expect(drawer).toHaveClass(/nav-drawer-open/);
+    await page.keyboard.press("Tab");
+    await expect(drawerPicker).toBeFocused();
+
+    // With the picker's own menu open, the first Escape closes only
+    // that menu and leaves focus on the picker, inside the open drawer.
+    await page.keyboard.press("Enter");
+    const drawerPopover = drawer.locator(".device-scope-popover");
+    await expect(drawerPopover).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawerPopover).toHaveCount(0);
+    await expect(drawerPicker).toBeFocused();
+    await expect(drawer).toHaveClass(/nav-drawer-open/);
+
+    // The next closes the drawer and hands focus back to its button
+    // rather than leaving it on a control that just went inert.
+    await page.keyboard.press("Escape");
+    await expect(drawer).not.toHaveClass(/nav-drawer-open/);
+    await expect(menu).toBeFocused();
   }
 );
 

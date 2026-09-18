@@ -120,6 +120,31 @@ async function seedCannedApps(request: APIRequestContext): Promise<string> {
   return String(instagram?.id);
 }
 
+/**
+ * Make sure the install has at least one device, so the nav's device
+ * picker renders (it renders nothing with zero devices, and the canned
+ * seed creates none). Returns the id of a device created here, for the
+ * caller to delete, or null when one already existed.
+ */
+async function ensureDevice(
+  request: APIRequestContext
+): Promise<string | null> {
+  const list = await request.get("/api/devices", {
+    headers: sameOriginHeaders,
+  });
+  await expect(list).toBeOK();
+  const { devices } = (await list.json()) as { devices?: unknown[] };
+  if ((devices ?? []).length > 0) {
+    return null;
+  }
+  const created = await request.post("/api/devices", {
+    headers: sameOriginHeaders,
+    data: { name: "A11y iPhone", deviceClass: "iPhone", model: "iPhone15,2" },
+  });
+  await expect(created).toBeOK();
+  return (await created.json()).device.id as string;
+}
+
 async function setDefaultFocus(request: APIRequestContext) {
   const focus = await request.post("/api/focus", {
     headers: sameOriginHeaders,
@@ -278,7 +303,7 @@ browserFlow(
 );
 
 // ---------------------------------------------------------------------------
-// 5. Mobile navigation — compact tier + open drawer
+// 5. Mobile navigation — compact tier, closed drawer, open drawer
 // ---------------------------------------------------------------------------
 
 browserFlow(
@@ -286,31 +311,54 @@ browserFlow(
   async ({ page, request }) => {
     await setDefaultFocus(request);
     await seedCannedApps(request);
+    // With a device, the drawer also holds the device picker. Without
+    // one the closed-drawer scan below would pass whatever the drawer
+    // did with its picker, since there would be no picker.
+    const createdDeviceId = await ensureDevice(request);
 
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/dashboard");
-    // Client shell (Rust-core Phase 0): wait for HomeView's root so axe
-    // scans real cards, not an empty wrapper.
-    await expect(page.locator(".home-page").first()).toBeVisible();
+    try {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto("/dashboard");
+      // Client shell (Rust-core Phase 0): wait for HomeView's root so axe
+      // scans real cards, not an empty wrapper.
+      await expect(page.locator(".home-page").first()).toBeVisible();
 
-    // Open the drawer so its links are in the scanned DOM alongside the
-    // compact top bar (where the icon-only Add Apps link lives).
-    const menuTrigger = page.locator(".nav-menu-trigger");
-    await expect(menuTrigger).toBeVisible();
-    await menuTrigger.click();
+      // Closed drawer first. It stays laid out while closed (it fades and
+      // slides rather than unmounting), so everything focusable inside it
+      // has to be out of the tab order, not just hidden from screen
+      // readers: axe's aria-hidden-focus catches the difference.
+      await expect(
+        page.locator("#nav-drawer .device-scope-trigger")
+      ).toHaveCount(1);
+      await expectNoBlockingViolations(page, "mobile-nav-closed", {
+        include: "#nav-drawer",
+      });
 
-    // Same settle as the dashboard scan: the drawer slides in over
-    // 180ms (and the coachmark may be popping in behind it) — scanning
-    // mid-transition measures diluted colours.
-    await page.waitForTimeout(600);
+      // Open the drawer so its links are in the scanned DOM alongside the
+      // compact top bar (where the icon-only Add Apps link lives).
+      const menuTrigger = page.locator(".nav-menu-trigger");
+      await expect(menuTrigger).toBeVisible();
+      await menuTrigger.click();
 
-    // Scope the scan to the nav element (compact bar + drawer both live
-    // inside `nav.nav`). Unscoped, this scan re-covers the dashboard
-    // behind the drawer, whose TaskList renders state-dependently
-    // (attribution/add-tray nodes appear or not per run) — the desktop
-    // dashboard scan above already owns that surface deterministically.
-    await expectNoBlockingViolations(page, "mobile-nav", {
-      include: "nav.nav",
-    });
+      // Same settle as the dashboard scan: the drawer slides in over
+      // 180ms (and the coachmark may be popping in behind it) — scanning
+      // mid-transition measures diluted colours.
+      await page.waitForTimeout(600);
+
+      // Scope the scan to the nav element (compact bar + drawer both live
+      // inside `nav.nav`). Unscoped, this scan re-covers the dashboard
+      // behind the drawer, whose TaskList renders state-dependently
+      // (attribution/add-tray nodes appear or not per run) — the desktop
+      // dashboard scan above already owns that surface deterministically.
+      await expectNoBlockingViolations(page, "mobile-nav", {
+        include: "nav.nav",
+      });
+    } finally {
+      if (createdDeviceId) {
+        await request.delete(`/api/devices/${createdDeviceId}`, {
+          headers: sameOriginHeaders,
+        });
+      }
+    }
   }
 );

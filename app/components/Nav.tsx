@@ -175,8 +175,23 @@ export default function Nav({ appCount, flags }: NavProps) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
+      if (event.key !== "Escape") {
+        return;
+      }
+      const drawer = drawerRef.current;
+      // A submenu open inside the drawer (the device picker's popover)
+      // owns this Escape: it closes itself and keeps focus on its
+      // trigger. Closing the drawer too would leave focus on a control
+      // that just went inert. The next Escape closes the drawer.
+      if (drawer?.querySelector('[aria-expanded="true"]')) {
+        return;
+      }
+      setMenuOpen(false);
+      // The closed drawer is inert, and an inert element can't keep
+      // focus, so the browser would drop it to <body>. Hand it back to
+      // the button that opened the drawer instead.
+      if (drawer?.contains(document.activeElement)) {
+        triggerRef.current?.focus();
       }
     };
     const onPointerDown = (event: PointerEvent) => {
@@ -325,11 +340,19 @@ export default function Nav({ appCount, flags }: NavProps) {
       </div>
 
       {f.mobileDrawer && (
+        // Closed, the drawer stays laid out (it fades and slides rather
+        // than unmounting), so aria-hidden alone left its controls
+        // focusable: Tab reached an invisible device picker, and axe
+        // flagged aria-hidden-focus. `inert` takes the whole subtree out
+        // of the tab order and pointer events, including anything
+        // rendered in here later, so no child needs its own tabIndex.
+        // Same pairing as AnnotationsSidebar's collapsed body.
         <div
           aria-hidden={!menuOpen}
           aria-label={t("drawer_aria")}
           className={`nav-drawer ${menuOpen ? "nav-drawer-open" : ""}`}
           id="nav-drawer"
+          inert={!menuOpen}
           ref={drawerRef}
           role="menu"
         >
@@ -353,7 +376,6 @@ export default function Nav({ appCount, flags }: NavProps) {
                 href={link.href}
                 key={link.href}
                 role="menuitem"
-                tabIndex={menuOpen ? 0 : -1}
               >
                 {t(`links.${link.labelKey}`)}
                 {showBadge && (
