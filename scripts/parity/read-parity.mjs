@@ -54,6 +54,8 @@ import {
   primeOperationsAfterBoot,
 } from "./operations-fixture.mjs";
 import { probeOperationsReads } from "./operations-probes.mjs";
+import { applyPolicyFixture } from "./policy-fixture.mjs";
+import { probePolicyRoutes } from "./policy-probes.mjs";
 import { probeSeedRoute } from "./seed-probes.mjs";
 import {
   applySinceInstallFixture,
@@ -110,6 +112,11 @@ const BATCH_1 = [
   "/api/csp-report",
   "/api/export",
   "/api/manual-apps/[id]",
+  // Phase 5, batch 2: the policy reads, over policy-fixture.mjs.
+  "/api/policy/status/[appId]",
+  "/api/policy/version/[id]",
+  "/api/policy/version/[id]/diff",
+  "/api/manual-apps/[id]/policy-version/[versionId]",
   "/api/devices",
   "/api/devices/[id]",
   "/api/devices/[id]/bundles",
@@ -1741,6 +1748,7 @@ async function main() {
   applyDevicesFixture(nodeData);
   applyContentFixture(nodeData);
   applyDiscoveryFixture(nodeData);
+  applyPolicyFixture(nodeData);
   console.log(
     `since-install fixture: ${fixture.apps} apps / ${fixture.snapshots} snapshots`
   );
@@ -1983,6 +1991,16 @@ async function main() {
     leftoversOk = await probeLeftoverRoutes(args.node, rustBase, TOKEN);
   }
 
+  // The manual-app policy scrape: what both refuse before any fetch, and
+  // its limit.
+  let policyOk = true;
+  if (args.mutate) {
+    console.log(
+      "\n── manual-app policy scrape (the refusals and the limit, alike) ──"
+    );
+    policyOk = await probePolicyRoutes(args.node, rustBase, TOKEN);
+  }
+
   // The backup family, which the differ cannot hold: files out, files in,
   // and a restore that replaces the database. After everything else,
   // because it ends by doing exactly that on both servers.
@@ -2017,6 +2035,7 @@ async function main() {
     backupOk &&
     bundlesOk &&
     leftoversOk &&
+    policyOk &&
     seedOk &&
     discoveryOk &&
     operationsOk &&

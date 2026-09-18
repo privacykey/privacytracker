@@ -543,6 +543,22 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-policy-source-cases.mjs
           git diff --exit-code -- core/tests/fixtures/policy-source-cases.json
 
+      - name: Policy store oracle is current
+        # Runs the real syncPrivacyPolicyAnalysis fetch phase and the real
+        # policy status, version, diff, manual version and manual scrape
+        # routes against a scratch database, with the raw fetch stubbed by
+        # recorded replies and a frozen clock that moves one second per
+        # awaited fetch. Records every raw fetch, every write in order, the
+        # policy and manual-app tables and the result or wire response,
+        # plus V8's JSON.parse errors for the inputs the store parses. A
+        # diff means the store half of lib/privacy-policy.ts, one of those
+        # routes, lib/policy-diff.ts or the version tables changed and
+        # core/src/server/policy_store.rs, routes_policy.rs,
+        # core/src/policy/diff.rs or core/src/jsjson.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-policy-store-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/policy-store-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

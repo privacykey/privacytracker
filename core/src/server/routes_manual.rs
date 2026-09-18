@@ -30,12 +30,31 @@ pub(super) fn rate_gate(
     limit: i64,
     window_ms: i64,
 ) -> Option<Response> {
+    rate_gate_with(
+        &state.rate_limiter,
+        headers,
+        prefix,
+        limit,
+        window_ms,
+        now_ms(),
+    )
+}
+
+/// [`rate_gate`] over a given limiter and time: the replays' entry.
+pub(super) fn rate_gate_with(
+    limiter: &super::ratelimit::RateLimiter,
+    headers: &HeaderMap,
+    prefix: &str,
+    limit: i64,
+    window_ms: i64,
+    now: i64,
+) -> Option<Response> {
     let key = key_for_request(
         hdr(headers, "x-forwarded-for"),
         hdr(headers, "x-real-ip"),
         prefix,
     );
-    let verdict = state.rate_limiter.check(&key, limit, window_ms, now_ms());
+    let verdict = limiter.check(&key, limit, window_ms, now);
     if verdict.allowed {
         None
     } else {

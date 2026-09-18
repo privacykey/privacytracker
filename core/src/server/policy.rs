@@ -111,7 +111,7 @@ fn allowlisted<'a>(list: &[&'a str], v: &Value) -> Option<&'a str> {
     list.iter().copied().find(|x| *x == s)
 }
 
-fn hydrate_policy_analysis(
+pub(super) fn hydrate_policy_analysis(
     conn: &Connection,
     app_id: &str,
     row: &Value,

@@ -225,6 +225,45 @@ pub async fn list_captures(
     Ok(Some(captures))
 }
 
+/// `lookupLatestWaybackSnapshot`: the availability API's newest capture of
+/// a URL, or `None` for anything it cannot answer. Unlike the dated
+/// lookup it never looks at the status: a throttled or failing API reads
+/// as "no capture" through whatever body it sent, and a timeout is not an
+/// abort, so no failure escapes it. The policy store links the version it
+/// has just stored to this capture.
+pub async fn lookup_latest(fetcher: &dyn Fetcher, target_url: &str) -> Option<Snapshot> {
+    if target_url.is_empty() {
+        return None;
+    }
+    let endpoint = format!(
+        "https://archive.org/wayback/available?url={}",
+        js_encode_uri_component(target_url)
+    );
+    let req = request(
+        endpoint,
+        WAYBACK_HOSTS,
+        AVAILABILITY_MAX_BYTES,
+        AVAILABILITY_TIMEOUT_MS,
+        &[("Accept", "application/json"), ("User-Agent", USER_AGENT)],
+    );
+    let reply = fetcher.fetch(req).await.ok()?;
+    let parsed: Value = serde_json::from_str(&String::from_utf8_lossy(&reply.body)).ok()?;
+    let closest = &parsed["archived_snapshots"]["closest"];
+    if !truthy(closest) || closest["available"] == Value::Bool(false) {
+        return None;
+    }
+    let Value::String(url) = &closest["url"] else {
+        return None;
+    };
+    if !url.starts_with("http") {
+        return None;
+    }
+    Some(Snapshot {
+        url: url.clone(),
+        timestamp: closest["timestamp"].as_str().map(str::to_string),
+    })
+}
+
 /// `lookupWaybackSnapshotNear`: the availability API's closest capture to
 /// a date, or `None` for anything it cannot answer.
 pub async fn lookup_near(

@@ -65,6 +65,9 @@ mod operations;
 mod operations_tests;
 mod osinfo;
 mod policy;
+mod policy_store;
+#[cfg(test)]
+mod policy_store_tests;
 mod preview;
 mod ratelimit;
 mod review;
@@ -80,6 +83,7 @@ mod routes_focus;
 mod routes_imports;
 mod routes_manual;
 mod routes_operations;
+mod routes_policy;
 mod routes_runtime;
 mod routes_settings;
 mod routes_stats;
@@ -624,6 +628,21 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/api/manual-apps/{id}/restore",
             post(routes_writes::manual_restore_post),
+        )
+        // Phase 5, batch 2: the policy reads and the manual-app scrape.
+        .route(
+            "/api/manual-apps/{id}/scrape",
+            post(routes_writes::manual_scrape_post),
+        )
+        .route(
+            "/api/manual-apps/{id}/policy-version/{version_id}",
+            get(routes_policy::manual_version),
+        )
+        .route("/api/policy/status/{app_id}", get(routes_policy::status))
+        .route("/api/policy/version/{id}", get(routes_policy::version))
+        .route(
+            "/api/policy/version/{id}/diff",
+            get(routes_policy::version_diff),
         )
         .route(
             "/api/migration-flow/consume",

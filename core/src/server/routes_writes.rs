@@ -188,6 +188,7 @@ wrapper_with_id!(manual_put, "/api/manual-apps/[id]", PUT);
 wrapper_with_id!(manual_delete, "/api/manual-apps/[id]", DELETE);
 wrapper!(manual_bulk_post, "/api/manual-apps/bulk", POST);
 wrapper_with_id!(manual_restore_post, "/api/manual-apps/[id]/restore", POST);
+wrapper_with_id!(manual_scrape_post, "/api/manual-apps/[id]/scrape", POST);
 
 // ── Phase 4, batch 3 ─────────────────────────────────────────────────
 

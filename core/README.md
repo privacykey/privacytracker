@@ -91,7 +91,8 @@ harnesses) landed on `main` for the same reason and remains there.
    one PR allowed to delete
    `tests/app/rust-core-inert.test.ts`. Its binaries must ship the
    third-party notice in `core/V8-LICENSE` (the `Date.parse` port in
-   `jsdate`) alongside `NOTICE`.
+   `jsdate` and the `JSON.parse` error port in `jsjson`) alongside
+   `NOTICE`.
 
 ## The gates (how the two implementations are compared)
 
@@ -2948,9 +2949,9 @@ around it — the policy source, its store and versions, the summariser and
 its providers, the bulk runner with its resume, and the two triggers that
 start a fetch after a scrape or an import. Four batches:
 
-1. **The policy source (this batch).** `fetchPrivacyPolicySource`: from a
+1. **The policy source (on main).** `fetchPrivacyPolicySource`: from a
    policy URL to a validated text. No routes, no database.
-2. **The store and its reads.** `fetchAndStorePolicySource` with the
+2. **The store and its reads (this batch).** `fetchAndStorePolicySource` with the
    kill-switch, the throttle, the first/same/changed/error classification,
    the version rows, the archive lookup, the History row and the
    notification; `GET /api/policy/status/[appId]`, `/version/[id]`,
@@ -3052,3 +3053,169 @@ surrogate code point in a numeric entity is a lone surrogate on Node and
 U+FFFD here; no fixture can record the former, since JSON cannot carry
 it. A hex entity past 2^53 rounds differently. None is reachable from a
 policy page anyone has published.
+
+### Batch 2 — the store and its reads (+5 handlers)
+
+`core/src/server/policy_store.rs` is `syncPrivacyPolicyAnalysis` with
+`phase: "fetch"`: the run marker (a placeholder row when the app has no
+analysis yet), the run log persisted as it grows, and
+`fetchAndStorePolicySource` — the kill-switch, the throttle, the fetch
+through batch 1's source layer, the failure branches, the
+first/same/changed classification, the version backfill and upsert
+(`lib/policy-versions.ts`), the archive lookup, the History row and the
+notification, the cache hit and the source-ready write — then the
+activity row. A fetch error keeps the last good source, an unusable body
+keeps the last good hash, and only a changed text, with the
+policy-updates toggle on, flags its History row for review and raises a
+bell notification: #271's rules, recorded from the fixed Node. Nothing
+outside the replay calls the store yet. Batch 3 routes
+`POST /api/policy/regenerate`, and batch 4 the bulk runner and the
+triggers.
+
+**What Node leaves running is handed back.** Save Page Now and the
+immediate webhook are fired and forgotten in Node, and finish after the
+sync has returned. The store returns them as follow-ups for its caller
+to run: detached on the server, inline in the replay, in that order.
+
+**The routes** (`core/src/server/routes_policy.rs`):
+`GET /api/policy/status/[appId]`, the AI Policy tab's polling subset of
+the analysis; `GET /api/policy/version/[id]`, one captured text, 120 a
+minute; `GET /api/policy/version/[id]/diff`, that text against the
+latest earlier different one, 60 a minute;
+`GET /api/manual-apps/[id]/policy-version/[versionId]`, refused across
+apps and sharing the manual-app read bucket with the app detail; and
+`POST /api/manual-apps/[id]/scrape`, which fetches the manual app's
+policy through the source layer, folds identical text into one version
+row (`lib/manual-app-history.ts`), and appends a scrape event and an
+audit row. The scrape's limit is the write framework's rate guard, which
+gains a `retry_after` switch because this route's 429, unlike that of
+every route already behind the guard, carries no `Retry-After`. The
+scrape takes the runner clock rather than the dispatcher's `now`: Node
+reads the time before the fetch for the event and the version, and again
+after it for the audit row.
+
+**The diff** (`core/src/policy/diff.rs`) ports `diffPolicyTexts` as
+fixed in #273: a line diff by longest common subsequence, each paired
+run of removed and added lines refined word by word. Node's common-suffix
+trim used to count from the start of both arrays instead of the end, so
+the History tab reported real changes as unchanged. The port follows the
+fixed code, which `tests/app/policy-diff.test.ts` pins on the Node side.
+
+**`JSON.parse` in V8's words** (`core/src/jsjson.rs`, beside `jsdate`,
+`jsnum` and `jsstr`). serde_json decides what a valid document is, but
+it cannot fail the way V8 fails, and Node stores the words: the store
+logs the History write's parse failure of a corrupt snapshot in the run
+log the AI Policy tab renders, and batch 3's summariser stores the
+message of a provider reply that is not JSON. `parse_error` walks the
+text as V8's `JsonParser` does, far enough to find the first failure,
+and words it with V8's `kJsonParse*` templates: position, line and
+column in UTF-16 units with `\r\n` as one break, and ten units of
+context either side once the source is longer than twenty-one.
+`roundtrip` is `JSON.stringify(JSON.parse(s))`, with integers past 2^53
+spelled as JavaScript spells them and integer-like keys first. The
+attribution is in `core/V8-LICENSE`.
+
+**The oracle — `core/scripts/extract-policy-store-cases.mjs`.** Runs the
+REAL fetch phase of `syncPrivacyPolicyAnalysis` over 34 scenarios and
+the REAL five route handlers over 35 requests, against a scratch
+database with a frozen clock, counted ids and the raw `fetch` stubbed by
+recorded replies, never the network. Recorded per case: every raw fetch
+(a POST's method and body too), every write in order with transaction
+markers, eight tables, and the result or the wire response. It also
+records V8's answer for 68 `JSON.parse` inputs: every message template,
+the whole and the truncated context, positions across `\n`, `\r\n` and a
+bare `\r`, astral and accented characters, a byte order mark, and two
+shapes a model reply takes (prose before the object, a fenced block).
+`core/src/server/policy_store_tests.rs` replays all three sets; CI
+regenerates the fixture and fails on drift ("Policy store oracle is
+current").
+
+The store cases: no policy URL, with and without a stored analysis; the
+first capture; an unchanged rescrape, a cache hit over a summary and not
+without one; a changed text with the toggle off and on, the latter
+posting the immediate webhook, and quiet hours holding its
+notification; a revert reusing its version; an upgrading install
+seeding its stored text as a version, with the fallback to
+`updated_at`; `forceResummarise` skipping the cache hit; the older
+summary chain kept; an HTML policy behind a redirect; a failed archive
+lookup, which is not an error; an app the library does not track, which
+throws on the foreign key before any write; a corrupt latest snapshot
+(V8's message in the run log and no History row); a 404, a refused URL,
+a reset connection with its hint and an out-of-range entity; an
+unusable body and an unsupported content type; the kill-switch on a
+first fetch, over a stored summary, and overridden by `bypassThrottle`;
+and the throttle skipping, rounding its minutes, honouring its setting,
+off for minutes that are not positive and when disabled, holding only a
+ready analysis, elapsed, and facing a fetch time in the future. The
+route cases cover each read found, missing and refused, each rate
+limit, the diff of a one-word edit, an appended line, a changed last
+line, a long policy truncated and a first version with nothing before
+it, a manual version asked for under another app, and the scrape's
+first capture, same text, changed text, unusable page, fetch failure,
+refused URL, missing URL, unknown app, long id and limit.
+
+**The clock moves with the network.** Each fetch the code awaits
+advances the frozen clock one second, so a timestamp Node takes before a
+fetch and one it takes after differ, and the port has to take each
+where Node does. The two fetches nothing awaits, Save Page Now and the
+webhook, are free. Save Page Now's reply is held until the sync has
+returned, as production's 10 to 30 second archive always is, so what it
+writes lands in a separate `late` stream in a fixed order.
+
+**The live gate.** `scripts/parity/policy-fixture.mjs` writes policy
+rows into the Node database before it is copied for the core: two
+analyses (one idle after a run whose log mixes well-formed and
+malformed entries, one ready with no run recorded), three versions of
+one app's policy (the second with an archive link, the third with CRLF
+line endings), and three manual apps. None of its analyses is running.
+Both backends flip running analyses to idle when they open the
+database, which Node did before the fixture was written and the core
+does after the copy, so the running state is read from the operations
+fixture's app, primed on both sides after boot. The first gate run
+caught exactly that, and an app id the discovery fixture already owned.
+The four reads join the live read list over fifteen requests, six of
+them refusals.
+`scripts/parity/policy-probes.mjs` holds the scrape under `--mutate`:
+an id too long, an unknown app and an app with no policy URL are refused
+identically, and the eleventh request in a minute is the first refused
+on both, with no `Retry-After` on either. A scrape that passes its
+checks fetches the developer's site, which a parity run must not depend
+on; the oracle holds that path.
+
+**Node's behaviour, kept.** The analysis the sync returns says the run
+is still `running`, because Node clears the marker in a `finally` after
+building the value. It is the row as written, so a log event written
+after it is on the stored row but not in the value: the error branches
+return no History event, and the kill-switch and the throttle return
+the log from before their own line. The backfill's "Seeded previous
+policy text" note is logged on every changed rescrape, including when
+the earlier text already had its version and the upsert only touched
+it. A throttled skip's activity row says "Policy source fetched
+(cached)". And with policy scraping switched off, an app's first run
+ends with an error activity row, "Policy summary failed", though nothing
+failed: the placeholder row's `pending` is not a status Node recognises,
+so it hydrates as `analysis_error`. That one is a Node bug, to be fixed
+on the Node side and then re-recorded, not in the port.
+
+**Negative controls, predicted before running.** The fetch-error branch
+hydrating a fresh read instead of the row it wrote: exactly the four
+fetch-error cases. The throttle's minutes floored instead of rounded:
+exactly the two cases that round. The pre-#273 suffix trim put back into
+the diff: predicted the four diffs whose texts share an ending, got
+five, because the truncated diff fails too, at the word level, which
+refines through the same routine. A JSON context of nine units instead
+of ten: exactly the five truncated contexts. Live, with two independent
+faults in one run: the scrape's 429 given a `Retry-After` failed
+exactly the probe's check for its absence, and the diff refining no
+pair past four tokens failed exactly the two diff reads that succeed.
+Source restored byte-for-byte after each, fixed tree green.
+
+**Divergences, chosen.** Where V8 would quote one half of a surrogate
+pair, as context or as the offending character, the core renders U+FFFD,
+since a Rust string cannot hold the lone half; and a `\uD800`-style
+escape of a lone surrogate, which V8 accepts and serde_json refuses,
+fails here in serde_json's words. Neither is reachable from text a
+JavaScript writer produced.
+
+Rust suite: 259 pass (252 + 7 new: the three replays and four unit
+tests of the diff and the JSON port).

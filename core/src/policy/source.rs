@@ -130,28 +130,40 @@ impl Event {
     }
 }
 
-/// The `PolicyFetchLogger` the fetch stack traces into: the events in
-/// order. Batch 2's run logger persists them.
+/// `PolicyFetchLogger`: what the fetch stack traces into. [`Trace`] keeps
+/// the events (the manual-app scrape passes no logger, and the source
+/// replay reads them back); the policy store's run logger stamps each with
+/// the time and persists the log as it grows, as Node's does.
+pub trait PolicyLog: Send {
+    fn event(&mut self, phase: &str, note: Option<String>, error: Option<String>);
+}
+
+impl dyn PolicyLog + '_ {
+    pub(crate) fn note(&mut self, phase: &str, note: impl Into<String>) {
+        self.event(phase, Some(note.into()), None);
+    }
+    pub(crate) fn error(&mut self, phase: &str, error: impl Into<String>) {
+        self.event(phase, None, Some(error.into()));
+    }
+}
+
+/// The events in order, and nothing else.
 #[derive(Debug, Default)]
 pub struct Trace {
     pub events: Vec<Event>,
 }
 
+impl PolicyLog for Trace {
+    fn event(&mut self, phase: &str, note: Option<String>, error: Option<String>) {
+        self.events.push(Event {
+            phase: phase.to_string(),
+            note,
+            error,
+        });
+    }
+}
+
 impl Trace {
-    fn note(&mut self, phase: &str, note: impl Into<String>) {
-        self.events.push(Event {
-            phase: phase.to_string(),
-            note: Some(note.into()),
-            error: None,
-        });
-    }
-    fn error(&mut self, phase: &str, error: impl Into<String>) {
-        self.events.push(Event {
-            phase: phase.to_string(),
-            note: None,
-            error: Some(error.into()),
-        });
-    }
     pub fn to_json(&self) -> Value {
         Value::Array(self.events.iter().map(Event::to_json).collect())
     }
@@ -247,11 +259,11 @@ fn looks_like_html(content_type: &str) -> bool {
         || content_type.is_empty()
 }
 
-fn maybe_pin_google_locale(url: &str, trace: &mut Trace) -> String {
+fn maybe_pin_google_locale(url: &str, log: &mut dyn PolicyLog) -> String {
     let Some(pinned) = pin_google_locale(url) else {
         return url.to_string();
     };
-    trace.note(
+    log.note(
         "fetch:pin-google-locale",
         format!(
             "Pinning hl=en&gl=us to bypass EU consent / geo redirect: {} → {}",
@@ -267,16 +279,16 @@ fn maybe_pin_google_locale(url: &str, trace: &mut Trace) -> String {
 async fn fetch_policy_raw(
     fetcher: &dyn Fetcher,
     policy_url: &str,
-    trace: &mut Trace,
+    log: &mut dyn PolicyLog,
 ) -> Result<Raw, SourceError> {
     let normalized = normalize_policy_url_language(policy_url);
     if normalized == policy_url {
-        trace.note(
+        log.note(
             "fetch:normalize",
             "URL already in preferred language; no rewrite needed.",
         );
     } else {
-        trace.note(
+        log.note(
             "fetch:normalize",
             format!(
                 "Rewrote locale → en: {} → {}",
@@ -284,10 +296,10 @@ async fn fetch_policy_raw(
                 safe_url_label(&normalized)
             ),
         );
-        let pinned = maybe_pin_google_locale(&normalized, trace);
-        match fetch_policy_raw_attempt(fetcher, &pinned, trace).await {
+        let pinned = maybe_pin_google_locale(&normalized, log);
+        match fetch_policy_raw_attempt(fetcher, &pinned, log).await {
             Ok(raw) => return Ok(raw),
-            Err(err) => trace.note(
+            Err(err) => log.note(
                 "fetch:normalize-fallback",
                 format!(
                     "Normalised URL failed; retrying original. ({})",
@@ -296,8 +308,8 @@ async fn fetch_policy_raw(
             ),
         }
     }
-    let pinned = maybe_pin_google_locale(policy_url, trace);
-    fetch_policy_raw_attempt(fetcher, &pinned, trace).await
+    let pinned = maybe_pin_google_locale(policy_url, log);
+    fetch_policy_raw_attempt(fetcher, &pinned, log).await
 }
 
 /// The `catch` around a ladder tier: a retryable failure is noted and the
@@ -308,15 +320,15 @@ fn tier_failure(
     err: SourceError,
     policy_url: &str,
     origin: Origin,
-    trace: &mut Trace,
+    log: &mut dyn PolicyLog,
     error_phase: &str,
     retryable_phase: &str,
 ) -> Result<(), SourceError> {
     if is_retryable_fetch_error(&err.message) {
-        trace.note(retryable_phase, err.message);
+        log.note(retryable_phase, err.message);
         return Ok(());
     }
-    trace.error(error_phase, err.message.clone());
+    log.error(error_phase, err.message.clone());
     if err.is_fetch() {
         return Err(err);
     }
@@ -337,7 +349,7 @@ fn tier_failure(
 async fn fetch_policy_raw_attempt(
     fetcher: &dyn Fetcher,
     policy_url: &str,
-    trace: &mut Trace,
+    log: &mut dyn PolicyLog,
 ) -> Result<Raw, SourceError> {
     if let Err(e) = outbound::validate(policy_url, &[], 2048) {
         return Err(SourceError::plain(format!(
@@ -347,7 +359,7 @@ async fn fetch_policy_raw_attempt(
     }
 
     // Tier 1.
-    trace.note(
+    log.note(
         "fetch:direct",
         format!("GET {}", safe_url_label(policy_url)),
     );
@@ -364,7 +376,7 @@ async fn fetch_policy_raw_attempt(
         Ok(reply) => {
             let final_url = reply.final_url.clone();
             let redirected = final_url != policy_url;
-            trace.note(
+            log.note(
                 "fetch:direct-result",
                 format!(
                     "HTTP {}{}",
@@ -413,14 +425,14 @@ async fn fetch_policy_raw_attempt(
             err,
             policy_url,
             Origin::Direct,
-            trace,
+            log,
             "fetch:direct-error",
             "fetch:direct-retryable",
         )?,
     }
 
     // Tier 2.
-    trace.note(
+    log.note(
         "fetch:browser-retry",
         "Retrying with Chrome-desktop headers.",
     );
@@ -436,7 +448,7 @@ async fn fetch_policy_raw_attempt(
     match retried {
         Ok(reply) => {
             let final_url = reply.final_url.clone();
-            trace.note(
+            log.note(
                 "fetch:browser-retry-result",
                 format!(
                     "HTTP {}{}",
@@ -460,19 +472,19 @@ async fn fetch_policy_raw_attempt(
             SourceError::plain(message),
             policy_url,
             Origin::BrowserRetry,
-            trace,
+            log,
             "fetch:browser-retry-error",
             "fetch:browser-retryable",
         )?,
     }
 
     // Tier 3.
-    trace.note(
+    log.note(
         "fetch:wayback",
         "Direct + browser retry both blocked; resolving Wayback snapshot.",
     );
     let Some(wayback_url) = resolve_wayback_url(fetcher, policy_url).await else {
-        trace.error("fetch:wayback-miss", "No Wayback snapshot available.");
+        log.error("fetch:wayback-miss", "No Wayback snapshot available.");
         return Err(SourceError::fetch(
             "Privacy policy blocked by the site and no Wayback snapshot is available",
             diagnostics(vec![
@@ -490,7 +502,7 @@ async fn fetch_policy_raw_attempt(
             ]),
         ));
     };
-    trace.note("fetch:wayback-snapshot", safe_url_label(&wayback_url));
+    log.note("fetch:wayback-snapshot", safe_url_label(&wayback_url));
     let reply = fetcher
         .fetch(request(
             &wayback_url,
@@ -502,7 +514,7 @@ async fn fetch_policy_raw_attempt(
         .await
         .map_err(SourceError::plain)?;
     if !reply.ok() {
-        trace.error("fetch:wayback-error", format!("HTTP {}", reply.status));
+        log.error("fetch:wayback-error", format!("HTTP {}", reply.status));
         return Err(SourceError::fetch(
             format!(
                 "Wayback fetch failed (HTTP {}) for {}",
@@ -720,7 +732,7 @@ async fn maybe_follow_policy_link(
     html: &str,
     base_url: &str,
     current_text: &str,
-    trace: &mut Trace,
+    log: &mut dyn PolicyLog,
 ) -> Option<String> {
     let current_len = js_length(current_text);
     if current_len >= POLICY_MIN_CHARS {
@@ -731,7 +743,7 @@ async fn maybe_follow_policy_link(
         js(r##"(?i)<a\s+[^>]*href="([^"#?]+(?:\?[^"#]*)?)"[^>]*>\s*(?:(?:read|view|see|open)[^<]*)?(?:full|complete|detailed)?\s*(?:privacy\s*(?:policy|notice|statement))[^<]*</a>"##)
     });
     let Some(m) = link.captures(html) else {
-        trace.note(
+        log.note(
             "fetch:follow-link-skip",
             format!(
                 "Page only has {} chars but no \"Privacy Policy\" link to follow.",
@@ -743,7 +755,7 @@ async fn maybe_follow_policy_link(
     let original_href = resolve(base_url, &m[1])?;
     let href = normalize_policy_url_language(&original_href);
     if href != original_href {
-        trace.note(
+        log.note(
             "fetch:follow-link-normalize",
             format!(
                 "Rewrote link locale → en: {} → {}",
@@ -755,7 +767,7 @@ async fn maybe_follow_policy_link(
     let current = Url::parse(&normalize_policy_url_language(base_url)).ok()?;
     let target = Url::parse(&href).ok()?;
     if target.host_str() != current.host_str() {
-        trace.note(
+        log.note(
             "fetch:follow-link-skip",
             format!(
                 "Cross-host link not followed: {} (base {}).",
@@ -768,10 +780,10 @@ async fn maybe_follow_policy_link(
     if target.as_str() == current.as_str() {
         return None;
     }
-    trace.note("fetch:follow-link-attempt", safe_url_label(&href));
+    log.note("fetch:follow-link-attempt", safe_url_label(&href));
 
     if let Err(e) = outbound::validate(&href, &[], 2048) {
-        trace.error("fetch:follow-link-rejected", e.error);
+        log.error("fetch:follow-link-rejected", e.error);
         return None;
     }
     match fetcher
@@ -786,7 +798,7 @@ async fn maybe_follow_policy_link(
     {
         Ok(reply) => {
             if !reply.ok() {
-                trace.error("fetch:follow-link-http", format!("HTTP {}", reply.status));
+                log.error("fetch:follow-link-http", format!("HTTP {}", reply.status));
                 return None;
             }
             // `bodyBuf.toString("utf8")`: no Response wrapper, no BOM strip.
@@ -796,7 +808,7 @@ async fn maybe_follow_policy_link(
                     if js_length(&text) > current_len {
                         return Some(text);
                     }
-                    trace.note(
+                    log.note(
                         "fetch:follow-link-shorter",
                         format!(
                             "Followed link but extracted {} chars ≤ current {}.",
@@ -806,13 +818,13 @@ async fn maybe_follow_policy_link(
                     );
                 }
                 Err(message) => {
-                    trace.error("fetch:follow-link-error", message);
+                    log.error("fetch:follow-link-error", message);
                     return None;
                 }
             }
         }
         Err(message) => {
-            trace.error("fetch:follow-link-error", message);
+            log.error("fetch:follow-link-error", message);
             return None;
         }
     }
@@ -823,9 +835,9 @@ async fn maybe_follow_policy_link(
 pub async fn fetch_privacy_policy_source(
     fetcher: &dyn Fetcher,
     policy_url: &str,
-    trace: &mut Trace,
+    log: &mut dyn PolicyLog,
 ) -> Result<Source, SourceError> {
-    let raw = fetch_policy_raw(fetcher, policy_url, trace).await?;
+    let raw = fetch_policy_raw(fetcher, policy_url, log).await?;
     let mut origin = raw.origin;
     let mut fetched_url = raw.fetched_url;
     let mut content_type = wrapped_content_type(&raw.reply);
@@ -833,7 +845,7 @@ pub async fn fetch_privacy_policy_source(
 
     if content_type.contains("text/plain") {
         let text = normalize_extracted_text(&response_text(&raw.reply.body));
-        trace.note(
+        log.note(
             "fetch:plain-text",
             format!("{} chars, no HTML follow-up.", locale_int(js_length(&text))),
         );
@@ -852,7 +864,7 @@ pub async fn fetch_privacy_policy_source(
         } else {
             content_type.as_str()
         };
-        trace.error(
+        log.error(
             "fetch:unsupported-type",
             format!("Unsupported content type: {shown}"),
         );
@@ -869,7 +881,7 @@ pub async fn fetch_privacy_policy_source(
     }
 
     let mut html = response_text(&raw.reply.body);
-    trace.note(
+    log.note(
         "fetch:html",
         format!(
             "Received {} bytes at {}.",
@@ -879,14 +891,14 @@ pub async fn fetch_privacy_policy_source(
     );
 
     if let Some(consent_rewrite) = detect_google_consent_handoff(&html, &fetched_url) {
-        trace.note(
+        log.note(
             "fetch:consent-wall",
             format!(
                 "Google consent wall detected; bypassing → {}",
                 safe_url_label(&consent_rewrite)
             ),
         );
-        match fetch_policy_raw(fetcher, &consent_rewrite, trace).await {
+        match fetch_policy_raw(fetcher, &consent_rewrite, log).await {
             Ok(bypass) => {
                 let bypass_type = wrapped_content_type(&bypass.reply);
                 if looks_like_html(&bypass_type) {
@@ -894,7 +906,7 @@ pub async fn fetch_privacy_policy_source(
                     fetched_url = bypass.fetched_url;
                     content_type = bypass_type;
                     html = response_text(&bypass.reply.body);
-                    trace.note(
+                    log.note(
                         "fetch:consent-bypass",
                         format!(
                             "Bypass succeeded at {} ({} bytes).",
@@ -903,13 +915,13 @@ pub async fn fetch_privacy_policy_source(
                         ),
                     );
                 } else {
-                    trace.error(
+                    log.error(
                         "fetch:consent-bypass",
                         format!("Bypass returned non-HTML content type: {bypass_type}"),
                     );
                 }
             }
-            Err(err) => trace.error("fetch:consent-bypass", err.message),
+            Err(err) => log.error("fetch:consent-bypass", err.message),
         }
     }
 
@@ -922,15 +934,15 @@ pub async fn fetch_privacy_policy_source(
             break;
         }
         visited.insert(target.clone());
-        trace.note(
+        log.note(
             &format!("fetch:{kind}-hop"),
             format!("Hop {}: {}", hop + 1, safe_url_label(&target)),
         );
-        match fetch_policy_raw(fetcher, &target, trace).await {
+        match fetch_policy_raw(fetcher, &target, log).await {
             Ok(next) => {
                 let next_type = wrapped_content_type(&next.reply);
                 if !looks_like_html(&next_type) {
-                    trace.note(
+                    log.note(
                         "fetch:redirect-non-html",
                         format!("Stopping hop chain — next content type is {next_type}."),
                     );
@@ -942,7 +954,7 @@ pub async fn fetch_privacy_policy_source(
                 html = response_text(&next.reply.body);
             }
             Err(err) => {
-                trace.error("fetch:redirect-failed", err.message);
+                log.error("fetch:redirect-failed", err.message);
                 break;
             }
         }
@@ -950,7 +962,7 @@ pub async fn fetch_privacy_policy_source(
 
     let (title, text) =
         extract_policy_text_from_html(&html, &title_from_url).map_err(SourceError::range)?;
-    trace.note(
+    log.note(
         "fetch:extracted",
         format!(
             "Title \"{}\" · {} chars after chrome strip.",
@@ -959,9 +971,9 @@ pub async fn fetch_privacy_policy_source(
         ),
     );
 
-    let enriched = maybe_follow_policy_link(fetcher, &html, &fetched_url, &text, trace).await;
+    let enriched = maybe_follow_policy_link(fetcher, &html, &fetched_url, &text, log).await;
     if let Some(e) = &enriched {
-        trace.note(
+        log.note(
             "fetch:follow-link",
             format!(
                 "Second-hop enrichment yielded {} chars (was {}).",
