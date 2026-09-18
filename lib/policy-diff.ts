@@ -172,11 +172,19 @@ function lcsDiff(a: string[], b: string[]): DiffOp[] {
     prefix++;
   }
 
+  // The suffix is counted from the END of both arrays: `at(-1 - suffix)` is
+  // the last element, then the one before it. It used to read
+  // `at(1 + suffix)`, which counted from the start, so the loop measured
+  // how far the arrays agreed from index 1 and then trimmed that many
+  // elements off their ends whether those matched or not; past the end of
+  // both arrays `undefined === undefined` kept it going. A one-line change
+  // came out as no change, and the trailing block reported the new text as
+  // unchanged. Pinned by tests/app/policy-diff.test.ts.
   let suffix = 0;
   while (
     suffix < a.length - prefix &&
     suffix < b.length - prefix &&
-    a.at(1 + suffix) === b.at(1 + suffix)
+    a.at(-1 - suffix) === b.at(-1 - suffix)
   ) {
     suffix++;
   }
