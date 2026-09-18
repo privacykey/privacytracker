@@ -857,7 +857,12 @@ export async function syncPrivacyPolicyAnalysis(
     const resultStatus = result?.status ?? null;
     let activityStatus: ActivityStatus = "ok";
     let summaryLine = "Policy summary complete";
-    if (!result) {
+    if (!result && logger.phases.some((entry) => entry.phase === "disabled")) {
+      // The kill-switch stopped a first fetch: nothing was stored and
+      // nothing was tried, so nothing failed.
+      activityStatus = "partial";
+      summaryLine = "Policy skipped: scraping disabled";
+    } else if (!result) {
       activityStatus = "ok";
       summaryLine = "Policy URL cleared";
     } else if (resultStatus === "ready") {
@@ -985,6 +990,18 @@ async function fetchAndStorePolicySource(
     logger.event("disabled", {
       note: "Policy scraping is disabled in Settings. Re-enable to fetch.",
     });
+    // A first run has nothing stored. Its only row is the placeholder
+    // `markPolicyRunStart` seeded, and 'pending' is not an analysis status,
+    // so keeping and returning it would read back as `analysis_error`: a
+    // failure logged for a fetch that never ran, and an AI Policy tab
+    // claiming the text was fetched. Drop the placeholder and return
+    // nothing, as for an app with no row at all.
+    if (existing?.status === "pending") {
+      db.prepare(
+        "DELETE FROM privacy_policy_analyses WHERE app_id = ? AND status = 'pending'"
+      ).run(appId);
+      return null;
+    }
     // Persist the log entry so the AI Policy tab can surface "disabled" the
     // same way it surfaces throttle messages, but leave every other field
     // on the row untouched — `source_fetched_at`, the hash, the existing

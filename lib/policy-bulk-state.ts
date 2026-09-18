@@ -29,7 +29,7 @@ export type PolicyAppOutcome =
   | "succeeded" // analysis.status was 'ready' or 'source_ready'
   | "failed" // fetch_error / analysis_error / etc.
   | "throttled" // per-app scrape-throttle hit; prior state returned unchanged
-  | "skipped"; // app had no privacyPolicyUrl at dequeue time
+  | "skipped"; // no privacyPolicyUrl at dequeue time, or scraping disabled with nothing stored
 
 export interface PolicyQueueEntry {
   /** The analysis row's `status` column at the moment we finished. */

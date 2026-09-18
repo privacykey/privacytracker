@@ -9012,27 +9012,9 @@
           ]
         },
         {
-          "sql": "\n    INSERT INTO privacy_policy_analyses (\n      app_id,\n      policy_url,\n      status,\n      source_title,\n      source_content_type,\n      source_text,\n      source_word_count,\n      source_origin,\n      source_final_url,\n      content_hash,\n      analysis_mode,\n      summary_json,\n      previous_summary_json,\n      previous_summary_at,\n      model,\n      error,\n      updated_at,\n      last_run_log,\n      source_fetched_at\n    )\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      policy_url = excluded.policy_url,\n      status = excluded.status,\n      source_title = excluded.source_title,\n      source_content_type = excluded.source_content_type,\n      source_text = excluded.source_text,\n      source_word_count = excluded.source_word_count,\n      source_origin = excluded.source_origin,\n      source_final_url = excluded.source_final_url,\n      content_hash = excluded.content_hash,\n      analysis_mode = excluded.analysis_mode,\n      summary_json = excluded.summary_json,\n      previous_summary_json = excluded.previous_summary_json,\n      previous_summary_at = excluded.previous_summary_at,\n      model = excluded.model,\n      error = excluded.error,\n      updated_at = excluded.updated_at,\n      last_run_log = excluded.last_run_log,\n      source_fetched_at = excluded.source_fetched_at\n  ",
+          "sql": "DELETE FROM privacy_policy_analyses WHERE app_id = ? AND status = 'pending'",
           "params": [
-            "1000000001",
-            "https://example.com/privacy",
-            "pending",
-            null,
-            null,
-            null,
-            0,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            1789473600000,
-            "[{\"phase\":\"disabled\",\"at\":1789473600000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
-            null
+            "1000000001"
           ]
         },
         {
@@ -9040,11 +9022,11 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "error",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy summary failed",
-            "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"analysis_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null}",
+            "Policy skipped: scraping disabled",
+            "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":null,\"policyUrl\":\"https://example.com/privacy\",\"model\":null}",
             1789473600000,
             1789473600000,
             0
@@ -9059,33 +9041,7 @@
       ],
       "late": [],
       "rows": {
-        "privacy_policy_analyses": [
-          {
-            "app_id": "1000000001",
-            "policy_url": "https://example.com/privacy",
-            "status": "pending",
-            "source_title": null,
-            "source_content_type": null,
-            "source_text": null,
-            "source_word_count": 0,
-            "source_origin": null,
-            "source_final_url": null,
-            "content_hash": null,
-            "analysis_mode": null,
-            "summary_json": null,
-            "previous_summary_json": null,
-            "previous_summary_at": null,
-            "model": null,
-            "error": null,
-            "updated_at": 1789473600000,
-            "last_run_log": "[{\"phase\":\"disabled\",\"at\":1789473600000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
-            "source_fetched_at": null,
-            "chunk_notes_json": null,
-            "chunk_notes_hash": null,
-            "run_status": "idle",
-            "run_started_at": 1789473600000
-          }
-        ],
+        "privacy_policy_analyses": [],
         "privacy_policy_versions": [],
         "privacy_snapshots": [],
         "notifications": [],
@@ -9093,11 +9049,11 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "error",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy summary failed",
-            "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"analysis_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null}",
+            "summary": "Policy skipped: scraping disabled",
+            "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":null,\"policyUrl\":\"https://example.com/privacy\",\"model\":null}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -9109,16 +9065,7 @@
       },
       "expected": {
         "ok": true,
-        "result": {
-          "status": "analysis_error",
-          "sourceWordCount": 0,
-          "updatedAt": 1789473600000,
-          "summary": null,
-          "previousSummary": null,
-          "sourceLength": 0,
-          "runStatus": "running",
-          "runStartedAt": 1789473600000
-        }
+        "result": null
       }
     },
     {

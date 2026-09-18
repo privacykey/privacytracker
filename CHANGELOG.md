@@ -46,6 +46,16 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- With "Disable policy scraping" switched on in Settings, an app whose
+  privacy policy had never been fetched no longer shows up as a failure.
+  Its policy run (the automatic fetch after an import or sync, for
+  example) was written to the Activity log as an error, "Policy summary
+  failed", counted as failed in the bulk policy total, and left the app's
+  AI Policy tab saying the policy was fetched but the AI summary could not
+  be generated, when nothing had been fetched at all. The run is now
+  logged as "Policy skipped: scraping disabled" and counted as skipped,
+  and the AI Policy tab says no policy analysis is stored yet.
+
 - The History tab's "Show diff from previous version" shows the change it
   is asked to show. The diff trimmed a common suffix counted from the start
   of both texts instead of the end, so it reported changes as unchanged and

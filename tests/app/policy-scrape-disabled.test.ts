@@ -6,10 +6,17 @@
  * inside `fetchAndStorePolicySource` BEFORE the HTTP call. These tests
  * pin that contract by mocking `global.fetch` to track invocations and
  * asserting the network never gets touched when the kill-switch is on.
+ *
+ * A skipped fetch is not a failed one: an app's first run with the
+ * kill-switch on must read as skipped in the activity log and the bulk
+ * totals, and must not leave a row behind that the AI Policy tab would
+ * render as an analysis error.
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { getRecentActivity } from "../../lib/activity";
+import { runBulkPolicySync } from "../../lib/policy-bulk-runner";
 import {
   getPolicyAnalysis,
   syncPrivacyPolicyAnalysis,
@@ -192,7 +199,65 @@ test("an existing cached policy row is preserved when the kill-switch trips", as
   // The cached fetch metadata must survive untouched — only the run
   // log gets a "disabled" event appended.
   const after = getPolicyAnalysis("scrape-disabled-app");
+  assert.equal(after?.status, before?.status);
   assert.equal(after?.sourceFetchedAt, before?.sourceFetchedAt);
   assert.equal(after?.sourceLength, before?.sourceLength);
   assert.equal(after?.sourceWordCount, before?.sourceWordCount);
+});
+
+for (const phase of ["fetch", "all"] as const) {
+  test(`a first ${phase} run with the kill-switch on reads as skipped, not failed`, async () => {
+    setSetting("policy_scrape_disabled", "true");
+    const tracker = trackingFetch(false);
+    global.fetch = tracker.fetch;
+
+    const result = await syncPrivacyPolicyAnalysis(
+      {
+        appId: "scrape-disabled-app",
+        appName: "Disabled Scrape Fixture",
+        policyUrl: POLICY_URL,
+      },
+      { phase, bypassThrottle: false }
+    );
+
+    assert.equal(tracker.calls, 0, "fetch must not be invoked while disabled");
+    // Nothing was fetched, so there is no analysis to hand back. The run
+    // marker's 'pending' placeholder must not outlive the run either: it
+    // hydrates as `analysis_error`, which the AI Policy tab renders as
+    // "the policy was fetched, but the AI summary could not be generated".
+    assert.equal(result, null);
+    assert.equal(getPolicyAnalysis("scrape-disabled-app"), null);
+
+    const rows = getRecentActivity({ type: "policy_summary" });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].status, "partial");
+    assert.equal(rows[0].summary, "Policy skipped: scraping disabled");
+    assert.equal(rows[0].detail?.resultStatus, null);
+  });
+}
+
+test("the bulk runner counts a first fetch stopped by the kill-switch as skipped, not failed", async () => {
+  setSetting("policy_scrape_disabled", "true");
+  const tracker = trackingFetch(false);
+  global.fetch = tracker.fetch;
+
+  // The automatic fetch after an import or sync takes this path: it does
+  // not check the kill-switch itself, so every app meets the store's gate.
+  const { totals } = await runBulkPolicySync({
+    initiator: "automatic",
+    phase: "fetch",
+    force: false,
+  });
+
+  assert.equal(tracker.calls, 0, "fetch must not be invoked while disabled");
+  assert.equal(totals.attempted, 1);
+  assert.equal(totals.skipped, 1);
+  assert.equal(totals.failed, 0);
+  assert.equal(totals.succeeded, 0);
+
+  const bulkRow = getRecentActivity({ type: "policy_summary" }).find(
+    (row) => row.appId === null
+  );
+  assert.equal(bulkRow?.status, "ok");
+  assert.equal(bulkRow?.summary, "Bulk policy scrape: 0 ok, 1 skipped");
 });
