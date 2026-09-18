@@ -46,6 +46,16 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The History tab's "Show diff from previous version" shows the change it
+  is asked to show. The diff trimmed a common suffix counted from the start
+  of both texts instead of the end, so it reported changes as unchanged and
+  put new text on the removed side: a changed last line, or a one-line
+  policy with one edited word, came out as no change at all; an edit
+  followed by an appended line marked the wrong lines as added and
+  unchanged; and a changed line of a single word showed the new word on
+  the removed line. Lines and words are now compared from the end, as
+  intended.
+
 - A privacy-policy rescrape no longer counts as a change unless the text
   changed. The first capture of a policy, an unchanged rescrape and a
   failed or unusable one (network error, wrong content type, too little
