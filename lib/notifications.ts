@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { AiTimeoutPhase } from "./ai-config";
 import type { ChangeEntry } from "./changelog";
 import db from "./db";
+import { HARD_DEFAULTS } from "./feature-flag-rules";
 import type { CategoryMismatch } from "./privacy-profile";
 import { getSetting, setSetting } from "./scheduler";
 
@@ -734,6 +735,25 @@ function classifyChange(
     return "new_privacy_types";
   }
   return "label_changes";
+}
+
+/**
+ * Whether a privacy-policy text change is something the user wants to hear
+ * about: flagged as a change to review, shown in the bell and posted to the
+ * webhook. Governed by `flag.notifications.types.policy_updates`, which is
+ * off by default so a fresh install notifies on label changes only. Falls
+ * back to the hard default when the resolver cannot be loaded.
+ */
+export function policyUpdateNotificationsEnabled(): boolean {
+  try {
+    const { resolveFlagFromDb } =
+      require("./feature-flags-server") as typeof import("./feature-flags-server");
+    return (
+      resolveFlagFromDb("flag.notifications.types.policy_updates") === "on"
+    );
+  } catch {
+    return HARD_DEFAULTS["flag.notifications.types.policy_updates"] === "on";
+  }
 }
 
 function getEnabledTypeFilter(): {

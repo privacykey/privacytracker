@@ -3238,9 +3238,9 @@
           {
             "key": "flag.notifications.types.policy_updates",
             "surface": "notifications",
-            "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "hardDefault": "off",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },

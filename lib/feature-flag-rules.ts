@@ -623,7 +623,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.notifications.bell": "on", // bell trigger
   "flag.notifications.bell.polling": "on", // 30s polling
   "flag.notifications.types.label_changes": "on", // label-changes notification type
-  "flag.notifications.types.policy_updates": "on", // policy-updates notification type
+  "flag.notifications.types.policy_updates": "off", // policy text changes: off so a fresh install notifies on labels only
   "flag.notifications.types.accessibility_changes": "off", // off until accessibility modifier on
   "flag.notifications.types.new_privacy_types": "on", // new privacy-types appearing
   "flag.notifications.resume.enabled": "on", // 'resumed after restart' notifications

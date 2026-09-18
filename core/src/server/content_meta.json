@@ -29,7 +29,7 @@
   "notificationDefaults": {
     "labelChanges": true,
     "profileMismatch": true,
-    "policyUpdates": true,
+    "policyUpdates": false,
     "versionUpdates": true,
     "importCompleted": true,
     "manualAppsPrompt": true,

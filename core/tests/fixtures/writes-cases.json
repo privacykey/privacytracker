@@ -5480,7 +5480,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5583,7 +5583,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5670,7 +5670,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5769,7 +5769,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5868,7 +5868,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"policyUpdates\":false},\"stored\":{\"policyUpdates\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"policyUpdates\":false},\"stored\":{\"policyUpdates\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null

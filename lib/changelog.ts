@@ -422,21 +422,33 @@ export function saveSnapshot(
  *
  * Snapshot json is kept identical to whatever the latest label snapshot was,
  * so diffSnapshots on the next label sync still works correctly.
+ *
+ * Every fetch leaves a row, so the timeline shows that a rescrape happened.
+ * Only a real change to the policy text can be a "change to review" —
+ * `changes_detected = 1`, which is what drives the grid's pending dot, the
+ * review panel, triage's "changes this week", the universal changelog and
+ * the stats — and only when the user has the policy-updates toggle on
+ * (`options.surfaceChanges`, which the caller resolves from
+ * `flag.notifications.types.policy_updates`, off by default). Everything
+ * else is timeline-only:
+ *   - `first`   the first usable capture; there is nothing it changed from.
+ *   - `same`    a rescrape that returned identical text.
+ *   - `error`   a failed or unusable rescrape. That says nothing about the
+ *               policy, so it must never read as a change to it.
+ *   - `changed` with the toggle off: recorded and diffable, not flagged.
+ *
+ * Returns whether the row was flagged, so the caller notifies on exactly
+ * the rows the user asked to hear about.
  */
 export function appendPolicyChangeEntry(
   appId: string,
-  entry: ChangeEntry
-): void {
+  entry: ChangeEntry,
+  options: { surfaceChanges?: boolean } = {}
+): boolean {
   const latest = getLatestSnapshot(appId) ?? [];
   const id = crypto.randomUUID();
-  // `same` events exist only so the History timeline shows that a rescrape
-  // happened — they are not a "change to review". Mark changes_detected = 0
-  // so they don't inflate the unacknowledged-changes badge or the bell-icon
-  // notification count. `first`, `changed`, and `error` keep the flag set:
-  //   - `first` is the first-ever capture and worth acknowledging.
-  //   - `changed` is the whole point of the feature.
-  //   - `error` surfaces a failed rescrape the user should notice.
-  const changesDetected = entry.policy_event === "same" ? 0 : 1;
+  const flagged =
+    entry.policy_event === "changed" && options.surfaceChanges === true;
   db.prepare(`
     INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -445,9 +457,10 @@ export function appendPolicyChangeEntry(
     appId,
     Date.now(),
     JSON.stringify(latest),
-    changesDetected,
+    flagged ? 1 : 0,
     JSON.stringify([{ ...entry, category: entry.category ?? "privacy-policy" }])
   );
+  return flagged;
 }
 
 /**

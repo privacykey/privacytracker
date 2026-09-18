@@ -2679,7 +2679,7 @@
     "profile_mismatch_desc": "When a tracked app starts collecting data at a tier beyond what your privacy profile allows.",
     "profile_mismatch_example": "e.g. \"TikTok just started exceeding your privacy profile.\"",
     "policy_updates_label": "Privacy policy updates",
-    "policy_updates_desc": "When the developer's linked privacy policy document changes materially since the last sync.",
+    "policy_updates_desc": "When the developer's linked privacy policy text changes since the last sync. Off by default: a changed policy then stays on the app's History timeline without a review marker, bell notification or webhook post.",
     "policy_updates_example": "e.g. \"Spotify's privacy policy has been updated — new section on third-party sharing.\"",
     "version_updates_label": "App version updates",
     "version_updates_desc": "When Apple reports a new App Store version for a tracked app — useful for cross-referencing a release with a privacy-label change.",
