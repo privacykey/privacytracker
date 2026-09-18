@@ -204,7 +204,7 @@
     "flag.notifications.bell": "on",
     "flag.notifications.bell.polling": "on",
     "flag.notifications.types.label_changes": "on",
-    "flag.notifications.types.policy_updates": "on",
+    "flag.notifications.types.policy_updates": "off",
     "flag.notifications.types.accessibility_changes": "off",
     "flag.notifications.types.new_privacy_types": "on",
     "flag.notifications.resume.enabled": "on",

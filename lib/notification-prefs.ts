@@ -57,10 +57,10 @@ export const NOTIFICATION_TYPE_META: Record<
     key: "policyUpdates",
     label: "Privacy policy updates",
     description:
-      "When the developer\u2019s linked privacy policy document changes materially since the last sync.",
+      "When the developer\u2019s linked privacy policy text changes since the last sync. Off by default: a changed policy then stays on the app\u2019s History timeline without a review marker, bell notification or webhook post.",
     example:
       'e.g. "Spotify\u2019s privacy policy has been updated \u2014 new section on third-party sharing."',
-    defaultOn: true,
+    defaultOn: false,
   },
   versionUpdates: {
     key: "versionUpdates",

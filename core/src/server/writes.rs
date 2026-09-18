@@ -1833,10 +1833,10 @@ fn resolved_prefs(cx: &Cx) -> Value {
 
 fn prefs_response(cx: &Cx) -> Response {
     let prefs = resolved_prefs(cx);
-    let mut defaults = Map::new();
-    for key in NOTIFICATION_TYPE_KEYS {
-        defaults.insert(key.to_string(), json!(true));
-    }
+    // Node echoes DEFAULT_NOTIFICATION_PREFS, which is not all-true (policy
+    // updates default off). The generated content metadata carries it for
+    // the GET route; reading the same copy here keeps the two from drifting.
+    let defaults = super::user_content::metadata()["notificationDefaults"].clone();
     json_ok(&json!({ "prefs": prefs, "stored": prefs, "defaults": defaults }))
 }
 

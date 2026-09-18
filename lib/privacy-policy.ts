@@ -13,7 +13,11 @@ import {
   resolveDefaultModel,
 } from "./ai-config";
 import db from "./db";
-import { createAiTimeoutNotification } from "./notifications";
+import {
+  createAiTimeoutNotification,
+  createNotification,
+  policyUpdateNotificationsEnabled,
+} from "./notifications";
 import { getSetting } from "./scheduler";
 import { safeFetch, safeFetchStream, validateExternalUrl } from "./security";
 
@@ -1163,31 +1167,37 @@ async function fetchAndStorePolicySource(
   const contentHash = source.text ? sha256(source.text) : null;
 
   if (source.status !== "ready") {
+    // The fetcher ran but the body is not a policy (too short, wrong content
+    // type). Keep the last usable capture on the row, exactly as a fetch
+    // error does: the status and error say what went wrong, while the hash,
+    // text and summary stay those of the last policy actually read. Storing
+    // the rejected body's hash here made the next good scrape compare
+    // against junk and report "changed" for identical text, and let the
+    // version backfill below seed that junk as a version row.
     const row = persistPolicyAnalysis({
       appId,
       policyUrl,
       status: source.status,
-      sourceTitle: source.title,
-      sourceContentType: source.contentType,
-      sourceText: source.text,
-      sourceWordCount: source.wordCount,
-      sourceOrigin: source.origin,
-      sourceFinalUrl: source.finalUrl,
-      contentHash,
-      analysisMode: null,
-      summaryJson: null,
+      sourceTitle: existing?.source_title ?? null,
+      sourceContentType: existing?.source_content_type ?? null,
+      sourceText: existing?.source_text ?? null,
+      sourceWordCount: existing?.source_word_count ?? 0,
+      sourceOrigin: normalizeSourceOrigin(existing?.source_origin ?? null),
+      sourceFinalUrl: existing?.source_final_url ?? null,
+      contentHash: existing?.content_hash ?? null,
+      analysisMode: normalizeAnalysisMode(existing?.analysis_mode),
+      summaryJson: existing?.summary_json ?? null,
       previousSummaryJson: existing?.previous_summary_json ?? null,
       previousSummaryAt: existing?.previous_summary_at ?? null,
-      model: null,
+      model: existing?.model ?? null,
       error: source.error,
       updatedAt: now,
       lastRunLogJson: logger.toJson(),
       sourceFetchedAt: now,
     });
-    // Not a network exception but still a failed scrape — the fetcher ran
-    // but the body was unusable (too short, wrong content type, etc.).
-    // Record the attempt so History reflects the version-control intent
-    // described in CHANGELOG work: every rescrape leaves a fingerprint.
+    // Not a network exception but still a failed scrape. Record the attempt
+    // so History reflects the version-control intent described in CHANGELOG
+    // work: every rescrape leaves a fingerprint. It is never a change.
     try {
       const reasonDetail = source.error
         ? source.error
@@ -1368,9 +1378,21 @@ async function fetchAndStorePolicySource(
       policy_event: policyEvent,
       ...(versionId ? { policy_version_id: versionId } : {}),
     };
-    appendPolicyChangeEntry(appId, entry);
+    // Only a text change can be flagged for review and notified, and only
+    // while the policy-updates toggle is on (off by default). The bell row
+    // is what the immediate webhook and the daily and weekly digests read,
+    // so one write covers all three.
+    const flagged = appendPolicyChangeEntry(appId, entry, {
+      surfaceChanges:
+        policyEvent === "changed" && policyUpdateNotificationsEnabled(),
+    });
+    if (flagged) {
+      createNotification(appId, request.appName, [entry]);
+    }
     logger.event("changelog", {
-      note: `Recorded policy ${policyEvent} event in History.`,
+      note: flagged
+        ? `Recorded policy ${policyEvent} event in History and notified.`
+        : `Recorded policy ${policyEvent} event in History.`,
     });
   } catch (error) {
     logger.event("changelog", { error: getErrorMessage(error) });

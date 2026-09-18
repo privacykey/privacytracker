@@ -14,6 +14,19 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- Privacy-policy changes are off by default in Notifications, and the
+  "Privacy policy updates" toggle (`flag.notifications.types.policy_updates`)
+  now does what its label says. With it on, a policy whose text changed
+  since the last sync is flagged as a change to review (the grid's pending
+  dot, the review panel, triage, the universal changelog) and raises a bell
+  notification, which is also what the immediate webhook and the daily and
+  weekly digests read. With it off, the change is still recorded on the
+  app's History timeline with its diff, and nothing else. Until now the
+  toggle filtered bell rows that were never written (no policy event ever
+  raised one) while every policy event was flagged for review whatever the
+  toggle said. A fresh install therefore notifies on privacy-label changes
+  only; an install that had saved the toggle explicitly keeps its choice.
+
 - `GET /api/diagnostics/runtime` now returns a backend-tagged envelope
   (`backend`, `schemaVersion: 2`, `process`, `heap` with a `kind` of `v8`,
   `sqlite`, `scheduler` with a `kind` of `event-loop`, `http`,
@@ -32,6 +45,16 @@ Going forward, changes are recorded here as they land.
   and `tests/app/runtime-diagnostics.test.ts` hold the payload to.
 
 ### Fixed
+
+- A privacy-policy rescrape no longer counts as a change unless the text
+  changed. The first capture of a policy, an unchanged rescrape and a
+  failed or unusable one (network error, wrong content type, too little
+  text) all stay on the History timeline as before but are no longer
+  flagged for review. An unusable scrape also no longer overwrites the
+  stored hash with the rejected body's: it keeps the last policy actually
+  read, as a network failure already did, so the next good scrape of
+  identical text reads as unchanged rather than "changed", and the
+  rejected body can no longer be seeded into the version history.
 
 - A one-app iTunes chart is read correctly. Apple's legacy RSS charts are
   an Atom feed converted to JSON, and a chart of exactly one app carries

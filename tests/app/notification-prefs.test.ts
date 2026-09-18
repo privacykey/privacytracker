@@ -66,6 +66,20 @@ test("resolvePrefs merges partial stored prefs with every default key", () => {
   }
 });
 
+test("policy updates are the one notification type off by default", () => {
+  // A fresh install notifies on privacy-label changes only; policy text
+  // changes are opt-in so a webhook is not flooded by policy rescrapes.
+  // The flag side of the same default is pinned in
+  // tests/app/policy-change-events.test.ts.
+  assert.equal(DEFAULT_NOTIFICATION_PREFS.policyUpdates, false);
+  for (const key of NOTIFICATION_TYPE_KEYS) {
+    if (key === "policyUpdates") {
+      continue;
+    }
+    assert.equal(DEFAULT_NOTIFICATION_PREFS[key], true, key);
+  }
+});
+
 test("classifyNotificationType maps synthetic payload markers before fallbacks", () => {
   assert.equal(classifyNotificationType(null), "labelChanges");
   assert.equal(classifyNotificationType([]), "labelChanges");
