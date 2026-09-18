@@ -9,13 +9,15 @@
  * ALTER-bearing tables are created with their columns MINUS everything the
  * migrations later add, and no devices/app_devices tables at all. Opening it
  * with either migrator must therefore run ~all the ALTERs, create the
- * unknown-device placeholder, heal the URL-less queued import row, and seed
- * privacy_policy_versions — the full upgrade path.
+ * unknown-device placeholder, heal the URL-less queued import row, seed
+ * privacy_policy_versions and repair the analysis stored as 'ok' — the full
+ * upgrade path.
  *
  * buildCurrentWithLiveState() takes an already-current schema (produced by
- * pt-core) and injects rows that exercise the two data backfills a
- * current-schema re-open still runs: the stuck run_status='running' reset
- * and the pending_search heal.
+ * pt-core) and injects rows that exercise the three data backfills a
+ * current-schema re-open still runs: the stuck run_status='running' reset,
+ * the pending_search heal and the imported-status repair ('ok' becomes
+ * 'ready' with a summary, 'source_ready' without).
  */
 import BetterSqlite3 from "better-sqlite3";
 
@@ -221,9 +223,18 @@ export function injectLiveState(path) {
   db.prepare(
     "INSERT INTO apps (id, name, url, lastSynced) VALUES ('900','Live','',0)"
   ).run();
-  // A stuck 'running' row → both migrators must reset it to 'idle'.
+  // A stuck 'running' row → both migrators must reset it to 'idle'. Its
+  // 'ok' is the status audit-bundle imports stored, so it is also repaired:
+  // no summary, so 'source_ready'.
   db.prepare(
     "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, updated_at, run_status) VALUES ('900','u','ok',0,'running')"
+  ).run();
+  // An imported 'ok' row WITH a summary → both migrators must make it 'ready'.
+  db.prepare(
+    "INSERT INTO apps (id, name, url, lastSynced) VALUES ('901','Imported','',0)"
+  ).run();
+  db.prepare(
+    "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, summary_json, model, updated_at) VALUES ('901','u','ok','{}','imported',0)"
   ).run();
   db.prepare(
     "INSERT INTO imports (id, created_at, source) VALUES ('imp-9',0,'manual')"
@@ -260,6 +271,15 @@ export function backfillAggregates(path) {
       ),
       policyIdle: n(
         "SELECT COUNT(*) n FROM privacy_policy_analyses WHERE run_status = 'idle'"
+      ),
+      policyStatusOk: n(
+        "SELECT COUNT(*) n FROM privacy_policy_analyses WHERE status = 'ok'"
+      ),
+      policyStatusReady: n(
+        "SELECT COUNT(*) n FROM privacy_policy_analyses WHERE status = 'ready'"
+      ),
+      policyStatusSourceReady: n(
+        "SELECT COUNT(*) n FROM privacy_policy_analyses WHERE status = 'source_ready'"
       ),
       policyVersions: n("SELECT COUNT(*) n FROM privacy_policy_versions"),
     };

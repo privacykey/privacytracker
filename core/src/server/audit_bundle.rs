@@ -45,7 +45,7 @@ const INSERT_TYPE: &str =
 const INSERT_CATEGORY: &str =
     "INSERT INTO privacy_categories (id, type_id, identifier, title) VALUES (?, ?, ?, ?)";
 const INSERT_FEATURE: &str = "INSERT INTO accessibility_features\n         (id, app_id, identifier, title, description, icon_template)\n       VALUES (?, ?, ?, ?, ?, NULL)";
-const UPSERT_POLICY: &str = "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = excluded.status,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)";
+const UPSERT_POLICY: &str = "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)";
 const INSERT_ANNOTATION: &str = "INSERT INTO annotations\n         (id, app_id, content, source, source_name, visibility, tag,\n          created_at, updated_at, deleted_at)\n       VALUES (?, ?, ?, 'imported', ?, ?, ?, ?, ?, NULL)";
 const UPSERT_VERDICT: &str = "INSERT INTO app_verdicts\n           (id, app_id, verdict, rationale, source, source_name, set_at, updated_at)\n         VALUES (?, ?, ?, ?, 'imported', ?, ?, ?)\n         ON CONFLICT(app_id, source, source_name) DO UPDATE SET\n           verdict    = excluded.verdict,\n           rationale  = excluded.rationale,\n           updated_at = excluded.updated_at";
 const INSERT_IMPORT: &str = "INSERT OR IGNORE INTO audit_bundle_imports\n           (id, exported_at, imported_at, recommender_name, bundle_app_version,\n            apps_total, apps_added, apps_updated, apps_skipped, annotations_added)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -563,7 +563,9 @@ fn replace_app_labels(cx: &mut Cx, app: &Map<String, Value>) -> Result<(), Strin
 
 /// `upsertPolicySummary`: only with something to store and a policy URL
 /// that survives sanitising — a summary with nowhere safe to link is
-/// dropped rather than stored.
+/// dropped rather than stored. The status follows the summary the row
+/// ends up with: bound here from the bundle's (`summary_json ?? null`),
+/// and decided again in the `ON CONFLICT` against the one it keeps.
 fn upsert_policy_summary(cx: &mut Cx, app: &Map<String, Value>) -> Result<(), String> {
     let Some(summary) = app.get("policy_summary").and_then(Value::as_object) else {
         return Ok(());
@@ -581,6 +583,10 @@ fn upsert_policy_summary(cx: &mut Cx, app: &Map<String, Value>) -> Result<(), St
         Some(s) if !s.is_empty() => split_on_whitespace_len(s),
         _ => 0,
     });
+    let status = json!(match summary.get("summary_json") {
+        None | Some(Value::Null) => "source_ready",
+        Some(_) => "ready",
+    });
     let now = json!(cx.now);
     run_bound(
         cx,
@@ -588,6 +594,7 @@ fn upsert_policy_summary(cx: &mut Cx, app: &Map<String, Value>) -> Result<(), St
         vec![
             app.get("id"),
             Some(&policy_url),
+            Some(&status),
             excerpt,
             Some(&words),
             summary.get("summary_json"),

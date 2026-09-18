@@ -152,7 +152,8 @@ cargo run -p privacytracker-core --bin pt-core -- migrate <path>
 `foreign_keys=ON`), the 0700/0600 permission tightening, the full
 CREATE/INDEX block, every guarded `ALTER TABLE ADD COLUMN` migration, and the
 data backfills db.ts runs on open (unknown-device placeholder, the
-`pending_search` heal, the stuck-`running` reset, the `privacy_policy_versions`
+`pending_search` heal, the stuck-`running` reset, the repair of analyses an
+audit-bundle import stored as `'ok'`, the `privacy_policy_versions`
 seed). The big CREATE block is lifted verbatim from `db.ts` by
 `core/scripts/extract-schema.mjs` into `core/src/schema_sql.rs` (generated,
 checked in) so it cannot drift; the orchestration and short ALTER lists are
@@ -2516,7 +2517,9 @@ stamped in LOCAL time. The import: `validateBundle` with its errors in
 Node's order, the duplicate lookup, and one transaction that upserts
 each app unless this install's copy was synced at least as recently,
 replaces its labels, keeps an earlier policy summary where the bundle
-has none (`COALESCE`), adds the annotations, upserts the verdicts it
+has none (`COALESCE`), stores the analysis as `ready` when the row ends
+up with a summary and `source_ready` when it holds only the excerpt,
+adds the annotations, upserts the verdicts it
 recognises, stashes the recommender's profile as a suggestion — never
 applying it — and writes the import-history row. Every URL a bundle
 carries goes through the same sanitisers as on Node before it is stored.
@@ -2558,7 +2561,7 @@ whole state blob, not the trimmed projection the job routes serve
 
 **The oracle — `core/scripts/extract-bundles-cases.mjs`.** Runs the REAL
 handlers, each case in a SAVEPOINT, under a frozen clock, UTC and
-counted ids. 94 cases. The export: refused under the default focus,
+counted ids. 96 cases. The export: refused under the default focus,
 allowed for a loved one, a guardian, the hand-off workflow and a user
 override, refused by an override; an empty install; no body, a
 whitespace body, an array, a number, a string, `null` (a 500) and
@@ -2568,7 +2571,8 @@ profile left out, matching a preset, custom; the migration flag; the
 size limit declared and streamed; the admin token; the sixth export in a
 window. The import: previewed as JSON and as a form, over an earlier
 import, of a bare version-1 bundle; committed onto an empty install, as
-a form, merging by last sync, twice in a row, refused as a duplicate in
+a form, merging by last sync, an excerpt merged over a stored summary
+and over text never summarised, twice in a row, refused as a duplicate in
 the morning and in the afternoon, allowed again (and not by
 `allowDuplicate=true`); a bundle from a newer app refused, with and
 without an app version, and forced past; eighteen validation errors; a
@@ -2656,6 +2660,20 @@ any bundle whose apps carried a summary and a policy URL — which is to
 say this app's own export of a summarised library — rolled back with a
 500. Fixed on the Node side first, with its own regression tests; the
 port is of the fixed statement.
+
+The same statement stored `status = 'ok'`, which is not an analysis
+status, so every imported row hydrated as `analysis_error` and the AI
+Policy tab reported a failed AI run that had never happened. Fixed on
+the Node side as well, then re-recorded: the status follows the summary
+the row ends up with, `ready` with one and `source_ready` with only the
+excerpt, bound from the bundle on an insert and decided again in the
+`ON CONFLICT` against the summary a merge keeps. Six cases change, in
+that statement, its new status parameter and the stored status, and
+nothing else; the two merge cases are appended last so no earlier case
+changes its forwarded address. Rows already stored as `'ok'` are
+repaired on open by both migrators (`db.rs` step 15b), and the
+schema-parity gate counts statuses so the two cannot repair them
+differently.
 
 **Divergences, chosen.** An ARRAY where a value binds: better-sqlite3
 spreads it into the parameter list, and what happens next depends on its

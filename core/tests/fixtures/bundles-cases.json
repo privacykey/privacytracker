@@ -18505,10 +18505,11 @@
           ]
         },
         {
-          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = excluded.status,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
           "params": [
             "1001",
             "https://example.com/1001/privacy",
+            "ready",
             "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
             820,
             "{\"overview\":\"Collects contact info.\"}",
@@ -18803,7 +18804,7 @@
           {
             "app_id": "1001",
             "policy_url": "https://example.com/1001/privacy",
-            "status": "ok",
+            "status": "ready",
             "source_title": null,
             "source_content_type": null,
             "source_text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
@@ -19113,10 +19114,11 @@
           ]
         },
         {
-          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = excluded.status,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
           "params": [
             "1001",
             "https://example.com/1001/privacy",
+            "ready",
             "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
             820,
             "{\"overview\":\"Collects contact info.\"}",
@@ -19411,7 +19413,7 @@
           {
             "app_id": "1001",
             "policy_url": "https://example.com/1001/privacy",
-            "status": "ok",
+            "status": "ready",
             "source_title": null,
             "source_content_type": null,
             "source_text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
@@ -19777,10 +19779,11 @@
           ]
         },
         {
-          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = excluded.status,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
           "params": [
             "1001",
             "https://example.com/1001/privacy",
+            "ready",
             "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
             820,
             "{\"overview\":\"Collects contact info.\"}",
@@ -20068,7 +20071,7 @@
           {
             "app_id": "1001",
             "policy_url": "https://example.com/1001/privacy",
-            "status": "ok",
+            "status": "ready",
             "source_title": null,
             "source_content_type": null,
             "source_text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
@@ -20586,10 +20589,11 @@
           ]
         },
         {
-          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = excluded.status,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
           "params": [
             "1001",
             "https://example.com/1001/privacy",
+            "ready",
             "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
             820,
             "{\"overview\":\"Collects contact info.\"}",
@@ -20884,7 +20888,7 @@
           {
             "app_id": "1001",
             "policy_url": "https://example.com/1001/privacy",
-            "status": "ok",
+            "status": "ready",
             "source_title": null,
             "source_content_type": null,
             "source_text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
@@ -21257,10 +21261,11 @@
           ]
         },
         {
-          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = excluded.status,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
           "params": [
             "1001",
             "https://example.com/1001/privacy",
+            "ready",
             "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
             820,
             "{\"overview\":\"Collects contact info.\"}",
@@ -21663,7 +21668,7 @@
           {
             "app_id": "1001",
             "policy_url": "https://example.com/1001/privacy",
-            "status": "ok",
+            "status": "ready",
             "source_title": null,
             "source_content_type": null,
             "source_text": "word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word w",
@@ -23253,10 +23258,11 @@
           ]
         },
         {
-          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, 'ok', ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = excluded.status,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
           "params": [
             "3002",
             "https://example.com/p?a=1#frag",
+            "source_ready",
             "  two\n\twords  ",
             4,
             null,
@@ -23451,7 +23457,7 @@
           {
             "app_id": "3002",
             "policy_url": "https://example.com/p?a=1#frag",
-            "status": "ok",
+            "status": "source_ready",
             "source_title": null,
             "source_content_type": null,
             "source_text": "  two\n\twords  ",
@@ -27889,6 +27895,518 @@
         "retryAfter": null,
         "disposition": null,
         "cacheControl": "no-store"
+      }
+    },
+    {
+      "name": "import merges an excerpt over a stored summary",
+      "route": "/api/import/audit-bundle",
+      "method": "POST",
+      "search": "?confirm=1",
+      "query": [
+        [
+          "confirm",
+          "1"
+        ]
+      ],
+      "headers": {
+        "x-forwarded-for": "10.0.95.8",
+        "user-agent": "bundles-oracle/1.0"
+      },
+      "body": "{\"version\":2,\"app_version\":\"9.9.9\",\"exported_at\":\"2026-09-01T00:00:00.000Z\",\"exported_by_audience\":\"self\",\"recommender_name\":null,\"recommender_profile\":null,\"annotations\":[],\"apps\":[{\"id\":\"4001\",\"name\":\"Bundle App 4001\",\"developer\":null,\"bundle_id\":null,\"url\":\"https://apps.apple.com/us/app/fixture/id4001\",\"icon_url\":null,\"current_version\":null,\"privacy_policy_url\":\"https://example.com/4001/privacy\",\"has_privacy_details\":1,\"has_accessibility_labels\":0,\"privacy_types\":[],\"accessibility_features\":[],\"policy_summary\":{\"summary_json\":null,\"source_text_excerpt\":\"the newer excerpt\",\"fetched_at\":1789472096789,\"generated_at\":null}}]}",
+      "adminToken": null,
+      "repeat": 1,
+      "projected": false,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, bundleId, developer, privacyPolicyUrl, firstSeen, lastSynced, currentVersion, hasPrivacyDetails, hasAccessibilityLabels, priceAmount, priceCurrency, priceFormatted, hasIap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "4001",
+            "Stored Policy",
+            "https://apps.apple.com/us/app/fixture/id4001",
+            "https://is1-ssl.mzstatic.com/image/4001.png",
+            "com.example.app4001",
+            "Example Pty Ltd",
+            "https://example.com/4001/privacy",
+            1788698096789,
+            1,
+            "3.2.1",
+            1,
+            1,
+            0,
+            "USD",
+            "Free",
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_text, source_word_count, analysis_mode, summary_json, model, updated_at, source_fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "4001",
+            "https://example.com/4001/privacy",
+            "fetch_error",
+            "the stored text",
+            3,
+            "direct",
+            "{\"overview\":\"kept\"}",
+            "gpt",
+            1789216496789,
+            1789216496789
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO apps\n       (id, name, url, iconUrl, bundleId, developer, firstSeen, lastSynced,\n        currentVersion, versionUpdatedAt, whatsNew, hasPrivacyDetails,\n        hasAccessibilityLabels, privacyPolicyUrl,\n        priceAmount, priceCurrency, priceFormatted, hasIap)\n     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?)\n     ON CONFLICT(id) DO UPDATE SET\n       name                   = excluded.name,\n       url                    = COALESCE(excluded.url, apps.url),\n       iconUrl                = excluded.iconUrl,\n       bundleId               = COALESCE(excluded.bundleId, apps.bundleId),\n       developer              = COALESCE(excluded.developer, apps.developer),\n       lastSynced             = excluded.lastSynced,\n       currentVersion         = COALESCE(excluded.currentVersion, apps.currentVersion),\n       hasPrivacyDetails      = excluded.hasPrivacyDetails,\n       hasAccessibilityLabels = excluded.hasAccessibilityLabels,\n       privacyPolicyUrl       = COALESCE(excluded.privacyPolicyUrl, apps.privacyPolicyUrl),\n       priceAmount            = COALESCE(excluded.priceAmount, apps.priceAmount),\n       priceCurrency          = COALESCE(excluded.priceCurrency, apps.priceCurrency),\n       priceFormatted         = COALESCE(excluded.priceFormatted, apps.priceFormatted),\n       hasIap                 = COALESCE(excluded.hasIap, apps.hasIap)",
+          "params": [
+            "4001",
+            "Bundle App 4001",
+            "https://apps.apple.com/us/app/fixture/id4001",
+            null,
+            null,
+            null,
+            1789472096789,
+            1789472096789,
+            null,
+            1,
+            0,
+            "https://example.com/4001/privacy",
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "4001"
+          ]
+        },
+        {
+          "sql": "DELETE FROM accessibility_features WHERE app_id = ?",
+          "params": [
+            "4001"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "params": [
+            "4001",
+            "https://example.com/4001/privacy",
+            "source_ready",
+            "the newer excerpt",
+            3,
+            null,
+            1789475696789,
+            1789472096789
+          ]
+        },
+        {
+          "sql": "INSERT OR IGNORE INTO audit_bundle_imports\n           (id, exported_at, imported_at, recommender_name, bundle_app_version,\n            apps_total, apps_added, apps_updated, apps_skipped, annotations_added)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "bundle-000000000000000000000001",
+            "2026-09-01T00:00:00.000Z",
+            1789475696789,
+            null,
+            "9.9.9",
+            1,
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "bundle_imported",
+            "ok",
+            null,
+            null,
+            "0 added · 1 updated · 0 skipped · 0 notes",
+            "{\"appsTotal\":1,\"appsAdded\":0,\"appsUpdated\":1,\"appsSkipped\":0,\"annotationsAdded\":0,\"verdictsAdded\":0,\"recommenderProfileStashed\":false,\"recommenderProfilePreset\":null,\"recommenderName\":\"your friend\",\"exportedAt\":\"2026-09-01T00:00:00.000Z\"}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "4001",
+            "name": "Bundle App 4001",
+            "url": "https://apps.apple.com/us/app/fixture/id4001",
+            "iconUrl": null,
+            "bundleId": "com.example.app4001",
+            "developer": "Example Pty Ltd",
+            "firstSeen": 1788698096789,
+            "lastSynced": 1789472096789,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "3.2.1",
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": 0,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": 0,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": "https://example.com/4001/privacy"
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "privacy_policy_analyses": [
+          {
+            "app_id": "4001",
+            "policy_url": "https://example.com/4001/privacy",
+            "status": "ready",
+            "source_title": null,
+            "source_content_type": null,
+            "source_text": "the newer excerpt",
+            "source_word_count": 3,
+            "source_origin": null,
+            "source_final_url": null,
+            "content_hash": null,
+            "analysis_mode": "imported",
+            "summary_json": "{\"overview\":\"kept\"}",
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": "imported",
+            "error": null,
+            "updated_at": 1789475696789,
+            "last_run_log": null,
+            "source_fetched_at": 1789472096789,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": null,
+            "run_started_at": null
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [],
+        "audit_bundle_imports": [
+          {
+            "id": "bundle-000000000000000000000001",
+            "exported_at": "2026-09-01T00:00:00.000Z",
+            "imported_at": 1789475696789,
+            "recommender_name": null,
+            "bundle_app_version": "9.9.9",
+            "apps_total": 1,
+            "apps_added": 0,
+            "apps_updated": 1,
+            "apps_skipped": 0,
+            "annotations_added": 0
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "type": "bundle_imported",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "0 added · 1 updated · 0 skipped · 0 notes",
+            "detail": "{\"appsTotal\":1,\"appsAdded\":0,\"appsUpdated\":1,\"appsSkipped\":0,\"annotationsAdded\":0,\"verdictsAdded\":0,\"recommenderProfileStashed\":false,\"recommenderProfilePreset\":null,\"recommenderName\":\"your friend\",\"exportedAt\":\"2026-09-01T00:00:00.000Z\"}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"ok\":true,\"preview\":false,\"summary\":{\"appsTotal\":1,\"appsAdded\":0,\"appsUpdated\":1,\"appsSkipped\":0,\"annotationsAdded\":0,\"verdictsAdded\":0,\"recommenderProfileStashed\":false,\"recommenderProfilePreset\":null,\"recommenderName\":\"your friend\"}}",
+        "type": "application/json",
+        "retryAfter": null,
+        "disposition": null,
+        "cacheControl": null
+      }
+    },
+    {
+      "name": "import merges an excerpt over text with no summary",
+      "route": "/api/import/audit-bundle",
+      "method": "POST",
+      "search": "?confirm=1",
+      "query": [
+        [
+          "confirm",
+          "1"
+        ]
+      ],
+      "headers": {
+        "x-forwarded-for": "10.0.96.8",
+        "user-agent": "bundles-oracle/1.0"
+      },
+      "body": "{\"version\":2,\"app_version\":\"9.9.9\",\"exported_at\":\"2026-09-01T00:00:00.000Z\",\"exported_by_audience\":\"self\",\"recommender_name\":null,\"recommender_profile\":null,\"annotations\":[],\"apps\":[{\"id\":\"4001\",\"name\":\"Bundle App 4001\",\"developer\":null,\"bundle_id\":null,\"url\":\"https://apps.apple.com/us/app/fixture/id4001\",\"icon_url\":null,\"current_version\":null,\"privacy_policy_url\":\"https://example.com/4001/privacy\",\"has_privacy_details\":1,\"has_accessibility_labels\":0,\"privacy_types\":[],\"accessibility_features\":[],\"policy_summary\":{\"summary_json\":null,\"source_text_excerpt\":\"the newer excerpt\",\"fetched_at\":1789472096789,\"generated_at\":null}}]}",
+      "adminToken": null,
+      "repeat": 1,
+      "projected": false,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, bundleId, developer, privacyPolicyUrl, firstSeen, lastSynced, currentVersion, hasPrivacyDetails, hasAccessibilityLabels, priceAmount, priceCurrency, priceFormatted, hasIap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "4001",
+            "Stored Policy",
+            "https://apps.apple.com/us/app/fixture/id4001",
+            "https://is1-ssl.mzstatic.com/image/4001.png",
+            "com.example.app4001",
+            "Example Pty Ltd",
+            "https://example.com/4001/privacy",
+            1788698096789,
+            1,
+            "3.2.1",
+            1,
+            1,
+            0,
+            "USD",
+            "Free",
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_text, source_word_count, analysis_mode, summary_json, model, updated_at, source_fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "4001",
+            "https://example.com/4001/privacy",
+            "needs_ai_config",
+            "the stored text",
+            3,
+            null,
+            null,
+            null,
+            1789216496789,
+            1789216496789
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO apps\n       (id, name, url, iconUrl, bundleId, developer, firstSeen, lastSynced,\n        currentVersion, versionUpdatedAt, whatsNew, hasPrivacyDetails,\n        hasAccessibilityLabels, privacyPolicyUrl,\n        priceAmount, priceCurrency, priceFormatted, hasIap)\n     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?)\n     ON CONFLICT(id) DO UPDATE SET\n       name                   = excluded.name,\n       url                    = COALESCE(excluded.url, apps.url),\n       iconUrl                = excluded.iconUrl,\n       bundleId               = COALESCE(excluded.bundleId, apps.bundleId),\n       developer              = COALESCE(excluded.developer, apps.developer),\n       lastSynced             = excluded.lastSynced,\n       currentVersion         = COALESCE(excluded.currentVersion, apps.currentVersion),\n       hasPrivacyDetails      = excluded.hasPrivacyDetails,\n       hasAccessibilityLabels = excluded.hasAccessibilityLabels,\n       privacyPolicyUrl       = COALESCE(excluded.privacyPolicyUrl, apps.privacyPolicyUrl),\n       priceAmount            = COALESCE(excluded.priceAmount, apps.priceAmount),\n       priceCurrency          = COALESCE(excluded.priceCurrency, apps.priceCurrency),\n       priceFormatted         = COALESCE(excluded.priceFormatted, apps.priceFormatted),\n       hasIap                 = COALESCE(excluded.hasIap, apps.hasIap)",
+          "params": [
+            "4001",
+            "Bundle App 4001",
+            "https://apps.apple.com/us/app/fixture/id4001",
+            null,
+            null,
+            null,
+            1789472096789,
+            1789472096789,
+            null,
+            1,
+            0,
+            "https://example.com/4001/privacy",
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "4001"
+          ]
+        },
+        {
+          "sql": "DELETE FROM accessibility_features WHERE app_id = ?",
+          "params": [
+            "4001"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses\n       (app_id, policy_url, status, source_text, source_word_count,\n        analysis_mode, summary_json, model, error, updated_at,\n        source_fetched_at)\n     VALUES (?, ?, ?, ?, ?, 'imported', ?, 'imported', NULL, ?, ?)\n     ON CONFLICT(app_id) DO UPDATE SET\n       policy_url        = excluded.policy_url,\n       status            = CASE WHEN COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json) IS NULL THEN 'source_ready' ELSE 'ready' END,\n       source_text       = COALESCE(excluded.source_text, privacy_policy_analyses.source_text),\n       source_word_count = excluded.source_word_count,\n       analysis_mode     = excluded.analysis_mode,\n       summary_json      = COALESCE(excluded.summary_json, privacy_policy_analyses.summary_json),\n       model             = excluded.model,\n       updated_at        = excluded.updated_at,\n       source_fetched_at = COALESCE(excluded.source_fetched_at, privacy_policy_analyses.source_fetched_at)",
+          "params": [
+            "4001",
+            "https://example.com/4001/privacy",
+            "source_ready",
+            "the newer excerpt",
+            3,
+            null,
+            1789475696789,
+            1789472096789
+          ]
+        },
+        {
+          "sql": "INSERT OR IGNORE INTO audit_bundle_imports\n           (id, exported_at, imported_at, recommender_name, bundle_app_version,\n            apps_total, apps_added, apps_updated, apps_skipped, annotations_added)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "bundle-000000000000000000000001",
+            "2026-09-01T00:00:00.000Z",
+            1789475696789,
+            null,
+            "9.9.9",
+            1,
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "bundle_imported",
+            "ok",
+            null,
+            null,
+            "0 added · 1 updated · 0 skipped · 0 notes",
+            "{\"appsTotal\":1,\"appsAdded\":0,\"appsUpdated\":1,\"appsSkipped\":0,\"annotationsAdded\":0,\"verdictsAdded\":0,\"recommenderProfileStashed\":false,\"recommenderProfilePreset\":null,\"recommenderName\":\"your friend\",\"exportedAt\":\"2026-09-01T00:00:00.000Z\"}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "4001",
+            "name": "Bundle App 4001",
+            "url": "https://apps.apple.com/us/app/fixture/id4001",
+            "iconUrl": null,
+            "bundleId": "com.example.app4001",
+            "developer": "Example Pty Ltd",
+            "firstSeen": 1788698096789,
+            "lastSynced": 1789472096789,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "3.2.1",
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": 0,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": 0,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": "https://example.com/4001/privacy"
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "privacy_policy_analyses": [
+          {
+            "app_id": "4001",
+            "policy_url": "https://example.com/4001/privacy",
+            "status": "source_ready",
+            "source_title": null,
+            "source_content_type": null,
+            "source_text": "the newer excerpt",
+            "source_word_count": 3,
+            "source_origin": null,
+            "source_final_url": null,
+            "content_hash": null,
+            "analysis_mode": "imported",
+            "summary_json": null,
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": "imported",
+            "error": null,
+            "updated_at": 1789475696789,
+            "last_run_log": null,
+            "source_fetched_at": 1789472096789,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": null,
+            "run_started_at": null
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [],
+        "audit_bundle_imports": [
+          {
+            "id": "bundle-000000000000000000000001",
+            "exported_at": "2026-09-01T00:00:00.000Z",
+            "imported_at": 1789475696789,
+            "recommender_name": null,
+            "bundle_app_version": "9.9.9",
+            "apps_total": 1,
+            "apps_added": 0,
+            "apps_updated": 1,
+            "apps_skipped": 0,
+            "annotations_added": 0
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "type": "bundle_imported",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "0 added · 1 updated · 0 skipped · 0 notes",
+            "detail": "{\"appsTotal\":1,\"appsAdded\":0,\"appsUpdated\":1,\"appsSkipped\":0,\"annotationsAdded\":0,\"verdictsAdded\":0,\"recommenderProfileStashed\":false,\"recommenderProfilePreset\":null,\"recommenderName\":\"your friend\",\"exportedAt\":\"2026-09-01T00:00:00.000Z\"}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"ok\":true,\"preview\":false,\"summary\":{\"appsTotal\":1,\"appsAdded\":0,\"appsUpdated\":1,\"appsSkipped\":0,\"annotationsAdded\":0,\"verdictsAdded\":0,\"recommenderProfileStashed\":false,\"recommenderProfilePreset\":null,\"recommenderName\":\"your friend\"}}",
+        "type": "application/json",
+        "retryAfter": null,
+        "disposition": null,
+        "cacheControl": null
       }
     }
   ]
