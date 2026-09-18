@@ -232,8 +232,12 @@
        --blue-hover, which is 4.3:1 under white; #0071e3 is 4.7:1. */
     --blue-fill: #0066cc;
     --blue-fill-hover: #0071e3;
-    --cream: #7a643b;
-    --cream-dim: rgba(122, 100, 59, 0.12);
+    /* #735e38, not #7a643b: the "not linked" severity badge paints cream
+       text on its own -dim tint, and over the #f2f2f7 page that was
+       4.34:1. This same-hue step is 4.73:1 there (the bar the palette
+       below sets for its badges). */
+    --cream: #735e38;
+    --cream-dim: rgba(115, 94, 56, 0.12);
     /* Severity / accent palette, light variants. The dark-theme brights
        (#ff453a, #ff9f0a, #ffd60a, #30d158, #40c8c8, #f43f5e) sit at only
        1.3–3.3:1 against white — unusable as text. These darker same-hue
@@ -299,8 +303,9 @@ html[data-theme-override="light"] {
   --blue-soft: #dbeafe;
   --blue-fill: #0066cc;
   --blue-fill-hover: #0071e3;
-  --cream: #7a643b;
-  --cream-dim: rgba(122, 100, 59, 0.12);
+  /* Light cream — see the @media light block above. */
+  --cream: #735e38;
+  --cream-dim: rgba(115, 94, 56, 0.12);
   /* Light severity / accent palette — see the @media light block above. */
   --red: #c20012;
   --red-dim: rgba(194, 0, 18, 0.12);
@@ -8550,32 +8555,6 @@ body.review-rec-print-active .review-rec-print a {
   .tooltip-inline {
     flex-wrap: wrap;
   }
-  .bar-row {
-    flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
-  }
-  .bar-label-wrap {
-    justify-content: flex-start;
-    width: 100%;
-  }
-  .bar-label {
-    text-align: left;
-    white-space: normal;
-  }
-  /* In a column-direction flex parent, `flex: 1` on .bar-track targets
-     the main axis (height) with flex-basis: 0, which collapses the bar
-     to zero height and overrides the 26px declaration. Reset to `none`
-     so the track uses its intrinsic height and stretches to full width
-     from the parent's align-items: stretch. */
-  .bar-track {
-    flex: none;
-    width: 100%;
-  }
-  /* Tighter stats-panel padding so the chart gets real room on 375px. */
-  .stats-panel {
-    padding: 22px 18px;
-  }
   .info-tooltip-bubble {
     max-width: min(280px, calc(100vw - 24px));
     font-size: 13.5px;
@@ -8770,30 +8749,44 @@ body.review-rec-print-active .review-rec-print a {
 /* ─────────────────────────────────────────────────────
    Bar Chart
 ───────────────────────────────────────────────────── */
+/* Three columns shared by every row: label | track | count. Each row is a
+   subgrid, so all tracks start and end at the same x and bar lengths stay
+   comparable however long a row's count text is.
+
+   The count sits after the track rather than inside the coloured fill.
+   Inside, it needed a text colour that reads on every category fill in
+   every theme (white on the dark-mode brights was 1.9 to 3.2:1, and on
+   the high-contrast yellow 1.05:1), and short bars were narrower than
+   their own label, so "2 apps" ran off the fill onto the track. Out here
+   it is ordinary text on the card, in the secondary text colour.
+
+   The label column hugs the longest label, between 125px (a floor so
+   labels stay legible in the narrow 1/3-width Stats column) and 170px
+   (past which they ellipsise). */
 .bar-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: fit-content(170px) minmax(0, 1fr) max-content;
+  gap: 10px 12px;
+  align-items: center;
 }
 
 .bar-row {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
   align-items: center;
 }
 
 .bar-label-wrap {
   display: flex;
-  flex-shrink: 0;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
-  width: 170px;
-  /* Hard floor so labels stay legible even when the panel lives in a
-     narrower grid cell (1/3 column on Stats page) — without it, a
-     downstream override that relaxes the fixed width could squeeze labels
-     to the point of being unreadable. */
+  /* A definite minimum, so the fit-content column sizes from this and
+     the label's max-content width, never from the label's unwrappable
+     min-content width. */
   min-width: 125px;
+  max-width: 170px;
 }
 
 .bar-label {
@@ -8809,7 +8802,6 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .bar-track {
-  flex: 1;
   height: 26px;
   overflow: hidden;
   background: var(--surface-active);
@@ -8818,20 +8810,50 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .bar-fill {
-  display: flex;
-  align-items: center;
-  min-width: 40px;
   height: 100%;
-  padding-left: 10px;
   border-radius: var(--r-full);
   transition: width 0.6s var(--ease-out-glide);
 }
 
 .bar-count {
   font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
   white-space: nowrap;
+}
+
+/* Phones: each label takes its own line above a full-width track, with
+   the count beside the track. This block has to come AFTER the base
+   rules above. The old copy lived in the early @media (max-width: 640px)
+   block near the top of the Responsive section, where the later base
+   rules of equal specificity silently overrode most of it (labels stayed
+   centred and right-aligned, the track shrank to 19px tall). */
+@media (max-width: 640px) {
+  /* Tighter panel padding so the chart gets real room on 375px. */
+  .stats-panel {
+    padding: 22px 18px;
+  }
+  .bar-chart {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    row-gap: 14px;
+  }
+  .bar-row {
+    row-gap: 6px;
+  }
+  .bar-label-wrap {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    min-width: 0;
+    max-width: none;
+  }
+  /* Size to the text so the info button sits right after the label
+     instead of at the far end of the line. */
+  .bar-label {
+    flex: 0 1 auto;
+    text-align: left;
+    white-space: normal;
+  }
 }
 
 /* ─────────────────────────────────────────────────────
@@ -9143,6 +9165,15 @@ body.review-rec-print-active .review-rec-print a {
    Per-App Severity Strips (SmallMultiples) — clickable app label on the
    left-hand column. Jumps to /apps/[id] so the strip doubles as navigation.
 ───────────────────────────────────────────────────── */
+/* Rowheader wrapper around the link; it is the grid item now, so it
+   carries the min-width reset that lets long app names ellipsise. A grid
+   of one so the link still stretches across the whole column, keeping
+   the category count at the column's right edge. */
+.sm-app-cell {
+  display: grid;
+  min-width: 0;
+}
+
 .sm-app-link {
   display: flex;
   gap: 6px;
@@ -9404,14 +9435,17 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 /* Hover-info block. No longer sticks on its own — the parent .sm-sidebar
-   handles that. Still padded + bordered so it reads as a distinct card. */
+   handles that. Still padded + bordered so it reads as a distinct card.
+   Filled with the nested-panel step (--surface-2), not --surface-active:
+   in dark mode the brighter fill left the --text-3 lines inside (the
+   empty-state hint, "Not collected", "No preference") at 4.37:1. */
 .sm-tooltip-panel {
   min-height: 92px;
   padding: 14px;
   font-size: 12px;
   line-height: 1.45;
   color: var(--text-2);
-  background: var(--surface-active);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
 }
@@ -9501,14 +9535,19 @@ body.review-rec-print-active .review-rec-print a {
   color: var(--text-3);
 }
 
+/* Theme tokens, not the old dark-only literals (#ffb2a8 text on a red
+   tint), which were 1.48:1 in light mode. Plain --red on its own tint is
+   only ~4.2:1 over the dark panel, so the text is --red pulled 35% toward
+   the theme text colour: a light pink in dark mode, as before, and a
+   deeper red in light mode. */
 .sm-tooltip-mismatch {
   padding: 6px 8px;
   margin-top: 8px;
   font-size: 11.5px;
   font-weight: 500;
-  color: #ffb2a8;
-  background: rgba(255, 69, 58, 0.12);
-  border: 1px solid rgba(255, 69, 58, 0.35);
+  color: color-mix(in srgb, var(--red) 65%, var(--text));
+  background: var(--red-dim);
+  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   border-radius: 6px;
 }
 
@@ -19012,8 +19051,8 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
 }
 
 /* "Filled cream is bright" only holds in dark mode (#d8c7a3). Light mode
-   flips --cream to #7a643b, where the near-black label above sits at
-   ~2.2:1 — white clears 5.9:1. Same two-mechanism scoping as the yellow
+   flips --cream to #735e38, where the near-black label above sits at
+   ~2.9:1 — white clears 6.2:1. Same two-mechanism scoping as the yellow
    risk tab. */
 @media (prefers-color-scheme: light) {
   html:not([data-theme-override])

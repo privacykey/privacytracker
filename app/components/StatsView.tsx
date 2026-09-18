@@ -480,6 +480,9 @@ export default function StatsView({
                     CATEGORY_META[c.identifier]?.color ?? "var(--blue)";
                   const meta = CATEGORY_META[c.identifier];
 
+                  // The count sits after the track, not inside the fill:
+                  // no text colour reads on every category fill in every
+                  // theme, and a short bar can't hold its own label.
                   return (
                     <div className="bar-row" key={c.identifier}>
                       <div className="bar-label-wrap">
@@ -491,13 +494,15 @@ export default function StatsView({
                       <div className="bar-track">
                         <div
                           className="bar-fill"
-                          style={{ width: `${pct}%`, background: color }}
-                        >
-                          <span className="bar-count">
-                            {tStats("n_apps", { count: c.appCount })}
-                          </span>
-                        </div>
+                          style={{
+                            width: `${Math.max(pct, c.appCount > 0 ? 2 : 0)}%`,
+                            background: color,
+                          }}
+                        />
                       </div>
+                      <span className="bar-count">
+                        {tStats("n_apps", { count: c.appCount })}
+                      </span>
                     </div>
                   );
                 })}
@@ -724,13 +729,12 @@ export default function StatsView({
                           width: `${Math.max(pct, f.appCount > 0 ? 2 : 0)}%`,
                           background: "var(--blue)",
                         }}
-                      >
-                        <span className="bar-count">
-                          {f.appCount} app{f.appCount === 1 ? "" : "s"}
-                          {f.appCount > 0 ? ` · ${pct}%` : ""}
-                        </span>
-                      </div>
+                      />
                     </div>
+                    <span className="bar-count">
+                      {f.appCount} app{f.appCount === 1 ? "" : "s"}
+                      {f.appCount > 0 ? ` · ${pct}%` : ""}
+                    </span>
                   </div>
                 );
               })}
@@ -770,9 +774,11 @@ export default function StatsView({
       {/* Small multiples — compact per-app severity strips with category header */}
       {f.vizSmallMultiples && (
         <section className="glass-card stats-panel" style={{ marginTop: 24 }}>
-          <h2 className="stats-panel-title">{tPanels("per_app_severity")}</h2>
+          <h2 className="stats-panel-title" id="stats-per-app-severity-title">
+            {tPanels("per_app_severity")}
+          </h2>
           <p className="stats-panel-sub">{tSubs("per_app_severity")}</p>
-          <SmallMultiples />
+          <SmallMultiples labelledBy="stats-per-app-severity-title" />
         </section>
       )}
 

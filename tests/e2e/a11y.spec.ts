@@ -9,11 +9,17 @@ import { expectNoBlockingViolations } from "./helpers/axe";
 /**
  * Blocking accessibility gate.
  *
- * Axe-core scans of the five highest-traffic surfaces: /welcome, the
+ * Axe-core scans of the highest-traffic surfaces: /welcome, the
  * onboarding import-matching step, /dashboard, the app detail page,
- * and the mobile navigation drawer. Serious/critical WCAG 2.2 A/AA
- * violations, target size included, fail CI (this file runs inside
- * the `quality` job's Playwright step like every other spec here).
+ * the mobile navigation drawer, and the Stats and Privacy Map pages.
+ * Serious/critical WCAG 2.2 A/AA violations, target size included,
+ * fail CI (this file runs inside the `quality` job's Playwright step
+ * like every other spec here).
+ *
+ * Most scans run in light mode only. Stats and Privacy Map are also
+ * scanned in dark and high-contrast mode, because their failures were
+ * theme-specific: text on chart fills and severity tints that passed
+ * in one palette and not another.
  *
  * The known-issue allowlist (see `helpers/axe.ts`) is EMPTY: every
  * defect it tracked has been fixed. If a new violation must ship
@@ -118,6 +124,40 @@ async function seedCannedApps(request: APIRequestContext): Promise<string> {
     "expected the canned Instagram app to seed"
   ).toBeTruthy();
   return String(instagram?.id);
+}
+
+type Theme = "light" | "dark" | "high-contrast";
+
+const THEMES: Theme[] = ["light", "dark", "high-contrast"];
+
+/**
+ * Load `path` in `theme`. The OS scheme is emulated; high contrast is the
+ * app's own theme, which the pre-hydration bootstrap in app/layout.tsx
+ * reads from localStorage on load, so the key is written first (on the
+ * app's origin, where localStorage lives) and the page loaded after.
+ */
+async function gotoInTheme(page: Page, path: string, theme: Theme) {
+  if (!page.url().startsWith("http")) {
+    await page.goto(path);
+  }
+  await page.emulateMedia({
+    colorScheme: theme === "light" ? "light" : "dark",
+  });
+  await page.evaluate((t) => {
+    if (t === "high-contrast") {
+      localStorage.setItem("a11y-quick-theme", "high-contrast");
+    } else {
+      localStorage.removeItem("a11y-quick-theme");
+    }
+  }, theme);
+  await page.goto(path);
+  // Guard against scanning the wrong palette and passing for it.
+  const html = page.locator("html");
+  if (theme === "high-contrast") {
+    await expect(html).toHaveAttribute("data-theme-override", "high-contrast");
+  } else {
+    await expect(html).not.toHaveAttribute("data-theme-override");
+  }
 }
 
 async function setDefaultFocus(request: APIRequestContext) {
@@ -359,6 +399,93 @@ browserFlow(
           headers: sameOriginHeaders,
         });
       }
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 6. /dashboard/stats — every theme, plus the matrix hover panel
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: /dashboard/stats has no blocking violations in any theme",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    // A partial privacy profile, so the matrix renders both kinds of
+    // preference bar (set and "no preference") and at least one cell
+    // that exceeds its category's preference, which is what puts the
+    // mismatch warning in the hover panel. Instagram collects location.
+    const profile = await request.put("/api/privacy-profile", {
+      headers: sameOriginHeaders,
+      data: {
+        profile: {
+          CONTACT_INFO: "not_linked",
+          LOCATION: "not_collected",
+          IDENTIFIERS: "linked",
+          USAGE_DATA: "tracking",
+        },
+      },
+    });
+    await expect(profile).toBeOK();
+
+    try {
+      for (const theme of THEMES) {
+        await gotoInTheme(page, "/dashboard/stats", theme);
+        // Client shell: wait for the fetched charts, not just the
+        // wrapper. The bar counts sit on the card, the matrix and its
+        // preference bars arrive on their own fetches.
+        await expect(page.locator(".bar-count").first()).toBeVisible();
+        await expect(page.locator(".sm-cell").first()).toBeVisible();
+        await expect(page.locator(".sm-category-pref").first()).toBeVisible();
+        await page.waitForTimeout(600);
+
+        await expectNoBlockingViolations(page, `stats-${theme}`);
+
+        // The hover panel only renders its severity, preference and
+        // mismatch lines while a cell is hovered, so the page scan
+        // above never sees them.
+        await page
+          .locator(".sm-cell", { hasText: "exceeds your preference" })
+          .first()
+          .hover();
+        await expect(page.locator(".sm-tooltip-mismatch")).toBeVisible();
+        await expectNoBlockingViolations(page, `stats-${theme}-hover`, {
+          include: ".sm-sidebar",
+        });
+        await page.mouse.move(0, 0);
+      }
+    } finally {
+      // The suite shares one DB; don't leave a profile behind that
+      // would change what later specs render.
+      await request.put("/api/privacy-profile", {
+        headers: sameOriginHeaders,
+        data: { profile: null },
+      });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 7. /dashboard/privacy (Privacy Map) — every theme
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: /dashboard/privacy has no blocking violations in any theme",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    for (const theme of THEMES) {
+      await gotoInTheme(page, "/dashboard/privacy", theme);
+      // The "not linked" badge is the one that failed in light mode.
+      await expect(
+        page.locator(".severity-badge.severity-unlinked").first()
+      ).toBeVisible();
+      await page.waitForTimeout(600);
+
+      await expectNoBlockingViolations(page, `privacy-map-${theme}`);
     }
   }
 );
