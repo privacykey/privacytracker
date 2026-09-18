@@ -183,7 +183,7 @@ function runCase(name, { startBytes, checkBackfills }) {
       }
     } else {
       console.log(
-        `  ✔ backfill aggregates identical (devices=${tsAgg.devices}, app_devices=${tsAgg.appDevices}, pending_search=${tsAgg.importPendingSearch}, policy_versions=${tsAgg.policyVersions}, running→idle ok)`
+        `  ✔ backfill aggregates identical (devices=${tsAgg.devices}, app_devices=${tsAgg.appDevices}, pending_search=${tsAgg.importPendingSearch}, policy_versions=${tsAgg.policyVersions}, running→idle ok, status ok→ready=${tsAgg.policyStatusReady}/source_ready=${tsAgg.policyStatusSourceReady})`
       );
     }
   }

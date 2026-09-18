@@ -318,6 +318,16 @@ pub fn open_and_migrate(path: &Path) -> rusqlite::Result<Connection> {
         warn("clearing stale policy run_status", &e);
     }
 
+    // 15b. Imported-status repair (non-fatal): audit-bundle imports stored
+    //      status 'ok', which is not an analysis status, so the row read
+    //      back as 'analysis_error'. It becomes what the importer writes
+    //      now: 'ready' with a summary, 'source_ready' with only the excerpt.
+    if let Err(e) = conn.execute_batch(
+        "UPDATE privacy_policy_analyses\n        SET status = CASE WHEN summary_json IS NULL THEN 'source_ready' ELSE 'ready' END\n      WHERE status = 'ok'",
+    ) {
+        warn("repairing imported policy statuses", &e);
+    }
+
     // 16. privacy_policy_versions Internet-Archive column migrations (2 pairs).
     apply_col_migrations(
         &conn,

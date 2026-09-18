@@ -1247,6 +1247,73 @@ try {
       setup: many,
     });
   }
+
+  // ── POST /api/import/audit-bundle: the policy status on a merge ──
+  // Last, so every earlier case keeps its forwarded address. An excerpt
+  // with no summary, merged over a row this install holds: COALESCE keeps
+  // the stored summary, and the status follows the summary the row ends
+  // up with, whatever status it had: 'ready' over a summary whose last
+  // fetch failed, 'source_ready' over text never summarised.
+  {
+    const policyUrl = "https://example.com/4001/privacy";
+    for (const [label, stored, summaryJson] of [
+      ["over a stored summary", "fetch_error", '{"overview":"kept"}'],
+      ["over text with no summary", "needs_ai_config", null],
+    ]) {
+      await run(`import merges an excerpt ${label}`, {
+        route: "/api/import/audit-bundle",
+        method: "POST",
+        search: "?confirm=1",
+        setup: [
+          app("4001", "Stored Policy", { lastSynced: 1 }),
+          stmt(
+            "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_text, source_word_count, analysis_mode, summary_json, model, updated_at, source_fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "4001",
+            policyUrl,
+            stored,
+            "the stored text",
+            3,
+            summaryJson ? "direct" : null,
+            summaryJson,
+            summaryJson ? "gpt" : null,
+            now - 3 * DAY,
+            now - 3 * DAY
+          ),
+        ],
+        json: {
+          version: 2,
+          app_version: "9.9.9",
+          exported_at: "2026-09-01T00:00:00.000Z",
+          exported_by_audience: "self",
+          recommender_name: null,
+          recommender_profile: null,
+          annotations: [],
+          apps: [
+            {
+              id: "4001",
+              name: "Bundle App 4001",
+              developer: null,
+              bundle_id: null,
+              url: storeUrl("4001"),
+              icon_url: null,
+              current_version: null,
+              privacy_policy_url: policyUrl,
+              has_privacy_details: 1,
+              has_accessibility_labels: 0,
+              privacy_types: [],
+              accessibility_features: [],
+              policy_summary: {
+                summary_json: null,
+                source_text_excerpt: "the newer excerpt",
+                fetched_at: now - HOUR,
+                generated_at: null,
+              },
+            },
+          ],
+        },
+      });
+    }
+  }
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });
