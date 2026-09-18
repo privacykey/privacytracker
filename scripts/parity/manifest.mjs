@@ -1048,6 +1048,29 @@ export const VOLATILE_READS = [
     }),
     validate: (v) => validateRuntimeDiagnostics(v?.runtime),
   },
+  // -- the update check's cache (Phase 4, batch 6). Both servers hold
+  //    the copy Node made, but each runs its own 25 s update tick against
+  //    GitHub after boot and stamps its own clock, so everything that
+  //    check fetched or timed is blanked. What is compared: the version
+  //    this build reports, whether the check is enabled, the detected
+  //    runtime, and the request's own meta. The fetch itself
+  //    (`?refresh=1`) stays quarantined.
+  {
+    route: "/api/update-status",
+    name: "update status (cache only)",
+    path: "/api/update-status",
+    transform: (v) => ({
+      ...v,
+      latestVersion: "~fetched",
+      updateAvailable: "~fetched",
+      lastChecked: "~clock",
+      latestPublishedAt: "~fetched",
+      latestNotes: "~fetched",
+      latestUrl: "~fetched",
+      lastError: "~fetched",
+      meta: { ...v?.meta, error: "~fetched" },
+    }),
+  },
   // Same reasoning: the embedded envelope names the backend. The DB
   // counts and settings it also carries ARE comparable, and read-parity
   // compares those directly.
@@ -1723,12 +1746,7 @@ export const QUARANTINE = [
   {
     route: "/api/notifications/webhook-test",
     method: "POST",
-    why: "POSTs to a user-configured webhook URL — must never fire in CI",
-  },
-  {
-    route: "/api/update-status",
-    method: "GET",
-    why: "queries the GitHub releases feed for the updater",
+    why: "POSTs to a user-configured webhook URL — must never fire in CI; probeLeftoverRoutes holds its refusals (a loopback URL, a bad format, a bad body) on both",
   },
 
   // -- host / device dependent: cfgutil, USB, Apple Configurator
@@ -1817,12 +1835,12 @@ export const QUARANTINE = [
   {
     route: "/api/preview",
     method: "GET",
-    why: "requires ?url= and fetches that third-party page",
+    why: "requires ?url= and fetches that third-party page; probeLeftoverRoutes holds its refusals on both",
   },
   {
     route: "/api/favicon",
     method: "GET",
-    why: "requires ?host= and fetches that host's favicon",
+    why: "requires ?host= and fetches that host's favicon; probeLeftoverRoutes holds its refusals on both",
   },
   {
     route: "/api/backup/preview",

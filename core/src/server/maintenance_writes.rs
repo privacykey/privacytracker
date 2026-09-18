@@ -117,7 +117,7 @@ pub(super) fn perform(cx: &mut Cx, req: WriteRequest, actor: &Actor) -> Response
         ("/api/auth/admin-token/logout", &Method::POST) => logout(cx, actor),
         ("/api/csp-report", &Method::POST) => csp_report(req.body, cx.now),
         ("/api/dev/reset-changelog", &Method::POST) => reset_changelog(cx, actor),
-        ("/api/dev/seed-notification", &Method::POST) => seed_notification(cx, req.body, actor),
+        ("/api/dev/seed-notification", &Method::POST) => seed_notification(cx, req.body, actor).0,
         ("/api/dev/wipe-apps", &Method::POST) => wipe_apps(cx, actor),
         ("/api/reset", &Method::POST) => reset(cx, actor),
         ("/api/admin/start-over", &Method::POST) => start_over(cx, actor),
@@ -632,10 +632,18 @@ fn is_change_entry(value: &Value) -> bool {
         && prop(value, "description").is_some_and(Value::is_string)
 }
 
-fn seed_notification(cx: &mut Cx, body: BodyOutcome, actor: &Actor) -> Response {
+/// The response, and — once the row is written — what `createNotification`
+/// hands its webhook fan-out: the app's name and the first change's
+/// description, or a count when that is blank. The fan-out itself is the
+/// caller's, because it is a network call and this is a section.
+pub(super) fn seed_notification(
+    cx: &mut Cx,
+    body: BodyOutcome,
+    actor: &Actor,
+) -> (Response, Option<super::webhook_writes::Immediate>) {
     let body = match bounded_json(body) {
         Ok(v) => v,
-        Err(response) => return response,
+        Err(response) => return (response, None),
     };
     let app_id = prop(&body, "appId")
         .and_then(Value::as_str)
@@ -646,9 +654,12 @@ fn seed_notification(cx: &mut Cx, body: BodyOutcome, actor: &Actor) -> Response 
         .map(js_trim)
         .unwrap_or("");
     if app_id.is_empty() || app_name.is_empty() {
-        return json_error(
-            StatusCode::BAD_REQUEST,
-            "Body must include non-empty `appId` and `appName` strings.",
+        return (
+            json_error(
+                StatusCode::BAD_REQUEST,
+                "Body must include non-empty `appId` and `appName` strings.",
+            ),
+            None,
         );
     }
     let changes: Vec<Value> = prop(&body, "changes")
@@ -656,14 +667,17 @@ fn seed_notification(cx: &mut Cx, body: BodyOutcome, actor: &Actor) -> Response 
         .map(|raw| raw.iter().filter(|c| is_change_entry(c)).cloned().collect())
         .unwrap_or_default();
     if changes.is_empty() {
-        return json_error(
-            StatusCode::BAD_REQUEST,
-            "Body must include at least one ChangeEntry in `changes`.",
+        return (
+            json_error(
+                StatusCode::BAD_REQUEST,
+                "Body must include at least one ChangeEntry in `changes`.",
+            ),
+            None,
         );
     }
     // `createNotification`: the row with its quiet-hours deferral, then
-    // the retention prune; the webhook fan-out has nothing configured to
-    // reach in a replay and is fire-and-forget in Node.
+    // the retention prune. The webhook fan-out is the caller's, once this
+    // section has released the connection.
     let inserted = (|| -> Result<(), String> {
         let not_before = crate::scrape::notify::compute_not_before(cx.w.conn, cx.now);
         let id = cx.ids.uuid(cx.w.conn)?;
@@ -694,9 +708,12 @@ fn seed_notification(cx: &mut Cx, body: BodyOutcome, actor: &Actor) -> Response 
             Some(&e),
             false,
         );
-        return json_error(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to write notification",
+        return (
+            json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to write notification",
+            ),
+            None,
         );
     }
     record_audit(
@@ -708,7 +725,23 @@ fn seed_notification(cx: &mut Cx, body: BodyOutcome, actor: &Actor) -> Response 
         Some(&format!("appId={app_id} changes={}", changes.len())),
         true,
     );
-    json_ok(&json!({ "ok": true, "appId": app_id, "appName": app_name, "changes": changes }))
+    // `changes[0]?.description || "<n> change(s)"`: the first description
+    // is the headline, a blank one falls back to the count.
+    let headline = match changes[0]["description"].as_str() {
+        Some(d) if !d.is_empty() => d.to_string(),
+        _ => format!(
+            "{} change{}",
+            changes.len(),
+            if changes.len() == 1 { "" } else { "s" }
+        ),
+    };
+    (
+        json_ok(&json!({ "ok": true, "appId": app_id, "appName": app_name, "changes": changes })),
+        Some(super::webhook_writes::Immediate {
+            app_name: app_name.to_string(),
+            headline,
+        }),
+    )
 }
 
 // ── POST /api/dev/wipe-apps ──────────────────────────────────────────

@@ -16,7 +16,7 @@ mod analysis;
 mod apps;
 mod audit_bundle;
 pub mod auth;
-mod backup;
+pub(crate) mod backup;
 mod backup_snapshots;
 #[cfg(test)]
 mod backup_tests;
@@ -38,6 +38,7 @@ pub mod diff;
 #[cfg(test)]
 mod discovery_tests;
 mod export;
+mod favicon;
 pub mod flags;
 mod forwarded;
 mod gate;
@@ -50,6 +51,8 @@ mod imports_tests;
 mod imports_writes;
 mod json;
 pub mod layout;
+#[cfg(test)]
+mod leftovers_tests;
 #[cfg(test)]
 mod library_tests;
 mod library_writes;
@@ -101,12 +104,14 @@ mod sysproc;
 mod timing;
 mod trend;
 pub mod trust;
+mod update_check;
 mod user_content;
 mod user_tasks;
 mod wayback_runner;
 #[cfg(test)]
 mod wayback_runner_tests;
 pub mod webhook;
+mod webhook_writes;
 mod writes;
 #[cfg(test)]
 mod writes_tests;
@@ -250,6 +255,16 @@ pub fn app(state: AppState) -> Router {
         // Final Phase 2 reads: public network access without persistence.
         .route("/api/compare", get(routes_discovery::compare))
         .route("/api/related-apps", get(routes_discovery::related))
+        // Phase 4, batch 6: the outbound leftovers — a transient App Store
+        // preview, the favicon proxy, the update check, and the webhook
+        // test the wizard fires at a URL it has not saved yet.
+        .route("/api/preview", get(routes_discovery::preview_route))
+        .route("/api/favicon", get(favicon::favicon))
+        .route("/api/update-status", get(update_check::update_status))
+        .route(
+            "/api/notifications/webhook-test",
+            post(routes_writes::notifications_webhook_test_post),
+        )
         // Operational reads project durable job state without starting or
         // healing jobs; exports stay whole-install and CSP remains a GET.
         .route("/api/tasks/active", get(routes_operations::tasks))

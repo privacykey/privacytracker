@@ -81,6 +81,7 @@ const BACKOFF_STEPS_MS: [i64; 3] = [15 * 60_000, 60 * 60_000, 6 * 60 * 60_000];
 const CHECK_INTERVAL: Duration = Duration::from_secs(30 * 60);
 const IMPORT_QUEUE_INTERVAL: Duration = Duration::from_secs(60);
 const HEALTH_CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
+const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
 
 // ── lib/sync-bulk-state.ts ───────────────────────────────────────────
 
@@ -883,6 +884,32 @@ pub(crate) fn start_background(state: AppState) {
             let mut db = snapshot_state.db_access();
             super::backup_snapshots::tick_backup_snapshots(&mut db, &mut ids, Live.now());
             tokio::time::sleep(CHECK_INTERVAL).await;
+        }
+    });
+
+    let webhook_state = state.clone();
+    tokio::spawn(async move {
+        // Offset from the snapshot tick so the two do not fight for the
+        // boot window; after that both fire on the scheduler's cadence.
+        // A no-op unless a webhook is configured for a daily or weekly
+        // summary, and self-limited through its cursor after that.
+        tokio::time::sleep(Duration::from_secs(45)).await;
+        loop {
+            let mut db = webhook_state.db_access();
+            super::webhook_writes::tick_webhook_summary(&mut db, &PublicHttp, Live.now()).await;
+            tokio::time::sleep(CHECK_INTERVAL).await;
+        }
+    });
+
+    let update_state = state.clone();
+    tokio::spawn(async move {
+        // Every six hours it ASKS; the day's cache means GitHub is fetched
+        // about once a day whatever the restart cadence.
+        tokio::time::sleep(Duration::from_secs(25)).await;
+        loop {
+            let mut db = update_state.db_access();
+            super::update_check::tick_update_check(&mut db, &PublicHttp, Live.now()).await;
+            tokio::time::sleep(UPDATE_CHECK_INTERVAL).await;
         }
     });
 

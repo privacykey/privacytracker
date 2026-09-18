@@ -37,13 +37,17 @@ impl From<rusqlite::Error> for Failure {
 }
 
 fn failed(e: Failure) -> Response {
+    failed_on("/api/compare", e)
+}
+
+fn failed_on(route: &str, e: Failure) -> Response {
     match e {
         Failure::AppleRateLimit => json_error(
             StatusCode::TOO_MANY_REQUESTS,
             "App Store rate-limited us. Try again in a minute.",
         ),
         Failure::Message(s) => {
-            super::diag::log_error(format!("/api/compare error {s}"));
+            super::diag::log_error(format!("{route} error {s}"));
             json_error(StatusCode::INTERNAL_SERVER_ERROR, &s)
         }
         Failure::InvalidSpec(s) => {
@@ -118,20 +122,7 @@ async fn slot(state: &AppState, spec: &str, fetcher: &dyn Fetcher) -> Result<Val
         let url = outbound::app_store_url(raw)
             .map_err(|e| Failure::Message(format!("Rejected URL ({})", e.error)))?
             .to_string();
-        let mut request =
-            Request::apple(url.clone(), outbound::APPLE_HOSTS, 4 * 1024 * 1024, 15_000);
-        request.headers=vec![("User-Agent".into(),"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15".into()),("Accept-Language".into(),"en-US,en;q=0.9".into())];
-        let response = fetcher.fetch(request).await?;
-        if response.status == 429 {
-            return Err(Failure::AppleRateLimit);
-        }
-        if !response.ok() {
-            return Err(Failure::Message(format!(
-                "HTTP {} fetching App Store page",
-                response.status
-            )));
-        }
-        let p = preview::parse(&String::from_utf8_lossy(&response.body), &url)?;
+        let p = fetch_preview(&url, fetcher).await?;
         return Ok(json!({
             "source":"scrape",
             "id":p["appleId"],
@@ -149,6 +140,102 @@ async fn slot(state: &AppState, spec: &str, fetcher: &dyn Fetcher) -> Result<Val
     }
     Err(Failure::InvalidSpec(spec.into()))
 }
+/// `fetchAndParsePreview` past its own URL check: the page, with the
+/// scraper's headers and limits, parsed without persisting. Apple's 429 is
+/// the typed rate-limit error, any other non-2xx its own message.
+async fn fetch_preview(url: &str, fetcher: &dyn Fetcher) -> Result<Value, Failure> {
+    let mut request = Request::apple(
+        url.to_string(),
+        outbound::APPLE_HOSTS,
+        4 * 1024 * 1024,
+        15_000,
+    );
+    request.headers=vec![("User-Agent".into(),"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15".into()),("Accept-Language".into(),"en-US,en;q=0.9".into())];
+    let response = fetcher.fetch(request).await?;
+    if response.status == 429 {
+        return Err(Failure::AppleRateLimit);
+    }
+    if !response.ok() {
+        return Err(Failure::Message(format!(
+            "HTTP {} fetching App Store page",
+            response.status
+        )));
+    }
+    Ok(preview::parse(
+        &String::from_utf8_lossy(&response.body),
+        url,
+    )?)
+}
+
+/// A 429 with `retryAfterMs` in the body and `Retry-After` in seconds,
+/// rounded up.
+fn rate_limited(message: &str, retry_after_ms: i64) -> Response {
+    let mut r = super::json::json_response(
+        StatusCode::TOO_MANY_REQUESTS,
+        &json!({ "error": message, "retryAfterMs": retry_after_ms }),
+    );
+    r.headers_mut().insert(
+        "retry-after",
+        ((retry_after_ms as f64 / 1000.).ceil() as i64)
+            .to_string()
+            .parse()
+            .unwrap(),
+    );
+    r
+}
+
+/// `GET /api/preview?url=`: the shortlist drawer's transient scrape. One
+/// slot, nothing persisted, and the same `compare` limiter bucket so it is
+/// not a second lane onto Apple. Phase 4, batch 6.
+pub(super) async fn preview_with(
+    state: &AppState,
+    headers: &HeaderMap,
+    q: &Params,
+    fetcher: &dyn Fetcher,
+    now: i64,
+) -> Response {
+    let Some(candidate) = get(q, "url").filter(|u| !u.is_empty()) else {
+        return json_error(StatusCode::BAD_REQUEST, "`url` query param is required");
+    };
+    let header = |key| headers.get(key).and_then(|h| h.to_str().ok());
+    let key = super::ratelimit::key_for_request(
+        header("x-forwarded-for"),
+        header("x-real-ip"),
+        "compare",
+    );
+    let limit = state.rate_limiter.check(&key, 30, 60_000, now);
+    if !limit.allowed {
+        return rate_limited(
+            "Rate limit exceeded for preview. Try again shortly.",
+            limit.retry_after_ms,
+        );
+    }
+    let url = match outbound::app_store_url(candidate) {
+        Ok(url) => url.to_string(),
+        Err(e) => {
+            return json_error(
+                StatusCode::BAD_REQUEST,
+                &format!("Rejected URL ({})", e.error),
+            )
+        }
+    };
+    match fetch_preview(&url, fetcher).await {
+        Ok(preview) => json_ok(&json!({ "preview": preview })),
+        Err(Failure::AppleRateLimit) => {
+            rate_limited("App Store rate-limited us. Try again in a minute.", 70_000)
+        }
+        Err(e) => failed_on("/api/preview", e),
+    }
+}
+
+pub async fn preview_route(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<Params>,
+) -> Response {
+    preview_with(&state, &headers, &q, &PublicHttp, super::now_ms()).await
+}
+
 pub(super) async fn compare_with(
     state: &AppState,
     headers: &HeaderMap,

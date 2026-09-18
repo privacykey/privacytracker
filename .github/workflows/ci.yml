@@ -514,6 +514,24 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-seed-cases.mjs
           git diff --exit-code -- core/tests/fixtures/seed-cases.json core/src/server/sample_apps.json
 
+      - name: Leftovers oracle is current
+        # Runs the real webhook test, seed notification (the one caller of
+        # createNotification, whose fan-out posts an immediate webhook),
+        # update status, favicon and preview routes, and the webhook
+        # summary and update-check ticks called as the server calls them,
+        # against a scratch database with the network canned — and records
+        # every request, raw fetch (method and body for a POST), write,
+        # three tables and the wire response with its headers. The favicon
+        # bodies are base64; package.json's version is masked as
+        # <APP_VERSION> so a release bump does not fail this step. A diff
+        # means one of those routes, lib/notification-webhooks.ts,
+        # lib/update-check.ts or lib/semver-compare.ts changed and
+        # core/src/server/webhook_writes.rs, update_check.rs, favicon.rs or
+        # routes_discovery.rs has not been ported.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-leftovers-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/leftovers-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

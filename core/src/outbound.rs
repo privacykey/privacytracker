@@ -202,12 +202,24 @@ pub struct Request {
     /// only the headers.
     #[serde(default = "default_true")]
     pub read_body: bool,
+    /// `method`, `GET` unless a caller says otherwise. Webhook delivery
+    /// posts.
+    #[serde(default = "default_method")]
+    pub method: String,
+    /// `body`, for a method that carries one. Sent on every hop, as Node's
+    /// loop sends it, which is why a body and a cross-origin redirect are
+    /// refused together below.
+    #[serde(default)]
+    pub body: Option<String>,
 }
 fn default_max_url_length() -> usize {
     2048
 }
 fn default_true() -> bool {
     true
+}
+fn default_method() -> String {
+    "GET".to_string()
 }
 impl Request {
     pub fn apple(url: String, hosts: &[&str], max_bytes: usize, timeout_ms: u64) -> Self {
@@ -221,7 +233,14 @@ impl Request {
             max_url_length: 2048,
             follow_redirects: true,
             read_body: true,
+            method: default_method(),
+            body: None,
         }
+    }
+    /// `safeFetch` of any public http(s) URL with no host allowlist: the
+    /// caller's limits, the validator's 2048-character cap unless raised.
+    pub fn public(url: String, max_bytes: usize, timeout_ms: u64) -> Self {
+        Self::apple(url, &[], max_bytes, timeout_ms)
     }
 }
 #[derive(Debug, Clone)]
@@ -230,6 +249,8 @@ pub struct Reply {
     pub body: Vec<u8>,
     /// The final response's headers, names lowercased.
     pub headers: Vec<(String, String)>,
+    /// `finalUrl`: the URL of the last hop, as the validator spelled it.
+    pub final_url: String,
 }
 impl Reply {
     pub fn ok(&self) -> bool {
@@ -253,15 +274,25 @@ pub struct RawReply {
     pub body: Pin<Box<dyn AsyncBufRead + Send>>,
 }
 pub type HopFuture<'a> = Pin<Box<dyn Future<Output = Result<RawReply, String>> + Send + 'a>>;
+/// What one hop sends besides its URL and headers.
+#[derive(Debug, Clone)]
+pub struct Outgoing {
+    pub method: String,
+    pub body: Option<Vec<u8>>,
+}
 pub trait Hop: Send + Sync {
-    fn hop(&self, url: Url, headers: HeaderMap) -> HopFuture<'_>;
+    fn hop(&self, url: Url, headers: HeaderMap, outgoing: Outgoing) -> HopFuture<'_>;
 }
 impl Hop for Client {
-    fn hop(&self, url: Url, headers: HeaderMap) -> HopFuture<'_> {
+    fn hop(&self, url: Url, headers: HeaderMap, outgoing: Outgoing) -> HopFuture<'_> {
         Box::pin(async move {
-            let response = self
-                .get(url)
-                .headers(headers)
+            let method = reqwest::Method::from_bytes(outgoing.method.as_bytes())
+                .map_err(|_| "fetch failed".to_string())?;
+            let mut builder = self.request(method, url).headers(headers);
+            if let Some(body) = outgoing.body {
+                builder = builder.body(body);
+            }
+            let response = builder
                 .send()
                 .await
                 .map_err(|_| "fetch failed".to_string())?;
@@ -374,6 +405,10 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
         .or_insert(reqwest::header::HeaderValue::from_static(
             "gzip, deflate, br",
         ));
+    let outgoing = Outgoing {
+        method: request.method.clone(),
+        body: request.body.as_ref().map(|b| b.as_bytes().to_vec()),
+    };
     let mut redirects = 0;
     loop {
         if check_dns {
@@ -383,7 +418,9 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
             status,
             headers: reply_headers,
             body: mut reader,
-        } = hop.hop(url.clone(), headers.clone()).await?;
+        } = hop
+            .hop(url.clone(), headers.clone(), outgoing.clone())
+            .await?;
         if request.follow_redirects && (300..400).contains(&status) {
             if let Some(location) = reply_headers.get("location") {
                 let location = location.to_str().map_err(|_| "fetch failed")?;
@@ -398,6 +435,11 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
                     format!("safeFetch: redirect rejected — {}: {}", e.error, e.detail)
                 })?;
                 if next.origin() != url.origin() {
+                    if outgoing.body.is_some() {
+                        return Err(
+                            "Refusing cross-origin redirect with a request body".to_string()
+                        );
+                    }
                     for name in ["authorization", "cookie", "proxy-authorization"] {
                         headers.remove(name);
                     }
@@ -408,6 +450,7 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
         }
         if !request.read_body {
             return Ok(Reply {
+                final_url: url.to_string(),
                 status,
                 body: Vec::new(),
                 headers: reply_headers
@@ -474,6 +517,7 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
             ));
         }
         return Ok(Reply {
+            final_url: url.to_string(),
             status,
             body,
             headers: reply_headers

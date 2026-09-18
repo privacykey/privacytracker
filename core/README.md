@@ -2802,8 +2802,138 @@ non-object shapes, which already agreed. A fixture records what the code
 does with the reply it is given; whether Apple gives that reply is a
 question only the feed answers.
 
-**Batch 5 is complete**, and with it the write side of the API outside
-the two groups set aside at the start of the phase: the cfgutil device
-actions, which belong with the desktop cutover, and the AI routes —
-with the policy pipeline behind `summarizePolicies` — which are Phase 5.
+**Batch 5 is complete.** What it left of Phase 4 is the batch below —
+this section's first draft claimed the whole write side was done, and
+webhook delivery, a write-side behaviour with no route of its own, was
+not — and the two groups set aside at the start of the phase: the
+cfgutil device actions, which belong with the desktop cutover, and the
+AI routes, with the policy pipeline behind `summarizePolicies`, which
+are Phase 5.
+
+### Batch 6 — the outbound leftovers (+4 handlers, 2 tickers)
+
+Four handlers the route count had not flagged as missing, and one
+behaviour no route count could: `POST /api/notifications/webhook-test`,
+`GET /api/update-status`, `GET /api/favicon`, `GET /api/preview`, and
+the delivery of notification webhooks, which the core had read the
+settings of and never sent.
+
+`webhook_writes.rs` ports `lib/notification-webhooks.ts`. The config
+read (a blank URL or `off` is no webhook; an unknown format is
+`generic`, an unknown frequency `immediate`), the four payload shapes
+(Slack and Discord a line of text, Discord's cut at 1,900 UTF-16 units,
+Teams a MessageCard, generic the text and the rows), and the POST:
+through the transport like every other fetch, so a webhook can no more
+reach a private address than a scrape can, redirects not followed so
+the body is delivered once, 64 KiB back at most, ten seconds. The three
+call sites: `postImmediateWebhook` from `createNotification` — whose
+ONE caller is `POST /api/dev/seed-notification`, because a scrape
+inserts its change notification itself and fires nothing, on either
+backend — detached from the response on the server and inline in the
+replay; `maybePostSummaryWebhook` from the 30-minute tick, a day or a
+week after the last, the fifty newest notifications since, the cursor
+moved on an empty window and on a refused post but not on a failed
+request; and the wizard's Test button, whose every failure is an
+answer, never an error. `update_check.rs` ports `lib/update-check.ts`
+and `lib/semver-compare.ts`: the cached status with the runtime detected
+on every call (`DEPLOYMENT`, then `/.dockerenv` and the init cgroup, then
+Homebrew's variables), the check with its day-long cache, its failure
+backoff — fifteen minutes doubling to the day — and the forced path's
+own five-minute throttle, the release written to settings only when its
+tag is semver behind one `v`, the notes cut at four thousand; the 25 s
+then 6-hour tick. `favicon.rs` ports the proxy: the host resolved as a
+bare name, a full URL or `//host`, `favicon.ico` first with the type
+checked and a bogus one accepted only if the bytes look binary, else the
+site root read for the best `<link rel>` resolved against the root's
+FINAL URL, hits kept a day and misses an hour in a five-hundred-host
+cache halved when full. And `GET /api/preview` joins `routes_discovery`
+beside the compare it shares a limiter bucket with.
+
+**The transport learns two things.** A method and a body: the webhook
+is the first outbound POST the core makes, and `Request` carries
+`method` and `body`, sent on every hop as Node's loop sends them, which
+is why a body and a cross-origin redirect are refused together. And the
+final URL: a `Reply` now says where the last hop landed, because the
+favicon fallback resolves a relative `<link href>` against the page it
+was actually read from. The canned fetcher records a POST's method and
+body, and reads a `bodyBase64` reply, so the fixtures can hold both.
+
+**The oracle — `core/scripts/extract-leftovers-cases.mjs`.** Runs the
+REAL handlers of the four routes and the seed notification, and calls
+the two ticks as the server calls them. 132 cases. The webhook test:
+each format, the default, a 204, a 500, a redirect not followed, a
+failed request, and eleven refusals answered before any fetch — a
+loopback, metadata and `localhost` URL, one over 512 characters, `ftp:`,
+credentials, a number, a missing, blank and untrimmed URL, an unknown
+and a non-text format — and the body: invalid, empty, whitespace, `null`
+(a thrown 500), an array, a string, declared and streamed too large. The
+seed notification with a webhook configured for `immediate` (the POST
+recorded with its method and body, the headline the first description
+or the count when that is blank), for `daily`, `off`, no URL, garbage
+format and frequency, a failed and a refused post survived, a trimmed
+URL, a private URL posted to nobody. The summary tick: a daily and a
+weekly digest, inside the window, an empty window, each frequency that
+is not a summary, a failed post and a refused one, fifty of fifty-five,
+one update, a Discord cut, a garbage cursor, a private URL. The update
+status: never checked, newer, current, older and pre-release cached,
+disabled, garbage, each runtime; and `?refresh=1`: disabled, throttled,
+a newer release, past a fresh cache and a backoff, no releases (404),
+a 500 with and without a body, a failed request, a pre-release, a draft,
+a tag that is not semver, an empty and a missing tag, the notes cut, only
+a tag, a stored error cleared; and the tick: a fresh cache, inside and
+past the backoff, a stale cache, disabled, a failure recorded. The
+favicon: six refusals, a direct hit, the cache, a port, `//host`, a bogus
+and a missing type, the type's parameters, the root fallback four ways,
+the rel preference, the root's final URL, another host's icon, five
+misses, a private link, a hit refetched after a day and a miss after an
+hour, `http://`, an oversized icon. The preview: no URL, empty, off the
+store, not a URL, a page, Apple's 429 (a 429 with 70 s), a 500, no data
+script, a failed request, the thirty-first request. Each records the
+wire response with the three headers these routes set — the favicon's
+bytes as base64 — the raw fetches with a POST's method and body, the
+write stream and three tables. `package.json`'s version, which the
+update status reports, is masked as `<APP_VERSION>` and substituted in
+the replay, so a release bump does not fail CI. `leftovers_tests.rs`
+replays it all; the favicon cases share one per-process cache, in order,
+as the oracle's did.
+
+Live: `/api/update-status` joins `BATCH_1` as a volatile read — each
+server's own tick fetches GitHub after boot and stamps its own clock, so
+everything that check fetched or timed is blanked and the version this
+build reports, whether the check is enabled, the detected runtime and
+the request's meta are compared. The other three stay quarantined, each
+a fetch of a third party when it succeeds, and are held by
+`scripts/parity/leftovers-probes.mjs`, between the bundle probe and the
+backup one: eleven refusals both servers must spell alike, every one
+answered before a fetch would be made. Latest pass: READ PARITY OK — 181
+read, 57 mutation, 23 bundle, 11 leftovers, 26 backup and 6 seed checks.
+One live control, the core's "url is required" reworded: exactly the
+one check predicted failed and every other passed.
+
+Rust suite: 242 pass (233 + 9 new). Eighteen negative controls, each
+predicted from the fixture before it ran. A webhook that follows
+redirects, a cut at two thousand, the immediate webhook ignoring the
+frequency, the forced check ignoring its throttle, the tick ignoring the
+backoff, notes cut at 4096, only a lowercase `v` stripped, a 404 read as
+an error, `shortcut icon` preferred, hits kept two days, the link
+resolved against the root rather than its final URL, a thirty-first
+preview allowed, Apple's rate limit answered with sixty seconds, a null
+body read as a missing URL, and a webhook URL allowed two thousand
+characters each failed exactly their one case; the cursor moved on a
+failed post, the headline never falling back to the count, and any 200
+body taken for an icon failed exactly their two, two and three. Two
+controls needed a second run and each taught something: the first cut
+control moved the threshold and not the cut, so it changed nothing the
+fixture could see — a control must change the output, not a number near
+it — and the backoff control reported two failures for one case,
+because the replay counted a tick's return value and its writes
+separately; it counts one now.
+
+**Divergences, chosen.** A GitHub body that is not JSON: Node's
+`res.json()` fails in the engine's words, the core in plain ones. A
+check that times out: Node's `AbortError` says "This operation was
+aborted", the transport here says why. Two callers racing one check:
+Node hands the second the first's promise; the core has it wait and
+answer from what the first wrote, without the first's error. None of
+the three is reachable from the fixture.
 

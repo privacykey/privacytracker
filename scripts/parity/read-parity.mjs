@@ -47,6 +47,7 @@ import {
 } from "./diagnostics-envelope.mjs";
 import { applyDiscoveryFixture } from "./discovery-fixture.mjs";
 import { probeDiscoveryReads } from "./discovery-probes.mjs";
+import { probeLeftoverRoutes } from "./leftovers-probes.mjs";
 import { QUARANTINE, READS, VOLATILE_READS } from "./manifest.mjs";
 import {
   applyOperationsFixture,
@@ -205,6 +206,9 @@ const BATCH_1 = [
   // the keys, the jobs, the rate limits, the flag overrides, the errors.
   "/api/diagnostics/bundle",
   "/api/deployment/support-bundle",
+  // Phase 4, batch 6: the update check's cache. Each server's own tick
+  // fetches GitHub after boot, so the manifest blanks what that wrote.
+  "/api/update-status",
 ];
 
 /**
@@ -1969,6 +1973,16 @@ async function main() {
     bundlesOk = await probeBundleRoutes(args.node, rustBase, TOKEN);
   }
 
+  // The outbound leftovers: what the webhook test, the preview and the
+  // favicon proxy refuse before they would fetch, in the same words.
+  let leftoversOk = true;
+  if (args.mutate) {
+    console.log(
+      "\n── outbound leftovers (the refusals both servers must spell alike) ──"
+    );
+    leftoversOk = await probeLeftoverRoutes(args.node, rustBase, TOKEN);
+  }
+
   // The backup family, which the differ cannot hold: files out, files in,
   // and a restore that replaces the database. After everything else,
   // because it ends by doing exactly that on both servers.
@@ -2002,6 +2016,7 @@ async function main() {
   const ok =
     backupOk &&
     bundlesOk &&
+    leftoversOk &&
     seedOk &&
     discoveryOk &&
     operationsOk &&
