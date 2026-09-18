@@ -559,6 +559,22 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-policy-store-cases.mjs
           git diff --exit-code -- core/tests/fixtures/policy-store-cases.json
 
+      - name: Policy summariser oracle is current
+        # Runs the real syncPrivacyPolicyAnalysis summarise and all phases,
+        # summarizeSamplePrivacyPolicy and buildPolicySummaryPromptPreview
+        # against a scratch database, with every provider reply canned
+        # (OpenAI json_schema, a custom endpoint's event stream in recorded
+        # chunks, Anthropic tool use), a frozen clock and counted ids and
+        # prompt nonces. Records every raw fetch, every write, seven tables
+        # and the result. A diff means the summariser in
+        # lib/privacy-policy.ts, lib/ai-config.ts or the AI timeout
+        # notification changed and core/src/server/policy_ai.rs,
+        # policy_summary.rs or core/src/policy/{ai,prompts}.rs has not been
+        # ported to match.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-policy-summary-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/policy-summary-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

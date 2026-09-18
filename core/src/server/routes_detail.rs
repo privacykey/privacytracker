@@ -41,7 +41,6 @@ use super::AppState;
 use crate::jsnum::js_parse_int;
 
 const AGE_BAND_KEYS: [&str; 5] = ["under_9", "9_12", "13_15", "16_17", "18_plus"];
-const AI_PROVIDERS: [&str; 4] = ["disabled", "openai", "anthropic", "custom"];
 
 /// `ID_RE = /^\d{1,20}$/`.
 fn is_valid_app_id(id: &str) -> bool {
@@ -49,17 +48,9 @@ fn is_valid_app_id(id: &str) -> bool {
 }
 
 /// `normalizeAiProvider`: the legacy `"ollama"` maps to `"custom"`; anything
-/// not in the allowlist is `"disabled"`.
-pub(super) fn normalize_ai_provider(value: &str) -> &'static str {
-    if value == "ollama" {
-        return "custom";
-    }
-    AI_PROVIDERS
-        .iter()
-        .copied()
-        .find(|p| *p == value)
-        .unwrap_or("disabled")
-}
+/// not in the allowlist is `"disabled"`. One implementation, the
+/// summariser's.
+pub(super) use crate::policy::ai::normalize_ai_provider;
 
 // ── getUnacknowledgedChanges ─────────────────────────────────────────
 

@@ -2969,17 +2969,18 @@ start a fetch after a scrape or an import. Four batches:
 
 1. **The policy source (on main).** `fetchPrivacyPolicySource`: from a
    policy URL to a validated text. No routes, no database.
-2. **The store and its reads (this batch).** `fetchAndStorePolicySource` with the
+2. **The store and its reads (on main).** `fetchAndStorePolicySource` with the
    kill-switch, the throttle, the first/same/changed/error classification,
    the version rows, the archive lookup, the History row and the
    notification; `GET /api/policy/status/[appId]`, `/version/[id]`,
    `/version/[id]/diff`, the manual-app policy version, and
    `POST /api/manual-apps/[id]/scrape`.
-3. **The summariser.** The prompts, chunking, the OpenAI, Anthropic and
-   custom providers, the timeouts and their notification, the AI debug
-   log; `POST /api/policy/regenerate`, `/api/ai/policy-sample`,
-   `/api/ai/test` and `/api/ai/models`, with a loopback fake provider for
-   the live gate.
+3. **The summariser**, in two parts. **3a, the engine (this batch):** the
+   prompts, chunking, the OpenAI, Anthropic and custom providers, the
+   timeouts and their notification, the AI debug log, the sample summary
+   and the prompt preview, with no routes. **3b, the routes:**
+   `POST /api/policy/regenerate`, `/api/ai/policy-sample`, `/api/ai/test`
+   and `/api/ai/models`, with a loopback fake provider for the live gate.
 4. **The bulk runner, its resume and the triggers.** `runBulkPolicySync`,
    `POST` and `DELETE /api/policy/sync-all`, the startup resume, the
    post-update policy fetch, and `summarizePolicies` on a scrape and an
@@ -3092,10 +3093,15 @@ does. Nothing outside the replay calls the store yet. Batch 3 routes
 `POST /api/policy/regenerate`, and batch 4 the bulk runner and the
 triggers.
 
-**What Node leaves running is handed back.** Save Page Now and the
-immediate webhook are fired and forgotten in Node, and finish after the
-sync has returned. The store returns them as follow-ups for its caller
-to run: detached on the server, inline in the replay, in that order.
+**What Node fires and forgets starts where Node starts it.** Save Page
+Now and the immediate webhook are fired and forgotten in Node: the
+request goes out at once and finishes after the sync has returned. On
+the server each is a task of its own, spawned at that point. In the
+replay, whose canned hop answers at once, the request is made there
+too, and only Save Page Now's link to the capture is handed back, to be
+written after the sync. (Batch 2 first ran both after the sync; batch
+3a's `all` phase, where the summary's AI call follows them, showed the
+difference.)
 
 **The routes** (`core/src/server/routes_policy.rs`):
 `GET /api/policy/status/[appId]`, the AI Policy tab's polling subset of
@@ -3235,3 +3241,129 @@ JavaScript writer produced.
 
 Rust suite: 259 pass (252 + 7 new: the three replays and four unit
 tests of the diff and the JSON port).
+
+### Batch 3a — the summariser engine (no routes)
+
+`syncPrivacyPolicyAnalysis` now runs all three of its phases
+(`core/src/server/policy_store.rs`): `fetch` as before, `summarise`
+over the stored source, and `all`, which summarises only when the fetch
+landed a clean new source. The summarise phase is
+`core/src/server/policy_summary.rs`: `summariseStoredPolicy` skips a
+summary that is current, an audit-bundle excerpt or anything but a clean
+source, writes the needs-config row when no provider is set, and
+otherwise stores the summary with the one it replaces, or the error it
+failed with. `buildPolicySummary` sends a policy that fits the model's
+direct limit in one call (40,000 characters, or 8,000 for a model that
+needs chunks) and otherwise cuts it into chunks, stores each chunk's
+notes the moment they arrive, reuses them when a retried run finds them
+matching the text and the chunk count, and merges them. The sample
+summary and the prompt preview, which batch 3b's routes serve, are here
+too.
+
+`core/src/policy/ai.rs` is `lib/ai-config.ts`: the providers, their
+defaults, which models need chunks, the per-phase timeouts with their
+clamp, and the base-URL rules. `core/src/policy/prompts.rs` is what a
+model is sent: the system prompt, the preamble and the nonce-marked
+blocks every scraped value is wrapped in, the keyword digest, the
+direct, chunk and merge prompts, the schemas and the skeleton a
+`json_object` endpoint gets instead, the built-in sample policy, and the
+chunker. `core/src/server/policy_ai.rs` makes the calls: OpenAI with a
+strict `json_schema`, a custom endpoint with `json_object` and a
+streamed reply, Anthropic as a forced tool call; one retry on a timeout
+or an abort; the debounced "raise the timeout" notification with its
+run-log line; and the AI debug log with its fifty-row cap.
+
+**The transport learned what the AI calls need**
+(`core/src/outbound.rs`). A request can allow private hosts, the local
+model's case: loopback and LAN addresses pass, while a metadata address
+never does, whether named, written or resolved, and such requests use a
+connection pool of their own. It can refuse redirects, as
+`redirect: "error"` does, where any redirect status is a network error.
+And `Fetcher::fetch_stream`, `safeFetchStream`, returns the response
+head with the body unread, under one deadline that covers the request
+and every read, as `AbortSignal.timeout` keeps running while undici's
+body stream is read. The redirect loop also now checks each target
+against the caller's URL-length cap and private-host setting, as
+`safeFetch` does; it used a fixed 2,048.
+
+**The recording held the port to Node's reading of a reply.** A streamed
+reply is read chunk by chunk as the transport delivers it and decoded as
+a `TextDecoder` fed with `{ stream: true }` and never flushed: a
+character cut by a chunk boundary waits for the next chunk, one still
+incomplete at the end is dropped, and a leading byte order mark goes. A
+non-streamed reply is decoded as `Buffer.toString("utf8")`. Both stop at
+two megabytes, counted before the chunk that crosses the line is
+decoded, so a stream cut off there hands the debug log exactly what came
+before it. Prompt nonces come from `Ids::nonce`, the system's random
+bytes in production and the oracle's counter in the replay.
+
+**The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
+the REAL summarise and `all` phases over 66 scenarios, the sample
+summary over four and the prompt preview over two, against a scratch
+database with a frozen clock, counted ids and nonces, and every provider
+reply canned: an OpenAI completion, a custom endpoint's event stream in
+the recorded chunks, an Anthropic message. The shapes are the providers'
+documented formats; there is no key to capture live ones with. Recorded
+per case: every raw fetch with its headers and body, every write in
+order, seven tables, and the result or the thrown message.
+`core/src/server/policy_summary_tests.rs` replays all 72, each body
+reaching the reader in the recorded chunks. CI regenerates the fixture
+and fails on drift ("Policy summariser oracle is current").
+
+The cases cover the gates (no provider, no key, a blank model, a current
+summary, an imported excerpt, a failed fetch, an app with nothing
+stored, no policy URL); OpenAI's summary, a forced resummarise with the
+summary it replaces, a refusal, an error status, a reply that is not
+JSON, content parts, empty content, content that is not JSON, a fence,
+odd lenses and ratings, an array, a guardian's safety summary, a missing
+developer and the debug log's cap; the timeouts (retried once, twice,
+the notification suppressed and repeated, a clamped and an unreadable
+budget, an abort, an error status that mentions a timeout, a network
+failure, a redirect, two megabytes); the custom endpoint (a streamed
+summary with multibyte text across chunks, a whole message at the end,
+a stream cut off by the timeout, a stream that breaks, an empty stream,
+CRLF frames, a stream ending inside a character, an error status, two
+megabytes, base URLs with and without a scheme or a path, a metadata
+address, the legacy `ollama` name); Anthropic (the tool, text in a
+fence, a reply that is not JSON, no text, an error status, a body cut
+off by the timeout); chunking (a long policy, reused notes, stale
+notes, a chunk that fails, notes the model left empty, a paragraph
+longer than a chunk, a guardian's merge, OpenAI and Anthropic models
+that need chunks); and the `all` phase (fetch then summarise, a cache
+hit, a failed fetch, the kill-switch).
+
+**Node's behaviour, kept.** A refusal is caught by the `try` it is
+thrown in, so it is logged twice and its debug row is inserted twice,
+the second insert failing on the id. The retry judges an error by its
+words, so an error status whose body says "timeout" is retried. An
+Anthropic body cut off by the timeout goes up unwrapped, with no debug
+row and no notification, and is retried. A chunked run's `summarising`
+phase is closed as a matter of course when the first chunk starts, so
+its "Summary ready" note lands on no phase. The stored `updated_at` is
+the time before the first AI call. The chunk slicer, a backtracking
+`[\s\S]{1,n}(?:\s|$)` scan, never matches the head of an unbroken run
+longer than a slice, so those characters are summarised by no chunk.
+And the summarise phase on an app with nothing stored meets the run
+marker's `pending` placeholder, which reads as `analysis_error` and
+logs "Policy summary failed": the same Node quirk #275 fixed for the
+kill-switch, reached by another path.
+
+**Negative controls, predicted before running.** The stream decoder
+flushing a trailing partial character: exactly the stream that ends
+inside one. No retry after a timeout or an abort: exactly the ten
+cases that retry. The slicer keeping the head of an unbroken run:
+exactly the sliced paragraph. The previous summary's time not taken
+from `updated_at`: exactly the forced resummarise. Source restored
+byte-for-byte after each, fixed tree green.
+
+**Divergences, chosen.** `toLowerCase` and Rust's lowercasing agree on
+everything but special casings, which only matter to where a keyword
+excerpt starts; a slice that splits a surrogate pair is U+FFFD here and
+a lone surrogate in Node; a stream frame escaping a lone surrogate is
+skipped here and read by V8; and the debug log's opt-in console mirror
+(`ai_debug_console_mirror`) is not ported, since it writes only to
+Node's console. None of these is reachable from a policy text or a
+provider reply of the documented shapes.
+
+Rust suite: 266 pass (259 + 7 new: the replay, and unit tests of the
+configuration, the prompts, the stream decoder and the frame reader).
