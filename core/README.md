@@ -3067,8 +3067,10 @@ notification, the cache hit and the source-ready write — then the
 activity row. A fetch error keeps the last good source, an unusable body
 keeps the last good hash, and only a changed text, with the
 policy-updates toggle on, flags its History row for review and raises a
-bell notification: #271's rules, recorded from the fixed Node. Nothing
-outside the replay calls the store yet. Batch 3 routes
+bell notification: #271's rules, recorded from the fixed Node. With
+policy scraping switched off, a first run drops the placeholder, returns
+no analysis and logs a skip rather than a failure, as the fixed Node
+does. Nothing outside the replay calls the store yet. Batch 3 routes
 `POST /api/policy/regenerate`, and batch 4 the bulk runner and the
 triggers.
 
@@ -3191,11 +3193,7 @@ the log from before their own line. The backfill's "Seeded previous
 policy text" note is logged on every changed rescrape, including when
 the earlier text already had its version and the upsert only touched
 it. A throttled skip's activity row says "Policy source fetched
-(cached)". And with policy scraping switched off, an app's first run
-ends with an error activity row, "Policy summary failed", though nothing
-failed: the placeholder row's `pending` is not a status Node recognises,
-so it hydrates as `analysis_error`. That one is a Node bug, to be fixed
-on the Node side and then re-recorded, not in the port.
+(cached)".
 
 **Negative controls, predicted before running.** The fetch-error branch
 hydrating a fresh read instead of the row it wrote: exactly the four

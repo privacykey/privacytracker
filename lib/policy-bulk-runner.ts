@@ -327,7 +327,12 @@ export async function runBulkPolicySync(
         );
         const analysisStatus = analysis?.status ?? "unknown";
         const throttled = analysis ? wasThrottled(analysis.lastRunLog) : false;
-        const outcome = classifyOutcome(analysisStatus, throttled);
+        // No analysis back for an app with a policy URL means nothing was
+        // stored and nothing was tried: the kill-switch stopped a first
+        // fetch. That is a skip, not a failure.
+        const outcome = analysis
+          ? classifyOutcome(analysisStatus, throttled)
+          : "skipped";
 
         entry.status = "done";
         entry.finishedAt = Date.now();

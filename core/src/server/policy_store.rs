@@ -60,6 +60,8 @@ use rusqlite::{Connection, OptionalExtension};
 use serde_json::{json, Map, Value};
 
 const DELETE_ANALYSIS: &str = "DELETE FROM privacy_policy_analyses WHERE app_id = ?";
+const DELETE_PLACEHOLDER: &str =
+    "DELETE FROM privacy_policy_analyses WHERE app_id = ? AND status = 'pending'";
 const MARK_RUNNING: &str = "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?";
 const INSERT_PLACEHOLDER: &str = "\n    INSERT INTO privacy_policy_analyses (\n      app_id, policy_url, status, source_word_count, updated_at,\n      run_status, run_started_at\n    )\n    VALUES (?, '', 'pending', 0, ?, 'running', ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      run_status = 'running',\n      run_started_at = excluded.run_started_at\n  ";
 const MARK_IDLE: &str =
@@ -98,7 +100,8 @@ pub(crate) struct FollowUps {
 }
 
 pub(crate) struct Synced {
-    /// The hydrated analysis, or null when the policy URL was cleared.
+    /// The hydrated analysis, or null when the policy URL was cleared or
+    /// the kill-switch stopped a first fetch.
     pub analysis: Value,
     pub follow_ups: FollowUps,
 }
@@ -175,6 +178,12 @@ impl<'a> RunLogger<'a> {
     /// `toJson`.
     fn to_json(&self) -> String {
         Value::Array(self.phases.iter().cloned().map(Value::Object).collect()).to_string()
+    }
+    /// `phases.some((entry) => entry.phase === phase)`.
+    fn logged(&self, phase: &str) -> bool {
+        self.phases
+            .iter()
+            .any(|record| record.get("phase").and_then(Value::as_str) == Some(phase))
     }
     /// `persistPolicyRunLog`, swallowed and logged as Node's `flush` does.
     fn flush(&mut self) {
@@ -590,6 +599,14 @@ async fn fetch_and_store(
             "disabled",
             "Policy scraping is disabled in Settings. Re-enable to fetch.",
         );
+        // A first run has nothing stored: its only row is the run marker's
+        // placeholder, whose `pending` would hydrate as `analysis_error`.
+        // It is dropped, and nothing is returned.
+        if col(existing, "status") == "pending" {
+            log.db()
+                .with(|w| w.run(DELETE_PLACEHOLDER, vec![json!(app_id)]))?;
+            return Ok((Value::Null, FollowUps::default()));
+        }
         let Some(row) = existing else {
             return Ok((Value::Null, FollowUps::default()));
         };
@@ -984,9 +1001,13 @@ async fn fetch_and_store(
     Ok((analysis, follow_ups))
 }
 
-/// The activity row's status and summary for a result.
-fn activity_summary(result: &Value) -> (&'static str, String) {
+/// The activity row's status and summary for a result. `scrape_disabled`
+/// is whether the run log shows the kill-switch stopped the fetch.
+fn activity_summary(result: &Value, scrape_disabled: bool) -> (&'static str, String) {
     if result.is_null() {
+        if scrape_disabled {
+            return ("partial", "Policy skipped: scraping disabled".to_string());
+        }
         return ("ok", "Policy URL cleared".to_string());
     }
     let error = result["error"].as_str().filter(|e| !e.is_empty());
@@ -1043,19 +1064,20 @@ pub(crate) async fn sync_policy_fetch(
     let activity_start = clock.now();
 
     let mut stash: Option<Value> = None;
-    let outcome = {
+    let (outcome, scrape_disabled) = {
         let mut log = RunLogger::new(&mut *db, clock, app_id);
-        fetch_and_store(
+        let outcome = fetch_and_store(
             &mut log, ids, fetcher, request, policy_url, options, &mut stash,
         )
-        .await
+        .await;
+        (outcome, log.logged("disabled"))
     };
 
     let result = db.with(|w| {
         let ended = clock.now();
         match outcome {
             Ok((analysis, follow_ups)) => {
-                let (status, summary) = activity_summary(&analysis);
+                let (status, summary) = activity_summary(&analysis, scrape_disabled);
                 let mut detail = Map::new();
                 detail.insert("phase".into(), json!("fetch"));
                 detail.insert("forceResummarise".into(), json!(options.force_resummarise));
