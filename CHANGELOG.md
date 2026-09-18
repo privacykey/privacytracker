@@ -46,6 +46,20 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- A privacy-policy summary that came in with an imported audit bundle no
+  longer reads as a failed AI refresh. The app's AI Policy tab showed it
+  under "The latest AI refresh failed, so this summary may be out of
+  date.", and policy text imported without a summary said the AI summary
+  could not be generated, though this install had not tried to generate
+  either. With "Disable policy scraping" on, the automatic policy run
+  after a sync also logged each of these apps as "Policy summary failed"
+  and counted it as failed. An imported summary now shows as ready and
+  imported text as waiting for a summary; apps imported before this fix
+  are corrected the next time the app starts. The "Summarise" button now
+  waits for a rescrape of an imported policy: a bundle carries only the
+  opening of the policy text, and a summary of that would read as a
+  summary of the whole policy.
+
 - With "Disable policy scraping" switched on in Settings, an app whose
   privacy policy had never been fetched no longer shows up as a failure.
   Its policy run (the automatic fetch after an import or sync, for
