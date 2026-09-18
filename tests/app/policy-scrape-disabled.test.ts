@@ -18,6 +18,10 @@ import test from "node:test";
 import { getRecentActivity } from "../../lib/activity";
 import { runBulkPolicySync } from "../../lib/policy-bulk-runner";
 import {
+  __drainForTests,
+  schedulePostAppUpdatePolicyFetch,
+} from "../../lib/post-app-update-policy-fetch";
+import {
   getPolicyAnalysis,
   syncPrivacyPolicyAnalysis,
 } from "../../lib/privacy-policy";
@@ -161,6 +165,68 @@ test("default setting (missing key) is treated as enabled — the gate stays off
   );
 });
 
+// The automatic policy fetch that follows every import or App Store sync
+// must not start a bulk run while the kill-switch is on: Settings promises
+// "no bulk runs". Such a run fetches nothing, since every app meets the
+// store's gate, but it re-logs each stored analysis, a stored fetch error
+// as a fresh failure.
+test("the automatic fetch after an import or sync starts no bulk run while the kill-switch is on", async () => {
+  // A publisher that can't be reached leaves a stored fetch error, the
+  // analysis that read as a new failure on every run.
+  global.fetch = (async () => {
+    throw new TypeError("fetch failed");
+  }) as typeof fetch;
+  await syncPrivacyPolicyAnalysis(
+    {
+      appId: "scrape-disabled-app",
+      appName: "Disabled Scrape Fixture",
+      policyUrl: POLICY_URL,
+    },
+    { phase: "fetch" }
+  );
+  const before = getPolicyAnalysis("scrape-disabled-app");
+  assert.equal(before?.status, "fetch_error", "precondition: a fetch error");
+  const seen = new Set(getRecentActivity().map((row) => row.id));
+
+  setSetting("policy_scrape_disabled", "true");
+  const tracker = trackingFetch(false);
+  global.fetch = tracker.fetch;
+
+  schedulePostAppUpdatePolicyFetch("import");
+  schedulePostAppUpdatePolicyFetch("sync");
+  await __drainForTests();
+
+  assert.equal(tracker.calls, 0, "fetch must not be invoked while disabled");
+  assert.deepEqual(
+    getRecentActivity()
+      .filter((row) => !seen.has(row.id))
+      .map((row) => row.summary),
+    [],
+    "no Activity rows: no bulk summary and no per-app rows"
+  );
+  assert.deepEqual(
+    getPolicyAnalysis("scrape-disabled-app"),
+    before,
+    "the stored analysis is untouched"
+  );
+});
+
+test("the automatic fetch after an import or sync still runs when scraping is enabled", async () => {
+  const tracker = trackingFetch(true);
+  global.fetch = tracker.fetch;
+
+  schedulePostAppUpdatePolicyFetch("sync");
+  await __drainForTests();
+
+  // The fixture text is too thin to pass as a policy, so the run's outcome
+  // is beside the point: it started, fetched and logged its summary.
+  assert.ok(tracker.calls >= 1, "the deferred run should fetch the policy");
+  const bulkRow = getRecentActivity({ type: "policy_summary" }).find(
+    (row) => row.appId === null
+  );
+  assert.match(bulkRow?.summary ?? "", /^Bulk policy scrape: /);
+});
+
 test("an existing cached policy row is preserved when the kill-switch trips", async () => {
   // First, seed a successful scrape so a cached row exists.
   const seedTracker = trackingFetch(true);
@@ -241,8 +307,9 @@ test("the bulk runner counts a first fetch stopped by the kill-switch as skipped
   const tracker = trackingFetch(false);
   global.fetch = tracker.fetch;
 
-  // The automatic fetch after an import or sync takes this path: it does
-  // not check the kill-switch itself, so every app meets the store's gate.
+  // A run already under way when scraping is switched off takes this
+  // path: each app after the switch meets the store's gate. No new run
+  // starts while the switch is on (see the automatic-fetch tests above).
   const { totals } = await runBulkPolicySync({
     initiator: "automatic",
     phase: "fetch",
