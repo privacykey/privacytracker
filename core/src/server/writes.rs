@@ -383,8 +383,42 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(leftover_routes());
         routes.extend(policy_routes());
         routes.extend(ai_routes());
+        routes.extend(device_routes());
         routes
     })
+}
+
+/// Phase 6, batch 2a — see `device_writes.rs`. The backup and the
+/// uninstall have no guard of their own (the gate's origin check stands in
+/// front of them), and the backup's audience check comes before its body,
+/// in `precheck`; the device-sync pair take the shared mutation guard.
+fn device_routes() -> Vec<RouteSpec> {
+    vec![
+        RouteSpec {
+            path: "/api/device-actions/backup",
+            method: Method::POST,
+            body_limit: Some(8 * 1024),
+            guard: Guard::None,
+        },
+        RouteSpec {
+            path: "/api/device-actions/uninstall",
+            method: Method::POST,
+            body_limit: Some(8 * 1024),
+            guard: Guard::None,
+        },
+        RouteSpec {
+            path: "/api/device-sync/preview",
+            method: Method::POST,
+            body_limit: Some(512 * 1024),
+            guard: guarded("device_sync.preview", 30, AdminRule::NotRequired),
+        },
+        RouteSpec {
+            path: "/api/device-sync/commit",
+            method: Method::POST,
+            body_limit: Some(256 * 1024),
+            guard: guarded("device_sync.commit", 15, AdminRule::NotRequired),
+        },
+    ]
 }
 
 /// Phase 4, batch 5d — see `seed_writes.rs`. No body is read. The guard is
@@ -1168,6 +1202,11 @@ pub fn precheck(
         ("/api/backup/restore", &Method::POST) => {
             super::backup_writes::restore_precheck(w)?;
         }
+        // Phase 6, batch 2a: the backup is refused outside `self` before
+        // its body is read.
+        ("/api/device-actions/backup", &Method::POST) => {
+            super::device_writes::backup_precheck(w.conn)?;
+        }
         // Phase 5, batch 3b: the AI routes' own limits and admin token.
         ("/api/ai/test", _) | ("/api/ai/models", _) | ("/api/ai/policy-sample", _) => {
             super::routes_ai::precheck(w, ids, limiter, headers, spec, &actor, now)?;
@@ -1279,6 +1318,9 @@ pub fn perform(
     }
     if super::bundle_writes::handles(spec) {
         return super::bundle_writes::perform(&mut cx, req);
+    }
+    if super::device_writes::handles(spec) {
+        return super::device_writes::perform(&mut cx, req, actor);
     }
     match (spec.path, &spec.method) {
         ("/api/date-format", &Method::POST) => date_format(&mut cx, req.body),

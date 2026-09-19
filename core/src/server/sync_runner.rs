@@ -20,6 +20,7 @@
 //! map: every entry key is created, undefined or not, the moment the
 //! entry goes in flight, and `JSON.stringify` then omits the undefined
 //! ones — which is exactly a struct of `Option`s in that order.
+use super::lifecycle::{isolate, sleep_or_stop};
 use super::{
     activity_log::record_activity,
     flags::{context_from_db, resolve_flag},
@@ -42,6 +43,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{sync::Arc, time::Duration};
+use tokio_util::sync::CancellationToken;
 
 /// `Date.now()` as the runner sees it: live on the server, frozen in the
 /// replay. Every stamp the runner writes comes from here.
@@ -677,6 +679,24 @@ fn sync_resume_notification(
 
 // ── instrumentation.ts ───────────────────────────────────────────────
 
+/// The feature-flag migration, which `register()` runs before anything
+/// else writes (Phase 6, batch 2b). A failure is logged and the server
+/// comes up anyway, without the version marker, so the next boot retries.
+pub(crate) fn migrate_flags(db: &mut dyn DbAccess, clock: &dyn Clock) {
+    let mut ids = RandomIds;
+    match db.with(|w| super::flag_migration::run(w, &mut ids, clock)) {
+        Ok(steps) if !steps.is_empty() => {
+            let total_ms: i64 = steps.iter().map(|s| s.duration_ms).sum();
+            log::info!(
+                "[Migration] feature-flag v1 complete — {} steps in {total_ms}ms",
+                steps.len()
+            );
+        }
+        Ok(_) => {}
+        Err(e) => super::diag::log_error(format!("[Migration] feature-flag v1 failed: {e}")),
+    }
+}
+
 /// The boot writes `register()` makes before any ticker: the runtime
 /// marker, then the stale import-queue and health-check locks cleared —
 /// a fresh process owns no run.
@@ -834,12 +854,19 @@ pub(crate) async fn resume_app_store_sync(
 /// resume once at 12 s, the scheduler check
 /// at 15 s and every 30 minutes, the import-queue drain at 20 s and every
 /// minute, the health check at 60 s and daily.
-pub(crate) fn start_background(state: AppState) {
-    let desktop = std::env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
+///
+/// Every timer sleeps until its next tick OR until `stop` fires, and then
+/// ends; a tick that panics is logged and its loop carries on (see
+/// lifecycle.rs). A tick already running when `stop` fires finishes, or is
+/// dropped with the runtime; either way its writes are whole transactions.
+pub(crate) fn start_background(state: AppState, stop: CancellationToken) {
+    let desktop = crate::host_env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
+    migrate_flags(&mut state.db_access(), &Live);
     boot(&mut state.db_access(), Live.now(), desktop);
 
-    // What the deferred policy fetch's timer runs with.
+    // What the deferred policy fetch's timer runs with, its stop included.
     let conn = state.conn.clone();
+    let timer_stop = stop.clone();
     super::policy_triggers::install(Box::new(move || super::policy_triggers::Handles {
         db: Box::new(crate::scrape::persist::Shared {
             conn: conn.clone(),
@@ -849,123 +876,182 @@ pub(crate) fn start_background(state: AppState) {
         fetcher: Arc::new(PublicHttp),
         ids: Box::new(RandomIds),
         clock: Arc::new(Live),
+        stop: timer_stop.clone(),
     }));
 
-    let wayback_state = state.clone();
+    let (wayback_state, wayback_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(8)).await;
-        let mut ids = RandomIds;
-        let mut db = wayback_state.db_access();
-        if let Err(e) =
-            super::wayback_runner::resume_wayback_import(&mut db, &PublicHttp, &mut ids, &Live)
-                .await
-        {
-            super::diag::log_error(format!("[WaybackResume] Startup check failed: {e}"));
+        if sleep_or_stop(&wayback_stop, Duration::from_secs(8)).await {
+            return;
         }
+        isolate("WaybackResume", async {
+            let mut ids = RandomIds;
+            let mut db = wayback_state.db_access();
+            if let Err(e) =
+                super::wayback_runner::resume_wayback_import(&mut db, &PublicHttp, &mut ids, &Live)
+                    .await
+            {
+                super::diag::log_error(format!("[WaybackResume] Startup check failed: {e}"));
+            }
+        })
+        .await;
     });
 
-    let resume_state = state.clone();
+    let (resume_state, resume_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-        let mut ids = RandomIds;
-        let mut db = resume_state.db_access();
-        if let Err(e) = resume_app_store_sync(&mut db, &PublicHttp, &mut ids, &Live).await {
-            super::diag::log_error(format!("[SyncResume] Startup check failed: {e}"));
+        if sleep_or_stop(&resume_stop, Duration::from_secs(10)).await {
+            return;
         }
+        isolate("SyncResume", async {
+            let mut ids = RandomIds;
+            let mut db = resume_state.db_access();
+            if let Err(e) = resume_app_store_sync(&mut db, &PublicHttp, &mut ids, &Live).await {
+                super::diag::log_error(format!("[SyncResume] Startup check failed: {e}"));
+            }
+        })
+        .await;
     });
 
-    let policy_state = state.clone();
+    let (policy_state, policy_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(12)).await;
-        let mut ids = RandomIds;
-        let mut db = policy_state.db_access();
-        let follow_ups =
-            super::policy_runner::resume_policy_sync(&mut db, &PublicHttp, &mut ids, &Live).await;
-        for follow_up in follow_ups {
-            super::policy_store::run_follow_ups(&mut db, &PublicHttp, &Live, follow_up).await;
+        if sleep_or_stop(&policy_stop, Duration::from_secs(12)).await {
+            return;
         }
+        isolate("PolicyResume", async {
+            let mut ids = RandomIds;
+            let mut db = policy_state.db_access();
+            let follow_ups =
+                super::policy_runner::resume_policy_sync(&mut db, &PublicHttp, &mut ids, &Live)
+                    .await;
+            for follow_up in follow_ups {
+                super::policy_store::run_follow_ups(&mut db, &PublicHttp, &Live, follow_up).await;
+            }
+        })
+        .await;
     });
 
-    let scheduler_state = state.clone();
+    let (scheduler_state, scheduler_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
         let mut sched = Scheduler::default();
-        tokio::time::sleep(Duration::from_secs(15)).await;
+        if sleep_or_stop(&scheduler_stop, Duration::from_secs(15)).await {
+            return;
+        }
         loop {
-            let mut ids = RandomIds;
-            let mut db = scheduler_state.db_access();
-            scheduled_check(&mut sched, &mut db, &PublicHttp, &mut ids, &Live).await;
-            tokio::time::sleep(CHECK_INTERVAL).await;
+            isolate("Scheduler", async {
+                let mut ids = RandomIds;
+                let mut db = scheduler_state.db_access();
+                scheduled_check(&mut sched, &mut db, &PublicHttp, &mut ids, &Live).await;
+            })
+            .await;
+            if sleep_or_stop(&scheduler_stop, CHECK_INTERVAL).await {
+                return;
+            }
         }
     });
 
-    let health_state = state.clone();
+    let (health_state, health_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
         // After the resume healers, so a freshly-resumed run is never
         // mistaken for a dead lock.
-        tokio::time::sleep(Duration::from_secs(60)).await;
+        if sleep_or_stop(&health_stop, Duration::from_secs(60)).await {
+            return;
+        }
         loop {
-            let mut ids = RandomIds;
-            let mut db = health_state.db_access();
-            super::health_check::tick_health_check(&mut db, &mut ids, Live.now());
-            tokio::time::sleep(HEALTH_CHECK_INTERVAL).await;
+            isolate("HealthCheck", async {
+                let mut ids = RandomIds;
+                let mut db = health_state.db_access();
+                super::health_check::tick_health_check(&mut db, &mut ids, Live.now());
+            })
+            .await;
+            if sleep_or_stop(&health_stop, HEALTH_CHECK_INTERVAL).await {
+                return;
+            }
         }
     });
 
-    let snapshot_state = state.clone();
+    let (snapshot_state, snapshot_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
         // The helper owns the interval and the retention; this only wakes
         // up on the scheduler's cadence and asks whether one is due.
-        tokio::time::sleep(Duration::from_secs(35)).await;
+        if sleep_or_stop(&snapshot_stop, Duration::from_secs(35)).await {
+            return;
+        }
         loop {
-            let mut ids = RandomIds;
-            let mut db = snapshot_state.db_access();
-            super::backup_snapshots::tick_backup_snapshots(&mut db, &mut ids, Live.now());
-            tokio::time::sleep(CHECK_INTERVAL).await;
+            isolate("BackupSnapshots", async {
+                let mut ids = RandomIds;
+                let mut db = snapshot_state.db_access();
+                super::backup_snapshots::tick_backup_snapshots(&mut db, &mut ids, Live.now());
+            })
+            .await;
+            if sleep_or_stop(&snapshot_stop, CHECK_INTERVAL).await {
+                return;
+            }
         }
     });
 
-    let webhook_state = state.clone();
+    let (webhook_state, webhook_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
         // Offset from the snapshot tick so the two do not fight for the
         // boot window; after that both fire on the scheduler's cadence.
         // A no-op unless a webhook is configured for a daily or weekly
         // summary, and self-limited through its cursor after that.
-        tokio::time::sleep(Duration::from_secs(45)).await;
+        if sleep_or_stop(&webhook_stop, Duration::from_secs(45)).await {
+            return;
+        }
         loop {
-            let mut db = webhook_state.db_access();
-            super::webhook_writes::tick_webhook_summary(&mut db, &PublicHttp, Live.now()).await;
-            tokio::time::sleep(CHECK_INTERVAL).await;
+            isolate("Webhook", async {
+                let mut db = webhook_state.db_access();
+                super::webhook_writes::tick_webhook_summary(&mut db, &PublicHttp, Live.now()).await;
+            })
+            .await;
+            if sleep_or_stop(&webhook_stop, CHECK_INTERVAL).await {
+                return;
+            }
         }
     });
 
-    let update_state = state.clone();
+    let (update_state, update_stop) = (state.clone(), stop.clone());
     tokio::spawn(async move {
         // Every six hours it ASKS; the day's cache means GitHub is fetched
         // about once a day whatever the restart cadence.
-        tokio::time::sleep(Duration::from_secs(25)).await;
+        if sleep_or_stop(&update_stop, Duration::from_secs(25)).await {
+            return;
+        }
         loop {
-            let mut db = update_state.db_access();
-            super::update_check::tick_update_check(&mut db, &PublicHttp, Live.now()).await;
-            tokio::time::sleep(UPDATE_CHECK_INTERVAL).await;
+            isolate("UpdateCheck", async {
+                let mut db = update_state.db_access();
+                super::update_check::tick_update_check(&mut db, &PublicHttp, Live.now()).await;
+            })
+            .await;
+            if sleep_or_stop(&update_stop, UPDATE_CHECK_INTERVAL).await {
+                return;
+            }
         }
     });
 
     tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(20)).await;
+        if sleep_or_stop(&stop, Duration::from_secs(20)).await {
+            return;
+        }
         loop {
-            let mut ids = RandomIds;
-            let mut db = state.db_access();
-            if let Err(e) = super::imports_writes::run_import_queue_tick(
-                &mut db,
-                &mut ids,
-                Live.now(),
-                &PublicHttp,
-            )
-            .await
-            {
-                super::diag::log_error(format!("[ImportQueue] Tick failed: {e}"));
+            isolate("ImportQueue", async {
+                let mut ids = RandomIds;
+                let mut db = state.db_access();
+                if let Err(e) = super::imports_writes::run_import_queue_tick(
+                    &mut db,
+                    &mut ids,
+                    Live.now(),
+                    &PublicHttp,
+                )
+                .await
+                {
+                    super::diag::log_error(format!("[ImportQueue] Tick failed: {e}"));
+                }
+            })
+            .await;
+            if sleep_or_stop(&stop, IMPORT_QUEUE_INTERVAL).await {
+                return;
             }
-            tokio::time::sleep(IMPORT_QUEUE_INTERVAL).await;
         }
     });
 }

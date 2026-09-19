@@ -1595,6 +1595,48 @@ try {
     }
   );
 
+  // ── A run that finds no AI provider keeps the summary it was replacing ──
+  // Appended after every other case, so none of their recordings move. A
+  // summary run that finds no usable AI provider (none chosen, or a blank
+  // key or model) replaces nothing, as a failed run does: the summary
+  // stays, with the mode and model that made it, beside the needs-config
+  // status and error. The next run that makes a summary moves the kept one
+  // into previous_*, and a later fetch that finds the text unchanged is a
+  // cache hit that makes the kept summary ready again, provider or not.
+  const keptWithoutProvider = (over = {}) =>
+    summarised({
+      status: "needs_ai_config",
+      error:
+        "Configure an AI provider in Settings to enable privacy-policy summaries.",
+      updated_at: BASE_NOW - DAY,
+      ...over,
+    });
+  await sync("a forced resummarise with no API key keeps the summary", {
+    setup: [app(), summarised(), ...aiSettings({ apiKey: "  " })],
+    options: { forceResummarise: true },
+  });
+  await sync("a forced resummarise with a blank model keeps the summary", {
+    setup: [app(), summarised(), ...aiSettings({ model: "   " })],
+    options: { forceResummarise: true },
+  });
+  await sync("a summary kept with no provider is kept while none is set up", {
+    setup: [app(), keptWithoutProvider()],
+  });
+  await sync("a summary kept with no provider becomes the previous one", {
+    setup: [app(), keptWithoutProvider(), ...aiSettings()],
+    options: { forceResummarise: true },
+    replies: [openaiJson(MODEL_SUMMARY)],
+  });
+  await sync("an unchanged fetch after no provider is its kept summary", {
+    setup: [
+      app(),
+      keptWithoutProvider({ source_text: paragraphs(30).join("\n\n") }),
+      ...aiSettings({ apiKey: "  " }),
+    ],
+    phase: "all",
+    replies: [plain(paragraphs(30).join("\n\n")), AVAIL_NONE, SAVE_OK],
+  });
+
   // ── A skipped fetch is logged as a skip ──
   // Appended after every other case, so none of their recordings move. The
   // throttle and the kill-switch hand back the stored analysis with their

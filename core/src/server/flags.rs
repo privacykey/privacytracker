@@ -61,7 +61,7 @@ pub const KILL_SWITCH: &str = "flag.devopts.feature_flag_system.enabled";
 /// so the rule lookup does not throw. `__proto__` is included: the accessor
 /// returns `Object.prototype`, and indexing that with a flag key is
 /// `undefined` like the rest.
-const OBJECT_PROTOTYPE_NAMES: &[&str] = &[
+pub(super) const OBJECT_PROTOTYPE_NAMES: &[&str] = &[
     "constructor",
     "hasOwnProperty",
     "isPrototypeOf",
@@ -396,7 +396,7 @@ pub fn context_from_db(conn: &Connection) -> rusqlite::Result<Context> {
         get("flag.focus.goal.accessibility", "")? == "true",
     );
     let runtime_desktop = get("runtime_environment", "")? == "desktop"
-        || std::env::var("PRIVACYTRACKER_RUNTIME").as_deref() == Ok("desktop");
+        || crate::host_env::var("PRIVACYTRACKER_RUNTIME").as_deref() == Ok("desktop");
 
     let mut stmt = conn.prepare(
         "SELECT flag_key, override_value FROM feature_flag_overrides WHERE quarantined = 0",

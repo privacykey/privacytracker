@@ -30,6 +30,9 @@ mod changelog;
 mod content_tests;
 mod csp_reports;
 mod deployment;
+mod device_writes;
+#[cfg(test)]
+mod device_writes_tests;
 #[cfg(test)]
 mod devices_tests;
 pub(crate) mod diag;
@@ -39,6 +42,9 @@ pub mod diff;
 mod discovery_tests;
 mod export;
 mod favicon;
+mod flag_migration;
+#[cfg(test)]
+mod flag_migration_tests;
 pub mod flags;
 mod forwarded;
 mod gate;
@@ -56,6 +62,7 @@ mod leftovers_tests;
 #[cfg(test)]
 mod library_tests;
 mod library_writes;
+pub(crate) mod lifecycle;
 #[cfg(test)]
 mod maintenance_tests;
 mod maintenance_writes;
@@ -136,7 +143,7 @@ mod writes_tests;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::{
     routing::{delete, get, patch, post},
@@ -145,6 +152,7 @@ use axum::{
 use rusqlite::Connection;
 
 use crate::scrape::persist::Locked;
+pub use lifecycle::{serve_with, ServeConfig, ServerHandle};
 
 /// Wall-clock milliseconds since the epoch — `Date.now()`.
 ///
@@ -179,7 +187,7 @@ impl AppState {
     /// server's contention signal (`sqlite.lockWait` in the diagnostics).
     pub fn db(&self) -> std::sync::MutexGuard<'_, Connection> {
         let started = Instant::now();
-        let guard = self.conn.lock().expect("db mutex poisoned");
+        let guard = lifecycle::lock_db(&self.conn);
         diag::record_lock_wait(started.elapsed());
         guard
     }
@@ -213,7 +221,7 @@ pub struct DataLayout {
 /// `PRIVACYTRACKER_DATA_DIR` when set (honoured unconditionally — the Tauri
 /// shell injects it), else `<cwd>/data`.
 fn resolve_data_dir() -> (PathBuf, &'static str) {
-    match std::env::var("PRIVACYTRACKER_DATA_DIR") {
+    match crate::host_env::var("PRIVACYTRACKER_DATA_DIR") {
         Ok(v) if !v.is_empty() => (deployment::resolve_path(Path::new(&v)), "env"),
         // Node cannot boot with an unreadable cwd (`process.cwd()` throws at
         // module load); fall back to the root, as `resolve_path` does, so
@@ -262,9 +270,14 @@ pub fn data_layout() -> &'static DataLayout {
 /// The deployment reads report [`data_layout`], not the file behind
 /// `state.conn`: a caller that opens a temporary database and passes it
 /// here gets `/api/diagnostics/database` describing the configured data
-/// directory instead. `serve` is the one constructor of `AppState` and
+/// directory instead. `serve_with` is the one constructor of `AppState` and
 /// keeps the two aligned.
 pub fn app(state: AppState) -> Router {
+    layered(routes(), state)
+}
+
+/// Every route, before the layers.
+fn routes() -> Router<AppState> {
     Router::new()
         // Batch 1. Each of these is a GET the client shell fetches on first
         // paint, a container/auth probe, or both.
@@ -407,7 +420,8 @@ pub fn app(state: AppState) -> Router {
         )
         .route("/api/changelog", get(routes_stats::changelog))
         // Stored device reads: ownership, exact ECID lookup, import history
-        // and app links. No cfgutil calls or mutation handlers are enabled.
+        // and app links. cfgutil itself runs in the Tauri shell; the device
+        // actions below record what it did and gate what it may do next.
         .route(
             "/api/devices",
             get(routes_devices::devices).post(routes_writes::devices_post),
@@ -430,6 +444,23 @@ pub fn app(state: AppState) -> Router {
             get(routes_devices::tracked_apps),
         )
         .route("/api/devices/for-app/{appId}", get(routes_devices::for_app))
+        // Phase 6, batch 2a: the device actions and the device re-sync.
+        .route(
+            "/api/device-actions/backup",
+            post(routes_writes::device_backup_post),
+        )
+        .route(
+            "/api/device-actions/uninstall",
+            get(device_writes::uninstall_get).post(routes_writes::device_uninstall_post),
+        )
+        .route(
+            "/api/device-sync/preview",
+            post(routes_writes::device_sync_preview_post),
+        )
+        .route(
+            "/api/device-sync/commit",
+            post(routes_writes::device_sync_commit_post),
+        )
         .route("/api/activity", get(routes_content::activity))
         .route(
             "/api/notifications",
@@ -708,6 +739,15 @@ pub fn app(state: AppState) -> Router {
             "/api/diagnostics/errors",
             get(routes_runtime::errors).delete(routes_writes::diagnostics_errors_delete),
         )
+}
+
+/// The layers every route runs under, innermost first. Split from the route
+/// list so a test can put a route of its own under exactly these layers.
+fn layered(routes: Router<AppState>, state: AppState) -> Router {
+    routes
+        // Innermost: a handler that panics answers Next's bare 500, and the
+        // layers outside see an ordinary response (see lifecycle.rs).
+        .layer(axum::middleware::from_fn(lifecycle::catch_panic))
         // Request timing, INSIDE the gate: a request the gate refuses never
         // reaches Node's ring either. Runs after routing, so the matched
         // path pattern is available as the route label.
@@ -725,46 +765,49 @@ pub fn app(state: AppState) -> Router {
         .with_state(state)
 }
 
-/// Open + migrate the database at [`data_layout`], then serve on `addr`.
+/// How long requests in flight get once the server is told to stop: the
+/// three seconds the Tauri shell gave the Node sidecar between SIGTERM and
+/// SIGKILL.
+pub const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
+
+/// `pt-core serve`: bind `addr`, serve the database the process environment
+/// names (`serve_with`), and stop on SIGINT or SIGTERM, Docker's stop
+/// signal, within [`SHUTDOWN_GRACE`].
 ///
-/// Reuses `db::open_and_migrate` so the pragmas are byte-identical to the
-/// Node server's: `busy_timeout` and `foreign_keys` are CONNECTION-scoped,
-/// not stored in the file, so a server that opened the database differently
-/// would report different values from `/api/diagnostics/database`.
+/// The database is opened by `db::open_and_migrate`, so the pragmas are
+/// byte-identical to the Node server's: `busy_timeout` and `foreign_keys`
+/// are CONNECTION-scoped, not stored in the file, so a server that opened
+/// the database differently would report different values from
+/// `/api/diagnostics/database`.
 ///
 /// The listener is bound BEFORE the state is built because the bound port
 /// is part of the state (`x-forwarded-port`), and the service is built with
 /// connect info so the peer address can stand in for `socket.remoteAddress`.
-pub async fn serve(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
-    let layout = data_layout();
-    let mut conn = crate::db::open_and_migrate(&layout.db_path)?;
-    // SQLite's per-statement profile hook feeds the slow-query ring for
-    // every statement this connection runs, with no call-site wrapping.
-    conn.profile(Some(diag::on_statement_profiled));
-    // The scheduler-lag sampler needs the runtime, which `serve` is on.
-    diag::start_scheduler_sampler();
-
+pub async fn serve(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let bound = listener.local_addr()?;
-
-    let state = AppState {
-        conn: Arc::new(Mutex::new(conn)),
-        rate_limiter: Arc::new(ratelimit::RateLimiter::new()),
-        started_at: Instant::now(),
-        bound_port: bound.port(),
-    };
-
+    let server = serve_with(listener, ServeConfig::default()).await?;
     // Printed so a supervising script can wait for readiness on stdout
-    // rather than polling a port it only assumes is right.
+    // rather than polling a port it only assumes is right. The boot writes
+    // have landed by now.
     println!("pt-core: listening on http://{bound}");
-    // instrumentation.ts's boot writes and tickers: the sync resume, the
-    // scheduler check and the import-queue drain.
-    sync_runner::start_background(state.clone());
-
-    axum::serve(
-        listener,
-        app(state).into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await?;
+    stop_signal().await;
+    server.shutdown(SHUTDOWN_GRACE).await?;
     Ok(())
+}
+
+/// SIGINT, or on Unix SIGTERM too.
+async fn stop_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        if let Ok(mut terminate) = signal(SignalKind::terminate()) {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = terminate.recv() => {}
+            }
+            return;
+        }
+    }
+    let _ = tokio::signal::ctrl_c().await;
 }

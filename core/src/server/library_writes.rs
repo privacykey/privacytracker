@@ -1878,7 +1878,7 @@ fn has_attached_user_data(cx: &Cx, app_id: &str) -> bool {
     false
 }
 
-fn orphan_sweep_app(cx: &mut Cx, app_id: &str) -> Result<bool, String> {
+pub(super) fn orphan_sweep_app(cx: &mut Cx, app_id: &str) -> Result<bool, String> {
     let links: i64 =
         cx.w.conn
             .query_row(

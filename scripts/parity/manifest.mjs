@@ -1816,26 +1816,30 @@ export const QUARANTINE = [
     why: "POSTs to a user-configured webhook URL — must never fire in CI; probeLeftoverRoutes holds its refusals (a loopback URL, a bad format, a bad body) on both",
   },
 
-  // -- host / device dependent: cfgutil, USB, Apple Configurator
+  // -- host dependent. cfgutil itself runs in the Tauri shell; these
+  //    record what it did and gate what it may do next. The device-routes
+  //    oracle (core/scripts/extract-device-routes-cases.mjs) replays them
+  //    over a recorded MobileSync tree, and probeDeviceRoutes
+  //    (scripts/parity/device-probes.mjs) holds what both servers answer.
   {
     route: "/api/device-actions/backup",
     method: "POST",
-    why: "drives cfgutil against physically attached hardware",
+    why: "verifies a backup in the host's MobileSync folder, which differs per machine; the oracle replays it, probeDeviceRoutes holds its refusals on both",
   },
   {
     route: "/api/device-actions/uninstall",
     method: "GET,POST",
-    why: "drives cfgutil against physically attached hardware",
+    why: "its gate re-reads that MobileSync folder; the oracle replays the gate and the log, probeDeviceRoutes reads the gate and holds the refusal on both",
   },
   {
     route: "/api/device-sync/preview",
     method: "POST",
-    why: "reads a connected device's installed-app list",
+    why: "diffs a device against an app list the client sends; the oracle replays it, probeDeviceRoutes compares a diff over the fixture library",
   },
   {
     route: "/api/device-sync/commit",
     method: "POST",
-    why: "writes device state read from attached hardware",
+    why: "rewrites a device's app links (and can delete apps) and stamps the device with the server's clock; the oracle replays it, probeDeviceRoutes holds its refusals on both",
   },
 
   // -- file downloads and uploads, sized by host state. The differ cannot

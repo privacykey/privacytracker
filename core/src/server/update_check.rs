@@ -171,7 +171,7 @@ fn is_valid_semver(v: &str) -> bool {
 /// `/.dockerenv` or the init cgroup; else Homebrew by its shell variables;
 /// else plain Node. Tauri is detected client-side and never here.
 pub(super) fn deployment_runtime() -> &'static str {
-    let explicit = std::env::var("DEPLOYMENT").unwrap_or_default();
+    let explicit = crate::host_env::var("DEPLOYMENT").unwrap_or_default();
     let explicit = js_trim(&explicit.to_lowercase()).to_string();
     for known in ["docker", "tauri", "homebrew", "node"] {
         if explicit == known {
@@ -189,7 +189,7 @@ pub(super) fn deployment_runtime() -> &'static str {
             return "docker";
         }
     }
-    let set = |name: &str| std::env::var(name).is_ok_and(|v| !v.is_empty());
+    let set = |name: &str| crate::host_env::var(name).is_ok_and(|v| !v.is_empty());
     if set("HOMEBREW_PREFIX") || set("HOMEBREW_FORMULA_PATH") {
         return "homebrew";
     }
@@ -452,7 +452,7 @@ pub(crate) async fn tick_update_check(db: &mut dyn DbAccess, fetcher: &dyn Fetch
         if let Some(error) = result.error {
             super::diag::log_warn(format!("[UpdateCheck] Check failed: {error}"));
         } else if result.status["updateAvailable"] == true {
-            eprintln!(
+            log::info!(
                 "[UpdateCheck] Update available — {} → {}",
                 super::preview::string(&result.status["currentVersion"]),
                 super::preview::string(&result.status["latestVersion"])

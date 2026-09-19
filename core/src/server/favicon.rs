@@ -43,7 +43,7 @@ fn cache() -> &'static Mutex<Vec<(String, CacheEntry)>> {
 }
 
 fn remember(host: &str, entry: CacheEntry) -> CacheEntry {
-    let mut cache = cache().lock().expect("favicon cache poisoned");
+    let mut cache = super::lifecycle::lock_state(cache());
     match cache.iter_mut().find(|(h, _)| h == host) {
         Some((_, slot)) => *slot = entry.clone(),
         None => cache.push((host.to_string(), entry.clone())),
@@ -56,7 +56,7 @@ fn remember(host: &str, entry: CacheEntry) -> CacheEntry {
 }
 
 fn lookup(host: &str, now: i64) -> Option<CacheEntry> {
-    let mut cache = cache().lock().expect("favicon cache poisoned");
+    let mut cache = super::lifecycle::lock_state(cache());
     let index = cache.iter().position(|(h, _)| h == host)?;
     if now > cache[index].1.expires_at {
         cache.remove(index);

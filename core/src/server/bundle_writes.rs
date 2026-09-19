@@ -463,7 +463,7 @@ pub(super) fn diagnostics_bundle(state: &AppState, headers: &HeaderMap, now: i64
         "app": {
             // `process.env.npm_package_version ?? null`: set when the
             // server was started through the package manager.
-            "version": std::env::var("npm_package_version").ok(),
+            "version": crate::host_env::var("npm_package_version").ok(),
             // `process.version`: this server's identity stands in, as it
             // does in the desktop and deployment diagnostics.
             "nodeVersion": format!("pt-core {}", env!("CARGO_PKG_VERSION")),

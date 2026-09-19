@@ -59,11 +59,11 @@ referencing the core. It runs in `pnpm test`, inside the required
 `quality` job. `scripts/parity/**` is exempt — those harnesses exist to
 drive the core.
 
-**Phase 6 is the one PR allowed to break that guard**, because wiring
-axum into the desktop or Docker path is exactly what stops being inert.
-That PR belongs on this branch, with burn-in, and should delete the guard
-in the same commit that does the wiring so the removal is visible in
-review.
+**Phase 6 is where that guard changes**, because wiring axum into the
+desktop or Docker path is exactly what stops being inert. Its first
+batches touch only `core/` and keep the guard as it is; the batch that
+wires the server into the Tauri shell narrows the guard in the same
+commit, so the change is visible in review.
 
 This also *improves* the eventual A/B test rather than compromising it.
 The comparison wants `main`-built Node app vs `rust-core`-built Rust app
@@ -86,13 +86,12 @@ harnesses) landed on `main` for the same reason and remains there.
 4. *(on main, inert)* Writers, schedulers, the crash-safe runners, health
    check.
 5. *(on main, inert)* The AI policy pipeline.
-6. **(this branch)** Desktop cutover (embed axum, drop the Node sidecar),
-   then Docker after burn-in. The first phase that is NOT inert, and the
-   one PR allowed to delete
-   `tests/app/rust-core-inert.test.ts`. Its binaries must ship the
-   third-party notice in `core/V8-LICENSE` (the `Date.parse` port in
-   `jsdate` and the `JSON.parse` error port in `jsjson`) alongside
-   `NOTICE`.
+6. **(in progress)** Desktop cutover (embed axum, drop the Node
+   sidecar), then Docker straight after, before the next release. The
+   first phase that is NOT inert; see "Status — Phase 6" below. Its
+   binaries must ship the third-party notice in `core/V8-LICENSE` (the
+   `Date.parse` port in `jsdate` and the `JSON.parse` error port in
+   `jsjson`) alongside `NOTICE`.
 
 ## The gates (how the two implementations are compared)
 
@@ -130,7 +129,8 @@ artifacts.
 - The SQLite schema contract in `lib/db.ts` (CREATE TABLEs, inline ALTER
   migrations, the feature-flag migration, WAL/permissions behaviour) is
   frozen; the Rust layer reproduces it exactly so existing installs
-  upgrade cleanly — and can roll *back* to the Node build during burn-in.
+  upgrade cleanly — and can roll *back* to the Node build, which stays
+  buildable until a Rust release has shipped cleanly.
 - While the port is in flight, `lib/` server logic on `main` is treated
   as feature-frozen wherever practical; anything that must change there
   is mirrored here in the same week, or the parity gate will say so.
@@ -159,11 +159,12 @@ seed). The big CREATE block is lifted verbatim from `db.ts` by
 checked in) so it cannot drift; the orchestration and short ALTER lists are
 hand-ported in `core/src/db.rs` in db.ts's exact order.
 
-**What is deliberately NOT ported yet:** the feature-flag data migration
-(`lib/migrations/v1_feature_flags.ts`). It is instrumentation-driven and
-depends on feature-flag resolver semantics — a later phase. The parity gate
-compares a db.ts-opened database against a pt-core-opened one, neither having
-run the feature-flag migration, so the comparison stays apples-to-apples.
+**What the migrator leaves out:** the feature-flag data migration
+(`lib/migrations/v1_feature_flags.ts`). It is instrumentation-driven, so it
+belongs to the server's boot rather than to opening the database, and
+Phase 6, batch 2b ported it there. The parity gate compares a
+db.ts-opened database against a pt-core-opened one, neither having run
+the feature-flag migration, so the comparison stays apples-to-apples.
 
 **The gate — `scripts/parity/schema-parity.mjs`.** The Phase 1 contract is:
 *for any starting database X, the Rust migrator leaves X in the same schema
@@ -1769,7 +1770,7 @@ the settings-style writers and the plumbing every write shares (batch
 1), the library writers (2), the import pipeline (3), the bulk runners
 and the scheduler (4), and the health check, diagnostics, backup and
 teardown routes (5). The cfgutil device actions belong with the desktop
-cutover, and the AI routes with Phase 5.
+cutover (ported in Phase 6, batch 2a), and the AI routes with Phase 5.
 
 **The gate changes shape.** Phase 2's reads were compared live against
 Node by `read-parity.mjs`; Phase 3's modules were gated by Node oracles
@@ -2994,7 +2995,8 @@ exactly the new unit test.
 ## Status — Phase 5 (the AI policy pipeline)
 
 Phase 4 closed with the write side of the API in Rust, outside the
-cfgutil device actions (the desktop cutover's) and the AI routes. Phase 5
+cfgutil device actions (the desktop cutover's, ported in Phase 6, batch
+2a) and the AI routes. Phase 5
 is the AI routes and everything behind them: `lib/privacy-policy.ts`
 (5,043 lines, the largest module in the port) and the eight modules
 around it — the policy source, its store and versions, the summariser and
@@ -3359,7 +3361,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 83 scenarios, the sample
+the REAL summarise and `all` phases over 88 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3367,7 +3369,7 @@ the recorded chunks, an Anthropic message. The shapes are the providers'
 documented formats; there is no key to capture live ones with. Recorded
 per case: every raw fetch with its headers and body, every write in
 order, seven tables, and the result or the thrown message.
-`core/src/server/policy_summary_tests.rs` replays all 86, each body
+`core/src/server/policy_summary_tests.rs` replays all 91, each body
 reaching the reader in the recorded chunks. CI regenerates the fixture
 and fails on drift ("Policy summariser oracle is current").
 
@@ -3441,6 +3443,21 @@ is kept over the current one"). It now records the summary it
 replaces, and is renamed for it. The control on the previous summary's
 time below now fails five cases, not one: every run that replaces a
 summary of its own.
+
+A summary run that finds no usable AI provider (none chosen, or a blank
+key or model) replaces nothing either: the needs-config row keeps the
+summary the run was replacing, with its mode and model, as the fixed
+Node does. Node used to store no summary there, so a Summarise with an
+incomplete provider lost the summary on the tab, and the next summary
+that worked compared itself with the older one. With no summary to
+keep, the row stores none and no model, as before. The cases, appended
+after every other: a forced resummarise with a blank key and with a
+blank model, a kept summary kept again while there is still no
+provider, the kept summary becoming the previous one once a provider is
+set up, and an unchanged fetch that is a cache hit on the kept summary
+with the key still blank. All 86 earlier cases are byte-identical in
+place. The old needs-config write fails exactly three: the three that
+write it over a summary.
 
 **Node's behaviour, kept.** A refusal is caught by the `try` it is
 thrown in, so it is logged twice and its debug row is inserted twice,
@@ -3521,8 +3538,8 @@ message rather than `terminated`, as the streamed read already did; the
 recording caught it.
 
 **The oracle — `core/scripts/extract-ai-routes-cases.mjs`.** Runs the
-four REAL route handlers over 127 requests built as the browser sends
-them (31 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
+four REAL route handlers over 128 requests built as the browser sends
+them (32 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
 provider replies canned in the documented formats, a frozen clock that
 each awaited fetch moves on, counted ids and nonces, and Save Page Now
 held until the response is complete. Recorded per case: the response
@@ -3561,6 +3578,10 @@ rescrape and summary, streamed; and the kill-switch refuses a fetch
 that bypasses it. The first is logged as a skip, "Policy skipped:
 throttled" (batch 2); it was "Policy summary ready", and it is the one
 case here that moved when the store's activity row changed.
+
+One case, appended last, covers the tab's Summarise over a summary while
+the provider's key is blank: the answer carries the summary the run was
+replacing, credited to the model that made it, under `needs_ai_config`.
 
 **The live gate.** `scripts/parity/ai-probes.mjs`, under `--mutate`,
 starts a fake provider on loopback that answers the OpenAI-compatible
@@ -3763,3 +3784,301 @@ kill-switch in the drain: exactly the case with scraping off. Source
 restored byte for byte after each, fixed tree green.
 
 Rust suite: 269 pass (268 + the replay).
+
+## Status — Phase 6 (the cutover)
+
+The desktop app moves first: the Tauri shell will run this server inside
+its own process instead of spawning Node, and Docker follows straight
+after, before the next release. The batches that touch only `core/` come
+first, so every build that ships stays on Node until the shell is wired.
+
+### Batch 1 — an embeddable server (no routes)
+
+`core/src/server/lifecycle.rs` and `core/src/host_env.rs` make the server
+something a host can run inside its own process and stop again.
+
+**The entry point.** `server::serve_with(listener, ServeConfig)` serves on
+a listener the host bound. It opens and migrates the database, runs the
+boot writes and starts the timers, then serves on the runtime it was
+called from and hands back a `ServerHandle`. Binding is the host's job so
+it can pick the address: the shell will bind loopback, on its last port
+when that is free, so the page's origin (and with it local storage)
+survives a relaunch. `pt-core serve` is now a thin caller: it binds, calls
+`serve_with`, prints the same readiness line, and stops on SIGINT or
+SIGTERM.
+
+**The environment.** Every setting the server reads (the data directory,
+the bind host, the allowed hosts, the admin token, the runtime,
+`NODE_ENV`, `DEPLOYMENT`, the Homebrew variables, `HOME`) goes through
+`host_env::var`. `pt-core` still reads the process environment. A host
+that passes `ServeConfig { env: Some(map) }` makes that map the server's
+whole environment for the rest of the process, which is what the shell's
+`env_clear()` did for the Node sidecar: a stray `AUDITOR_ADMIN_TOKEN` or
+`PRIVACYTRACKER_NETWORK_EXPOSED` in the desktop app's own environment
+cannot change who may call the API. One server per process: a second,
+different environment is refused, and so is a data directory resolved
+before the environment was fixed.
+
+**Shutdown.** `ServerHandle::shutdown(grace)` stops accepting, wakes every
+timer so its loop ends (the deferred policy fetch's included), gives
+requests in flight up to `grace`, then drops their connections and
+returns once the listener is closed. `server::SHUTDOWN_GRACE` is three
+seconds, the gap the shell left between SIGTERM and SIGKILL. What it does
+not stop is work already started off a request, a spawned bulk run or a
+Save Page Now post: that ends with the runtime, which the host drops as it
+exits. A bulk run cut off that way resumes on the next start, as after a
+crash, and a write is committed or rolled back, never torn.
+
+**Panics.** In a sidecar a panic killed one child process; in process the
+same bug would leave the app open with a backend that fails every
+request. Now:
+
+- a handler that panics answers Next's bare 500, and the error ring
+  records it (`catch_panic`, the innermost layer, so timing and the gate
+  see an ordinary response);
+- a panic while a section holds the database connection no longer poisons
+  it for good (`lock_db`): the `Transaction` guard has already rolled
+  back, the poison is cleared, and a transaction left open outside a guard
+  is rolled back too;
+- the shared rings, caches and registries take the same tolerant lock
+  (`lock_state`);
+- a timer tick that panics is logged and its loop carries on (`isolate`),
+  as a thrown error in a `setInterval` callback ends that call and not the
+  interval.
+
+**Logging.** The library logs through the `log` facade instead of
+printing. `diag::log_warn` and `log_error` still feed the error ring, then
+go to `log::warn!` and `log::error!`, and the four informational lines are
+`log::info!`. `pt-core` installs a small logger that prints this crate's
+lines, warnings and errors to stderr and the rest to stdout, as before.
+The shell's log plugin will write them to the desktop log file, which the
+sidecar's output never reached.
+
+**The gate.** Unit tests for each piece: the poisoned connection
+recovered with its transaction rolled back; a transaction left open
+rolled back on recovery; a poisoned state lock still usable; a panicking
+tick that leaves its loop running; a stop that wakes a sleeping timer;
+and a panicking route under exactly the layers `app` applies (`layered`)
+answering a bodiless 500 while the next request succeeds.
+`core/tests/embed.rs` is a test binary of its own, because the environment
+is fixed once per process. It runs `serve_with` end to end on a host
+environment while the PROCESS environment asks for a token, marks the
+deployment network-exposed and points the data directory at a decoy:
+
+- a same-origin POST succeeds with no token;
+- the database lands in the host's directory with 0700/0600 permissions,
+  and nothing lands in the decoy;
+- the boot writes record the desktop runtime;
+- a second, different environment is refused;
+- a shutdown with a request stuck reading its body waits out the grace
+  (0.6 s) and no longer, after which nothing accepts on the port.
+
+Every replay passes unchanged, and the live gate (`read-parity.mjs
+--mutate`, 476 checks) passes through the new `pt-core serve`.
+
+**Negative controls, predicted before running.** The database lock back
+to `expect`: exactly the two recovery tests. No `catch_panic` layer:
+exactly the route test. `host_env::var` ignoring the host environment:
+exactly the embed test (its POST answered 401). `isolate` awaiting the
+tick without catching: exactly the tick test. Source restored byte for
+byte after each, fixed tree green.
+
+Rust suite: 278 lib tests pass (270 + 8), plus the embed test.
+
+### Batch 2a — the device routes (+5 handlers)
+
+`core/src/server/device_writes.rs` ports the five routes Phase 4 set
+aside as host dependent, with `lib/device-actions.ts`,
+`lib/device-backup-verification.ts` and `lib/device-sync.ts` under them.
+None of them touches hardware: cfgutil runs in the Tauri shell, and these
+routes record what it did, decide what it may do next, and diff and apply
+a device's app list.
+
+**The backup record.** `POST /api/device-actions/backup` refuses any
+audience but `self` before it reads the body, then wants an ECID
+(trimmed, one `0x` dropped, 8 to 24 hex digits) and a path, and verifies
+the backup in Node's order: an absolute path, Apple's MobileSync root
+present, the path not a symlink, its real path a direct child of the
+root's, a directory, and in it a `Manifest.db` that is not a symlink,
+resolves inside it, is a regular file, is not empty and was last
+modified at a positive time no later than now. Each refusal is a 422
+naming the check. A verified backup is stamped under
+`cfgutil_last_backup_<ECID>`, upper case, dated by the manifest when that
+is older than now (a time the client sends is ignored), and logged as a
+`cfgutil_backup` activity row.
+
+**The uninstall gate.** `GET /api/device-actions/uninstall` answers the
+gate and the stamp it read, and writes nothing. `POST` logs an uninstall
+the shell performed, once the same gate allows it. The gate runs in
+Node's order: whose device it is (a recorded owner audience must match
+the focus, and a device that is not the user's own also needs the
+permission acknowledgement; no owner, or no device with that ECID, falls
+back to audience `self`), then `flag.devopts.cfgutil_uninstall`, then,
+unless the caller acknowledged going without, a stamp whose backup still
+verifies and is no more than a day old, counting from the older of the
+stamp and the manifest.
+
+**The re-sync.** `POST /api/device-sync/preview` cleans the client's list
+(at most 2,000 entries; anything without a string app id skipped; the
+first of a repeated id kept), fills in a missing bundle id from the
+library, and diffs the list against the device's links: the adds, the
+removes (each saying whether unlinking would orphan the app), the
+unchanged count, and the bundle-id merges, where a new app id carries the
+bundle id of an app already on the device. `POST /api/device-sync/commit`
+applies a selection in one transaction: the merges first (the old id's
+annotations, verdicts, shortlist entries and snapshots moved to the new
+one, whose own conflicting verdicts and shortlist entries are dropped
+first, then the old id's links copied and the old app deleted), then the
+adds, the removes with the orphan sweep, and the device's sync time;
+then the `device_resync.last_committed_at` setting and a
+`device_sync.commit` audit row. The two keep their limits (30 and 15 a
+minute) and their body caps (512 KiB and 256 KiB).
+
+**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 140
+cases through the REAL handlers: 40 for the backup, 27 for the gate's
+GET, 29 for its POST, 23 for the preview and 21 for the commit, each
+POST with the five body-reader outcomes and its non-object bodies, and
+the two limited routes with the burst past the limit. The backup check
+reads the disk, so the oracle builds a MobileSync-shaped tree of 14
+entries (two fresh backups, and one each stale, empty, from the future
+and without a manifest; a directory and a symlink where the manifest
+should be; a symlinked backup, a file, a nested backup, one outside the
+root and a manifest beside `Backup/`), sets every manifest time against
+the frozen clock, writes the tree into the fixture as data and spells
+its scratch directory `<BASE>` everywhere.
+`core/src/server/device_writes_tests.rs` builds the same tree, swaps the
+real directory in and back out, runs each case through `precheck` and
+`perform` (the GET through its own handler) and compares the wire, the
+write stream and the ten tables. CI regenerates the fixture ("Device
+routes oracle is current"). The replay passed on its first run.
+
+**The live gate.** `probeDeviceRoutes` in
+`scripts/parity/device-probes.mjs`, run by `read-parity.mjs --mutate`,
+holds what both servers answer on the same host over the same fixture
+library: the gate with and without an ECID; the backup's refusals, the
+artifact one included, since a path that is not there reads the same
+host folder from both; the uninstall log refused while its flag is off;
+the preview's refusals and a real diff over a fixture device; and the
+commit's refusals. A commit that lands is left to the oracle, because it
+stamps the device with each server's own clock. The four routes stay in
+the differ's quarantine, with their reasons rewritten in
+`scripts/parity/manifest.mjs`: none of them drives hardware, but the
+backup and the gate read the host's MobileSync folder, and the re-sync
+pair act on a list the client sends.
+
+**Node's behaviour, kept, and two bugs filed.** Each bug has its own
+follow-up to fix Node and the core together. The direct-child test
+accepts the MobileSync root's own parent, whose relative form `..` is
+one segment with no separator, so a non-empty `Manifest.db` beside
+`Backup/` verifies. And the commit merges any two apps the client names:
+nothing checks that the preview proposed the pair, so a crafted or stale
+request can fold one app into another and delete it. Also kept: a
+shortlist entry never stops a remove from reading as orphaning its app,
+through the same failing probe as Phase 4's orphan sweep; the uninstall
+log binds the client's app id as better-sqlite3 does, a number as a REAL
+and a boolean or an object refused (the statement recorded, no row
+written, the route still answering `ok`); and a `null` body to that log
+is Next's bare 500.
+
+**Negative controls, predicted before running.** The direct-child test
+refusing `..`: exactly the root's-parent case. No permission check:
+exactly the two cases with another person's device and no
+acknowledgement (none recorded, and a stamp of zero). No bundle-id
+backfill: exactly the four preview cases whose answer uses a bundle id
+the library filled in. No verdict-conflict delete in a merge: exactly the
+two cases that apply a merge. A numeric app id bound as an integer:
+exactly the case that sends one. Live, two faults at once (the backup's
+ECID refusal reworded, and an add's `iconUrl` key renamed) failed
+exactly the probe's two checks for them, 484 of 486 passing. Source
+restored byte for byte after each, fixed tree green.
+
+Rust suite: 281 lib tests pass (278 + 2 unit tests + the replay), plus
+the embed test.
+
+### Batch 2b — the feature-flag migration (no routes)
+
+`core/src/server/flag_migration.rs` ports `runFeatureFlagMigration` from
+`lib/migrations/v1_feature_flags.ts`. Node's startup hook runs it before
+anything else writes, and `start_background` now runs it in the same
+place, ahead of the boot writes. A failure is logged and the server comes
+up anyway, as Node's does.
+
+**What it does.** Nothing once `feature_flag_migration_version` reads as
+2 or more by `Number.parseInt`, so `"2.5"` and `"\t 2"` count and `"0x2"`
+does not. Otherwise six steps, each between a "started" and a
+"completed" `migration` activity row:
+
+- a check that `feature_flag_overrides` and `annotations` exist;
+- the legacy `user_intent` (`curious`, `cleanup`, `hygiene`, `family`)
+  becomes a focus through `setActiveFocus` and goes; any other intent is
+  dropped with a warning;
+- the legacy `notification_prefs` blob becomes one override per type it
+  names, `on` for `true`, `"on"` or `"true"` and `off` for anything else,
+  and goes; a blob that is not JSON is dropped with a warning;
+- the four retired callout overrides are dropped;
+- overrides whose key the flag registry knows leave quarantine, and the
+  rest enter it, each statement binding all 222 registry keys in
+  `Object.keys(HARD_DEFAULTS)` order;
+- the old goal keys (`understand`, `declutter`) move to `monitor` and
+  `cleanup` unless those are already set.
+
+Then the version marker and a closing row with each step's duration. A
+step that fails writes a "failed" row and ends the run without the
+marker, so the next boot runs it again. There is no transaction around
+the run, so the steps before a failure keep what they wrote. Where Node
+nests one transaction in another (`setActiveFocus` inside step 2), the
+port nests them as better-sqlite3 does, through savepoints.
+
+**The oracle — `core/scripts/extract-flag-migration-cases.mjs`.** Runs
+the REAL migration over 43 cases: the version gate (11 cases), each step
+over the legacy state it migrates, every step at once on a legacy
+install, and the failures (a table missing, and a later step failing
+after an earlier one wrote). A frozen clock makes every duration 0 ms,
+and a case may drop a table inside its savepoint.
+`core/src/server/flag_migration_tests.rs` replays it, comparing what the
+run returned or threw, the write stream and three tables, and CI
+regenerates the fixture ("Flag migration oracle is current"). The replay
+passed on its first run. A unit test boots twice over a database missing
+a table: no marker, and one failed row per boot. The embed test now
+checks that a fresh database gets the marker and the 13 rows at boot.
+
+**The live gate, and both real servers.** The gate's first run on this
+batch failed five flag checks, and the cause was the wiring working: the
+seed's `/api/reset` deletes the marker after Node's boot, Node's running
+process never reads it again, and the core's boot then migrated the copy.
+`read-parity.mjs` now puts the marker back on Node's side before the copy
+(`restoreMigrationMarker`), as it already guards the unknown-device
+backfill, and the gate passes (486 checks). The migration itself was then
+checked on both real servers. A seeded database had legacy state planted
+in every step's path (an intent, a prefs blob, a retired callout, an
+unknown override, a quarantined known one, the old goal keys). It was
+booted once by the Node production server and once by `pt-core`, each
+stopped before its first timer. The two boots wrote the same settings,
+overrides and 13 activity rows; only ids, the boots' own timestamps and
+the durations were normalised.
+
+**Node's behaviour, kept, and one bug filed.** Two stored values fail a
+step on every boot for good, so the marker is never written and the steps
+after the failure never run: a `notification_prefs` of JSON `null`
+(`Object.hasOwn(null, …)` throws), and a `user_intent` naming an inherited
+property such as `toString` or `__proto__` (the lookup finds the
+inherited member, whose audience is `undefined`, and better-sqlite3 binds
+that as NULL into a NOT NULL column). The app never writes either value,
+but a restored or edited database can hold them. The follow-up fixes
+Node and the core together. Also kept: an intent must match exactly
+(`"Curious "` is unknown), and an empty `notification_prefs` is left in
+place rather than deleted.
+
+**Negative controls, predicted before running.** The version gate
+comparing the string to `"2"`: exactly the three cases that skip by
+`parseInt` without being `"2"`. Inherited intent names read as unknown:
+exactly the three cases with one. Prefs of `null` not failing their
+step: exactly the two cases with them. The workflow inferred as if the
+audience were `self`: exactly the two `family` intents. The string
+`"true"` not switching a type on: exactly the case that sends it. An old
+goal key overwriting a new one already set: exactly the kept-key case
+and the legacy install, whose step 2 had already written the cleanup
+goal. Source restored byte for byte after each, fixed tree green.
+
+Rust suite: 283 lib tests pass (281 + the replay + the boot test), plus
+the embed test.

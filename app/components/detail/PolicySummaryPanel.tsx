@@ -7,6 +7,7 @@ import {
   type AppPolicyAnalysis,
   canSummariseStoredPolicy,
   describePolicyRunCompletion,
+  describePolicyStatus,
   POLICY_LENSES,
   POLICY_RATING_META,
   POLICY_SOURCE_ORIGIN_META,
@@ -99,26 +100,8 @@ type StatusT = (
   values?: Record<string, string | number>
 ) => string;
 function getPolicyStatusMessage(t: StatusT, analysis: AppPolicyAnalysis) {
-  switch (analysis.status) {
-    case "needs_ai_config":
-      return t("status_needs_ai_config");
-    case "source_ready":
-      return t("status_source_ready");
-    case "fetch_error":
-      return analysis.summary
-        ? t("status_fetch_error_with_summary")
-        : t("status_fetch_error");
-    case "unsupported_content_type":
-      return t("status_unsupported_content_type");
-    case "too_short":
-      return t("status_too_short");
-    case "analysis_error":
-      return analysis.summary
-        ? t("status_analysis_error_with_summary")
-        : t("status_analysis_error");
-    default:
-      return analysis.error || t("analysis_unavailable");
-  }
+  const key = describePolicyStatus(analysis.status, Boolean(analysis.summary));
+  return key ? t(key) : analysis.error || t("analysis_unavailable");
 }
 
 interface PolicyPanelFlagState {

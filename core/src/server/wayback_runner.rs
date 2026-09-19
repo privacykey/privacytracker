@@ -238,7 +238,7 @@ static NEXT_TAG: AtomicU64 = AtomicU64::new(1);
 /// `requestActiveBulkWaybackCancel`: the run with that id, or every run
 /// when none is named. True when something was told to stop.
 pub(crate) fn request_active_cancel(run_id: Option<&str>) -> bool {
-    let runs = active_runs().lock().expect("run registry poisoned");
+    let runs = super::lifecycle::lock_state(active_runs());
     match run_id.filter(|id| !id.is_empty()) {
         Some(id) => match runs.get(id) {
             Some(active) => {
@@ -467,7 +467,7 @@ pub(crate) async fn run_bulk_wayback_import(
     });
     seeded?;
     let run_id = str_of(&state, "runId").to_string();
-    active_runs().lock().expect("run registry poisoned").insert(
+    super::lifecycle::lock_state(active_runs()).insert(
         run_id.clone(),
         Active {
             tag,
@@ -502,7 +502,7 @@ pub(crate) async fn run_bulk_wayback_import(
     )
     .await;
     {
-        let mut runs = active_runs().lock().expect("run registry poisoned");
+        let mut runs = super::lifecycle::lock_state(active_runs());
         if runs.get(&run_id).is_some_and(|a| a.tag == tag) {
             runs.remove(&run_id);
         }

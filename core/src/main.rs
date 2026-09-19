@@ -9,10 +9,41 @@
 //!   pt-core migrate <path/to/privacy.db>   open + migrate in place
 //!   pt-core serve [--port N]                serve <PRIVACYTRACKER_DATA_DIR|cwd/data>/privacy.db
 //!   pt-core version                         print crate + SQLite versions
+//!
+//! `serve` stops on SIGINT or SIGTERM, giving requests in flight three
+//! seconds (`server::SHUTDOWN_GRACE`).
 
 use std::process::ExitCode;
 
+/// Where `pt-core` sends the library's log lines: warnings and errors to
+/// stderr, the rest to stdout, as the prints they replaced did. Only this
+/// crate's lines; the HTTP stack logs through the same facade.
+struct Console;
+
+impl log::Log for Console {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        metadata.level() <= log::Level::Info && metadata.target().starts_with("privacytracker_core")
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+        match record.level() {
+            log::Level::Error | log::Level::Warn => eprintln!("{}", record.args()),
+            _ => println!("{}", record.args()),
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+static CONSOLE: Console = Console;
+
 fn main() -> ExitCode {
+    if log::set_logger(&CONSOLE).is_ok() {
+        log::set_max_level(log::LevelFilter::Info);
+    }
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
         Some("migrate") => {

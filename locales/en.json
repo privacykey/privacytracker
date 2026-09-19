@@ -3855,6 +3855,7 @@
       "fallback_summary_privacyspy": "Independent, rubric-based privacy policy score for {subject}.",
       "analysis_unavailable": "Privacy-policy analysis is not available.",
       "status_needs_ai_config": "The policy text was fetched, but AI summaries are disabled until an AI provider is configured in Settings.",
+      "status_needs_ai_config_with_summary": "The latest AI refresh could not run because no AI provider is fully set up in Settings, so this summary may be out of date.",
       "status_source_ready": "The policy text has been fetched and is ready to summarise. Open Settings or re-run onboarding's AI step to generate the summary.",
       "status_fetch_error_with_summary": "The latest policy refresh failed, so this summary may be out of date.",
       "status_fetch_error": "The app links to a privacy policy, but the latest fetch failed.",

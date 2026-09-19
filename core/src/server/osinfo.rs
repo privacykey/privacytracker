@@ -137,7 +137,7 @@ pub fn access_read_write(path: &Path) -> Result<(), String> {
 
 /// `os.homedir()`: `$HOME` when set, else the account's directory.
 pub fn home_dir() -> Option<String> {
-    if let Ok(h) = std::env::var("HOME") {
+    if let Ok(h) = crate::host_env::var("HOME") {
         if !h.is_empty() {
             return Some(h);
         }

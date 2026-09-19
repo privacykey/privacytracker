@@ -15,7 +15,7 @@ use axum::{
 use rusqlite::{Connection, OptionalExtension, Row};
 use serde_json::{json, Value};
 
-fn device(row: &Row<'_>) -> rusqlite::Result<Value> {
+pub(super) fn device(row: &Row<'_>) -> rusqlite::Result<Value> {
     let label: Option<String> = row.get("owner_label")?;
     let label = label
         .as_deref()

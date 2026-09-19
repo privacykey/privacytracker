@@ -341,7 +341,7 @@ pub(crate) async fn tick_webhook_summary(db: &mut dyn DbAccess, fetcher: &dyn Fe
     let count = maybe_post_summary(db, &mut ids, fetcher, now).await;
     if count > 0 {
         // `console.log`, which has no ring entry.
-        eprintln!("[Webhook] Posted summary with {count} notifications");
+        log::info!("[Webhook] Posted summary with {count} notifications");
     }
 }
 

@@ -4,8 +4,9 @@
 //! - `summariseStoredPolicy`: nothing to do when the stored summary is
 //!   current, an imported excerpt, or not a clean source; the needs-config
 //!   row when no provider is set; otherwise the summary, stored with the
-//!   one it replaces, or the error it failed with, stored beside the
-//!   summary it was replacing.
+//!   one it replaces, or the error it failed with. The needs-config row
+//!   and the error are both stored beside the summary the run was
+//!   replacing.
 //! - `buildPolicySummary`: one call when the policy fits the model's
 //!   direct limit; otherwise the policy in chunks, each chunk's notes
 //!   stored as soon as they arrive (so a run that dies at the merge
@@ -124,6 +125,39 @@ struct SummaryFields {
     previous_summary_at: Value,
     model: Value,
     error: Option<String>,
+}
+
+/// The write of a run that made no summary, because it found no AI
+/// provider or its AI call failed. Such a run replaces nothing: the row
+/// keeps its summary, with the mode and model that made it, and the one
+/// before it, as a failed fetch keeps its summary; only the status and
+/// the error record the run. With no summary to keep, the row names
+/// `model_without_summary`.
+fn kept_summary(
+    existing: &Value,
+    has_summary: bool,
+    status: &'static str,
+    model_without_summary: Value,
+    error: String,
+) -> SummaryFields {
+    let existing = Some(existing);
+    SummaryFields {
+        status,
+        analysis_mode: if has_summary {
+            analysis_mode(&col(existing, "analysis_mode"))
+        } else {
+            Value::Null
+        },
+        summary_json: col(existing, "summary_json"),
+        previous_summary_json: col(existing, "previous_summary_json"),
+        previous_summary_at: col(existing, "previous_summary_at"),
+        model: if has_summary {
+            col(existing, "model")
+        } else {
+            model_without_summary
+        },
+        error: Some(error),
+    }
 }
 
 /// `summariseStoredPolicy`'s future. Boxed with `Send` stated rather than
@@ -245,15 +279,13 @@ async fn summarise(
             &existing,
             app_id,
             policy_url,
-            SummaryFields {
-                status: "needs_ai_config",
-                analysis_mode: Value::Null,
-                summary_json: Value::Null,
-                previous_summary_json: col(Some(&existing), "previous_summary_json"),
-                previous_summary_at: col(Some(&existing), "previous_summary_at"),
-                model: Value::Null,
-                error: Some(NEEDS_CONFIG_ERROR.to_string()),
-            },
+            kept_summary(
+                &existing,
+                has_summary,
+                "needs_ai_config",
+                Value::Null,
+                NEEDS_CONFIG_ERROR.to_string(),
+            ),
             now,
         )?;
         return Ok((analysis, FollowUps::default()));
@@ -326,32 +358,19 @@ async fn summarise(
         }
         Err(message) => {
             log.end_phase(None, Some(message.clone()));
-            // A failed run replaces nothing: the summary stays, with the
-            // mode and model that made it, as a failed fetch keeps its
-            // summary. With no summary to keep, the row names the model
-            // that failed.
+            // With no summary to keep, the row names the model that failed.
             persist_from(
                 log,
                 &existing,
                 app_id,
                 policy_url,
-                SummaryFields {
-                    status: "analysis_error",
-                    analysis_mode: if has_summary {
-                        analysis_mode(&col(Some(&existing), "analysis_mode"))
-                    } else {
-                        Value::Null
-                    },
-                    summary_json: col(Some(&existing), "summary_json"),
-                    previous_summary_json: col(Some(&existing), "previous_summary_json"),
-                    previous_summary_at: col(Some(&existing), "previous_summary_at"),
-                    model: if has_summary {
-                        col(Some(&existing), "model")
-                    } else {
-                        json!(config.model)
-                    },
-                    error: Some(message),
-                },
+                kept_summary(
+                    &existing,
+                    has_summary,
+                    "analysis_error",
+                    json!(config.model),
+                    message,
+                ),
                 now,
             )?
         }
