@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import {
   type AppPolicyAnalysis,
+  canSummariseStoredPolicy,
   POLICY_LENSES,
   POLICY_RATING_META,
   POLICY_SOURCE_ORIGIN_META,
@@ -463,6 +464,19 @@ export default function PolicySummaryPanel({
         analysis.status === "needs_ai_config" ||
         (analysis.sourceLength ?? 0) > 0)
   );
+  // Stored text is not always summarisable: after a failed or unusable
+  // fetch it is an earlier capture, which the server declines to
+  // summarise, so Summarise follows the server's rule. The regenerate
+  // route forces every run.
+  const canSummarise = Boolean(
+    analysis &&
+      canSummariseStoredPolicy({
+        force: true,
+        hasSourceText: (analysis.sourceLength ?? 0) > 0,
+        model: analysis.model,
+        status: analysis.status,
+      })
+  );
   const showRegenerateBelowFailure = Boolean(
     analysis &&
       analysis.status !== "ready" &&
@@ -637,13 +651,13 @@ export default function PolicySummaryPanel({
             <button
               className="btn btn-secondary btn-sm"
               disabled={
-                regenerating || !hasStoredSource || aiProvider === "disabled"
+                regenerating || !canSummarise || aiProvider === "disabled"
               }
               onClick={() => runPhase("summarise")}
               title={
                 aiProvider === "disabled"
                   ? tDetail("policy_meta.title_summarise_disabled")
-                  : hasStoredSource
+                  : canSummarise
                     ? tDetail("policy_meta.title_summarise_ready")
                     : tDetail("policy_meta.title_summarise_no_source")
               }

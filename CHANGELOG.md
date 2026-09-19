@@ -46,6 +46,18 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Clicking "Summarise" on an app's AI Policy tab after a failed policy
+  refresh no longer adds a failure to the Activity log. A failed refresh
+  keeps the policy text from the last refresh that worked, and the button
+  stayed available for it, but that older text is not summarised: nothing
+  happened, and the Activity log recorded a new "Fetch failed" error
+  although nothing had been fetched. The button is now disabled, and asks
+  for a rescrape first, whenever the stored text will not be summarised:
+  after a failed refresh or one that came back too short or in a format
+  that cannot be read, for an imported policy, and after an AI summary
+  that failed or had no AI provider set up. "Rescrape + summarise" does
+  both in one pass. A Summarise request that still arrives after a failed
+  refresh is logged as "Policy skipped: latest fetch failed".
 - A privacy-policy summary that came in with an imported audit bundle no
   longer reads as a failed AI refresh. The app's AI Policy tab showed it
   under "The latest AI refresh failed, so this summary may be out of
