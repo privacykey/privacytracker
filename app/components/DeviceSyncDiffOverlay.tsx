@@ -178,7 +178,8 @@ export default function DeviceSyncDiffOverlay({
     try {
       // Pass the bundle-ID merges the preview detected straight back
       // so the commit step can collapse the duplicate rows in the
-      // same transaction. The server re-validates the pair shape.
+      // same transaction. The server checks each pair again and skips
+      // any the diff would no longer propose.
       const merges = (diff?.bundleIdMerges ?? []).map((m) => ({
         previousAppId: m.previousAppId,
         incomingAppId: m.incomingAppId,

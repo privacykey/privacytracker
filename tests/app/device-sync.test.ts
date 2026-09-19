@@ -395,3 +395,179 @@ test("applyDeviceSyncDiff: merge is a no-op when previous and incoming ids are t
   const row = db.prepare("SELECT id FROM apps WHERE id = ?").get("same");
   assert.ok(row);
 });
+
+// ─── Merge pairs come from the client ──────────────────────────────
+//
+// The commit route forwards whatever `bundleIdMerges` the client sends,
+// and a merge deletes the previous app row. applyDeviceSyncDiff checks
+// each pair again and skips any the diff would not propose for this
+// device: the previous app on it, the incoming app not, and the same
+// non-empty bundle ID on both rows.
+
+function seedUserVerdict(id: string, appId: string): void {
+  const now = Date.now();
+  db.prepare(`
+    INSERT INTO app_verdicts (id, app_id, verdict, source, source_name, set_at, updated_at)
+    VALUES (?, ?, 'safe', 'user', NULL, ?, ?)
+  `).run(id, appId, now, now);
+}
+
+function appExists(id: string): boolean {
+  return db.prepare("SELECT 1 FROM apps WHERE id = ?").get(id) !== undefined;
+}
+
+function deviceAppIds(deviceId: string): string[] {
+  return (
+    db
+      .prepare("SELECT app_id FROM app_devices WHERE device_id = ?")
+      .all(deviceId) as { app_id: string }[]
+  )
+    .map((r) => r.app_id)
+    .sort();
+}
+
+test("applyDeviceSyncDiff: skips a crafted merge of two unrelated apps", () => {
+  const device = setup();
+  seedApp("instagram", "Instagram", "com.burbn.instagram");
+  seedApp("threads", "Threads", "com.burbn.barcelona");
+  seedApp("keep");
+  seedApp("gone");
+  seedApp("new");
+  upsertAppDeviceLink("instagram", device.id);
+  upsertAppDeviceLink("keep", device.id);
+  upsertAppDeviceLink("gone", device.id);
+  seedUserVerdict("v-instagram", "instagram");
+
+  const result = applyDeviceSyncDiff(device.id, {
+    addAppIds: ["new"],
+    removeAppIds: ["gone"],
+    bundleIdMerges: [{ previousAppId: "instagram", incomingAppId: "threads" }],
+  });
+
+  // The merge is skipped and the rest of the selection still applies.
+  assert.deepEqual(result, {
+    added: 1,
+    removed: 1,
+    orphanedAndDeleted: 1,
+    merged: 0,
+  });
+  assert.ok(appExists("instagram"), "the previous app must survive");
+  assert.ok(appExists("threads"));
+  assert.deepEqual(deviceAppIds(device.id), ["instagram", "keep", "new"]);
+  const verdict = db
+    .prepare("SELECT app_id FROM app_verdicts WHERE id = ?")
+    .get("v-instagram") as { app_id: string } | undefined;
+  assert.equal(verdict?.app_id, "instagram");
+});
+
+test("applyDeviceSyncDiff: skips a merge when either app has no bundle ID", () => {
+  // Every pair here is otherwise one the diff could propose: the
+  // previous app on the device, the incoming app not.
+  const device = setup();
+  seedApp("null-old");
+  seedApp("null-new");
+  seedApp("empty-old", "Empty old", "");
+  seedApp("empty-new", "Empty new", "");
+  seedApp("excel-old", "Microsoft Excel", "com.microsoft.Office.Excel");
+  seedApp("excel-new", "Excel", "com.microsoft.Office.Excel");
+  upsertAppDeviceLink("null-old", device.id);
+  upsertAppDeviceLink("empty-old", device.id);
+  upsertAppDeviceLink("excel-old", device.id);
+
+  const result = applyDeviceSyncDiff(device.id, {
+    addAppIds: [],
+    removeAppIds: [],
+    bundleIdMerges: [
+      { previousAppId: "null-old", incomingAppId: "null-new" },
+      { previousAppId: "empty-old", incomingAppId: "empty-new" },
+      { previousAppId: "null-old", incomingAppId: "excel-new" },
+      { previousAppId: "excel-old", incomingAppId: "null-new" },
+    ],
+  });
+
+  assert.equal(result.merged, 0);
+  for (const id of [
+    "null-old",
+    "null-new",
+    "empty-old",
+    "empty-new",
+    "excel-old",
+    "excel-new",
+  ]) {
+    assert.ok(appExists(id), `${id} must survive`);
+  }
+  assert.deepEqual(deviceAppIds(device.id), [
+    "empty-old",
+    "excel-old",
+    "null-old",
+  ]);
+});
+
+test("applyDeviceSyncDiff: skips a merge whose previous app is not on this device", () => {
+  const device = setup();
+  const other = createDevice({ name: "iPad" });
+  seedApp("old-track", "Microsoft Excel", "com.microsoft.Office.Excel");
+  seedApp("new-track", "Excel", "com.microsoft.Office.Excel");
+  upsertAppDeviceLink("old-track", other.id);
+
+  const result = applyDeviceSyncDiff(device.id, {
+    addAppIds: [],
+    removeAppIds: [],
+    bundleIdMerges: [
+      { previousAppId: "old-track", incomingAppId: "new-track" },
+    ],
+  });
+
+  assert.equal(result.merged, 0);
+  assert.ok(appExists("old-track"));
+  assert.deepEqual(deviceAppIds(other.id), ["old-track"]);
+  assert.deepEqual(deviceAppIds(device.id), []);
+});
+
+test("applyDeviceSyncDiff: skips a merge into an app already on this device", () => {
+  // The diff counts the incoming app as unchanged here and offers the
+  // previous one as a remove, so it never proposes this merge.
+  const device = setup();
+  seedApp("old-track", "Microsoft Excel", "com.microsoft.Office.Excel");
+  seedApp("new-track", "Excel", "com.microsoft.Office.Excel");
+  upsertAppDeviceLink("old-track", device.id);
+  upsertAppDeviceLink("new-track", device.id);
+
+  const result = applyDeviceSyncDiff(device.id, {
+    addAppIds: [],
+    removeAppIds: [],
+    bundleIdMerges: [
+      { previousAppId: "old-track", incomingAppId: "new-track" },
+    ],
+  });
+
+  assert.equal(result.merged, 0);
+  assert.ok(appExists("old-track"));
+  assert.deepEqual(deviceAppIds(device.id), ["new-track", "old-track"]);
+});
+
+test("applyDeviceSyncDiff: checks every merge before the first one runs", () => {
+  // Merging a into b links b to the device, which would make a
+  // follow-up b → c look like a pair the diff proposes. No preview can
+  // return both, so only the first runs.
+  const device = setup();
+  seedApp("a", "Excel (old)", "com.microsoft.Office.Excel");
+  seedApp("b", "Excel", "com.microsoft.Office.Excel");
+  seedApp("c", "Excel (other)", "com.microsoft.Office.Excel");
+  upsertAppDeviceLink("a", device.id);
+
+  const result = applyDeviceSyncDiff(device.id, {
+    addAppIds: [],
+    removeAppIds: [],
+    bundleIdMerges: [
+      { previousAppId: "a", incomingAppId: "b" },
+      { previousAppId: "b", incomingAppId: "c" },
+    ],
+  });
+
+  assert.equal(result.merged, 1);
+  assert.ok(!appExists("a"));
+  assert.ok(appExists("b"));
+  assert.ok(appExists("c"));
+  assert.deepEqual(deviceAppIds(device.id), ["b"]);
+});
